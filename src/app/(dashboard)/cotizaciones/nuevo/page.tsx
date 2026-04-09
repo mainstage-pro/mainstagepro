@@ -717,21 +717,30 @@ function CotizadorForm() {
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
             {/* Selector */}
-            <div className="flex gap-2 mb-4">
-              <select value={selEq} onChange={e => setSelEq(e.target.value)} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Selecciona equipo —</option>
-                {equiposPorCategoria.map(([cat, eqs]) => (
-                  <optgroup key={cat} label={cat}>
-                    {eqs.map(eq => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""}{eq.modelo ? ` ${eq.modelo}` : ""}{eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <input type="number" min="1" value={selEqCant} onChange={e => setSelEqCant(e.target.value)} title="Cantidad" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Cant" />
-              <input type="number" min="1" value={selEqDias} onChange={e => setSelEqDias(e.target.value)} title="Días" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Días" />
+            <div className="flex gap-2 mb-4 items-end">
+              <div className="flex-1">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
+                <select value={selEq} onChange={e => setSelEq(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Selecciona equipo —</option>
+                  {equiposPorCategoria.map(([cat, eqs]) => (
+                    <optgroup key={cat} label={cat}>
+                      {eqs.map(eq => (
+                        <option key={eq.id} value={eq.id}>
+                          {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""}{eq.modelo ? ` ${eq.modelo}` : ""}{eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                <input type="number" min="1" value={selEqCant} onChange={e => setSelEqCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                <input type="number" min="1" value={selEqDias} onChange={e => setSelEqDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
               <button onClick={agregarEquipo} disabled={!selEq} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
 
@@ -832,17 +841,26 @@ function CotizadorForm() {
           {/* ── Equipos de terceros ── */}
           {equiposExternos.length > 0 && (
             <Seccion titulo="Equipos de terceros" hint="sin descuento por volumen · costo de proveedor afecta viabilidad">
-              <div className="flex gap-2 mb-4">
-                <select value={selExt} onChange={e => setSelExt(e.target.value)} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Selecciona equipo externo —</option>
-                  {equiposExternos.map(eq => (
-                    <option key={eq.id} value={eq.id}>
-                      {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""} — cliente: {formatCurrency(eq.precioRenta)} / costo: {formatCurrency(eq.costoProveedor ?? 0)}
-                    </option>
-                  ))}
-                </select>
-                <input type="number" min="1" value={selExtCant} onChange={e => setSelExtCant(e.target.value)} title="Cantidad" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Cant" />
-                <input type="number" min="1" value={selExtDias} onChange={e => setSelExtDias(e.target.value)} title="Días" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Días" />
+              <div className="flex gap-2 mb-4 items-end">
+                <div className="flex-1">
+                  <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
+                  <select value={selExt} onChange={e => setSelExt(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Selecciona equipo externo —</option>
+                    {equiposExternos.map(eq => (
+                      <option key={eq.id} value={eq.id}>
+                        {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""} — cliente: {formatCurrency(eq.precioRenta)} / costo: {formatCurrency(eq.costoProveedor ?? 0)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                  <input type="number" min="1" value={selExtCant} onChange={e => setSelExtCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                  <input type="number" min="1" value={selExtDias} onChange={e => setSelExtDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                </div>
                 <button onClick={agregarExterno} disabled={!selExt} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">+ Agregar</button>
               </div>
 
