@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+function miercolesLimitePago(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  let dias = (3 - d.getDay() + 7) % 7;
+  if (dias < 3) dias += 7;
+  d.setDate(d.getDate() + dias);
+  return d;
+}
+
 // Checklist operativo base que se genera automáticamente al crear un proyecto
 const CHECKLIST_BASE = [
   "Confirmar personal asignado",
@@ -89,7 +98,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       },
     });
 
-    // 2. Copiar equipos al proyecto
+    // 2. Copiar equipos al proyecto (incluyendo proveedorId para externos)
     if (lineasEquipo.length > 0) {
       await tx.proyectoEquipo.createMany({
         data: lineasEquipo.map((l) => ({
@@ -99,6 +108,27 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           cantidad: Math.round(l.cantidad),
           dias: l.dias,
           costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
+          proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
+        })),
+      });
+    }
+
+    // 2b. Crear CxP para cada equipo externo con costo
+    const lineasExternas = lineasEquipo.filter(
+      (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0
+    );
+    if (lineasExternas.length > 0) {
+      const fechaCxP = miercolesLimitePago(fechaEvento);
+      await tx.cuentaPagar.createMany({
+        data: lineasExternas.map((l) => ({
+          tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",
+          proveedorId: l.proveedorId ?? null,
+          proyectoId: proy.id,
+          concepto: `${l.descripcion} (x${Math.round(l.cantidad)} × ${l.dias}d)${!l.proveedorId ? " — ⚠ Asignar proveedor" : ""}`,
+          monto: l.costoUnitario * Math.round(l.cantidad) * l.dias,
+          fechaCompromiso: fechaCxP,
+          estado: "PENDIENTE",
+          notas: !l.proveedorId ? "Proveedor no asignado en la cotización. Asignar manualmente en CxP." : null,
         })),
       });
     }
