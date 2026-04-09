@@ -98,13 +98,6 @@ const NAV: NavSection[] = [
           { label: "Bodega", href: "/inventario/bodega" },
         ],
       },
-      {
-        label: "RR.HH.",
-        children: [
-          { label: "Personal", href: "/rrhh/personal" },
-          { label: "Nómina", href: "/rrhh/nomina" },
-        ],
-      },
     ],
   },
 ];
