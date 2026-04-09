@@ -300,6 +300,7 @@ function CotizadorForm() {
         const t = tr.trato;
         setEvento(prev => ({
           ...prev,
+          nombreEvento: t.nombreEvento || prev.nombreEvento,
           tipoEvento: t.tipoEvento || prev.tipoEvento,
           tipoServicio: t.tipoServicio || prev.tipoServicio,
           fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : prev.fechaEvento,
