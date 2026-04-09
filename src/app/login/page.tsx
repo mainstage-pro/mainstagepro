@@ -38,13 +38,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 bg-[#B3985B] rounded-sm flex items-center justify-center">
-              <span className="text-black font-bold text-sm">M</span>
-            </div>
-            <span className="text-white font-semibold text-xl tracking-wide">
-              Mainstage Pro
-            </span>
+          <div className="flex justify-center mb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Mainstage Pro" className="h-12 w-auto object-contain" />
           </div>
           <p className="text-[#6b7280] text-sm">Sistema operativo</p>
         </div>

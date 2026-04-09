@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "Mainstage Pro",
   description: "Sistema operativo Mainstage Pro",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo-icon.png",
+    apple: "/logo-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

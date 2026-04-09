@@ -18,7 +18,7 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
     paddingTop: 0,
-    paddingBottom: 40,
+    paddingBottom: 90,
     paddingHorizontal: 0,
     fontSize: 9,
     color: BLACK,
@@ -319,13 +319,16 @@ const s = StyleSheet.create({
   },
   // ── Footer ───────────────────────────────────────────────────────────────────
   footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: BLACK,
     paddingVertical: 13,
     paddingHorizontal: 40,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 20,
   },
   footerBrand: {
     fontSize: 9,
@@ -344,11 +347,13 @@ const s = StyleSheet.create({
     textAlign: "right",
   },
   confidencial: {
+    position: "absolute",
+    bottom: 46,
+    left: 40,
+    right: 40,
     fontSize: 6.5,
     color: "#555",
     textAlign: "center",
-    marginHorizontal: 40,
-    marginTop: 7,
     fontFamily: "Helvetica-Oblique",
   },
   // ── Nota de alerta ───────────────────────────────────────────────────────────
@@ -730,7 +735,10 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
       <Page size="LETTER" style={s.page}>
         <View style={s.header}>
           <View>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            {logoSrc
+              ? <Image src={logoSrc} style={{ width: 160, height: 40, objectFit: "contain" }} />
+              : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            }
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={s.headerRight}>
