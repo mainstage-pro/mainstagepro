@@ -1,13 +1,853 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS ───────────────────────────────────────────────────────────────────
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  password            String
+  role                String    @default("REGULAR") // ADMIN | VENDEDOR | REGULAR
+  active              Boolean   @default(true)
+  fechaInicioVendedor DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  tratos          Trato[]
+  tratosOrigen    Trato[]            @relation("TratoVendedorOrigen")
+  proyectos       Proyecto[]
+  cotizaciones    Cotizacion[]
+  bitacoras       ProyectoBitacora[]
+  comisionesPagos ComisionPago[]
+
+  @@map("users")
+}
+
+// ─── CLIENTE ─────────────────────────────────────────────────────────────────
+
+model Cliente {
+  id            String   @id @default(cuid())
+  nombre        String
+  empresa       String?
+  tipoCliente   String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
+  clasificacion String   @default("NUEVO")          // NUEVO | BASIC | REGULAR | PRIORITY
+  servicioUsual String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
+  telefono      String?
+  correo        String?
+  notas         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tratos          Trato[]
+  cotizaciones    Cotizacion[]
+  proyectos       Proyecto[]
+  cuentasCobrar   CuentaCobrar[]
+  movimientos     MovimientoFinanciero[]
+  preciosEquipos  PrecioClienteEquipo[]
+
+  @@map("clientes")
+}
+
+model PrecioClienteEquipo {
+  id        String  @id @default(cuid())
+  clienteId String
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  equipoId  String
+  equipo    Equipo  @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  precio    Float
+  nota      String?
+  updatedAt DateTime @updatedAt
+
+  @@unique([clienteId, equipoId])
+  @@map("precios_cliente_equipo")
+}
+
+// ─── TRATO ───────────────────────────────────────────────────────────────────
+
+model Trato {
+  id                  String   @id @default(cuid())
+  clienteId           String
+  cliente             Cliente  @relation(fields: [clienteId], references: [id])
+  responsableId       String?
+  responsable         User?    @relation(fields: [responsableId], references: [id])
+  tipoEvento          String   @default("OTRO")         // MUSICAL | SOCIAL | EMPRESARIAL | OTRO
+  tipoLead            String   @default("INBOUND")      // INBOUND | OUTBOUND
+  origenLead          String   @default("ORGANICO")     // META_ADS | GOOGLE_ADS | ORGANICO | RECOMPRA | REFERIDO | PROSPECCION | OTRO
+  estatusContacto     String   @default("PENDIENTE")    // PENDIENTE | CONTACTADO
+  etapa               String   @default("DESCUBRIMIENTO") // DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  clasificacion       String   @default("PROSPECTO")    // PROSPECTO | BASIC | REGULAR | PRIORITY
+  tipoServicio        String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
+
+  // ── Descubrimiento ────────────────────────────────────────────────────────
+  canalAtencion          String?   // WHATSAPP | FORMULARIO | LLAMADA | REUNION | SCOUTING | INFORMACION
+  nombreEvento           String?
+  duracionEvento         String?   // ej: "6 horas", "2 días"
+  asistentesEstimados    Int?
+  serviciosInteres       String?   // JSON: ["AUDIO_PA","ILUMINACION","VIDEO_LED",...]
+  ideasReferencias       String?   // links o descripción de referencias
+  etapaContratacion      String?   // EXPLORANDO | COMPARANDO | LISTO_CONTRATAR
+  continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
+  descubrimientoCompleto Boolean   @default(false)
+  // ──────────────────────────────────────────────────────────────────────────
+
+  lugarEstimado       String?
+  fechaEventoEstimada DateTime?
+  presupuestoEstimado Float?
+  notas               String?
+  proximaAccion       String?
+  fechaProximaAccion  DateTime?
+  motivoPerdida       String?
+  origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO
+  vendedorOrigenId    String?
+  vendedorOrigen      User?    @relation("TratoVendedorOrigen", fields: [vendedorOrigenId], references: [id])
+  fechaCierre         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  cotizaciones Cotizacion[]
+  proyecto     Proyecto?
+  archivos     TratoArchivo[]
+
+  @@map("tratos")
+}
+
+model TratoArchivo {
+  id        String   @id @default(cuid())
+  tratoId   String
+  trato     Trato    @relation(fields: [tratoId], references: [id], onDelete: Cascade)
+  nombre    String
+  url       String
+  tipo      String   @default("OTRO") // IMAGEN | DOCUMENTO | REFERENCIA | OTRO
+  subidoPor String?
+  createdAt DateTime @default(now())
+
+  @@map("trato_archivos")
+}
+
+// ─── COTIZACIÓN ──────────────────────────────────────────────────────────────
+
+model Cotizacion {
+  id               String   @id @default(cuid())
+  numeroCotizacion String   @unique
+  version          Int      @default(1)
+  tratoId          String
+  trato            Trato    @relation(fields: [tratoId], references: [id])
+  clienteId        String
+  cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  creadaPorId      String?
+  creadaPor        User?    @relation(fields: [creadaPorId], references: [id])
+  estado           String   @default("BORRADOR") // BORRADOR | ENVIADA | EN_REVISION | AJUSTE_SOLICITADO | REENVIADA | APROBADA | RECHAZADA | VENCIDA
+  nombreEvento     String?
+  tipoEvento       String?
+  tipoServicio     String?
+  fechaEvento      DateTime?
+  lugarEvento      String?
+  horasOperacion   Float?
+  tipoJornada      String?  // CORTA | MEDIA | LARGA
+  notasSecciones   String?  // JSON: { "Audio": "nota", "Iluminación": "nota", ... }
+
+  diasEquipo     Int @default(1)
+  diasOperacion  Int @default(1)
+  diasTransporte Int @default(1)
+  diasHospedaje  Int @default(1)
+  diasComidas    Int @default(1)
+
+  subtotalEquiposBruto   Float @default(0)
+  descuentoVolumenPct    Float @default(0)
+  descuentoB2bPct        Float @default(0)
+  descuentoMultidiaPct   Float @default(0)
+  descuentoPatrocinioPct Float @default(0)
+  descuentoPatrocinioNota String?
+  descuentoEspecialPct   Float @default(0)
+  descuentoEspecialNota  String?
+  descuentoTotalPct      Float @default(0)
+  montoDescuento         Float @default(0)
+  subtotalEquiposNeto    Float @default(0)
+  subtotalPaquetes       Float @default(0)
+  subtotalTerceros       Float @default(0)
+  subtotalOperacion      Float @default(0)
+  subtotalTransporte     Float @default(0)
+  subtotalComidas        Float @default(0)
+  subtotalHospedaje      Float @default(0)
+  total                  Float @default(0)
+  aplicaIva              Boolean @default(false)
+  montoIva               Float @default(0)
+  granTotal              Float @default(0)
+
+  tipoBeneficio  String? // DESCUENTO_DIRECTO | SALDO_A_FAVOR
+  montoBeneficio Float   @default(0)
+
+  costosTotalesEstimados Float @default(0)
+  utilidadEstimada       Float @default(0)
+  porcentajeUtilidad     Float @default(0)
+
+  observaciones       String?
+  terminosComerciales String?
+  vigenciaDias        Int      @default(30)
+  fechaEnvio          DateTime?
+  fechaVencimiento    DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  lineas        CotizacionLinea[]
+  proyecto      Proyecto?
+  cuentasCobrar CuentaCobrar[]
+
+  @@map("cotizaciones")
+}
+
+model CotizacionLinea {
+  id           String     @id @default(cuid())
+  cotizacionId String
+  cotizacion   Cotizacion @relation(fields: [cotizacionId], references: [id], onDelete: Cascade)
+  tipo         String     // EQUIPO_PROPIO | EQUIPO_EXTERNO | PAQUETE | OPERACION_TECNICA | TRANSPORTE | HOSPEDAJE | COMIDA | DJ | DESCUENTO_BENEFICIO | OTRO
+  orden        Int        @default(0)
+
+  equipoId     String?
+  equipo       Equipo?     @relation(fields: [equipoId], references: [id])
+  rolTecnicoId String?
+  rolTecnico   RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
+
+  descripcion    String
+  marca          String?
+  modelo         String?
+  nivel          String?  // AAA | AA | A
+  jornada        String?  // CORTA | MEDIA | LARGA
+  esExterno      Boolean  @default(false)
+  proveedorId    String?
+  proveedor      Proveedor? @relation(fields: [proveedorId], references: [id])
+  costoExterno   Float?
+  cantidad       Float    @default(1)
+  dias           Int      @default(1)
+  precioUnitario Float    @default(0)
+  costoUnitario  Float    @default(0)
+  subtotal       Float    @default(0)
+  esIncluido     Boolean  @default(false)
+  notas          String?
+
+  @@map("cotizacion_lineas")
+}
+
+// ─── PROYECTO ────────────────────────────────────────────────────────────────
+
+model Proyecto {
+  id             String   @id @default(cuid())
+  numeroProyecto String   @unique
+  tratoId        String   @unique
+  trato          Trato    @relation(fields: [tratoId], references: [id])
+  cotizacionId   String   @unique
+  cotizacion     Cotizacion @relation(fields: [cotizacionId], references: [id])
+  clienteId      String
+  cliente        Cliente  @relation(fields: [clienteId], references: [id])
+  encargadoId    String?
+  encargado      User?    @relation(fields: [encargadoId], references: [id])
+
+  nombre                 String
+  estado                 String   @default("PLANEACION") // PLANEACION | CONFIRMADO | EN_CURSO | COMPLETADO | CANCELADO
+  tipoEvento             String
+  tipoServicio           String?
+  fechaEvento            DateTime
+  horaInicioEvento       String?
+  horaFinEvento          String?
+  fechaMontaje           DateTime?
+  horaInicioMontaje      String?
+  duracionMontajeHrs     Float?
+  lugarEvento            String?
+  encargadoLugar         String?
+  encargadoLugarContacto String?
+  descripcionGeneral     String?
+  detallesEspecificos    String?
+  encargadoCliente       String?  // Nombre del encargado de parte del cliente
+  transportes            String?  // Descripción de transportes del evento
+  proveedorCatering      String?  // Proveedor de catering / alimentación producción
+  contactosDireccion     String?  // Contactos de dirección y coordinación
+  cronograma             String?
+  contactosEmergencia    String?
+  comentariosFinales     String?
+  scoreFotoVideo         Int?
+  recomendacionFotoVideo String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  personal          ProyectoPersonal[]
+  equipos           ProyectoEquipo[]
+  checklist         ProyectoChecklist[]
+  archivos          ProyectoArchivo[]
+  bitacora          ProyectoBitacora[]
+  cuentasCobrar     CuentaCobrar[]
+  cuentasPagar      CuentaPagar[]
+  movimientos       MovimientoFinanciero[]
+  evaluacionInterna EvaluacionInterna?
+  evaluacionCliente EvaluacionCliente?
+
+  @@map("proyectos")
+}
+
+model ProyectoPersonal {
+  id              String   @id @default(cuid())
+  proyectoId      String
+  proyecto        Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tecnicoId       String?
+  tecnico         Tecnico? @relation(fields: [tecnicoId], references: [id])
+  rolTecnicoId    String?
+  rolTecnico      RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
+  participacion   String?  // OPERACION | MONTAJE | DESMONTAJE | TRANSPORTE | OTRO
+  nivel           String?  // AAA | AA | A
+  jornada         String?  // CORTA | MEDIA | LARGA
+  responsabilidad String?
+  confirmado      Boolean  @default(false)
+  tarifaAcordada  Float?
+  estadoPago      String   @default("PENDIENTE") // PENDIENTE | PAGADO
+  notas           String?
+
+  @@map("proyecto_personal")
+}
+
+model ProyectoEquipo {
+  id           String    @id @default(cuid())
+  proyectoId   String
+  proyecto     Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  equipoId     String
+  equipo       Equipo    @relation(fields: [equipoId], references: [id])
+  tipo         String    @default("PROPIO") // PROPIO | EXTERNO
+  cantidad     Int       @default(1)
+  dias         Int       @default(1)
+  costoExterno Float?
+  proveedorId  String?
+  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
+  confirmado   Boolean   @default(false)
+
+  @@map("proyecto_equipos")
+}
+
+model ProyectoChecklist {
+  id              String    @id @default(cuid())
+  proyectoId      String
+  proyecto        Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  item            String
+  completado      Boolean   @default(false)
+  completadoPor   String?
+  fechaCompletado DateTime?
+  orden           Int       @default(0)
+  notas           String?
+
+  @@map("proyecto_checklist")
+}
+
+model ProyectoArchivo {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo       String   // RENDER | PLOT_PATCH | INPUT_LIST | RIDER | ITINERARIO | DOCUMENTO | OTRO
+  nombre     String
+  url        String
+  subidoPor  String?
+  createdAt  DateTime @default(now())
+
+  @@map("proyecto_archivos")
+}
+
+model ProyectoBitacora {
+  id         String   @id @default(cuid())
+  proyectoId String
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  usuarioId  String?
+  usuario    User?    @relation(fields: [usuarioId], references: [id])
+  tipo       String   @default("NOTA") // NOTA | CAMBIO | ALERTA | ACCION
+  contenido  String
+  createdAt  DateTime @default(now())
+
+  @@map("proyecto_bitacora")
+}
+
+// ─── CATÁLOGOS ───────────────────────────────────────────────────────────────
+
+model Equipo {
+  id                   String          @id @default(cuid())
+  categoriaId          String
+  categoria            CategoriaEquipo @relation(fields: [categoriaId], references: [id])
+  subcategoria         String?
+  marca                String?
+  modelo               String?
+  descripcion          String
+  cantidadTotal        Int             @default(1)
+  tipo                 String          @default("PROPIO") // PROPIO | EXTERNO
+  proveedorDefaultId   String?
+  proveedorDefault     Proveedor?      @relation("ProveedorDefault", fields: [proveedorDefaultId], references: [id])
+  precioRenta          Float           @default(0)  // Precio que cobramos al cliente
+  costoProveedor       Float?                        // Costo que nos cobra el proveedor (solo equipos externos)
+  costoInternoEstimado Float?                        // Costo interno estimado (mantenimiento, para equipos propios)
+  estado               String          @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
+  notas                String?
+  activo               Boolean         @default(true)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  cotizacionLineas  CotizacionLinea[]
+  proyectoEquipos   ProyectoEquipo[]
+  mantenimientos      MantenimientoEquipo[]
+  preciosClientes     PrecioClienteEquipo[]
+  checklistBodegaItems ChecklistBodegaItem[]
+
+  @@map("equipos")
+}
+
+model CategoriaEquipo {
+  id      String   @id @default(cuid())
+  nombre  String   @unique
+  orden   Int      @default(0)
+  equipos Equipo[]
+
+  @@map("categoria_equipos")
+}
+
+model RolTecnico {
+  id          String  @id @default(cuid())
+  nombre      String
+  tipoPago    String  @default("POR_JORNADA") // POR_JORNADA | POR_PROYECTO | POR_HORA | TARIFA_PLANA
+
+  tarifaAAACorta Float?
+  tarifaAAAMedia Float?
+  tarifaAAALarga Float?
+  tarifaAACorta  Float?
+  tarifaAAMedia  Float?
+  tarifaAALarga  Float?
+  tarifaACorta   Float?
+  tarifaAMedia   Float?
+  tarifaALarga   Float?
+
+  tarifaPlanaAAA Float?
+  tarifaPlanaAA  Float?
+  tarifaPlanaA   Float?
+
+  tarifaHoraAAA Float?
+  tarifaHoraAA  Float?
+  tarifaHoraA   Float?
+
+  descripcion String?
+  activo      Boolean @default(true)
+  orden       Int     @default(0)
+
+  cotizacionLineas CotizacionLinea[]
+  proyectoPersonal ProyectoPersonal[]
+  tecnicos         Tecnico[]
+
+  @@map("roles_tecnicos")
+}
+
+model Tecnico {
+  id                 String     @id @default(cuid())
+  nombre             String
+  celular            String?
+  rolId              String?
+  rol                RolTecnico? @relation(fields: [rolId], references: [id])
+  nivel              String     @default("A") // AAA | AA | A
+  zonaHabitual       String?
+  evaluacionPromedio Float?
+  cuentaBancaria     String?
+  datosFiscales      String?
+  activo             Boolean    @default(true)
+  comentarios        String?
+  createdAt          DateTime   @default(now())
+
+  proyectoPersonal ProyectoPersonal[]
+  cuentasPagar     CuentaPagar[]
+
+  @@map("tecnicos")
+}
+
+model Proveedor {
+  id             String   @id @default(cuid())
+  nombre         String
+  empresa        String?
+  giro           String?
+  telefono       String?
+  correo         String?
+  notas          String?
+  cuentaBancaria String?
+  datosFiscales  String?
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  equiposDefault   Equipo[]           @relation("ProveedorDefault")
+  cotizacionLineas CotizacionLinea[]
+  proyectoEquipos  ProyectoEquipo[]
+  cuentasPagar     CuentaPagar[]
+  movimientos      MovimientoFinanciero[]
+
+  @@map("proveedores")
+}
+
+// ─── FINANZAS ────────────────────────────────────────────────────────────────
+
+model CuentaBancaria {
+  id           String  @id @default(cuid())
+  nombre       String
+  banco        String?
+  numeroCuenta String?
+  clabe        String?
+  titular      String?
+  rfc          String?
+  activa       Boolean @default(true)
+
+  movimientosEntrada MovimientoFinanciero[] @relation("CuentaDestino")
+  movimientosSalida  MovimientoFinanciero[] @relation("CuentaOrigen")
+  cuentasCobrar      CuentaCobrar[]
+  cuentasPagar       CuentaPagar[]
+  pagosNomina        PagoNomina[]
+
+  @@map("cuentas_bancarias")
+}
+
+model CategoriaFinanciera {
+  id     String @id @default(cuid())
+  nombre String
+  tipo   String // INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO
+  orden  Int    @default(0)
+
+  movimientos MovimientoFinanciero[]
+
+  @@map("categorias_financieras")
+}
+
+model MovimientoFinanciero {
+  id                  String   @id @default(cuid())
+  fecha               DateTime
+  cuentaOrigenId      String?
+  cuentaOrigen        CuentaBancaria? @relation("CuentaOrigen", fields: [cuentaOrigenId], references: [id])
+  cuentaDestinoId     String?
+  cuentaDestino       CuentaBancaria? @relation("CuentaDestino", fields: [cuentaDestinoId], references: [id])
+  tipo                String   // INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO
+  clienteId           String?
+  cliente             Cliente? @relation(fields: [clienteId], references: [id])
+  proveedorId         String?
+  proveedor           Proveedor? @relation(fields: [proveedorId], references: [id])
+  proyectoId          String?
+  proyecto            Proyecto? @relation(fields: [proyectoId], references: [id])
+  categoriaId         String?
+  categoria           CategoriaFinanciera? @relation(fields: [categoriaId], references: [id])
+  concepto            String
+  monto               Float
+  metodoPago          String   @default("TRANSFERENCIA") // TRANSFERENCIA | EFECTIVO | TARJETA | CHEQUE
+  referencia          String?
+  estatusConciliacion String   @default("PENDIENTE") // PENDIENTE | CONCILIADO
+  comprobanteUrl      String?
+  notas               String?
+  creadoPor           String?
+  createdAt           DateTime @default(now())
+
+  cuentaCobrar CuentaCobrar?
+  cuentaPagar  CuentaPagar?
+  pagoNomina   PagoNomina?
+
+  @@map("movimientos_financieros")
+}
+
+model CuentaCobrar {
+  id              String   @id @default(cuid())
+  clienteId       String
+  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  proyectoId      String?
+  proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
+  cotizacionId    String?
+  cotizacion      Cotizacion? @relation(fields: [cotizacionId], references: [id])
+  concepto        String
+  tipoPago        String   @default("ANTICIPO") // ANTICIPO | LIQUIDACION | OTRO
+  monto           Float
+  fechaCompromiso DateTime
+  fechaCobroReal  DateTime?
+  estado          String   @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
+  montoCobrado    Float    @default(0)
+  cuentaDestinoId String?
+  cuentaDestino   CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
+  movimientoId    String?  @unique
+  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("cuentas_cobrar")
+}
+
+model CuentaPagar {
+  id              String   @id @default(cuid())
+  tipoAcreedor    String   // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO
+  tecnicoId       String?
+  tecnico         Tecnico? @relation(fields: [tecnicoId], references: [id])
+  proveedorId     String?
+  proveedor       Proveedor? @relation(fields: [proveedorId], references: [id])
+  proyectoId      String?
+  proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
+  concepto        String
+  monto           Float
+  fechaCompromiso DateTime
+  fechaPagoReal   DateTime?
+  estado          String   @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
+  cuentaOrigenId  String?
+  cuentaOrigen    CuentaBancaria? @relation(fields: [cuentaOrigenId], references: [id])
+  movimientoId    String?  @unique
+  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("cuentas_pagar")
+}
+
+// ─── EVALUACIÓN ──────────────────────────────────────────────────────────────
+
+model EvaluacionInterna {
+  id                   String   @id @default(cuid())
+  proyectoId           String   @unique
+  proyecto             Proyecto @relation(fields: [proyectoId], references: [id])
+  planeacionPrevia     Int?
+  cumplimientoTecnico  Int?
+  puntualidad          Int?
+  resolucionOperativa  Int?
+  desempenoPersonal    Int?
+  comunicacionInterna  Int?
+  comunicacionCliente  Int?
+  usoEquipo            Int?
+  rentabilidadReal     Int?
+  resultadoGeneral     Int?
+  promedioCalculado    Float?
+  notas                String?
+  createdAt            DateTime @default(now())
+
+  @@map("evaluaciones_internas")
+}
+
+// ─── EVALUACIÓN CLIENTE ──────────────────────────────────────────────────────
+
+model EvaluacionCliente {
+  id                        String    @id @default(cuid())
+  proyectoId                String    @unique
+  proyecto                  Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tokenAcceso               String    @unique @default(cuid())
+  enviada                   Boolean   @default(false)
+  respondida                Boolean   @default(false)
+  // Criterios 1-10
+  satisfaccionGeneral       Int?
+  calidadServicio           Int?
+  puntualidad               Int?
+  atencionEquipo            Int?
+  claridadComunicacion      Int?
+  relacionCalidadPrecio     Int?
+  // NPS 1-10
+  probabilidadRecontratacion Int?
+  // Texto libre
+  loMejor                   String?
+  loMejorable               String?
+  comentarioAdicional       String?
+  promedioCalculado         Float?
+  createdAt                 DateTime  @default(now())
+  respondidaEn              DateTime?
+
+  @@map("evaluaciones_clientes")
+}
+
+// ─── VENTAS / COMISIONES ─────────────────────────────────────────────────────
+
+model ConfigComisiones {
+  id                   String   @id @default(cuid())
+  // Metas ramp-up
+  metaMes1             Float    @default(60000)
+  metaMes2             Float    @default(80000)
+  metaMes3             Float    @default(100000)
+  metaMesNormal        Float    @default(150000)
+  // Porcentajes comisión base
+  pctClientePropio     Float    @default(10)   // 10% cliente propio
+  pctPublicidad        Float    @default(5)    // 5% lead por publicidad
+  pctAsignadoVendedor  Float    @default(5)    // 5% al vendedor que cierra (cliente asignado)
+  pctAsignadoOrigen    Float    @default(5)    // 5% al vendedor original (cliente asignado)
+  // Bono
+  pctBono              Float    @default(3)    // 3% si alcanza el piso
+  updatedAt            DateTime @updatedAt
+
+  @@map("config_comisiones")
+}
+
+model ComisionPago {
+  id          String   @id @default(cuid())
+  vendedorId  String
+  vendedor    User     @relation(fields: [vendedorId], references: [id])
+  mes         String   // "2026-04"
+  montoTotal  Float
+  notas       String?
+  pagadoEn    DateTime @default(now())
+
+  @@map("comision_pagos")
+}
+
+// ─── MANTENIMIENTO ───────────────────────────────────────────────────────────
+
+model MantenimientoEquipo {
+  id                   String   @id @default(cuid())
+  equipoId             String
+  equipo               Equipo   @relation(fields: [equipoId], references: [id])
+  fecha                DateTime
+  tipo                 String   // PREVENTIVO | CORRECTIVO | ESTETICO | FUNCIONAL
+  accionRealizada      String
+  estadoEquipo         String?
+  comentarios          String?
+  proximoMantenimiento DateTime?
+  createdAt            DateTime @default(now())
+
+  @@map("mantenimientos_equipos")
+}
+
+// ─── RECURSOS HUMANOS ────────────────────────────────────────────────────────
+
+model PersonalInterno {
+  id             String    @id @default(cuid())
+  nombre         String
+  puesto         String    // Ej: "Bodega", "Coordinación Logística"
+  departamento   String    @default("GENERAL") // BODEGA | COORDINACION | PRODUCCION | ADMINISTRACION | VENTAS | GENERAL
+  tipo           String    @default("EMPLEADO") // EMPLEADO | FREELANCE_RECURRENTE
+  telefono       String?
+  correo         String?
+  salario        Float?    // Mensual (empleado) o tarifa base (freelance recurrente)
+  periodoPago    String    @default("MENSUAL") // MENSUAL | QUINCENAL | SEMANAL | POR_EVENTO
+  fechaIngreso   DateTime?
+  activo         Boolean   @default(true)
+  cuentaBancaria String?
+  datosFiscales  String?
+  notas          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  documentos DocumentoPersonal[]
+  pagos      PagoNomina[]
+
+  @@map("personal_interno")
+}
+
+model DocumentoPersonal {
+  id               String          @id @default(cuid())
+  personalId       String
+  personal         PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  tipo             String          // CONTRATO | IDENTIFICACION | CURP | RFC | COMPROBANTE_DOMICILIO | OTRO
+  nombre           String
+  url              String
+  fechaVencimiento DateTime?
+  createdAt        DateTime        @default(now())
+
+  @@map("documentos_personal")
+}
+
+model PagoNomina {
+  id             String               @id @default(cuid())
+  personalId     String
+  personal       PersonalInterno      @relation(fields: [personalId], references: [id])
+  periodo        String               // "2026-04"
+  tipoPeriodo    String               @default("MENSUAL") // MENSUAL | QUINCENAL | SEMANAL | EVENTO
+  monto          Float
+  concepto       String?
+  estado         String               @default("PENDIENTE") // PENDIENTE | PAGADO
+  fechaPago      DateTime?
+  metodoPago     String               @default("TRANSFERENCIA")
+  cuentaOrigenId String?
+  cuentaOrigen   CuentaBancaria?      @relation(fields: [cuentaOrigenId], references: [id])
+  movimientoId   String?              @unique
+  movimiento     MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
+  notas          String?
+  createdAt      DateTime             @default(now())
+
+  @@map("pagos_nomina")
+}
+
+// ─── BODEGA ──────────────────────────────────────────────────────────────────
+
+model ItemTemplateBodega {
+  id          String  @id @default(cuid())
+  descripcion String
+  categoria   String  @default("GENERAL") // AUDIO | ILUMINACION | VIDEO | CABLES | HERRAMIENTAS | TRANSPORTES | GENERAL
+  orden       Int     @default(0)
+  activo      Boolean @default(true)
+
+  @@map("items_template_bodega")
+}
+
+model ChecklistBodega {
+  id          String    @id @default(cuid())
+  semana      String    // "2026-W15" (ISO año + semana)
+  fechaInicio DateTime
+  estado      String    @default("EN_PROGRESO") // EN_PROGRESO | COMPLETADO | CON_ALERTAS
+  notas       String?
+  creadoPor   String?
+  cerradoEn   DateTime?
+  createdAt   DateTime  @default(now())
+
+  items ChecklistBodegaItem[]
+
+  @@unique([semana])
+  @@map("checklist_bodega")
+}
+
+model ChecklistBodegaItem {
+  id          String          @id @default(cuid())
+  checklistId String
+  checklist   ChecklistBodega @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  descripcion String
+  categoria   String          @default("GENERAL")
+  estado      String          @default("PENDIENTE") // PENDIENTE | OK | FALTA | DAÑADO | EN_REPARACION
+  notas       String?
+  equipoId    String?
+  equipo      Equipo?         @relation(fields: [equipoId], references: [id])
+  orden       Int             @default(0)
+
+  @@map("checklist_bodega_items")
+}
+
+// ─── MARKETING ───────────────────────────────────────────────────────────────
+
+model TipoContenido {
+  id          String  @id @default(cuid())
+  nombre      String
+  formato     String  @default("POST") // POST | REEL | STORIE | TIK_TOK
+  objetivo    String?
+  diaSemana   String?
+  recurrencia String?
+  cantMes     Int?
+  descripcion String?
+  activo      Boolean @default(true)
+  orden       Int     @default(0)
+
+  publicaciones Publicacion[]
+
+  @@map("tipos_contenido")
+}
+
+model Publicacion {
+  id             String         @id @default(cuid())
+  fecha          DateTime
+  tipoId         String?
+  tipo           TipoContenido? @relation(fields: [tipoId], references: [id])
+  formato        String?
+  objetivo       String?
+  descripcion    String?
+  copy           String?
+  enFacebook     Boolean        @default(false)
+  enInstagram    Boolean        @default(false)
+  enTiktok       Boolean        @default(false)
+  enYoutube      Boolean        @default(false)
+  materialLink   String?
+  colaboradores  String?
+  estado         String         @default("PENDIENTE")
+  comentarios    String?
+  alcance        Int?
+  impresiones    Int?
+  interacciones  Int?
+  seguidoresGanados Int?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("publicaciones")
 }
