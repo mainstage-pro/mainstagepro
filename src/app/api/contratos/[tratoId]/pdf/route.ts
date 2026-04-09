@@ -59,7 +59,7 @@ export async function GET(
     })),
   } : null;
 
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;

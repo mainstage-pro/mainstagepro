@@ -40,7 +40,7 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           <div className="flex justify-center mb-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.png" alt="Mainstage Pro" className="h-12 w-auto object-contain" />
+            <img src="/logo-white.png" alt="Mainstage Pro" className="h-12 w-auto object-contain" />
           </div>
           <p className="text-[#6b7280] text-sm">Sistema operativo</p>
         </div>

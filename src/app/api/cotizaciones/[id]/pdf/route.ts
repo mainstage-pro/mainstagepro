@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cotizacion) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
-  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
   const logoSrc = fs.existsSync(logoPath)
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
