@@ -36,13 +36,9 @@ export async function POST(req: NextRequest) {
           update: {},
           create: {
             id: r.id, nombre: r.nombre, celular: r.celular ?? null,
-            correo: r.correo ?? null, zona: r.zona ?? null,
-            nivel: r.nivel ?? "AA", activo: r.activo === 1 || r.activo === true,
-            notas: r.notas ?? null, banco: r.banco ?? null,
-            cuentaBancaria: r.cuentaBancaria ?? null, clabe: r.clabe ?? null,
-            rfc: r.rfc ?? null, nombreFiscal: r.nombreFiscal ?? null,
-            evaluacion: r.evaluacion ?? null,
-            createdAt: new Date(r.createdAt), updatedAt: new Date(r.updatedAt),
+            nivel: r.nivel ?? "A", activo: r.activo === 1 || r.activo === true,
+            cuentaBancaria: r.cuentaBancaria ?? null,
+            createdAt: new Date(r.createdAt),
           },
         });
         count++;
@@ -58,10 +54,8 @@ export async function POST(req: NextRequest) {
             id: r.id, nombre: r.nombre, empresa: r.empresa ?? null,
             giro: r.giro ?? null, telefono: r.telefono ?? null,
             correo: r.correo ?? null, activo: r.activo === 1 || r.activo === true,
-            notas: r.notas ?? null, banco: r.banco ?? null,
-            cuentaBancaria: r.cuentaBancaria ?? null, clabe: r.clabe ?? null,
-            rfc: r.rfc ?? null, nombreFiscal: r.nombreFiscal ?? null,
-            createdAt: new Date(r.createdAt), updatedAt: new Date(r.updatedAt),
+            notas: r.notas ?? null, cuentaBancaria: r.cuentaBancaria ?? null,
+            createdAt: new Date(r.createdAt),
           },
         });
         count++;
