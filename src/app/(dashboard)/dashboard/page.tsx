@@ -196,11 +196,19 @@ export default async function DashboardPage() {
           </h1>
           <p className="text-gray-500 text-sm capitalize">{mes}</p>
         </div>
-        {alertaTotal > 0 && (
-          <div className="bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-2 text-sm text-red-300">
-            ⚠ {alertaTotal} alerta{alertaTotal !== 1 ? "s" : ""} requieren atención
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {alertaTotal > 0 && (
+            <div className="bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-2 text-sm text-red-300">
+              ⚠ {alertaTotal} alerta{alertaTotal !== 1 ? "s" : ""} requieren atención
+            </div>
+          )}
+          <Link
+            href="/crm/tratos/nuevo"
+            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
+          >
+            + Nuevo trato
+          </Link>
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
