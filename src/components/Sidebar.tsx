@@ -22,6 +22,7 @@ const NAV: NavSection[] = [
     items: [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Calendario de eventos", href: "/calendario" },
+      { label: "Usuarios y accesos", href: "/admin/usuarios" },
     ],
   },
   {

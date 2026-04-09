@@ -4,6 +4,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Mainstage Pro",
   description: "Sistema operativo Mainstage Pro",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Mainstage Pro",
+  },
 };
 
 export default function RootLayout({
