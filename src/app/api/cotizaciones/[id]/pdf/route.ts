@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { CotizacionPDF } from "@/components/CotizacionPDF";
 import React from "react";
+import fs from "fs";
+import path from "path";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -29,8 +31,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cotizacion) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoSrc = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
   const pdfStream = await ReactPDF.renderToStream(
-    React.createElement(CotizacionPDF, { cotizacion }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(CotizacionPDF, { cotizacion, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const chunks: Uint8Array[] = [];

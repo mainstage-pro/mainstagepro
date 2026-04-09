@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 
 // ─── Paleta (idéntica a CotizacionPDF) ───────────────────────────────────────
@@ -407,6 +407,7 @@ const GRUPO_LINEA: Record<string, string> = {
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export interface ContratoData {
+  logoSrc?: string | null;
   trato: {
     id: string;
     nombreEvento: string | null;
@@ -487,7 +488,7 @@ function Dato({ label, value }: { label: string; value: string }) {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function ContratoPDF({ trato, cotizacion, appUrl = "" }: ContratoData) {
+export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: ContratoData) {
   const hoy = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
 
   const anticipo = cotizacion?.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
@@ -542,7 +543,10 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "" }: ContratoData) {
         {/* Header negro */}
         <View style={s.header}>
           <View>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            {logoSrc
+              ? <Image src={logoSrc} style={{ width: 160, height: 40, objectFit: "contain" }} />
+              : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            }
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={s.headerRight}>

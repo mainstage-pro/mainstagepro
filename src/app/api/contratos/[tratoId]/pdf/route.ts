@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { ContratoPDF } from "@/components/ContratoPDF";
 import React from "react";
+import fs from "fs";
+import path from "path";
 
 export async function GET(
   req: NextRequest,
@@ -57,9 +59,14 @@ export async function GET(
     })),
   } : null;
 
+  const logoPath = path.join(process.cwd(), "public", "logo.png");
+  const logoSrc = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
   const pdfStream = await ReactPDF.renderToStream(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(ContratoPDF, { trato: tratoSer as any, cotizacion: cotizacion as any, appUrl }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(ContratoPDF, { trato: tratoSer as any, cotizacion: cotizacion as any, appUrl, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const chunks: Uint8Array[] = [];

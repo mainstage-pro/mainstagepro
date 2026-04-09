@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 
 // Helvetica viene integrada en react-pdf, no requiere registro adicional
@@ -652,7 +652,7 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 }
 
 // ─── Documento principal ─────────────────────────────────────────────────────
-export function CotizacionPDF({ cotizacion: c }: { cotizacion: CotizacionData }) {
+export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: CotizacionData; logoSrc?: string | null }) {
   const anticipo = c.granTotal * 0.5;
   const liquidacion = c.granTotal * 0.5;
   const tieneDescuento = c.montoDescuento > 0;
@@ -680,7 +680,10 @@ export function CotizacionPDF({ cotizacion: c }: { cotizacion: CotizacionData })
         {/* ── HEADER ── */}
         <View style={s.header}>
           <View style={s.headerLeft}>
-            <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            {logoSrc
+              ? <Image src={logoSrc} style={{ width: 160, height: 40, objectFit: "contain" }} />
+              : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
+            }
             <Text style={s.tagline}>AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA</Text>
           </View>
           <View style={s.headerRight}>
