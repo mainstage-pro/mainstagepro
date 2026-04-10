@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface NavItem {
   label: string;
@@ -117,7 +117,6 @@ function getInitialOpen(pathname: string): Set<string> {
   if (pathname.startsWith("/finanzas")) open.add("Finanzas");
   if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("Base de datos");
   if (pathname.startsWith("/rrhh")) open.add("RR.HH.");
-  if (pathname.startsWith("/marketing")) open.add("MARKETING");
   return open;
 }
 
@@ -125,6 +124,18 @@ export default function Sidebar({ user }: { user: User }) {
   const pathname = usePathname();
   const router = useRouter();
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Cerrar drawer al navegar
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Bloquear scroll del body cuando el drawer está abierto
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
   function toggleGroup(label: string) {
     setOpenGroups(prev => {
@@ -146,24 +157,15 @@ export default function Sidebar({ user }: { user: User }) {
     return pathname.startsWith(href);
   }
 
-  return (
-    <aside className="w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col h-full shrink-0">
-      {/* Logo */}
-      <div className="px-4 py-4 border-b border-[#1a1a1a]">
-        <div className="flex items-center gap-2">
-          <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
-          <div>
-            <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
-            <p className="text-[#555] text-[10px]">Sistema operativo</p>
-          </div>
-        </div>
-      </div>
-
+  const navContent = (
+    <>
       {/* Nav */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto">
         {NAV.map((section) => (
-          <div key={section.section} className="mb-3">
-            <p className="text-[#3a3a3a] text-[9px] font-bold uppercase tracking-widest px-3 mb-1">{section.section}</p>
+          <div key={section.section} className="mb-4">
+            <p className="text-[#3a3a3a] text-[9px] font-bold uppercase tracking-widest px-3 mb-1.5">
+              {section.section}
+            </p>
             <div className="space-y-0.5">
               {section.items.map((item) => {
                 if (item.children) {
@@ -173,7 +175,7 @@ export default function Sidebar({ user }: { user: User }) {
                     <div key={item.label}>
                       <button
                         onClick={() => toggleGroup(item.label)}
-                        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors ${
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
                           isGroupActive
                             ? "text-[#B3985B]"
                             : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
@@ -188,7 +190,7 @@ export default function Sidebar({ user }: { user: User }) {
                             <Link
                               key={child.href}
                               href={child.href}
-                              className={`block px-2 py-1 rounded text-xs transition-colors ${
+                              className={`block px-2 py-1.5 rounded text-sm transition-colors ${
                                 isActive(child.href)
                                   ? "text-[#B3985B] font-medium"
                                   : "text-[#5a6370] hover:text-white"
@@ -202,12 +204,11 @@ export default function Sidebar({ user }: { user: User }) {
                     </div>
                   );
                 }
-
                 return (
                   <Link
                     key={item.href}
                     href={item.href!}
-                    className={`flex items-center px-3 py-1.5 rounded-md text-sm transition-colors ${
+                    className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
                       isActive(item.href!)
                         ? "bg-[#1a1a1a] text-white"
                         : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
@@ -244,6 +245,72 @@ export default function Sidebar({ user }: { user: User }) {
           Cerrar sesión
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* ── DESKTOP: sidebar fijo ── */}
+      <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
+        <div className="px-4 py-4 border-b border-[#1a1a1a]">
+          <div className="flex items-center gap-2">
+            <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
+            <div>
+              <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
+              <p className="text-[#555] text-[10px]">Sistema operativo</p>
+            </div>
+          </div>
+        </div>
+        {navContent}
+      </aside>
+
+      {/* ── MOBILE: barra superior fija ── */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center justify-between px-4">
+        <Image src="/logo-white.png" alt="Mainstage Pro" width={110} height={28} className="object-contain" />
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
+          aria-label="Abrir menú"
+        >
+          <span className="w-5 h-px bg-[#888] block" />
+          <span className="w-5 h-px bg-[#888] block" />
+          <span className="w-5 h-px bg-[#888] block" />
+        </button>
+      </header>
+
+      {/* ── MOBILE: backdrop ── */}
+      <div
+        className={`md:hidden fixed inset-0 z-50 bg-black/70 transition-opacity duration-300 ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      {/* ── MOBILE: drawer ── */}
+      <aside
+        className={`md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col transition-transform duration-300 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Header del drawer */}
+        <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
+            <div>
+              <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
+              <p className="text-[#555] text-[10px]">Sistema operativo</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-md text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors text-lg"
+            aria-label="Cerrar menú"
+          >
+            ✕
+          </button>
+        </div>
+        {navContent}
+      </aside>
+    </>
   );
 }
