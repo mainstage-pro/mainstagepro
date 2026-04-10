@@ -3,15 +3,22 @@ import Link from "next/link";
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_COLORS, TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 
 export default async function ProyectosPage() {
-  const proyectos = await prisma.proyecto.findMany({
-    include: {
-      cliente: true,
-      checklist: true,
-      personal: true,
-      trato: { select: { responsable: { select: { name: true } } } },
-    },
-    orderBy: { fechaEvento: "asc" },
-  });
+  let proyectos: Awaited<ReturnType<typeof prisma.proyecto.findMany>> = [];
+  let dbError: string | null = null;
+
+  try {
+    proyectos = await prisma.proyecto.findMany({
+      include: {
+        cliente: true,
+        checklist: true,
+        personal: true,
+        trato: { select: { responsable: { select: { name: true } } } },
+      },
+      orderBy: { fechaEvento: "asc" },
+    });
+  } catch (e) {
+    dbError = e instanceof Error ? e.message : String(e);
+  }
 
   const activos = proyectos.filter((p) =>
     ["PLANEACION", "CONFIRMADO", "EN_CURSO"].includes(p.estado)
@@ -26,6 +33,13 @@ export default async function ProyectosPage() {
           <p className="text-[#6b7280] text-sm">{activos.length} activos · {completados.length} completados</p>
         </div>
       </div>
+
+      {dbError && (
+        <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg mb-4">
+          <p className="font-semibold mb-1">Error al cargar proyectos:</p>
+          <pre className="text-xs whitespace-pre-wrap">{dbError}</pre>
+        </div>
+      )}
 
       {proyectos.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
