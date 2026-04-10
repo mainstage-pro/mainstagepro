@@ -390,11 +390,12 @@ model Equipo {
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
-  cotizacionLineas  CotizacionLinea[]
-  proyectoEquipos   ProyectoEquipo[]
-  mantenimientos      MantenimientoEquipo[]
-  preciosClientes     PrecioClienteEquipo[]
+  cotizacionLineas     CotizacionLinea[]
+  proyectoEquipos      ProyectoEquipo[]
+  mantenimientos       MantenimientoEquipo[]
+  preciosClientes      PrecioClienteEquipo[]
   checklistBodegaItems ChecklistBodegaItem[]
+  unidades             EquipoUnidad[]
 
   @@map("equipos")
 }
@@ -688,17 +689,34 @@ model ComisionPago {
 
 // ─── MANTENIMIENTO ───────────────────────────────────────────────────────────
 
+model EquipoUnidad {
+  id        String   @id @default(cuid())
+  equipoId  String
+  equipo    Equipo   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  codigo    String?  // Número de serie, tag, etiqueta, ej: "SN-12345" o "Unidad 1"
+  estado    String   @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
+  notas     String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  mantenimientos MantenimientoEquipo[]
+
+  @@map("equipo_unidades")
+}
+
 model MantenimientoEquipo {
-  id                   String   @id @default(cuid())
+  id                   String        @id @default(cuid())
   equipoId             String
-  equipo               Equipo   @relation(fields: [equipoId], references: [id])
+  equipo               Equipo        @relation(fields: [equipoId], references: [id])
+  unidadId             String?
+  unidad               EquipoUnidad? @relation(fields: [unidadId], references: [id])
   fecha                DateTime
-  tipo                 String   // PREVENTIVO | CORRECTIVO | ESTETICO | FUNCIONAL
+  tipo                 String        // PREVENTIVO | CORRECTIVO | ESTETICO | FUNCIONAL
   accionRealizada      String
   estadoEquipo         String?
   comentarios          String?
   proximoMantenimiento DateTime?
-  createdAt            DateTime @default(now())
+  createdAt            DateTime      @default(now())
 
   @@map("mantenimientos_equipos")
 }

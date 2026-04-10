@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
           categoria: { select: { nombre: true } },
         },
       },
+      unidad: { select: { id: true, codigo: true } },
     },
     orderBy: { fecha: "desc" },
   });
@@ -39,23 +40,25 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { equipoId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento } = body;
+  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento } = body;
 
   if (!equipoId || !fecha || !tipo || !accionRealizada) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
-  // Actualizar estado del equipo si se indica
+  // Actualizar estado del equipo o de la unidad específica
   if (estadoEquipo) {
-    await prisma.equipo.update({
-      where: { id: equipoId },
-      data: { estado: estadoEquipo },
-    });
+    if (unidadId) {
+      await prisma.equipoUnidad.update({ where: { id: unidadId }, data: { estado: estadoEquipo } });
+    } else {
+      await prisma.equipo.update({ where: { id: equipoId }, data: { estado: estadoEquipo } });
+    }
   }
 
   const registro = await prisma.mantenimientoEquipo.create({
     data: {
       equipoId,
+      unidadId: unidadId || null,
       fecha: new Date(fecha),
       tipo,
       accionRealizada,
@@ -74,6 +77,7 @@ export async function POST(req: NextRequest) {
           categoria: { select: { nombre: true } },
         },
       },
+      unidad: { select: { id: true, codigo: true } },
     },
   });
 
