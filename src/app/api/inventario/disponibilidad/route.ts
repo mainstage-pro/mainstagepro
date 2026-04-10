@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
         ...tratoFechaOR.map(f => ({ ...f, fechaEvento: null })),
       ],
       estado: { notIn: ["RECHAZADA", "VENCIDA"] },
-      proyecto: null, // excluir cotizaciones que ya tienen proyecto
+      proyecto: { is: null }, // excluir cotizaciones que ya tienen proyecto
     },
     select: {
       id: true,
