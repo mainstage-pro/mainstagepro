@@ -104,6 +104,10 @@ model Trato {
   notas               String?
   proximaAccion       String?
   fechaProximaAccion  DateTime?
+  formToken           String?  @unique
+  formEstado          String   @default("NO_ENVIADO") // NO_ENVIADO | ENVIADO | COMPLETADO
+  formRespuestas      String?  // JSON con respuestas del prospecto
+
   motivoPerdida       String?
   origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO
   vendedorOrigenId    String?
@@ -394,6 +398,7 @@ model Equipo {
   cotizacionLineas     CotizacionLinea[]
   proyectoEquipos      ProyectoEquipo[]
   mantenimientos       MantenimientoEquipo[]
+  plantillaItems       PlantillaEquipoItem[]
   preciosClientes      PrecioClienteEquipo[]
   checklistBodegaItems ChecklistBodegaItem[]
   unidades             EquipoUnidad[]
@@ -977,4 +982,34 @@ model ModuloAcceso {
   createdAt DateTime @default(now())
   @@unique([moduloKey, userId])
   @@map("modulo_accesos")
+}
+
+// ─── PLANTILLAS DE EQUIPO (sugerencias por tipo evento/servicio/capacidad) ───
+
+model PlantillaEquipo {
+  id           String   @id @default(cuid())
+  nombre       String
+  tipoServicio String   @default("TODOS") // PRODUCCION_TECNICA | RENTA | TODOS
+  tipoEvento   String   @default("TODOS") // MUSICAL | SOCIAL | EMPRESARIAL | OTRO | TODOS
+  capacidadMin Int      @default(0)
+  capacidadMax Int      @default(9999)
+  descripcion  String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  items        PlantillaEquipoItem[]
+  @@map("plantillas_equipo")
+}
+
+model PlantillaEquipoItem {
+  id          String          @id @default(cuid())
+  plantillaId String
+  plantilla   PlantillaEquipo @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  equipoId    String?
+  equipo      Equipo?         @relation(fields: [equipoId], references: [id])
+  descripcion String
+  cantidad    Int             @default(1)
+  esOpcional  Boolean         @default(false)
+  orden       Int             @default(0)
+  notas       String?
+  @@map("plantillas_equipo_items")
 }

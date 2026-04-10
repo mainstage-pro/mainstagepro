@@ -4,485 +4,256 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface Cliente {
-  id: string;
-  nombre: string;
-  empresa: string | null;
-  tipoCliente: string;
-  clasificacion: string;
+  id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
 }
 
-const TIPO_EVENTO_OPTIONS = [
-  { value: "MUSICAL", label: "Musical" },
-  { value: "SOCIAL", label: "Social" },
-  { value: "EMPRESARIAL", label: "Empresarial" },
-  { value: "OTRO", label: "Otro" },
+const SERVICIOS_CARDS = [
+  { value: "PRODUCCION_TECNICA", icon: "🎛️", label: "Producción técnica",  desc: "Audio, iluminación, video y operación técnica completa" },
+  { value: "RENTA",              icon: "📦", label: "Renta de equipo",      desc: "Renta de equipos sin operación técnica incluida" },
+  { value: "DIRECCION_TECNICA",  icon: "🎬", label: "Dirección técnica",    desc: "Producción + dirección artística y coordinación integral" },
+] as const;
+
+const EVENTOS_CARDS = [
+  { value: "MUSICAL",     icon: "🎵", label: "Musical" },
+  { value: "SOCIAL",      icon: "🥂", label: "Social" },
+  { value: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
+  { value: "OTRO",        icon: "📅", label: "Otro" },
+] as const;
+
+const ETAPA_CARDS = [
+  { value: "PIDIENDO_INFO",   icon: "ℹ️",  label: "Pidiendo información",     desc: "Investiga opciones, aún no sabe bien qué quiere" },
+  { value: "EXPLORANDO",      icon: "🔍", label: "Descubrimiento básico",     desc: "Tiene idea general, explorando proveedores" },
+  { value: "COMPARANDO",      icon: "⚖️", label: "Descubrimiento profundo",   desc: "Sabe lo que quiere, comparando opciones" },
+  { value: "LISTO_CONTRATAR", icon: "✅", label: "Listo para contratar",      desc: "Decisión tomada, quiere proceder cuanto antes" },
+] as const;
+
+const CANALES = [
+  { value: "WHATSAPP",    label: "WhatsApp",    icon: "💬" },
+  { value: "LLAMADA",     label: "Llamada",     icon: "📞" },
+  { value: "REUNION",     label: "Reunión",     icon: "👥" },
+  { value: "REFERIDO",    label: "Referido",    icon: "🤝" },
+  { value: "FORMULARIO",  label: "Formulario",  icon: "📋" },
+  { value: "INFORMACION", label: "Solo info",   icon: "ℹ️" },
 ];
 
-const TIPO_LEAD_OPTIONS = [
-  { value: "INBOUND", label: "Inbound" },
-  { value: "OUTBOUND", label: "Outbound" },
+const ORIGEN_OPTIONS = [
+  { value: "ORGANICO",    label: "Orgánico / Directo" },
+  { value: "META_ADS",    label: "Meta Ads" },
+  { value: "GOOGLE_ADS",  label: "Google Ads" },
+  { value: "RECOMPRA",    label: "Recompra" },
+  { value: "REFERIDO",    label: "Referido" },
+  { value: "PROSPECCION", label: "Prospección activa" },
+  { value: "OTRO",        label: "Otro" },
 ];
 
-const ORIGEN_LEAD_OPTIONS = [
-  { value: "META_ADS", label: "Meta Ads" },
-  { value: "GOOGLE_ADS", label: "Google Ads" },
-  { value: "ORGANICO", label: "Orgánico" },
-  { value: "RECOMPRA", label: "Recompra" },
-  { value: "REFERIDO", label: "Referido" },
-  { value: "PROSPECCION", label: "Prospección" },
-  { value: "OTRO", label: "Otro" },
-];
-
-const TIPO_SERVICIO_OPTIONS = [
-  { value: "RENTA", label: "Renta de Equipo" },
-  { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
-  { value: "DIRECCION_TECNICA", label: "Dirección Técnica" },
-];
-
-const CLASIFICACION_OPTIONS = [
-  { value: "PROSPECTO", label: "Prospecto" },
-  { value: "NUEVO", label: "Nuevo" },
-  { value: "BASIC", label: "Basic" },
-  { value: "REGULAR", label: "Regular" },
-  { value: "PRIORITY", label: "Priority" },
+const ORIGEN_VENTA_OPTIONS = [
+  { value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" },
+  { value: "PUBLICIDAD",     label: "Lead por publicidad (5%)" },
+  { value: "ASIGNADO",       label: "Cliente asignado (5%+5%)" },
 ];
 
 export default function NuevoTratoPage() {
   const router = useRouter();
+  const [step, setStep] = useState<1|2>(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">("existente");
+  const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [form, setForm] = useState({
-    clienteId: "",
-    tipoEvento: "MUSICAL",
-    tipoLead: "INBOUND",
-    origenLead: "ORGANICO",
-    origenVenta: "CLIENTE_PROPIO",
-    tipoServicio: "",
-    lugarEstimado: "",
-    fechaEventoEstimada: "",
-    presupuestoEstimado: "",
-    clasificacion: "PROSPECTO",
-    clasificacionOriginal: "PROSPECTO",
-    notas: "",
-    proximaAccion: "",
-    fechaProximaAccion: "",
-  });
+  const [s1, setS1] = useState({ clienteId:"", clasificacionOriginal:"PROSPECTO", canalAtencion:"WHATSAPP", origenLead:"ORGANICO", tipoLead:"INBOUND", origenVenta:"CLIENTE_PROPIO" });
+  const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
+  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", etapaContratacion:"EXPLORANDO", notas:"" });
 
-  const [clienteNuevo, setClienteNuevo] = useState({
-    nombre: "",
-    empresa: "",
-    tipoCliente: "POR_DESCUBRIR",
-    clasificacion: "NUEVO",
-    telefono: "",
-    correo: "",
-  });
+  useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
 
-  useEffect(() => {
-    fetch("/api/clientes")
-      .then((r) => r.json())
-      .then((d) => setClientes(d.clientes || []));
-  }, []);
-
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    const { name, value } = e.target;
-    if (name === "clienteId") {
-      const cliente = clientes.find((c) => c.id === value);
-      const clasificacion = cliente?.clasificacion ?? "PROSPECTO";
-      setForm((prev) => ({
-        ...prev,
-        clienteId: value,
-        clasificacion,
-        clasificacionOriginal: clasificacion,
-      }));
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
-    }
+  function validarStep1() {
+    if (modoCliente==="existente" && !s1.clienteId) { setError("Selecciona un cliente"); return false; }
+    if (modoCliente==="nuevo" && !clienteNuevo.nombre) { setError("El nombre es requerido"); return false; }
+    setError(""); return true;
+  }
+  function validarStep2() {
+    if (!s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return false; }
+    setError(""); return true;
   }
 
-  function handleClienteNuevoChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setClienteNuevo((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-
-    const payload: Record<string, unknown> = { ...form };
-
-    if (modoCliente === "existente") {
-      if (!form.clienteId) {
-        setError("Selecciona un cliente");
-        setLoading(false);
-        return;
-      }
-    } else {
-      if (!clienteNuevo.nombre) {
-        setError("El nombre del cliente es requerido");
-        setLoading(false);
-        return;
-      }
-      delete payload.clienteId;
-      payload.clienteNuevo = clienteNuevo;
-    }
-
+  async function crear() {
+    if (!validarStep2()) return;
+    setLoading(true); setError("");
+    const payload: Record<string,unknown> = { ...s1, ...s2, asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null };
+    if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
     try {
-      const res = await fetch("/api/tratos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const d = await res.json();
-        setError(d.error || "Error al crear trato");
-        setLoading(false);
-        return;
-      }
-
-      router.push("/crm/tratos");
-    } catch {
-      setError("Error de conexión");
-      setLoading(false);
-    }
+      const res = await fetch("/api/tratos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      if (!res.ok) { const d=await res.json(); setError(d.error||"Error al crear"); setLoading(false); return; }
+      const { trato } = await res.json();
+      router.push(`/crm/tratos/${trato.id}`);
+    } catch { setError("Error de conexión"); setLoading(false); }
   }
+
+  const clienteSel = clientes.find(c=>c.id===s1.clienteId);
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-white">Nuevo Trato</h1>
-        <p className="text-gray-400 text-sm mt-1">Registra un nuevo prospecto en el pipeline</p>
+      <div className="mb-6">
+        <button onClick={()=>router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
+        <h1 className="text-xl font-bold text-white">Nuevo trato</h1>
+        <div className="flex items-center gap-2 mt-3">
+          {([1,2] as const).map(n => (
+            <div key={n} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${step===n?"bg-[#B3985B] text-black":step>n?"bg-green-700 text-white":"bg-[#1a1a1a] text-gray-500 border border-[#333]"}`}>
+                {step>n?"✓":n}
+              </div>
+              <span className={`text-xs ${step===n?"text-white":"text-gray-600"}`}>{n===1?"¿Quién es?":"¿Qué busca?"}</span>
+              {n<2&&<span className="text-gray-700 text-xs mx-1">→</span>}
+            </div>
+          ))}
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Cliente */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Cliente</h2>
+      {error && <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
-          <div className="flex gap-2 mb-4">
-            <button
-              type="button"
-              onClick={() => setModoCliente("existente")}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                modoCliente === "existente"
-                  ? "bg-[#B3985B] text-black"
-                  : "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"
-              }`}
-            >
-              Cliente existente
-            </button>
-            <button
-              type="button"
-              onClick={() => setModoCliente("nuevo")}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                modoCliente === "nuevo"
-                  ? "bg-[#B3985B] text-black"
-                  : "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"
-              }`}
-            >
-              + Nuevo cliente
-            </button>
-          </div>
-
-          {modoCliente === "existente" ? (
-            <div className="space-y-2">
-              <label className="block text-xs text-gray-400 mb-1">Seleccionar cliente</label>
-              <select
-                name="clienteId"
-                value={form.clienteId}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="">— Selecciona —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}{c.empresa ? ` · ${c.empresa}` : ""}
-                  </option>
-                ))}
-              </select>
-              {form.clienteId && (() => {
-                const c = clientes.find((cl) => cl.id === form.clienteId);
-                return c ? (
-                  <p className="text-xs text-gray-500">
-                    Clasificación actual:{" "}
-                    <span className="text-[#B3985B] font-medium">{c.clasificacion}</span>
-                    {form.clasificacion !== form.clasificacionOriginal && (
-                      <span className="ml-2 text-yellow-400">→ se actualizará a <strong>{form.clasificacion}</strong></span>
-                    )}
-                  </p>
-                ) : null;
-              })()}
+      {step===1 && (
+        <div className="space-y-4">
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Cliente</h2>
+            <div className="flex gap-2 mb-4">
+              {(["existente","nuevo"] as const).map(m=>(
+                <button key={m} type="button" onClick={()=>setModoCliente(m)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${modoCliente===m?"bg-[#B3985B] text-black":"bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"}`}>
+                  {m==="existente"?"Cliente existente":"+ Nuevo cliente"}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Nombre *</label>
-                  <input
-                    name="nombre"
-                    value={clienteNuevo.nombre}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    placeholder="Nombre completo"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                  <input
-                    name="empresa"
-                    value={clienteNuevo.empresa}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    placeholder="Nombre de empresa"
-                  />
-                </div>
+            {modoCliente==="existente" ? (
+              <div>
+                <select value={s1.clienteId} onChange={e=>{const c=clientes.find(cl=>cl.id===e.target.value);setS1(p=>({...p,clienteId:e.target.value,clasificacionOriginal:c?.clasificacion??"PROSPECTO"}));}} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Selecciona —</option>
+                  {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}{c.empresa?` · ${c.empresa}`:""}</option>)}
+                </select>
+                {clienteSel&&<p className="text-xs text-gray-500 mt-1.5">Clasificación: <span className="text-[#B3985B] font-medium">{clienteSel.clasificacion}</span>{clienteSel.telefono&&<span className="ml-2 text-gray-600">· {clienteSel.telefono}</span>}</p>}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tipo cliente</label>
-                  <select
-                    name="tipoCliente"
-                    value={clienteNuevo.tipoCliente}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="POR_DESCUBRIR">Por Descubrir</option>
-                    <option value="B2B">B2B</option>
-                    <option value="B2C">B2C</option>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-gray-500 mb-1 block">Nombre *</label><input value={clienteNuevo.nombre} onChange={e=>setClienteNuevo(p=>({...p,nombre:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Nombre completo"/></div>
+                  <div><label className="text-xs text-gray-500 mb-1 block">Empresa</label><input value={clienteNuevo.empresa} onChange={e=>setClienteNuevo(p=>({...p,empresa:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Nombre empresa"/></div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs text-gray-500 mb-1 block">Teléfono</label><input value={clienteNuevo.telefono} onChange={e=>setClienteNuevo(p=>({...p,telefono:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="442 000 0000"/></div>
+                  <div><label className="text-xs text-gray-500 mb-1 block">Correo</label><input type="email" value={clienteNuevo.correo} onChange={e=>setClienteNuevo(p=>({...p,correo:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="correo@ejemplo.com"/></div>
+                </div>
+                <div><label className="text-xs text-gray-500 mb-1 block">Tipo de cliente</label>
+                  <select value={clienteNuevo.tipoCliente} onChange={e=>setClienteNuevo(p=>({...p,tipoCliente:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="POR_DESCUBRIR">Por descubrir</option><option value="B2B">B2B (empresa)</option><option value="B2C">B2C (persona)</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-                  <select
-                    name="clasificacion"
-                    value={clienteNuevo.clasificacion}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="NUEVO">Nuevo</option>
-                    <option value="BASIC">Basic</option>
-                    <option value="REGULAR">Regular</option>
-                    <option value="PRIORITY">Priority</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Teléfono</label>
-                  <input
-                    name="telefono"
-                    value={clienteNuevo.telefono}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    placeholder="442 000 0000"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Correo</label>
-                  <input
-                    name="correo"
-                    type="email"
-                    value={clienteNuevo.correo}
-                    onChange={handleClienteNuevoChange}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    placeholder="correo@ejemplo.com"
-                  />
-                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Evento */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Evento</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
-              <select
-                name="tipoEvento"
-                value={form.tipoEvento}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                {TIPO_EVENTO_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
-              <select
-                name="tipoServicio"
-                value={form.tipoServicio}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="">— Sin especificar —</option>
-                {TIPO_SERVICIO_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Lugar estimado</label>
-              <input
-                name="lugarEstimado"
-                value={form.lugarEstimado}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Venue o ciudad"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Fecha estimada del evento</label>
-              <input
-                name="fechaEventoEstimada"
-                type="date"
-                value={form.fechaEventoEstimada}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Presupuesto estimado</label>
-              <input
-                name="presupuestoEstimado"
-                type="number"
-                value={form.presupuestoEstimado}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="0.00"
-                min="0"
-                step="100"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-              <select
-                name="clasificacion"
-                value={form.clasificacion}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                {CLASIFICACION_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">¿Cómo te está contactando?</h2>
+            <div className="grid grid-cols-3 gap-2">
+              {CANALES.map(c=>(
+                <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`py-2.5 px-2 rounded-lg text-xs font-medium transition-colors border text-center ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                  <div className="text-base mb-0.5">{c.icon}</div>{c.label}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Lead */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del Lead</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Tipo de lead</label>
-              <select
-                name="tipoLead"
-                value={form.tipoLead}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                {TIPO_LEAD_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Origen del lead</label>
-              <select
-                name="origenLead"
-                value={form.origenLead}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                {ORIGEN_LEAD_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Origen de venta (comisiones)</label>
-              <select
-                name="origenVenta"
-                value={form.origenVenta}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="CLIENTE_PROPIO">Cliente propio (10%)</option>
-                <option value="PUBLICIDAD">Lead por publicidad (5%)</option>
-                <option value="ASIGNADO">Cliente asignado por empresa (5% + 5%)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Seguimiento */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Seguimiento</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Notas iniciales</label>
-              <textarea
-                name="notas"
-                value={form.notas}
-                onChange={handleChange}
-                rows={3}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                placeholder="Contexto, detalles importantes..."
-              />
-            </div>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Próxima acción</label>
-                <input
-                  name="proximaAccion"
-                  value={form.proximaAccion}
-                  onChange={handleChange}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  placeholder="Llamar, enviar cotización..."
-                />
+              <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
+                <select value={s1.origenLead} onChange={e=>setS1(p=>({...p,origenLead:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  {ORIGEN_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Fecha próxima acción</label>
-                <input
-                  name="fechaProximaAccion"
-                  type="date"
-                  value={form.fechaProximaAccion}
-                  onChange={handleChange}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
+              <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
+                <select value={s1.tipoLead} onChange={e=>setS1(p=>({...p,tipoLead:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="INBOUND">Inbound (nos buscó)</option><option value="OUTBOUND">Outbound (prospección)</option>
+                </select>
+              </div>
+              <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Origen de venta (comisiones)</label>
+                <select value={s1.origenVenta} onChange={e=>setS1(p=>({...p,origenVenta:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  {ORIGEN_VENTA_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
             </div>
           </div>
-        </div>
 
-        {error && (
-          <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg">
-            {error}
+          <div className="flex justify-end pb-4">
+            <button onClick={()=>{if(validarStep1())setStep(2);}} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm px-6 py-2.5 rounded-xl transition-colors">Siguiente → ¿Qué busca?</button>
           </div>
-        )}
-
-        <div className="flex gap-3 justify-end pb-6">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="px-5 py-2.5 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-          >
-            {loading ? "Guardando..." : "Crear trato"}
-          </button>
         </div>
-      </form>
+      )}
+
+      {step===2 && (
+        <div className="space-y-5">
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">¿Qué tipo de servicio busca? *</h2>
+            <div className="space-y-2">
+              {SERVICIOS_CARDS.map(s=>(
+                <button key={s.value} type="button" onClick={()=>setS2(p=>({...p,tipoServicio:s.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s2.tipoServicio===s.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{s.icon}</span>
+                    <div>
+                      <p className={`text-sm font-semibold ${s2.tipoServicio===s.value?"text-[#B3985B]":"text-white"}`}>{s.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Tipo de evento</h2>
+            <div className="grid grid-cols-4 gap-2">
+              {EVENTOS_CARDS.map(e=>(
+                <button key={e.value} type="button" onClick={()=>setS2(p=>({...p,tipoEvento:e.value}))} className={`py-3 rounded-xl border text-xs font-medium transition-all text-center ${s2.tipoEvento===e.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                  <div className="text-lg mb-1">{e.icon}</div>{e.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Detalles del evento</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs text-gray-500 mb-1 block">Fecha estimada</label><input type="date" value={s2.fechaEventoEstimada} onChange={e=>setS2(p=>({...p,fechaEventoEstimada:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"/></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">Asistentes estimados</label><input type="number" value={s2.asistentesEstimados} onChange={e=>setS2(p=>({...p,asistentesEstimados:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: 300"/></div>
+              <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Ciudad / Venue</label><input value={s2.lugarEstimado} onChange={e=>setS2(p=>({...p,lugarEstimado:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: Querétaro · Foro Independencia"/></div>
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">¿En qué momento de decisión está?</h2>
+            <div className="space-y-2">
+              {ETAPA_CARDS.map(e=>(
+                <button key={e.value} type="button" onClick={()=>setS2(p=>({...p,etapaContratacion:e.value}))} className={`w-full text-left p-3 rounded-xl border transition-all ${s2.etapaContratacion===e.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{e.icon}</span>
+                    <div>
+                      <p className={`text-sm font-medium ${s2.etapaContratacion===e.value?"text-[#B3985B]":"text-gray-300"}`}>{e.label}</p>
+                      <p className="text-gray-600 text-xs">{e.desc}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-2 uppercase tracking-wider">Notas iniciales (opcional)</h2>
+            <textarea value={s2.notas} onChange={e=>setS2(p=>({...p,notas:e.target.value}))} rows={3} placeholder="Contexto importante, peticiones especiales, lo que dijeron..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"/>
+          </div>
+
+          <div className="flex gap-3 justify-between pb-6">
+            <button onClick={()=>{setStep(1);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
+            <button onClick={crear} disabled={loading} className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50">{loading?"Creando...":"Crear trato →"}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

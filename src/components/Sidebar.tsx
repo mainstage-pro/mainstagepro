@@ -41,6 +41,7 @@ const NAV: NavSection[] = [
       },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
+      { key: "plantillas-equipo", label: "Plantillas de equipo", href: "/admin/plantillas-equipo", adminOnly: true },
     ],
   },
   {
