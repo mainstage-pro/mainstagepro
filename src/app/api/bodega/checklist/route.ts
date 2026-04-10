@@ -37,8 +37,16 @@ export async function POST(req: NextRequest) {
   const fecha = body.fechaInicio ? new Date(body.fechaInicio) : new Date();
   const semana = body.semana ?? isoWeek(fecha);
 
-  const existe = await prisma.checklistBodega.findUnique({ where: { semana } });
-  if (existe) return NextResponse.json({ checklist: existe, ya_existe: true }, { status: 200 });
+  const existe = await prisma.checklistBodega.findUnique({
+    where: { semana },
+    include: { _count: { select: { items: true } } },
+  });
+  // Si ya existe con items, devolver el existente
+  if (existe && (existe as typeof existe & { _count: { items: number } })._count.items > 0) {
+    return NextResponse.json({ checklist: existe, ya_existe: true }, { status: 200 });
+  }
+  // Si existe pero está vacío, eliminarlo para recrear con inventario actualizado
+  if (existe) await prisma.checklistBodega.delete({ where: { semana } });
 
   const equipos = await prisma.equipo.findMany({
     where: { tipo: "PROPIO", activo: true, estado: { not: "PERDIDO" } },
