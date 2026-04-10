@@ -3,7 +3,8 @@ import Link from "next/link";
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_COLORS, TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 
 export default async function ProyectosPage() {
-  let proyectos: Awaited<ReturnType<typeof prisma.proyecto.findMany>> = [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let proyectos: any[] = [];
   let dbError: string | null = null;
 
   try {
@@ -50,9 +51,11 @@ export default async function ProyectosPage() {
         <div className="space-y-3">
           {proyectos.map((proyecto) => {
             const checklistTotal = proyecto.checklist.length;
-            const checklistDone = proyecto.checklist.filter((c) => c.completado).length;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const checklistDone = proyecto.checklist.filter((c: any) => c.completado).length;
             const pct = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
-            const personalConfirmado = proyecto.personal.filter((p) => p.confirmado).length;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const personalConfirmado = proyecto.personal.filter((p: any) => p.confirmado).length;
             const personalTotal = proyecto.personal.length;
 
             return (
