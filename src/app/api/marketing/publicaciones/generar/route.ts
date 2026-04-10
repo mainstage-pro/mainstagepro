@@ -6,18 +6,18 @@ const DIA_MAP: Record<string, number> = {
   LUNES: 1, MARTES: 2, "MIÉRCOLES": 3, JUEVES: 4, VIERNES: 5, SÁBADO: 6, DOMINGO: 0,
 };
 
-// Returns all dates in [year, month] (1-indexed) that match a given JS weekday (0=Sun..6=Sat)
+// Todas las fechas del mes que caen en un día de semana específico
 function diasDelMes(year: number, month: number, weekday: number): Date[] {
   const result: Date[] = [];
-  const totalDays = new Date(year, month, 0).getDate();
-  for (let d = 1; d <= totalDays; d++) {
+  const total = new Date(year, month, 0).getDate();
+  for (let d = 1; d <= total; d++) {
     const date = new Date(year, month - 1, d);
     if (date.getDay() === weekday) result.push(date);
   }
   return result;
 }
 
-// Spread N dates evenly across the month
+// Distribuir N fechas de forma equidistante en el mes
 function diasEspaciados(year: number, month: number, n: number): Date[] {
   const total = new Date(year, month, 0).getDate();
   const result: Date[] = [];
@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
 
   const [year, month] = mes.split("-").map(Number);
 
-  // Get active types with cantMes > 0
   const tipos = await prisma.tipoContenido.findMany({
     where: { activo: true, cantMes: { gt: 0 } },
     orderBy: [{ orden: "asc" }, { nombre: "asc" }],
@@ -52,18 +51,35 @@ export async function POST(request: NextRequest) {
 
   for (const tipo of tipos) {
     const cant = tipo.cantMes!;
-    let fechas: Date[];
+    let fechas: Date[] = [];
 
-    if (tipo.diaSemana && DIA_MAP[tipo.diaSemana] !== undefined) {
-      const weekday = DIA_MAP[tipo.diaSemana];
-      const candidatos = diasDelMes(year, month, weekday);
-      fechas = candidatos.slice(0, cant);
-      // If not enough matching days, fill remaining with spaced dates
-      if (fechas.length < cant) {
-        const extra = diasEspaciados(year, month, cant - fechas.length);
-        fechas = [...fechas, ...extra].sort((a, b) => a.getTime() - b.getTime());
+    if (tipo.diaSemana) {
+      // Soporte para múltiples días separados por coma: "LUNES,VIERNES"
+      const dias = tipo.diaSemana.split(",").map(d => d.trim());
+
+      if (tipo.semanaDelMes) {
+        // Publicación en la N-ésima ocurrencia del día en el mes (ej: primer lunes)
+        for (const dia of dias) {
+          const weekday = DIA_MAP[dia];
+          if (weekday === undefined) continue;
+          const ocurrencias = diasDelMes(year, month, weekday);
+          const fecha = ocurrencias[tipo.semanaDelMes - 1];
+          if (fecha) fechas.push(fecha);
+        }
+      } else {
+        // Distribuir cant entre los días disponibles
+        const cantPorDia = Math.ceil(cant / dias.length);
+        for (const dia of dias) {
+          const weekday = DIA_MAP[dia];
+          if (weekday === undefined) continue;
+          const ocurrencias = diasDelMes(year, month, weekday);
+          fechas = [...fechas, ...ocurrencias.slice(0, cantPorDia)];
+        }
+        // Ordenar y recortar al total exacto
+        fechas = fechas.sort((a, b) => a.getTime() - b.getTime()).slice(0, cant);
       }
     } else {
+      // Sin día definido: distribuir equitativamente en el mes
       fechas = diasEspaciados(year, month, cant);
     }
 
@@ -83,6 +99,5 @@ export async function POST(request: NextRequest) {
   }
 
   const created = await prisma.publicacion.createMany({ data: toCreate });
-
   return NextResponse.json({ creadas: created.count });
 }

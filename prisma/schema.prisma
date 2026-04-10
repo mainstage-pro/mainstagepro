@@ -827,20 +827,21 @@ model ChecklistBodegaItem {
 // ─── MARKETING ───────────────────────────────────────────────────────────────
 
 model TipoContenido {
-  id          String  @id @default(cuid())
-  nombre      String
-  formato     String  @default("POST") // POST | REEL | STORIE | TIK_TOK
-  objetivo    String?
-  diaSemana   String?
-  recurrencia String?
-  cantMes     Int?
-  descripcion String?
-  activo      Boolean @default(true)
-  orden       Int     @default(0)
-  enFacebook  Boolean @default(false)
-  enInstagram Boolean @default(false)
-  enTiktok    Boolean @default(false)
-  enYoutube   Boolean @default(false)
+  id           String  @id @default(cuid())
+  nombre       String
+  formato      String  @default("POST") // POST | REEL | STORIE | TIK_TOK
+  objetivo     String?
+  diaSemana    String? // Día(s) separados por coma, ej: "LUNES,VIERNES"
+  semanaDelMes Int?    // 1=primer, 2=segundo, 3=tercer, 4=cuarto (para publicaciones 1x/mes en día específico)
+  recurrencia  String?
+  cantMes      Int?
+  descripcion  String?
+  activo       Boolean @default(true)
+  orden        Int     @default(0)
+  enFacebook   Boolean @default(false)
+  enInstagram  Boolean @default(false)
+  enTiktok     Boolean @default(false)
+  enYoutube    Boolean @default(false)
 
   publicaciones Publicacion[]
 

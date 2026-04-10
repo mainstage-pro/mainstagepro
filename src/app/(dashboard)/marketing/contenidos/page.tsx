@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 
 interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
-  diaSemana: string | null; recurrencia: string | null; cantMes: number | null;
+  diaSemana: string | null; semanaDelMes: number | null; recurrencia: string | null; cantMes: number | null;
   descripcion: string | null; activo: boolean; orden: number;
   enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
 }
+
+const SEMANA_LABEL: Record<number, string> = { 1: "1er", 2: "2do", 3: "3er", 4: "4to" };
 
 const FORMATOS = ["POST", "REEL", "STORIE", "TIK_TOK"];
 const DIAS = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"];
@@ -28,7 +30,7 @@ const PLATAFORMAS = [
 ];
 
 const EMPTY = {
-  nombre: "", formato: "POST", objetivo: "", diaSemana: "", recurrencia: "", cantMes: "",
+  nombre: "", formato: "POST", objetivo: "", diaSemana: "", semanaDelMes: "", recurrencia: "", cantMes: "",
   descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
 };
 
@@ -52,8 +54,9 @@ export default function ContenidosPage() {
   function startEdit(t: TipoContenido) {
     setForm({
       nombre: t.nombre, formato: t.formato, objetivo: t.objetivo ?? "",
-      diaSemana: t.diaSemana ?? "", recurrencia: t.recurrencia ?? "",
-      cantMes: t.cantMes?.toString() ?? "", descripcion: t.descripcion ?? "",
+      diaSemana: t.diaSemana ?? "", semanaDelMes: t.semanaDelMes?.toString() ?? "",
+      recurrencia: t.recurrencia ?? "", cantMes: t.cantMes?.toString() ?? "",
+      descripcion: t.descripcion ?? "",
       enFacebook: t.enFacebook, enInstagram: t.enInstagram,
       enTiktok: t.enTiktok, enYoutube: t.enYoutube,
     });
@@ -70,6 +73,7 @@ export default function ContenidosPage() {
     const payload = {
       nombre: form.nombre, formato: form.formato,
       objetivo: form.objetivo || null, diaSemana: form.diaSemana || null,
+      semanaDelMes: form.semanaDelMes ? parseInt(form.semanaDelMes) : null,
       recurrencia: form.recurrencia || null,
       cantMes: form.cantMes ? parseInt(form.cantMes) : null,
       descripcion: form.descripcion || null,
@@ -138,10 +142,20 @@ export default function ContenidosPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Día de publicación</label>
-              <select value={form.diaSemana} onChange={e => setForm(p => ({ ...p, diaSemana: e.target.value }))}
+              <input value={form.diaSemana} onChange={e => setForm(p => ({ ...p, diaSemana: e.target.value }))}
+                placeholder="LUNES o LUNES,VIERNES"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              <p className="text-[10px] text-gray-700 mt-0.5">Varios días: LUNES,VIERNES</p>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Semana del mes</label>
+              <select value={form.semanaDelMes} onChange={e => setForm(p => ({ ...p, semanaDelMes: e.target.value }))}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Sin definir</option>
-                {DIAS.map(d => <option key={d} value={d}>{d}</option>)}
+                <option value="">Todas las semanas</option>
+                <option value="1">1er semana</option>
+                <option value="2">2da semana</option>
+                <option value="3">3er semana</option>
+                <option value="4">4ta semana</option>
               </select>
             </div>
             <div>
@@ -233,7 +247,9 @@ export default function ContenidosPage() {
                   <div className="flex flex-wrap items-center gap-3 mt-2">
                     {t.diaSemana && (
                       <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                        <span className="text-gray-700">Día:</span> {t.diaSemana.charAt(0) + t.diaSemana.slice(1).toLowerCase()}
+                        <span className="text-gray-700">Día:</span>
+                        {t.semanaDelMes ? `${SEMANA_LABEL[t.semanaDelMes]} ` : ""}
+                        {t.diaSemana.split(",").map(d => d.charAt(0) + d.slice(1).toLowerCase()).join(" y ")}
                       </span>
                     )}
                     {/* Platform badges */}
