@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const pub = await prisma.publicacion.update({
     where: { id },
     data,
-    include: { tipo: { select: { id: true, nombre: true, formato: true } } },
+    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true } } },
   });
   return NextResponse.json({ publicacion: pub });
 }
