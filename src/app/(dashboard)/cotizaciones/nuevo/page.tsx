@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
 import { DESCUENTO_B2B, IVA, VIABILIDAD } from "@/lib/constants";
+import { getSugerencias, type SugItem } from "@/lib/sugerencias-equipo";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -163,6 +164,7 @@ function CotizadorForm() {
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   const [guardandoPrecio, setGuardandoPrecio] = useState<string | null>(null);
+  const [asistentesEstimados, setAsistentesEstimados] = useState<number | null>(null);
 
   const [evento, setEvento] = useState({
     nombreEvento: "",
@@ -308,6 +310,7 @@ function CotizadorForm() {
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
+        if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
       }
     });
   }, [clienteId, tratoId]);
@@ -347,6 +350,31 @@ function CotizadorForm() {
       categoria: eq.categoria.nombre,
     }]);
     setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
+  }
+
+  // ── Sugerencias de equipo ──
+  function matchInventario(keyword: string): Equipo | undefined {
+    const kw = keyword.toLowerCase().trim();
+    return equipos.find(e => {
+      if (e.tipo !== "PROPIO") return false;
+      const texto = `${e.descripcion} ${e.marca ?? ""} ${e.modelo ?? ""}`.toLowerCase();
+      return texto.includes(kw);
+    });
+  }
+
+  function agregarSugerencia(item: SugItem, eq: Equipo) {
+    const yaExiste = lineasEquipo.some(l => l.equipoId === eq.id);
+    if (yaExiste) return;
+    const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+    const dias = parseInt(evento.diasEquipo) || 1;
+    setLineasEquipo(prev => [...prev, {
+      id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
+      marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+      cantidad: item.cant, dias,
+      precioUnitario: precio,
+      subtotal: precio * item.cant * dias,
+      categoria: eq.categoria.nombre,
+    }]);
   }
 
   function updateEquipo(id: string, field: keyof LineaEquipo, val: number) {
@@ -706,6 +734,7 @@ function CotizadorForm() {
               </Select>
               <Input label="Fecha del evento" type="date" value={evento.fechaEvento} onChange={e => setEvento(p => ({ ...p, fechaEvento: e.target.value }))} />
               <Input label="Lugar del evento" value={evento.lugarEvento} onChange={e => setEvento(p => ({ ...p, lugarEvento: e.target.value }))} placeholder="Venue, ciudad..." />
+              <Input label="Asistentes estimados" type="number" min="1" value={asistentesEstimados ?? ""} onChange={e => setAsistentesEstimados(e.target.value ? parseInt(e.target.value) : null)} placeholder="Número de invitados" />
               <Input label="Horas de operación" type="number" min="1" value={evento.horasOperacion} onChange={e => setEvento(p => ({ ...p, horasOperacion: e.target.value }))} />
               <div className="grid grid-cols-2 gap-2 col-span-1">
                 <Input label="Días equipo" type="number" min="1" value={evento.diasEquipo} onChange={e => setEvento(p => ({ ...p, diasEquipo: e.target.value }))} />
@@ -713,6 +742,64 @@ function CotizadorForm() {
               </div>
             </div>
           </Seccion>
+
+          {/* ── Sugerencias de equipo ── */}
+          {evento.tipoEvento && asistentesEstimados && asistentesEstimados > 0 && (
+            <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
+              <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
+                <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Sugerencia de equipo</span>
+                <span className="text-gray-500 text-xs">{evento.tipoEvento.charAt(0) + evento.tipoEvento.slice(1).toLowerCase()} · {asistentesEstimados} personas</span>
+                <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver guía</span>
+                <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
+              </summary>
+              <div className="px-5 pb-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {getSugerencias(evento.tipoEvento, asistentesEstimados).map((grupo) => (
+                    <div key={grupo.cat} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.cat}</p>
+                      <div className="space-y-1.5">
+                        {grupo.items.map((item, i) => {
+                          const eq = item.cant > 0 ? matchInventario(item.desc) : undefined;
+                          const yaAgregado = eq ? lineasEquipo.some(l => l.equipoId === eq.id) : false;
+                          return (
+                            <div key={i} className={`flex items-start gap-2 text-sm ${item.esOpcional ? "opacity-55" : ""}`}>
+                              {item.cant > 0 ? (
+                                <span className="text-[#B3985B] text-xs font-mono w-5 shrink-0 pt-0.5 text-right">{item.cant}×</span>
+                              ) : (
+                                <span className="w-5 shrink-0" />
+                              )}
+                              <span className={`flex-1 leading-snug ${item.cant === 0 ? "text-yellow-500/80 text-xs italic" : "text-gray-300"}`}>
+                                {item.desc}
+                                {item.esOpcional && <span className="ml-1 text-[10px] text-gray-600">opcional</span>}
+                                {item.nota && <span className="ml-1 text-[10px] text-gray-500">— {item.nota}</span>}
+                              </span>
+                              {eq && !yaAgregado && (
+                                <button
+                                  onClick={() => agregarSugerencia(item, eq)}
+                                  className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
+                                >
+                                  + Agregar
+                                </button>
+                              )}
+                              {eq && yaAgregado && (
+                                <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓</span>
+                              )}
+                              {!eq && item.cant > 0 && (
+                                <span className="shrink-0 text-[10px] text-gray-700 px-1 leading-5">—</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-gray-700 text-xs mt-3 pt-3 border-t border-[#1a1a1a]">
+                  Guía comercial de arranque. Ajustar según venue, interior/exterior, altura, si hay pista, y requerimientos específicos del cliente.
+                </p>
+              </div>
+            </details>
+          )}
 
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
