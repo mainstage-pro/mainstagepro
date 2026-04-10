@@ -49,15 +49,23 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => { load(); }, [id]);
 
-  async function updateEstado(itemId: string, estado: EstadoItem) {
-    if (estado === "PERDIDO" && !confirm("¿Marcar como PERDIDO?\n\nEsto actualizará el equipo en el inventario como perdido y lo quitará de disponibilidad.")) return;
+  async function updateEstado(itemId: string, estado: EstadoItem, estadoActual: string) {
+    // Clic en el estado activo → deseleccionar (volver a PENDIENTE)
+    const nuevoEstado = estadoActual === estado ? "PENDIENTE" : estado;
+    if (nuevoEstado === "PERDIDO" && !confirm("¿Marcar como PERDIDO?\n\nEsto actualizará el equipo en el inventario como perdido y lo quitará de disponibilidad.")) return;
     setUpdating(itemId);
     await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado }),
+      body: JSON.stringify({ estado: nuevoEstado }),
     });
     await load();
     setUpdating(null);
+  }
+
+  async function eliminarChecklist() {
+    if (!confirm("¿Eliminar este checklist? Esta acción no se puede deshacer.")) return;
+    await fetch(`/api/bodega/checklist/${id}`, { method: "DELETE" });
+    window.location.href = "/inventario/bodega";
   }
 
   async function saveNotas(itemId: string) {
@@ -88,6 +96,9 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const fechaLabel = new Date(checklist.fechaInicio).toLocaleDateString("es-MX", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
+  const fechaCorta = new Date(checklist.fechaInicio).toLocaleDateString("es-MX", {
+    day: "numeric", month: "long", year: "numeric",
+  });
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
@@ -95,9 +106,10 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link href="/inventario/bodega" className="text-gray-500 hover:text-white text-sm transition-colors">← Volver</Link>
+          <button onClick={eliminarChecklist} className="text-gray-700 hover:text-red-400 text-xs transition-colors">Eliminar</button>
           <div>
             <h1 className="text-lg font-semibold text-white capitalize">{fechaLabel}</h1>
-            <p className="text-gray-600 text-xs">{checklist.semana} · creado por {checklist.creadoPor ?? "—"}</p>
+            <p className="text-gray-600 text-xs">Creado por {checklist.creadoPor ?? "—"}</p>
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -185,8 +197,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                       <div className="flex gap-1.5 flex-wrap">
                         {ESTADOS.map(e => (
                           <button key={e.value}
-                            onClick={() => updateEstado(item.id, e.value)}
-                            disabled={updating === item.id || item.estado === e.value}
+                            onClick={() => updateEstado(item.id, e.value, item.estado)}
+                            disabled={updating === item.id}
                             className={`text-[10px] px-2.5 py-1 rounded border font-semibold transition-all disabled:cursor-default ${
                               item.estado === e.value
                                 ? e.color + " opacity-100"

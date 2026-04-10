@@ -27,11 +27,10 @@ function isoWeek(date: Date): string {
   return `${d.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-function semanaLabel(semana: string, fechaInicio: string) {
-  const d = new Date(fechaInicio);
-  const fin = new Date(d); fin.setDate(fin.getDate() + 6);
-  const fmt = (dt: Date) => dt.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-  return `${fmt(d)} – ${fmt(fin)}`;
+function fechaLabel(fechaInicio: string) {
+  return new Date(fechaInicio).toLocaleDateString("es-MX", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
 }
 
 export default function BodegaPage() {
@@ -78,7 +77,7 @@ export default function BodegaPage() {
         {checklistSemana ? (
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-white text-sm font-medium">{semanaLabel(checklistSemana.semana, checklistSemana.fechaInicio)}</p>
+              <p className="text-white text-sm font-medium capitalize">{fechaLabel(checklistSemana.fechaInicio)}</p>
               <div className="flex items-center gap-3 mt-1">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_CHECKLIST[checklistSemana.estado]}`}>
                   {ESTADO_LABEL[checklistSemana.estado]}
@@ -125,7 +124,7 @@ export default function BodegaPage() {
                   className="w-full bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 text-left flex items-center gap-4 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="text-white text-sm font-medium">{semanaLabel(c.semana, c.fechaInicio)}</p>
+                      <p className="text-white text-sm font-medium">{fechaLabel(c.fechaInicio)}</p>
                       <span className="text-gray-700 text-[10px]">{c.semana}</span>
                     </div>
                     <div className="flex items-center gap-3">
