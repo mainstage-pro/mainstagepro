@@ -48,7 +48,9 @@ export default async function CotizacionesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-white text-sm">{cot.cliente.nombre}</p>
+                    <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-white text-sm hover:text-[#B3985B] transition-colors">
+                      {cot.cliente.nombre}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-[#9ca3af]">
                     {cot.nombreEvento || (cot.tipoEvento ? TIPO_EVENTO_LABELS[cot.tipoEvento] : "—")}

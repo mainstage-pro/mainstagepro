@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
+import Link from "next/link";
 
 export default async function MovimientosPage() {
   const movimientos = await prisma.movimientoFinanciero.findMany({
@@ -77,8 +78,8 @@ export default async function MovimientosPage() {
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-white text-sm">{mov.concepto}</p>
-                    {mov.cliente && <p className="text-[#6b7280] text-xs">{mov.cliente.nombre}</p>}
-                    {mov.proyecto && <p className="text-[#555] text-xs">{mov.proyecto.nombre}</p>}
+                    {mov.cliente && <Link href={`/crm/clientes/${mov.cliente.id}`} className="text-[#6b7280] text-xs hover:text-[#B3985B] transition-colors">{mov.cliente.nombre}</Link>}
+                    {mov.proyecto && <Link href={`/proyectos/${mov.proyecto.id}`} className="text-[#555] text-xs hover:text-[#B3985B] transition-colors block">{mov.proyecto.nombre}</Link>}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {mov.categoria?.nombre ?? "—"}

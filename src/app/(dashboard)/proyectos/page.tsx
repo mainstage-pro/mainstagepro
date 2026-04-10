@@ -58,7 +58,9 @@ export default async function ProyectosPage() {
                         <span className="text-[10px] text-[#555]">{proyecto.numeroProyecto}</span>
                       </div>
                       <h3 className="text-white font-medium">{proyecto.nombre}</h3>
-                      <p className="text-[#6b7280] text-sm">{proyecto.cliente.nombre}</p>
+                      <Link href={`/crm/clientes/${proyecto.cliente.id}`} onClick={e => e.stopPropagation()} className="text-[#6b7280] text-sm hover:text-[#B3985B] transition-colors">
+                        {proyecto.cliente.nombre}
+                      </Link>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-white text-sm font-medium">

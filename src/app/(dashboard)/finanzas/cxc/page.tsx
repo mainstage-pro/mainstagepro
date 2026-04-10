@@ -1,16 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
 import { ESTADO_CXC_LABELS, ESTADO_CXC_COLORS } from "@/lib/constants";
+import Link from "next/link";
 
 export default async function CxCPage() {
   const cxc = await prisma.cuentaCobrar.findMany({
-    include: { cliente: true, proyecto: true },
+    include: {
+      cliente: { select: { id: true, nombre: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
+      cotizacion: { select: { id: true, numeroCotizacion: true } },
+    },
     orderBy: { fechaCompromiso: "asc" },
   });
 
   const pendiente = cxc.filter((c) => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const vencida = cxc.filter((c) => c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
-  const cobrada = cxc.filter((c) => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const vencida   = cxc.filter((c) => c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
+  const cobrada   = cxc.filter((c) => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const hoy = new Date();
 
   return (
@@ -46,7 +51,7 @@ export default async function CxCPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Cliente", "Proyecto", "Concepto", "Monto", "Vence", "Estado"].map((h) => (
+                {["Cliente", "Proyecto", "Cotización", "Concepto", "Monto", "Vence", "Estado"].map((h) => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">
                     {h}
                   </th>
@@ -55,19 +60,34 @@ export default async function CxCPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {cxc.map((c) => {
-                const vencida = c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy;
+                const esVencida = c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy;
                 return (
                   <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="px-4 py-3 text-sm text-white">{c.cliente.nombre}</td>
-                    <td className="px-4 py-3 text-xs text-[#6b7280]">{c.proyecto?.nombre ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <Link href={`/crm/clientes/${c.cliente.id}`} className="text-white hover:text-[#B3985B] transition-colors">
+                        {c.cliente.nombre}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {c.proyecto
+                        ? <Link href={`/proyectos/${c.proyecto.id}`} className="text-[#6b7280] hover:text-[#B3985B] transition-colors">
+                            {c.proyecto.numeroProyecto}
+                          </Link>
+                        : <span className="text-[#444]">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {c.cotizacion
+                        ? <Link href={`/cotizaciones/${c.cotizacion.id}`} className="text-[#6b7280] hover:text-[#B3985B] transition-colors font-mono">
+                            {c.cotizacion.numeroCotizacion}
+                          </Link>
+                        : <span className="text-[#444]">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-sm text-[#9ca3af]">{c.concepto}</td>
                     <td className="px-4 py-3 text-sm font-medium text-white">{formatCurrency(c.monto)}</td>
                     <td className="px-4 py-3 text-xs">
-                      <span className={vencida ? "text-red-400 font-medium" : "text-[#6b7280]"}>
-                        {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
-                        {vencida && " ⚠"}
+                      <span className={esVencida ? "text-red-400 font-medium" : "text-[#6b7280]"}>
+                        {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                        {esVencida && " ⚠"}
                       </span>
                     </td>
                     <td className="px-4 py-3">

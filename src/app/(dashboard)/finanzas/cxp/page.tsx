@@ -1,16 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
 import { ESTADO_CXC_LABELS, ESTADO_CXC_COLORS } from "@/lib/constants";
+import Link from "next/link";
 
 export default async function CxPPage() {
   const cxp = await prisma.cuentaPagar.findMany({
-    include: { tecnico: true, proveedor: true, proyecto: true },
+    include: {
+      tecnico: { select: { id: true, nombre: true } },
+      proveedor: { select: { id: true, nombre: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
+    },
     orderBy: { fechaCompromiso: "asc" },
   });
 
   const pendiente = cxp.filter((c) => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const vencida = cxp.filter((c) => c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
-  const pagado = cxp.filter((c) => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const vencida   = cxp.filter((c) => c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
+  const pagado    = cxp.filter((c) => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const hoy = new Date();
 
   return (
@@ -55,19 +60,32 @@ export default async function CxPPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {cxp.map((c) => {
-                const beneficiario = c.tecnico?.nombre ?? c.proveedor?.nombre ?? "—";
                 const esVencida = c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy;
                 return (
                   <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="px-4 py-3 text-sm text-white">{beneficiario}</td>
-                    <td className="px-4 py-3 text-xs text-[#6b7280]">{c.proyecto?.nombre ?? "—"}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {c.proveedor
+                        ? <Link href={`/catalogo/proveedores?id=${c.proveedor.id}`} className="text-white hover:text-[#B3985B] transition-colors">
+                            {c.proveedor.nombre}
+                          </Link>
+                        : c.tecnico
+                          ? <Link href={`/rrhh/personal/${c.tecnico.id}`} className="text-white hover:text-[#B3985B] transition-colors">
+                              {c.tecnico.nombre}
+                            </Link>
+                          : <span className="text-[#6b7280]">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {c.proyecto
+                        ? <Link href={`/proyectos/${c.proyecto.id}`} className="text-[#6b7280] hover:text-[#B3985B] transition-colors">
+                            {c.proyecto.numeroProyecto}
+                          </Link>
+                        : <span className="text-[#444]">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-sm text-[#9ca3af]">{c.concepto}</td>
                     <td className="px-4 py-3 text-sm font-medium text-white">{formatCurrency(c.monto)}</td>
                     <td className="px-4 py-3 text-xs">
                       <span className={esVencida ? "text-red-400 font-medium" : "text-[#6b7280]"}>
-                        {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", {
-                          day: "numeric", month: "short", year: "numeric",
-                        })}
+                        {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
                         {esVencida && " ⚠"}
                       </span>
                     </td>

@@ -83,7 +83,9 @@ export default async function TratosPage() {
               {tratos.map((trato) => (
                 <tr key={trato.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
-                    <p className="text-white text-sm font-medium">{trato.cliente.nombre}</p>
+                    <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                      {trato.cliente.nombre}
+                    </Link>
                     {trato.cliente.empresa && (
                       <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>
                     )}
