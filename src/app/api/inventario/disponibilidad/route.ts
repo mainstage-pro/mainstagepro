@@ -38,11 +38,19 @@ export async function GET(req: NextRequest) {
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
 
-  // 2. Cotizaciones NO aprobadas con fechaEvento en alguna de las fechas
+  // 2. Cotizaciones activas con fechaEvento en alguna de las fechas
+  //    También considera fecha del trato como fallback si cotizacion.fechaEvento es null
+  const tratoFechaOR = rangos.map(r => ({ trato: { fechaEventoEstimada: { gte: r.inicio, lte: r.fin } } }));
+
   const cotizacionesEnFecha = await prisma.cotizacion.findMany({
     where: {
-      OR: fechaOR,
-      estado: { notIn: ["RECHAZADA", "VENCIDA", "APROBADA"] },
+      OR: [
+        // Fecha directa en cotización
+        ...fechaOR,
+        // Fallback: fecha del trato cuando cotización no tiene fecha propia
+        ...tratoFechaOR.map(f => ({ ...f, fechaEvento: null })),
+      ],
+      estado: { notIn: ["RECHAZADA", "VENCIDA"] },
     },
     select: {
       id: true,
@@ -50,6 +58,7 @@ export async function GET(req: NextRequest) {
       estado: true,
       nombreEvento: true,
       fechaEvento: true,
+      trato: { select: { fechaEventoEstimada: true } },
       cliente: { select: { nombre: true, empresa: true } },
       lineas: {
         where: { tipo: "EQUIPO_PROPIO", equipoId: { not: null } },
@@ -83,12 +92,13 @@ export async function GET(req: NextRequest) {
       if (!linea.equipoId) continue;
       if (!comprometido[linea.equipoId]) comprometido[linea.equipoId] = { cantidad: 0, eventos: [] };
       comprometido[linea.equipoId].cantidad += Math.round(linea.cantidad);
+      const fechaCot = cot.fechaEvento ?? cot.trato.fechaEventoEstimada;
       comprometido[linea.equipoId].eventos.push({
         tipo: "COT",
         ref: cot.numeroCotizacion,
         nombre: cot.nombreEvento ?? cot.cliente.nombre,
         estado: cot.estado,
-        fecha: cot.fechaEvento ? cot.fechaEvento.toISOString().split("T")[0] : null,
+        fecha: fechaCot ? fechaCot.toISOString().split("T")[0] : null,
       });
     }
   }
@@ -128,14 +138,17 @@ export async function GET(req: NextRequest) {
 
   // 6. Panel lateral — eventos encontrados
   const eventosResumen = [
-    ...cotizacionesEnFecha.map((c) => ({
-      tipo: "COT" as const,
-      ref: c.numeroCotizacion,
-      nombre: c.nombreEvento ?? c.cliente.nombre,
-      empresa: c.cliente.empresa,
-      estado: c.estado,
-      fecha: c.fechaEvento ? c.fechaEvento.toISOString().split("T")[0] : null,
-    })),
+    ...cotizacionesEnFecha.map((c) => {
+      const fechaCot = c.fechaEvento ?? c.trato.fechaEventoEstimada;
+      return {
+        tipo: "COT" as const,
+        ref: c.numeroCotizacion,
+        nombre: c.nombreEvento ?? c.cliente.nombre,
+        empresa: c.cliente.empresa,
+        estado: c.estado,
+        fecha: fechaCot ? fechaCot.toISOString().split("T")[0] : null,
+      };
+    }),
     ...proyectosEnFecha.map((p) => ({
       tipo: "PROY" as const,
       ref: p.numeroProyecto,
