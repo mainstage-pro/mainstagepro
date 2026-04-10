@@ -38,19 +38,18 @@ export async function GET(req: NextRequest) {
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
 
-  // 2. Cotizaciones activas con fechaEvento en alguna de las fechas
-  //    También considera fecha del trato como fallback si cotizacion.fechaEvento es null
+  // 2. Cotizaciones SIN proyecto en alguna de las fechas (con fallback a fecha del trato)
+  //    Si ya tienen proyecto, el proyecto es la fuente de verdad — no contar doble
   const tratoFechaOR = rangos.map(r => ({ trato: { fechaEventoEstimada: { gte: r.inicio, lte: r.fin } } }));
 
   const cotizacionesEnFecha = await prisma.cotizacion.findMany({
     where: {
       OR: [
-        // Fecha directa en cotización
         ...fechaOR,
-        // Fallback: fecha del trato cuando cotización no tiene fecha propia
         ...tratoFechaOR.map(f => ({ ...f, fechaEvento: null })),
       ],
       estado: { notIn: ["RECHAZADA", "VENCIDA"] },
+      proyecto: null, // excluir cotizaciones que ya tienen proyecto
     },
     select: {
       id: true,
