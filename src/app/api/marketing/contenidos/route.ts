@@ -15,11 +15,19 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { nombre, formato, objetivo, diaSemana, recurrencia, cantMes, descripcion, activo, orden } = body;
+  const { nombre, formato, objetivo, diaSemana, recurrencia, cantMes, descripcion, activo, orden,
+          enFacebook, enInstagram, enTiktok, enYoutube } = body;
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
   const tipo = await prisma.tipoContenido.create({
-    data: { nombre, formato: formato ?? "POST", objetivo, diaSemana, recurrencia, cantMes, descripcion, activo: activo ?? true, orden: orden ?? 0 },
+    data: {
+      nombre, formato: formato ?? "POST", objetivo, diaSemana, recurrencia, cantMes, descripcion,
+      activo: activo ?? true, orden: orden ?? 0,
+      enFacebook: enFacebook ?? false,
+      enInstagram: enInstagram ?? false,
+      enTiktok: enTiktok ?? false,
+      enYoutube: enYoutube ?? false,
+    },
   });
   return NextResponse.json({ tipo }, { status: 201 });
 }

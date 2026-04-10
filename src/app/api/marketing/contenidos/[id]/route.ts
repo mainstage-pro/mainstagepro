@@ -8,7 +8,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
   const body = await request.json();
-  const allowed = ["nombre", "formato", "objetivo", "diaSemana", "recurrencia", "cantMes", "descripcion", "activo", "orden"];
+  const allowed = [
+    "nombre", "formato", "objetivo", "diaSemana", "recurrencia", "cantMes", "descripcion",
+    "activo", "orden", "enFacebook", "enInstagram", "enTiktok", "enYoutube",
+  ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key];

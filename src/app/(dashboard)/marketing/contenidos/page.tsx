@@ -6,19 +6,31 @@ interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
   diaSemana: string | null; recurrencia: string | null; cantMes: number | null;
   descripcion: string | null; activo: boolean; orden: number;
+  enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
 }
 
 const FORMATOS = ["POST", "REEL", "STORIE", "TIK_TOK"];
 const DIAS = ["LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO", "DOMINGO"];
 const RECURRENCIAS = ["DIARIO", "SEMANAL", "QUINCENAL", "MENSUAL", "EVENTUAL"];
+
 const FORMATO_COLORS: Record<string, string> = {
-  POST: "bg-blue-900/30 text-blue-300",
-  REEL: "bg-purple-900/30 text-purple-300",
-  STORIE: "bg-pink-900/30 text-pink-300",
-  TIK_TOK: "bg-cyan-900/30 text-cyan-300",
+  POST: "bg-blue-900/40 text-blue-300 border-blue-800/30",
+  REEL: "bg-purple-900/40 text-purple-300 border-purple-800/30",
+  STORIE: "bg-pink-900/40 text-pink-300 border-pink-800/30",
+  TIK_TOK: "bg-cyan-900/40 text-cyan-300 border-cyan-800/30",
 };
 
-const EMPTY = { nombre: "", formato: "POST", objetivo: "", diaSemana: "", recurrencia: "", cantMes: "", descripcion: "" };
+const PLATAFORMAS = [
+  { key: "enFacebook" as const, label: "Facebook", short: "FB" },
+  { key: "enInstagram" as const, label: "Instagram", short: "IG" },
+  { key: "enTiktok" as const, label: "TikTok", short: "TT" },
+  { key: "enYoutube" as const, label: "YouTube", short: "YT" },
+];
+
+const EMPTY = {
+  nombre: "", formato: "POST", objetivo: "", diaSemana: "", recurrencia: "", cantMes: "",
+  descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
+};
 
 export default function ContenidosPage() {
   const [tipos, setTipos] = useState<TipoContenido[]>([]);
@@ -42,9 +54,12 @@ export default function ContenidosPage() {
       nombre: t.nombre, formato: t.formato, objetivo: t.objetivo ?? "",
       diaSemana: t.diaSemana ?? "", recurrencia: t.recurrencia ?? "",
       cantMes: t.cantMes?.toString() ?? "", descripcion: t.descripcion ?? "",
+      enFacebook: t.enFacebook, enInstagram: t.enInstagram,
+      enTiktok: t.enTiktok, enYoutube: t.enYoutube,
     });
     setEditId(t.id);
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function cancelForm() { setForm(EMPTY); setEditId(null); setShowForm(false); }
@@ -58,6 +73,8 @@ export default function ContenidosPage() {
       recurrencia: form.recurrencia || null,
       cantMes: form.cantMes ? parseInt(form.cantMes) : null,
       descripcion: form.descripcion || null,
+      enFacebook: form.enFacebook, enInstagram: form.enInstagram,
+      enTiktok: form.enTiktok, enYoutube: form.enYoutube,
     };
     if (editId) {
       await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -85,10 +102,11 @@ export default function ContenidosPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Tipos de contenido</h1>
-          <p className="text-[#6b7280] text-sm">{activos.length} activos · catálogo de formatos de publicación</p>
+          <p className="text-[#6b7280] text-sm">{activos.length} formatos activos</p>
         </div>
         {!showForm && (
           <button onClick={() => setShowForm(true)}
@@ -98,14 +116,17 @@ export default function ContenidosPage() {
         )}
       </div>
 
+      {/* Formulario */}
       {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar tipo" : "Nuevo tipo de contenido"}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
+        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+            {editId ? "Editar tipo de contenido" : "Nuevo tipo de contenido"}
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="md:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
               <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                placeholder="Ej: Carrusel de fotos, Aftermovie..."
+                placeholder="Ej: Carrusel de eventos, Aftermovie, Behind the scenes..."
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
             <div>
@@ -132,28 +153,40 @@ export default function ContenidosPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Cantidad x mes</label>
+              <label className="text-xs text-gray-500 mb-1 block">Cantidad por mes</label>
               <input type="number" value={form.cantMes} onChange={e => setForm(p => ({ ...p, cantMes: e.target.value }))}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 placeholder="0" min="0" />
             </div>
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Objetivo</label>
               <input value={form.objetivo} onChange={e => setForm(p => ({ ...p, objetivo: e.target.value }))}
-                placeholder="Ej: Mostrar trabajo, generar comunidad..."
+                placeholder="Ej: Mostrar trabajo, generar comunidad, atraer clientes..."
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Descripción / Ejemplo</label>
+            <div className="md:col-span-2">
+              <label className="text-xs text-gray-500 mb-1 block">Descripción</label>
               <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))} rows={2}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                placeholder="Describir cómo es este tipo de contenido..." />
+                placeholder="Describir cómo es este tipo de contenido, ejemplos, referencias..." />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
+              <div className="flex flex-wrap gap-3">
+                {PLATAFORMAS.map(plt => (
+                  <label key={plt.key} className="flex items-center gap-2 cursor-pointer group">
+                    <input type="checkbox" checked={form[plt.key]} onChange={e => setForm(p => ({ ...p, [plt.key]: e.target.checked }))}
+                      className="accent-[#B3985B]" />
+                    <span className="text-gray-400 text-sm group-hover:text-white transition-colors">{plt.label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 pt-1">
             <button onClick={save} disabled={saving || !form.nombre.trim()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
+              {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar tipo"}
             </button>
             <button onClick={cancelForm} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
@@ -163,40 +196,76 @@ export default function ContenidosPage() {
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
       ) : tipos.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center text-gray-600 text-sm">
-          Sin tipos de contenido. Agrega los formatos que usas en tus redes.
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
+          <p className="text-gray-500 text-sm">Sin tipos de contenido</p>
+          <p className="text-gray-600 text-xs mt-1">Agrega los formatos que usas en tus redes sociales</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {activos.map(t => (
-            <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4 flex items-start justify-between hover:border-[#2a2a2a] transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="text-white text-sm font-medium">{t.nombre}</p>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${FORMATO_COLORS[t.formato] ?? "bg-gray-800 text-gray-400"}`}>{t.formato}</span>
-                  {t.recurrencia && <span className="text-[10px] text-gray-500">{t.recurrencia}</span>}
-                  {t.cantMes && <span className="text-[10px] text-gray-500">{t.cantMes}x/mes</span>}
+            <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#2a2a2a] transition-colors">
+              <div className="flex items-start justify-between gap-4">
+                {/* Left: info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <h3 className="text-white font-semibold text-sm">{t.nombre}</h3>
+                    <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${FORMATO_COLORS[t.formato] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
+                      {t.formato}
+                    </span>
+                    {t.recurrencia && (
+                      <span className="text-[10px] text-gray-500 bg-[#1a1a1a] px-2 py-0.5 rounded">{t.recurrencia}</span>
+                    )}
+                    {t.cantMes && (
+                      <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded font-semibold">{t.cantMes}× al mes</span>
+                    )}
+                  </div>
+
+                  {t.objetivo && (
+                    <p className="text-gray-400 text-xs mb-1">
+                      <span className="text-gray-600">Objetivo: </span>{t.objetivo}
+                    </p>
+                  )}
+                  {t.descripcion && (
+                    <p className="text-gray-600 text-xs mb-2 italic">{t.descripcion}</p>
+                  )}
+
+                  {/* Metadata row */}
+                  <div className="flex flex-wrap items-center gap-3 mt-2">
+                    {t.diaSemana && (
+                      <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                        <span className="text-gray-700">Día:</span> {t.diaSemana.charAt(0) + t.diaSemana.slice(1).toLowerCase()}
+                      </span>
+                    )}
+                    {/* Platform badges */}
+                    {PLATAFORMAS.filter(p => t[p.key]).map(p => (
+                      <span key={p.key} className="text-[10px] text-gray-400 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded font-medium">
+                        {p.short}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                {t.objetivo && <p className="text-gray-500 text-xs">{t.objetivo}</p>}
-                {t.descripcion && <p className="text-gray-600 text-xs mt-0.5 italic">{t.descripcion}</p>}
-                {t.diaSemana && <p className="text-gray-600 text-xs mt-0.5">Publica: {t.diaSemana}</p>}
-              </div>
-              <div className="flex gap-2 ml-4 shrink-0">
-                <button onClick={() => startEdit(t)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>
-                <button onClick={() => toggleActivo(t)} className="text-xs text-gray-500 hover:text-white transition-colors">Desactivar</button>
-                <button onClick={() => deleteContenido(t.id)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
+
+                {/* Right: actions */}
+                <div className="flex items-center gap-3 shrink-0">
+                  <button onClick={() => startEdit(t)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>
+                  <button onClick={() => toggleActivo(t)} className="text-xs text-gray-500 hover:text-yellow-400 transition-colors">Desactivar</button>
+                  <button onClick={() => deleteContenido(t.id)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
+                </div>
               </div>
             </div>
           ))}
+
           {inactivos.length > 0 && (
             <details className="mt-2">
-              <summary className="text-gray-600 text-xs cursor-pointer hover:text-white px-1">{inactivos.length} inactivos</summary>
+              <summary className="text-gray-600 text-xs cursor-pointer hover:text-white px-1 py-2 select-none">
+                {inactivos.length} tipo{inactivos.length !== 1 ? "s" : ""} inactivo{inactivos.length !== 1 ? "s" : ""}
+              </summary>
               <div className="mt-2 space-y-2">
                 {inactivos.map(t => (
-                  <div key={t.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl px-5 py-3 flex items-center justify-between opacity-50">
+                  <div key={t.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-5 py-3 flex items-center justify-between opacity-50">
                     <div className="flex items-center gap-2">
                       <span className="text-white text-sm">{t.nombre}</span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${FORMATO_COLORS[t.formato] ?? "bg-gray-800 text-gray-400"}`}>{t.formato}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${FORMATO_COLORS[t.formato] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>{t.formato}</span>
                     </div>
                     <button onClick={() => toggleActivo(t)} className="text-xs text-gray-500 hover:text-green-400 transition-colors">Activar</button>
                   </div>

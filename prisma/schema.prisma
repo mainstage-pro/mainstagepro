@@ -819,6 +819,10 @@ model TipoContenido {
   descripcion String?
   activo      Boolean @default(true)
   orden       Int     @default(0)
+  enFacebook  Boolean @default(false)
+  enInstagram Boolean @default(false)
+  enTiktok    Boolean @default(false)
+  enYoutube   Boolean @default(false)
 
   publicaciones Publicacion[]
 

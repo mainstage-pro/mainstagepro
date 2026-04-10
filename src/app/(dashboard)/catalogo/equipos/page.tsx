@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Proveedor = { id: string; nombre: string };
 type Categoria = { id: string; nombre: string; orden: number };
@@ -10,6 +11,7 @@ type Equipo = {
   marca: string | null;
   modelo: string | null;
   tipo: string;
+  estado: string;
   precioRenta: number;
   costoProveedor: number | null;
   cantidadTotal: number;
@@ -18,6 +20,12 @@ type Equipo = {
   categoria: { id: string; nombre: string; orden: number };
   notas: string | null;
   activo: boolean;
+};
+
+const ESTADO_BADGE: Record<string, string> = {
+  ACTIVO: "bg-green-900/30 text-green-400",
+  EN_MANTENIMIENTO: "bg-yellow-900/30 text-yellow-400",
+  DADO_DE_BAJA: "bg-red-900/30 text-red-400",
 };
 
 type EditForm = {
@@ -292,7 +300,7 @@ export default function CatalogoEquiposPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#0d0d0d]">
-                  {["Descripción", "Marca/Modelo", "Cant", "Precio cliente", "Costo proveedor", "Proveedor", ""].map(h => (
+                  {["Descripción", "Marca/Modelo", "Cant", "Estado", "Precio cliente", "Costo proveedor", "Proveedor", ""].map(h => (
                     <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-2.5 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -301,7 +309,7 @@ export default function CatalogoEquiposPage() {
                 {eqs.map(e => (
                   editingId === e.id && form ? (
                     <tr key={e.id} className="bg-[#1a1a1a]">
-                      <td colSpan={7} className="px-4 py-4">
+                      <td colSpan={8} className="px-4 py-4">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                           <div className="col-span-2">
                             <label className="text-xs text-[#6b7280] block mb-1">Descripción</label>
@@ -386,6 +394,15 @@ export default function CatalogoEquiposPage() {
                         {[e.marca, e.modelo].filter(Boolean).join(" ") || "—"}
                       </td>
                       <td className="px-4 py-3 text-sm text-[#9ca3af] text-center">{e.cantidadTotal}</td>
+                      <td className="px-4 py-3">
+                        {e.tipo === "PROPIO" ? (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${ESTADO_BADGE[e.estado] ?? "bg-gray-800 text-gray-400"}`}>
+                            {e.estado?.replace(/_/g, " ") ?? "ACTIVO"}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-gray-600 px-1.5">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-white font-medium">{fmt(e.precioRenta)}</td>
                       <td className="px-4 py-3 text-sm text-[#6b7280]">
                         {e.tipo === "EXTERNO" && e.costoProveedor != null ? fmt(e.costoProveedor) : (
@@ -398,10 +415,19 @@ export default function CatalogoEquiposPage() {
                           : <span className="text-[#333]">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={ev => { ev.stopPropagation(); toggleActivo(e); }}
-                          className={`text-[10px] transition-colors ${e.activo ? "text-[#444] hover:text-[#6b7280] opacity-0 group-hover:opacity-100" : "text-orange-400 hover:text-orange-300 opacity-100 font-semibold"}`}>
-                          {e.activo ? "Desactivar" : "✓ Activar"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {e.tipo === "PROPIO" && (
+                            <Link href={`/inventario/mantenimiento?equipoId=${e.id}`}
+                              onClick={ev => ev.stopPropagation()}
+                              className="text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors opacity-0 group-hover:opacity-100 whitespace-nowrap">
+                              Mant.
+                            </Link>
+                          )}
+                          <button onClick={ev => { ev.stopPropagation(); toggleActivo(e); }}
+                            className={`text-[10px] transition-colors ${e.activo ? "text-[#444] hover:text-[#6b7280] opacity-0 group-hover:opacity-100" : "text-orange-400 hover:text-orange-300 opacity-100 font-semibold"}`}>
+                            {e.activo ? "Desactivar" : "✓ Activar"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

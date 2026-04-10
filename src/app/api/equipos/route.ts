@@ -24,9 +24,13 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const todos = req.nextUrl.searchParams.get("todos") === "true";
+  const tipo = req.nextUrl.searchParams.get("tipo"); // PROPIO | EXTERNO
+
+  const where: Record<string, unknown> = todos ? {} : { activo: true };
+  if (tipo) where.tipo = tipo;
 
   const equipos = await prisma.equipo.findMany({
-    where: todos ? {} : { activo: true },
+    where,
     select: EQUIPO_SELECT,
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
