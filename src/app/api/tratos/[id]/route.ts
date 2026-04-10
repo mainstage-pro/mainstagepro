@@ -79,6 +79,46 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.trato.delete({ where: { id } });
+
+  // Eliminar en orden para respetar foreign keys:
+  // 1. Archivos del trato (ya tienen Cascade pero por si acaso)
+  // 2. Líneas y cuentas de cotizaciones del trato
+  // 3. Cotizaciones
+  // 4. Proyecto asociado (si no tiene estado COMPLETADO)
+  // 5. El trato
+
+  await prisma.$transaction(async (tx) => {
+    // Obtener cotizaciones y proyecto del trato
+    const cotizaciones = await tx.cotizacion.findMany({
+      where: { tratoId: id },
+      select: { id: true },
+    });
+    const cotIds = cotizaciones.map((c) => c.id);
+
+    // Borrar líneas y cuentas por cobrar de esas cotizaciones
+    if (cotIds.length > 0) {
+      await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: { in: cotIds } } });
+      await tx.cuentaCobrar.deleteMany({ where: { cotizacionId: { in: cotIds } } });
+    }
+
+    // Borrar cotizaciones
+    await tx.cotizacion.deleteMany({ where: { tratoId: id } });
+
+    // Borrar proyecto si existe (y sus dependencias)
+    const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
+    if (proyecto) {
+      await tx.proyectoEquipo.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.proyectoPersonal.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.proyectoChecklist.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.proyectoBitacora.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.cuentaCobrar.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.cuentaPagar.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.proyecto.delete({ where: { id: proyecto.id } });
+    }
+
+    // Borrar el trato (archivos tienen Cascade)
+    await tx.trato.delete({ where: { id } });
+  });
+
   return NextResponse.json({ ok: true });
 }
