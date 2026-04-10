@@ -10,6 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       id: true,
       tipoServicio: true,
       tipoEvento: true,
+      rutaEntrada: true,
       nombreEvento: true,
       fechaEventoEstimada: true,
       lugarEstimado: true,
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (body.fechaEvento) tratoUpdate.fechaEventoEstimada = new Date(body.fechaEvento);
   if (body.nombreEvento) tratoUpdate.nombreEvento = body.nombreEvento;
   if (body.presupuesto) tratoUpdate.presupuestoEstimado = parseFloat(body.presupuesto);
+  if (body.ciudad) tratoUpdate.lugarEstimado = [body.lugar, body.ciudad].filter(Boolean).join(" · ") || tratoUpdate.lugarEstimado;
 
   await prisma.trato.update({ where: { id: trato.id }, data: tratoUpdate });
 

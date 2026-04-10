@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FORM_KEY_LABELS } from "@/lib/form-labels";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -35,6 +36,7 @@ interface Trato {
   formToken: string | null;
   formEstado: string;
   formRespuestas: string | null;
+  rutaEntrada: string | null;
   // Descubrimiento
   canalAtencion: string | null;
   nombreEvento: string | null;
@@ -483,16 +485,33 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   </button>
                 </div>
               ) : trato.formEstado === "COMPLETADO" ? (
-                <div className="space-y-2">
-                  <p className="text-green-400 text-xs">✓ El prospecto completó el formulario. La información se sincronizó al trato.</p>
-                  {trato.formRespuestas && (
-                    <details className="mt-2">
-                      <summary className="text-gray-600 text-xs cursor-pointer hover:text-gray-400">Ver respuestas completas</summary>
-                      <pre className="mt-2 text-gray-500 text-[10px] bg-[#0d0d0d] rounded-lg p-3 overflow-auto max-h-48 whitespace-pre-wrap">
-                        {JSON.stringify(JSON.parse(trato.formRespuestas), null, 2)}
-                      </pre>
-                    </details>
-                  )}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-green-400 text-xs">✓ El prospecto completó el formulario. La información se sincronizó al trato.</p>
+                    <a
+                      href={`/api/tratos/${trato.id}/form-pdf`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      ↓ PDF
+                    </a>
+                  </div>
+                  {trato.formRespuestas && (() => {
+                    let resp: Record<string, unknown> = {};
+                    try { resp = JSON.parse(trato.formRespuestas!); } catch { /* empty */ }
+                    const entries = Object.entries(resp).filter(([, v]) => v !== "" && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0));
+                    return entries.length > 0 ? (
+                      <div className="bg-[#0d0d0d] rounded-lg p-3 space-y-1.5">
+                        {entries.map(([key, val]) => (
+                          <div key={key} className="flex gap-2 text-xs">
+                            <span className="text-gray-500 w-36 shrink-0">{FORM_KEY_LABELS[key] ?? key}</span>
+                            <span className="text-gray-200">{Array.isArray(val) ? val.join(", ") : String(val)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               ) : (
                 <div className="space-y-3">

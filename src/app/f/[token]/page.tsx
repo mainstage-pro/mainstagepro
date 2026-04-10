@@ -231,7 +231,24 @@ const FORM_RENTA: Seccion[] = [
   },
 ];
 
-function getForm(tipoServicio: string | null, tipoEvento: string | null): Seccion[] {
+const FORM_RIDER_DIRECTO: Seccion[] = [
+  {
+    titulo: "Información del evento",
+    preguntas: [
+      { id: "nombreEvento",  label: "Nombre del evento", tipo: "text", placeholder: "Ej: Boda García, Congreso TechMX 2026...", requerida: true },
+      { id: "fechaEvento",   label: "Fecha del evento", tipo: "date", requerida: true },
+      { id: "lugar",         label: "Lugar / venue", tipo: "text", placeholder: "Nombre del venue o espacio", requerida: true },
+      { id: "ciudad",        label: "Ciudad", tipo: "text", placeholder: "Ej: Querétaro, CDMX..." },
+      { id: "asistentes",    label: "Asistentes aproximados", tipo: "number", placeholder: "Ej: 200" },
+      { id: "horaMontaje",   label: "Hora de inicio de montaje", tipo: "text", placeholder: "Ej: 8:00 AM, 10:00 AM del día anterior" },
+      { id: "operacion",     label: "¿Requieren operación técnica incluida?", tipo: "radio", opciones: ["Sí, con operadores", "No, nosotros lo operamos", "Por definir"] },
+      { id: "extras",        label: "Notas o especificaciones adicionales", tipo: "textarea", placeholder: "Cualquier detalle importante, restricciones, peticiones especiales..." },
+    ],
+  },
+];
+
+function getForm(tipoServicio: string | null, tipoEvento: string | null, rutaEntrada?: string | null): Seccion[] {
+  if (rutaEntrada === "RIDER_DIRECTO") return FORM_RIDER_DIRECTO;
   if (tipoServicio === "RENTA") return FORM_RENTA;
   if (tipoServicio === "PRODUCCION_TECNICA" || tipoServicio === "DIRECCION_TECNICA") {
     if (tipoEvento === "MUSICAL") return FORM_PRODUCCION_MUSICAL;
@@ -247,6 +264,7 @@ function getForm(tipoServicio: string | null, tipoEvento: string | null): Seccio
 interface TratoInfo {
   tipoServicio: string | null;
   tipoEvento: string;
+  rutaEntrada: string | null;
   nombreEvento: string | null;
   fechaEventoEstimada: string | null;
   lugarEstimado: string | null;
@@ -303,7 +321,7 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
     setRespuesta(id, nuevo);
   }
 
-  const secciones = trato ? getForm(trato.tipoServicio, trato.tipoEvento) : [];
+  const secciones = trato ? getForm(trato.tipoServicio, trato.tipoEvento, trato.rutaEntrada) : [];
   const seccion = secciones[seccionActual];
   const esUltima = seccionActual === secciones.length - 1;
 
@@ -388,8 +406,9 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
           <div>
             <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Mainstage Pro</p>
             <p className="text-white text-sm font-semibold mt-0.5">
-              {SERVICIO_LABELS[trato.tipoServicio ?? ""] ?? "Formulario de descubrimiento"}
-              {" · "}{EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}
+              {trato.rutaEntrada === "RIDER_DIRECTO"
+                ? "Información del evento"
+                : `${SERVICIO_LABELS[trato.tipoServicio ?? ""] ?? "Formulario de descubrimiento"} · ${EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}`}
             </p>
           </div>
           <div className="text-right">

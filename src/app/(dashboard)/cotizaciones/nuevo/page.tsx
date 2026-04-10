@@ -161,6 +161,7 @@ function CotizadorForm() {
   // Briefing del trato (solo lectura en cotizador)
   const [tratoNotas, setTratoNotas] = useState<string | null>(null);
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
+  const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   const [guardandoPrecio, setGuardandoPrecio] = useState<string | null>(null);
@@ -311,6 +312,7 @@ function CotizadorForm() {
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
+        if (t.formEstado) setTratoFormEstado(t.formEstado);
       }
     });
   }, [clienteId, tratoId]);
@@ -671,10 +673,13 @@ function CotizadorForm() {
       {error && <div className="mb-4 bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
 
       {/* ── Briefing del trato ── */}
-      {(tratoNotas || tratoArchivos.length > 0) && (
+      {(tratoNotas || tratoArchivos.length > 0 || tratoFormEstado === "COMPLETADO") && (
         <details className="mb-5 bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
           <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
             <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Briefing del cliente</span>
+            {tratoFormEstado === "COMPLETADO" && (
+              <span className="text-xs bg-green-900/30 text-green-400 px-2 py-0.5 rounded">Formulario completado ✓</span>
+            )}
             {tratoArchivos.length > 0 && (
               <span className="text-gray-600 text-xs">{tratoArchivos.length} archivo{tratoArchivos.length !== 1 ? "s" : ""}</span>
             )}
@@ -682,6 +687,19 @@ function CotizadorForm() {
             <span className="text-gray-600 text-xs ml-auto hidden group-open:inline">▼ ocultar</span>
           </summary>
           <div className="px-5 pb-4 space-y-4">
+            {tratoFormEstado === "COMPLETADO" && resolvedTratoId && (
+              <div className="flex items-center justify-between bg-[#111] rounded-lg px-3 py-2">
+                <p className="text-green-400 text-xs">El prospecto completó el formulario de descubrimiento</p>
+                <a
+                  href={`/api/tratos/${resolvedTratoId}/form-pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  ↓ Ver formulario PDF
+                </a>
+              </div>
+            )}
             {tratoNotas && (
               <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">{tratoNotas}</pre>
             )}
