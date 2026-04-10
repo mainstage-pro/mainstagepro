@@ -31,7 +31,14 @@ const NAV: NavSection[] = [
     section: "DIRECCIÓN",
     items: [
       { key: "dashboard", label: "Dashboard", href: "/dashboard" },
-      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+      {
+        key: "calendario",
+        label: "Calendario de eventos",
+        children: [
+          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
+          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+        ],
+      },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
@@ -176,6 +183,7 @@ function getInitialOpen(pathname: string): Set<string> {
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
   if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("base-datos");
   if (pathname.startsWith("/rrhh")) open.add("rrhh");
+  if (pathname.startsWith("/calendario")) open.add("calendario");
   if (pathname.startsWith("/marketing/campanas")) open.add("publicidad");
   if (pathname.startsWith("/marketing/calendario") || pathname.startsWith("/marketing/contenidos") || pathname.startsWith("/marketing/reporte")) open.add("contenido-organico");
   return open;
