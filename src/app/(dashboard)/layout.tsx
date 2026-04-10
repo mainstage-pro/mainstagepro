@@ -11,19 +11,26 @@ export default async function DashboardLayout({
   const session = await getSession();
   if (!session) redirect("/login");
 
-  // Fetch config and user module access in parallel
-  const [configRows, accesos] = await Promise.all([
-    prisma.appConfig.findMany(),
-    session.role !== "ADMIN"
-      ? prisma.moduloAcceso.findMany({ where: { userId: session.id }, select: { moduloKey: true } })
-      : Promise.resolve(null),
-  ]);
+  // Fetch config and user module access in parallel — fallback gracefully if tables missing
+  let labels: Record<string, string> = {};
+  let privateModules: string[] = [];
+  let userModuleKeys: string[] | null = null;
 
-  const configMap = Object.fromEntries(configRows.map(r => [r.key, r.value]));
-  const labels: Record<string, string> = configMap["nav.labels"] ? JSON.parse(configMap["nav.labels"]) : {};
-  const privateModules: string[] = configMap["nav.private"] ? JSON.parse(configMap["nav.private"]) : [];
-  // null = admin (sees everything), string[] = user's granted module keys
-  const userModuleKeys: string[] | null = accesos === null ? null : accesos.map(a => a.moduloKey);
+  try {
+    const [configRows, accesos] = await Promise.all([
+      prisma.appConfig.findMany(),
+      session.role !== "ADMIN"
+        ? prisma.moduloAcceso.findMany({ where: { userId: session.id }, select: { moduloKey: true } })
+        : Promise.resolve(null),
+    ]);
+    const configMap = Object.fromEntries(configRows.map(r => [r.key, r.value]));
+    labels = configMap["nav.labels"] ? JSON.parse(configMap["nav.labels"]) : {};
+    privateModules = configMap["nav.private"] ? JSON.parse(configMap["nav.private"]) : [];
+    userModuleKeys = accesos === null ? null : accesos.map(a => a.moduloKey);
+  } catch {
+    // Tables may not exist yet — admin sees everything, no private modules
+    userModuleKeys = session.role === "ADMIN" ? null : [];
+  }
 
   return (
     <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
