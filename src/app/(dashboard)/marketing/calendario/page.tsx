@@ -186,8 +186,9 @@ export default function MarketingCalendarioPage() {
     }
   }
 
-  // Feed IG: only POST format, sorted by date
-  const feedPosts = sorted.filter(p => (p.formato ?? p.tipo?.formato) === "POST");
+  // Feed IG: POST, REEL y video content (excluye stories y tiktok-only)
+  const FEED_FORMATOS = ["POST", "REEL"];
+  const feedPosts = sorted.filter(p => FEED_FORMATOS.includes(p.formato ?? p.tipo?.formato ?? ""));
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-5">
@@ -723,6 +724,12 @@ function VistaFeedIG({ feedPosts, openEdit }: {
                   <span className="text-[10px] text-gray-700 font-bold uppercase">{p.tipo?.nombre ?? "Post"}</span>
                   <span className="text-[9px] text-gray-800">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</span>
                   <span className="text-[8px] text-gray-800 italic">Sin portada</span>
+                </div>
+              )}
+              {/* Ícono REEL en esquina superior izquierda */}
+              {(p.formato ?? p.tipo?.formato) === "REEL" && (
+                <div className="absolute top-1 left-1 bg-black/60 rounded px-1 py-0.5">
+                  <span className="text-[8px] text-purple-400 font-bold">▶ REEL</span>
                 </div>
               )}
 
