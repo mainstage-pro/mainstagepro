@@ -93,7 +93,8 @@ model Trato {
   asistentesEstimados    Int?
   serviciosInteres       String?   // JSON: ["AUDIO_PA","ILUMINACION","VIDEO_LED",...]
   ideasReferencias       String?   // links o descripción de referencias
-  etapaContratacion      String?   // EXPLORANDO | COMPARANDO | LISTO_CONTRATAR
+  etapaContratacion      String?   // obsoleto — reemplazado por rutaEntrada
+  rutaEntrada            String?   // DESCUBRIR | RIDER_DIRECTO
   continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
   descubrimientoCompleto Boolean   @default(false)
   // ──────────────────────────────────────────────────────────────────────────

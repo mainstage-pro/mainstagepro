@@ -7,6 +7,21 @@ interface Cliente {
   id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
 }
 
+const RUTAS_CARDS = [
+  {
+    value: "DESCUBRIR",
+    icon: "🔍",
+    label: "Descubrir necesidades",
+    desc: "Nosotros guiamos y proponemos la solución. Enviamos formulario y construimos la cotización juntos.",
+  },
+  {
+    value: "RIDER_DIRECTO",
+    icon: "📋",
+    label: "Entrar directo con rider",
+    desc: "El cliente ya sabe exactamente qué quiere o trae una especificación técnica. Cotización directa.",
+  },
+] as const;
+
 const SERVICIOS_CARDS = [
   { value: "PRODUCCION_TECNICA", icon: "🎛️", label: "Producción técnica",  desc: "Audio, iluminación, video y operación técnica completa" },
   { value: "RENTA",              icon: "📦", label: "Renta de equipo",      desc: "Renta de equipos sin operación técnica incluida" },
@@ -20,20 +35,13 @@ const EVENTOS_CARDS = [
   { value: "OTRO",        icon: "📅", label: "Otro" },
 ] as const;
 
-const ETAPA_CARDS = [
-  { value: "PIDIENDO_INFO",   icon: "ℹ️",  label: "Pidiendo información",     desc: "Investiga opciones, aún no sabe bien qué quiere" },
-  { value: "EXPLORANDO",      icon: "🔍", label: "Descubrimiento básico",     desc: "Tiene idea general, explorando proveedores" },
-  { value: "COMPARANDO",      icon: "⚖️", label: "Descubrimiento profundo",   desc: "Sabe lo que quiere, comparando opciones" },
-  { value: "LISTO_CONTRATAR", icon: "✅", label: "Listo para contratar",      desc: "Decisión tomada, quiere proceder cuanto antes" },
-] as const;
-
 const CANALES = [
-  { value: "WHATSAPP",    label: "WhatsApp",    icon: "💬" },
-  { value: "LLAMADA",     label: "Llamada",     icon: "📞" },
-  { value: "REUNION",     label: "Reunión",     icon: "👥" },
-  { value: "REFERIDO",    label: "Referido",    icon: "🤝" },
-  { value: "FORMULARIO",  label: "Formulario",  icon: "📋" },
-  { value: "INFORMACION", label: "Solo info",   icon: "ℹ️" },
+  { value: "WHATSAPP",    label: "WhatsApp",   icon: "💬" },
+  { value: "LLAMADA",     label: "Llamada",    icon: "📞" },
+  { value: "REUNION",     label: "Reunión",    icon: "👥" },
+  { value: "REFERIDO",    label: "Referido",   icon: "🤝" },
+  { value: "FORMULARIO",  label: "Formulario", icon: "📋" },
+  { value: "INFORMACION", label: "Solo info",  icon: "ℹ️" },
 ];
 
 const ORIGEN_OPTIONS = [
@@ -60,9 +68,14 @@ export default function NuevoTratoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [s1, setS1] = useState({ clienteId:"", clasificacionOriginal:"PROSPECTO", canalAtencion:"WHATSAPP", origenLead:"ORGANICO", tipoLead:"INBOUND", origenVenta:"CLIENTE_PROPIO" });
+  const [s1, setS1] = useState({
+    clienteId: "", clasificacionOriginal: "PROSPECTO",
+    rutaEntrada: "DESCUBRIR",
+    canalAtencion: "WHATSAPP",
+    origenLead: "ORGANICO", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
+  });
   const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
-  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", etapaContratacion:"EXPLORANDO", notas:"" });
+  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
 
   useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
 
@@ -113,6 +126,8 @@ export default function NuevoTratoPage() {
 
       {step===1 && (
         <div className="space-y-4">
+
+          {/* Cliente */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Cliente</h2>
             <div className="flex gap-2 mb-4">
@@ -149,17 +164,37 @@ export default function NuevoTratoPage() {
             )}
           </div>
 
+          {/* Ruta de entrada */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">¿Cómo te está contactando?</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {CANALES.map(c=>(
-                <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`py-2.5 px-2 rounded-lg text-xs font-medium transition-colors border text-center ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                  <div className="text-base mb-0.5">{c.icon}</div>{c.label}
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
+            <div className="space-y-2">
+              {RUTAS_CARDS.map(r=>(
+                <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{r.icon}</span>
+                    <div>
+                      <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
+
+            {/* Canal de comunicación */}
+            <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
+              <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
+              <div className="flex flex-wrap gap-2">
+                {CANALES.map(c=>(
+                  <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                    <span>{c.icon}</span>{c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
+          {/* Origen del lead */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -189,6 +224,8 @@ export default function NuevoTratoPage() {
 
       {step===2 && (
         <div className="space-y-5">
+
+          {/* Tipo de servicio */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">¿Qué tipo de servicio busca? *</h2>
             <div className="space-y-2">
@@ -206,6 +243,7 @@ export default function NuevoTratoPage() {
             </div>
           </div>
 
+          {/* Tipo de evento */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Tipo de evento</h2>
             <div className="grid grid-cols-4 gap-2">
@@ -217,6 +255,7 @@ export default function NuevoTratoPage() {
             </div>
           </div>
 
+          {/* Detalles */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Detalles del evento</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -226,26 +265,10 @@ export default function NuevoTratoPage() {
             </div>
           </div>
 
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">¿En qué momento de decisión está?</h2>
-            <div className="space-y-2">
-              {ETAPA_CARDS.map(e=>(
-                <button key={e.value} type="button" onClick={()=>setS2(p=>({...p,etapaContratacion:e.value}))} className={`w-full text-left p-3 rounded-xl border transition-all ${s2.etapaContratacion===e.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{e.icon}</span>
-                    <div>
-                      <p className={`text-sm font-medium ${s2.etapaContratacion===e.value?"text-[#B3985B]":"text-gray-300"}`}>{e.label}</p>
-                      <p className="text-gray-600 text-xs">{e.desc}</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
+          {/* Notas */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-2 uppercase tracking-wider">Notas iniciales (opcional)</h2>
-            <textarea value={s2.notas} onChange={e=>setS2(p=>({...p,notas:e.target.value}))} rows={3} placeholder="Contexto importante, peticiones especiales, lo que dijeron..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"/>
+            <textarea value={s2.notas} onChange={e=>setS2(p=>({...p,notas:e.target.value}))} rows={3} placeholder="Contexto importante, peticiones especiales, rider recibido..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"/>
           </div>
 
           <div className="flex gap-3 justify-between pb-6">

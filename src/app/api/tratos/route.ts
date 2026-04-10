@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         clasificacion: body.clasificacion || "PROSPECTO",
         tipoServicio: body.tipoServicio || null,
         canalAtencion: body.canalAtencion || null,
+        rutaEntrada: body.rutaEntrada || "DESCUBRIR",
         etapaContratacion: body.etapaContratacion || null,
         lugarEstimado: body.lugarEstimado || null,
         asistentesEstimados: body.asistentesEstimados ? parseInt(body.asistentesEstimados) : null,
