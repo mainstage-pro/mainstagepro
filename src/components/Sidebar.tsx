@@ -253,20 +253,22 @@ export default function Sidebar({ user }: { user: User }) {
       {/* ── DESKTOP: sidebar fijo ── */}
       <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
               <p className="text-[#555] text-[10px]">Sistema operativo</p>
             </div>
-          </div>
+          </Link>
         </div>
         {navContent}
       </aside>
 
       {/* ── MOBILE: barra superior fija ── */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center justify-between px-4">
-        <Image src="/logo-white.png" alt="Mainstage Pro" width={110} height={28} className="object-contain" />
+        <Link href="/dashboard">
+          <Image src="/logo-white.png" alt="Mainstage Pro" width={110} height={28} className="object-contain hover:opacity-80 transition-opacity" />
+        </Link>
         <button
           onClick={() => setMobileOpen(true)}
           className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
@@ -294,13 +296,13 @@ export default function Sidebar({ user }: { user: User }) {
       >
         {/* Header del drawer */}
         <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
               <p className="text-[#555] text-[10px]">Sistema operativo</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={() => setMobileOpen(false)}
             className="w-8 h-8 flex items-center justify-center rounded-md text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-colors text-lg"
