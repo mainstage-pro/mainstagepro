@@ -136,20 +136,18 @@ export default function VendedoresPage() {
       ) : (
         <div className="space-y-3">
           {vendedores.map(v => (
-            <div key={v.id} className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#333] flex items-center justify-center shrink-0">
-                    <span className="text-[#B3985B] text-sm font-semibold">{v.name.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">{v.name}</p>
-                    <p className="text-gray-500 text-xs">{v.email}</p>
-                  </div>
+            <div key={v.id} className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#333] flex items-center justify-center shrink-0">
+                  <span className="text-[#B3985B] text-sm font-semibold">{v.name.charAt(0).toUpperCase()}</span>
                 </div>
-                <p className="text-gray-600 text-xs mt-2 ml-12">{mesDeTrabajoLabel(v.fechaInicioVendedor)}</p>
+                <div className="min-w-0">
+                  <p className="text-white font-medium truncate">{v.name}</p>
+                  <p className="text-gray-500 text-xs truncate">{v.email}</p>
+                  <p className="text-gray-600 text-xs mt-0.5">{mesDeTrabajoLabel(v.fechaInicioVendedor)}</p>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 <Link
                   href={`/ventas?vendedorId=${v.id}`}
                   className="px-3 py-1.5 border border-[#333] text-gray-400 text-xs rounded-lg hover:text-white hover:border-[#555] transition-colors"

@@ -151,22 +151,22 @@ export default function NuevoTratoPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Nuevo Trato</h1>
+    <div className="p-3 md:p-6 max-w-2xl mx-auto">
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-white">Nuevo Trato</h1>
         <p className="text-gray-400 text-sm mt-1">Registra un nuevo prospecto en el pipeline</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Cliente */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Cliente</h2>
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Cliente</h2>
 
-          <div className="flex gap-3 mb-4">
+          <div className="flex gap-2 mb-4">
             <button
               type="button"
               onClick={() => setModoCliente("existente")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
                 modoCliente === "existente"
                   ? "bg-[#B3985B] text-black"
                   : "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"
@@ -177,7 +177,7 @@ export default function NuevoTratoPage() {
             <button
               type="button"
               onClick={() => setModoCliente("nuevo")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
                 modoCliente === "nuevo"
                   ? "bg-[#B3985B] text-black"
                   : "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"
@@ -295,8 +295,8 @@ export default function NuevoTratoPage() {
         </div>
 
         {/* Evento */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Evento</h2>
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Evento</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
@@ -375,8 +375,8 @@ export default function NuevoTratoPage() {
         </div>
 
         {/* Lead */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Origen del Lead</h2>
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del Lead</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Tipo de lead</label>
@@ -421,8 +421,8 @@ export default function NuevoTratoPage() {
         </div>
 
         {/* Seguimiento */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Seguimiento</h2>
+        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Seguimiento</h2>
           <div className="space-y-3">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Notas iniciales</label>
@@ -466,7 +466,7 @@ export default function NuevoTratoPage() {
           </div>
         )}
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-3 justify-end pb-6">
           <button
             type="button"
             onClick={() => router.back()}
