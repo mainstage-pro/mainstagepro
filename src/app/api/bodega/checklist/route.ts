@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "8");
+  const limit = parseInt(req.nextUrl.searchParams.get("limit") ?? "12");
 
   const checklists = await prisma.checklistBodega.findMany({
     orderBy: { fechaInicio: "desc" },
@@ -37,14 +37,13 @@ export async function POST(req: NextRequest) {
   const fecha = body.fechaInicio ? new Date(body.fechaInicio) : new Date();
   const semana = body.semana ?? isoWeek(fecha);
 
-  // No duplicar semana
   const existe = await prisma.checklistBodega.findUnique({ where: { semana } });
-  if (existe) return NextResponse.json({ error: "Ya existe un checklist para esta semana" }, { status: 409 });
+  if (existe) return NextResponse.json({ checklist: existe, ya_existe: true }, { status: 200 });
 
-  // Obtener templates activos para poblar el checklist
-  const templates = await prisma.itemTemplateBodega.findMany({
-    where: { activo: true },
-    orderBy: [{ categoria: "asc" }, { orden: "asc" }],
+  const equipos = await prisma.equipo.findMany({
+    where: { tipo: "PROPIO", activo: true, estado: { not: "PERDIDO" } },
+    include: { categoria: { select: { nombre: true } } },
+    orderBy: [{ categoriaId: "asc" }, { descripcion: "asc" }],
   });
 
   const checklist = await prisma.checklistBodega.create({
@@ -54,18 +53,22 @@ export async function POST(req: NextRequest) {
       estado: "EN_PROGRESO",
       creadoPor: session.name,
       items: {
-        create: templates.map(t => ({
-          descripcion: t.descripcion,
-          categoria: t.categoria,
-          orden: t.orden,
+        create: equipos.map((e, idx) => ({
+          equipoId: e.id,
+          descripcion: [e.marca, e.modelo, e.descripcion].filter(Boolean).join(" — "),
+          categoria: e.categoria.nombre,
+          orden: idx,
           estado: "PENDIENTE",
         })),
       },
     },
     include: {
-      items: { orderBy: [{ categoria: "asc" }, { orden: "asc" }] },
+      items: {
+        orderBy: [{ categoria: "asc" }, { orden: "asc" }],
+        include: { equipo: { select: { id: true, descripcion: true, cantidadTotal: true, estado: true } } },
+      },
     },
   });
 
-  return NextResponse.json({ checklist });
+  return NextResponse.json({ checklist }, { status: 201 });
 }

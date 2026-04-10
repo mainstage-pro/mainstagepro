@@ -15,25 +15,42 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const item = await prisma.checklistBodegaItem.update({ where: { id: itemId }, data });
 
-  // Auto-actualizar estado del checklist
-  const todos = await prisma.checklistBodegaItem.findMany({ where: { checklistId } });
-  const hayAlertas = todos.some(i => i.estado === "FALTA" || i.estado === "DAÑADO");
-  const todoRevisado = todos.every(i => i.estado !== "PENDIENTE");
-  if (todoRevisado) {
-    await prisma.checklistBodega.update({
-      where: { id: checklistId },
-      data: {
-        estado: hayAlertas ? "CON_ALERTAS" : "COMPLETADO",
-        cerradoEn: hayAlertas ? null : new Date(),
-      },
-    });
-  } else {
-    // Asegura que vuelva a EN_PROGRESO si se des-revisa algo
-    await prisma.checklistBodega.update({
-      where: { id: checklistId },
-      data: { estado: "EN_PROGRESO", cerradoEn: null },
-    });
+  // Cascada al equipo según el estado
+  if (item.equipoId && "estado" in body) {
+    const nuevoEstado = body.estado as string;
+    if (nuevoEstado === "PERDIDO") {
+      await prisma.equipo.update({
+        where: { id: item.equipoId },
+        data: { estado: "PERDIDO", activo: false },
+      });
+    } else if (nuevoEstado === "EXTRAVIADO") {
+      await prisma.equipo.update({
+        where: { id: item.equipoId },
+        data: { estado: "EXTRAVIADO" },
+      });
+    } else if (nuevoEstado === "EN_BODEGA") {
+      const equipo = await prisma.equipo.findUnique({ where: { id: item.equipoId } });
+      if (equipo && (equipo.estado === "EXTRAVIADO" || equipo.estado === "PERDIDO")) {
+        await prisma.equipo.update({
+          where: { id: item.equipoId },
+          data: { estado: "ACTIVO", activo: true },
+        });
+      }
+    }
   }
+
+  // Auto-calc estado del checklist
+  const todos = await prisma.checklistBodegaItem.findMany({ where: { checklistId } });
+  const hayAlertas = todos.some(i => i.estado === "EXTRAVIADO" || i.estado === "PERDIDO");
+  const todoRevisado = todos.every(i => i.estado !== "PENDIENTE");
+
+  await prisma.checklistBodega.update({
+    where: { id: checklistId },
+    data: {
+      estado: !todoRevisado ? "EN_PROGRESO" : hayAlertas ? "CON_ALERTAS" : "COMPLETADO",
+      cerradoEn: todoRevisado && !hayAlertas ? new Date() : null,
+    },
+  });
 
   return NextResponse.json({ item });
 }

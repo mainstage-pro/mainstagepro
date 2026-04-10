@@ -107,7 +107,7 @@ const NAV: NavSection[] = [
           { label: "Disponibilidad", href: "/inventario/disponibilidad" },
           { label: "Inv. de equipos", href: "/catalogo/equipos" },
           { label: "Mantenimiento", href: "/inventario/mantenimiento" },
-          { label: "Bodega", href: "/inventario/bodega" },
+          { label: "Checklist semanal", href: "/inventario/bodega" },
         ],
       },
     ],
