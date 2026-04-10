@@ -116,7 +116,7 @@ export default function MantenimientoPage() {
   }).length;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -130,7 +130,7 @@ export default function MantenimientoPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Total registros</p>
           <p className="text-white text-2xl font-bold">{registros.length}</p>

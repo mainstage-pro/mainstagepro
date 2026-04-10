@@ -53,7 +53,7 @@ export default function PersonalPage() {
   const totalPendiente = pagosPendientes.reduce((s, p) => s + p.monto, 0);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Personal Interno</h1>
@@ -73,7 +73,7 @@ export default function PersonalPage() {
       {showForm && (
         <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva persona</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
               <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre"

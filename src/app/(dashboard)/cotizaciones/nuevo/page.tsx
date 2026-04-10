@@ -658,7 +658,7 @@ function CotizadorForm() {
               <pre className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">{tratoNotas}</pre>
             )}
             {tratoArchivos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 border-t border-[#1a1a1a] pt-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:grid-cols-4 border-t border-[#1a1a1a] pt-3">
                 {tratoArchivos.map((a) => {
                   const esImagen = a.tipo === "IMAGEN" || /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
                   return (
@@ -685,7 +685,7 @@ function CotizadorForm() {
         </details>
       )}
 
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <div className="col-span-2 space-y-5">
 
           {/* ── Datos del evento ── */}

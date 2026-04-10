@@ -174,7 +174,7 @@ export default function MarketingCalendarioPage() {
   const selected = selectedId ? publicaciones.find(p => p.id === selectedId) : null;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-5">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -214,7 +214,7 @@ export default function MarketingCalendarioPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Total", value: publicaciones.length, color: "text-white" },
           { label: "Publicadas", value: publicadas, color: "text-green-400" },
@@ -232,7 +232,7 @@ export default function MarketingCalendarioPage() {
       {showForm && (
         <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar publicación" : "Nueva publicación"}</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
               <input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
@@ -399,7 +399,7 @@ export default function MarketingCalendarioPage() {
               {(selected.alcance || selected.impresiones || selected.interacciones || selected.seguidoresGanados) && (
                 <div className="border-t border-[#1a1a1a] pt-3">
                   <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Métricas</p>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
                       { k: "alcance", label: "Alcance", v: selected.alcance },
                       { k: "impresiones", label: "Impresiones", v: selected.impresiones },

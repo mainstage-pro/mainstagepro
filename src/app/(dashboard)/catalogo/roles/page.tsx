@@ -100,7 +100,7 @@ export default function RolesPage() {
   const showForm = editing !== null || creating;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Roles Técnicos</h1>
@@ -147,7 +147,7 @@ export default function RolesPage() {
           {form.tipoPago === "POR_JORNADA" && (
             <div className="mb-4">
               <p className="text-xs text-[#6b7280] mb-2 uppercase tracking-wide">Tarifas por jornada (Corta / Media / Larga)</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {(["AAA","AA","A"] as const).map(nivel => (
                   <div key={nivel} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-3">
                     <p className="text-xs font-semibold text-[#B3985B] mb-2">Nivel {nivel}</p>
@@ -175,7 +175,7 @@ export default function RolesPage() {
           {(form.tipoPago === "TARIFA_PLANA" || form.tipoPago === "POR_PROYECTO") && (
             <div className="mb-4">
               <p className="text-xs text-[#6b7280] mb-2 uppercase tracking-wide">Tarifa por nivel</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {(["AAA","AA","A"] as const).map(nivel => {
                   const key = `tarifaPlana${nivel}` as keyof Omit<Rol,"id">;
                   return (
@@ -198,7 +198,7 @@ export default function RolesPage() {
           {form.tipoPago === "POR_HORA" && (
             <div className="mb-4">
               <p className="text-xs text-[#6b7280] mb-2 uppercase tracking-wide">Tarifa por hora</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {(["AAA","AA","A"] as const).map(nivel => {
                   const key = `tarifaHora${nivel}` as keyof Omit<Rol,"id">;
                   return (
@@ -260,7 +260,7 @@ export default function RolesPage() {
                 </div>
 
                 {r.tipoPago === "POR_JORNADA" && (
-                  <div className="grid grid-cols-4 gap-1 text-xs mt-2 max-w-md">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-1 text-xs mt-2 max-w-md">
                     <div className="text-[#6b7280]"></div>
                     {["AAA","AA","A"].map(n => <div key={n} className="text-[#B3985B] font-semibold text-center">{n}</div>)}
                     {(["Corta","Media","Larga"] as const).map(j => (

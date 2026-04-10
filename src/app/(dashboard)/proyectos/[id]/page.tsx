@@ -709,7 +709,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* ── KPIs rápidos ── */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Checklist</p>
           <p className="text-white text-lg font-bold">{checkDone}<span className="text-gray-500 font-normal text-sm">/{checkTotal}</span></p>
@@ -867,7 +867,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {transporteSlots.map((slot, i) => (
                 <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
                   <p className="text-xs text-gray-600 font-semibold mb-3">Transporte {i + 1}</p>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
                       <input value={slot.proveedor} onChange={e => updateTransporte(i, "proveedor", e.target.value)}
@@ -1082,7 +1082,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         return (
           <div className="space-y-4">
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
                 <p className="text-white text-xl font-bold">{proyecto.equipos.length}</p>
                 <p className="text-gray-500 text-xs">items totales</p>

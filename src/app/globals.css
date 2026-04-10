@@ -56,6 +56,20 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Tablas scrollables en mobile */
+@media (max-width: 767px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+  /* Evitar que overflow-hidden en el wrapper corte el scroll horizontal */
+  .overflow-hidden:has(table) {
+    overflow-x: auto;
+  }
+}
+
 /* Scrollbar minimalista */
 ::-webkit-scrollbar {
   width: 4px;

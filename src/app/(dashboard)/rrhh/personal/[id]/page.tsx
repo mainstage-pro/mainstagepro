@@ -89,10 +89,10 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  if (loading || !persona) return <div className="p-6 text-gray-600 text-sm">Cargando...</div>;
+  if (loading || !persona) return <div className="p-3 md:p-6 text-gray-600 text-sm">Cargando...</div>;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-5">
+    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
@@ -221,7 +221,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
           ) : (
             <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo pago</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Periodo</label>
                   <input type="month" value={pagoForm.periodo} onChange={e => setPagoForm(p => ({ ...p, periodo: e.target.value }))}

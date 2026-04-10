@@ -106,7 +106,7 @@ export default function VentasPage() {
   const mesActual = new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -163,7 +163,7 @@ export default function VentasPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Total pipeline", value: fmt(totalPipeline), sub: "Presupuesto estimado activo" },
           { label: "En descubrimiento", value: tratosPorEtapa.DESCUBRIMIENTO.length, sub: "tratos" },
@@ -182,7 +182,7 @@ export default function VentasPage() {
       {loading ? (
         <div className="text-gray-500 text-sm text-center py-10">Cargando...</div>
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {ETAPAS.map(etapa => (
             <div key={etapa} className={`bg-[#111] border rounded-xl p-4 ${etapa === "VENTA_PERDIDA" ? "border-[#1f1f1f] opacity-70" : "border-[#222]"}`}>
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b border-[#1a1a1a]`}>

@@ -30,7 +30,7 @@ export default async function PipelinePage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-160px)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-160px)]">
         {COLUMNAS.map(({ etapa, label, color }) => {
           const columnaTratos = tratos.filter((t) => t.etapa === etapa);
           return (

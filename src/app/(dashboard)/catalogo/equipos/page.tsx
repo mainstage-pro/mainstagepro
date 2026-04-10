@@ -161,7 +161,7 @@ export default function CatalogoEquiposPage() {
   })).filter(g => g.equipos.length > 0);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold text-white">Catálogo de Equipos</h1>

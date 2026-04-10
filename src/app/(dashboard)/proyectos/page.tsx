@@ -19,7 +19,7 @@ export default async function ProyectosPage() {
   const completados = proyectos.filter((p) => p.estado === "COMPLETADO");
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Proyectos</h1>

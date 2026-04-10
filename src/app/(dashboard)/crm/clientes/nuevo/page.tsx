@@ -115,7 +115,7 @@ export default function NuevoClientePage() {
 
         <div className="bg-[#111] border border-[#222] rounded-xl p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Clasificación</h2>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Tipo de cliente</label>
               <select

@@ -26,7 +26,7 @@ export default async function NominaPage() {
   const nominaMes = pagos.filter(p => p.periodo === mesActual);
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Nómina</h1>
@@ -38,7 +38,7 @@ export default async function NominaPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Pendiente de pago</p>
           <p className="text-yellow-400 text-xl font-semibold">{fmt(pendiente)}</p>

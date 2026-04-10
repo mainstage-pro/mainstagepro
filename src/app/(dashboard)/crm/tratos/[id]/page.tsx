@@ -420,7 +420,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-gray-500 text-xs">Selecciona la ruta de atención para determinar el nivel de descubrimiento</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {CANALES.map(canal => (
               <button key={canal.id} onClick={() => seleccionarCanal(canal.id)} disabled={saving}
                 className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
@@ -524,7 +524,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Campos medios — formulario y arriba */}
             {(profundidad === "MEDIO" || profundidad === "PROFUNDO") && (
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-[#1a1a1a]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-[#1a1a1a]">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
                   <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
@@ -831,7 +831,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ── Grid: Detalles + Sidebar ── */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Datos del evento (editable) */}
         <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">

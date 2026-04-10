@@ -65,7 +65,7 @@ export default function TemplatesPage() {
   })).filter(g => g.items.length > 0);
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Catálogo de items — Bodega</h1>
@@ -81,7 +81,7 @@ export default function TemplatesPage() {
       {showForm && (
         <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar item" : "Nuevo item"}</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Descripción *</label>
               <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}

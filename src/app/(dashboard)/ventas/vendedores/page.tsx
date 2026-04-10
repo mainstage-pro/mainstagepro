@@ -58,7 +58,7 @@ export default function VendedoresPage() {
   const mesActual = new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-3 md:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>

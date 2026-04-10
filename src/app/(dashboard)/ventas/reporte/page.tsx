@@ -122,7 +122,7 @@ export default function ReporteComisionesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -167,7 +167,7 @@ export default function ReporteComisionesPage() {
       {data && !loading && (
         <>
           {/* Info vendedor + piso */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-1">Vendedor</p>
               <p className="text-white font-semibold">{data.vendedor.name}</p>
@@ -194,7 +194,7 @@ export default function ReporteComisionesPage() {
           </div>
 
           {/* Desglose */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
               <p className="text-2xl font-bold text-white">{data.resumen.totalTratos}</p>
               <p className="text-xs text-gray-500 mt-1">Tratos cerrados</p>

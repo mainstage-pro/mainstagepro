@@ -53,7 +53,7 @@ export default function BodegaPage() {
   const tieneActual = checklists.some(c => c.semana === semanaActual);
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Checklist de Bodega</h1>

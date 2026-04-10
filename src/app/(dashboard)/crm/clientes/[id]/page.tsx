@@ -337,7 +337,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-y-4 gap-x-6 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
             <div>
               <p className="text-gray-500 text-xs mb-1">Teléfono</p>
               <p className="text-white">{cliente.telefono || "—"}</p>
@@ -365,7 +365,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Stats rápidas */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
           <p className="text-2xl font-bold text-white">{cliente.tratos.length}</p>
           <p className="text-gray-400 text-xs mt-1">Tratos</p>

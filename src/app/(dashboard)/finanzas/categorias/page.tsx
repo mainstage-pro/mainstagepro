@@ -73,7 +73,7 @@ export default function CategoriasPage() {
   })).filter(g => g.items.length > 0 || !editId);
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Categorías Financieras</h1>
@@ -93,7 +93,7 @@ export default function CategoriasPage() {
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
             {editId ? "Editar categoría" : "Nueva categoría"}
           </p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
               <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}

@@ -58,7 +58,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     await load();
   }
 
-  if (loading || !checklist) return <div className="p-6 text-gray-600 text-sm">Cargando...</div>;
+  if (loading || !checklist) return <div className="p-3 md:p-6 text-gray-600 text-sm">Cargando...</div>;
 
   const itemsPorCategoria = CATEGORIAS_ORDER.map(cat => ({
     cat,
@@ -75,7 +75,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const pct     = total > 0 ? Math.round((checklist.items.filter(i => i.estado !== "PENDIENTE").length / total) * 100) : 0;
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-5">
+    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
