@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { nombre, formato, objetivo, diaSemana, semanaDelMes, recurrencia, cantMes, descripcion, activo, orden,
-          enFacebook, enInstagram, enTiktok, enYoutube } = body;
+          enFacebook, enInstagram, enTiktok, enYoutube, enFeedIG } = body;
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
   const tipo = await prisma.tipoContenido.create({
@@ -107,6 +107,7 @@ export async function POST(request: NextRequest) {
       enInstagram: enInstagram ?? false,
       enTiktok: enTiktok ?? false,
       enYoutube: enYoutube ?? false,
+      enFeedIG: enFeedIG ?? false,
     },
   });
 

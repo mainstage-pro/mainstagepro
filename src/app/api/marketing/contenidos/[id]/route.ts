@@ -10,7 +10,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
   const allowed = [
     "nombre", "formato", "objetivo", "diaSemana", "semanaDelMes", "recurrencia", "cantMes", "descripcion",
-    "activo", "orden", "enFacebook", "enInstagram", "enTiktok", "enYoutube",
+    "activo", "orden", "enFacebook", "enInstagram", "enTiktok", "enYoutube", "enFeedIG",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {

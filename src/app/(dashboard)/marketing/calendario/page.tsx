@@ -5,7 +5,7 @@ import Link from "next/link";
 
 interface Tipo {
   id: string; nombre: string; formato: string;
-  enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
+  enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean; enFeedIG: boolean;
 }
 interface Publicacion {
   id: string; fecha: string; tipo: Tipo | null; tipoId: string | null;
@@ -186,9 +186,8 @@ export default function MarketingCalendarioPage() {
     }
   }
 
-  // Feed IG: POST, REEL y video content (excluye stories y tiktok-only)
-  const FEED_FORMATOS = ["POST", "REEL"];
-  const feedPosts = sorted.filter(p => FEED_FORMATOS.includes(p.formato ?? p.tipo?.formato ?? ""));
+  // Feed IG: solo tipos marcados como enFeedIG
+  const feedPosts = sorted.filter(p => p.tipo?.enFeedIG === true);
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-5">
@@ -726,9 +725,9 @@ function VistaFeedIG({ feedPosts, openEdit }: {
                   <span className="text-[8px] text-gray-800 italic">Sin portada</span>
                 </div>
               )}
-              {/* Ícono REEL en esquina superior izquierda */}
+              {/* Badge formato en esquina superior izquierda */}
               {(p.formato ?? p.tipo?.formato) === "REEL" && (
-                <div className="absolute top-1 left-1 bg-black/60 rounded px-1 py-0.5">
+                <div className="absolute top-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
                   <span className="text-[8px] text-purple-400 font-bold">▶ REEL</span>
                 </div>
               )}

@@ -842,6 +842,7 @@ model TipoContenido {
   enInstagram  Boolean @default(false)
   enTiktok     Boolean @default(false)
   enYoutube    Boolean @default(false)
+  enFeedIG     Boolean @default(false) // Aparece en previsualización Feed IG
 
   publicaciones Publicacion[]
 

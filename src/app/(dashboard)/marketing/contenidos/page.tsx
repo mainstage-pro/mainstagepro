@@ -6,7 +6,7 @@ interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
   diaSemana: string | null; semanaDelMes: number | null; recurrencia: string | null; cantMes: number | null;
   descripcion: string | null; activo: boolean; orden: number;
-  enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
+  enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean; enFeedIG: boolean;
 }
 
 const SEMANA_LABEL: Record<number, string> = { 1: "1er", 2: "2do", 3: "3er", 4: "4to" };
@@ -31,7 +31,7 @@ const PLATAFORMAS = [
 
 const EMPTY = {
   nombre: "", formato: "POST", objetivo: "", diaSemana: "", semanaDelMes: "", recurrencia: "", cantMes: "",
-  descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
+  descripcion: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false, enFeedIG: false,
 };
 
 export default function ContenidosPage() {
@@ -58,7 +58,7 @@ export default function ContenidosPage() {
       recurrencia: t.recurrencia ?? "", cantMes: t.cantMes?.toString() ?? "",
       descripcion: t.descripcion ?? "",
       enFacebook: t.enFacebook, enInstagram: t.enInstagram,
-      enTiktok: t.enTiktok, enYoutube: t.enYoutube,
+      enTiktok: t.enTiktok, enYoutube: t.enYoutube, enFeedIG: t.enFeedIG,
     });
     setEditId(t.id);
     setShowForm(true);
@@ -78,7 +78,7 @@ export default function ContenidosPage() {
       cantMes: form.cantMes ? parseInt(form.cantMes) : null,
       descripcion: form.descripcion || null,
       enFacebook: form.enFacebook, enInstagram: form.enInstagram,
-      enTiktok: form.enTiktok, enYoutube: form.enYoutube,
+      enTiktok: form.enTiktok, enYoutube: form.enYoutube, enFeedIG: form.enFeedIG,
     };
     if (editId) {
       await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -200,6 +200,11 @@ export default function ContenidosPage() {
                     <span className="text-gray-400 text-sm group-hover:text-white transition-colors">{plt.label}</span>
                   </label>
                 ))}
+                <label className="flex items-center gap-2 cursor-pointer group ml-4 pl-4 border-l border-[#2a2a2a]">
+                  <input type="checkbox" checked={form.enFeedIG} onChange={e => setForm(p => ({ ...p, enFeedIG: e.target.checked }))}
+                    className="accent-pink-500" />
+                  <span className="text-pink-400 text-sm group-hover:text-pink-300 transition-colors font-medium">Feed IG</span>
+                </label>
               </div>
             </div>
           </div>
@@ -237,6 +242,9 @@ export default function ContenidosPage() {
                     )}
                     {t.cantMes && (
                       <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded font-semibold">{t.cantMes}× al mes</span>
+                    )}
+                    {t.enFeedIG && (
+                      <span className="text-[10px] text-pink-400 bg-pink-900/20 border border-pink-900/30 px-2 py-0.5 rounded font-semibold">Feed IG</span>
                     )}
                   </div>
 
