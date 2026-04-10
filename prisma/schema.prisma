@@ -741,8 +741,11 @@ model PersonalInterno {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  documentos DocumentoPersonal[]
-  pagos      PagoNomina[]
+  documentos    DocumentoPersonal[]
+  pagos         PagoNomina[]
+  asistencias   Asistencia[]
+  incidencias   Incidencia[]
+  evaluaciones  EvaluacionEmpleado[]
 
   @@map("personal_interno")
 }
@@ -779,6 +782,85 @@ model PagoNomina {
   createdAt      DateTime             @default(now())
 
   @@map("pagos_nomina")
+}
+
+// ─── ASISTENCIA E INCIDENCIAS ────────────────────────────────────────────────
+
+model Asistencia {
+  id             String          @id @default(cuid())
+  personalId     String
+  personal       PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  fecha          DateTime
+  estado         String          // PRESENTE | FALTA | RETARDO | PERMISO | VACACIONES | INCAPACIDAD
+  minutosRetardo Int?
+  horaEntrada    String?
+  horaSalida     String?
+  notas          String?
+  createdAt      DateTime        @default(now())
+
+  @@unique([personalId, fecha])
+  @@map("asistencias")
+}
+
+model TipoIncidencia {
+  id          String  @id @default(cuid())
+  nombre      String
+  categoria   String  // ASISTENCIA | CONDUCTA | DESEMPEÑO | RECONOCIMIENTO
+  calculoTipo String  @default("SIN_DESCUENTO") // FIJO | PORCENTAJE_DIA | PORCENTAJE_HORA | SIN_DESCUENTO
+  valor       Float   @default(0)
+  esDescuento Boolean @default(true)
+  descripcion String?
+  activo      Boolean @default(true)
+
+  incidencias Incidencia[]
+
+  @@map("tipos_incidencia")
+}
+
+model Incidencia {
+  id             String          @id @default(cuid())
+  personalId     String
+  personal       PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  tipoId         String
+  tipo           TipoIncidencia  @relation(fields: [tipoId], references: [id])
+  fecha          DateTime
+  descripcion    String?
+  montoCalculado Float?
+  periodoNomina  String?         // "2026-04"
+  aplicada       Boolean         @default(false)
+  notificada     Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+
+  @@map("incidencias")
+}
+
+model EvaluacionEmpleado {
+  id           String          @id @default(cuid())
+  personalId   String
+  personal     PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  periodo      String
+  evaluador    String?
+  fecha        DateTime        @default(now())
+
+  puntualidad      Int @default(0)
+  ordenLimpieza    Int @default(0)
+  actitud          Int @default(0)
+  comunicacion     Int @default(0)
+  resolucionProb   Int @default(0)
+  propuestasMejora Int @default(0)
+  calidadTrabajo   Int @default(0)
+  trabajoEquipo    Int @default(0)
+
+  aspectosPositivos String?
+  areasMejora       String?
+  incidentesNota    String?
+  observaciones     String?
+
+  puntajeTotal Float?
+  estado       String   @default("BORRADOR") // BORRADOR | COMPLETADA
+  createdAt    DateTime @default(now())
+
+  @@map("evaluaciones_empleado")
 }
 
 // ─── BODEGA ──────────────────────────────────────────────────────────────────

@@ -36,6 +36,7 @@ const NAV: NavSection[] = [
           { label: "Por pagar", href: "/finanzas/cxp" },
           { label: "Cuentas bancarias", href: "/finanzas/cuentas" },
           { label: "Categorías", href: "/finanzas/categorias" },
+          { label: "Reporte", href: "/finanzas/reporte" },
         ],
       },
       {
@@ -43,6 +44,9 @@ const NAV: NavSection[] = [
         children: [
           { label: "Personal", href: "/rrhh/personal" },
           { label: "Nómina", href: "/rrhh/nomina" },
+          { label: "Asistencia", href: "/rrhh/asistencia" },
+          { label: "Incidencias", href: "/rrhh/incidencias" },
+          { label: "Evaluaciones", href: "/rrhh/evaluaciones" },
         ],
       },
       {
