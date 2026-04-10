@@ -56,17 +56,22 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    section: "CONTENIDO ORGÁNICO",
+    section: "MARKETING",
     items: [
-      { label: "Calendario", href: "/marketing/calendario" },
-      { label: "Tipos de contenido", href: "/marketing/contenidos" },
-      { label: "Reporte", href: "/marketing/reporte" },
-    ],
-  },
-  {
-    section: "PUBLICIDAD",
-    items: [
-      { label: "Campañas", href: "/marketing/campanas" },
+      {
+        label: "Contenido orgánico",
+        children: [
+          { label: "Calendario", href: "/marketing/calendario" },
+          { label: "Tipos de contenido", href: "/marketing/contenidos" },
+          { label: "Reporte", href: "/marketing/reporte" },
+        ],
+      },
+      {
+        label: "Publicidad",
+        children: [
+          { label: "Campañas", href: "/marketing/campanas" },
+        ],
+      },
     ],
   },
   {
@@ -124,6 +129,8 @@ function getInitialOpen(pathname: string): Set<string> {
   if (pathname.startsWith("/finanzas")) open.add("Finanzas");
   if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("Base de datos");
   if (pathname.startsWith("/rrhh")) open.add("RR.HH.");
+  if (pathname.startsWith("/marketing/campanas")) open.add("Publicidad");
+  if (pathname.startsWith("/marketing/calendario") || pathname.startsWith("/marketing/contenidos") || pathname.startsWith("/marketing/reporte")) open.add("Contenido orgánico");
   return open;
 }
 
