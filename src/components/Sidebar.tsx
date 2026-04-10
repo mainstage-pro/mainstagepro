@@ -5,113 +5,136 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
+interface NavChild {
+  key?: string;
+  label: string;
+  href: string;
+}
+
 interface NavItem {
+  key?: string;
   label: string;
   href?: string;
-  children?: { label: string; href: string }[];
+  adminOnly?: boolean;
+  children?: NavChild[];
 }
 
 interface NavSection {
+  key: string;
   section: string;
   items: NavItem[];
 }
 
 const NAV: NavSection[] = [
   {
+    key: "seccion-direccion",
     section: "DIRECCIÓN",
     items: [
-      { label: "Dashboard", href: "/dashboard" },
-      { label: "Calendario de eventos", href: "/calendario" },
-      { label: "Usuarios y accesos", href: "/admin/usuarios" },
+      { key: "dashboard", label: "Dashboard", href: "/dashboard" },
+      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+      { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
+      { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
   },
   {
+    key: "seccion-administracion",
     section: "ADMINISTRACIÓN",
     items: [
       {
+        key: "finanzas",
         label: "Finanzas",
         children: [
-          { label: "Movimientos", href: "/finanzas/movimientos" },
-          { label: "Por cobrar", href: "/finanzas/cxc" },
-          { label: "Por pagar", href: "/finanzas/cxp" },
-          { label: "Cuentas bancarias", href: "/finanzas/cuentas" },
-          { label: "Categorías", href: "/finanzas/categorias" },
-          { label: "Reporte", href: "/finanzas/reporte" },
+          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
+          { key: "finanzas-cxc", label: "Por cobrar", href: "/finanzas/cxc" },
+          { key: "finanzas-cxp", label: "Por pagar", href: "/finanzas/cxp" },
+          { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
+          { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
+          { key: "finanzas-reporte", label: "Reporte", href: "/finanzas/reporte" },
         ],
       },
       {
+        key: "rrhh",
         label: "RR.HH.",
         children: [
-          { label: "Personal", href: "/rrhh/personal" },
-          { label: "Nómina", href: "/rrhh/nomina" },
-          { label: "Asistencia", href: "/rrhh/asistencia" },
-          { label: "Incidencias", href: "/rrhh/incidencias" },
-          { label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "rrhh-personal", label: "Personal", href: "/rrhh/personal" },
+          { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
+          { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
+          { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
+          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
         ],
       },
       {
+        key: "base-datos",
         label: "Base de datos",
         children: [
-          { label: "Roles técnicos", href: "/catalogo/roles" },
-          { label: "Técnicos", href: "/catalogo/tecnicos" },
-          { label: "Proveedores", href: "/catalogo/proveedores" },
+          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
+          { key: "bd-tecnicos", label: "Técnicos", href: "/catalogo/tecnicos" },
+          { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
         ],
       },
     ],
   },
   {
+    key: "seccion-marketing",
     section: "MARKETING",
     items: [
       {
+        key: "contenido-organico",
         label: "Contenido orgánico",
         children: [
-          { label: "Calendario", href: "/marketing/calendario" },
-          { label: "Tipos de contenido", href: "/marketing/contenidos" },
-          { label: "Reporte", href: "/marketing/reporte" },
+          { key: "mkt-calendario", label: "Calendario", href: "/marketing/calendario" },
+          { key: "mkt-contenidos", label: "Tipos de contenido", href: "/marketing/contenidos" },
+          { key: "mkt-reporte", label: "Reporte", href: "/marketing/reporte" },
         ],
       },
       {
+        key: "publicidad",
         label: "Publicidad",
         children: [
-          { label: "Campañas", href: "/marketing/campanas" },
+          { key: "mkt-campanas", label: "Campañas", href: "/marketing/campanas" },
         ],
       },
     ],
   },
   {
+    key: "seccion-ventas",
     section: "VENTAS",
     items: [
       {
+        key: "crm",
         label: "CRM",
         children: [
-          { label: "Pipeline", href: "/crm/pipeline" },
-          { label: "Tratos", href: "/crm/tratos" },
-          { label: "Clientes", href: "/crm/clientes" },
+          { key: "crm-pipeline", label: "Pipeline", href: "/crm/pipeline" },
+          { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
+          { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
         ],
       },
-      { label: "Cotizaciones", href: "/cotizaciones" },
+      { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
       {
+        key: "comisiones",
         label: "Comisiones",
         children: [
-          { label: "Pipeline", href: "/ventas" },
-          { label: "Reporte", href: "/ventas/reporte" },
-          { label: "Vendedores", href: "/ventas/vendedores" },
-          { label: "Configuración", href: "/ventas/config" },
+          { key: "comisiones-pipeline", label: "Pipeline", href: "/ventas" },
+          { key: "comisiones-reporte", label: "Reporte", href: "/ventas/reporte" },
+          { key: "comisiones-vendedores", label: "Vendedores", href: "/ventas/vendedores" },
+          { key: "comisiones-config", label: "Configuración", href: "/ventas/config" },
         ],
       },
     ],
   },
   {
+    key: "seccion-produccion",
     section: "PRODUCCIÓN",
     items: [
-      { label: "Proyectos", href: "/proyectos" },
+      { key: "proyectos", label: "Proyectos", href: "/proyectos" },
       {
+        key: "inventario",
         label: "Inventario",
         children: [
-          { label: "Disponibilidad", href: "/inventario/disponibilidad" },
-          { label: "Inv. de equipos", href: "/catalogo/equipos" },
-          { label: "Mantenimiento", href: "/inventario/mantenimiento" },
-          { label: "Checklist semanal", href: "/inventario/bodega" },
+          { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
+          { key: "inv-equipos", label: "Inv. de equipos", href: "/catalogo/equipos" },
+          { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
+          { key: "inv-bodega", label: "Checklist semanal", href: "/inventario/bodega" },
         ],
       },
     ],
@@ -125,41 +148,57 @@ interface User {
   role: string;
 }
 
+interface SidebarProps {
+  user: User;
+  labels: Record<string, string>;
+  privateModules: string[];
+  userModuleKeys: string[] | null; // null = admin (all access)
+}
+
+function resolveLabel(key: string | undefined, defaultLabel: string, labels: Record<string, string>): string {
+  if (key && labels[key]) return labels[key];
+  return defaultLabel;
+}
+
+function canAccess(key: string | undefined, isAdmin: boolean, privateModules: string[], userModuleKeys: string[] | null): boolean {
+  if (!key) return true;
+  if (isAdmin) return true;
+  if (!privateModules.includes(key)) return true;
+  if (userModuleKeys === null) return true;
+  return userModuleKeys.includes(key);
+}
+
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  if (pathname.startsWith("/crm")) open.add("CRM");
-  if (pathname.startsWith("/ventas")) open.add("Comisiones");
-  if (pathname.startsWith("/inventario") || pathname.startsWith("/catalogo/equipos")) open.add("Inventario");
-  if (pathname.startsWith("/finanzas")) open.add("Finanzas");
-  if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("Base de datos");
-  if (pathname.startsWith("/rrhh")) open.add("RR.HH.");
-  if (pathname.startsWith("/marketing/campanas")) open.add("Publicidad");
-  if (pathname.startsWith("/marketing/calendario") || pathname.startsWith("/marketing/contenidos") || pathname.startsWith("/marketing/reporte")) open.add("Contenido orgánico");
+  if (pathname.startsWith("/crm")) open.add("crm");
+  if (pathname.startsWith("/ventas")) open.add("comisiones");
+  if (pathname.startsWith("/inventario") || pathname.startsWith("/catalogo/equipos")) open.add("inventario");
+  if (pathname.startsWith("/finanzas")) open.add("finanzas");
+  if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("base-datos");
+  if (pathname.startsWith("/rrhh")) open.add("rrhh");
+  if (pathname.startsWith("/marketing/campanas")) open.add("publicidad");
+  if (pathname.startsWith("/marketing/calendario") || pathname.startsWith("/marketing/contenidos") || pathname.startsWith("/marketing/reporte")) open.add("contenido-organico");
   return open;
 }
 
-export default function Sidebar({ user }: { user: User }) {
+export default function Sidebar({ user, labels, privateModules, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const isAdmin = user.role === "ADMIN";
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Cerrar drawer al navegar
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
-  // Bloquear scroll del body cuando el drawer está abierto
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [mobileOpen]);
 
-  function toggleGroup(label: string) {
+  function toggleGroup(key: string) {
     setOpenGroups(prev => {
       const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   }
@@ -177,68 +216,81 @@ export default function Sidebar({ user }: { user: User }) {
 
   const navContent = (
     <>
-      {/* Nav */}
       <nav className="flex-1 px-2 py-3 overflow-y-auto">
-        {NAV.map((section) => (
-          <div key={section.section} className="mb-4">
-            <p className="text-[#3a3a3a] text-[9px] font-bold uppercase tracking-widest px-3 mb-1.5">
-              {section.section}
-            </p>
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                if (item.children) {
-                  const isOpen = openGroups.has(item.label);
-                  const isGroupActive = item.children.some((c) => isActive(c.href));
+        {NAV.map((section) => {
+          const sectionLabel = resolveLabel(section.key, section.section, labels);
+          const visibleItems = section.items.filter(item => {
+            if (item.adminOnly && !isAdmin) return false;
+            return canAccess(item.key, isAdmin, privateModules, userModuleKeys);
+          });
+          if (visibleItems.length === 0) return null;
+
+          return (
+            <div key={section.key} className="mb-4">
+              <p className="text-[#3a3a3a] text-[11px] font-bold uppercase tracking-widest px-3 mb-1.5">
+                {sectionLabel}
+              </p>
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const itemLabel = resolveLabel(item.key, item.label, labels);
+                  if (item.children) {
+                    const groupKey = item.key ?? item.label;
+                    const isOpen = openGroups.has(groupKey);
+                    const isGroupActive = item.children.some((c) => isActive(c.href));
+                    return (
+                      <div key={groupKey}>
+                        <button
+                          onClick={() => toggleGroup(groupKey)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                            isGroupActive
+                              ? "text-[#B3985B]"
+                              : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
+                          }`}
+                        >
+                          <span>{itemLabel}</span>
+                          <span className={`text-[9px] transition-transform opacity-40 ${isOpen ? "rotate-90" : ""}`}>▶</span>
+                        </button>
+                        {isOpen && (
+                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
+                            {item.children.map((child) => {
+                              const childLabel = resolveLabel(child.key, child.label, labels);
+                              return (
+                                <Link
+                                  key={child.href}
+                                  href={child.href}
+                                  className={`block px-2 py-1.5 rounded text-sm transition-colors ${
+                                    isActive(child.href)
+                                      ? "text-[#B3985B] font-medium"
+                                      : "text-[#5a6370] hover:text-white"
+                                  }`}
+                                >
+                                  {childLabel}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
                   return (
-                    <div key={item.label}>
-                      <button
-                        onClick={() => toggleGroup(item.label)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
-                          isGroupActive
-                            ? "text-[#B3985B]"
-                            : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-                        }`}
-                      >
-                        <span>{item.label}</span>
-                        <span className={`text-[9px] transition-transform opacity-40 ${isOpen ? "rotate-90" : ""}`}>▶</span>
-                      </button>
-                      {isOpen && (
-                        <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                          {item.children.map((child) => (
-                            <Link
-                              key={child.href}
-                              href={child.href}
-                              className={`block px-2 py-1.5 rounded text-sm transition-colors ${
-                                isActive(child.href)
-                                  ? "text-[#B3985B] font-medium"
-                                  : "text-[#5a6370] hover:text-white"
-                              }`}
-                            >
-                              {child.label}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Link
+                      key={item.href}
+                      href={item.href!}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                        isActive(item.href!)
+                          ? "bg-[#1a1a1a] text-white"
+                          : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
+                      }`}
+                    >
+                      {itemLabel}
+                    </Link>
                   );
-                }
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href!}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
-                      isActive(item.href!)
-                        ? "bg-[#1a1a1a] text-white"
-                        : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User */}
@@ -268,7 +320,7 @@ export default function Sidebar({ user }: { user: User }) {
 
   return (
     <>
-      {/* ── DESKTOP: sidebar fijo ── */}
+      {/* DESKTOP */}
       <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
           <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
@@ -282,7 +334,7 @@ export default function Sidebar({ user }: { user: User }) {
         {navContent}
       </aside>
 
-      {/* ── MOBILE: barra superior fija ── */}
+      {/* MOBILE: barra superior */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center justify-between px-4">
         <Link href="/dashboard">
           <Image src="/logo-white.png" alt="Mainstage Pro" width={110} height={28} className="object-contain hover:opacity-80 transition-opacity" />
@@ -298,7 +350,7 @@ export default function Sidebar({ user }: { user: User }) {
         </button>
       </header>
 
-      {/* ── MOBILE: backdrop ── */}
+      {/* MOBILE: backdrop */}
       <div
         className={`md:hidden fixed inset-0 z-50 bg-black/70 transition-opacity duration-300 ${
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
@@ -306,13 +358,12 @@ export default function Sidebar({ user }: { user: User }) {
         onClick={() => setMobileOpen(false)}
       />
 
-      {/* ── MOBILE: drawer ── */}
+      {/* MOBILE: drawer */}
       <aside
         className={`md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col transition-transform duration-300 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Header del drawer */}
         <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
           <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />

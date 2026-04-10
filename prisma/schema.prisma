@@ -26,6 +26,7 @@ model User {
   cotizaciones    Cotizacion[]
   bitacoras       ProyectoBitacora[]
   comisionesPagos ComisionPago[]
+  moduloAccesos   ModuloAcceso[]
 
   @@map("users")
 }
@@ -957,4 +958,23 @@ model Publicacion {
   updatedAt      DateTime       @updatedAt
 
   @@map("publicaciones")
+}
+
+// ─── CONFIGURACIÓN DE LA APP ─────────────────────────────────────────────────
+
+model AppConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+  @@map("app_config")
+}
+
+model ModuloAcceso {
+  id        String   @id @default(cuid())
+  moduloKey String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([moduloKey, userId])
+  @@map("modulo_accesos")
 }
