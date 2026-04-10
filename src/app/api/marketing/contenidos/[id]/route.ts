@@ -26,6 +26,18 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  // Delete future non-published publications for this tipo
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const { count: eliminadas } = await prisma.publicacion.deleteMany({
+    where: {
+      tipoId: id,
+      estado: { in: ["PENDIENTE", "EN_PROCESO", "LISTO"] },
+      fecha: { gte: hoy },
+    },
+  });
+
   await prisma.tipoContenido.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, eliminadas });
 }

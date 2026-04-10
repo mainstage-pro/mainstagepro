@@ -83,7 +83,11 @@ export default function ContenidosPage() {
     if (editId) {
       await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     } else {
-      await fetch("/api/marketing/contenidos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch("/api/marketing/contenidos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const d = await res.json();
+      if (d.generadas > 0) {
+        alert(`✓ Tipo creado. Se generaron ${d.generadas} publicaciones automáticamente en el calendario del mes actual.`);
+      }
     }
     await load();
     cancelForm();
@@ -95,9 +99,11 @@ export default function ContenidosPage() {
     await load();
   }
 
-  async function deleteContenido(id: string) {
-    if (!confirm("¿Eliminar este tipo de contenido?")) return;
-    await fetch(`/api/marketing/contenidos/${id}`, { method: "DELETE" });
+  async function deleteContenido(id: string, nombre: string) {
+    if (!confirm(`¿Eliminar "${nombre}"?\n\nSe eliminarán también todas las publicaciones pendientes de este tipo en el calendario.`)) return;
+    const res = await fetch(`/api/marketing/contenidos/${id}`, { method: "DELETE" });
+    const d = await res.json();
+    if (d.eliminadas > 0) alert(`Se eliminaron ${d.eliminadas} publicaciones del calendario.`);
     await load();
   }
 
@@ -265,7 +271,7 @@ export default function ContenidosPage() {
                 <div className="flex items-center gap-3 shrink-0">
                   <button onClick={() => startEdit(t)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>
                   <button onClick={() => toggleActivo(t)} className="text-xs text-gray-500 hover:text-yellow-400 transition-colors">Desactivar</button>
-                  <button onClick={() => deleteContenido(t.id)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
+                  <button onClick={() => deleteContenido(t.id, t.nombre)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
                 </div>
               </div>
             </div>

@@ -11,7 +11,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const allowed = [
     "fecha", "tipoId", "formato", "objetivo", "descripcion", "copy",
     "enFacebook", "enInstagram", "enTiktok", "enYoutube",
-    "materialLink", "colaboradores", "estado", "comentarios",
+    "materialLink", "portadaUrl", "colaboradores", "estado", "comentarios",
     "alcance", "impresiones", "interacciones", "seguidoresGanados",
   ];
   const data: Record<string, unknown> = {};

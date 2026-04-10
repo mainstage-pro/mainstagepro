@@ -862,6 +862,7 @@ model Publicacion {
   enTiktok       Boolean        @default(false)
   enYoutube      Boolean        @default(false)
   materialLink   String?
+  portadaUrl     String?        // URL de imagen de portada (para feed IG)
   colaboradores  String?
   estado         String         @default("PENDIENTE")
   comentarios    String?

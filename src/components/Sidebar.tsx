@@ -56,10 +56,17 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    section: "MARKETING",
+    section: "CONTENIDO ORGÁNICO",
     items: [
-      { label: "Calendario de contenido", href: "/marketing/calendario" },
+      { label: "Calendario", href: "/marketing/calendario" },
       { label: "Tipos de contenido", href: "/marketing/contenidos" },
+      { label: "Reporte", href: "/marketing/reporte" },
+    ],
+  },
+  {
+    section: "PUBLICIDAD",
+    items: [
+      { label: "Campañas", href: "/marketing/campanas" },
     ],
   },
   {
