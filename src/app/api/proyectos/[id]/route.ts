@@ -113,8 +113,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     await tx.cuentaCobrar.deleteMany({ where: { proyectoId: id } });
     await tx.cuentaPagar.deleteMany({ where: { proyectoId: id } });
 
-    // 5. Borrar evaluación interna si existe
+    // 5. Borrar evaluaciones si existen
     await tx.evaluacionInterna.deleteMany({ where: { proyectoId: id } });
+    await tx.evaluacionCliente.deleteMany({ where: { proyectoId: id } });
 
     // 6. Borrar el proyecto (cascade: personal, equipos, checklist, archivos, bitácora)
     await tx.proyecto.delete({ where: { id } });
