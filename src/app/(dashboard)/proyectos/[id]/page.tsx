@@ -12,7 +12,8 @@ interface Personal {
   participacion: string | null;
   nivel: string | null; jornada: string | null; responsabilidad: string | null;
   tarifaAcordada: number | null; notas: string | null;
-  tecnico: { id: string; nombre: string; rol: { nombre: string } | null } | null;
+  confirmToken: string | null; confirmRespuesta: string | null;
+  tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   rolTecnico: { nombre: string } | null;
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
@@ -23,7 +24,7 @@ interface CxC { id: string; concepto: string; tipoPago: string; monto: number; m
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } }; proveedor: { nombre: string } | null }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } }; proveedor: { nombre: string; telefono: string | null } | null }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { proveedor: string; marcaModelo: string; comentarios: string }
 interface Proyecto {
@@ -1187,11 +1188,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-600 text-[10px]">costo</p>
                 </div>
               )}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                {/* Respuesta del proveedor */}
+                {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                    eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
+                  }`}>
+                    {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
+                  </span>
+                )}
                 <button onClick={() => toggleConfirmadoEquipo(eq.id, eq.confirmado)}
                   className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
                   {eq.confirmado ? "Confirmado" : "Confirmar"}
                 </button>
+                {/* Botón invitar proveedor (solo equipo externo con proveedor) */}
+                {eq.tipo === "EXTERNO" && eq.proveedor && (
+                  <button
+                    onClick={async () => {
+                      const res = await fetch(`/api/proyectos/${id}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
+                      const d = await res.json();
+                      if (d.whatsappUrl) {
+                        window.open(d.whatsappUrl, "_blank");
+                        await load();
+                      } else if (d.token) {
+                        const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
+                        await navigator.clipboard.writeText(url).catch(() => {});
+                        alert(`Sin número registrado. Link copiado:\n${url}`);
+                        await load();
+                      }
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-full font-medium border border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 transition-colors"
+                    title="Consultar disponibilidad al proveedor">
+                    📲 Proveedor
+                  </button>
+                )}
                 <button onClick={() => eliminarEquipo(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
               </div>
             </div>
@@ -1465,7 +1495,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                             {p.tarifaAcordada != null && (
                               <span className="text-gray-300 text-sm">{fmt(p.tarifaAcordada)}</span>
                             )}
@@ -1474,6 +1504,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             }`}>
                               {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
                             </span>
+                            {/* Respuesta de confirmación vía link */}
+                            {p.confirmRespuesta && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
+                              }`}>
+                                {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
+                              </span>
+                            )}
                             <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
                               className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
                                 p.confirmado
@@ -1482,6 +1520,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               }`}>
                               {p.confirmado ? "✓ Confirmado" : "Confirmar"}
                             </button>
+                            {/* Botón invitar por WhatsApp */}
+                            {p.tecnico && (
+                              <button
+                                onClick={async () => {
+                                  const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
+                                  const d = await res.json();
+                                  if (d.whatsappUrl) {
+                                    window.open(d.whatsappUrl, "_blank");
+                                    await load();
+                                  } else if (d.token) {
+                                    const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
+                                    await navigator.clipboard.writeText(url).catch(() => {});
+                                    alert(`Sin número registrado. Link copiado al portapapeles:\n${url}`);
+                                    await load();
+                                  }
+                                }}
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 transition-colors"
+                                title="Enviar invitación por WhatsApp">
+                                📲 Invitar
+                              </button>
+                            )}
                             <button onClick={() => eliminarPersonal(p.id)}
                               className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors">×</button>
                           </div>

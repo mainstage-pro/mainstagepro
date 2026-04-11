@@ -17,13 +17,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true } },
       personal: {
         include: {
-          tecnico: { include: { rol: { select: { nombre: true } } } },
+          tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
           rolTecnico: { select: { nombre: true } },
         },
         orderBy: { id: "asc" },
       },
       equipos: {
-        include: { equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } } },
+        include: {
+          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          proveedor: { select: { nombre: true, telefono: true } },
+        },
         orderBy: { id: "asc" },
       },
       checklist: { orderBy: { orden: "asc" } },
