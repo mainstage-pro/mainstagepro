@@ -252,6 +252,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [linkCopiado, setLinkCopiado] = useState(false);
   // Modo de descubrimiento: "VENDEDOR" | "CLIENTE" (inferido del formToken, editable)
   const [modoDescubrimiento, setModoDescubrimiento] = useState<"VENDEDOR" | "CLIENTE">("VENDEDOR");
+  // Gate primario: muestra selector de canal dentro del gate
+  const [showCanales, setShowCanales] = useState(false);
 
   // Nurturing state
   type NurturingData = { etapa: string; temperatura: string; nextFollowup: string; nextMotivo: string; log: Array<{ fecha: string; tipo: string; notas: string }> };
@@ -606,27 +608,87 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* ── Tipo de prospecto ── */}
-      <div className="flex gap-2">
-        <button
-          onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium border transition-colors ${
-            trato.tipoProspecto !== "NURTURING"
-              ? "bg-[#B3985B] text-black border-[#B3985B]"
-              : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-          }`}>
-          🎯 Tiene necesidad concreta
-        </button>
-        <button
-          onClick={async () => { const d = await patch({ tipoProspecto: "NURTURING" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
-          className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium border transition-colors ${
-            trato.tipoProspecto === "NURTURING"
-              ? "bg-emerald-800 text-white border-emerald-700"
-              : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-          }`}>
-          🌱 Prospecto en frío
-        </button>
-      </div>
+      {/* ══ GATE PRIMARIO: primera decisión obligatoria ══
+          Mostrar solo cuando el trato está fresco: sin canal y sin elegir nurturing.
+          Una vez en flujo, mostrar toggle pequeño para poder cambiar. */}
+      {!trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
+        <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
+          {!showCanales ? (
+            <>
+              <div className="text-center mb-6">
+                <p className="text-white font-semibold text-lg">¿Cómo es este prospecto?</p>
+                <p className="text-gray-500 text-sm mt-1">Esta selección define toda la ruta de trabajo</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button
+                  onClick={async () => {
+                    const d = await patch({ tipoProspecto: "NURTURING" });
+                    setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto } : prev);
+                  }}
+                  disabled={saving}
+                  className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
+                  <div className="text-3xl mb-3">🌱</div>
+                  <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
+                  <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Sin necesidad inmediata · Construir confianza a largo plazo · Seguimiento de valor</p>
+                  <p className="text-emerald-700 text-xs mt-3 font-medium">Proceso de semanas o meses →</p>
+                </button>
+                <button
+                  onClick={() => setShowCanales(true)}
+                  className="border-2 border-[#B3985B]/50 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-5 text-left transition-all group">
+                  <div className="text-3xl mb-3">🎯</div>
+                  <p className="text-[#B3985B] font-semibold text-base group-hover:text-[#c9a96a] transition-colors">Tiene necesidad concreta</p>
+                  <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Ya tiene un evento en mente · Hay que descubrir y cotizar · Proceso de venta activo</p>
+                  <p className="text-[#B3985B]/60 text-xs mt-3 font-medium">Iniciar descubrimiento →</p>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-5">
+                <button onClick={() => setShowCanales(false)} className="text-gray-600 hover:text-gray-400 text-sm transition-colors">← Volver</button>
+                <div>
+                  <p className="text-white font-semibold">¿Cómo vas a atender este lead?</p>
+                  <p className="text-gray-500 text-xs">Selecciona el canal de descubrimiento</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {CANALES.map(canal => (
+                  <button key={canal.id} onClick={() => { seleccionarCanal(canal.id); setShowCanales(false); }} disabled={saving}
+                    className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
+                    <div className="text-2xl mb-2">{canal.icon}</div>
+                    <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">{canal.label}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">{canal.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Toggle pequeño (solo cuando ya están en un flujo) ── */}
+      {(trato.canalAtencion || trato.tipoProspecto === "NURTURING") && (
+        <div className="flex gap-2">
+          <button
+            onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium border transition-colors ${
+              trato.tipoProspecto !== "NURTURING"
+                ? "bg-[#B3985B] text-black border-[#B3985B]"
+                : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
+            }`}>
+            🎯 Tiene necesidad concreta
+          </button>
+          <button
+            onClick={async () => { const d = await patch({ tipoProspecto: "NURTURING" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium border transition-colors ${
+              trato.tipoProspecto === "NURTURING"
+                ? "bg-emerald-800 text-white border-emerald-700"
+                : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
+            }`}>
+            🌱 Prospecto en frío
+          </button>
+        </div>
+      )}
 
       {/* ── Siguiente acción recomendada ── */}
       {trato.tipoProspecto !== "NURTURING" && (() => {
@@ -665,29 +727,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           Estado 3: completo  →  resumen + recomendaciones
       ══════════════════════════════════════════════════════════════════════ */}
 
-      {/* ── Estado 1: Seleccionar canal ── */}
-      {trato.tipoProspecto !== "NURTURING" && !trato.canalAtencion && (
-        <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] font-bold text-sm">1</div>
-            <div>
-              <p className="text-white font-semibold">¿Cómo vas a atender este lead?</p>
-              <p className="text-gray-500 text-xs">Selecciona el canal de descubrimiento</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {CANALES.map(canal => (
-              <button key={canal.id} onClick={() => seleccionarCanal(canal.id)} disabled={saving}
-                className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
-                <div className="text-2xl mb-2">{canal.icon}</div>
-                <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">{canal.label}</p>
-                <p className="text-gray-500 text-xs mt-0.5">{canal.desc}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Nurturing — Prospecto en frío ── */}
       {trato.tipoProspecto === "NURTURING" && (
