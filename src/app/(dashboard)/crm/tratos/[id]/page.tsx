@@ -154,6 +154,33 @@ function getProfundidad(canal: string | null) {
   return getCanal(canal ?? "")?.profundidad ?? null;
 }
 
+// ─── Constantes Renta ─────────────────────────────────────────────────────────
+const CATEGORIAS_RENTA = [
+  { id: "AUDIO_PA",      label: "Audio PA" },
+  { id: "SUBWOOFERS",    label: "Subwoofers" },
+  { id: "MONITORES",     label: "Monitores" },
+  { id: "CONSOLA",       label: "Consola" },
+  { id: "MICROFONOS",    label: "Micrófonos" },
+  { id: "ILUMINACION",   label: "Iluminación" },
+  { id: "PANTALLAS_LED", label: "Pantallas LED" },
+  { id: "PROYECTOR",     label: "Proyector" },
+  { id: "DJ_EQUIPO",     label: "Equipo DJ" },
+  { id: "CABLES_ACC",    label: "Cables / accesorios" },
+];
+
+const RENTA_NIVEL = [
+  { id: "SOLO_RENTA",    label: "Solo renta",           desc: "Cliente instala y opera" },
+  { id: "RENTA_ENTREGA", label: "Renta + entrega",      desc: "Llevamos y recogemos" },
+  { id: "RENTA_MONTAJE", label: "Renta + montaje",      desc: "Instalamos, cliente opera" },
+  { id: "RENTA_FULL",    label: "Renta + operación",    desc: "Instalamos + técnico" },
+];
+
+const RENTA_ENTREGA = [
+  { id: "RECOGE_BODEGA",  label: "Recoge en bodega",     desc: "Querétaro, Qro." },
+  { id: "ENTREGA_BODEGA", label: "Llevamos a su bodega", desc: "A su almacén" },
+  { id: "ENTREGA_VENUE",  label: "Llevamos al venue",    desc: "Directo al evento" },
+];
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -192,6 +219,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     notas: "",
     proximaAccion: "",
     serviciosInteres: [] as string[],
+    // Campos específicos de Renta
+    rentaModalidadServicio: "",
+    rentaModalidadEntrega: "",
+    rentaDireccionEntrega: "",
+    rentaFechaEntrega: "",
+    rentaHoraEntrega: "",
+    rentaFechaDevolucion: "",
+    rentaHoraDevolucion: "",
+    rentaDescripcionEquipos: "",
+    rentaTecnicoPropio: "",
   });
 
   useEffect(() => {
@@ -216,6 +253,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           const t = d.trato as Trato;
           setBriefingText(t.notas ?? "");
           setArchivos(t.archivos ?? []);
+          // Parse rental-specific fields from ideasReferencias if service is RENTA
+          let rentaData: Record<string, string> = {};
+          if (t.tipoServicio === "RENTA" && t.ideasReferencias) {
+            try { rentaData = JSON.parse(t.ideasReferencias); } catch { /* plain text */ }
+          }
           setDiscForm(prev => ({
             ...prev,
             tipoEvento: t.tipoEvento ?? "MUSICAL",
@@ -228,10 +270,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             tipoServicio: t.tipoServicio ?? "",
             etapaContratacion: t.etapaContratacion ?? "EXPLORANDO",
             continuarPor: t.continuarPor ?? "WHATSAPP",
-            ideasReferencias: t.ideasReferencias ?? "",
+            ideasReferencias: t.tipoServicio !== "RENTA" ? (t.ideasReferencias ?? "") : "",
             notas: t.notas ?? "",
             proximaAccion: t.proximaAccion ?? "",
             serviciosInteres: t.serviciosInteres ? JSON.parse(t.serviciosInteres) : [],
+            // Rental fields
+            rentaModalidadServicio: rentaData.modalidadServicio ?? "",
+            rentaModalidadEntrega:  rentaData.modalidadEntrega ?? "",
+            rentaDireccionEntrega:  rentaData.direccionEntrega ?? "",
+            rentaFechaEntrega:      rentaData.fechaEntrega ?? "",
+            rentaHoraEntrega:       rentaData.horaEntrega ?? "",
+            rentaFechaDevolucion:   rentaData.fechaDevolucion ?? "",
+            rentaHoraDevolucion:    rentaData.horaDevolucion ?? "",
+            rentaDescripcionEquipos:rentaData.descripcionEquipos ?? "",
+            rentaTecnicoPropio:     rentaData.tecnicoPropio ?? "",
           }));
         }
         setLoading(false);
@@ -255,6 +307,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   async function guardarDescubrimiento(completar = false) {
     setSaving(true);
+    const isRenta = discForm.tipoServicio === "RENTA";
     const payload: Record<string, unknown> = {
       tipoEvento: discForm.tipoEvento,
       nombreEvento: discForm.nombreEvento || null,
@@ -266,10 +319,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       tipoServicio: discForm.tipoServicio || null,
       etapaContratacion: discForm.etapaContratacion || null,
       continuarPor: discForm.continuarPor || null,
-      ideasReferencias: discForm.ideasReferencias || null,
       notas: discForm.notas || null,
       proximaAccion: discForm.proximaAccion || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
+      ideasReferencias: isRenta
+        ? JSON.stringify({
+            modalidadServicio:  discForm.rentaModalidadServicio || null,
+            modalidadEntrega:   discForm.rentaModalidadEntrega || null,
+            direccionEntrega:   discForm.rentaDireccionEntrega || null,
+            fechaEntrega:       discForm.rentaFechaEntrega || null,
+            horaEntrega:        discForm.rentaHoraEntrega || null,
+            fechaDevolucion:    discForm.rentaFechaDevolucion || null,
+            horaDevolucion:     discForm.rentaHoraDevolucion || null,
+            descripcionEquipos: discForm.rentaDescripcionEquipos || null,
+            tecnicoPropio:      discForm.rentaTecnicoPropio || null,
+          })
+        : (discForm.ideasReferencias || null),
     };
     if (completar) {
       payload.descubrimientoCompleto = true;
@@ -671,7 +736,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
                 <select value={discForm.tipoServicio} onChange={e => setDiscForm(p => ({ ...p, tipoServicio: e.target.value }))}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Por definir —</option>
+                  <option value="">— Seleccionar —</option>
+                  <option value="POR_DESCUBRIR">Por descubrir</option>
                   <option value="RENTA">Renta de equipo</option>
                   <option value="PRODUCCION_TECNICA">Producción técnica</option>
                   <option value="DIRECCION_TECNICA">Dirección técnica</option>
@@ -679,22 +745,142 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* Servicios de interés */}
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Servicios de interés *</label>
-              <div className="flex flex-wrap gap-2">
-                {serviciosDisponibles.map(srv => (
-                  <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                      discForm.serviciosInteres.includes(srv.id)
-                        ? "border-[#B3985B] text-black bg-[#B3985B]"
-                        : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
-                    }`}>
-                    {srv.label}
-                  </button>
-                ))}
+            {/* Servicios de interés (producción) o campos de renta */}
+            {discForm.tipoServicio === "RENTA" ? (
+              <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
+                <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
+
+                {/* Categorías de equipo */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Categorías de equipo que necesita</label>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORIAS_RENTA.map(cat => (
+                      <button key={cat.id} onClick={() => toggleServicio(cat.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                          discForm.serviciosInteres.includes(cat.id)
+                            ? "border-[#B3985B] text-black bg-[#B3985B]"
+                            : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
+                        }`}>
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Descripción de equipos */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Descripción del equipo (o rider técnico)</label>
+                  <textarea value={discForm.rentaDescripcionEquipos}
+                    onChange={e => setDiscForm(p => ({ ...p, rentaDescripcionEquipos: e.target.value }))}
+                    rows={3} placeholder="Ej: 2 bafles EV EKX-15P, 1 sub EKX-18SP, 4 micrófonos inalámbricos Shure BLX..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>
+
+                {/* Nivel de servicio */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Nivel de servicio</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {RENTA_NIVEL.map(n => (
+                      <button key={n.id} onClick={() => setDiscForm(p => ({ ...p, rentaModalidadServicio: n.id }))}
+                        className={`px-3 py-2.5 rounded-lg text-left transition-colors border ${
+                          discForm.rentaModalidadServicio === n.id
+                            ? "border-[#B3985B] bg-[#B3985B]/10"
+                            : "border-[#333] hover:border-[#555]"
+                        }`}>
+                        <p className={`text-xs font-medium ${discForm.rentaModalidadServicio === n.id ? "text-[#B3985B]" : "text-white"}`}>{n.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{n.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modalidad de entrega */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Modalidad de entrega</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {RENTA_ENTREGA.map(e => (
+                      <button key={e.id} onClick={() => setDiscForm(p => ({ ...p, rentaModalidadEntrega: e.id }))}
+                        className={`px-3 py-2.5 rounded-lg text-left transition-colors border ${
+                          discForm.rentaModalidadEntrega === e.id
+                            ? "border-[#B3985B] bg-[#B3985B]/10"
+                            : "border-[#333] hover:border-[#555]"
+                        }`}>
+                        <p className={`text-xs font-medium ${discForm.rentaModalidadEntrega === e.id ? "text-[#B3985B]" : "text-white"}`}>{e.label}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{e.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dirección + fechas de entrega/devolución */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-400 block mb-1">Dirección de entrega (si aplica)</label>
+                    <input value={discForm.rentaDireccionEntrega}
+                      onChange={e => setDiscForm(p => ({ ...p, rentaDireccionEntrega: e.target.value }))}
+                      placeholder="Calle, colonia, ciudad, CP"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Fecha de entrega del equipo</label>
+                    <input type="date" value={discForm.rentaFechaEntrega}
+                      onChange={e => setDiscForm(p => ({ ...p, rentaFechaEntrega: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Hora de entrega</label>
+                    <input value={discForm.rentaHoraEntrega}
+                      onChange={e => setDiscForm(p => ({ ...p, rentaHoraEntrega: e.target.value }))}
+                      placeholder="Ej: 9:00 AM"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Fecha de devolución</label>
+                    <input type="date" value={discForm.rentaFechaDevolucion}
+                      onChange={e => setDiscForm(p => ({ ...p, rentaFechaDevolucion: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Hora de recolección</label>
+                    <input value={discForm.rentaHoraDevolucion}
+                      onChange={e => setDiscForm(p => ({ ...p, rentaHoraDevolucion: e.target.value }))}
+                      placeholder="Ej: 12:00 PM"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+
+                {/* Técnico propio */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">¿El cliente tiene técnico propio?</label>
+                  <div className="flex gap-2">
+                    {["Sí", "No", "Parcialmente"].map(op => (
+                      <button key={op} onClick={() => setDiscForm(p => ({ ...p, rentaTecnicoPropio: op }))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          discForm.rentaTecnicoPropio === op
+                            ? "border-[#B3985B] text-black bg-[#B3985B]"
+                            : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
+                        }`}>{op}</button>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Servicios de interés *</label>
+                <div className="flex flex-wrap gap-2">
+                  {serviciosDisponibles.map(srv => (
+                    <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                        discForm.serviciosInteres.includes(srv.id)
+                          ? "border-[#B3985B] text-black bg-[#B3985B]"
+                          : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
+                      }`}>
+                      {srv.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Campos medios — formulario y arriba */}
             {(profundidad === "MEDIO" || profundidad === "PROFUNDO") && (

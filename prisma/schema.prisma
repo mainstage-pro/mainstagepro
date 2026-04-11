@@ -279,6 +279,8 @@ model Proyecto {
   comentariosFinales     String?
   scoreFotoVideo         Int?
   recomendacionFotoVideo String?
+  // Logística de renta (JSON con modalidad, fechas, dirección de entrega/devolución)
+  logisticaRenta         String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -309,6 +311,8 @@ model ProyectoPersonal {
   jornada         String?  // CORTA | MEDIA | LARGA
   responsabilidad String?
   confirmado      Boolean  @default(false)
+  confirmRespuesta String? // CONFIRMADO | RECHAZADO
+  confirmToken    String?  @unique // Token para link de confirmación por WhatsApp
   tarifaAcordada  Float?
   estadoPago      String   @default("PENDIENTE") // PENDIENTE | PAGADO
   notas           String?
@@ -317,18 +321,20 @@ model ProyectoPersonal {
 }
 
 model ProyectoEquipo {
-  id           String    @id @default(cuid())
-  proyectoId   String
-  proyecto     Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
-  equipoId     String
-  equipo       Equipo    @relation(fields: [equipoId], references: [id])
-  tipo         String    @default("PROPIO") // PROPIO | EXTERNO
-  cantidad     Int       @default(1)
-  dias         Int       @default(1)
-  costoExterno Float?
-  proveedorId  String?
-  proveedor    Proveedor? @relation(fields: [proveedorId], references: [id])
-  confirmado   Boolean   @default(false)
+  id               String    @id @default(cuid())
+  proyectoId       String
+  proyecto         Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  equipoId         String
+  equipo           Equipo    @relation(fields: [equipoId], references: [id])
+  tipo             String    @default("PROPIO") // PROPIO | EXTERNO
+  cantidad         Int       @default(1)
+  dias             Int       @default(1)
+  costoExterno     Float?
+  proveedorId      String?
+  proveedor        Proveedor? @relation(fields: [proveedorId], references: [id])
+  confirmado       Boolean   @default(false)
+  confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
+  confirmToken     String?   @unique // Token para link de confirmación al proveedor
 
   @@map("proyecto_equipos")
 }
@@ -337,6 +343,7 @@ model ProyectoChecklist {
   id              String    @id @default(cuid())
   proyectoId      String
   proyecto        Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo            String    @default("OPERACION") // OPERACION | RIDER
   item            String
   completado      Boolean   @default(false)
   completadoPor   String?
