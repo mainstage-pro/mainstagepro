@@ -258,8 +258,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const payload: Record<string, unknown> = {
       tipoEvento: discForm.tipoEvento,
       nombreEvento: discForm.nombreEvento || null,
-      fechaEventoEstimada: discForm.fechaEventoEstimada || null,
-      lugarEstimado: discForm.lugarEstimado || null,
+      fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
+      lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       duracionEvento: discForm.duracionEvento || null,
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
@@ -637,15 +637,35 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Fecha estimada del evento *</label>
-                <input type="date" value={discForm.fechaEventoEstimada} onChange={e => setDiscForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400">Fecha estimada del evento *</label>
+                  <button type="button" onClick={() => setDiscForm(p => ({ ...p, fechaEventoEstimada: p.fechaEventoEstimada === "por-definir" ? "" : "por-definir" }))}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${discForm.fechaEventoEstimada === "por-definir" ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
+                    Por definir
+                  </button>
+                </div>
+                {discForm.fechaEventoEstimada === "por-definir" ? (
+                  <div className="w-full bg-[#1a1a1a] border border-[#B3985B]/30 rounded-lg px-3 py-2 text-[#B3985B] text-sm italic">Fecha por definir</div>
+                ) : (
+                  <input type="date" value={discForm.fechaEventoEstimada} onChange={e => setDiscForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                )}
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Ciudad / Lugar del evento *</label>
-                <input value={discForm.lugarEstimado} onChange={e => setDiscForm(p => ({ ...p, lugarEstimado: e.target.value }))}
-                  placeholder="Ej: CDMX · Salón Versalles"
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400">Ciudad / Lugar del evento *</label>
+                  <button type="button" onClick={() => setDiscForm(p => ({ ...p, lugarEstimado: p.lugarEstimado === "por-definir" ? "" : "por-definir" }))}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${discForm.lugarEstimado === "por-definir" ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
+                    Por definir
+                  </button>
+                </div>
+                {discForm.lugarEstimado === "por-definir" ? (
+                  <div className="w-full bg-[#1a1a1a] border border-[#B3985B]/30 rounded-lg px-3 py-2 text-[#B3985B] text-sm italic">Lugar por definir</div>
+                ) : (
+                  <input value={discForm.lugarEstimado} onChange={e => setDiscForm(p => ({ ...p, lugarEstimado: e.target.value }))}
+                    placeholder="Ej: CDMX · Salón Versalles"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                )}
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
@@ -751,7 +771,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 className="text-gray-400 text-sm hover:text-white transition-colors">
                 Guardar borrador
               </button>
-              <button onClick={() => guardarDescubrimiento(true)} disabled={saving || !discForm.fechaEventoEstimada || !discForm.lugarEstimado}
+              <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
                 className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
                 {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
               </button>
