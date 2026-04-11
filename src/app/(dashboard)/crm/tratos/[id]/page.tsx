@@ -53,7 +53,7 @@ interface Trato {
     telefono: string | null; correo: string | null;
   };
   responsable: { id: string; name: string } | null;
-  cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string }>;
+  cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string; proyecto: { id: string } | null }>;
   archivos: TratoArchivo[];
 }
 
@@ -406,13 +406,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">
             {editando ? "Cancelar" : "Editar info"}
           </button>
-          <button onClick={async () => {
-            if (!confirm("¿Eliminar este trato?")) return;
-            await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
-            router.push("/crm/tratos");
-          }} className="px-4 py-2 rounded-lg border border-red-800 text-red-400 hover:bg-red-900/20 text-sm transition-colors">
-            Eliminar
-          </button>
+          {(() => {
+            const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
+            if (tieneProyecto) {
+              return (
+                <span title="Elimina primero el proyecto desde el módulo de Proyectos"
+                  className="px-4 py-2 rounded-lg border border-[#333] text-gray-600 text-sm cursor-not-allowed select-none">
+                  Eliminar
+                </span>
+              );
+            }
+            return (
+              <button onClick={async () => {
+                if (!confirm("¿Eliminar este trato? Esta acción no se puede deshacer.")) return;
+                await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
+                router.push("/crm/tratos");
+              }} className="px-4 py-2 rounded-lg border border-red-800 text-red-400 hover:bg-red-900/20 text-sm transition-colors">
+                Eliminar
+              </button>
+            );
+          })()}
         </div>
       </div>
 

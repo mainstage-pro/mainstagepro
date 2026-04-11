@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       responsable: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
       cotizaciones: {
-        select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true },
+        select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true, proyecto: { select: { id: true } } },
         orderBy: { createdAt: "desc" },
       },
       archivos: { orderBy: { createdAt: "asc" } },
