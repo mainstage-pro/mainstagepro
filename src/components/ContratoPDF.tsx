@@ -42,7 +42,7 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   tagline: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     letterSpacing: 1,
   },
@@ -55,7 +55,7 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   docNum: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: LIGHT,
   },
   goldBar: {
@@ -67,7 +67,7 @@ const s = StyleSheet.create({
     backgroundColor: CREAM,
     paddingVertical: 9,
     paddingHorizontal: 40,
-    fontSize: 8,
+    fontSize: 8.5,
     color: GRAY,
     textAlign: "center",
     letterSpacing: 0.8,
@@ -88,7 +88,7 @@ const s = StyleSheet.create({
     borderLeft: `1 solid ${BORDER}`,
   },
   parteLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     fontFamily: "Helvetica-Bold",
     letterSpacing: 1,
@@ -102,7 +102,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   parteDetalle: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: GRAY,
     marginBottom: 2,
   },
@@ -128,7 +128,7 @@ const s = StyleSheet.create({
     marginRight: 6,
   },
   secTitulo: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: GOLD,
     letterSpacing: 1.5,
@@ -147,12 +147,12 @@ const s = StyleSheet.create({
   },
   datoLabel: {
     width: 130,
-    fontSize: 7.5,
+    fontSize: 8,
     color: LIGHT,
   },
   datoValor: {
     flex: 1,
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
   },
@@ -167,7 +167,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
   },
   tablaGrupoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: LIGHT,
     letterSpacing: 0.8,
@@ -183,10 +183,10 @@ const s = StyleSheet.create({
   colCant:  { flex: 1, textAlign: "center" },
   colDias:  { flex: 1, textAlign: "center" },
   colSub:   { flex: 1.8, textAlign: "right" },
-  cellDesc: { fontSize: 8, color: BLACK },
-  cellSub:  { fontSize: 8, color: BLACK, fontFamily: "Helvetica-Bold", textAlign: "right" },
-  cellNum:  { fontSize: 8, color: GRAY, textAlign: "center" },
-  cellMarca:{ fontSize: 7, color: LIGHT },
+  cellDesc: { fontSize: 8.5, color: BLACK },
+  cellSub:  { fontSize: 8.5, color: BLACK, fontFamily: "Helvetica-Bold", textAlign: "right" },
+  cellNum:  { fontSize: 8.5, color: GRAY, textAlign: "center" },
+  cellMarca:{ fontSize: 7.5, color: LIGHT },
   // ── Resumen de precios ───────────────────────────────────────────────────────
   resumenBloque: {
     marginHorizontal: 40,
@@ -205,8 +205,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
     borderBottom: `1 solid ${CREAM}`,
   },
-  resLabel: { fontSize: 8, color: GRAY },
-  resMonto: { fontSize: 8, fontFamily: "Helvetica-Bold", color: BLACK },
+  resLabel: { fontSize: 8.5, color: GRAY },
+  resMonto: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: BLACK },
   resDescuento: { color: "#c0392b" },
   resTotalBloque: {
     backgroundColor: BLACK,
@@ -231,7 +231,7 @@ const s = StyleSheet.create({
     padding: 9,
   },
   pagoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     fontFamily: "Helvetica-Bold",
     letterSpacing: 0.8,
@@ -244,7 +244,7 @@ const s = StyleSheet.create({
     marginBottom: 2,
   },
   pagoFecha: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
   },
   // ── Cláusulas / Artículos ────────────────────────────────────────────────────
@@ -259,13 +259,13 @@ const s = StyleSheet.create({
   },
   clausulaNum: {
     width: 16,
-    fontSize: 7.5,
+    fontSize: 8,
     color: GOLD,
     fontFamily: "Helvetica-Bold",
   },
   clausulaTexto: {
     flex: 1,
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
     lineHeight: 1.5,
   },
@@ -285,7 +285,7 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   firmaRol: {
-    fontSize: 7,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: LIGHT,
     letterSpacing: 1,
@@ -298,12 +298,12 @@ const s = StyleSheet.create({
     marginBottom: 5,
   },
   firmaNombre: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
   },
   firmaDetalle: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     marginTop: 2,
   },
@@ -314,7 +314,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   firmaFechaLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     alignSelf: "flex-start",
   },
@@ -338,12 +338,12 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   footerCenter: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT,
     textAlign: "center",
   },
   footerRight: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#666",
     textAlign: "right",
   },
@@ -352,7 +352,7 @@ const s = StyleSheet.create({
     bottom: 46,
     left: 40,
     right: 40,
-    fontSize: 6.5,
+    fontSize: 7,
     color: "#555",
     textAlign: "center",
     fontFamily: "Helvetica-Oblique",
@@ -367,14 +367,14 @@ const s = StyleSheet.create({
     padding: 9,
   },
   notaTitulo: {
-    fontSize: 7.5,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: GOLD,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   notaTexto: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
     lineHeight: 1.5,
   },

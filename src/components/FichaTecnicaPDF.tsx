@@ -118,7 +118,7 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   infoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
     letterSpacing: 0.8,
     textTransform: "uppercase",
@@ -160,7 +160,7 @@ const s = StyleSheet.create({
     borderBottomColor: "#EEEEEE",
   },
   thText: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: WHITE,
     fontFamily: "Helvetica-Bold",
   },
@@ -174,12 +174,12 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
   },
   confirmed: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#2ECC71",
     fontFamily: "Helvetica-Bold",
   },
   notConfirmed: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
   },
 
@@ -248,11 +248,11 @@ const s = StyleSheet.create({
     paddingTop: 8,
   },
   footerText: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#BBBBBB",
   },
   footerGold: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: GOLD,
     fontFamily: "Helvetica-Bold",
   },
@@ -265,7 +265,7 @@ const s = StyleSheet.create({
     borderRadius: 2,
   },
   estadoText: {
-    fontSize: 7,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
   },

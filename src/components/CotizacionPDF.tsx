@@ -47,7 +47,7 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   tagline: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: "#888888",
     letterSpacing: 1,
   },
@@ -61,7 +61,7 @@ const s = StyleSheet.create({
     marginBottom: 2,
   },
   fechaHeader: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: "#888888",
   },
   // Barra dorada
@@ -74,7 +74,7 @@ const s = StyleSheet.create({
     backgroundColor: "#F7F5F0",
     paddingVertical: 10,
     paddingHorizontal: 40,
-    fontSize: 8,
+    fontSize: 9,
     color: GRAY,
     textAlign: "center",
     letterSpacing: 0.5,
@@ -97,7 +97,7 @@ const s = StyleSheet.create({
     borderLeft: "1 solid #e0ddd8",
   },
   infoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
     fontFamily: "Helvetica-Bold",
     letterSpacing: 1,
@@ -138,7 +138,7 @@ const s = StyleSheet.create({
     marginRight: 6,
   },
   seccionNombre: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: GOLD,
     letterSpacing: 1.5,
@@ -152,7 +152,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
   },
   tablaHeaderTexto: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#888888",
     fontFamily: "Helvetica-Bold",
     letterSpacing: 0.8,
@@ -183,7 +183,7 @@ const s = StyleSheet.create({
     color: BLACK,
   },
   cellMarca: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: LIGHT_GRAY,
   },
   cellNum: {
@@ -203,12 +203,12 @@ const s = StyleSheet.create({
     textAlign: "right",
   },
   cellIncluido: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: LIGHT_GRAY,
     fontFamily: "Helvetica-Oblique",
   },
   badgeNivel: {
-    fontSize: 6.5,
+    fontSize: 7,
     color: GOLD,
     fontFamily: "Helvetica-Bold",
     marginLeft: 4,
@@ -232,11 +232,11 @@ const s = StyleSheet.create({
     borderBottom: "1 solid #f0ede8",
   },
   totalFilaDes: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: GRAY,
   },
   totalFilaMonto: {
-    fontSize: 8,
+    fontSize: 8.5,
     color: BLACK,
     fontFamily: "Helvetica-Bold",
   },
@@ -274,7 +274,7 @@ const s = StyleSheet.create({
     padding: 8,
   },
   anticipoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
     fontFamily: "Helvetica-Bold",
     letterSpacing: 0.8,
@@ -295,20 +295,20 @@ const s = StyleSheet.create({
     padding: 12,
   },
   beneficioTitulo: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: GOLD,
     letterSpacing: 1,
     marginBottom: 5,
   },
   beneficioTexto: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
     lineHeight: 1.5,
   },
   // Nota del beneficio
   beneficioNota: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: LIGHT_GRAY,
     fontFamily: "Helvetica-Oblique",
     marginTop: 4,
@@ -328,7 +328,7 @@ const s = StyleSheet.create({
     borderRadius: 3,
   },
   pagoTitulo: {
-    fontSize: 7,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: GOLD,
     letterSpacing: 1,
@@ -339,12 +339,12 @@ const s = StyleSheet.create({
     marginBottom: 3,
   },
   pagoLabel: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#888",
     width: 80,
   },
   pagoValor: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: WHITE,
     fontFamily: "Helvetica-Bold",
     flex: 1,
@@ -358,7 +358,7 @@ const s = StyleSheet.create({
     borderRadius: 3,
   },
   terminosTitulo: {
-    fontSize: 8,
+    fontSize: 8.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     marginBottom: 6,
@@ -370,12 +370,12 @@ const s = StyleSheet.create({
   },
   terminoBullet: {
     width: 12,
-    fontSize: 7.5,
+    fontSize: 8,
     color: GOLD,
     fontFamily: "Helvetica-Bold",
   },
   terminoTexto: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: GRAY,
     flex: 1,
     lineHeight: 1.4,
@@ -397,17 +397,17 @@ const s = StyleSheet.create({
     letterSpacing: 1,
   },
   footerContacto: {
-    fontSize: 7.5,
+    fontSize: 8,
     color: "#888",
     textAlign: "center",
   },
   footerVigencia: {
-    fontSize: 7,
+    fontSize: 7.5,
     color: "#666",
     textAlign: "right",
   },
   confidencial: {
-    fontSize: 6.5,
+    fontSize: 7,
     color: "#555",
     textAlign: "center",
     marginHorizontal: 40,
@@ -567,8 +567,8 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
             <View key={cat}>
               {/* Category subheader */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#F0EDE8", paddingVertical: 4, paddingHorizontal: 40, borderBottom: "1 solid #ddd9d4" }}>
-                <Text style={{ fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{cat}</Text>
-                <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Bold" }}>{fmtMXN(catSubtotal)}</Text>
+                <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{cat}</Text>
+                <Text style={{ fontSize: 7.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{fmtMXN(catSubtotal)}</Text>
               </View>
               {lins.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
               {catIncluidas.map((l) => (
@@ -583,7 +583,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
               ))}
               {nota ? (
                 <View style={{ paddingHorizontal: 40, paddingVertical: 5, backgroundColor: "#FDFCFA", borderBottom: "1 solid #eeebe6" }}>
-                  <Text style={{ fontSize: 7.5, color: GRAY, fontFamily: "Helvetica-Oblique", lineHeight: 1.4 }}>
+                  <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Oblique", lineHeight: 1.4 }}>
                     Nota: {nota}
                   </Text>
                 </View>
@@ -611,7 +611,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
       {externas.length > 0 && (
         <>
           <View style={[s.seccionTitulo, { paddingTop: 8 }]}>
-            <Text style={[s.seccionNombre, { color: GRAY, fontSize: 7 }]}>EQUIPOS ADICIONALES (TERCEROS)</Text>
+            <Text style={[s.seccionNombre, { color: GRAY, fontSize: 7.5 }]}>EQUIPOS ADICIONALES (TERCEROS)</Text>
           </View>
           {externas.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
         </>

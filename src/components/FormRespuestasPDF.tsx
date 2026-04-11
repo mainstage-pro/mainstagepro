@@ -24,20 +24,20 @@ const s = StyleSheet.create({
   infoBar: { flexDirection: "row", gap: 0, marginBottom: 24, backgroundColor: BG, borderRadius: 6 },
   infoItem: { flex: 1, padding: 12, borderRightWidth: 1, borderRightColor: "#e8e4dc" },
   infoItemLast: { flex: 1, padding: 12 },
-  infoLabel: { color: LIGHT_GRAY, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
+  infoLabel: { color: LIGHT_GRAY, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1, marginBottom: 3 },
   infoValue: { color: BLACK, fontSize: 9, fontFamily: "Helvetica-Bold" },
   // Sections
   section: { marginBottom: 20 },
-  sectionTitle: { color: GOLD, fontSize: 8, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: "#e8e4dc", paddingBottom: 5 },
+  sectionTitle: { color: GOLD, fontSize: 8.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: "#e8e4dc", paddingBottom: 5 },
   row: { flexDirection: "row", marginBottom: 6, gap: 8 },
-  rowLabel: { width: 160, color: GRAY, fontSize: 8 },
-  rowValue: { flex: 1, color: BLACK, fontSize: 8.5, fontFamily: "Helvetica-Bold" },
-  rowValueMulti: { flex: 1, color: BLACK, fontSize: 8 },
+  rowLabel: { width: 160, color: GRAY, fontSize: 8.5 },
+  rowValue: { flex: 1, color: BLACK, fontSize: 9, fontFamily: "Helvetica-Bold" },
+  rowValueMulti: { flex: 1, color: BLACK, fontSize: 8.5 },
   // Footer
   footer: { position: "absolute", bottom: 20, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#e8e4dc", paddingTop: 8 },
-  footerText: { color: LIGHT_GRAY, fontSize: 7 },
+  footerText: { color: LIGHT_GRAY, fontSize: 7.5 },
   badge: { backgroundColor: DARK, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start", marginTop: 6 },
-  badgeText: { color: GOLD, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 },
+  badgeText: { color: GOLD, fontSize: 7.5, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 },
 });
 
 interface Props {
