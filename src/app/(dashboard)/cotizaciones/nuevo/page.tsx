@@ -207,6 +207,10 @@ function CotizadorForm() {
   const [aplicaIva, setAplicaIva] = useState(false);
   const [observaciones, setObservaciones] = useState("");
 
+  // Disponibilidad de inventario para la fecha del evento
+  const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
+  const [loadingDisp, setLoadingDisp] = useState(false);
+
   // Cargar datos (modo nuevo O modo edición)
   useEffect(() => {
     Promise.all([
@@ -317,6 +321,20 @@ function CotizadorForm() {
     });
   }, [clienteId, tratoId]);
 
+  // Cargar disponibilidad cuando cambia la fecha del evento
+  useEffect(() => {
+    const fecha = evento.fechaEvento;
+    if (!fecha) { setDispMap({}); return; }
+    setLoadingDisp(true);
+    const params = new URLSearchParams({ fecha });
+    if (editId) params.set("excludeCotizacionId", editId);
+    fetch(`/api/equipos/disponibilidad?${params}`)
+      .then(r => r.json())
+      .then(d => { setDispMap(d.disponibilidad ?? {}); })
+      .catch(() => {})
+      .finally(() => setLoadingDisp(false));
+  }, [evento.fechaEvento, editId]);
+
   // Equipos propios agrupados por categoría
   const equiposPorCategoria = useMemo(() => {
     const propios = equipos.filter(e => e.tipo === "PROPIO");
@@ -342,8 +360,26 @@ function CotizadorForm() {
     if (!eq) return;
     const cant = parseFloat(selEqCant) || 1;
     const dias = parseInt(selEqDias) || 1;
-    // Usar precio especial del cliente si existe, si no el precio catálogo
     const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+
+    // Verificar disponibilidad si hay fecha seleccionada
+    if (evento.fechaEvento && dispMap[eq.id] !== undefined) {
+      const disp = dispMap[eq.id];
+      // Sumar lo que ya está en la cotización actual para ese equipo
+      const yaEnCot = lineasEquipo.filter(l => l.equipoId === eq.id).reduce((s, l) => s + l.cantidad, 0);
+      const totalPedido = yaEnCot + cant;
+      if (totalPedido > disp.total) {
+        const confirmar = window.confirm(
+          `⚠ Stock insuficiente para "${eq.descripcion}"\n\n` +
+          `Disponible para ${evento.fechaEvento}: ${disp.disponible} de ${disp.total} unidad(es)\n` +
+          (disp.comprometido > 0 ? `Comprometido en ${disp.eventos.length} evento(s): ${disp.eventos.map(e => e.ref).join(", ")}\n\n` : "\n") +
+          `Estás intentando agregar ${cant} unidad(es) (total en esta cotización: ${totalPedido}).\n\n` +
+          `¿Deseas agregarlo de todas formas?`
+        );
+        if (!confirmar) return;
+      }
+    }
+
     setLineasEquipo(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
       marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
@@ -826,14 +862,20 @@ function CotizadorForm() {
               <div className="flex-1">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
                 <select value={selEq} onChange={e => setSelEq(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Selecciona equipo —</option>
+                  <option value="">— Selecciona equipo{loadingDisp ? " (cargando disp...)" : ""} —</option>
                   {equiposPorCategoria.map(([cat, eqs]) => (
                     <optgroup key={cat} label={cat}>
-                      {eqs.map(eq => (
-                        <option key={eq.id} value={eq.id}>
-                          {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""}{eq.modelo ? ` ${eq.modelo}` : ""}{eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}
-                        </option>
-                      ))}
+                      {eqs.map(eq => {
+                        const d = dispMap[eq.id];
+                        const dispLabel = evento.fechaEvento && d !== undefined
+                          ? (d.disponible === 0 ? " ⛔ sin stock" : d.disponible < d.total ? ` ⚠ ${d.disponible}/${d.total} disp.` : ` ✓ ${d.disponible} disp.`)
+                          : "";
+                        return (
+                          <option key={eq.id} value={eq.id}>
+                            {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""}{eq.modelo ? ` ${eq.modelo}` : ""}{eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}{dispLabel}
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   ))}
                 </select>
@@ -871,6 +913,36 @@ function CotizadorForm() {
                         const esPrecioEspecialActivo = tienePrecioEspecial && l.precioUnitario === preciosCliente[l.equipoId];
                         const precioDifiere = l.precioUnitario !== (preciosCliente[l.equipoId] ?? precioBase);
                         return (
+                        <>
+                        {/* Badge de disponibilidad por línea */}
+                        {(() => {
+                          const d = dispMap[l.equipoId];
+                          if (!evento.fechaEvento || !d) return null;
+                          const totalEnCot = lineasEquipo.filter(x => x.equipoId === l.equipoId).reduce((s, x) => s + x.cantidad, 0);
+                          if (totalEnCot > d.total) {
+                            return (
+                              <div className="mx-3 mt-1 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-1.5 flex items-start gap-2">
+                                <span className="text-red-400 text-xs font-semibold shrink-0">⛔ Sobrestock</span>
+                                <span className="text-red-300 text-xs">
+                                  Tienes {totalEnCot} unid. en esta cotización pero solo hay {d.total} en inventario.
+                                  {d.comprometido > 0 && ` Comprometido en: ${d.eventos.map(e => e.ref).join(", ")}.`}
+                                </span>
+                              </div>
+                            );
+                          }
+                          if (d.disponible < totalEnCot) {
+                            return (
+                              <div className="mx-3 mt-1 bg-yellow-900/20 border border-yellow-800/40 rounded-lg px-3 py-1.5 flex items-start gap-2">
+                                <span className="text-yellow-400 text-xs font-semibold shrink-0">⚠ Stock comprometido</span>
+                                <span className="text-yellow-300 text-xs">
+                                  Quedan {d.disponible} disp. para {evento.fechaEvento}.
+                                  {d.comprometido > 0 && ` En uso: ${d.eventos.map(e => e.ref).join(", ")}.`}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         <div key={l.id} className="border-t border-[#111]">
                           <div className="flex items-center gap-2 px-3 py-2">
                             <div className="flex-1 min-w-0">
@@ -911,6 +983,7 @@ function CotizadorForm() {
                             <button onClick={() => setLineasEquipo(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                           </div>
                         </div>
+                        </>
                         );
                       })}
                       {/* Nota por sección */}
