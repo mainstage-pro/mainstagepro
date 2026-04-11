@@ -1,48 +1,56 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_COLORS, TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 
-export default async function ProyectosPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let proyectos: any[] = [];
-  let dbError: string | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Proyecto = any;
 
-  try {
-    proyectos = await prisma.proyecto.findMany({
-      include: {
-        cliente: true,
-        checklist: true,
-        personal: true,
-        trato: { select: { responsable: { select: { name: true } } } },
-      },
-      orderBy: { fechaEvento: "asc" },
-    });
-  } catch (e) {
-    dbError = e instanceof Error ? e.message : String(e);
-  }
+export default function ProyectosPage() {
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const activos = proyectos.filter((p) =>
-    ["PLANEACION", "CONFIRMADO", "EN_CURSO"].includes(p.estado)
-  );
-  const completados = proyectos.filter((p) => p.estado === "COMPLETADO");
+  useEffect(() => {
+    fetch("/api/proyectos")
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) setError(data.error);
+        else setProyectos(data.proyectos ?? []);
+      })
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const activos = proyectos.filter(p => ["PLANEACION", "CONFIRMADO", "EN_CURSO"].includes(p.estado));
+  const completados = proyectos.filter(p => p.estado === "COMPLETADO");
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Proyectos</h1>
-          <p className="text-[#6b7280] text-sm">{activos.length} activos · {completados.length} completados</p>
+          <p className="text-[#6b7280] text-sm">
+            {loading ? "Cargando..." : `${activos.length} activos · ${completados.length} completados`}
+          </p>
         </div>
       </div>
 
-      {dbError && (
+      {error && (
         <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg mb-4">
           <p className="font-semibold mb-1">Error al cargar proyectos:</p>
-          <pre className="text-xs whitespace-pre-wrap">{dbError}</pre>
+          <pre className="text-xs whitespace-pre-wrap">{error}</pre>
         </div>
       )}
 
-      {proyectos.length === 0 ? (
+      {loading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 animate-pulse h-24" />
+          ))}
+        </div>
+      ) : proyectos.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
           <p className="text-[#6b7280] text-sm">No hay proyectos aún</p>
           <p className="text-[#444] text-xs mt-1">Los proyectos se crean automáticamente al aprobar una cotización</p>
@@ -50,13 +58,13 @@ export default async function ProyectosPage() {
       ) : (
         <div className="space-y-3">
           {proyectos.map((proyecto) => {
-            const checklistTotal = proyecto.checklist.length;
+            const checklistTotal = proyecto.checklist?.length ?? 0;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const checklistDone = proyecto.checklist.filter((c: any) => c.completado).length;
+            const checklistDone = proyecto.checklist?.filter((c: any) => c.completado).length ?? 0;
             const pct = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const personalConfirmado = proyecto.personal.filter((p: any) => p.confirmado).length;
-            const personalTotal = proyecto.personal.length;
+            const personalConfirmado = proyecto.personal?.filter((p: any) => p.confirmado).length ?? 0;
+            const personalTotal = proyecto.personal?.length ?? 0;
 
             return (
               <Link key={proyecto.id} href={`/proyectos/${proyecto.id}`}>
@@ -75,8 +83,8 @@ export default async function ProyectosPage() {
                         <span className="text-[10px] text-[#555]">{proyecto.numeroProyecto}</span>
                       </div>
                       <h3 className="text-white font-medium">{proyecto.nombre}</h3>
-                      <Link href={`/crm/clientes/${proyecto.cliente.id}`} onClick={e => e.stopPropagation()} className="text-[#6b7280] text-sm hover:text-[#B3985B] transition-colors">
-                        {proyecto.cliente.nombre}
+                      <Link href={`/crm/clientes/${proyecto.cliente?.id}`} onClick={e => e.stopPropagation()} className="text-[#6b7280] text-sm hover:text-[#B3985B] transition-colors">
+                        {proyecto.cliente?.nombre}
                       </Link>
                     </div>
                     <div className="text-right shrink-0">
