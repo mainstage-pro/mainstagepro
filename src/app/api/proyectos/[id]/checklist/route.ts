@@ -8,12 +8,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { item } = await req.json();
+  const { item, tipo } = await req.json();
   if (!item) return NextResponse.json({ error: "item requerido" }, { status: 400 });
 
   const count = await prisma.proyectoChecklist.count({ where: { proyectoId: id } });
   const check = await prisma.proyectoChecklist.create({
-    data: { proyectoId: id, item, orden: count, completado: false },
+    data: { proyectoId: id, item, orden: count, completado: false, tipo: tipo ?? "OPERACION" },
   });
   return NextResponse.json({ check });
 }

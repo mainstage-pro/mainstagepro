@@ -17,7 +17,7 @@ interface Personal {
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
 interface Proveedor { id: string; nombre: string }
-interface CheckItem { id: string; item: string; completado: boolean; orden: number }
+interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string }
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string }
@@ -39,8 +39,9 @@ interface Proyecto {
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { name: string } | null;
-  trato: { tipoEvento: string; tipoServicio: string | null; responsable: { name: string } | null } | null;
+  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number } | null;
+  logisticaRenta: string | null;
   personal: Personal[];
   equipos: ProyectoEquipoItem[];
   checklist: CheckItem[];
@@ -207,6 +208,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estados para checklist
   const [nuevoItem, setNuevoItem] = useState("");
   const [addingItem, setAddingItem] = useState(false);
+  const [nuevoItemRider, setNuevoItemRider] = useState("");
+  const [addingItemRider, setAddingItemRider] = useState(false);
+  const [generandoRider, setGenerandoRider] = useState(false);
 
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
@@ -494,6 +498,36 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(prev => prev ? { ...prev, checklist: prev.checklist.filter(c => c.id !== itemId) } : prev);
   }
 
+  // ── Agregar item rider ──
+  async function agregarItemRider() {
+    if (!nuevoItemRider.trim()) return;
+    setAddingItemRider(true);
+    const res = await fetch(`/api/proyectos/${id}/checklist`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item: nuevoItemRider.trim(), tipo: "RIDER" }),
+    });
+    const d = await res.json();
+    setProyecto(prev => prev ? { ...prev, checklist: [...prev.checklist, d.check] } : prev);
+    setNuevoItemRider("");
+    setAddingItemRider(false);
+  }
+
+  // ── Generar rider automático desde equipos ──
+  async function generarRiderAutomatico() {
+    setGenerandoRider(true);
+    const res = await fetch(`/api/proyectos/${id}/checklist/generar-rider`, { method: "POST" });
+    const d = await res.json();
+    if (d.items) {
+      setProyecto(prev => {
+        if (!prev) return prev;
+        const sinRider = prev.checklist.filter(c => c.tipo !== "RIDER");
+        return { ...prev, checklist: [...sinRider, ...d.items] };
+      });
+    }
+    setGenerandoRider(false);
+    if (d.mensaje) alert(d.mensaje);
+  }
+
   // ── Agregar personal ──
   async function agregarPersonal() {
     if (!selTecnico && !selRol) return;
@@ -632,8 +666,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   if (loading) return <div className="text-gray-400 text-sm p-6">Cargando...</div>;
   if (!proyecto) return <div className="text-red-400 text-sm p-6">Proyecto no encontrado</div>;
 
-  const checkTotal = proyecto.checklist.length;
-  const checkDone = proyecto.checklist.filter(c => c.completado).length;
+  const checkOp = proyecto.checklist.filter(c => c.tipo !== "RIDER");
+  const checkRider = proyecto.checklist.filter(c => c.tipo === "RIDER");
+  const checkTotal = checkOp.length;
+  const checkDone = checkOp.filter(c => c.completado).length;
   const checkPct = checkTotal > 0 ? (checkDone / checkTotal) * 100 : 0;
   const personalConfirmado = proyecto.personal.filter(p => p.confirmado).length;
   const diasRestantes = Math.ceil((new Date(proyecto.fechaEvento).getTime() - Date.now()) / 86400000);
@@ -801,6 +837,89 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
           </div>
+
+          {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
+          {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
+            // Leer datos de renta: primero de logisticaRenta del proyecto, luego del trato
+            let rentaData: Record<string, string> = {};
+            try {
+              if (proyecto.logisticaRenta) {
+                rentaData = JSON.parse(proyecto.logisticaRenta);
+              } else if (proyecto.trato?.ideasReferencias) {
+                const d = JSON.parse(proyecto.trato.ideasReferencias);
+                if (d && typeof d === "object" && d.nivelServicio) rentaData = d;
+              }
+            } catch { /* vacío */ }
+
+            const NIVEL_LABELS: Record<string, string> = {
+              SOLO_RENTA: "Solo renta (cliente recoge)",
+              RENTA_ENTREGA: "Renta + entrega",
+              RENTA_MONTAJE: "Renta + montaje",
+              RENTA_FULL: "Renta + operación",
+            };
+            const ENTREGA_LABELS: Record<string, string> = {
+              RECOGE_BODEGA: "Recoge en bodega (Querétaro)",
+              ENTREGA_BODEGA: "Llevamos a su bodega",
+              ENTREGA_VENUE: "Llevamos al venue",
+            };
+
+            return (
+              <div className="bg-[#111] border border-blue-900/30 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Logística de renta</p>
+                  <span className="text-[10px] text-blue-400/60 bg-blue-900/20 px-2 py-0.5 rounded-full">RENTA DE EQUIPO</span>
+                </div>
+                {Object.keys(rentaData).length === 0 ? (
+                  <p className="text-gray-600 text-sm italic">Sin datos de logística. Completa el descubrimiento en el trato para ver esta información.</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
+                    {rentaData.nivelServicio && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1">Nivel de servicio</p>
+                        <p className="text-white">{NIVEL_LABELS[rentaData.nivelServicio] ?? rentaData.nivelServicio}</p>
+                      </div>
+                    )}
+                    {rentaData.entrega && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1">Modalidad de entrega</p>
+                        <p className="text-white">{ENTREGA_LABELS[rentaData.entrega] ?? rentaData.entrega}</p>
+                      </div>
+                    )}
+                    {rentaData.fechaEntrega && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1">Fecha de entrega</p>
+                        <p className="text-white">{fmtDate(rentaData.fechaEntrega)}{rentaData.horaEntrega ? ` · ${rentaData.horaEntrega}` : ""}</p>
+                      </div>
+                    )}
+                    {rentaData.fechaDevolucion && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1">Fecha de devolución</p>
+                        <p className="text-white">{fmtDate(rentaData.fechaDevolucion)}{rentaData.horaDevolucion ? ` · ${rentaData.horaDevolucion}` : ""}</p>
+                      </div>
+                    )}
+                    {rentaData.direccionEntrega && (
+                      <div className="col-span-2">
+                        <p className="text-gray-500 text-xs mb-1">Dirección de entrega</p>
+                        <p className="text-white">{rentaData.direccionEntrega}</p>
+                      </div>
+                    )}
+                    {rentaData.tecnicoPropio !== undefined && rentaData.tecnicoPropio !== "" && (
+                      <div>
+                        <p className="text-gray-500 text-xs mb-1">¿Cliente tiene técnico propio?</p>
+                        <p className="text-white">{rentaData.tecnicoPropio === "SI" ? "Sí" : rentaData.tecnicoPropio === "NO" ? "No" : rentaData.tecnicoPropio}</p>
+                      </div>
+                    )}
+                    {rentaData.descripcionEquipos && (
+                      <div className="col-span-2">
+                        <p className="text-gray-500 text-xs mb-1">Descripción de equipos solicitados</p>
+                        <p className="text-gray-300 whitespace-pre-wrap">{rentaData.descripcionEquipos}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Horarios ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
@@ -1379,31 +1498,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ────── TAB: CHECKLIST ────── */}
       {tab === "checklist" && (
-        <div className="space-y-3">
-          {/* Agregar item */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex gap-2">
-            <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && agregarItem()}
-              placeholder="Agregar nuevo item al checklist..."
-              className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-              + Agregar
-            </button>
-          </div>
+        <div className="space-y-4">
 
-          {/* Lista */}
+          {/* ── Sección OPERACIÓN ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <span className="text-xs text-gray-500 uppercase tracking-wider">Items ({checkDone}/{checkTotal})</span>
+              <div>
+                <span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Checklist de operación</span>
+                <span className="text-gray-600 text-xs ml-2">({checkDone}/{checkTotal})</span>
+              </div>
               <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden">
-                <div className="h-full bg-[#B3985B] rounded-full" style={{ width: `${checkPct}%` }} />
+                <div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} />
               </div>
             </div>
-            {proyecto.checklist.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-8">Sin items en el checklist</p>
+
+            {checkOp.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6 italic">Sin items de operación</p>
             ) : (
-              proyecto.checklist.map(c => (
+              checkOp.map(c => (
                 <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
                   <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
                     className="w-4 h-4 rounded accent-[#B3985B] shrink-0" />
@@ -1415,6 +1527,66 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               ))
             )}
+
+            {/* Agregar item operación */}
+            <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
+              <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && agregarItem()}
+                placeholder="Agregar item de operación..."
+                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                + Agregar
+              </button>
+            </div>
+          </div>
+
+          {/* ── Sección RIDER (bodega) ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <div>
+                <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Rider técnico / bodega</span>
+                <span className="text-gray-600 text-xs ml-2">
+                  ({checkRider.filter(c => c.completado).length}/{checkRider.length})
+                </span>
+              </div>
+              <button
+                onClick={generarRiderAutomatico}
+                disabled={generandoRider || proyecto.equipos.length === 0}
+                className="text-xs border border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-700 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                {generandoRider ? "Generando..." : "⚡ Auto-generar desde equipos"}
+              </button>
+            </div>
+
+            {checkRider.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6 italic">
+                Sin items de rider.{proyecto.equipos.length > 0 ? " Usa el botón para auto-generar desde los equipos del proyecto." : " Agrega equipos al proyecto primero."}
+              </p>
+            ) : (
+              checkRider.map(c => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
+                  <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
+                    className="w-4 h-4 rounded accent-blue-500 shrink-0" />
+                  <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>
+                    {c.item}
+                  </span>
+                  <button onClick={() => eliminarItem(c.id)}
+                    className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
+                </div>
+              ))
+            )}
+
+            {/* Agregar item rider manualmente */}
+            <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
+              <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && agregarItemRider()}
+                placeholder="Agregar accesorio / item de bodega..."
+                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
+              <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()}
+                className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                + Agregar
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -13,8 +13,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
       encargado: { select: { name: true } },
-      trato: { select: { tipoEvento: true, tipoServicio: true, responsable: { select: { name: true } } } },
-      cotizacion: { select: { numeroCotizacion: true, granTotal: true, aplicaIva: true } },
+      trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, responsable: { select: { name: true } } } },
+      cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true } },
       personal: {
         include: {
           tecnico: { include: { rol: { select: { nombre: true } } } },
@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoLugarContacto", "descripcionGeneral", "detallesEspecificos",
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
-    "scoreFotoVideo", "recomendacionFotoVideo",
+    "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta",
   ];
 
   const data: Record<string, unknown> = {};
