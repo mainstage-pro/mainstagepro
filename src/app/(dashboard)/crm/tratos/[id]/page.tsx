@@ -593,24 +593,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* ── Etapa pipeline ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Etapa del pipeline</p>
-        <div className="flex gap-2">
-          {ETAPAS.map((e) => (
-            <button key={e} disabled={saving || e === trato.etapa} onClick={() => cambiarEtapa(e)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                e === trato.etapa ? ETAPA_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
-              }`}>
-              {ETAPA_LABELS[e]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ══ GATE PRIMARIO: primera decisión obligatoria ══
-          Mostrar solo cuando el trato está fresco: sin canal y sin elegir nurturing.
-          Una vez en flujo, mostrar toggle pequeño para poder cambiar. */}
+      {/* ══ GATE PRIMARIO ══ */}
       {!trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
         <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
           {!showCanales ? (
@@ -689,6 +672,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </button>
         </div>
       )}
+
+      {/* ── Etapa pipeline ── */}
+      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Etapa del pipeline</p>
+        <div className="flex gap-2">
+          {ETAPAS.map((e) => (
+            <button key={e} disabled={saving || e === trato.etapa} onClick={() => cambiarEtapa(e)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                e === trato.etapa ? ETAPA_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
+              }`}>
+              {ETAPA_LABELS[e]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── Siguiente acción recomendada ── */}
       {trato.tipoProspecto !== "NURTURING" && (() => {
