@@ -118,6 +118,7 @@ model Trato {
   ventanaMontajeFin     String?  // ej: "14:00" — hora límite para terminar montaje
   // ─────────────────────────────────────────────────────────────────────────
 
+  tipoProspecto       String   @default("ACTIVO")  // ACTIVO | NURTURING
   nurturingData       String?  // JSON: { etapa, temperatura, nextFollowup, nextMotivo, log[] }
   motivoPerdida       String?
   origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO

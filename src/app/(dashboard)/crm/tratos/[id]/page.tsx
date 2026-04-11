@@ -51,6 +51,7 @@ interface Trato {
   horaFinEvento: string | null;
   duracionMontajeHrs: number | null;
   ventanaMontajeInicio: string | null;
+  tipoProspecto: string;
   nurturingData: string | null;
   ventanaMontajeFin: string | null;
   cliente: {
@@ -605,8 +606,30 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      {/* ── Tipo de prospecto ── */}
+      <div className="flex gap-2">
+        <button
+          onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium border transition-colors ${
+            trato.tipoProspecto !== "NURTURING"
+              ? "bg-[#B3985B] text-black border-[#B3985B]"
+              : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
+          }`}>
+          🎯 Tiene necesidad concreta
+        </button>
+        <button
+          onClick={async () => { const d = await patch({ tipoProspecto: "NURTURING" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium border transition-colors ${
+            trato.tipoProspecto === "NURTURING"
+              ? "bg-emerald-800 text-white border-emerald-700"
+              : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
+          }`}>
+          🌱 Prospecto en frío
+        </button>
+      </div>
+
       {/* ── Siguiente acción recomendada ── */}
-      {(() => {
+      {trato.tipoProspecto !== "NURTURING" && (() => {
         // Acción recomendada
         const acciones: Record<string, { icon: string; titulo: string; desc: string; color: string }> = {
           PIDIENDO_INFO:   { icon: "ℹ️",  titulo: "Enviar información + formulario",     desc: "El cliente está investigando. Envía el formulario para conocer su proyecto.", color: "border-blue-700/40 bg-blue-900/10" },
@@ -643,19 +666,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       ══════════════════════════════════════════════════════════════════════ */}
 
       {/* ── Estado 1: Seleccionar canal ── */}
-      {!trato.canalAtencion && (
+      {trato.tipoProspecto !== "NURTURING" && !trato.canalAtencion && (
         <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-5">
             <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] font-bold text-sm">1</div>
             <div>
               <p className="text-white font-semibold">¿Cómo vas a atender este lead?</p>
-              <p className="text-gray-500 text-xs">Selecciona la ruta según la situación del prospecto</p>
+              <p className="text-gray-500 text-xs">Selecciona el canal de descubrimiento</p>
             </div>
           </div>
 
-          {/* Canales de descubrimiento activo */}
-          <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">El prospecto tiene necesidad — descubrimiento activo</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {CANALES.map(canal => (
               <button key={canal.id} onClick={() => seleccionarCanal(canal.id)} disabled={saving}
                 className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
@@ -665,28 +686,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </button>
             ))}
           </div>
-
-          {/* Ruta de nurturing */}
-          <div className="border-t border-[#1a1a1a] pt-5">
-            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">El prospecto solo busca información — sin necesidad inmediata</p>
-            <button onClick={() => seleccionarCanal("PROSPECTO_FRIO")} disabled={saving}
-              className="w-full border border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-4 text-left transition-all group flex items-center gap-4">
-              <div className="text-3xl shrink-0">🌱</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-emerald-300 text-sm font-semibold group-hover:text-emerald-200 transition-colors">Nurturing — Prospecto en frío</p>
-                <p className="text-gray-500 text-xs mt-0.5">Sin necesidad inmediata · Construir confianza a largo plazo · Llegar antes que la competencia</p>
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-[10px] text-emerald-700 font-medium">Proceso de valor</p>
-                <p className="text-[10px] text-gray-600">Semanas / meses</p>
-              </div>
-            </button>
-          </div>
         </div>
       )}
 
-      {/* ── Estado 2: Nurturing — Prospecto en frío ── */}
-      {trato.canalAtencion === "PROSPECTO_FRIO" && !trato.descubrimientoCompleto && (
+      {/* ── Nurturing — Prospecto en frío ── */}
+      {trato.tipoProspecto === "NURTURING" && (
         <div className="bg-[#0d0d0d] border-2 border-emerald-700/40 rounded-xl p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -697,7 +701,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-gray-500 text-xs">Construye confianza, comparte valor, sé paciente</p>
               </div>
             </div>
-            <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cambiar ruta</button>
+            <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cambiar a activo</button>
           </div>
 
           {/* Temperatura */}
@@ -824,14 +828,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">¿El prospecto ya está listo para avanzar?</p>
             <p className="text-gray-600 text-xs mb-4">Selecciona la siguiente ruta cuando estén listos para una propuesta formal.</p>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => seleccionarCanal("")}
+              <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
                 className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors">
                 <p className="font-semibold">🔍 Iniciar descubrimiento</p>
                 <p className="text-xs text-[#B3985B]/60 mt-0.5">Tienen necesidad, hay que calificarla</p>
               </button>
               <button
                 onClick={async () => {
-                  const d = await patch({ rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" });
+                  const d = await patch({ tipoProspecto: "ACTIVO", rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" });
                   setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
                 }}
                 className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors">
@@ -844,7 +848,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ── Estado 2: Formulario de descubrimiento ── */}
-      {trato.canalAtencion && trato.canalAtencion !== "PROSPECTO_FRIO" && !trato.descubrimientoCompleto && profundidad !== "INFO" && (
+      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && !trato.descubrimientoCompleto && profundidad !== "INFO" && (
         <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
@@ -1303,7 +1307,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ── Estado 2b: Canal INFO ── */}
-      {trato.canalAtencion === "INFORMACION" && !trato.descubrimientoCompleto && (
+      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion === "INFORMACION" && !trato.descubrimientoCompleto && (
         <div className="bg-[#0d0d0d] border-2 border-gray-700 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <span className="text-2xl">ℹ️</span>
@@ -1346,7 +1350,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ── Estado 3: Descubrimiento completo – resumen + recomendaciones ── */}
-      {trato.descubrimientoCompleto && (
+      {trato.tipoProspecto !== "NURTURING" && trato.descubrimientoCompleto && (
         <div className="bg-[#0d0d0d] border border-[#B3985B]/40 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">

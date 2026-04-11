@@ -40,7 +40,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId",
     // Nurturing
-    "nurturingData",
+    "tipoProspecto", "nurturingData",
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",

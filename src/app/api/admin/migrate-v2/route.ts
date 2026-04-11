@@ -85,6 +85,12 @@ export async function POST() {
     "proyectos.reporteCatering"
   );
 
+  // Trato.tipoProspecto
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "tipoProspecto" TEXT NOT NULL DEFAULT 'ACTIVO'`,
+    "tratos.tipoProspecto"
+  );
+
   // Trato.nurturingData
   await run(
     `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "nurturingData" TEXT`,
