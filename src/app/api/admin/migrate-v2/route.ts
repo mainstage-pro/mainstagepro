@@ -79,5 +79,11 @@ export async function POST() {
     "proyectos.logisticaRenta"
   );
 
+  // Proyecto.reporteCatering
+  await run(
+    `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "reporteCatering" TEXT`,
+    "proyectos.reporteCatering"
+  );
+
   return NextResponse.json({ ok: true, resultados });
 }

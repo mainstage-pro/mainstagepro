@@ -281,6 +281,8 @@ model Proyecto {
   recomendacionFotoVideo String?
   // Logística de renta (JSON con modalidad, fechas, dirección de entrega/devolución)
   logisticaRenta         String?
+  // Reporte de catering (JSON: contactoNombre, contactoTelefono, personasCrew, comidas[], notas)
+  reporteCatering        String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

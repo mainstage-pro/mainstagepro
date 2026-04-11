@@ -36,6 +36,7 @@ interface Proyecto {
   descripcionGeneral: string | null; detallesEspecificos: string | null;
   encargadoCliente: string | null; transportes: string | null;
   proveedorCatering: string | null; contactosDireccion: string | null;
+  reporteCatering: string | null;
   cronograma: string | null; contactosEmergencia: string | null; comentariosFinales: string | null;
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
@@ -180,6 +181,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     { proveedor: "", marcaModelo: "", comentarios: "" },
   ]);
   const [savingTransporte, setSavingTransporte] = useState(false);
+
+  // Estado catering
+  type CateringData = {
+    contactoNombre: string; contactoTelefono: string;
+    personasCrew: string; comidas: string[]; notas: string;
+  };
+  const CATERING_EMPTY: CateringData = { contactoNombre: "", contactoTelefono: "", personasCrew: "", comidas: [], notas: "" };
+  const [catering, setCatering] = useState<CateringData>(CATERING_EMPTY);
+  const [savingCatering, setSavingCatering] = useState(false);
+  const COMIDAS_OPTS = ["Desayuno", "Almuerzo", "Comida", "Cena", "Snack / coffee break"];
 
   // Estado para documentos
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -382,6 +393,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         { proveedor: "", marcaModelo: "", comentarios: "" },
       ]);
     }
+    try {
+      const c = proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {};
+      setCatering({ ...CATERING_EMPTY, ...c, comidas: Array.isArray(c.comidas) ? c.comidas : [] });
+    } catch { setCatering(CATERING_EMPTY); }
   }, [proyecto?.id]);
 
   // ── Cambiar estado del proyecto ──
@@ -442,6 +457,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   function updateTransporte(i: number, field: keyof TransporteSlot, value: string) {
     setTransporteSlots(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s));
+  }
+
+  async function guardarCatering(data: typeof catering) {
+    setSavingCatering(true);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reporteCatering: JSON.stringify(data) }),
+    });
+    setProyecto(prev => prev ? { ...prev, reporteCatering: JSON.stringify(data) } : prev);
+    setSavingCatering(false);
+  }
+
+  function abrirWhatsAppCatering() {
+    if (!catering.contactoTelefono) return;
+    const tel = catering.contactoTelefono.replace(/\D/g, "");
+    const num = tel.startsWith("52") ? tel : `52${tel}`;
+    const fechaStr = new Date(proyecto!.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const comidasStr = catering.comidas.length > 0 ? catering.comidas.join(", ") : "a definir";
+    const personas = catering.personasCrew || "—";
+    const msg = `Hola${catering.contactoNombre ? ` ${catering.contactoNombre}` : ""}! Te contactamos de Mainstage Pro. Para el proyecto *${proyecto!.nombre}* el ${fechaStr}${proyecto!.lugarEvento ? ` en ${proyecto!.lugarEvento}` : ""}, necesitamos servicio de catering para *${personas} personas* de crew. Comidas requeridas: *${comidasStr}*.${catering.notas ? ` Notas: ${catering.notas}.` : ""} ¿Puedes confirmarnos disponibilidad y precio?`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank");
   }
 
   // ── Subir archivo ──
@@ -1015,8 +1051,73 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
 
-            <div>
-              <Campo label="Proveedor de catering / alimentación producción" value={proyecto.proveedorCatering} field="proveedorCatering" onSave={guardarCampo} />
+            {/* Catering de producción */}
+            <div className="border-t border-[#1a1a1a] pt-4 mt-2">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500 uppercase tracking-wider">Catering de producción</p>
+                <div className="flex items-center gap-2">
+                  {savingCatering && <span className="text-xs text-gray-600">Guardando...</span>}
+                  {catering.contactoTelefono && (
+                    <button onClick={abrirWhatsAppCatering}
+                      className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                      📲 WhatsApp catering
+                    </button>
+                  )}
+                  <button onClick={() => guardarCatering(catering)} disabled={savingCatering}
+                    className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                    Guardar
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Contacto (nombre)</label>
+                  <input value={catering.contactoNombre}
+                    onChange={e => setCatering(p => ({ ...p, contactoNombre: e.target.value }))}
+                    placeholder="Nombre del proveedor o contacto"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Teléfono / WhatsApp</label>
+                  <input value={catering.contactoTelefono}
+                    onChange={e => setCatering(p => ({ ...p, contactoTelefono: e.target.value }))}
+                    placeholder="Ej: 4421234567"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Personas de crew a alimentar</label>
+                  <input type="number" min="1" value={catering.personasCrew}
+                    onChange={e => setCatering(p => ({ ...p, personasCrew: e.target.value }))}
+                    placeholder="Ej: 8"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Comidas requeridas</label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {COMIDAS_OPTS.map(c => (
+                      <button key={c} type="button"
+                        onClick={() => setCatering(p => ({
+                          ...p,
+                          comidas: p.comidas.includes(c) ? p.comidas.filter(x => x !== c) : [...p.comidas, c],
+                        }))}
+                        className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${
+                          catering.comidas.includes(c)
+                            ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]"
+                            : "border-[#333] text-gray-500 hover:border-gray-500 hover:text-gray-300"
+                        }`}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 block mb-1">Notas especiales (alergias, vegetarianos, restricciones…)</label>
+                  <input value={catering.notas}
+                    onChange={e => setCatering(p => ({ ...p, notas: e.target.value }))}
+                    placeholder="Ej: 2 vegetarianos, sin gluten para técnico de iluminación"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
             </div>
           </div>
 
