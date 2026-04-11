@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
+import { TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
+import { SERVICIO_LABELS } from "@/lib/form-labels";
 
 const COLUMNAS = [
   { etapa: "DESCUBRIMIENTO", label: "Descubrimiento", color: "border-blue-800" },
@@ -11,7 +12,7 @@ const COLUMNAS = [
 export default async function PipelinePage() {
   const tratos = await prisma.trato.findMany({
     where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA"] } },
-    include: { cliente: true, responsable: { select: { name: true } } },
+    select: { id: true, etapa: true, tipoEvento: true, tipoServicio: true, nombreEvento: true, fechaEventoEstimada: true, origenLead: true, presupuestoEstimado: true, fechaProximaAccion: true, cliente: { select: { nombre: true, empresa: true } }, responsable: { select: { name: true } } },
     orderBy: { updatedAt: "desc" },
   });
 
@@ -47,8 +48,8 @@ export default async function PipelinePage() {
               <div className="flex-1 overflow-y-auto bg-[#0d0d0d] border border-t-0 border-[#1e1e1e] rounded-b-lg p-2 space-y-2">
                 {columnaTratos.map((trato) => (
                   <Link key={trato.id} href={`/crm/tratos/${trato.id}`}>
-                    <div className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 hover:border-[#333] transition-colors cursor-pointer">
-                      {/* Fila superior: punto color + cliente + presupuesto */}
+                    <div className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 hover:border-[#333] transition-colors cursor-pointer space-y-1">
+                      {/* Fila 1: punto + cliente + presupuesto */}
                       <div className="flex items-center gap-1.5 min-w-0">
                         <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] ?? "#333" }} />
                         <span className="text-white text-xs font-medium truncate flex-1">{trato.cliente.nombre}</span>
@@ -56,14 +57,19 @@ export default async function PipelinePage() {
                           <span className="text-[#B3985B] text-[10px] font-medium shrink-0">${trato.presupuestoEstimado.toLocaleString("es-MX")}</span>
                         )}
                       </div>
-                      {/* Fila inferior: empresa o tipo evento + seguimiento */}
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[#555] text-[10px] truncate flex-1">
-                          {trato.cliente.empresa ?? (TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento)}
+                      {/* Fila 2: nombre del evento */}
+                      {trato.nombreEvento && (
+                        <p className="text-[#6b7280] text-[10px] truncate pl-3">{trato.nombreEvento}</p>
+                      )}
+                      {/* Fila 3: tipo evento · servicio | fecha evento */}
+                      <div className="flex items-center gap-1 pl-3">
+                        <span className="text-[#444] text-[10px] truncate flex-1">
+                          {TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}
+                          {trato.tipoServicio && <> · {SERVICIO_LABELS[trato.tipoServicio] ?? trato.tipoServicio}</>}
                         </span>
-                        {trato.fechaProximaAccion && (
-                          <span className="text-[#6b7280] text-[10px] shrink-0">
-                            {new Date(trato.fechaProximaAccion).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                        {trato.fechaEventoEstimada && (
+                          <span className="text-[#555] text-[10px] shrink-0">
+                            {new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                           </span>
                         )}
                       </div>
