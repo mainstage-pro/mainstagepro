@@ -151,6 +151,16 @@ export default function MarketingCalendarioPage() {
     await load();
   }
 
+  async function eliminarMes() {
+    if (!confirm(`¿Eliminar las ${publicaciones.length} publicaciones de ${mesLabel(mes)}?\n\nEsta acción no se puede deshacer.`)) return;
+    setGenerating(true);
+    await Promise.all(publicaciones.map(p =>
+      fetch(`/api/marketing/publicaciones/${p.id}`, { method: "DELETE" })
+    ));
+    await load();
+    setGenerating(false);
+  }
+
   async function generarMes() {
     if (publicaciones.length > 0) {
       if (!confirm(`Ya hay ${publicaciones.length} publicaciones en ${mesLabel(mes)}.\n\n¿Generar más publicaciones adicionales de todos modos?`)) return;
@@ -202,6 +212,12 @@ export default function MarketingCalendarioPage() {
             className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-400 text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
             Tipos de contenido
           </Link>
+          {publicaciones.length > 0 && (
+            <button onClick={eliminarMes} disabled={generating}
+              className="bg-[#1a1a1a] border border-red-900/40 hover:bg-red-900/20 text-red-500 text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
+              🗑 Borrar mes
+            </button>
+          )}
           <button onClick={generarMes} disabled={generating}
             className="bg-[#1a1a1a] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
             {generating ? "Generando..." : "⚡ Generar mes"}
