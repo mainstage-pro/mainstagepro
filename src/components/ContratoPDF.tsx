@@ -27,8 +27,8 @@ const s = StyleSheet.create({
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 40,
-    paddingTop: 28,
-    paddingBottom: 22,
+    paddingTop: 44,
+    paddingBottom: 28,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",

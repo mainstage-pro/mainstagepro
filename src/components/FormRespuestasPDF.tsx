@@ -12,14 +12,14 @@ const BG = "#F7F5F0";
 
 const s = StyleSheet.create({
   page: { fontFamily: "Helvetica", backgroundColor: WHITE, paddingBottom: 40, fontSize: 9, color: BLACK },
-  header: { backgroundColor: BLACK, paddingHorizontal: 36, paddingTop: 28, paddingBottom: 20 },
+  header: { backgroundColor: BLACK, paddingHorizontal: 40, paddingTop: 44, paddingBottom: 28 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logo: { width: 160, height: 40, objectFit: "contain" },
   headerTitle: { color: GOLD, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 2, textTransform: "uppercase" },
   headerNombre: { color: WHITE, fontSize: 16, fontFamily: "Helvetica-Bold", marginTop: 4 },
   headerSub: { color: LIGHT_GRAY, fontSize: 8, marginTop: 3 },
-  dividerGold: { height: 2, backgroundColor: GOLD, marginTop: 16, marginHorizontal: 36 },
-  body: { paddingHorizontal: 36, paddingTop: 24 },
+  dividerGold: { height: 2, backgroundColor: GOLD, marginTop: 16, marginHorizontal: 40 },
+  body: { paddingHorizontal: 40, paddingTop: 24 },
   // Info bar
   infoBar: { flexDirection: "row", gap: 0, marginBottom: 24, backgroundColor: BG, borderRadius: 6 },
   infoItem: { flex: 1, padding: 12, borderRightWidth: 1, borderRightColor: "#e8e4dc" },
@@ -34,7 +34,7 @@ const s = StyleSheet.create({
   rowValue: { flex: 1, color: BLACK, fontSize: 8.5, fontFamily: "Helvetica-Bold" },
   rowValueMulti: { flex: 1, color: BLACK, fontSize: 8 },
   // Footer
-  footer: { position: "absolute", bottom: 20, left: 36, right: 36, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#e8e4dc", paddingTop: 8 },
+  footer: { position: "absolute", bottom: 20, left: 40, right: 40, flexDirection: "row", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#e8e4dc", paddingTop: 8 },
   footerText: { color: LIGHT_GRAY, fontSize: 7 },
   badge: { backgroundColor: DARK, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3, alignSelf: "flex-start", marginTop: 6 },
   badgeText: { color: GOLD, fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 1 },
