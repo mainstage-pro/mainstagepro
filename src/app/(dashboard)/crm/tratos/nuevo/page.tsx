@@ -62,7 +62,9 @@ const ORIGEN_VENTA_OPTIONS = [
 
 export default function NuevoTratoPage() {
   const router = useRouter();
-  const [step, setStep] = useState<1|2>(1);
+  // step 0 = gate, 1 = datos cliente + ruta, 2 = detalles servicio
+  const [step, setStep] = useState<0|1|2>(0);
+  const [tipoProspecto, setTipoProspecto] = useState<"ACTIVO"|"NURTURING"|"">("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
   const [loading, setLoading] = useState(false);
@@ -79,20 +81,37 @@ export default function NuevoTratoPage() {
 
   useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
 
-  function validarStep1() {
+  function validarCliente() {
     if (modoCliente==="existente" && !s1.clienteId) { setError("Selecciona un cliente"); return false; }
     if (modoCliente==="nuevo" && !clienteNuevo.nombre) { setError("El nombre es requerido"); return false; }
     setError(""); return true;
   }
-  function validarStep2() {
-    if (!s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return false; }
-    setError(""); return true;
+
+  async function crearNurturing() {
+    if (!validarCliente()) return;
+    setLoading(true); setError("");
+    const payload: Record<string,unknown> = {
+      ...s1,
+      tipoProspecto: "NURTURING",
+      canalAtencion: null,
+    };
+    if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
+    try {
+      const res = await fetch("/api/tratos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      if (!res.ok) { const d=await res.json(); setError(d.error||"Error al crear"); setLoading(false); return; }
+      const { trato } = await res.json();
+      router.push(`/crm/tratos/${trato.id}`);
+    } catch { setError("Error de conexión"); setLoading(false); }
   }
 
-  async function crear() {
-    if (!validarStep2()) return;
-    setLoading(true); setError("");
-    const payload: Record<string,unknown> = { ...s1, ...s2, asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null };
+  async function crearActivo() {
+    if (!s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return; }
+    setError(""); setLoading(true);
+    const payload: Record<string,unknown> = {
+      ...s1, ...s2,
+      tipoProspecto: "ACTIVO",
+      asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
+    };
     if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
     try {
       const res = await fetch("/api/tratos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
@@ -104,28 +123,81 @@ export default function NuevoTratoPage() {
 
   const clienteSel = clientes.find(c=>c.id===s1.clienteId);
 
+  // ── Step labels ──
+  const stepsActivo = ["Tipo", "¿Quién es?", "¿Qué busca?"] as const;
+  const stepsNurturing = ["Tipo", "¿Quién es?"] as const;
+  const steps = tipoProspecto === "NURTURING" ? stepsNurturing : stepsActivo;
+
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <button onClick={()=>router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
         <h1 className="text-xl font-bold text-white">Nuevo trato</h1>
-        <div className="flex items-center gap-2 mt-3">
-          {([1,2] as const).map(n => (
-            <div key={n} className="flex items-center gap-2">
-              <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${step===n?"bg-[#B3985B] text-black":step>n?"bg-green-700 text-white":"bg-[#1a1a1a] text-gray-500 border border-[#333]"}`}>
-                {step>n?"✓":n}
+        {step > 0 && (
+          <div className="flex items-center gap-2 mt-3">
+            {steps.map((label, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                  step === i ? "bg-[#B3985B] text-black" :
+                  step > i ? "bg-green-700 text-white" :
+                  "bg-[#1a1a1a] text-gray-500 border border-[#333]"
+                }`}>
+                  {step > i ? "✓" : i}
+                </div>
+                <span className={`text-xs ${step === i ? "text-white" : "text-gray-600"}`}>{label}</span>
+                {i < steps.length - 1 && <span className="text-gray-700 text-xs mx-1">→</span>}
               </div>
-              <span className={`text-xs ${step===n?"text-white":"text-gray-600"}`}>{n===1?"¿Quién es?":"¿Qué busca?"}</span>
-              {n<2&&<span className="text-gray-700 text-xs mx-1">→</span>}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {error && <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
-      {step===1 && (
+      {/* ── Step 0: Gate primario ── */}
+      {step === 0 && (
         <div className="space-y-4">
+          <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
+            <div className="text-center mb-6">
+              <p className="text-white font-semibold text-lg">¿Cómo es este prospecto?</p>
+              <p className="text-gray-500 text-sm mt-1">Esta selección define toda la ruta de trabajo</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => { setTipoProspecto("NURTURING"); setStep(1); }}
+                className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
+                <div className="text-3xl mb-3">🌱</div>
+                <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
+                <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Sin necesidad inmediata · Construir confianza a largo plazo · Seguimiento de valor</p>
+                <p className="text-emerald-700 text-xs mt-3 font-medium">Proceso de semanas o meses →</p>
+              </button>
+              <button
+                onClick={() => { setTipoProspecto("ACTIVO"); setStep(1); }}
+                className="border-2 border-[#B3985B]/50 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-5 text-left transition-all group">
+                <div className="text-3xl mb-3">🎯</div>
+                <p className="text-[#B3985B] font-semibold text-base group-hover:text-[#c9a96a] transition-colors">Tiene necesidad concreta</p>
+                <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Ya tiene un evento en mente · Hay que descubrir y cotizar · Proceso de venta activo</p>
+                <p className="text-[#B3985B]/60 text-xs mt-3 font-medium">Iniciar descubrimiento →</p>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 1: Cliente ── */}
+      {step === 1 && (
+        <div className="space-y-4">
+
+          {/* Tipo elegido (recordatorio) */}
+          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium ${
+            tipoProspecto === "NURTURING"
+              ? "border-emerald-700/40 bg-emerald-950/20 text-emerald-300"
+              : "border-[#B3985B]/40 bg-[#B3985B]/5 text-[#B3985B]"
+          }`}>
+            <span>{tipoProspecto === "NURTURING" ? "🌱" : "🎯"}</span>
+            <span>{tipoProspecto === "NURTURING" ? "Prospecto en frío — Nurturing" : "Tiene necesidad concreta — Descubrimiento activo"}</span>
+            <button onClick={() => { setStep(0); setTipoProspecto(""); }} className="ml-auto text-xs opacity-50 hover:opacity-100 transition-opacity">Cambiar</button>
+          </div>
 
           {/* Cliente */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
@@ -164,35 +236,35 @@ export default function NuevoTratoPage() {
             )}
           </div>
 
-          {/* Ruta de entrada */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
-            <div className="space-y-2">
-              {RUTAS_CARDS.map(r=>(
-                <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{r.icon}</span>
-                    <div>
-                      <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
+          {/* Ruta de entrada — solo si es ACTIVO */}
+          {tipoProspecto === "ACTIVO" && (
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
+              <div className="space-y-2">
+                {RUTAS_CARDS.map(r=>(
+                  <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{r.icon}</span>
+                      <div>
+                        <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Canal de comunicación */}
-            <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
-              <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
-              <div className="flex flex-wrap gap-2">
-                {CANALES.map(c=>(
-                  <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                    <span>{c.icon}</span>{c.label}
                   </button>
                 ))}
               </div>
+              <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
+                <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
+                <div className="flex flex-wrap gap-2">
+                  {CANALES.map(c=>(
+                    <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                      <span>{c.icon}</span>{c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Origen del lead */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
@@ -216,13 +288,23 @@ export default function NuevoTratoPage() {
             </div>
           </div>
 
-          <div className="flex justify-end pb-4">
-            <button onClick={()=>{if(validarStep1())setStep(2);}} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm px-6 py-2.5 rounded-xl transition-colors">Siguiente → ¿Qué busca?</button>
+          <div className="flex gap-3 justify-between pb-4">
+            <button onClick={()=>{setStep(0);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
+            {tipoProspecto === "NURTURING" ? (
+              <button onClick={crearNurturing} disabled={loading} className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors disabled:opacity-50">
+                {loading ? "Creando..." : "Crear trato →"}
+              </button>
+            ) : (
+              <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
+                Siguiente → ¿Qué busca?
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {step===2 && (
+      {/* ── Step 2: Detalles del servicio (solo ACTIVO) ── */}
+      {step === 2 && tipoProspecto === "ACTIVO" && (
         <div className="space-y-5">
 
           {/* Tipo de servicio */}
@@ -273,7 +355,7 @@ export default function NuevoTratoPage() {
 
           <div className="flex gap-3 justify-between pb-6">
             <button onClick={()=>{setStep(1);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
-            <button onClick={crear} disabled={loading} className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50">{loading?"Creando...":"Crear trato →"}</button>
+            <button onClick={crearActivo} disabled={loading} className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50">{loading?"Creando...":"Crear trato →"}</button>
           </div>
         </div>
       )}

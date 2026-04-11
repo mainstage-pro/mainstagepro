@@ -67,6 +67,7 @@ export async function POST(request: NextRequest) {
         etapa: "DESCUBRIMIENTO",
         clasificacion: body.clasificacion || "PROSPECTO",
         tipoServicio: body.tipoServicio || null,
+        tipoProspecto: body.tipoProspecto || "ACTIVO",
         canalAtencion: body.canalAtencion || null,
         rutaEntrada: body.rutaEntrada || "DESCUBRIR",
         etapaContratacion: body.etapaContratacion || null,
