@@ -85,6 +85,12 @@ export async function POST() {
     "proyectos.reporteCatering"
   );
 
+  // Trato.nurturingData
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "nurturingData" TEXT`,
+    "tratos.nurturingData"
+  );
+
   // Trato.horaInicioEvento / horaFinEvento / duracionMontajeHrs
   await run(
     `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "horaInicioEvento" TEXT`,

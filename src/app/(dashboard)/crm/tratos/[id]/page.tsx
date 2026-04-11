@@ -51,6 +51,7 @@ interface Trato {
   horaFinEvento: string | null;
   duracionMontajeHrs: number | null;
   ventanaMontajeInicio: string | null;
+  nurturingData: string | null;
   ventanaMontajeFin: string | null;
   cliente: {
     id: string; nombre: string; empresa: string | null;
@@ -186,6 +187,47 @@ const RENTA_ENTREGA = [
   { id: "ENTREGA_VENUE",  label: "Llevamos al venue",    desc: "Directo al evento" },
 ];
 
+// ─── Nurturing / Prospecto en frío ───────────────────────────────────────────
+const NURTURING_ETAPAS = [
+  { id: "PRIMER_CONTACTO",    icon: "🌱", label: "Primer contacto" },
+  { id: "COMPARTIENDO_VALOR", icon: "📚", label: "Compartiendo valor" },
+  { id: "CONSTRUYENDO",       icon: "🤝", label: "Construyendo relación" },
+  { id: "DETECTANDO",         icon: "🎯", label: "Detectando momento" },
+  { id: "LISTO",              icon: "✅", label: "Listo para propuesta" },
+];
+
+const TOUCHPOINT_TYPES = [
+  { id: "WA_INFO",   icon: "💬", label: "WA Info" },
+  { id: "PORTFOLIO", icon: "📸", label: "Portfolio" },
+  { id: "VALOR",     icon: "💡", label: "Dato de valor" },
+  { id: "FOLLOW_UP", icon: "👋", label: "Follow-up" },
+  { id: "LLAMADA",   icon: "📞", label: "Llamada" },
+  { id: "DETECCION", icon: "🎯", label: "Detección" },
+];
+
+const WA_TEMPLATES: Array<{ id: string; tipo: string; icon: string; label: string; msg: (n: string) => string }> = [
+  {
+    id: "presentacion", tipo: "WA_INFO", icon: "🤝", label: "Presentación",
+    msg: (n) => `Hola ${n}! 👋 Somos *Mainstage Pro*, empresa de producción de audio e iluminación en Querétaro. Nos especializamos en hacer que los eventos suenen y se vean increíbles — conciertos, bodas, eventos corporativos y más.\n\nSi en algún momento planeas un evento y necesitas apoyo técnico, aquí estamos. ¡Saludos! 🎵✨`,
+  },
+  {
+    id: "portfolio", tipo: "PORTFOLIO", icon: "📸", label: "Portfolio",
+    msg: (n) => `Hola ${n}! 😊 Quería compartirte un poco del trabajo reciente de *Mainstage Pro* — producción de audio e iluminación en eventos de todo tipo.\n\nLa calidad del sonido y la luz hacen toda la diferencia para crear una experiencia memorable. ¿Te gustaría ver ejemplos de nuestro trabajo? Con gusto te compartimos nuestro portfolio. 📩`,
+  },
+  {
+    id: "valor", tipo: "VALOR", icon: "💡", label: "Dato de valor",
+    msg: (n) => `Hola ${n}! 💡 ¿Sabías que uno de los errores más comunes en eventos es subestimar el audio?\n\nUn sistema bien diseñado y calibrado transforma completamente la experiencia de los asistentes. En *Mainstage Pro* lo hacemos con equipo de primer nivel y operadores certificados.\n\nEspero te sea útil para cuando planees tu próximo evento. 🙌`,
+  },
+  {
+    id: "follow_up", tipo: "FOLLOW_UP", icon: "👋", label: "Check-in",
+    msg: (n) => `Hola ${n}! 😊 Paso a saludarte por parte del equipo de *Mainstage Pro*. ¿Todo bien por allá?\n\nSin prisa ni presión — cuando tengas un evento en mente y quieras explorar opciones, aquí estaremos con gusto. ¡Que tengas un excelente día! 🎉`,
+  },
+  {
+    id: "deteccion", tipo: "DETECCION", icon: "🎯", label: "¿Hay algo pronto?",
+    msg: (n) => `Hola ${n}! 🙋 Ha pasado un tiempo desde que hablamos. ¿Cómo van los planes?\n\nSi tienes algún evento próximo en el que podamos apoyarte — producción de audio, iluminación, renta de equipo — con mucho gusto platicamos. ¿Hay algo en puerta? 📅`,
+  },
+];
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -209,6 +251,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [linkCopiado, setLinkCopiado] = useState(false);
   // Modo de descubrimiento: "VENDEDOR" | "CLIENTE" (inferido del formToken, editable)
   const [modoDescubrimiento, setModoDescubrimiento] = useState<"VENDEDOR" | "CLIENTE">("VENDEDOR");
+
+  // Nurturing state
+  type NurturingData = { etapa: string; temperatura: string; nextFollowup: string; nextMotivo: string; log: Array<{ fecha: string; tipo: string; notas: string }> };
+  const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", temperatura: "FRIO", nextFollowup: "", nextMotivo: "", log: [] };
+  const [nurturing, setNurturing] = useState<NurturingData>(NURTURING_EMPTY);
+  const [nuevoTP, setNuevoTP] = useState({ tipo: "WA_INFO", notas: "" });
+  const [savingNurturing, setSavingNurturing] = useState(false);
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -265,6 +314,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           const t = d.trato as Trato;
           // Inferir modo: si tiene formToken activo → cliente, si no → vendedor
           if (t.formToken) setModoDescubrimiento("CLIENTE");
+          // Pre-fill nurturing
+          if (t.nurturingData) {
+            try { setNurturing({ ...NURTURING_EMPTY, ...JSON.parse(t.nurturingData) }); } catch { /* defaults */ }
+          }
           setBriefingText(t.notas ?? "");
           setArchivos(t.archivos ?? []);
           // Parse rental-specific fields from ideasReferencias if service is RENTA
@@ -322,6 +375,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const d = await patch({ canalAtencion: canal });
     setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
     setSaving(false);
+  }
+
+  async function guardarNurturing(data: NurturingData) {
+    setSavingNurturing(true);
+    await patch({ nurturingData: JSON.stringify(data) });
+    setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data) } : prev);
+    setSavingNurturing(false);
+  }
+
+  async function registrarTouchpoint(tipo: string, notas: string) {
+    const entry = { fecha: new Date().toISOString().split("T")[0], tipo, notas: notas.trim() || tipo };
+    const updated = { ...nurturing, log: [...nurturing.log, entry] };
+    setNurturing(updated);
+    setNuevoTP(p => ({ ...p, notas: "" }));
+    await guardarNurturing(updated);
   }
 
   async function guardarDescubrimiento(completar = false) {
@@ -581,10 +649,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] font-bold text-sm">1</div>
             <div>
               <p className="text-white font-semibold">¿Cómo vas a atender este lead?</p>
-              <p className="text-gray-500 text-xs">Selecciona la ruta de atención para determinar el nivel de descubrimiento</p>
+              <p className="text-gray-500 text-xs">Selecciona la ruta según la situación del prospecto</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+          {/* Canales de descubrimiento activo */}
+          <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">El prospecto tiene necesidad — descubrimiento activo</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
             {CANALES.map(canal => (
               <button key={canal.id} onClick={() => seleccionarCanal(canal.id)} disabled={saving}
                 className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
@@ -594,11 +665,186 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </button>
             ))}
           </div>
+
+          {/* Ruta de nurturing */}
+          <div className="border-t border-[#1a1a1a] pt-5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">El prospecto solo busca información — sin necesidad inmediata</p>
+            <button onClick={() => seleccionarCanal("PROSPECTO_FRIO")} disabled={saving}
+              className="w-full border border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-4 text-left transition-all group flex items-center gap-4">
+              <div className="text-3xl shrink-0">🌱</div>
+              <div className="flex-1 min-w-0">
+                <p className="text-emerald-300 text-sm font-semibold group-hover:text-emerald-200 transition-colors">Nurturing — Prospecto en frío</p>
+                <p className="text-gray-500 text-xs mt-0.5">Sin necesidad inmediata · Construir confianza a largo plazo · Llegar antes que la competencia</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[10px] text-emerald-700 font-medium">Proceso de valor</p>
+                <p className="text-[10px] text-gray-600">Semanas / meses</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Estado 2: Nurturing — Prospecto en frío ── */}
+      {trato.canalAtencion === "PROSPECTO_FRIO" && !trato.descubrimientoCompleto && (
+        <div className="bg-[#0d0d0d] border-2 border-emerald-700/40 rounded-xl p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-emerald-700/20 flex items-center justify-center text-lg">🌱</div>
+              <div>
+                <p className="text-white font-semibold">Nurturing — Prospecto en frío</p>
+                <p className="text-gray-500 text-xs">Construye confianza, comparte valor, sé paciente</p>
+              </div>
+            </div>
+            <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cambiar ruta</button>
+          </div>
+
+          {/* Temperatura */}
+          <div className="mb-5">
+            <label className="text-[10px] text-gray-500 uppercase tracking-widest block mb-2">Temperatura del prospecto</label>
+            <div className="flex gap-2">
+              {[
+                { id: "FRIO",     icon: "❄️", label: "Frío",     cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
+                { id: "TIBIO",    icon: "🌡️", label: "Tibio",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
+                { id: "CALIENTE", icon: "🔥", label: "Caliente", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
+              ].map(t => (
+                <button key={t.id}
+                  onClick={() => { const u = { ...nurturing, temperatura: t.id }; setNurturing(u); guardarNurturing(u); }}
+                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"}`}>
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Etapa */}
+          <div className="mb-5">
+            <label className="text-[10px] text-gray-500 uppercase tracking-widest block mb-2">Etapa del proceso</label>
+            <div className="flex flex-wrap gap-2">
+              {NURTURING_ETAPAS.map(e => (
+                <button key={e.id}
+                  onClick={() => { const u = { ...nurturing, etapa: e.id }; setNurturing(u); guardarNurturing(u); }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${nurturing.etapa === e.id ? "border-emerald-600 bg-emerald-900/30 text-emerald-300" : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"}`}>
+                  {e.icon} {e.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Próximo seguimiento */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">Fecha del próximo contacto</label>
+              <input type="date" value={nurturing.nextFollowup}
+                onChange={e => setNurturing(p => ({ ...p, nextFollowup: e.target.value }))}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1">¿Qué vas a compartirle?</label>
+              <input value={nurturing.nextMotivo}
+                onChange={e => setNurturing(p => ({ ...p, nextMotivo: e.target.value }))}
+                placeholder="Ej: Portfolio de bodas, caso de éxito..."
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600" />
+            </div>
+          </div>
+          <div className="flex justify-end mb-6">
+            <button onClick={() => guardarNurturing(nurturing)} disabled={savingNurturing}
+              className="bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg transition-colors">
+              {savingNurturing ? "Guardando..." : "Guardar seguimiento"}
+            </button>
+          </div>
+
+          {/* Plantillas de WhatsApp */}
+          <div className="border-t border-[#1a1a1a] pt-5 mb-5">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Plantillas de WhatsApp — enviar valor</p>
+            {trato.cliente.telefono ? (
+              <div className="flex flex-wrap gap-2">
+                {WA_TEMPLATES.map(tpl => {
+                  const tel = trato.cliente.telefono!.replace(/\D/g, "");
+                  const num = tel.startsWith("52") ? tel : `52${tel}`;
+                  const msg = tpl.msg(trato.cliente.nombre.split(" ")[0]);
+                  return (
+                    <a key={tpl.id}
+                      href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      onClick={() => registrarTouchpoint(tpl.tipo, `Plantilla: ${tpl.label}`)}
+                      className="flex items-center gap-1.5 bg-[#111] hover:bg-[#1a1a1a] border border-emerald-700/30 text-emerald-400 hover:text-emerald-300 text-xs px-3 py-2 rounded-lg transition-colors">
+                      {tpl.icon} {tpl.label}
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-xs">Agrega el teléfono del cliente para usar las plantillas de WhatsApp.</p>
+            )}
+          </div>
+
+          {/* Registrar touchpoint manual */}
+          <div className="border-t border-[#1a1a1a] pt-5 mb-5">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Registrar contacto manual</p>
+            <div className="flex gap-2 flex-wrap mb-3">
+              {TOUCHPOINT_TYPES.map(tp => (
+                <button key={tp.id} onClick={() => setNuevoTP(p => ({ ...p, tipo: tp.id }))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${nuevoTP.tipo === tp.id ? "border-emerald-600 text-emerald-300 bg-emerald-900/20" : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"}`}>
+                  {tp.icon} {tp.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input value={nuevoTP.notas} onChange={e => setNuevoTP(p => ({ ...p, notas: e.target.value }))}
+                placeholder="Notas del contacto..."
+                onKeyDown={e => e.key === "Enter" && nuevoTP.notas.trim() && registrarTouchpoint(nuevoTP.tipo, nuevoTP.notas)}
+                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600" />
+              <button onClick={() => registrarTouchpoint(nuevoTP.tipo, nuevoTP.notas)} disabled={savingNurturing || !nuevoTP.notas.trim()}
+                className="bg-[#1a1a1a] hover:bg-[#222] border border-emerald-700/50 text-emerald-400 disabled:opacity-40 text-xs px-4 py-2 rounded-lg transition-colors">
+                + Agregar
+              </button>
+            </div>
+          </div>
+
+          {/* Historial de touchpoints */}
+          {nurturing.log.length > 0 && (
+            <div className="border-t border-[#1a1a1a] pt-5 mb-6">
+              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Historial de contactos ({nurturing.log.length})</p>
+              <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                {[...nurturing.log].reverse().map((entry, i) => (
+                  <div key={i} className="flex gap-3 text-xs">
+                    <span className="text-gray-600 shrink-0 tabular-nums">{entry.fecha}</span>
+                    <span className="shrink-0">{TOUCHPOINT_TYPES.find(t => t.id === entry.tipo)?.icon ?? "📌"}</span>
+                    <span className="text-gray-300">{entry.notas}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Transición — prospecto listo para avanzar */}
+          <div className="border-t border-[#1a1a1a] pt-5">
+            <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">¿El prospecto ya está listo para avanzar?</p>
+            <p className="text-gray-600 text-xs mb-4">Selecciona la siguiente ruta cuando estén listos para una propuesta formal.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => seleccionarCanal("")}
+                className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors">
+                <p className="font-semibold">🔍 Iniciar descubrimiento</p>
+                <p className="text-xs text-[#B3985B]/60 mt-0.5">Tienen necesidad, hay que calificarla</p>
+              </button>
+              <button
+                onClick={async () => {
+                  const d = await patch({ rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" });
+                  setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+                }}
+                className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors">
+                <p className="font-semibold">📋 Tienen rider técnico</p>
+                <p className="text-xs text-blue-300/60 mt-0.5">Saben lo que necesitan, cotizar directo</p>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ── Estado 2: Formulario de descubrimiento ── */}
-      {trato.canalAtencion && !trato.descubrimientoCompleto && profundidad !== "INFO" && (
+      {trato.canalAtencion && trato.canalAtencion !== "PROSPECTO_FRIO" && !trato.descubrimientoCompleto && profundidad !== "INFO" && (
         <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
