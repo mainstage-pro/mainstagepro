@@ -74,12 +74,18 @@ export default function PlantillasEquipoPage() {
     await load();
   }
 
-  // Agrupar por servicio
+  // Agrupar por tipo de evento
+  const EVENTO_ORDEN = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO", "TODOS"];
+  const EVENTO_ICONS: Record<string, string> = { MUSICAL: "🎵", SOCIAL: "🥂", EMPRESARIAL: "💼", OTRO: "📋", TODOS: "📦" };
   const grouped: Record<string, Plantilla[]> = {};
   for (const p of plantillas) {
-    const k = p.tipoServicio;
+    const k = p.tipoEvento;
     if (!grouped[k]) grouped[k] = [];
     grouped[k].push(p);
+  }
+  // Ordenar cada grupo por capacidad mínima
+  for (const k of Object.keys(grouped)) {
+    grouped[k].sort((a, b) => a.capacidadMin - b.capacidadMin);
   }
 
   return (
@@ -145,30 +151,43 @@ export default function PlantillasEquipoPage() {
         </div>
       )}
 
-      {/* Lista agrupada */}
-      {Object.entries(grouped).map(([servicio, items]) => (
-        <div key={servicio}>
-          <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2 px-1">{SERVICIO_LABELS[servicio] ?? servicio}</p>
-          <div className="space-y-2">
-            {items.map(p => (
-              <div key={p.id} className={`bg-[#111] border rounded-xl overflow-hidden transition-colors ${p.activo ? "border-[#1e1e1e]" : "border-[#1a1a1a] opacity-50"}`}>
-                <div className="flex items-center gap-3 p-4 cursor-pointer" onClick={() => setExpandida(expandida === p.id ? null : p.id)}>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white text-sm font-medium">{p.nombre}</span>
-                      <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded">{EVENTO_LABELS[p.tipoEvento]}</span>
-                      <span className="text-[10px] text-gray-500">{p.capacidadMin}–{p.capacidadMax === 9999 ? "∞" : p.capacidadMax} pax</span>
-                      <span className="text-[10px] text-gray-600">{p.items.length} equipo{p.items.length !== 1 ? "s" : ""}</span>
-                    </div>
-                    {p.descripcion && <p className="text-gray-600 text-xs mt-0.5">{p.descripcion}</p>}
+      {/* Lista agrupada por tipo de evento */}
+      {EVENTO_ORDEN.filter(e => grouped[e]?.length).map(evento => (
+        <div key={evento}>
+          {/* Cabecera de sección */}
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-lg">{EVENTO_ICONS[evento]}</span>
+            <h2 className="text-white font-semibold text-sm">{EVENTO_LABELS[evento] ?? evento}</h2>
+            <span className="text-[10px] text-gray-600">{grouped[evento].length} plantilla{grouped[evento].length !== 1 ? "s" : ""}</span>
+            <div className="flex-1 h-px bg-[#1e1e1e]" />
+          </div>
+
+          {/* Cards en grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            {grouped[evento].map(p => (
+              <div key={p.id} className={`bg-[#111] border rounded-xl overflow-hidden transition-colors flex flex-col ${p.activo ? "border-[#1e1e1e] hover:border-[#2a2a2a]" : "border-[#1a1a1a] opacity-50"}`}>
+                {/* Card header */}
+                <div className="p-4 cursor-pointer flex-1" onClick={() => setExpandida(expandida === p.id ? null : p.id)}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="text-white text-sm font-medium leading-tight">{p.nombre}</span>
+                    <span className={`text-gray-600 text-xs transition-transform shrink-0 mt-0.5 ${expandida === p.id ? "rotate-180" : ""}`}>▼</span>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => toggleActivo(p)} className={`text-[10px] px-2 py-1 rounded border transition-colors ${p.activo ? "border-green-700/40 text-green-400 hover:bg-green-900/20" : "border-gray-700 text-gray-500 hover:text-white"}`}>
-                      {p.activo ? "Activa" : "Inactiva"}
-                    </button>
-                    <button onClick={() => eliminar(p.id)} className="text-[10px] text-gray-700 hover:text-red-400 transition-colors px-1">Eliminar</button>
-                    <span className={`text-gray-600 text-xs transition-transform ${expandida === p.id ? "rotate-180" : ""}`}>▼</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] text-gray-400 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+                      {p.capacidadMin === 0 ? "hasta" : `${p.capacidadMin}–`}{p.capacidadMin > 0 ? (p.capacidadMax === 9999 ? "∞" : p.capacidadMax) : p.capacidadMax} pax
+                    </span>
+                    <span className="text-[10px] text-gray-600">{p.items.length} equipos</span>
                   </div>
+                  {p.descripcion && <p className="text-gray-600 text-xs mt-2 leading-relaxed">{p.descripcion}</p>}
+                </div>
+
+                {/* Card actions */}
+                <div className="flex items-center gap-2 px-4 py-2 border-t border-[#1a1a1a]" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => toggleActivo(p)} className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${p.activo ? "border-green-700/40 text-green-400 hover:bg-green-900/20" : "border-gray-700 text-gray-500 hover:text-white"}`}>
+                    {p.activo ? "Activa" : "Inactiva"}
+                  </button>
+                  <span className="text-[10px] text-gray-600">{SERVICIO_LABELS[p.tipoServicio] ?? p.tipoServicio}</span>
+                  <button onClick={() => eliminar(p.id)} className="text-[10px] text-gray-700 hover:text-red-400 transition-colors ml-auto">Eliminar</button>
                 </div>
 
                 {/* Items expandidos */}
