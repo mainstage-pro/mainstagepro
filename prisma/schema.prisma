@@ -294,6 +294,8 @@ model Proyecto {
   logisticaRenta         String?
   // Reporte de catering (JSON: contactoNombre, contactoTelefono, personasCrew, comidas[], notas)
   reporteCatering        String?
+  // Marketing content (JSON: { activo: boolean, telefono: string, nombre: string })
+  marketingData          String?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

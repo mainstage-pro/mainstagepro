@@ -66,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoLugarContacto", "descripcionGeneral", "detallesEspecificos",
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
-    "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering",
+    "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData",
   ];
 
   const data: Record<string, unknown> = {};

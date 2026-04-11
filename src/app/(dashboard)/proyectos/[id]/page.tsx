@@ -39,6 +39,7 @@ interface Proyecto {
   reporteCatering: string | null;
   cronograma: string | null; contactosEmergencia: string | null; comentariosFinales: string | null;
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
+  marketingData: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
@@ -1326,6 +1327,63 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <Campo label="Contactos de emergencia" value={proyecto.contactosEmergencia} field="contactosEmergencia" onSave={guardarCampo} multiline />
             </div>
           </div>
+
+          {/* ── Marketing / Contenido ── */}
+          {(() => {
+            let mkt: { activo: boolean; telefono: string; nombre: string } = { activo: false, telefono: "", nombre: "" };
+            try { if (proyecto.marketingData) mkt = { ...mkt, ...JSON.parse(proyecto.marketingData) }; } catch { /* defaults */ }
+
+            async function toggleMarketing() {
+              const nuevo = { ...mkt, activo: !mkt.activo };
+              await guardarCampo("marketingData", JSON.stringify(nuevo));
+            }
+            async function saveContacto(field: "telefono" | "nombre", val: string) {
+              const nuevo = { ...mkt, [field]: val };
+              await guardarCampo("marketingData", JSON.stringify(nuevo));
+            }
+
+            const tel = mkt.telefono.replace(/\D/g, "");
+            const waLink = tel ? `https://wa.me/52${tel}?text=${encodeURIComponent(`Hola ${mkt.nombre || ""}! 📸 Hay un evento el ${new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long" })} — "${proyecto.nombre}". ¿Puedes confirmar disponibilidad para levantar contenido?`)}` : null;
+
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-base">📸</span>
+                    <div>
+                      <p className="text-white text-sm font-medium">Contenido de marketing</p>
+                      <p className="text-gray-600 text-xs">¿Se levanta contenido en este evento?</p>
+                    </div>
+                  </div>
+                  <button onClick={toggleMarketing}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${mkt.activo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mkt.activo ? "translate-x-4" : "translate-x-0"}`} />
+                  </button>
+                </div>
+
+                {mkt.activo && (
+                  <div className="mt-3 pt-3 border-t border-[#1a1a1a] flex items-center gap-3 flex-wrap">
+                    <div className="flex gap-2 flex-1 min-w-0">
+                      <input defaultValue={mkt.nombre} onBlur={e => saveContacto("nombre", e.target.value)}
+                        placeholder="Nombre contacto marketing"
+                        className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      <input defaultValue={mkt.telefono} onBlur={e => saveContacto("telefono", e.target.value)}
+                        placeholder="Teléfono (10 dígitos)"
+                        className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    {waLink ? (
+                      <a href={waLink} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 flex items-center gap-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                        💬 Contactar
+                      </a>
+                    ) : (
+                      <span className="text-gray-600 text-xs shrink-0">Agrega teléfono para WA</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Comentarios ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">

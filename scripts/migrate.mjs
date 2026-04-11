@@ -27,4 +27,14 @@ await run(
   "tratos.tipoProspecto"
 );
 
+await run(
+  `UPDATE tratos SET "tipoProspecto" = 'NURTURING', "canalAtencion" = NULL WHERE "canalAtencion" = 'PROSPECTO_FRIO'`,
+  "migrar PROSPECTO_FRIO → tipoProspecto NURTURING"
+);
+
+await run(
+  `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "marketingData" TEXT`,
+  "proyectos.marketingData"
+);
+
 console.log("Migración completada.");
