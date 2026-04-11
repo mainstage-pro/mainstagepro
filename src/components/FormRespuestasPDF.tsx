@@ -11,8 +11,8 @@ const WHITE = "#FFFFFF";
 const BG = "#F7F5F0";
 
 const s = StyleSheet.create({
-  page: { fontFamily: "Helvetica", backgroundColor: WHITE, paddingBottom: 40, fontSize: 9, color: BLACK },
-  header: { backgroundColor: BLACK, paddingHorizontal: 40, paddingTop: 44, paddingBottom: 28 },
+  page: { fontFamily: "Helvetica", backgroundColor: WHITE, paddingTop: 36, paddingBottom: 40, fontSize: 9, color: BLACK },
+  header: { backgroundColor: BLACK, paddingHorizontal: 40, paddingTop: 28, paddingBottom: 20, marginTop: -36 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   logo: { width: 160, height: 40, objectFit: "contain" },
   headerTitle: { color: GOLD, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 2, textTransform: "uppercase" },

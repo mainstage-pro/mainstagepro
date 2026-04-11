@@ -17,7 +17,7 @@ const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
-    paddingTop: 0,
+    paddingTop: 36,
     paddingBottom: 90,
     paddingHorizontal: 0,
     fontSize: 9,
@@ -27,8 +27,9 @@ const s = StyleSheet.create({
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 40,
-    paddingTop: 44,
-    paddingBottom: 28,
+    paddingTop: 28,
+    paddingBottom: 22,
+    marginTop: -36,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
