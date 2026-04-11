@@ -14,7 +14,7 @@ const s = StyleSheet.create({
   page: { fontFamily: "Helvetica", backgroundColor: WHITE, paddingBottom: 40, fontSize: 9, color: BLACK },
   header: { backgroundColor: BLACK, paddingHorizontal: 36, paddingTop: 28, paddingBottom: 20 },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  logo: { width: 110, height: 28, objectFit: "contain" },
+  logo: { width: 160, height: 40, objectFit: "contain" },
   headerTitle: { color: GOLD, fontSize: 8, fontFamily: "Helvetica-Bold", letterSpacing: 2, textTransform: "uppercase" },
   headerNombre: { color: WHITE, fontSize: 16, fontFamily: "Helvetica-Bold", marginTop: 4 },
   headerSub: { color: LIGHT_GRAY, fontSize: 8, marginTop: 3 },
