@@ -682,7 +682,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         <View style={s.header}>
           <View style={s.headerLeft}>
             {logoSrc
-              ? <Image src={logoSrc} style={{ width: 160, height: 40, objectFit: "contain" }} />
+              ? <Image src={logoSrc} style={{ width: 220, height: 55, objectFit: "contain" }} />
               : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
             }
             <Text style={s.tagline}>AUDIO · ILUMINACIÓN · VIDEO · PRODUCCIÓN TÉCNICA</Text>
