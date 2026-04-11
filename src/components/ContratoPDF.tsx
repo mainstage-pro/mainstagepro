@@ -550,7 +550,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <View style={s.header}>
           <View>
             {logoSrc
-              ? <Image src={logoSrc} style={{ width: 220, height: 55, objectFit: "contain" }} />
+              ? <Image src={logoSrc} style={{ width: 240 }} />
               : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
             }
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
@@ -737,7 +737,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <View style={s.header}>
           <View>
             {logoSrc
-              ? <Image src={logoSrc} style={{ width: 220, height: 55, objectFit: "contain" }} />
+              ? <Image src={logoSrc} style={{ width: 240 }} />
               : <Text style={s.brand}>MAINSTAGE PRODUCCIONES</Text>
             }
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
