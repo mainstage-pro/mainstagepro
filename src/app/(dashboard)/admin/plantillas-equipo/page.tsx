@@ -238,9 +238,23 @@ export default function PlantillasEquipoPage() {
       ))}
 
       {plantillas.length === 0 && !showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-14 text-center">
-          <p className="text-gray-500 text-sm mb-1">Sin plantillas todavía</p>
-          <p className="text-gray-700 text-xs">Crea plantillas de equipo por tipo de servicio, evento y capacidad para agilizar cotizaciones.</p>
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-14 text-center space-y-4">
+          <div>
+            <p className="text-gray-500 text-sm mb-1">Sin plantillas todavía</p>
+            <p className="text-gray-700 text-xs">Crea plantillas manualmente o carga las 9 plantillas base de la guía comercial.</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm("¿Cargar las 9 plantillas base? (Social, Empresarial y Musical en 3 rangos de capacidad cada una)")) return;
+              const res = await fetch("/api/admin/plantillas-equipo/seed", { method: "POST" });
+              const d = await res.json();
+              if (d.ok) { await load(); }
+              else alert(d.error ?? "Error al cargar plantillas");
+            }}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+          >
+            Cargar plantillas base (guía comercial)
+          </button>
         </div>
       )}
     </div>
