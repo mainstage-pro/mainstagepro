@@ -528,6 +528,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="max-w-4xl mx-auto space-y-5 pb-12">
 
+      {/* TEST DEPLOY v2 */}
+      <div className="bg-red-900 text-white text-xs px-3 py-1 rounded">TEST DEPLOY — si ves esto el deploy funciona</div>
+
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div>
