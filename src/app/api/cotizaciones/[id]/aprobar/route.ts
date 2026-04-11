@@ -95,7 +95,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         fechaEvento,
         lugarEvento: cot.lugarEvento,
         descripcionGeneral: cot.observaciones,
+        horaInicioEvento: cot.trato.horaInicioEvento ?? null,
+        horaFinEvento: cot.trato.horaFinEvento ?? null,
         horaInicioMontaje: cot.trato.ventanaMontajeInicio ?? null,
+        duracionMontajeHrs: cot.trato.duracionMontajeHrs ?? null,
       },
     });
 

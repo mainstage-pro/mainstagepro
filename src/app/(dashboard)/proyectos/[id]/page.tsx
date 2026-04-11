@@ -253,6 +253,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
+  // Notificación de cambios en campos clave
+  type CambioNotif = {
+    campoLabel: string;
+    valor: string;
+    contactos: Array<{ nombre: string; tipo: "tecnico" | "proveedor"; waUrl: string | null }>;
+  };
+  const [pendingNotif, setPendingNotif] = useState<CambioNotif | null>(null);
+
+  const KEY_CAMPOS: Record<string, string> = {
+    fechaEvento: "Fecha del evento",
+    horaInicioEvento: "Hora inicio del evento",
+    horaFinEvento: "Hora fin del evento",
+    lugarEvento: "Lugar del evento",
+    fechaMontaje: "Día de montaje",
+    horaInicioMontaje: "Hora inicio montaje",
+  };
+
   async function load() {
     const res = await fetch(`/api/proyectos/${id}`);
     const d = await res.json();
@@ -416,7 +433,50 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value || null }),
     });
-    setProyecto(prev => prev ? { ...prev, [field]: value || null } : prev);
+    setProyecto(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, [field]: value || null };
+
+      // Si el campo es clave (fecha/hora/lugar), construir panel de notificaciones
+      if (field in KEY_CAMPOS && (updated.personal.length > 0 || updated.equipos.some(e => e.tipo === "EXTERNO"))) {
+        const campoLabel = KEY_CAMPOS[field];
+        const fechaStr = new Date(updated.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+        const buildMsg = (nombre: string, extra: string) =>
+          `Hola ${nombre.split(" ")[0]}, hay una actualización en el proyecto *${updated.nombre}*:\n\n📋 *${campoLabel}:* ${value || "—"}\n\n📅 ${fechaStr}${updated.horaInicioEvento ? `\n⏰ ${updated.horaInicioEvento}${updated.horaFinEvento ? `–${updated.horaFinEvento}` : ""}` : ""}${updated.lugarEvento ? `\n📍 ${updated.lugarEvento}` : ""}${extra}\n\nPor favor confirma que todo sigue en orden.`;
+
+        const contactos: CambioNotif["contactos"] = [];
+        const tecnicosVistos = new Set<string>();
+        for (const p of updated.personal) {
+          if (!p.tecnico?.celular) continue;
+          if (tecnicosVistos.has(p.tecnico.id)) continue;
+          tecnicosVistos.add(p.tecnico.id);
+          const tel = p.tecnico.celular.replace(/\D/g, "");
+          const num = tel.startsWith("52") ? tel : `52${tel}`;
+          contactos.push({
+            nombre: p.tecnico.nombre,
+            tipo: "tecnico",
+            waUrl: `https://wa.me/${num}?text=${encodeURIComponent(buildMsg(p.tecnico.nombre, ""))}`,
+          });
+        }
+        const proveedoresVistos = new Set<string>();
+        for (const eq of updated.equipos) {
+          if (eq.tipo !== "EXTERNO" || !eq.proveedor?.telefono) continue;
+          if (proveedoresVistos.has(eq.proveedor.nombre)) continue;
+          proveedoresVistos.add(eq.proveedor.nombre);
+          const tel = eq.proveedor.telefono.replace(/\D/g, "");
+          const num = tel.startsWith("52") ? tel : `52${tel}`;
+          contactos.push({
+            nombre: eq.proveedor.nombre,
+            tipo: "proveedor",
+            waUrl: `https://wa.me/${num}?text=${encodeURIComponent(buildMsg(eq.proveedor.nombre, updated.horaInicioMontaje ? `\n🔧 Montaje desde: ${updated.horaInicioMontaje}` : ""))}`,
+          });
+        }
+        if (contactos.length > 0) setPendingNotif({ campoLabel, valor: value, contactos });
+      }
+
+      return updated;
+    });
   }
 
   // ── Guardar cronograma ──
@@ -714,6 +774,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
 
   return (
+    <>
     <div className="max-w-5xl mx-auto space-y-5 pb-12">
 
       {/* ── Header ── */}
@@ -2421,5 +2482,51 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
     </div>
+
+    {/* ── Panel flotante de notificación de cambios ── */}
+    {pendingNotif && (
+
+      <div className="fixed bottom-6 right-6 z-50 bg-[#111] border border-[#B3985B]/50 rounded-xl p-5 shadow-2xl w-80">
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <p className="text-white font-semibold text-sm">🔔 Notificar cambio al equipo</p>
+            <p className="text-gray-500 text-xs mt-0.5">
+              <span className="text-[#B3985B]">{pendingNotif.campoLabel}</span> actualizado
+              {pendingNotif.valor ? `: ${pendingNotif.valor}` : ""}
+            </p>
+          </div>
+          <button onClick={() => setPendingNotif(null)} className="text-gray-600 hover:text-white transition-colors ml-3 shrink-0">✕</button>
+        </div>
+        <div className="space-y-2 mb-3">
+          {pendingNotif.contactos.map((c, i) => (
+            <div key={i} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs shrink-0">{c.tipo === "tecnico" ? "👤" : "🏭"}</span>
+                <span className="text-white text-xs truncate">{c.nombre}</span>
+              </div>
+              {c.waUrl ? (
+                <a href={c.waUrl} target="_blank" rel="noopener noreferrer"
+                  className="shrink-0 bg-green-800 hover:bg-green-700 text-white text-[11px] font-semibold px-3 py-1 rounded-lg transition-colors">
+                  💬 WA
+                </a>
+              ) : (
+                <span className="text-gray-600 text-xs shrink-0">Sin tel.</span>
+              )}
+            </div>
+          ))}
+        </div>
+        {pendingNotif.contactos.filter(c => c.waUrl).length > 1 && (
+          <button
+            onClick={() => {
+              pendingNotif.contactos.filter(c => c.waUrl).forEach(c => window.open(c.waUrl!, "_blank"));
+              setPendingNotif(null);
+            }}
+            className="w-full bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
+            💬 Notificar a todos ({pendingNotif.contactos.filter(c => c.waUrl).length})
+          </button>
+        )}
+      </div>
+    )}
+    </>
   );
 }

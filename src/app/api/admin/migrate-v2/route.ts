@@ -85,6 +85,20 @@ export async function POST() {
     "proyectos.reporteCatering"
   );
 
+  // Trato.horaInicioEvento / horaFinEvento / duracionMontajeHrs
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "horaInicioEvento" TEXT`,
+    "tratos.horaInicioEvento"
+  );
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "horaFinEvento" TEXT`,
+    "tratos.horaFinEvento"
+  );
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "duracionMontajeHrs" DOUBLE PRECISION`,
+    "tratos.duracionMontajeHrs"
+  );
+
   // Trato.ventanaMontajeInicio / ventanaMontajeFin
   await run(
     `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ventanaMontajeInicio" TEXT`,

@@ -43,6 +43,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",
+    // Horarios del evento
+    "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
     // Logística del venue
     "ventanaMontajeInicio", "ventanaMontajeFin",
   ];
@@ -52,7 +54,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) {
       if ((key === "fechaEventoEstimada" || key === "fechaProximaAccion") && body[key]) {
         data[key] = new Date(body[key]);
-      } else if (key === "presupuestoEstimado" && body[key] !== null && body[key] !== "") {
+      } else if ((key === "presupuestoEstimado" || key === "duracionMontajeHrs") && body[key] !== null && body[key] !== "") {
         data[key] = parseFloat(body[key]);
       } else if (key === "asistentesEstimados" && body[key] !== null && body[key] !== "") {
         data[key] = parseInt(body[key]);

@@ -47,6 +47,9 @@ interface Trato {
   etapaContratacion: string | null;
   continuarPor: string | null;
   descubrimientoCompleto: boolean;
+  horaInicioEvento: string | null;
+  horaFinEvento: string | null;
+  duracionMontajeHrs: number | null;
   ventanaMontajeInicio: string | null;
   ventanaMontajeFin: string | null;
   cliente: {
@@ -233,6 +236,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     rentaHoraDevolucion: "",
     rentaDescripcionEquipos: "",
     rentaTecnicoPropio: "",
+    horaInicioEvento: "",
+    horaFinEvento: "",
+    duracionMontajeHrs: "",
     ventanaMontajeInicio: "",
     ventanaMontajeFin: "",
   });
@@ -292,6 +298,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             rentaHoraDevolucion:    rentaData.horaDevolucion ?? "",
             rentaDescripcionEquipos:rentaData.descripcionEquipos ?? "",
             rentaTecnicoPropio:     rentaData.tecnicoPropio ?? "",
+            horaInicioEvento:       t.horaInicioEvento ?? "",
+            horaFinEvento:          t.horaFinEvento ?? "",
+            duracionMontajeHrs:     t.duracionMontajeHrs?.toString() ?? "",
             ventanaMontajeInicio:   t.ventanaMontajeInicio ?? "",
             ventanaMontajeFin:      t.ventanaMontajeFin ?? "",
           }));
@@ -331,6 +340,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       continuarPor: discForm.continuarPor || null,
       notas: discForm.notas || null,
       proximaAccion: discForm.proximaAccion || null,
+      horaInicioEvento: discForm.horaInicioEvento || null,
+      horaFinEvento: discForm.horaFinEvento || null,
+      duracionMontajeHrs: discForm.duracionMontajeHrs ? parseFloat(discForm.duracionMontajeHrs) : null,
       ventanaMontajeInicio: discForm.ventanaMontajeInicio || null,
       ventanaMontajeFin: discForm.ventanaMontajeFin || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
@@ -770,6 +782,33 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <option value="PRODUCCION_TECNICA">Producción técnica</option>
                   <option value="DIRECCION_TECNICA">Dirección técnica</option>
                 </select>
+              </div>
+
+              {/* Horarios del evento */}
+              <div className="col-span-2">
+                <label className="text-xs text-gray-400 block mb-2">Horarios del evento</label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 block mb-1">Inicio del evento</label>
+                    <input type="time" value={discForm.horaInicioEvento}
+                      onChange={e => setDiscForm(p => ({ ...p, horaInicioEvento: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <span className="text-gray-600 text-sm pt-4">→</span>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 block mb-1">Fin del evento</label>
+                    <input type="time" value={discForm.horaFinEvento}
+                      onChange={e => setDiscForm(p => ({ ...p, horaFinEvento: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 block mb-1">Duración montaje (hrs)</label>
+                    <input type="number" min="0" step="0.5" value={discForm.duracionMontajeHrs}
+                      onChange={e => setDiscForm(p => ({ ...p, duracionMontajeHrs: e.target.value }))}
+                      placeholder="ej: 4"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
               </div>
 
               {/* Ventana de montaje del venue */}

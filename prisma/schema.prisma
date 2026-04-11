@@ -109,6 +109,10 @@ model Trato {
   formEstado          String   @default("NO_ENVIADO") // NO_ENVIADO | ENVIADO | COMPLETADO
   formRespuestas      String?  // JSON con respuestas del prospecto
 
+  // ── Horarios del evento (capturados durante ventas) ─────────────────────
+  horaInicioEvento   String?  // ej: "18:00"
+  horaFinEvento      String?  // ej: "23:00"
+  duracionMontajeHrs Float?   // estimado en horas
   // ── Logística del venue ──────────────────────────────────────────────────
   ventanaMontajeInicio  String?  // ej: "08:00" — hora más temprana de acceso al venue
   ventanaMontajeFin     String?  // ej: "14:00" — hora límite para terminar montaje
