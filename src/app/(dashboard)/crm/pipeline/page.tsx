@@ -101,14 +101,6 @@ export default async function PipelinePage() {
                         </div>
                       )}
 
-                      {/* Sin contactar */}
-                      {trato.estatusContacto === "PENDIENTE" && (
-                        <div className="mt-2">
-                          <span className="text-[10px] bg-yellow-900/30 text-yellow-400 px-1.5 py-0.5 rounded">
-                            Sin contactar
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </Link>
                 ))}
