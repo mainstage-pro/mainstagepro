@@ -47,60 +47,26 @@ export default async function PipelinePage() {
               <div className="flex-1 overflow-y-auto bg-[#0d0d0d] border border-t-0 border-[#1e1e1e] rounded-b-lg p-2 space-y-2">
                 {columnaTratos.map((trato) => (
                   <Link key={trato.id} href={`/crm/tratos/${trato.id}`}>
-                    <div className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3.5 hover:border-[#333] transition-colors cursor-pointer">
-                      {/* Tipo evento */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <div
-                          className="w-2 h-2 rounded-full shrink-0"
-                          style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] ?? "#333" }}
-                        />
-                        <span className="text-[10px] text-[#6b7280] uppercase tracking-wider">
-                          {TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}
-                        </span>
-                      </div>
-
-                      {/* Cliente */}
-                      <p className="text-white text-sm font-medium leading-snug">
-                        {trato.cliente.nombre}
-                      </p>
-                      {trato.cliente.empresa && (
-                        <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>
-                      )}
-
-                      {/* Detalles */}
-                      <div className="mt-3 pt-3 border-t border-[#1a1a1a] flex items-center justify-between">
-                        <span className="text-[10px] text-[#555]">
-                          {ORIGEN_LEAD_LABELS[trato.origenLead] ?? trato.origenLead}
-                        </span>
+                    <div className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 hover:border-[#333] transition-colors cursor-pointer">
+                      {/* Fila superior: punto color + cliente + presupuesto */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] ?? "#333" }} />
+                        <span className="text-white text-xs font-medium truncate flex-1">{trato.cliente.nombre}</span>
                         {trato.presupuestoEstimado && (
-                          <span className="text-[#B3985B] text-[11px] font-medium">
-                            ${trato.presupuestoEstimado.toLocaleString("es-MX")}
+                          <span className="text-[#B3985B] text-[10px] font-medium shrink-0">${trato.presupuestoEstimado.toLocaleString("es-MX")}</span>
+                        )}
+                      </div>
+                      {/* Fila inferior: empresa o tipo evento + seguimiento */}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[#555] text-[10px] truncate flex-1">
+                          {trato.cliente.empresa ?? (TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento)}
+                        </span>
+                        {trato.fechaProximaAccion && (
+                          <span className="text-[#6b7280] text-[10px] shrink-0">
+                            {new Date(trato.fechaProximaAccion).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                           </span>
                         )}
                       </div>
-
-                      {/* Próxima acción */}
-                      {trato.fechaProximaAccion && (
-                        <div className="mt-1.5">
-                          <span className="text-[10px] text-[#6b7280]">
-                            Seguimiento:{" "}
-                            {new Date(trato.fechaProximaAccion).toLocaleDateString("es-MX", {
-                              day: "numeric",
-                              month: "short",
-                            })}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Vendedor */}
-                      {trato.responsable && (
-                        <div className="mt-1.5">
-                          <span className="text-[10px] text-[#6b7280]">
-                            Vendedor: <span className="text-[#B3985B]">{trato.responsable.name}</span>
-                          </span>
-                        </div>
-                      )}
-
                     </div>
                   </Link>
                 ))}
