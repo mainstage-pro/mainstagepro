@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
       encargado: { select: { name: true } },
-      trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, responsable: { select: { name: true } } } },
+      trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
       cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true } },
       personal: {
         include: {

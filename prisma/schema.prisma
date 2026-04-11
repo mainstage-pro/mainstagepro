@@ -109,6 +109,11 @@ model Trato {
   formEstado          String   @default("NO_ENVIADO") // NO_ENVIADO | ENVIADO | COMPLETADO
   formRespuestas      String?  // JSON con respuestas del prospecto
 
+  // ── Logística del venue ──────────────────────────────────────────────────
+  ventanaMontajeInicio  String?  // ej: "08:00" — hora más temprana de acceso al venue
+  ventanaMontajeFin     String?  // ej: "14:00" — hora límite para terminar montaje
+  // ─────────────────────────────────────────────────────────────────────────
+
   motivoPerdida       String?
   origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO
   vendedorOrigenId    String?

@@ -85,5 +85,15 @@ export async function POST() {
     "proyectos.reporteCatering"
   );
 
+  // Trato.ventanaMontajeInicio / ventanaMontajeFin
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ventanaMontajeInicio" TEXT`,
+    "tratos.ventanaMontajeInicio"
+  );
+  await run(
+    `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ventanaMontajeFin" TEXT`,
+    "tratos.ventanaMontajeFin"
+  );
+
   return NextResponse.json({ ok: true, resultados });
 }

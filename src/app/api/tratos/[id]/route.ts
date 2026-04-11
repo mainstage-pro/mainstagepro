@@ -43,6 +43,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",
+    // Logística del venue
+    "ventanaMontajeInicio", "ventanaMontajeFin",
   ];
 
   const data: Record<string, unknown> = {};

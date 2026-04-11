@@ -41,7 +41,7 @@ interface Proyecto {
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { name: string } | null;
-  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; responsable: { name: string } | null } | null;
+  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number } | null;
   logisticaRenta: string | null;
   personal: Personal[];
@@ -971,6 +971,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <Campo label="Día de montaje" value={proyecto.fechaMontaje ? proyecto.fechaMontaje.split("T")[0] : ""} field="fechaMontaje" onSave={guardarCampo} type="date" />
               <Campo label="Hora inicio montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
               <Campo label="Duración del montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? ""} field="duracionMontajeHrs" onSave={guardarCampo} type="number" />
+              {/* Ventana de montaje — dato del venue proporcionado por el cliente */}
+              {(proyecto.trato?.ventanaMontajeInicio || proyecto.trato?.ventanaMontajeFin) && (
+                <div className="col-span-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
+                  <span className="text-[#B3985B] text-sm">🏟</span>
+                  <div>
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Ventana permitida por el venue</p>
+                    <p className="text-white text-sm font-medium">
+                      {proyecto.trato.ventanaMontajeInicio ?? "—"}
+                      {" → "}
+                      {proyecto.trato.ventanaMontajeFin ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

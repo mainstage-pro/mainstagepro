@@ -47,6 +47,8 @@ interface Trato {
   etapaContratacion: string | null;
   continuarPor: string | null;
   descubrimientoCompleto: boolean;
+  ventanaMontajeInicio: string | null;
+  ventanaMontajeFin: string | null;
   cliente: {
     id: string; nombre: string; empresa: string | null;
     tipoCliente: string; clasificacion: string;
@@ -231,6 +233,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     rentaHoraDevolucion: "",
     rentaDescripcionEquipos: "",
     rentaTecnicoPropio: "",
+    ventanaMontajeInicio: "",
+    ventanaMontajeFin: "",
   });
 
   useEffect(() => {
@@ -288,6 +292,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             rentaHoraDevolucion:    rentaData.horaDevolucion ?? "",
             rentaDescripcionEquipos:rentaData.descripcionEquipos ?? "",
             rentaTecnicoPropio:     rentaData.tecnicoPropio ?? "",
+            ventanaMontajeInicio:   t.ventanaMontajeInicio ?? "",
+            ventanaMontajeFin:      t.ventanaMontajeFin ?? "",
           }));
         }
         setLoading(false);
@@ -325,6 +331,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       continuarPor: discForm.continuarPor || null,
       notas: discForm.notas || null,
       proximaAccion: discForm.proximaAccion || null,
+      ventanaMontajeInicio: discForm.ventanaMontajeInicio || null,
+      ventanaMontajeFin: discForm.ventanaMontajeFin || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
       ideasReferencias: isRenta
         ? JSON.stringify({
@@ -762,6 +770,29 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <option value="PRODUCCION_TECNICA">Producción técnica</option>
                   <option value="DIRECCION_TECNICA">Dirección técnica</option>
                 </select>
+              </div>
+
+              {/* Ventana de montaje del venue */}
+              <div className="col-span-2">
+                <label className="text-xs text-gray-400 block mb-2">
+                  Horario permitido de montaje en el venue
+                  <span className="ml-1 text-gray-600">(según el cliente / contrato del lugar)</span>
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 block mb-1">Entrada permitida desde</label>
+                    <input type="time" value={discForm.ventanaMontajeInicio}
+                      onChange={e => setDiscForm(p => ({ ...p, ventanaMontajeInicio: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <span className="text-gray-600 text-sm pt-4">→</span>
+                  <div className="flex-1">
+                    <label className="text-[10px] text-gray-500 block mb-1">Límite para terminar montaje</label>
+                    <input type="time" value={discForm.ventanaMontajeFin}
+                      onChange={e => setDiscForm(p => ({ ...p, ventanaMontajeFin: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
               </div>
             </div>
 
