@@ -87,8 +87,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
       role="button"
       tabIndex={0}
       aria-selected={isSelected}
-      draggable={isDraggable}
-      className={`group flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none ${
+      className={`group flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
         showDrop
           ? "bg-[#B3985B]/8 ring-1 ring-[#B3985B]/30"
           : isSelected
@@ -102,12 +101,28 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
       onMouseLeave={() => setHovered(false)}
       onClick={() => onSelect(tarea.id)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
-      onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
-      onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
       onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onDrop?.(tarea.id); }}
     >
+      {/* ── Drag handle (visible on hover when draggable) ──────────────── */}
+      {isDraggable && (
+        <div
+          draggable
+          onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
+          onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
+          className="mt-[4px] shrink-0 w-3 flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
+          onClick={e => e.stopPropagation()}
+        >
+          {[0,1,2].map(i => (
+            <span key={i} className="flex gap-[3px]">
+              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
+              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* ── Circle checkbox ────────────────────────────────────────────── */}
       <button
         onClick={handleComplete}
