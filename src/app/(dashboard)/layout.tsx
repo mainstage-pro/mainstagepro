@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
+import GlobalQuickTask from "@/components/GlobalQuickTask";
 
 export default async function DashboardLayout({
   children,
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
       <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
+      <GlobalQuickTask />
     </div>
   );
 }

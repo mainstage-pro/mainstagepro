@@ -60,7 +60,7 @@ export default function OperacionesPage() {
   const [usuarios, setUsuarios]                 = useState<Usuario[]>([]);
   const [sessionId, setSessionId]               = useState<string>("");
 
-  const [vista, setVista]                       = useState<VistaKey>("hoy");
+  const [vista, setVista]                       = useState<VistaKey>("bandeja");
   const [tareas, setTareas]                     = useState<TareaItem[]>([]);
   const [integradas, setIntegradas]             = useState<TareaIntegrada[]>([]);
   const [proyectoDetalle, setProyectoDetalle]   = useState<ProyectoDetalle | null>(null);
@@ -409,29 +409,33 @@ export default function OperacionesPage() {
           </div>
 
           {carpetas.map(carpeta => (
-            <div key={carpeta.id}>
-              <button onClick={() => setCarpetasOpen(prev => { const n = new Set(prev); n.has(carpeta.id) ? n.delete(carpeta.id) : n.add(carpeta.id); return n; })}
-                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors">
-                <span className="text-[9px] transition-transform inline-block" style={{ transform: carpetasOpen.has(carpeta.id) ? "rotate(90deg)" : "" }}>▶</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                </svg>
-                <span className="truncate">{carpeta.nombre}</span>
-              </button>
-              {carpetasOpen.has(carpeta.id) && (
-                <div className="ml-4 space-y-0.5">
-                  {carpeta.proyectos.map(p => (
-                    <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id:p.id })}
-                      className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
-                        vistaKey === p.id ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
-                      }`}>
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
-                      <span className="truncate">{p.nombre}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <NavCarpeta
+              key={carpeta.id}
+              carpeta={carpeta}
+              open={carpetasOpen.has(carpeta.id)}
+              vistaKey={vistaKey}
+              onToggle={() => setCarpetasOpen(prev => { const n = new Set(prev); n.has(carpeta.id) ? n.delete(carpeta.id) : n.add(carpeta.id); return n; })}
+              onSelectProyecto={id => setVista({ tipo:"proyecto", id })}
+              onRenameCarpeta={async (id, nombre) => {
+                await fetch(`/api/operaciones/carpetas/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
+                setCarpetas(prev => prev.map(c => c.id === id ? { ...c, nombre } : c));
+              }}
+              onDeleteCarpeta={async (id) => {
+                await fetch(`/api/operaciones/carpetas/${id}`, { method:"DELETE" });
+                setCarpetas(prev => prev.filter(c => c.id !== id));
+              }}
+              onRenameProyecto={async (id, nombre) => {
+                await fetch(`/api/operaciones/proyectos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
+                setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.map(p => p.id === id ? { ...p, nombre } : p) })));
+                setProyectosNav(prev => prev.map(p => p.id === id ? { ...p, nombre } : p));
+              }}
+              onDeleteProyecto={async (id) => {
+                await fetch(`/api/operaciones/proyectos/${id}`, { method:"DELETE" });
+                setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.filter(p => p.id !== id) })));
+                setProyectosNav(prev => prev.filter(p => p.id !== id));
+                if (vistaKey === id) setVista("bandeja");
+              }}
+            />
           ))}
 
           {proyectosSinCarpeta.length > 0 && (
@@ -442,13 +446,22 @@ export default function OperacionesPage() {
                 Sin carpeta
               </button>
               {proyectosSueltos && proyectosSinCarpeta.map(p => (
-                <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id:p.id })}
-                  className={`w-full flex items-center gap-2 px-4 py-1 rounded text-sm transition-colors ${
-                    vistaKey === p.id ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
-                  }`}>
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
-                  <span className="truncate">{p.nombre}</span>
-                </button>
+                <NavProyecto
+                  key={p.id}
+                  proyecto={p}
+                  isActive={vistaKey === p.id}
+                  indent={4}
+                  onSelect={() => setVista({ tipo:"proyecto", id: p.id })}
+                  onRename={async (nombre) => {
+                    await fetch(`/api/operaciones/proyectos/${p.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
+                    setProyectosNav(prev => prev.map(x => x.id === p.id ? { ...x, nombre } : x));
+                  }}
+                  onDelete={async () => {
+                    await fetch(`/api/operaciones/proyectos/${p.id}`, { method:"DELETE" });
+                    setProyectosNav(prev => prev.filter(x => x.id !== p.id));
+                    if (vistaKey === p.id) setVista("bandeja");
+                  }}
+                />
               ))}
             </div>
           )}
@@ -733,7 +746,147 @@ export default function OperacionesPage() {
   );
 }
 
-// ── SectionBlock ────────────────────────────────────────────────────────────
+// ── NavProyecto ─────────────────────────────────────────────────────────────
+
+function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDelete }: {
+  proyecto: ProyectoNav;
+  isActive: boolean;
+  indent?: number;
+  onSelect: () => void;
+  onRename: (nombre: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [hov, setHov]       = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nombre, setNombre] = useState(proyecto.nombre);
+
+  async function save() {
+    const trimmed = nombre.trim();
+    if (trimmed && trimmed !== proyecto.nombre) await onRename(trimmed);
+    else setNombre(proyecto.nombre);
+    setEditing(false);
+  }
+
+  if (editing) return (
+    <div className="flex items-center gap-1 px-2 py-0.5" style={{ paddingLeft: `${indent * 4}px` }}>
+      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proyecto.color ?? "#555" }} />
+      <input autoFocus value={nombre} onChange={e => setNombre(e.target.value)}
+        onBlur={save} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setNombre(proyecto.nombre); setEditing(false); } }}
+        className="flex-1 bg-[#1a1a1a] border border-[#B3985B]/40 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none" />
+    </div>
+  );
+
+  return (
+    <div className="relative group/proy" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+      <button onClick={onSelect}
+        className={`w-full flex items-center gap-2 py-1 rounded text-sm transition-colors ${
+          isActive ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
+        }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov ? "56px" : "8px" }}>
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proyecto.color ?? "#555" }} />
+        <span className="truncate">{proyecto.nombre}</span>
+      </button>
+      {hov && (
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          <button onClick={e => { e.stopPropagation(); setEditing(true); }}
+            className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-[#B3985B] hover:bg-[#1a1a1a] transition-all">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }}
+            className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-red-400 hover:bg-red-950/20 transition-all">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── NavCarpeta ──────────────────────────────────────────────────────────────
+
+function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRenameCarpeta, onDeleteCarpeta, onRenameProyecto, onDeleteProyecto }: {
+  carpeta: Carpeta;
+  open: boolean;
+  vistaKey: string;
+  onToggle: () => void;
+  onSelectProyecto: (id: string) => void;
+  onRenameCarpeta: (id: string, nombre: string) => Promise<void>;
+  onDeleteCarpeta: (id: string) => Promise<void>;
+  onRenameProyecto: (id: string, nombre: string) => Promise<void>;
+  onDeleteProyecto: (id: string) => Promise<void>;
+}) {
+  const [hov, setHov]       = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nombre, setNombre] = useState(carpeta.nombre);
+
+  async function save() {
+    const trimmed = nombre.trim();
+    if (trimmed && trimmed !== carpeta.nombre) await onRenameCarpeta(carpeta.id, trimmed);
+    else setNombre(carpeta.nombre);
+    setEditing(false);
+  }
+
+  return (
+    <div>
+      <div className="relative" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+        {editing ? (
+          <div className="flex items-center gap-1 px-2 py-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <input autoFocus value={nombre} onChange={e => setNombre(e.target.value)}
+              onBlur={save} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setNombre(carpeta.nombre); setEditing(false); } }}
+              className="flex-1 bg-[#1a1a1a] border border-[#B3985B]/40 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none" />
+          </div>
+        ) : (
+          <button onClick={onToggle}
+            className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors"
+            style={{ paddingRight: hov ? "56px" : "8px" }}>
+            <span className="text-[9px] transition-transform inline-block shrink-0" style={{ transform: open ? "rotate(90deg)" : "" }}>▶</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span className="truncate">{carpeta.nombre}</span>
+          </button>
+        )}
+        {hov && !editing && (
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+            <button onClick={e => { e.stopPropagation(); setEditing(true); }}
+              className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-[#B3985B] hover:bg-[#1a1a1a] transition-all">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button onClick={e => { e.stopPropagation(); onDeleteCarpeta(carpeta.id); }}
+              className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-red-400 hover:bg-red-950/20 transition-all">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+      {open && (
+        <div className="ml-4 space-y-0.5">
+          {carpeta.proyectos.map(p => (
+            <NavProyecto key={p.id} proyecto={p} isActive={vistaKey === p.id} indent={2}
+              onSelect={() => onSelectProyecto(p.id)}
+              onRename={nombre => onRenameProyecto(p.id, nombre)}
+              onDelete={() => onDeleteProyecto(p.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SectionBlock ─────────────────────────────────────────────────────────────
 
 function SectionBlock({
   seccion, proyectoId, selectedId,
