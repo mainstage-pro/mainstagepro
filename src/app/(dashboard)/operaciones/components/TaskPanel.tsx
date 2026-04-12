@@ -389,7 +389,7 @@ export default function TaskPanel({
                 )}
               </button>
               <span className={`text-xs flex-1 ${sub.estado === "COMPLETADA" ? "line-through text-[#444]" : "text-[#c4c4c4]"}`}>{sub.titulo}</span>
-              {sub.fecha && <span className="text-[10px] text-[#555]">{new Date(sub.fecha).toLocaleDateString("es-MX", { month: "short", day: "numeric" })}</span>}
+              {sub.fecha && <span className="text-[10px] text-[#555]">{new Date(sub.fecha.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })}</span>}
               <button onClick={() => { onDeleteSubtarea(sub.id); setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id)); }}
                 className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

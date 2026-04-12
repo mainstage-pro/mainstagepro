@@ -25,7 +25,7 @@ const PRIO: Record<string, { ring: string; dot: string; glow: string }> = {
 };
 
 function formatFecha(iso: string): { label: string; cls: string } {
-  const d   = new Date(iso + "T00:00:00");
+  const d   = new Date(iso.substring(0, 10) + "T00:00:00");
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const man = new Date(hoy); man.setDate(hoy.getDate() + 1);
   const sem = new Date(hoy); sem.setDate(hoy.getDate() + 7);
