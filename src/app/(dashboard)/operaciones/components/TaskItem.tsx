@@ -45,11 +45,17 @@ interface Props {
   isSelected: boolean;
   showProject?: boolean;
   depth?: number;
+  draggable?: boolean;
+  onDragStart?: (id: string) => void;
+  onDragEnd?: () => void;
+  onDrop?: (targetId: string) => void;
+  isDragOver?: boolean;
 }
 
-export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSelected, showProject = false, depth = 0 }: Props) {
+export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSelected, showProject = false, depth = 0, draggable: isDraggable = false, onDragStart, onDragEnd, onDrop, isDragOver = false }: Props) {
   const [hovered,    setHovered]    = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [dragOver,   setDragOver]   = useState(false);
   const isCompleted = tarea.estado === "COMPLETADA";
   const prio = PRIO[tarea.prioridad] ?? PRIO.BAJA;
 
@@ -68,13 +74,18 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
   const fecha    = tarea.fecha            ? formatFecha(tarea.fecha) : null;
   const fechaVen = tarea.fechaVencimiento ? formatFecha(tarea.fechaVencimiento) : null;
 
+  const showDrop = dragOver || isDragOver;
+
   return (
     <div
       role="button"
       tabIndex={0}
       aria-selected={isSelected}
+      draggable={isDraggable}
       className={`group flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none ${
-        isSelected
+        showDrop
+          ? "bg-[#B3985B]/8 ring-1 ring-[#B3985B]/30"
+          : isSelected
           ? "bg-[#111] ring-1 ring-[#B3985B]/20"
           : hovered
           ? "bg-[#0d0d0d]"
@@ -85,6 +96,11 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
       onMouseLeave={() => setHovered(false)}
       onClick={() => onSelect(tarea.id)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
+      onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
+      onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
+      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onDrop?.(tarea.id); }}
     >
       {/* ── Circle checkbox ────────────────────────────────────────────── */}
       <button

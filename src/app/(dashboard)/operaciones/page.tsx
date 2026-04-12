@@ -72,6 +72,7 @@ export default function OperacionesPage() {
 
   const [sortHoy, setSortHoy]                   = useState(SORT_OPTIONS[0]);
   const [showCompleted, setShowCompleted]       = useState(false);
+  const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(showCompleted);
@@ -98,12 +99,13 @@ export default function OperacionesPage() {
       fetch("/api/operaciones/proyectos").then(r => r.json()),
       fetch("/api/iniciativas").then(r => r.json()),
       fetch("/api/usuarios").then(r => r.json()),
-    ]).then(([carp, proy, init, usr]) => {
+      fetch("/api/me").then(r => r.json()),
+    ]).then(([carp, proy, init, usr, me]) => {
       setCarpetas(carp.carpetas ?? []);
       setProyectosNav(proy.proyectos ?? []);
       setIniciativas(init.iniciativas ?? []);
       setUsuarios(usr.usuarios ?? []);
-      if (usr.usuarios?.[0]) setSessionId(usr.usuarios[0].id);
+      if (me?.id) setSessionId(me.id);
     });
   }, []);
 
@@ -283,6 +285,22 @@ export default function OperacionesPage() {
     });
   }, []);
 
+  const moveToSubtask = useCallback(async (childId: string, parentId: string) => {
+    if (childId === parentId) return;
+    await fetch(`/api/tareas/${childId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ parentId }),
+    });
+    // Remove child from flat list — it now lives as subtask inside parent
+    const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== childId);
+    setTareas(remove);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: remove(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: remove(s.tareas) })),
+    } : null);
+    setDraggingId(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const addSeccion = useCallback(async () => {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string") return;
     const res = await fetch("/api/operaciones/secciones", {
@@ -332,25 +350,60 @@ export default function OperacionesPage() {
     }
   }
 
-  // ── Hoy grouped ────────────────────────────────────────────────────────
+  // ── Sort helper: cronológico + prioridad ────────────────────────────────
+  const PRIO_ORD: Record<string,number> = { URGENTE:0, ALTA:1, MEDIA:2, BAJA:3 };
+  function sortCronoPrio(arr: TareaItem[]) {
+    return [...arr].sort((a, b) => {
+      const da = a.fecha ? new Date(a.fecha).getTime() : Infinity;
+      const db = b.fecha ? new Date(b.fecha).getTime() : Infinity;
+      if (da !== db) return da - db;
+      return (PRIO_ORD[a.prioridad] ?? 3) - (PRIO_ORD[b.prioridad] ?? 3);
+    });
+  }
+
+  // ── Hoy / Próximas grouped ───────────────────────────────────────────────
   const hoyGrouped = useMemo(() => {
-    if (vista !== "hoy" || sortHoy === SORT_OPTIONS[0]) return null;
-    const grouped: Record<string, TareaItem[]> = {};
-    for (const t of tareas) {
-      let key = "";
-      if (sortHoy === "Por proyecto")   key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
-      else if (sortHoy === "Por prioridad") key = t.prioridad;
-      else if (sortHoy === "Por área")  key = areaLabel(t.area);
-      else if (sortHoy === "Por fecha") key = t.fecha ? new Date(t.fecha).toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(t);
+    if (typeof vista !== "string" || (vista !== "hoy" && vista !== "proximas")) return null;
+
+    const base = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
+
+    // Manual sort options (from the sort buttons)
+    if (sortHoy !== SORT_OPTIONS[0]) {
+      const grouped: Record<string, TareaItem[]> = {};
+      for (const t of base) {
+        let key = "";
+        if (sortHoy === "Por proyecto")   key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+        else if (sortHoy === "Por prioridad") key = t.prioridad;
+        else if (sortHoy === "Por área")  key = areaLabel(t.area);
+        else if (sortHoy === "Por fecha") key = t.fecha ? new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(t);
+      }
+      const keys = sortHoy === "Por prioridad"
+        ? ["URGENTE","ALTA","MEDIA","BAJA"].filter(k => grouped[k])
+        : Object.keys(grouped).sort();
+      return keys.map(label => ({ label, tareas: sortCronoPrio(grouped[label]) }));
     }
-    const PRIO_ORD: Record<string,number> = { URGENTE:0, ALTA:1, MEDIA:2, BAJA:3 };
-    const keys = sortHoy === "Por prioridad"
-      ? ["URGENTE","ALTA","MEDIA","BAJA"].filter(k => grouped[k])
-      : Object.keys(grouped).sort();
-    return keys.map(label => ({ label, tareas: grouped[label] }));
-  }, [tareas, sortHoy, vista]);
+
+    // Default: auto-group by área when there are multiple, always cronológico+prioridad
+    const areas = [...new Set(base.map(t => t.area))];
+    if (areas.length <= 1) return null; // render flat list, sorted below
+
+    const grouped: Record<string, TareaItem[]> = {};
+    for (const t of base) {
+      if (!grouped[t.area]) grouped[t.area] = [];
+      grouped[t.area].push(t);
+    }
+    const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH"];
+    const keys = AREA_ORD.filter(k => grouped[k]);
+    return keys.map(key => ({ label: areaLabel(key), tareas: sortCronoPrio(grouped[key]) }));
+  }, [tareas, sortHoy, vista, showCompleted]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flat sorted list (used when no grouping)
+  const tareasOrdenadas = useMemo(() => {
+    const base = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
+    return sortCronoPrio(base);
+  }, [tareas, showCompleted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proyectosSinCarpeta = useMemo(() =>
     proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
@@ -495,7 +548,7 @@ export default function OperacionesPage() {
         <div className="flex items-center gap-3 px-6 py-4 border-b border-[#111] shrink-0">
           <h1 className="text-lg font-semibold text-white">{vistaLabel}</h1>
 
-          {vista === "hoy" && (
+          {(vista === "hoy" || vista === "proximas") && (
             <div className="ml-auto flex items-center gap-1 flex-wrap">
               {SORT_OPTIONS.map(opt => (
                 <button key={opt} onClick={() => setSortHoy(opt)}
@@ -562,56 +615,68 @@ export default function OperacionesPage() {
             </div>
           ) : typeof vista === "string" ? (
             <div className="max-w-3xl mx-auto px-4 py-3">
-              {(() => {
-                const visibleTareas = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
-                if (visibleTareas.length === 0) return (
-                  <div className="text-center py-16 text-[#333]">
-                    <div className="flex justify-center mb-3">
-                      {vista === "hoy" ? (
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
-                          <circle cx="12" cy="12" r="5"/>
-                          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                        </svg>
-                      ) : vista === "proximas" ? (
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
-                          <rect x="3" y="4" width="18" height="18" rx="2"/>
-                          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                          <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                      ) : (
-                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
-                          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-                          <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
-                        </svg>
-                      )}
-                    </div>
-                    <p className="text-sm">
-                      {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
-                    </p>
+              {tareasOrdenadas.length === 0 ? (
+                <div className="text-center py-16 text-[#333]">
+                  <div className="flex justify-center mb-3">
+                    {vista === "hoy" ? (
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
+                        <circle cx="12" cy="12" r="5"/>
+                        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                      </svg>
+                    ) : vista === "proximas" ? (
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                      </svg>
+                    ) : (
+                      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
+                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+                      </svg>
+                    )}
                   </div>
-                );
-                if (hoyGrouped) return hoyGrouped.map(group => {
-                  const groupVisible = showCompleted ? group.tareas : group.tareas.filter(t => t.estado !== "COMPLETADA");
-                  if (groupVisible.length === 0) return null;
-                  return (
-                    <div key={group.label} className="mb-4">
-                      <p className="text-xs text-[#444] font-semibold uppercase tracking-wider px-3 py-2">{group.label}</p>
-                      {groupVisible.map(t => (
-                        <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
-                      ))}
+                  <p className="text-sm">
+                    {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
+                  </p>
+                </div>
+              ) : hoyGrouped ? (
+                hoyGrouped.map(group => group.tareas.length === 0 ? null : (
+                  <div key={group.label} className="mb-5">
+                    <div className="flex items-center gap-2 px-3 py-1.5 mb-0.5">
+                      <span className="text-[10px] text-[#444] font-semibold uppercase tracking-widest">{group.label}</span>
+                      <span className="text-[10px] text-[#2a2a2a]">{group.tareas.length}</span>
                     </div>
-                  );
-                });
-                return visibleTareas.map(t => (
+                    {group.tareas.map(t => (
+                      <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                        showProject draggable
+                        onDragStart={setDraggingId}
+                        onDragEnd={() => setDraggingId(null)}
+                        onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                        isDragOver={false}
+                      />
+                    ))}
+                  </div>
+                ))
+              ) : (
+                tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
-                ));
-              })()}
-              <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios} />
+                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                    showProject draggable
+                    onDragStart={setDraggingId}
+                    onDragEnd={() => setDraggingId(null)}
+                    onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                    isDragOver={false}
+                  />
+                ))
+              )}
+              {(vista === "bandeja" || vista === "proximas") && (
+                <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios} />
+              )}
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-3">

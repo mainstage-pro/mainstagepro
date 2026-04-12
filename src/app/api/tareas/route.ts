@@ -49,14 +49,16 @@ export async function GET(req: NextRequest) {
     ahora.setHours(23, 59, 59, 999);
     where.fecha  = { lte: ahora };
     where.estado = { not: "COMPLETADA" };
+    where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
   } else if (vista === "proximas") {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const en7 = new Date(hoy);
-    en7.setDate(hoy.getDate() + 7);
-    where.fecha  = { gte: hoy, lte: en7 };
+    const en30 = new Date(hoy);
+    en30.setDate(hoy.getDate() + 30);
+    where.fecha  = { gte: hoy, lte: en30 };
     where.estado = { not: "COMPLETADA" };
+    where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
   } else if (vista === "bandeja") {
     where.proyectoTareaId = null;
@@ -67,7 +69,7 @@ export async function GET(req: NextRequest) {
   const tareas = await prisma.tarea.findMany({
     where,
     include: INCLUDE,
-    orderBy: [{ orden: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ fecha: "asc" }, { orden: "asc" }, { createdAt: "asc" }],
   });
 
   return NextResponse.json({ tareas });
