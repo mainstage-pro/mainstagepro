@@ -345,13 +345,26 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
       </aside>
 
       {/* MOBILE: barra superior */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center justify-between px-4">
-        <Link href="/dashboard">
-          <Image src="/logo-white.png" alt="Mainstage Pro" width={110} height={28} className="object-contain hover:opacity-80 transition-opacity" />
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-3 gap-2">
+        {/* Botón regresar — solo cuando no estamos en /dashboard */}
+        {pathname !== "/dashboard" && (
+          <button
+            onClick={() => router.back()}
+            className="w-9 h-9 flex items-center justify-center rounded-md text-[#888] hover:text-white hover:bg-[#1a1a1a] transition-colors shrink-0"
+            aria-label="Regresar"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M19 12H5M12 5l-7 7 7 7" />
+            </svg>
+          </button>
+        )}
+        {/* Logo — centrado cuando hay botón de regreso, a la izquierda cuando no */}
+        <Link href="/dashboard" className={`flex-1 flex ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
+          <Image src="/logo-white.png" alt="Mainstage Pro" width={100} height={26} className="object-contain hover:opacity-80 transition-opacity" />
         </Link>
         <button
           onClick={() => setMobileOpen(true)}
-          className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
+          className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors shrink-0"
           aria-label="Abrir menú"
         >
           <span className="w-5 h-px bg-[#888] block" />
