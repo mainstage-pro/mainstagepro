@@ -702,7 +702,12 @@ export default function OperacionesPage() {
                 <>
                   {proyectoDetalle.tareas.map(t => (
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} />
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      draggable
+                      onDragStart={setDraggingId}
+                      onDragEnd={() => setDraggingId(null)}
+                      onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                    />
                   ))}
                   <QuickAdd proyectoTareaId={proyectoDetalle.id} onAdd={addTarea} placeholder="Agregar tarea al proyecto…" proyectos={proyectosNav} usuarios={usuarios} />
                   {proyectoDetalle.secciones.map(seccion => (
@@ -715,6 +720,10 @@ export default function OperacionesPage() {
                       onSelect={setSelectedId}
                       onDelete={deleteTarea}
                       onAddTarea={addTarea}
+                      draggingId={draggingId}
+                      onDragStart={setDraggingId}
+                      onDragEnd={() => setDraggingId(null)}
+                      onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -976,6 +985,7 @@ function SectionBlock({
   seccion, proyectoId, selectedId,
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection,
+  draggingId, onDragStart, onDragEnd, onDrop,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -990,6 +1000,10 @@ function SectionBlock({
   }) => void;
   onToggleCollapse: (id: string, colapsada: boolean) => void;
   onDeleteSection: (id: string) => void;
+  draggingId: string | null;
+  onDragStart: (id: string) => void;
+  onDragEnd: () => void;
+  onDrop: (targetId: string) => void;
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1017,7 +1031,11 @@ function SectionBlock({
         <>
           {seccion.tareas.map(t => (
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-              onComplete={onComplete} onSelect={onSelect} onDelete={onDelete} />
+              onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
+              draggable={!!draggingId || true}
+              onDragStart={onDragStart} onDragEnd={onDragEnd}
+              onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
+            />
           ))}
           <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
             placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea} />
