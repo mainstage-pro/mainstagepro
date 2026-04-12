@@ -232,14 +232,14 @@ export default function QuickAdd({
           onChange={e => setTitulo(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) submit(); if (e.key === "Escape") reset(); }}
           placeholder={placeholder}
-          className="w-full bg-transparent text-[15px] text-white placeholder-[#252525] focus:outline-none leading-snug"
+          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug"
         />
       </div>
 
       {/* ── Detection chip ───────────────────────────────────────────────── */}
       {deteccion && (
         <div className="flex items-center gap-1.5 px-4 pb-2">
-          <span className="flex items-center gap-1.5 text-[11px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-md px-2 py-0.5">
+          <span className="flex items-center gap-1.5 text-[12px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-md px-2 py-0.5">
             {deteccion.recurrencia ? (
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
             ) : (
@@ -313,7 +313,7 @@ export default function QuickAdd({
               <div className="flex border-b border-[#111]">
                 {(["especifica","recurrente"] as FechaTab[]).map(tab => (
                   <button key={tab} onClick={() => setFechaTab(tab)}
-                    className={`flex-1 py-1.5 text-[11px] font-medium transition-colors ${
+                    className={`flex-1 py-1.5 text-[12px] font-medium transition-colors ${
                       fechaTab === tab ? "text-[#B3985B] border-b border-[#B3985B]" : "text-[#3a3a3a] hover:text-[#777]"
                     }`}>
                     {tab === "especifica" ? "Específica" : "Recurrente"}
@@ -332,27 +332,27 @@ export default function QuickAdd({
                       const json = cfg ? JSON.stringify(cfg) : null;
                       return (
                         <button key={p.label} onClick={() => { if (json) { setRecurrencia(json); setRecTexto(""); setPanel(null); } }}
-                          className={`px-2 py-0.5 rounded text-[11px] border transition-all ${
+                          className={`px-2 py-0.5 rounded text-[12px] border transition-all ${
                             recurrencia === json ? "bg-[#B3985B]/15 border-[#B3985B]/30 text-[#B3985B]" : "border-[#1e1e1e] text-[#444] hover:text-[#888]"
                           }`}>{p.label}</button>
                       );
                     })}
                     {recurrencia && (
                       <button onClick={() => { setRecurrencia(null); setRecTexto(""); }}
-                        className="px-2 py-0.5 rounded text-[11px] border border-[#1e1e1e] text-[#444] hover:text-red-400 transition-all">✕</button>
+                        className="px-2 py-0.5 rounded text-[12px] border border-[#1e1e1e] text-[#444] hover:text-red-400 transition-all">✕</button>
                     )}
                   </div>
                   <div className="flex gap-1.5">
                     <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
                       onKeyDown={e => { if (e.key === "Enter") applyRec(recTexto); if (e.key === "Escape") setPanel(null); }}
                       placeholder="cada lunes · cada martes y jueves…"
-                      className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded px-2 py-1 text-[11px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40" />
+                      className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded px-2 py-1 text-[12px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40" />
                     <button onClick={() => applyRec(recTexto)}
-                      className="px-2 py-1 bg-[#161616] hover:bg-[#1e1e1e] text-[#666] hover:text-white text-[11px] rounded transition-all">OK</button>
+                      className="px-2 py-1 bg-[#161616] hover:bg-[#1e1e1e] text-[#666] hover:text-white text-[12px] rounded transition-all">OK</button>
                   </div>
-                  {recError && <p className="text-[10px] text-red-400">{recError}</p>}
+                  {recError && <p className="text-[11px] text-red-400">{recError}</p>}
                   {recurrencia && !recError && (
-                    <p className="text-[10px] text-[#B3985B] flex items-center gap-1"><IconRepeat />{recLabel}</p>
+                    <p className="text-[11px] text-[#B3985B] flex items-center gap-1"><IconRepeat />{recLabel}</p>
                   )}
                 </div>
               )}
@@ -371,7 +371,7 @@ export default function QuickAdd({
             <div className="flex gap-1 px-2.5 py-2">
               {PRIORIDADES.map(p => (
                 <button key={p.key} onClick={() => { setPrioridad(p.key); setPanel(null); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border text-[11px] font-medium transition-all"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg border text-[12px] font-medium transition-all"
                   style={{
                     borderColor: prioridad === p.key ? p.color + "60" : "#1a1a1a",
                     backgroundColor: prioridad === p.key ? p.color + "12" : "transparent",
@@ -407,7 +407,7 @@ export default function QuickAdd({
             <div className="flex flex-wrap gap-1 px-2.5 py-2">
               {AREAS.map(a => (
                 <button key={a.key} onClick={() => { setArea(a.key); setPanel(null); }}
-                  className={`px-2.5 py-1 rounded text-[11px] border transition-all ${
+                  className={`px-2.5 py-1 rounded text-[12px] border transition-all ${
                     area === a.key ? "bg-[#B3985B]/12 border-[#B3985B]/30 text-[#B3985B]" : "border-[#1a1a1a] text-[#444] hover:text-[#888]"
                   }`}>
                   {a.label}
@@ -421,13 +421,13 @@ export default function QuickAdd({
             <div className="max-h-36 overflow-y-auto py-1">
               <button onClick={() => { setAsignadoSel(null); setPanel(null); }}
                 className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${!asignadoSel ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
-                <span className="w-4 h-4 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[9px] text-[#444]">—</span>
+                <span className="w-4 h-4 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] text-[#444]">—</span>
                 Sin asignar
               </button>
               {usuarios.map(u => (
                 <button key={u.id} onClick={() => { setAsignadoSel(u.id); setPanel(null); }}
                   className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${asignadoSel === u.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
-                  <span className="w-4 h-4 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-[9px] text-[#B3985B] font-medium shrink-0">
+                  <span className="w-4 h-4 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-[10px] text-[#B3985B] font-medium shrink-0">
                     {u.name.charAt(0).toUpperCase()}
                   </span>
                   {u.name}

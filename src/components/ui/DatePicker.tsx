@@ -130,7 +130,7 @@ export default function DatePicker({
       <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
         {chips.map(c => (
           <button key={c.iso} onClick={() => { onChange(c.iso); setOpen(false); }}
-            className={`flex-1 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+            className={`flex-1 py-1 rounded-lg text-[12px] font-medium border transition-all ${
               value === c.iso
                 ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
                 : "border-[#1a1a1a] text-[#555] hover:border-[#252525] hover:text-[#999]"
@@ -161,7 +161,7 @@ export default function DatePicker({
       {/* Day headers */}
       <div className="grid grid-cols-7 px-3 pb-1">
         {DIAS.map(d => (
-          <div key={d} className="text-center text-[10px] text-[#444] font-medium py-1">{d}</div>
+          <div key={d} className="text-center text-[11px] text-[#444] font-medium py-1">{d}</div>
         ))}
       </div>
 
@@ -175,7 +175,7 @@ export default function DatePicker({
           const isPast  = iso < today;
           return (
             <button key={i} onClick={() => selectDay(day)}
-              className={`aspect-square flex items-center justify-center rounded-lg text-[13px] transition-all font-medium ${
+              className={`aspect-square flex items-center justify-center rounded-lg text-[14px] transition-all font-medium ${
                 isSel    ? "bg-[#B3985B] text-[#0a0a0a] shadow-md shadow-[#B3985B]/30"
                 : isToday ? "ring-1 ring-[#B3985B]/50 text-[#B3985B] hover:bg-[#B3985B]/10"
                 : isPast  ? "text-[#333] hover:text-[#666] hover:bg-[#111]"

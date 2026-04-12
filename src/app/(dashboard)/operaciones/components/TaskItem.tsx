@@ -127,14 +127,14 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
 
       {/* ── Content ────────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[14px] leading-snug transition-colors ${
+        <p className={`text-[15px] leading-snug transition-colors ${
           isCompleted ? "line-through text-[#333]" : "text-[#d0d0d0]"
         }`}>
           {tarea.titulo}
         </p>
 
         {tarea.descripcion && !isCompleted && (
-          <p className="text-[12px] text-[#3a3a3a] leading-snug mt-0.5 line-clamp-2">
+          <p className="text-[13px] text-[#3a3a3a] leading-snug mt-0.5 line-clamp-2">
             {tarea.descripcion}
           </p>
         )}
@@ -143,7 +143,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {showProject && tarea.proyectoTarea && (
-              <span className="flex items-center gap-1 text-[11px] text-[#444] font-medium">
+              <span className="flex items-center gap-1 text-[12px] text-[#444] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0"
                   style={{ backgroundColor: tarea.proyectoTarea.color ?? "#444" }} />
                 {tarea.proyectoTarea.nombre}
@@ -151,7 +151,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {fecha && !isCompleted && (
-              <span className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${fecha.cls}`}>
+              <span className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium ${fecha.cls}`}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <rect x="3" y="4" width="18" height="18" rx="2"/>
                   <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
@@ -162,7 +162,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {fechaVen && !isCompleted && (
-              <span className={`inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md font-medium ${fechaVen.cls}`}>
+              <span className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium ${fechaVen.cls}`}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                 </svg>
@@ -171,7 +171,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {recurrenciaDisplay && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
+              <span className="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                   <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
@@ -181,7 +181,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {tarea._count.subtareas > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[11px] text-[#444]">
+              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
                   <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
@@ -192,7 +192,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {tarea._count.comentarios > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[11px] text-[#444]">
+              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
@@ -201,7 +201,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {tarea._count.archivos > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[11px] text-[#444]">
+              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
@@ -215,7 +215,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
       {/* ── Right actions ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-1 mt-0.5 shrink-0">
         {tarea.asignadoA && (
-          <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] text-[10px] text-[#B3985B] flex items-center justify-center font-medium">
+          <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] text-[11px] text-[#B3985B] flex items-center justify-center font-medium">
             {tarea.asignadoA.name.charAt(0).toUpperCase()}
           </span>
         )}

@@ -441,7 +441,7 @@ export default function OperacionesPage() {
       {/* ── LEFT NAV ──────────────────────────────────────────────────────── */}
       <nav className="hidden md:flex w-60 shrink-0 flex-col bg-[#060606] border-r border-[#111] overflow-y-auto">
         <div className="px-3 pt-4 pb-2 border-b border-[#111]">
-          <p className="text-[11px] text-[#333] uppercase tracking-widest font-bold px-1 mb-1">Operaciones</p>
+          <p className="text-[12px] text-[#333] uppercase tracking-widest font-bold px-1 mb-1">Operaciones</p>
         </div>
 
         <div className="px-2 py-2 space-y-0.5">
@@ -471,7 +471,7 @@ export default function OperacionesPage() {
 
         <div className="border-t border-[#111] mt-1 pt-2 px-2 flex-1 space-y-0.5">
           <div className="flex items-center justify-between px-2 py-1">
-            <p className="text-[10px] text-[#333] uppercase tracking-widest font-bold">Proyectos</p>
+            <p className="text-[11px] text-[#333] uppercase tracking-widest font-bold">Proyectos</p>
             <button onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
               className="text-[#333] hover:text-[#B3985B] transition-colors" title="Nuevo proyecto">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -514,7 +514,7 @@ export default function OperacionesPage() {
             <div>
               <button onClick={() => setProyectosSueltos(!proyectosSueltos)}
                 className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#333] hover:text-[#555] transition-colors">
-                <span className="text-[9px] inline-block" style={{ transform: proyectosSueltos ? "rotate(90deg)" : "" }}>▶</span>
+                <span className="text-[10px] inline-block" style={{ transform: proyectosSueltos ? "rotate(90deg)" : "" }}>▶</span>
                 Sin carpeta
               </button>
               {proyectosSueltos && proyectosSinCarpeta.map(p => (
@@ -619,10 +619,10 @@ export default function OperacionesPage() {
                     <p className="text-sm text-white">{t.titulo}</p>
                     {t.descripcion && <p className="text-xs text-[#555] mt-0.5">{t.descripcion}</p>}
                     <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888]">{t.etiqueta}</span>
-                      {t.diasVencido && <span className="text-[10px] text-red-400">{t.diasVencido}d vencida</span>}
-                      {t.monto && <span className="text-[10px] text-[#B3985B]">${t.monto.toLocaleString("es-MX")}</span>}
-                      {t.cliente && <span className="text-[10px] text-[#666]">{t.cliente}</span>}
+                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888]">{t.etiqueta}</span>
+                      {t.diasVencido && <span className="text-[11px] text-red-400">{t.diasVencido}d vencida</span>}
+                      {t.monto && <span className="text-[11px] text-[#B3985B]">${t.monto.toLocaleString("es-MX")}</span>}
+                      {t.cliente && <span className="text-[11px] text-[#666]">{t.cliente}</span>}
                     </div>
                   </div>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" className="shrink-0 mt-1">
@@ -665,8 +665,8 @@ export default function OperacionesPage() {
                 hoyGrouped.map(group => group.tareas.length === 0 ? null : (
                   <div key={group.label} className="mb-5">
                     <div className="flex items-center gap-2 px-3 py-1.5 mb-0.5">
-                      <span className="text-[10px] text-[#444] font-semibold uppercase tracking-widest">{group.label}</span>
-                      <span className="text-[10px] text-[#2a2a2a]">{group.tareas.length}</span>
+                      <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{group.label}</span>
+                      <span className="text-[11px] text-[#2a2a2a]">{group.tareas.length}</span>
                     </div>
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
@@ -808,7 +808,7 @@ export default function OperacionesPage() {
                 placeholder="Nombre del proyecto"
                 className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]" />
               <div className="space-y-1">
-                <label className="text-[10px] text-[#555] uppercase tracking-wider">Color</label>
+                <label className="text-[11px] text-[#555] uppercase tracking-wider">Color</label>
                 <div className="flex gap-2 flex-wrap">
                   {PROJECT_COLORS.map(c => (
                     <button key={c} onClick={() => setNuevoProyectoColor(c)}
@@ -818,7 +818,7 @@ export default function OperacionesPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-[#555] uppercase tracking-wider">Carpeta (opcional)</label>
+                <label className="text-[11px] text-[#555] uppercase tracking-wider">Carpeta (opcional)</label>
                 <select value={nuevoProyectoCarpeta} onChange={e => setNuevoProyectoCarpeta(e.target.value)}
                   className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                   <option value="">— Sin carpeta —</option>
@@ -939,7 +939,7 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
           <button onClick={onToggle}
             className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors"
             style={{ paddingRight: hov ? "56px" : "8px" }}>
-            <span className="text-[9px] transition-transform inline-block shrink-0" style={{ transform: open ? "rotate(90deg)" : "" }}>▶</span>
+            <span className="text-[10px] transition-transform inline-block shrink-0" style={{ transform: open ? "rotate(90deg)" : "" }}>▶</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
@@ -1016,7 +1016,7 @@ function SectionBlock({
           <polyline points="6 9 12 15 18 9"/>
         </svg>
         <span className="text-xs font-semibold text-[#666] hover:text-white transition-colors">{seccion.nombre}</span>
-        {seccion.tareas.length > 0 && <span className="text-[10px] text-[#333]">({seccion.tareas.length})</span>}
+        {seccion.tareas.length > 0 && <span className="text-[11px] text-[#333]">({seccion.tareas.length})</span>}
         {hov && (
           <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
             className="ml-auto text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">

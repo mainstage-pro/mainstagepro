@@ -217,7 +217,7 @@ export default function TaskPanel({
 
         <div className="flex-1 flex items-center gap-1">
           {/* Breadcrumb */}
-          <span className="text-[11px] text-[#555] truncate">
+          <span className="text-[12px] text-[#555] truncate">
             {tarea.carpeta?.nombre && <>{tarea.carpeta.nombre} › </>}
             {tarea.proyectoTarea?.nombre && <>{tarea.proyectoTarea.nombre} › </>}
             {tarea.seccion?.nombre && <>{tarea.seccion.nombre}</>}
@@ -272,14 +272,14 @@ export default function TaskPanel({
           {/* Prioridad + Area */}
           <div className="flex gap-2">
             <div className="flex-1 space-y-0.5">
-              <label className="text-[10px] text-[#444] uppercase tracking-wider">Prioridad</label>
+              <label className="text-[11px] text-[#444] uppercase tracking-wider">Prioridad</label>
               <select value={prioridad} onChange={e => { setPrioridad(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 {PRIOS.map(p => <option key={p} value={p} style={{ color: PRIO_COLORS[p] }}>{p}</option>)}
               </select>
             </div>
             <div className="flex-1 space-y-0.5">
-              <label className="text-[10px] text-[#444] uppercase tracking-wider">Área</label>
+              <label className="text-[11px] text-[#444] uppercase tracking-wider">Área</label>
               <select value={area} onChange={e => { setArea(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
@@ -289,7 +289,7 @@ export default function TaskPanel({
 
           {/* Assignee */}
           <div className="space-y-0.5">
-            <label className="text-[10px] text-[#444] uppercase tracking-wider">Asignado a</label>
+            <label className="text-[11px] text-[#444] uppercase tracking-wider">Asignado a</label>
             <select value={asignadoAId} onChange={e => { setAsignadoAId(e.target.value); mark(); }}
               className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
               <option value="">— Sin asignar —</option>
@@ -299,7 +299,7 @@ export default function TaskPanel({
 
           {/* Project */}
           <div className="space-y-0.5">
-            <label className="text-[10px] text-[#444] uppercase tracking-wider">Proyecto</label>
+            <label className="text-[11px] text-[#444] uppercase tracking-wider">Proyecto</label>
             <select value={proyectoId} onChange={e => { setProyectoId(e.target.value); mark(); }}
               className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
               <option value="">— Bandeja de entrada —</option>
@@ -310,7 +310,7 @@ export default function TaskPanel({
           {/* Iniciativa */}
           {iniciativas.length > 0 && (
             <div className="space-y-0.5">
-              <label className="text-[10px] text-[#444] uppercase tracking-wider">Iniciativa</label>
+              <label className="text-[11px] text-[#444] uppercase tracking-wider">Iniciativa</label>
               <select value={iniciativaId} onChange={e => { setIniciativaId(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 <option value="">— Ninguna —</option>
@@ -322,7 +322,7 @@ export default function TaskPanel({
           {/* Dates */}
           <div className="flex gap-2">
             <div className="flex-1 space-y-0.5">
-              <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha</label>
+              <label className="text-[11px] text-[#444] uppercase tracking-wider">Fecha</label>
               <DatePicker
                 value={fecha}
                 onChange={val => { setFecha(val); mark(); }}
@@ -330,7 +330,7 @@ export default function TaskPanel({
               />
             </div>
             <div className="flex-1 space-y-0.5">
-              <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha límite</label>
+              <label className="text-[11px] text-[#444] uppercase tracking-wider">Fecha límite</label>
               {(fechaVen || showFechaVenPicker) ? (
                 <DatePicker
                   value={fechaVen}
@@ -355,7 +355,7 @@ export default function TaskPanel({
 
           {/* Recurrencia */}
           <div className="space-y-1">
-            <label className="text-[10px] text-[#444] uppercase tracking-wider">Recurrencia</label>
+            <label className="text-[11px] text-[#444] uppercase tracking-wider">Recurrencia</label>
             {!editingRec ? (
               <button onClick={() => setEditingRec(true)}
                 className="flex items-center gap-1.5 text-sm text-[#555] hover:text-white transition-colors">
@@ -376,7 +376,7 @@ export default function TaskPanel({
                   {tarea.recurrencia && <button onClick={() => { onSave(tarea.id, { recurrencia: null }); setEditingRec(false); }} className="text-red-400 hover:underline">Quitar</button>}
                   <button onClick={() => setEditingRec(false)} className="text-[#555] hover:text-white">Cancelar</button>
                 </div>
-                <p className="text-[10px] text-[#333]">Ej: cada día · cada lunes · cada martes y jueves · cada tercer viernes · cada mes</p>
+                <p className="text-[11px] text-[#333]">Ej: cada día · cada lunes · cada martes y jueves · cada tercer viernes · cada mes</p>
               </div>
             )}
           </div>
@@ -384,7 +384,7 @@ export default function TaskPanel({
 
         {/* Subtareas */}
         <div className="space-y-1">
-          <p className="text-[11px] text-[#444] uppercase tracking-wider font-medium">Subtareas</p>
+          <p className="text-[12px] text-[#444] uppercase tracking-wider font-medium">Subtareas</p>
           {subtareasLocal.map(sub => (
             <div key={sub.id} className="flex items-center gap-2 group py-1 px-2 rounded hover:bg-[#111]">
               <button
@@ -397,7 +397,7 @@ export default function TaskPanel({
                 )}
               </button>
               <span className={`text-xs flex-1 ${sub.estado === "COMPLETADA" ? "line-through text-[#444]" : "text-[#c4c4c4]"}`}>{sub.titulo}</span>
-              {sub.fecha && <span className="text-[10px] text-[#555]">{new Date(sub.fecha.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })}</span>}
+              {sub.fecha && <span className="text-[11px] text-[#555]">{new Date(sub.fecha.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })}</span>}
               <button onClick={() => { onDeleteSubtarea(sub.id); setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id)); }}
                 className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -423,7 +423,7 @@ export default function TaskPanel({
 
         {/* Notas */}
         <div className="space-y-1">
-          <label className="text-[10px] text-[#444] uppercase tracking-wider">Notas</label>
+          <label className="text-[11px] text-[#444] uppercase tracking-wider">Notas</label>
           <textarea value={notas} onChange={e => { setNotas(e.target.value); mark(); }}
             placeholder="Notas adicionales…"
             className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded px-3 py-2 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#333] leading-relaxed"
@@ -433,7 +433,7 @@ export default function TaskPanel({
         {/* Archivos */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-[10px] text-[#444] uppercase tracking-wider">Archivos adjuntos</label>
+            <label className="text-[11px] text-[#444] uppercase tracking-wider">Archivos adjuntos</label>
             <div className="flex gap-2">
               <label className="cursor-pointer text-xs text-[#555] hover:text-[#B3985B] transition-colors">
                 <input type="file" multiple className="hidden"
@@ -470,7 +470,7 @@ export default function TaskPanel({
               </svg>
               <a href={a.url} target="_blank" rel="noopener noreferrer"
                 className="flex-1 text-xs text-[#888] hover:text-white truncate">{a.nombre}</a>
-              {a.tamano && <span className="text-[10px] text-[#444]">{(a.tamano / 1024).toFixed(0)}KB</span>}
+              {a.tamano && <span className="text-[11px] text-[#444]">{(a.tamano / 1024).toFixed(0)}KB</span>}
               <button onClick={() => eliminarArchivo(a.id)}
                 className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -487,16 +487,16 @@ export default function TaskPanel({
 
         {/* Comentarios */}
         <div className="space-y-3">
-          <p className="text-[10px] text-[#444] uppercase tracking-wider">Comentarios</p>
+          <p className="text-[11px] text-[#444] uppercase tracking-wider">Comentarios</p>
           {comentariosLocal.map(c => (
             <div key={c.id} className="group flex gap-2">
-              <div className="w-6 h-6 rounded-full bg-[#1a1a1a] flex items-center justify-center shrink-0 text-[10px] text-[#B3985B]">
+              <div className="w-6 h-6 rounded-full bg-[#1a1a1a] flex items-center justify-center shrink-0 text-[11px] text-[#B3985B]">
                 {c.autor?.name.charAt(0).toUpperCase() ?? "?"}
               </div>
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-[#888]">{c.autor?.name ?? "Desconocido"}</span>
-                  <span className="text-[10px] text-[#444]">{new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span className="text-[11px] text-[#444]">{new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                   {(c.autor?.id === sessionId) && (
                     <button onClick={() => eliminarComentario(c.id)}
                       className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 text-xs ml-auto transition-all">✕</button>
