@@ -124,7 +124,6 @@ const MODELO_IMAGES: Record<string, string> = {
   "Sixaline":        "/images/presentacion/lumos-sixaline.png",
   // Sun Star
   "SOUL RGBW":       "/images/presentacion/sunstar-soul-rgbw.png",
-  "KALEIDOS":        "/images/presentacion/sunstar-kaleidos.png",
   // Video
   "Atem Mini Pro":   "/images/presentacion/blackmagic-atem.png",
   // Rigging
@@ -270,12 +269,33 @@ function useCounter(target: number, duration = 1800) {
   return { count, ref };
 }
 
+function useParallax(factor = 0.15) {
+  const ref = useRef<HTMLElement>(null);
+  const [offset, setOffset] = useState(0);
+  useEffect(() => {
+    const fn = () => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      setOffset((rect.top + rect.height / 2 - window.innerHeight / 2) * factor);
+    };
+    window.addEventListener("scroll", fn, { passive: true });
+    fn();
+    return () => window.removeEventListener("scroll", fn);
+  }, [factor]);
+  return { ref, offset };
+}
+
 // ─── Reusable UI ──────────────────────────────────────────────────────────────
 function R({ children, delay = 0, y = 48, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   const { ref, vis } = useReveal();
   return (
     <div ref={ref}
-         style={{ transitionDelay: `${delay}ms`, opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : `translateY(${y}px)`, transition: "opacity 0.85s ease, transform 0.85s ease" }}
+         style={{
+           transitionDelay: `${delay}ms`,
+           opacity: vis ? 1 : 0,
+           transform: vis ? "translateY(0) scale(1) rotate(0deg)" : `translateY(${y}px) scale(0.94) rotate(${y > 0 ? "-0.8deg" : "0deg"})`,
+           transition: "opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)",
+         }}
          className={className}>
       {children}
     </div>
@@ -340,12 +360,22 @@ function DragGallery({ photos }: { photos: { src: string; caption: string }[] })
 }
 
 // ─── Equipment photo card ─────────────────────────────────────────────────────
-function EquipoPhotoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
+function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?: number; index?: number }) {
   const img = getEquipoImage(linea);
+  const floatDelay = (index % 4) * 0.5; // 0, 0.5, 1.0, 1.5s
   return (
-    <R delay={delay}>
-      <div className="bg-white/[0.025] border border-white/8 rounded-xl overflow-hidden hover:border-[#B3985B]/30 hover:bg-white/[0.04] transition-all duration-300 group h-full">
-        <div className="h-28 sm:h-32 bg-[#080808] flex items-center justify-center p-4">
+    <R delay={delay} y={30}>
+      <div className="bg-white/[0.025] border border-white/8 rounded-xl overflow-hidden transition-all duration-300 group h-full"
+           style={{
+             animation: `float 4s ease-in-out ${floatDelay}s infinite`,
+           }}
+           onMouseEnter={e => {
+             (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(179,152,91,0.5), 0 8px 32px rgba(179,152,91,0.08)";
+           }}
+           onMouseLeave={e => {
+             (e.currentTarget as HTMLDivElement).style.boxShadow = "";
+           }}>
+        <div className="h-36 sm:h-40 bg-[#080808] flex items-center justify-center p-4">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={linea.modelo ?? linea.descripcion} draggable={false}
@@ -379,7 +409,7 @@ function EquipoPhotoCard({ linea, delay = 0 }: { linea: Linea; delay?: number })
 function EquipoGrid({ lineas }: { lineas: Linea[] }) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-      {lineas.map((l, i) => <EquipoPhotoCard key={l.id} linea={l} delay={i * 40} />)}
+      {lineas.map((l, i) => <EquipoPhotoCard key={l.id} linea={l} delay={Math.min(i * 40, 400)} index={i} />)}
     </div>
   );
 }
@@ -414,6 +444,7 @@ Todo el equipo listado en esta propuesta es propiedad de Mainstage Pro o de sus 
 export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizacion }) {
   const [scrollY, setScrollY]       = useState(0);
   const [contractOpen, setContract] = useState(false);
+  const [heroIdx, setHeroIdx]       = useState(0);
 
   useEffect(() => {
     const fn = () => setScrollY(window.scrollY);
@@ -432,16 +463,16 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
   const svc = SERVICIO_CONFIG[tipoServicio] ?? DEFAULT_SVC;
 
-  const heroImg =
-    tipoEvento === "MUSICAL"     ? "/images/presentacion/hero-festival.png" :
-    tipoEvento === "SOCIAL"      ? "/images/presentacion/s-couple-purple.png" :
-    tipoEvento === "EMPRESARIAL" ? "/images/presentacion/e-corp-screens.jpg" :
-                                   "/images/presentacion/hero-festival.png";
-
   const gallery =
     tipoEvento === "SOCIAL"      ? GALLERY_SOCIAL :
     tipoEvento === "EMPRESARIAL" ? GALLERY_CORP :
                                    GALLERY_MUSICAL;
+
+  // Hero slideshow
+  useEffect(() => {
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % gallery.length), 5000);
+    return () => clearInterval(t);
+  }, [gallery.length]);
 
   // Counters (always called in same order — constant array)
   /* eslint-disable react-hooks/rules-of-hooks */
@@ -453,8 +484,22 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
   ];
   /* eslint-enable react-hooks/rules-of-hooks */
 
+  // Parallax hooks for equipment sections
+  /* eslint-disable react-hooks/rules-of-hooks */
+  const parallaxAudio = useParallax(0.15);
+  const parallaxIlum  = useParallax(0.15);
+  const parallaxDj    = useParallax(0.15);
+  const parallaxVideo = useParallax(0.15);
+  /* eslint-enable react-hooks/rules-of-hooks */
+
   const heroOpacity = Math.max(0, 1 - scrollY / 600);
   const heroY       = scrollY * 0.38;
+
+  const heroImg =
+    tipoEvento === "MUSICAL"     ? "/images/presentacion/hero-festival.png" :
+    tipoEvento === "SOCIAL"      ? "/images/presentacion/s-couple-purple.png" :
+    tipoEvento === "EMPRESARIAL" ? "/images/presentacion/e-corp-screens.jpg" :
+                                   "/images/presentacion/hero-festival.png";
 
   return (
     <main className="bg-black text-white overflow-x-hidden"
@@ -464,6 +509,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         @keyframes kenBurns { from { transform:scale(1) translate(0,0); } to { transform:scale(1.08) translate(-1.5%,-1%); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
         .animate-fadeUp { animation: fadeUp 0.9s ease forwards; opacity:0; }
+        @keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        @keyframes float { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(-7px) } }
       `}</style>
 
       {/* ── STICKY NAV ──────────────────────────────────────────────────────── */}
@@ -492,10 +539,13 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={heroImg} alt="" draggable={false}
-             className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-             style={{ animation: "kenBurns 14s ease-in-out infinite alternate", transformOrigin: "center center" }} />
+        {/* Crossfade slideshow */}
+        {gallery.map((p, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={i} src={p.src} alt="" draggable={false}
+               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+               style={{ opacity: i === heroIdx ? 1 : 0, transition: "opacity 1.2s ease" }} />
+        ))}
         <div className="absolute inset-0 bg-black/55" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
@@ -546,6 +596,17 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         </div>
       </section>
 
+      {/* ── MARQUEE STRIP ───────────────────────────────────────────────────── */}
+      <div className="bg-[#0a0a0a] border-y border-white/5 py-3.5 overflow-hidden select-none">
+        <div style={{ display: "flex", width: "max-content", animation: "marquee 20s linear infinite" }}>
+          {[0, 1].map(copy => (
+            <span key={copy} className="text-white/20 text-[11px] font-semibold uppercase tracking-[0.2em] whitespace-nowrap px-8">
+              Producción técnica · Audio profesional · Iluminación · DJ Setup · Video · Operadores con experiencia · Puntualidad · Confiabilidad · Mainstage Pro ·&nbsp;
+            </span>
+          ))}
+        </div>
+      </div>
+
       {/* ── STATEMENT ───────────────────────────────────────────────────────── */}
       <section className="bg-[#040404] py-28 sm:py-36 px-6 text-center">
         <div className="max-w-4xl mx-auto">
@@ -578,74 +639,72 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
       {/* ── AUDIO ───────────────────────────────────────────────────────────── */}
       {audio.length > 0 && (
-        <section className="bg-[#040404] grid lg:grid-cols-2 min-h-[70vh]">
-          {/* Photo half */}
-          <div className="relative overflow-hidden min-h-[50vw] lg:min-h-0">
+        <section ref={parallaxAudio.ref as React.RefObject<HTMLElement>}
+                 className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
+          {/* Parallax background */}
+          <div className="absolute inset-[-20%] pointer-events-none"
+               style={{ transform: `translateY(${parallaxAudio.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/equip-speaker.jpg",
                    "/images/presentacion/s-stage-full.png",
                    "/images/presentacion/equip-speaker.jpg")}
                  alt="" draggable={false}
-                 className="absolute inset-0 w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent lg:to-[#040404] to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#040404] to-transparent lg:hidden" />
+                 className="w-full h-full object-cover" />
           </div>
-          {/* Content half */}
-          <div className="flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-16 lg:py-24">
-            <R>
-              <GoldLabel>Sistema de Audio</GoldLabel>
-              <Heading className="mb-6">
-                Cada nota,<br />donde tiene<br />que estar.
-              </Heading>
-            </R>
-            <R delay={140}>
-              <p className="text-white/40 text-base sm:text-lg leading-relaxed mb-10">
-                {tipoServicio === "RENTA"
-                  ? "Equipo de audio profesional disponible para tu evento. Line arrays, consolas y microfonía de primer nivel."
-                  : "Line arrays con cobertura milimétrica, consolas digitales de referencia y micrófonos de clase mundial. El mismo sonido en la primera fila que en la última."}
-              </p>
-            </R>
-            <R delay={220}>
-              <EquipoGrid lineas={audio} />
-            </R>
+          <div className="absolute inset-0 bg-black/80" />
+
+          <div className="relative z-10 max-w-6xl mx-auto">
+            <R><GoldLabel>Sistema de Audio</GoldLabel></R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+              <div>
+                <R delay={60}>
+                  <Heading className="mb-6">Que el público escuche sin pensarlo.</Heading>
+                </R>
+                <R delay={140}>
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                    Cobertura uniforme, sin zonas muertas ni distorsión. Un buen sistema de audio no llama la atención — simplemente hace que todo suene bien desde cualquier punto del evento.
+                  </p>
+                </R>
+              </div>
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={audio} />
+              </R>
+            </div>
           </div>
         </section>
       )}
 
       {/* ── ILUMINACIÓN ─────────────────────────────────────────────────────── */}
       {ilum.length > 0 && (
-        <section className="relative min-h-[80vh] overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={sectionBg(tipoEvento,
-                 "/images/presentacion/m-laser-red.jpg",
-                 "/images/presentacion/m-arch-neon.jpg",
-                 "/images/presentacion/e-corp-screens.jpg")}
-               alt="" draggable={false}
-               className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/70" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+        <section ref={parallaxIlum.ref as React.RefObject<HTMLElement>}
+                 className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
+          <div className="absolute inset-[-20%] pointer-events-none"
+               style={{ transform: `translateY(${parallaxIlum.offset}px)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sectionBg(tipoEvento,
+                   "/images/presentacion/m-laser-red.jpg",
+                   "/images/presentacion/m-arch-neon.jpg",
+                   "/images/presentacion/e-corp-screens.jpg")}
+                 alt="" draggable={false}
+                 className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 bg-black/80" />
 
-          <div className="relative z-10 min-h-[80vh] grid lg:grid-cols-2 items-center px-8 sm:px-12 lg:px-20 py-24 gap-12">
-            <div>
-              <R>
-                <GoldLabel>Diseño de Iluminación</GoldLabel>
-                <Heading className="mb-6">
-                  {tipoEvento === "EMPRESARIAL"
-                    ? "Luz que refuerza\ntu mensaje."
-                    : tipoEvento === "SOCIAL"
-                    ? "La luz que\ncrea el ambiente."
-                    : "La luz que\ntransforma espacios\nen mundos."}
-                </Heading>
-              </R>
-              <R delay={140}>
-                <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10 max-w-md">
-                  {tipoServicio === "RENTA"
-                    ? "Cabezas móviles, efectos LED y accesorios de iluminación profesional para tu evento."
-                    : "Cabezas móviles, sistemas beam, efectos pixel y control total. Cada cue programado para el momento exacto."}
-                </p>
-              </R>
-              <R delay={220}>
+          <div className="relative z-10 max-w-6xl mx-auto">
+            <R><GoldLabel>Diseño de Iluminación</GoldLabel></R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+              <div>
+                <R delay={60}>
+                  <Heading className="mb-6">El ambiente lo construye la luz.</Heading>
+                </R>
+                <R delay={140}>
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                    Bien programada, la iluminación convierte un espacio en una experiencia. Mal ejecutada, pasa desapercibida. Aquí nos encargamos de que siempre sea lo primero.
+                  </p>
+                </R>
+              </div>
+              <R delay={100} y={30}>
                 <EquipoGrid lineas={ilum} />
               </R>
             </div>
@@ -655,60 +714,74 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
       {/* ── DJ ──────────────────────────────────────────────────────────────── */}
       {dj.length > 0 && (
-        <section className="relative min-h-[75vh] overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={sectionBg(tipoEvento,
-                 "/images/presentacion/m-smoke-pink.jpg",
-                 "/images/presentacion/m-dj-blue.jpg",
-                 "/images/presentacion/m-dj-blue.jpg")}
-               alt="" draggable={false}
-               className="absolute inset-0 w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/65" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+        <section ref={parallaxDj.ref as React.RefObject<HTMLElement>}
+                 className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
+          <div className="absolute inset-[-20%] pointer-events-none"
+               style={{ transform: `translateY(${parallaxDj.offset}px)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sectionBg(tipoEvento,
+                   "/images/presentacion/m-smoke-pink.jpg",
+                   "/images/presentacion/m-dj-blue.jpg",
+                   "/images/presentacion/m-dj-blue.jpg")}
+                 alt="" draggable={false}
+                 className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 bg-black/80" />
 
-          <div className="relative z-10 px-8 sm:px-12 lg:px-20 py-24 min-h-[75vh] flex flex-col justify-end">
-            <R>
-              <GoldLabel>Setup DJ</GoldLabel>
-              <Heading className="mb-5">
-                {tipoEvento === "SOCIAL"
-                  ? "El setup que\npone a bailar\na todos."
-                  : "El mismo setup\nque los mejores\nDJs del mundo."}
-              </Heading>
-            </R>
-            <R delay={140}>
-              <p className="text-white/45 text-lg leading-relaxed mb-10 max-w-xl">
-                {tipoServicio === "RENTA"
-                  ? "Equipo DJ de primer nivel. La cadena técnica que encontrarás en los mejores venues y festivales."
-                  : "Pioneer, Rane, Denon — la cadena técnica exacta que encontrarás en los clubs y festivales más exigentes del planeta."}
-              </p>
-            </R>
-            <R delay={200}>
-              <EquipoGrid lineas={dj} />
-            </R>
+          <div className="relative z-10 max-w-6xl mx-auto">
+            <R><GoldLabel>Setup DJ</GoldLabel></R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+              <div>
+                <R delay={60}>
+                  <Heading className="mb-6">El set técnico que el DJ necesita.</Heading>
+                </R>
+                <R delay={140}>
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                    Equipo en buen estado, configurado a tiempo y listo para tocar. Sin sorpresas de último minuto, sin improvisaciones en la cadena de señal.
+                  </p>
+                </R>
+              </div>
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={dj} />
+              </R>
+            </div>
           </div>
         </section>
       )}
 
       {/* ── VIDEO ───────────────────────────────────────────────────────────── */}
       {video.length > 0 && (
-        <section className="bg-[#040404] py-24 px-8 sm:px-12 lg:px-20">
-          <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-start">
-            <div>
-              <R>
-                <GoldLabel>Producción de Video</GoldLabel>
-                <Heading className="mb-5">Visual que<br />impacta.</Heading>
-              </R>
-              <R delay={140}>
-                <p className="text-white/40 text-lg leading-relaxed mb-8">
-                  {tipoEvento === "EMPRESARIAL"
-                    ? "Pantallas LED de alta densidad, switchers de producción y señal impecable. Imagen que refuerza cada mensaje de marca."
-                    : "Pantallas LED de alta densidad, switchers Blackmagic y producción de contenido. Imagen que complementa cada beat."}
-                </p>
+        <section ref={parallaxVideo.ref as React.RefObject<HTMLElement>}
+                 className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
+          <div className="absolute inset-[-20%] pointer-events-none"
+               style={{ transform: `translateY(${parallaxVideo.offset}px)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={sectionBg(tipoEvento,
+                   "/images/presentacion/e-corp-outdoor.jpg",
+                   "/images/presentacion/e-corp-screens.jpg",
+                   "/images/presentacion/e-corp-outdoor.jpg")}
+                 alt="" draggable={false}
+                 className="w-full h-full object-cover" />
+          </div>
+          <div className="absolute inset-0 bg-black/80" />
+
+          <div className="relative z-10 max-w-6xl mx-auto">
+            <R><GoldLabel>Producción de Video</GoldLabel></R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+              <div>
+                <R delay={60}>
+                  <Heading className="mb-6">Tu imagen, visible desde cualquier ángulo.</Heading>
+                </R>
+                <R delay={140}>
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                    Pantallas con la resolución y el brillo correctos para el espacio. Imagen clara, sin pixelación, sin reflejos que arruinen la experiencia visual.
+                  </p>
+                </R>
+              </div>
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={video} />
               </R>
             </div>
-            <R delay={100} y={40}>
-              <EquipoGrid lineas={video} />
-            </R>
           </div>
         </section>
       )}
@@ -763,16 +836,15 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <R className="text-center mb-20">
             <GoldLabel>Por qué Mainstage Pro</GoldLabel>
             <Heading>
-              No producimos eventos.
-              <br /><span className="text-white/35">Creamos momentos.</span>
+              Lo que hacemos bien,<br /><span className="text-white/35">lo hacemos consistentemente.</span>
             </Heading>
           </R>
           <div className="grid sm:grid-cols-2 gap-px bg-white/5 rounded-3xl overflow-hidden">
             {[
-              { icon: "★", title: "Equipo de primer nivel",   body: "Las marcas que usan los mejores productores del planeta — ahora al servicio de tu evento." },
-              { icon: "◆", title: "Técnicos certificados",    body: "Ingenieros de audio con oído clínico, programadores de luz con años en escenario. Cada operador, un profesional de élite." },
-              { icon: "◎", title: "Zero estrés en el día",    body: "Llegamos, montamos, verificamos y operamos. Tú llegas a tu evento con todo listo. Sin improvisación, sin sorpresas." },
-              { icon: "✦", title: "Compromiso garantizado",   body: "Tu fecha está reservada, tu equipo confirmado, tu producción asegurada. Un trato con Mainstage Pro es un trato con la certeza." },
+              { icon: "◉", title: "Equipo que conocemos bien",     body: "Trabajamos con nuestro propio inventario. Sabemos cómo responde cada pieza, qué mantenimiento lleva y qué esperar de ella en escenario." },
+              { icon: "◈", title: "Técnicos con experiencia real", body: "Nuestros operadores han trabajado en eventos de distintos tamaños y formatos. No hay fórmulas perfectas, pero sí mucha práctica acumulada." },
+              { icon: "◐", title: "Llegamos con tiempo suficiente", body: "Montaje, verificación de señal, prueba de sonido. Todo eso ocurre antes de que llegue el primer invitado, no después." },
+              { icon: "◇", title: "Comunicación directa",          body: "Si algo cambia, si hay un imprevisto, te avisamos. Preferimos una llamada incómoda a tiempo que una sorpresa en el evento." },
             ].map((item, i) => (
               <R key={i} delay={i * 80}>
                 <div className="bg-[#060606] p-10 lg:p-14">
@@ -888,7 +960,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 mx-auto mb-14 opacity-50" draggable={false} />
             <Heading className="mb-5">
-              Listos para crear<br />algo extraordinario.
+              ¿Todo listo para confirmar?
             </Heading>
           </R>
           <R delay={120}>
