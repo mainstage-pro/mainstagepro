@@ -62,7 +62,22 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
   const [editingDate,   setEditingDate]   = useState<"fecha" | "fechaVencimiento" | null>(null);
   const [localFecha,    setLocalFecha]    = useState(tarea.fecha    ? tarea.fecha.substring(0, 10)            : "");
   const [localFechaVen, setLocalFechaVen] = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
+  const [expanded,      setExpanded]      = useState(false);
+  const [subtareasExp,  setSubtareasExp]  = useState<TareaItem[]>([]);
+  const [loadingExp,    setLoadingExp]    = useState(false);
   const isCompleted = tarea.estado === "COMPLETADA";
+
+  async function toggleSubtareas(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!expanded && subtareasExp.length === 0) {
+      setLoadingExp(true);
+      const res  = await fetch(`/api/tareas?parentId=${tarea.id}`);
+      const data = await res.json();
+      setSubtareasExp(data.tareas ?? []);
+      setLoadingExp(false);
+    }
+    setExpanded(prev => !prev);
+  }
   const prio = PRIO[tarea.prioridad] ?? PRIO.BAJA;
 
   const recurrenciaDisplay = (() => {
@@ -83,6 +98,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
   const showDrop = dragOver || isDragOver;
 
   return (
+  <>
     <div
       role="button"
       tabIndex={0}
@@ -235,14 +251,19 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
             )}
 
             {tarea._count.subtareas > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
+              <button onClick={toggleSubtareas}
+                className="inline-flex items-center gap-1 text-[12px] text-[#444] hover:text-[#B3985B] transition-colors">
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
                   <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
                   <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
                 </svg>
                 {tarea._count.subtareas}
-              </span>
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
             )}
 
             {tarea._count.comentarios > 0 && (
@@ -284,5 +305,27 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
         </button>
       </div>
     </div>
+
+    {/* ── Expanded subtareas ────────────────────────────────────────── */}
+    {expanded && (
+      <div>
+        {loadingExp && (
+          <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>
+        )}
+        {subtareasExp.map(sub => (
+          <TaskItem
+            key={sub.id}
+            tarea={sub}
+            depth={(depth ?? 0) + 1}
+            isSelected={false}
+            onComplete={onComplete}
+            onSelect={onSelect}
+            onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); }}
+            onDateChange={onDateChange}
+          />
+        ))}
+      </div>
+    )}
+  </>
   );
 }

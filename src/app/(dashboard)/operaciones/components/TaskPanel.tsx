@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
+import TaskItem, { type TareaItem } from "./TaskItem";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -12,6 +13,16 @@ interface Subtarea {
   id: string; titulo: string; estado: string; prioridad: string;
   fecha: string | null; fechaVencimiento: string | null;
   _count: { subtareas: number };
+}
+
+function subtareaToItem(s: Subtarea): TareaItem {
+  return {
+    id: s.id, titulo: s.titulo, descripcion: null,
+    prioridad: s.prioridad, area: "GENERAL", estado: s.estado,
+    fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
+    recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
+    _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
+  };
 }
 interface Comentario {
   id: string; contenido: string; createdAt: string;
@@ -383,28 +394,27 @@ export default function TaskPanel({
         </div>
 
         {/* Subtareas */}
-        <div className="space-y-1">
-          <p className="text-[12px] text-[#444] uppercase tracking-wider font-medium">Subtareas</p>
+        <div className="space-y-0.5">
+          <p className="text-[12px] text-[#444] uppercase tracking-wider font-medium pb-1">Subtareas</p>
           {subtareasLocal.map(sub => (
-            <div key={sub.id} className="flex items-center gap-2 group py-1 px-2 rounded hover:bg-[#111]">
-              <button
-                onClick={() => { onCompleteSubtarea(sub.id); setSubtareasLocal(prev => prev.map(s => s.id === sub.id ? { ...s, estado: "COMPLETADA" } : s)); }}
-                className={`w-3.5 h-3.5 rounded-full border shrink-0 flex items-center justify-center transition-all ${sub.estado === "COMPLETADA" ? "bg-[#444] border-[#444]" : "border-[#333] hover:border-[#B3985B]"}`}>
-                {sub.estado === "COMPLETADA" && (
-                  <svg width="7" height="7" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="2.5">
-                    <path d="M2 6l3 3 5-5"/>
-                  </svg>
-                )}
-              </button>
-              <span className={`text-xs flex-1 ${sub.estado === "COMPLETADA" ? "line-through text-[#444]" : "text-[#c4c4c4]"}`}>{sub.titulo}</span>
-              {sub.fecha && <span className="text-[11px] text-[#555]">{new Date(sub.fecha.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" })}</span>}
-              <button onClick={() => { onDeleteSubtarea(sub.id); setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id)); }}
-                className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
+            <TaskItem
+              key={sub.id}
+              tarea={subtareaToItem(sub)}
+              isSelected={false}
+              onComplete={() => {
+                onCompleteSubtarea(sub.id);
+                setSubtareasLocal(prev => prev.map(s => s.id === sub.id ? { ...s, estado: "COMPLETADA" } : s));
+              }}
+              onSelect={() => {}}
+              onDelete={() => {
+                onDeleteSubtarea(sub.id);
+                setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id));
+              }}
+              onDateChange={(id, field, val) => {
+                onSave(id, { [field]: val || null });
+                setSubtareasLocal(prev => prev.map(s => s.id === id ? { ...s, [field]: val || null } : s));
+              }}
+            />
           ))}
           <QuickAdd
             parentId={tarea.id}
