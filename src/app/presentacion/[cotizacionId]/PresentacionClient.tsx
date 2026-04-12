@@ -139,71 +139,130 @@ function getEquipoImage(linea: Linea): string | null {
   return null;
 }
 
-// ─── Gallery Data ─────────────────────────────────────────────────────────────
+// ─── Gallery Data (fotos de eventos, nunca de equipo) ─────────────────────────
+// MUSICAL: solo conciertos y producciones grandes
 const GALLERY_MUSICAL = [
   { src: "/images/presentacion/hero-festival.png",  caption: "Festival · Producción completa" },
-  { src: "/images/presentacion/m-dj-blue.jpg",      caption: "Performance DJ · Azul" },
-  { src: "/images/presentacion/m-laser-red.jpg",    caption: "Lasers · Rooftop" },
-  { src: "/images/presentacion/m-smoke-pink.jpg",   caption: "Producción · Humo y luces" },
-  { src: "/images/presentacion/m-arch-neon.jpg",    caption: "DJ Booth · Arco neón" },
+  { src: "/images/presentacion/m-laser-red.jpg",    caption: "Show · Lasers y producción" },
   { src: "/images/presentacion/m-crowd-pink.jpg",   caption: "Crowd · Disco ball" },
-  { src: "/images/presentacion/m-stage-green.jpg",  caption: "Stage · Beams" },
+  { src: "/images/presentacion/m-stage-green.jpg",  caption: "Escenario · Beams y color" },
+  { src: "/images/presentacion/m-dj-blue.jpg",      caption: "Performance DJ · Full production" },
+  { src: "/images/presentacion/m-smoke-pink.jpg",   caption: "Producción · Humo y efectos" },
+  { src: "/images/presentacion/m-arch-neon.jpg",    caption: "DJ Booth · Arco neón" },
 ];
+// SOCIAL: solo fotos de eventos sociales — bodas, galas, cenas
 const GALLERY_SOCIAL = [
-  { src: "/images/presentacion/s-couple-purple.png", caption: "Evento social · Iluminación especial" },
-  { src: "/images/presentacion/s-dinner-sunset.png", caption: "Cena · Sunset" },
-  { src: "/images/presentacion/s-stage-full.png",    caption: "Escenario · Producción completa" },
+  { src: "/images/presentacion/s-couple-purple.png", caption: "Boda · Iluminación especial" },
+  { src: "/images/presentacion/s-dinner-sunset.png", caption: "Cena · Luz de ambiente" },
   { src: "/images/presentacion/s-vocalist.png",      caption: "En vivo · Vocals" },
-  { src: "/images/presentacion/m-arch-neon.jpg",     caption: "DJ Booth · Ambiente" },
-  { src: "/images/presentacion/m-dj-blue.jpg",       caption: "Producción · Música en vivo" },
+  { src: "/images/presentacion/s-stage-full.png",    caption: "Escenario · Producción social" },
 ];
+// EMPRESARIAL: solo fotos corporativas — sin fotos de música ni equipo
 const GALLERY_CORP = [
   { src: "/images/presentacion/e-corp-screens.jpg",  caption: "Corporativo · Video walls" },
-  { src: "/images/presentacion/e-corp-outdoor.jpg",  caption: "Evento exterior · Pantalla LED" },
-  { src: "/images/presentacion/equip-speaker.jpg",   caption: "Sistema de audio · Rooftop" },
-  { src: "/images/presentacion/m-dj-blue.jpg",       caption: "Producción · Montaje" },
-  { src: "/images/presentacion/s-stage-full.png",    caption: "Escenario · Producción completa" },
-  { src: "/images/presentacion/m-arch-neon.jpg",     caption: "Iluminación · Impacto visual" },
+  { src: "/images/presentacion/e-corp-outdoor.jpg",  caption: "Evento exterior · Producción" },
 ];
 
-// ─── Copy by tipoServicio ─────────────────────────────────────────────────────
-type SvcCfg = { heroTagline: string; heroSub: string; stmt1: string; stmt2: string; stmtSub: string; ctaLine: string };
+// ─── Copy por tipoServicio (modifica hero tagline únicamente) ─────────────────
+type SvcCfg = { heroTagline: string; heroSub: string };
 const SERVICIO_CONFIG: Record<string, SvcCfg> = {
   RENTA: {
-    heroTagline: "El equipo que tu evento necesita.",
-    heroSub: "Tecnología de primer nivel, disponible en el momento exacto.",
-    stmt1: "No es renta.",
-    stmt2: "Es acceso a lo\nque los pros usan.",
-    stmtSub: "Cada equipo seleccionado por su desempeño en escenario real. Sin mediocridades, sin sorpresas.",
-    ctaLine: "El equipo está listo. La fecha también puede estarlo.",
+    heroTagline: "El equipo que necesitas, disponible para tu fecha.",
+    heroSub: "Inventario propio, sin intermediarios. Listo a tiempo.",
   },
   PRODUCCION_TECNICA: {
-    heroTagline: "Producción técnica de élite.",
-    heroSub: "Audio de referencia, iluminación de categoría mundial y operadores de élite. Todo en un solo acuerdo.",
-    stmt1: "No es producción técnica.",
-    stmt2: "Es la ingeniería\ndel asombro.",
-    stmtSub: "Cada speaker colocado con precisión milimétrica. Cada cue de luz programada para el instante exacto. Eso es Mainstage Pro.",
-    ctaLine: "La producción que tu evento merece está a un paso.",
+    heroTagline: "Producción técnica completa para tu evento.",
+    heroSub: "Equipo, operadores y coordinación en un solo servicio.",
   },
   DIRECCION_TECNICA: {
-    heroTagline: "Dirección técnica de categoría mundial.",
-    heroSub: "Visión global, coordinación total. Cero improvisación en el día de tu evento.",
-    stmt1: "No es supervisión.",
-    stmt2: "Es el arte\nde lo invisible.",
-    stmtSub: "Un director técnico de Mainstage Pro es el cerebro detrás de cada instante perfecto. Lo que el público no ve — nosotros lo hacemos posible.",
-    ctaLine: "Tu evento listo para ser dirigido con maestría.",
+    heroTagline: "Dirección técnica de principio a fin.",
+    heroSub: "Coordinación total del área técnica. Sin improvisaciones.",
   },
 };
 const DEFAULT_SVC: SvcCfg = {
-  heroTagline: "Una experiencia que no se olvida.",
-  heroSub: "Tecnología de primer nivel. Operadores de élite. Cada detalle afinado.",
-  stmt1: "No es producción técnica.",
-  stmt2: "Es la ingeniería\ndel asombro.",
-  stmtSub: "Cada speaker colocado con precisión milimétrica. Cada cue de luz programada para el instante exacto. Eso es Mainstage Pro.",
-  ctaLine: "Listos para crear algo extraordinario.",
+  heroTagline: "Producción técnica profesional.",
+  heroSub: "Equipo en condiciones y operadores con experiencia.",
 };
 
-// ─── Section bg images by tipoEvento ─────────────────────────────────────────
+// ─── Copy completo por tipoEvento ─────────────────────────────────────────────
+type EventoCfg = {
+  stmt1: string; stmt2: string; stmtSub: string;
+  audioHeadline: string; audioBody: string;
+  ilumHeadline: string;  ilumBody: string;
+  djHeadline: string;    djBody: string;
+  videoHeadline: string; videoBody: string;
+  whyTitle: string;
+  whyPoints: { icon: string; title: string; body: string }[];
+  ctaLine: string;
+};
+const EVENTO_CONFIG: Record<string, EventoCfg> = {
+  MUSICAL: {
+    stmt1: "No es técnica.",
+    stmt2: "Es el escenario\nque el show necesita.",
+    stmtSub: "Un evento musical bien producido no se nota — simplemente se siente. Cada decisión técnica existe para servir a la música y al artista sobre el escenario.",
+    audioHeadline: "Que el sonido llegue. Que llegue bien.",
+    audioBody: "Cobertura uniforme desde la primera fila hasta el fondo del venue. Sin zonas muertas, sin distorsión en picos. El audio que el artista necesita para dar lo mejor de sí.",
+    ilumHeadline: "El escenario que la música pide.",
+    ilumBody: "Iluminación que trabaja junto al set, no sobre él. No se trata de cuántos fixtures hay — sino de cómo construyen juntos la atmósfera del show.",
+    djHeadline: "El rider técnico exacto.",
+    djBody: "El equipo que los mejores DJs piden. Setup completo, verificado antes del show, sin compromisos en la cadena de señal.",
+    videoHeadline: "El show, visible desde cualquier punto.",
+    videoBody: "Pantallas que llevan el show a cada rincón del venue. Contenido en alta resolución, sin lag, sin interrupciones.",
+    whyTitle: "Por qué Mainstage Pro",
+    whyPoints: [
+      { icon: "◉", title: "Conocemos los escenarios", body: "Hemos trabajado en conciertos de distintos formatos. Sabemos qué funciona, qué falla y cómo anticiparnos antes de que el público llegue." },
+      { icon: "◈", title: "Setup limpio, a tiempo", body: "El equipo llega con margen para montar, calibrar y hacer prueba de sonido. Sin carreras de último minuto." },
+      { icon: "◐", title: "Operadores enfocados en el show", body: "Desde el primer cue hasta el final, nuestros operadores están en su posición. No improvisamos en vivo." },
+      { icon: "◇", title: "Revisamos el rider con anticipación", body: "Si hay requerimientos específicos, los revisamos antes del día. Preferimos aclarar cualquier duda con días de margen." },
+    ],
+    ctaLine: "La producción está lista. Solo falta confirmar la fecha.",
+  },
+  SOCIAL: {
+    stmt1: "No es producción.",
+    stmt2: "Es el fondo perfecto\npara los momentos\nque más importan.",
+    stmtSub: "Los eventos sociales se recuerdan por cómo se sintieron. La música, la luz, el sonido del brindis — todo eso es técnica. Y la técnica bien hecha no se nota.",
+    audioHeadline: "La música y la voz, sin esfuerzo.",
+    audioBody: "Que la música suene bien durante la fiesta y el discurso llegue claro a cada mesa. Sin retroalimentación, sin volumen incómodo. Sonido que acompaña sin interrumpir.",
+    ilumHeadline: "Luz que acompaña cada momento del evento.",
+    ilumBody: "Cálida para la cena, vibrante para la pista. La iluminación cambia de ambiente de forma natural a lo largo de la noche, sin transiciones bruscas.",
+    djHeadline: "El set técnico para que el DJ brille.",
+    djBody: "Equipo en condiciones, conectado y verificado antes de que llegue el primer invitado. Para que el DJ se concentre en la música, no en los problemas técnicos.",
+    videoHeadline: "Imágenes y contenido en el momento exacto.",
+    videoBody: "Fotos en vivo, video de la ceremonia, presentaciones especiales. Pantallas bien posicionadas para que todos puedan disfrutarlas sin esfuerzo.",
+    whyTitle: "Por qué Mainstage Pro",
+    whyPoints: [
+      { icon: "◉", title: "Discretos durante el evento", body: "Llegamos, montamos y nos quedamos en segundo plano. El protagonismo es del evento y los festejados, no del equipo técnico." },
+      { icon: "◈", title: "Coordinación con otros proveedores", body: "Nos alineamos con decoración, venue y fotografía para que todo conviva sin fricciones el día del evento." },
+      { icon: "◐", title: "Conocemos el programa del evento", body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo antes para estar listos en cada momento clave." },
+      { icon: "◇", title: "Comunicación clara desde el inicio", body: "Revisamos cada detalle antes del evento. Si hay cambios de último minuto, nos adaptamos. Siempre con buena disposición." },
+    ],
+    ctaLine: "Asegura la fecha. El resto lo coordinamos nosotros.",
+  },
+  EMPRESARIAL: {
+    stmt1: "No es logística.",
+    stmt2: "Es la imagen de\ntu empresa en\ncada detalle técnico.",
+    stmtSub: "En un evento corporativo, la técnica es parte del mensaje. Un audio que falla distrae. Una pantalla mal ubicada resta. Cuando todo funciona bien, tu empresa se ve bien.",
+    audioHeadline: "Cada palabra, perfectamente audible.",
+    audioBody: "Que el orador se escuche claro, sin retroalimentación ni cortes. Micrófonos inalámbricos confiables, consola operada con precisión. El contenido que presentas, escuchado como debe ser.",
+    ilumHeadline: "Luz alineada con tu identidad de marca.",
+    ilumBody: "Ambiente profesional para presentaciones, dinámico para lanzamientos, elegante para cenas directivas. La iluminación correcta refuerza el mensaje de tu empresa sin competir con él.",
+    djHeadline: "Música de contexto o DJ para el cierre.",
+    djBody: "Desde música ambiental reproducida de forma profesional hasta un set de DJ para el cierre del evento. Equipo limpio y operadores que entienden el contexto corporativo.",
+    videoHeadline: "Tu contenido, claro y sin contratiempos.",
+    videoBody: "Pantallas bien posicionadas, señal estable, resolución adecuada al espacio. Compatible con la presentación del conferencista, el contenido de tu agencia y las transmisiones en vivo.",
+    whyTitle: "Por qué Mainstage Pro",
+    whyPoints: [
+      { icon: "◉", title: "Entendemos el contexto corporativo", body: "Eventos con directivos, clientes y medios. Operamos sabiendo que el margen de error es mínimo y que la imagen de tu empresa está en juego." },
+      { icon: "◈", title: "Puntuales y presentables", body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos profesionales durante todo el evento. Somos parte de tu equipo ese día." },
+      { icon: "◐", title: "Trabajamos con tu agencia o coordinador", body: "Si ya tienes coordinador de evento o agencia creativa, nos alineamos con ellos. Sin fricciones, sin egos." },
+      { icon: "◇", title: "Todo confirmado por escrito", body: "Propuesta, lista de equipo, horarios y condiciones — todo queda acordado antes del evento. Sin interpretaciones de último momento." },
+    ],
+    ctaLine: "Confirmemos los detalles técnicos con tiempo suficiente.",
+  },
+};
+const DEFAULT_EVENTO: EventoCfg = EVENTO_CONFIG.MUSICAL;
+
+// ─── Section bg images (solo del mismo tipo de evento) ────────────────────────
 function sectionBg(tipoEvento: string, musical: string, social: string, corp: string) {
   if (tipoEvento === "SOCIAL")      return social;
   if (tipoEvento === "EMPRESARIAL") return corp;
@@ -462,6 +521,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
   const waUrl  = tel ? `https://wa.me/52${tel}?text=${waMsg}` : null;
 
   const svc = SERVICIO_CONFIG[tipoServicio] ?? DEFAULT_SVC;
+  const ev  = EVENTO_CONFIG[tipoEvento] ?? DEFAULT_EVENTO;
 
   const gallery =
     tipoEvento === "SOCIAL"      ? GALLERY_SOCIAL :
@@ -613,13 +673,13 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <R>
             <p className="text-white/20 text-xs uppercase tracking-[0.22em] mb-8">La diferencia</p>
             <Heading className="mb-8">
-              {svc.stmt1}
-              <br /><span className="text-white/40">{svc.stmt2.split("\n").join(" ")}</span>
+              {ev.stmt1}
+              <br /><span className="text-white/40">{ev.stmt2.split("\n").join(" ")}</span>
             </Heading>
           </R>
           <R delay={180}>
             <p className="text-white/40 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto">
-              {svc.stmtSub}
+              {ev.stmtSub}
             </p>
           </R>
         </div>
@@ -659,11 +719,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">Que el público escuche sin pensarlo.</Heading>
+                  <Heading className="mb-6">{ev.audioHeadline}</Heading>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
-                    Cobertura uniforme, sin zonas muertas ni distorsión. Un buen sistema de audio no llama la atención — simplemente hace que todo suene bien desde cualquier punto del evento.
+                    {ev.audioBody}
                   </p>
                 </R>
               </div>
@@ -684,7 +744,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-laser-red.jpg",
-                   "/images/presentacion/m-arch-neon.jpg",
+                   "/images/presentacion/s-dinner-sunset.png",
                    "/images/presentacion/e-corp-screens.jpg")}
                  alt="" draggable={false}
                  className="w-full h-full object-cover" />
@@ -696,11 +756,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">El ambiente lo construye la luz.</Heading>
+                  <Heading className="mb-6">{ev.ilumHeadline}</Heading>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
-                    Bien programada, la iluminación convierte un espacio en una experiencia. Mal ejecutada, pasa desapercibida. Aquí nos encargamos de que siempre sea lo primero.
+                    {ev.ilumBody}
                   </p>
                 </R>
               </div>
@@ -721,8 +781,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-smoke-pink.jpg",
-                   "/images/presentacion/m-dj-blue.jpg",
-                   "/images/presentacion/m-dj-blue.jpg")}
+                   "/images/presentacion/s-vocalist.png",
+                   "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false}
                  className="w-full h-full object-cover" />
           </div>
@@ -733,11 +793,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">El set técnico que el DJ necesita.</Heading>
+                  <Heading className="mb-6">{ev.djHeadline}</Heading>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
-                    Equipo en buen estado, configurado a tiempo y listo para tocar. Sin sorpresas de último minuto, sin improvisaciones en la cadena de señal.
+                    {ev.djBody}
                   </p>
                 </R>
               </div>
@@ -770,11 +830,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">Tu imagen, visible desde cualquier ángulo.</Heading>
+                  <Heading className="mb-6">{ev.videoHeadline}</Heading>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
-                    Pantallas con la resolución y el brillo correctos para el espacio. Imagen clara, sin pixelación, sin reflejos que arruinen la experiencia visual.
+                    {ev.videoBody}
                   </p>
                 </R>
               </div>
@@ -840,12 +900,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             </Heading>
           </R>
           <div className="grid sm:grid-cols-2 gap-px bg-white/5 rounded-3xl overflow-hidden">
-            {[
-              { icon: "◉", title: "Equipo que conocemos bien",     body: "Trabajamos con nuestro propio inventario. Sabemos cómo responde cada pieza, qué mantenimiento lleva y qué esperar de ella en escenario." },
-              { icon: "◈", title: "Técnicos con experiencia real", body: "Nuestros operadores han trabajado en eventos de distintos tamaños y formatos. No hay fórmulas perfectas, pero sí mucha práctica acumulada." },
-              { icon: "◐", title: "Llegamos con tiempo suficiente", body: "Montaje, verificación de señal, prueba de sonido. Todo eso ocurre antes de que llegue el primer invitado, no después." },
-              { icon: "◇", title: "Comunicación directa",          body: "Si algo cambia, si hay un imprevisto, te avisamos. Preferimos una llamada incómoda a tiempo que una sorpresa en el evento." },
-            ].map((item, i) => (
+            {ev.whyPoints.map((item, i) => (
               <R key={i} delay={i * 80}>
                 <div className="bg-[#060606] p-10 lg:p-14">
                   <p className="text-[#B3985B] text-2xl mb-5">{item.icon}</p>
@@ -964,7 +1019,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             </Heading>
           </R>
           <R delay={120}>
-            <p className="text-white/35 text-lg leading-relaxed mb-12">{svc.ctaLine}</p>
+            <p className="text-white/35 text-lg leading-relaxed mb-12">{ev.ctaLine}</p>
           </R>
           {waUrl && (
             <R delay={200}>
