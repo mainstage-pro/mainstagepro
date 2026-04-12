@@ -5,6 +5,7 @@ import { formatearRecurrencia } from "@/lib/recurrencia";
 export interface TareaItem {
   id: string;
   titulo: string;
+  descripcion: string | null;
   prioridad: string;
   area: string;
   estado: string;
@@ -131,6 +132,12 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
         }`}>
           {tarea.titulo}
         </p>
+
+        {tarea.descripcion && !isCompleted && (
+          <p className="text-[12px] text-[#3a3a3a] leading-snug mt-0.5 line-clamp-2">
+            {tarea.descripcion}
+          </p>
+        )}
 
         {/* Meta row */}
         {(!isCompleted || showProject) && (
