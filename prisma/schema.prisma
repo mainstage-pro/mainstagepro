@@ -27,9 +27,13 @@ model User {
   bitacoras       ProyectoBitacora[]
   comisionesPagos ComisionPago[]
   moduloAccesos   ModuloAcceso[]
-  tareasAsignadas    Tarea[]             @relation("TareasAsignadas")
-  tareasCreadoPor    Tarea[]             @relation("TareasCreadoPor")
-  iniciativasCreadas IniciativaExterna[] @relation("IniciativasCreadas")
+  tareasAsignadas       Tarea[]           @relation("TareasAsignadas")
+  tareasCreadoPor       Tarea[]           @relation("TareasCreadoPor")
+  iniciativasCreadas    IniciativaExterna[] @relation("IniciativasCreadas")
+  carpetasCreadas       TareaCarpeta[]    @relation("CarpetasCreadas")
+  proyectosTareaCreados TareaProyecto[]   @relation("ProyectosTareaCreados")
+  comentariosTarea      TareaComentario[] @relation("ComentariosTarea")
+  archivosTarea         TareaArchivo[]    @relation("ArchivosTarea")
 
   @@map("users")
 }
@@ -1074,12 +1078,108 @@ model Tarea {
   creadoPor        User?              @relation("TareasCreadoPor",  fields: [creadoPorId], references: [id])
   iniciativaId     String?
   iniciativa       IniciativaExterna? @relation(fields: [iniciativaId], references: [id], onDelete: SetNull)
+  // ── Hierarchy ──────────────────────────────────────────────────────────────
+  carpetaId        String?
+  carpeta          TareaCarpeta?      @relation(fields: [carpetaId], references: [id], onDelete: SetNull)
+  proyectoTareaId  String?
+  proyectoTarea    TareaProyecto?     @relation(fields: [proyectoTareaId], references: [id], onDelete: SetNull)
+  seccionId        String?
+  seccion          TareaSeccion?      @relation(fields: [seccionId], references: [id], onDelete: SetNull)
+  parentId         String?
+  parent           Tarea?             @relation("TareaSubtareas", fields: [parentId], references: [id], onDelete: Cascade)
+  subtareas        Tarea[]            @relation("TareaSubtareas")
+  // ── Scheduling ──────────────────────────────────────────────────────────────
+  fecha            DateTime?  // When to work on it (shows in Hoy)
   fechaVencimiento DateTime?
   fechaCompletada  DateTime?
+  recurrencia      String?    // JSON: RecurrenciaConfig
+  orden            Int        @default(0)
+  // ── Content ──────────────────────────────────────────────────────────────
   notas            String?
-  etiquetas        String?  // JSON string[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  etiquetas        String?    // JSON string[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  comentarios      TareaComentario[]
+  archivos         TareaArchivo[]
 
   @@map("tareas")
+}
+
+model TareaCarpeta {
+  id          String          @id @default(cuid())
+  nombre      String
+  color       String?
+  icono       String?
+  orden       Int             @default(0)
+  creadoPorId String?
+  creadoPor   User?           @relation("CarpetasCreadas", fields: [creadoPorId], references: [id])
+  proyectos   TareaProyecto[]
+  tareas      Tarea[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@map("tarea_carpetas")
+}
+
+model TareaProyecto {
+  id          String         @id @default(cuid())
+  nombre      String
+  descripcion String?
+  color       String?
+  icono       String?
+  orden       Int            @default(0)
+  archivado   Boolean        @default(false)
+  carpetaId   String?
+  carpeta     TareaCarpeta?  @relation(fields: [carpetaId], references: [id], onDelete: SetNull)
+  creadoPorId String?
+  creadoPor   User?          @relation("ProyectosTareaCreados", fields: [creadoPorId], references: [id])
+  secciones   TareaSeccion[]
+  tareas      Tarea[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@map("tarea_proyectos")
+}
+
+model TareaSeccion {
+  id         String        @id @default(cuid())
+  nombre     String
+  orden      Int           @default(0)
+  colapsada  Boolean       @default(false)
+  proyectoId String
+  proyecto   TareaProyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tareas     Tarea[]
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@map("tarea_secciones")
+}
+
+model TareaComentario {
+  id        String   @id @default(cuid())
+  contenido String
+  tareaId   String
+  tarea     Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  autorId   String?
+  autor     User?    @relation("ComentariosTarea", fields: [autorId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tarea_comentarios")
+}
+
+model TareaArchivo {
+  id          String   @id @default(cuid())
+  nombre      String
+  url         String
+  tipo        String?  // MIME type or category
+  tamano      Int?     // bytes
+  tareaId     String
+  tarea       Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  subidoPorId String?
+  subidoPor   User?    @relation("ArchivosTarea", fields: [subidoPorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("tarea_archivos")
 }

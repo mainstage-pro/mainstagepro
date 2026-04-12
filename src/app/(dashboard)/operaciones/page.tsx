@@ -1,847 +1,671 @@
 "use client";
-
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
+import TaskItem, { type TareaItem } from "./components/TaskItem";
+import TaskPanel, { type TareaDetalle } from "./components/TaskPanel";
+import QuickAdd from "./components/QuickAdd";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 
-// ─── Tipos ────────────────────────────────────────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────────
 
-interface Tarea {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  prioridad: string;
-  area: string;
-  estado: string;
-  asignadoA: { id: string; name: string } | null;
-  creadoPor:  { id: string; name: string } | null;
-  iniciativa: { id: string; nombre: string; color: string | null } | null;
-  iniciativaId: string | null;
-  fechaVencimiento: string | null;
-  fechaCompletada:  string | null;
-  notas: string | null;
-  createdAt: string;
+interface Carpeta {
+  id: string; nombre: string; color: string | null; icono: string | null;
+  proyectos: ProyectoNav[];
+}
+interface ProyectoNav {
+  id: string; nombre: string; color: string | null; icono: string | null; orden: number;
+}
+interface ProyectoDetalle {
+  id: string; nombre: string; color: string | null; descripcion: string | null;
+  secciones: SeccionDetalle[];
+  tareas: TareaItem[];
+}
+interface SeccionDetalle {
+  id: string; nombre: string; orden: number; colapsada: boolean;
+  tareas: TareaItem[];
+}
+interface Iniciativa { id: string; nombre: string; color: string | null }
+interface Usuario   { id: string; name: string }
+
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | { tipo: "proyecto"; id: string };
+
+const SORT_OPTIONS = ["Sin agrupar", "Por proyecto", "Por prioridad", "Por área", "Por fecha"];
+const PROJECT_COLORS = [
+  "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function severityColor(s: string) {
+  if (s === "URGENTE") return "border-red-500";
+  if (s === "ALTA")    return "border-orange-500";
+  return "border-yellow-600";
 }
 
-interface Iniciativa {
-  id: string;
-  nombre: string;
-  area: string;
-  color: string | null;
-  tareas: { id: string }[];
-  _count: { tareas: number };
+function areaLabel(a: string) {
+  const M: Record<string,string> = {
+    VENTAS:"Ventas", ADMINISTRACION:"Adm.", PRODUCCION:"Producción",
+    MARKETING:"Marketing", RRHH:"RR.HH.", GENERAL:"General",
+  };
+  return M[a] ?? a;
 }
 
-interface Usuario { id: string; name: string; role: string }
-
-// ─── Configuraciones visuales ─────────────────────────────────────────────────
-
-const AREAS: Record<string, { label: string; text: string; bg: string; borderL: string }> = {
-  VENTAS:         { label: "Ventas",         text: "text-blue-400",   bg: "bg-blue-900/20",   borderL: "border-l-blue-600"   },
-  ADMINISTRACION: { label: "Administración", text: "text-green-400",  bg: "bg-green-900/20",  borderL: "border-l-green-600"  },
-  PRODUCCION:     { label: "Producción",     text: "text-purple-400", bg: "bg-purple-900/20", borderL: "border-l-purple-600" },
-  MARKETING:      { label: "Marketing",      text: "text-pink-400",   bg: "bg-pink-900/20",   borderL: "border-l-pink-600"   },
-  RRHH:           { label: "RR.HH.",         text: "text-teal-400",   bg: "bg-teal-900/20",   borderL: "border-l-teal-600"   },
-  GENERAL:        { label: "General",        text: "text-[#888]",     bg: "bg-[#1a1a1a]",     borderL: "border-l-[#333]"     },
-};
-
-const PRIORIDADES: Record<string, { label: string; circle: string; text: string }> = {
-  URGENTE: { label: "Urgente", circle: "border-red-500",    text: "text-red-400"    },
-  ALTA:    { label: "Alta",    circle: "border-orange-400", text: "text-orange-400" },
-  MEDIA:   { label: "Media",   circle: "border-[#444]",     text: "text-yellow-500" },
-  BAJA:    { label: "Baja",    circle: "border-[#333]",     text: "text-[#555]"     },
-};
-
-const SEV_COLORS: Record<string, string> = {
-  URGENTE: "text-red-400",
-  ALTA:    "text-orange-400",
-  MEDIA:   "text-yellow-500",
-};
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtFecha(iso: string | null): string | null {
-  if (!iso) return null;
-  const d    = new Date(iso);
-  const hoy  = new Date(); hoy.setHours(0,0,0,0);
-  const man  = new Date(hoy); man.setDate(hoy.getDate() + 1);
-  if (d.toDateString() === hoy.toDateString()) return "Hoy";
-  if (d.toDateString() === man.toDateString()) return "Mañana";
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-}
-
-function eHoy(iso: string | null)  {
-  if (!iso) return false;
-  return new Date(iso).toDateString() === new Date().toDateString();
-}
-
-function eSemana(iso: string | null) {
-  if (!iso) return false;
-  const d = new Date(iso); const now = new Date(); now.setHours(0,0,0,0);
-  return d >= now && d <= new Date(now.getTime() + 7 * 86400000);
-}
-
-function eVencida(iso: string | null, estado: string) {
-  if (!iso || estado === "COMPLETADA" || estado === "CANCELADA") return false;
-  const d = new Date(iso); const hoy = new Date(); hoy.setHours(0,0,0,0);
-  return d < hoy;
-}
-
-function fmtMonto(n: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
-}
-
-// ─── Componente principal ─────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────────────────────
 
 export default function OperacionesPage() {
-  // ── Data ──────────────────────────────────────────────────────────────────
-  const [tareas,     setTareas]     = useState<Tarea[]>([]);
-  const [integradas, setIntegradas] = useState<TareaIntegrada[]>([]);
-  const [iniciativas,setIniciativas]= useState<Iniciativa[]>([]);
-  const [usuarios,   setUsuarios]   = useState<Usuario[]>([]);
-  const [loading,    setLoading]    = useState(true);
+  const [carpetas, setCarpetas]                 = useState<Carpeta[]>([]);
+  const [proyectosNav, setProyectosNav]         = useState<ProyectoNav[]>([]);
+  const [iniciativas, setIniciativas]           = useState<Iniciativa[]>([]);
+  const [usuarios, setUsuarios]                 = useState<Usuario[]>([]);
+  const [sessionId, setSessionId]               = useState<string>("");
 
-  // ── Vista ─────────────────────────────────────────────────────────────────
-  const [seccion,   setSeccion]   = useState<"integrada" | "externa">("integrada");
-  const [vistaInt,  setVistaInt]  = useState("todas");
-  const [vistaExt,  setVistaExt]  = useState("hoy");
+  const [vista, setVista]                       = useState<VistaKey>("hoy");
+  const [tareas, setTareas]                     = useState<TareaItem[]>([]);
+  const [integradas, setIntegradas]             = useState<TareaIntegrada[]>([]);
+  const [proyectoDetalle, setProyectoDetalle]   = useState<ProyectoDetalle | null>(null);
+  const [loadingMain, setLoadingMain]           = useState(false);
 
-  // ── Quick add ─────────────────────────────────────────────────────────────
-  const [quickTitulo,    setQuickTitulo]    = useState("");
-  const [quickArea,      setQuickArea]      = useState("GENERAL");
-  const [quickPrioridad, setQuickPrioridad] = useState("MEDIA");
-  const [quickFecha,     setQuickFecha]     = useState("");
-  const [quickIniciativa,setQuickIniciativa]= useState("");
-  const [showQuickMore,  setShowQuickMore]  = useState(false);
-  const [addingTarea,    setAddingTarea]    = useState(false);
+  const [selectedId, setSelectedId]             = useState<string | null>(null);
+  const [selectedTask, setSelectedTask]         = useState<TareaDetalle | null>(null);
+  const [loadingPanel, setLoadingPanel]         = useState(false);
 
-  // ── Panel tarea ───────────────────────────────────────────────────────────
-  const [panelTarea,  setPanelTarea]  = useState<Tarea | null>(null);
-  const [panelFields, setPanelFields] = useState<Record<string, unknown>>({});
-  const [panelSaving, setPanelSaving] = useState(false);
+  const [sortHoy, setSortHoy]                   = useState(SORT_OPTIONS[0]);
+  const [carpetasOpen, setCarpetasOpen]         = useState<Set<string>>(new Set());
+  const [proyectosSueltos, setProyectosSueltos] = useState(true);
 
-  // ── Modal iniciativa ──────────────────────────────────────────────────────
-  const [showNuevaIni,    setShowNuevaIni]    = useState(false);
-  const [iniForm, setIniForm] = useState({ nombre: "", area: "GENERAL", color: "" });
-  const [savingIni, setSavingIni] = useState(false);
+  const [showNuevaCarpeta, setShowNuevaCarpeta]     = useState(false);
+  const [showNuevoProyecto, setShowNuevoProyecto]   = useState(false);
+  const [showNuevaSeccion, setShowNuevaSeccion]     = useState(false);
+  const [nuevoCarpetaNombre, setNuevoCarpetaNombre] = useState("");
+  const [nuevoProyectoNombre, setNuevoProyectoNombre] = useState("");
+  const [nuevoProyectoColor, setNuevoProyectoColor]   = useState(PROJECT_COLORS[0]);
+  const [nuevoProyectoCarpeta, setNuevoProyectoCarpeta] = useState("");
+  const [nuevaSeccionNombre, setNuevaSeccionNombre] = useState("");
+  const carpetaInputRef  = useRef<HTMLInputElement>(null);
+  const proyectoInputRef = useRef<HTMLInputElement>(null);
 
-  // ─── Carga inicial ────────────────────────────────────────────────────────
-  useEffect(() => { cargar(); }, []);
-
-  async function cargar() {
-    setLoading(true);
-    try {
-      const [tRes, iRes, initRes, uRes] = await Promise.all([
-        fetch("/api/tareas").then(r => r.json()),
-        fetch("/api/tareas/integradas").then(r => r.json()),
-        fetch("/api/iniciativas").then(r => r.json()),
-        fetch("/api/usuarios").then(r => r.json()),
-      ]);
-      setTareas(tRes.tareas ?? []);
-      setIntegradas(iRes.tareas ?? []);
-      setIniciativas(initRes.iniciativas ?? []);
-      setUsuarios(uRes.usuarios ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ─── CRUD tareas ──────────────────────────────────────────────────────────
-  async function agregarTarea(e: React.FormEvent) {
-    e.preventDefault();
-    if (!quickTitulo.trim() || addingTarea) return;
-    setAddingTarea(true);
-    try {
-      // Detectar si vistaExt es una iniciativa
-      const iniciativaIdAuto = vistaExt !== "hoy" && vistaExt !== "semana" &&
-        vistaExt !== "vencidas" && vistaExt !== "todas" ? vistaExt : null;
-
-      const body: Record<string, unknown> = {
-        titulo:    quickTitulo.trim(),
-        area:      quickArea,
-        prioridad: quickPrioridad,
-        iniciativaId: quickIniciativa || iniciativaIdAuto || null,
-      };
-      if (quickFecha) body.fechaVencimiento = quickFecha;
-      const res  = await fetch("/api/tareas", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const { tarea } = await res.json();
-      setTareas(prev => [tarea, ...prev]);
-      setQuickTitulo(""); setQuickFecha(""); setQuickIniciativa("");
-      setShowQuickMore(false);
-    } finally {
-      setAddingTarea(false);
-    }
-  }
-
-  async function toggleCompletada(tarea: Tarea) {
-    const nuevoEstado = tarea.estado === "COMPLETADA" ? "PENDIENTE" : "COMPLETADA";
-    setTareas(prev => prev.map(t => t.id === tarea.id ? { ...t, estado: nuevoEstado } : t));
-    await fetch(`/api/tareas/${tarea.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: nuevoEstado }),
+  // ── Load nav ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/operaciones/carpetas").then(r => r.json()),
+      fetch("/api/operaciones/proyectos").then(r => r.json()),
+      fetch("/api/iniciativas").then(r => r.json()),
+      fetch("/api/usuarios").then(r => r.json()),
+    ]).then(([carp, proy, init, usr]) => {
+      setCarpetas(carp.carpetas ?? []);
+      setProyectosNav(proy.proyectos ?? []);
+      setIniciativas(init.iniciativas ?? []);
+      setUsuarios(usr.usuarios ?? []);
+      if (usr.usuarios?.[0]) setSessionId(usr.usuarios[0].id);
     });
-  }
+  }, []);
 
-  async function guardarPanel() {
-    if (!panelTarea || Object.keys(panelFields).length === 0) return;
-    setPanelSaving(true);
-    try {
-      const res  = await fetch(`/api/tareas/${panelTarea.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(panelFields),
-      });
-      const { tarea } = await res.json();
-      setTareas(prev => prev.map(t => t.id === tarea.id ? tarea : t));
-      setPanelTarea(tarea);
-      setPanelFields({});
-    } finally {
-      setPanelSaving(false);
+  // ── Load view ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof vista !== "string") return;
+    setLoadingMain(true);
+    setProyectoDetalle(null);
+    if (vista === "integrada") {
+      fetch("/api/tareas/integradas")
+        .then(r => r.json())
+        .then(d => { setIntegradas(d.tareas ?? []); setLoadingMain(false); });
+      return;
     }
-  }
+    fetch(`/api/tareas?vista=${vista}`)
+      .then(r => r.json())
+      .then(d => { setTareas(d.tareas ?? []); setLoadingMain(false); });
+  }, [vista]);
 
-  async function eliminarTarea(id: string) {
-    if (!confirm("¿Eliminar esta tarea?")) return;
+  useEffect(() => {
+    if (typeof vista === "string") return;
+    setLoadingMain(true);
+    fetch(`/api/operaciones/proyectos/${vista.id}`)
+      .then(r => r.json())
+      .then(d => { setProyectoDetalle(d.proyecto ?? null); setLoadingMain(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeof vista === "object" ? (vista as {id:string}).id : null]);
+
+  // ── Load task detail ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!selectedId) { setSelectedTask(null); return; }
+    setLoadingPanel(true);
+    fetch(`/api/tareas/${selectedId}`)
+      .then(r => r.json())
+      .then(d => { setSelectedTask(d.tarea ?? null); setLoadingPanel(false); });
+  }, [selectedId]);
+
+  // ── Mutations ────────────────────────────────────────────────────────────
+
+  const addTarea = useCallback(async (data: {
+    titulo: string; fecha: string | null; fechaVencimiento: string | null;
+    prioridad: string; recurrencia: string | null;
+    proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
+  }) => {
+    const res = await fetch("/api/tareas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) return;
+    const { tarea } = await res.json();
+    if (data.parentId) return;
+    if (typeof vista === "string" && vista !== "integrada") {
+      setTareas(prev => [...prev, tarea]);
+    }
+    if (typeof vista !== "string" && proyectoDetalle) {
+      if (data.seccionId) {
+        setProyectoDetalle(prev => prev ? {
+          ...prev, secciones: prev.secciones.map(s =>
+            s.id === data.seccionId ? { ...s, tareas: [...s.tareas, tarea] } : s
+          ),
+        } : null);
+      } else {
+        setProyectoDetalle(prev => prev ? { ...prev, tareas: [...prev.tareas, tarea] } : null);
+      }
+    }
+  }, [vista, proyectoDetalle]);
+
+  const completeTarea = useCallback(async (id: string) => {
+    const res = await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    });
+    if (!res.ok) return;
+    const { nextTarea } = await res.json();
+    const removeAndAdd = (arr: TareaItem[]) => {
+      const f = arr.filter(t => t.id !== id);
+      return nextTarea ? [nextTarea, ...f] : f;
+    };
+    setTareas(removeAndAdd);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: removeAndAdd(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: removeAndAdd(s.tareas) })),
+    } : null);
+    if (selectedId === id) setSelectedId(nextTarea?.id ?? null);
+  }, [proyectoDetalle, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveTarea = useCallback(async (id: string, patch: Record<string, unknown>) => {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if ("titulo" in patch) {
+      const upd = (arr: TareaItem[]) =>
+        arr.map(t => t.id === id ? { ...t, titulo: patch.titulo as string } : t);
+      setTareas(upd);
+      setProyectoDetalle(prev => prev ? {
+        ...prev, tareas: upd(prev.tareas),
+        secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
+      } : null);
+    }
+  }, []);
+
+  const deleteTarea = useCallback(async (id: string) => {
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
-    setTareas(prev => prev.filter(t => t.id !== id));
-    if (panelTarea?.id === id) setPanelTarea(null);
-  }
+    const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+    setTareas(rm);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: rm(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: rm(s.tareas) })),
+    } : null);
+    if (selectedId === id) setSelectedId(null);
+  }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function abrirPanel(t: Tarea) {
-    setPanelTarea(t);
-    setPanelFields({});
-  }
+  const addSubtarea = useCallback(async (parentId: string, data: { titulo: string; fecha: string | null; prioridad: string }) => {
+    await fetch("/api/tareas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, parentId }),
+    });
+  }, []);
 
-  // ─── CRUD iniciativas ─────────────────────────────────────────────────────
-  async function crearIniciativa(e: React.FormEvent) {
-    e.preventDefault();
-    if (!iniForm.nombre.trim() || savingIni) return;
-    setSavingIni(true);
-    try {
-      const res = await fetch("/api/iniciativas", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(iniForm),
-      });
-      const { iniciativa } = await res.json();
-      setIniciativas(prev => [{ ...iniciativa, tareas: [], _count: { tareas: 0 } }, ...prev]);
-      setShowNuevaIni(false);
-      setIniForm({ nombre: "", area: "GENERAL", color: "" });
-      // Cambiar vista a la nueva iniciativa
-      setSeccion("externa");
-      setVistaExt(iniciativa.id);
-    } finally {
-      setSavingIni(false);
+  const addSeccion = useCallback(async () => {
+    if (!nuevaSeccionNombre.trim() || typeof vista === "string") return;
+    const res = await fetch("/api/operaciones/secciones", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nuevaSeccionNombre.trim(), proyectoId: vista.id }),
+    });
+    if (res.ok) {
+      const { seccion } = await res.json();
+      setProyectoDetalle(prev => prev ? {
+        ...prev, secciones: [...prev.secciones, { ...seccion, tareas: [] }],
+      } : null);
+      setNuevaSeccionNombre(""); setShowNuevaSeccion(false);
+    }
+  }, [nuevaSeccionNombre, vista]);
+
+  async function crearCarpeta() {
+    if (!nuevoCarpetaNombre.trim()) return;
+    const res = await fetch("/api/operaciones/carpetas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nuevoCarpetaNombre.trim() }),
+    });
+    if (res.ok) {
+      const { carpeta } = await res.json();
+      setCarpetas(prev => [...prev, { ...carpeta, proyectos: [] }]);
+      setNuevoCarpetaNombre(""); setShowNuevaCarpeta(false);
     }
   }
 
-  // ─── Filtros en-cliente ───────────────────────────────────────────────────
-  const integradasFiltradas = useMemo(() => {
-    if (vistaInt === "todas") return integradas;
-    return integradas.filter(t => t.area === vistaInt);
-  }, [integradas, vistaInt]);
-
-  const tareasFiltradas = useMemo(() => {
-    if (seccion !== "externa") return [];
-    switch (vistaExt) {
-      case "hoy":      return tareas.filter(t => t.estado !== "COMPLETADA" && eHoy(t.fechaVencimiento));
-      case "semana":   return tareas.filter(t => t.estado !== "COMPLETADA" && eSemana(t.fechaVencimiento));
-      case "vencidas": return tareas.filter(t => eVencida(t.fechaVencimiento, t.estado));
-      case "todas":    return tareas.filter(t => t.estado !== "COMPLETADA");
-      default:         return tareas.filter(t => t.iniciativaId === vistaExt && t.estado !== "COMPLETADA");
+  async function crearProyecto() {
+    if (!nuevoProyectoNombre.trim()) return;
+    const res = await fetch("/api/operaciones/proyectos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nuevoProyectoNombre.trim(), color: nuevoProyectoColor,
+        carpetaId: nuevoProyectoCarpeta || null,
+      }),
+    });
+    if (res.ok) {
+      const { proyecto } = await res.json();
+      setProyectosNav(prev => [...prev, proyecto]);
+      if (nuevoProyectoCarpeta) {
+        setCarpetas(prev => prev.map(c => c.id === nuevoProyectoCarpeta
+          ? { ...c, proyectos: [...c.proyectos, proyecto] } : c));
+      }
+      setNuevoProyectoNombre(""); setNuevoProyectoColor(PROJECT_COLORS[0]);
+      setNuevoProyectoCarpeta(""); setShowNuevoProyecto(false);
     }
-  }, [tareas, vistaExt, seccion]);
-
-  // ─── Contadores para badges ───────────────────────────────────────────────
-  const cntInt = useMemo(() => {
-    const m: Record<string, number> = { todas: integradas.length };
-    for (const t of integradas) m[t.area] = (m[t.area] ?? 0) + 1;
-    return m;
-  }, [integradas]);
-
-  const cntHoy     = useMemo(() => tareas.filter(t => t.estado !== "COMPLETADA" && eHoy(t.fechaVencimiento)).length, [tareas]);
-  const cntSemana  = useMemo(() => tareas.filter(t => t.estado !== "COMPLETADA" && eSemana(t.fechaVencimiento)).length, [tareas]);
-  const cntVenc    = useMemo(() => tareas.filter(t => eVencida(t.fechaVencimiento, t.estado)).length, [tareas]);
-  const cntTodas   = useMemo(() => tareas.filter(t => t.estado !== "COMPLETADA").length, [tareas]);
-
-  // ─── Helpers nav ─────────────────────────────────────────────────────────
-  function navIntBtn(key: string, label: string, count: number) {
-    const active = seccion === "integrada" && vistaInt === key;
-    return (
-      <button key={key}
-        onClick={() => { setSeccion("integrada"); setVistaInt(key); }}
-        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors ${
-          active ? "bg-[#1a1a1a] text-white" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-        }`}
-      >
-        <span>{label}</span>
-        {count > 0 && <span className={`text-[11px] ${active ? "text-[#888]" : "text-[#444]"}`}>{count}</span>}
-      </button>
-    );
   }
 
-  function navExtBtn(key: string, label: string, count: number, warn = false) {
-    const active = seccion === "externa" && vistaExt === key;
-    return (
-      <button key={key}
-        onClick={() => { setSeccion("externa"); setVistaExt(key); }}
-        className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm transition-colors ${
-          active ? "bg-[#1a1a1a] text-white" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-        }`}
-      >
-        <span>{label}</span>
-        {count > 0 && (
-          <span className={`text-[11px] font-medium ${warn ? "text-red-400" : active ? "text-[#888]" : "text-[#444]"}`}>
-            {count}
-          </span>
-        )}
-      </button>
-    );
-  }
-
-  // ─── Vista título ─────────────────────────────────────────────────────────
-  const vistaTitle = useMemo(() => {
-    if (seccion === "integrada") {
-      if (vistaInt === "todas") return `Operación integrada · ${integradas.length} alertas`;
-      return `${AREAS[vistaInt]?.label ?? vistaInt} · ${cntInt[vistaInt] ?? 0} alertas`;
+  // ── Hoy grouped ────────────────────────────────────────────────────────
+  const hoyGrouped = useMemo(() => {
+    if (vista !== "hoy" || sortHoy === SORT_OPTIONS[0]) return null;
+    const grouped: Record<string, TareaItem[]> = {};
+    for (const t of tareas) {
+      let key = "";
+      if (sortHoy === "Por proyecto")   key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+      else if (sortHoy === "Por prioridad") key = t.prioridad;
+      else if (sortHoy === "Por área")  key = areaLabel(t.area);
+      else if (sortHoy === "Por fecha") key = t.fecha ? new Date(t.fecha).toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(t);
     }
-    const ini = iniciativas.find(i => i.id === vistaExt);
-    if (ini) return ini.nombre;
-    return { hoy: "Hoy", semana: "Esta semana", vencidas: "Vencidas", todas: "Todas las tareas" }[vistaExt] ?? vistaExt;
-  }, [seccion, vistaInt, vistaExt, integradas.length, cntInt, iniciativas]);
+    const PRIO_ORD: Record<string,number> = { URGENTE:0, ALTA:1, MEDIA:2, BAJA:3 };
+    const keys = sortHoy === "Por prioridad"
+      ? ["URGENTE","ALTA","MEDIA","BAJA"].filter(k => grouped[k])
+      : Object.keys(grouped).sort();
+    return keys.map(label => ({ label, tareas: grouped[label] }));
+  }, [tareas, sortHoy, vista]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  const proyectosSinCarpeta = useMemo(() =>
+    proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
+  [proyectosNav, carpetas]);
+
+  const vistaKey    = typeof vista === "string" ? vista : vista.id;
+  const vistaLabel  =
+    vista === "bandeja"   ? "Bandeja de entrada" :
+    vista === "hoy"       ? "Hoy" :
+    vista === "proximas"  ? "Próximas" :
+    vista === "integrada" ? "Operación Integrada" :
+    proyectoDetalle?.nombre ?? "Proyecto";
 
   return (
-    <div className="flex min-h-screen bg-[#0d0d0d]">
+    <div className="flex h-full overflow-hidden">
 
-      {/* ══ Left Nav (desktop) ══════════════════════════════════════════════ */}
-      <aside className="hidden md:flex flex-col w-52 border-r border-[#1a1a1a] shrink-0 py-5 px-2 gap-1">
-
-        {/* INTEGRADA */}
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#3a3a3a] px-3 mb-1">
-          Integrada
-        </p>
-        {navIntBtn("todas",         "Todas",          cntInt.todas ?? 0)}
-        {navIntBtn("VENTAS",        "Ventas",          cntInt.VENTAS ?? 0)}
-        {navIntBtn("ADMINISTRACION","Administración",  cntInt.ADMINISTRACION ?? 0)}
-        {navIntBtn("PRODUCCION",    "Producción",      cntInt.PRODUCCION ?? 0)}
-        {navIntBtn("MARKETING",     "Marketing",       cntInt.MARKETING ?? 0)}
-        {navIntBtn("RRHH",          "RR.HH.",          cntInt.RRHH ?? 0)}
-
-        <div className="border-t border-[#1a1a1a] my-3" />
-
-        {/* EXTERNA */}
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[#3a3a3a] px-3 mb-1">
-          Externa
-        </p>
-        {navExtBtn("hoy",      "Hoy",           cntHoy)}
-        {navExtBtn("semana",   "Esta semana",   cntSemana)}
-        {navExtBtn("vencidas", "Vencidas",      cntVenc, true)}
-        {navExtBtn("todas",    "Todas",         cntTodas)}
-
-        {/* Iniciativas */}
-        {iniciativas.length > 0 && (
-          <>
-            <div className="border-t border-[#1a1a1a] my-3" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#3a3a3a] px-3 mb-1">
-              Iniciativas
-            </p>
-            {iniciativas.map(ini => {
-              const active = seccion === "externa" && vistaExt === ini.id;
-              return (
-                <button key={ini.id}
-                  onClick={() => { setSeccion("externa"); setVistaExt(ini.id); }}
-                  className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors text-left ${
-                    active ? "bg-[#1a1a1a] text-white" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-                  }`}
-                >
-                  {ini.color && (
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ini.color }} />
-                  )}
-                  <span className="flex-1 truncate text-xs">{ini.nombre}</span>
-                  {ini.tareas.length > 0 && (
-                    <span className="text-[11px] text-[#444] shrink-0">{ini.tareas.length}</span>
-                  )}
-                </button>
-              );
-            })}
-          </>
-        )}
-
-        {/* Nueva iniciativa */}
-        <button
-          onClick={() => setShowNuevaIni(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-[#444] hover:text-[#B3985B] transition-colors mt-1"
-        >
-          <span>+</span>
-          <span className="text-xs">Nueva iniciativa</span>
-        </button>
-      </aside>
-
-      {/* ══ Main ════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 min-w-0 flex flex-col">
-
-        {/* Mobile nav strip */}
-        <div className="md:hidden flex gap-1 px-4 py-3 border-b border-[#1a1a1a] overflow-x-auto">
-          {[
-            { key: "int-todas",    label: "Integrada", s: "integrada" as const, v: "todas" },
-            { key: "ext-hoy",      label: "Hoy",       s: "externa"   as const, v: "hoy"   },
-            { key: "ext-semana",   label: "Semana",    s: "externa"   as const, v: "semana"  },
-            { key: "ext-vencidas", label: "Vencidas",  s: "externa"   as const, v: "vencidas"},
-            { key: "ext-todas",    label: "Todas",     s: "externa"   as const, v: "todas"   },
-          ].map(item => {
-            const active = seccion === item.s && (item.s === "integrada" ? vistaInt === item.v : vistaExt === item.v);
-            return (
-              <button key={item.key}
-                onClick={() => { setSeccion(item.s); if (item.s === "integrada") setVistaInt(item.v); else setVistaExt(item.v); }}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  active ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#888]"
-                }`}
-              >
-                {item.label}
-                {item.key === "ext-vencidas" && cntVenc > 0 && (
-                  <span className="ml-1 text-red-400">{cntVenc}</span>
-                )}
-              </button>
-            );
-          })}
+      {/* ── LEFT NAV ──────────────────────────────────────────────────────── */}
+      <nav className="hidden md:flex w-60 shrink-0 flex-col bg-[#060606] border-r border-[#111] overflow-y-auto">
+        <div className="px-3 pt-4 pb-2 border-b border-[#111]">
+          <p className="text-[11px] text-[#333] uppercase tracking-widest font-bold px-1 mb-1">Operaciones</p>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 px-4 md:px-6 py-5 max-w-3xl w-full mx-auto">
+        <div className="px-2 py-2 space-y-0.5">
+          {([
+            { key:"hoy",       label:"Hoy",                 icon:"☀" },
+            { key:"proximas",  label:"Próximas",             icon:"📅" },
+            { key:"bandeja",   label:"Bandeja de entrada",   icon:"📥" },
+            { key:"integrada", label:"Op. Integrada",        icon:"⚡" },
+          ] as const).map(item => (
+            <button key={item.key} onClick={() => setVista(item.key)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
+                vistaKey === item.key ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
+              }`}>
+              <span className="text-sm w-4">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Header */}
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h1 className="text-white font-semibold text-base">{vistaTitle}</h1>
-              {seccion === "integrada" && integradas.length > 0 && (
-                <p className="text-[#555] text-xs mt-0.5">Solo lectura · resuelve cada alerta en su módulo de origen</p>
-              )}
-            </div>
-            {seccion === "externa" && (
-              <button
-                onClick={() => setShowNuevaIni(true)}
-                className="hidden md:block text-xs text-[#555] hover:text-[#B3985B] transition-colors"
-              >
-                + Iniciativa
-              </button>
-            )}
+        <div className="border-t border-[#111] mt-1 pt-2 px-2 flex-1 space-y-0.5">
+          <div className="flex items-center justify-between px-2 py-1">
+            <p className="text-[10px] text-[#333] uppercase tracking-widest font-bold">Proyectos</p>
+            <button onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
+              className="text-[#333] hover:text-[#B3985B] transition-colors" title="Nuevo proyecto">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+            </button>
           </div>
 
-          {loading ? (
-            <div className="space-y-2">
-              {[1,2,3].map(i => (
-                <div key={i} className="h-11 bg-[#111] rounded-lg animate-pulse" />
-              ))}
-            </div>
-          ) : seccion === "integrada" ? (
-
-            /* ══ VISTA INTEGRADA ══════════════════════════════════════════ */
-            <div>
-              {integradasFiltradas.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-2xl mb-2">✓</p>
-                  <p className="text-[#555] text-sm">Sin alertas activas. El sistema está al día.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {integradasFiltradas.map(t => (
-                    <Link
-                      key={t.id}
-                      href={t.href}
-                      className={`flex items-start gap-3 px-4 py-3 rounded-lg border-l-2 bg-[#0a0a0a] hover:bg-[#111] transition-colors group ${AREAS[t.area]?.borderL ?? "border-l-[#333]"}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                          {t.severidad !== "MEDIA" && (
-                            <span className={`text-[10px] font-bold ${SEV_COLORS[t.severidad]}`}>
-                              {t.severidad}
-                            </span>
-                          )}
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${AREAS[t.area]?.text ?? ""} ${AREAS[t.area]?.bg ?? ""}`}>
-                            {AREAS[t.area]?.label ?? t.area}
-                          </span>
-                          <span className="text-[10px] text-[#444]">{t.etiqueta}</span>
-                        </div>
-                        <p className="text-sm text-white leading-5">{t.titulo}</p>
-                        {t.descripcion && (
-                          <p className="text-xs text-[#555] mt-0.5 truncate">{t.descripcion}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1">
-                          {t.monto !== undefined && (
-                            <span className="text-xs text-[#B3985B]">{fmtMonto(t.monto)}</span>
-                          )}
-                          {(t.diasVencido ?? 0) > 0 && (
-                            <span className={`text-[10px] ${(t.diasVencido ?? 0) >= 7 ? "text-red-400" : "text-orange-400"}`}>
-                              Vencido hace {t.diasVencido} día{t.diasVencido !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-[#444] group-hover:text-[#888] transition-colors text-sm mt-1 shrink-0">→</span>
-                    </Link>
+          {carpetas.map(carpeta => (
+            <div key={carpeta.id}>
+              <button onClick={() => setCarpetasOpen(prev => { const n = new Set(prev); n.has(carpeta.id) ? n.delete(carpeta.id) : n.add(carpeta.id); return n; })}
+                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors">
+                <span className="text-[9px] transition-transform inline-block" style={{ transform: carpetasOpen.has(carpeta.id) ? "rotate(90deg)" : "" }}>▶</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span className="truncate">{carpeta.nombre}</span>
+              </button>
+              {carpetasOpen.has(carpeta.id) && (
+                <div className="ml-4 space-y-0.5">
+                  {carpeta.proyectos.map(p => (
+                    <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id:p.id })}
+                      className={`w-full flex items-center gap-2 px-2 py-1 rounded text-sm transition-colors ${
+                        vistaKey === p.id ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
+                      }`}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                      <span className="truncate">{p.nombre}</span>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
+          ))}
 
-          ) : (
-
-            /* ══ VISTA EXTERNA ════════════════════════════════════════════ */
+          {proyectosSinCarpeta.length > 0 && (
             <div>
-              {/* Quick add */}
-              <form onSubmit={agregarTarea} className="mb-4">
-                <div className="flex items-center gap-2 bg-[#111] border border-[#222] hover:border-[#333] rounded-xl px-3 py-2.5 transition-colors focus-within:border-[#B3985B]/40">
-                  {/* Circle placeholder */}
-                  <div className="w-4 h-4 rounded-full border-2 border-[#333] shrink-0" />
-                  <input
-                    value={quickTitulo}
-                    onChange={e => setQuickTitulo(e.target.value)}
-                    onFocus={() => setShowQuickMore(true)}
-                    placeholder="Agregar tarea..."
-                    className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-[#444]"
-                  />
-                  {quickTitulo.trim() && (
-                    <button type="submit" disabled={addingTarea}
-                      className="text-[10px] text-[#B3985B] font-semibold hover:text-white transition-colors shrink-0 disabled:opacity-40"
-                    >
-                      {addingTarea ? "..." : "Agregar"}
+              <button onClick={() => setProyectosSueltos(!proyectosSueltos)}
+                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#333] hover:text-[#555] transition-colors">
+                <span className="text-[9px] inline-block" style={{ transform: proyectosSueltos ? "rotate(90deg)" : "" }}>▶</span>
+                Sin carpeta
+              </button>
+              {proyectosSueltos && proyectosSinCarpeta.map(p => (
+                <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id:p.id })}
+                  className={`w-full flex items-center gap-2 px-4 py-1 rounded text-sm transition-colors ${
+                    vistaKey === p.id ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
+                  }`}>
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                  <span className="truncate">{p.nombre}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {showNuevaCarpeta ? (
+            <div className="px-2 py-1 space-y-1">
+              <input ref={carpetaInputRef} value={nuevoCarpetaNombre} onChange={e => setNuevoCarpetaNombre(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") crearCarpeta(); if (e.key === "Escape") setShowNuevaCarpeta(false); }}
+                placeholder="Nombre de carpeta"
+                className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]" />
+              <div className="flex gap-2">
+                <button onClick={crearCarpeta} className="text-xs text-[#B3985B] hover:underline">Crear</button>
+                <button onClick={() => setShowNuevaCarpeta(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => { setShowNuevaCarpeta(true); setTimeout(() => carpetaInputRef.current?.focus(), 50); }}
+              className="w-full flex items-center gap-1.5 px-2 py-1 text-xs text-[#333] hover:text-[#555] transition-colors">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Nueva carpeta
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#111] shrink-0">
+          <h1 className="text-lg font-semibold text-white">{vistaLabel}</h1>
+
+          {vista === "hoy" && (
+            <div className="ml-auto flex items-center gap-1 flex-wrap">
+              {SORT_OPTIONS.map(opt => (
+                <button key={opt} onClick={() => setSortHoy(opt)}
+                  className={`px-2 py-0.5 rounded text-xs transition-colors ${sortHoy === opt ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#888]"}`}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {typeof vista !== "string" && proyectoDetalle && (
+            <button onClick={() => setShowNuevaSeccion(true)} className="ml-auto px-3 py-1 bg-[#1a1a1a] text-xs text-[#888] rounded hover:bg-[#222] hover:text-white transition-colors">
+              + Sección
+            </button>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto pb-20">
+          {loadingMain ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-5 h-5 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
+            </div>
+          ) : vista === "integrada" ? (
+            <div className="max-w-3xl mx-auto px-6 py-4 space-y-2">
+              {integradas.length === 0 ? (
+                <div className="text-center py-16 text-[#333]">
+                  <p className="text-lg">✓</p>
+                  <p className="text-sm mt-1">Sin alertas integradas</p>
+                </div>
+              ) : integradas.map(t => (
+                <Link key={t.id} href={t.href}
+                  className={`flex items-start gap-3 p-3 rounded-md bg-[#080808] border-l-2 hover:bg-[#0d0d0d] transition-colors ${severityColor(t.severidad)}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white">{t.titulo}</p>
+                    {t.descripcion && <p className="text-xs text-[#555] mt-0.5">{t.descripcion}</p>}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888]">{t.etiqueta}</span>
+                      {t.diasVencido && <span className="text-[10px] text-red-400">{t.diasVencido}d vencida</span>}
+                      {t.monto && <span className="text-[10px] text-[#B3985B]">${t.monto.toLocaleString("es-MX")}</span>}
+                      {t.cliente && <span className="text-[10px] text-[#666]">{t.cliente}</span>}
+                    </div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" className="shrink-0 mt-1">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          ) : typeof vista === "string" ? (
+            <div className="max-w-3xl mx-auto px-4 py-3">
+              {tareas.length === 0 ? (
+                <div className="text-center py-16 text-[#333]">
+                  <p className="text-4xl mb-3">{vista === "hoy" ? "☀️" : "📋"}</p>
+                  <p className="text-sm">
+                    {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
+                  </p>
+                </div>
+              ) : hoyGrouped ? (
+                hoyGrouped.map(group => (
+                  <div key={group.label} className="mb-4">
+                    <p className="text-xs text-[#444] font-semibold uppercase tracking-wider px-3 py-2">{group.label}</p>
+                    {group.tareas.map(t => (
+                      <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
+                    ))}
+                  </div>
+                ))
+              ) : (
+                tareas.map(t => (
+                  <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
+                ))
+              )}
+              <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" />
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto px-4 py-3">
+              {proyectoDetalle && (
+                <>
+                  {proyectoDetalle.tareas.map(t => (
+                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} />
+                  ))}
+                  <QuickAdd proyectoTareaId={proyectoDetalle.id} onAdd={addTarea} placeholder="Agregar tarea al proyecto…" />
+                  {proyectoDetalle.secciones.map(seccion => (
+                    <SectionBlock
+                      key={seccion.id}
+                      seccion={seccion}
+                      proyectoId={proyectoDetalle.id}
+                      selectedId={selectedId}
+                      onComplete={completeTarea}
+                      onSelect={setSelectedId}
+                      onDelete={deleteTarea}
+                      onAddTarea={addTarea}
+                      onToggleCollapse={async (id, colapsada) => {
+                        await fetch(`/api/operaciones/secciones/${id}`, {
+                          method: "PATCH", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ colapsada }),
+                        });
+                        setProyectoDetalle(prev => prev ? {
+                          ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, colapsada } : s),
+                        } : null);
+                      }}
+                      onDeleteSection={async (id) => {
+                        await fetch(`/api/operaciones/secciones/${id}`, { method: "DELETE" });
+                        setProyectoDetalle(prev => prev ? {
+                          ...prev, secciones: prev.secciones.filter(s => s.id !== id),
+                        } : null);
+                      }}
+                    />
+                  ))}
+                  {showNuevaSeccion ? (
+                    <div className="mt-4 px-3 py-2 border border-dashed border-[#2a2a2a] rounded-md space-y-2">
+                      <input autoFocus value={nuevaSeccionNombre}
+                        onChange={e => setNuevaSeccionNombre(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") addSeccion(); if (e.key === "Escape") setShowNuevaSeccion(false); }}
+                        placeholder="Nombre de la sección"
+                        className="w-full bg-transparent text-sm text-white placeholder-[#444] focus:outline-none" />
+                      <div className="flex gap-2">
+                        <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline">Crear</button>
+                        <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => setShowNuevaSeccion(true)}
+                      className="mt-4 flex items-center gap-2 text-xs text-[#333] hover:text-[#555] px-3 py-2 transition-colors">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Agregar sección
                     </button>
                   )}
-                </div>
-
-                {/* Quick more options */}
-                {showQuickMore && (
-                  <div className="mt-2 flex flex-wrap gap-2 px-1">
-                    <select value={quickPrioridad} onChange={e => setQuickPrioridad(e.target.value)}
-                      className="text-xs bg-[#111] border border-[#222] text-[#888] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#333]">
-                      <option value="URGENTE">Urgente</option>
-                      <option value="ALTA">Alta</option>
-                      <option value="MEDIA">Media</option>
-                      <option value="BAJA">Baja</option>
-                    </select>
-                    <select value={quickArea} onChange={e => setQuickArea(e.target.value)}
-                      className="text-xs bg-[#111] border border-[#222] text-[#888] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#333]">
-                      {Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                    </select>
-                    <input type="date" value={quickFecha} onChange={e => setQuickFecha(e.target.value)}
-                      className="text-xs bg-[#111] border border-[#222] text-[#888] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#333]" />
-                    {iniciativas.length > 0 && (
-                      <select value={quickIniciativa} onChange={e => setQuickIniciativa(e.target.value)}
-                        className="text-xs bg-[#111] border border-[#222] text-[#888] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#333]">
-                        <option value="">Sin iniciativa</option>
-                        {iniciativas.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                      </select>
-                    )}
-                    <button type="button" onClick={() => setShowQuickMore(false)}
-                      className="text-xs text-[#444] hover:text-[#888] px-1">✕</button>
-                  </div>
-                )}
-              </form>
-
-              {/* Task list */}
-              {tareasFiltradas.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-[#444] text-sm">Sin tareas para esta vista.</p>
-                  <p className="text-[#333] text-xs mt-1">Usa el campo de arriba para agregar una.</p>
-                </div>
-              ) : (
-                <div className="space-y-px">
-                  {tareasFiltradas.map(t => {
-                    const pCfg     = PRIORIDADES[t.prioridad] ?? PRIORIDADES.MEDIA;
-                    const aCfg     = AREAS[t.area] ?? AREAS.GENERAL;
-                    const fechaTxt = fmtFecha(t.fechaVencimiento);
-                    const vencida  = eVencida(t.fechaVencimiento, t.estado);
-                    const done     = t.estado === "COMPLETADA";
-                    return (
-                      <div key={t.id}
-                        className="group flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-[#111] transition-colors"
-                      >
-                        {/* Circle checkbox */}
-                        <button
-                          onClick={() => toggleCompletada(t)}
-                          className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-                            done ? "bg-[#B3985B] border-[#B3985B]" : `${pCfg.circle} hover:border-[#B3985B]`
-                          }`}
-                        >
-                          {done && (
-                            <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => abrirPanel(t)}>
-                          <p className={`text-sm leading-5 ${done ? "line-through text-[#444]" : "text-white"}`}>
-                            {t.titulo}
-                          </p>
-                          <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                            {t.prioridad !== "MEDIA" && t.prioridad !== "BAJA" && (
-                              <span className={`text-[10px] font-semibold ${pCfg.text}`}>{pCfg.label}</span>
-                            )}
-                            {t.area !== "GENERAL" && (
-                              <span className={`text-[10px] ${aCfg.text}`}>{aCfg.label}</span>
-                            )}
-                            {t.iniciativa && (
-                              <span className="text-[10px] text-[#444]">· {t.iniciativa.nombre}</span>
-                            )}
-                            {t.asignadoA && (
-                              <span className="text-[10px] text-[#444]">→ {t.asignadoA.name}</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Date + actions */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          {fechaTxt && (
-                            <span className={`text-[11px] ${vencida ? "text-red-400" : eHoy(t.fechaVencimiento) ? "text-[#B3985B]" : "text-[#555]"}`}>
-                              {fechaTxt}
-                            </span>
-                          )}
-                          <button
-                            onClick={() => eliminarTarea(t.id)}
-                            className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all text-lg leading-none"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                </>
               )}
             </div>
           )}
         </div>
-      </div>
+      </main>
 
-      {/* ══ Panel lateral — detalle de tarea ══════════════════════════════════ */}
-      {panelTarea && (
-        <>
-          <div className="fixed inset-0 z-40 md:hidden bg-black/50" onClick={() => setPanelTarea(null)} />
-          <aside className="fixed right-0 top-0 bottom-0 z-50 w-full md:w-[380px] bg-[#0d0d0d] border-l border-[#1a1a1a] flex flex-col shadow-2xl">
-
-            {/* Panel header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => toggleCompletada(panelTarea)}
-                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    panelTarea.estado === "COMPLETADA"
-                      ? "bg-[#B3985B] border-[#B3985B]"
-                      : `${PRIORIDADES[panelTarea.prioridad]?.circle ?? "border-[#444]"} hover:border-[#B3985B]`
-                  }`}
-                >
-                  {panelTarea.estado === "COMPLETADA" && (
-                    <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-                <span className="text-xs text-[#555] uppercase tracking-wider">Tarea</span>
-              </div>
-              <div className="flex items-center gap-3">
-                {panelSaving && <span className="text-[10px] text-[#555]">Guardando…</span>}
-                <button onClick={() => setPanelTarea(null)}
-                  className="text-[#555] hover:text-white text-lg transition-colors">✕</button>
-              </div>
-            </div>
-
-            {/* Panel body */}
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-
-              {/* Título */}
-              <textarea
-                key={panelTarea.id + "-titulo"}
-                defaultValue={panelTarea.titulo}
-                onBlur={e => {
-                  if (e.target.value.trim() && e.target.value !== panelTarea.titulo) {
-                    setPanelFields(p => ({ ...p, titulo: e.target.value.trim() }));
-                    setTimeout(guardarPanel, 0);
-                  }
-                }}
-                className="w-full text-base font-semibold text-white bg-transparent outline-none resize-none leading-snug"
-                rows={2}
-              />
-
-              {/* Descripción */}
-              <textarea
-                key={panelTarea.id + "-desc"}
-                defaultValue={panelTarea.descripcion ?? ""}
-                onBlur={e => {
-                  const val = e.target.value || null;
-                  if (val !== panelTarea.descripcion) {
-                    setPanelFields(p => ({ ...p, descripcion: val }));
-                    setTimeout(guardarPanel, 0);
-                  }
-                }}
-                placeholder="Agregar descripción…"
-                className="w-full text-sm text-[#888] bg-transparent outline-none resize-none placeholder:text-[#333]"
-                rows={3}
-              />
-
-              {/* Fields */}
-              <div className="space-y-2.5">
-                {[
-                  {
-                    label: "Prioridad",
-                    content: (
-                      <select
-                        key={panelTarea.id + "-prio"}
-                        defaultValue={panelTarea.prioridad}
-                        onBlur={e => { setPanelFields(p => ({ ...p, prioridad: e.target.value })); setTimeout(guardarPanel, 0); }}
-                        className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#333]"
-                      >
-                        <option value="URGENTE">Urgente</option>
-                        <option value="ALTA">Alta</option>
-                        <option value="MEDIA">Media</option>
-                        <option value="BAJA">Baja</option>
-                      </select>
-                    ),
-                  },
-                  {
-                    label: "Área",
-                    content: (
-                      <select
-                        key={panelTarea.id + "-area"}
-                        defaultValue={panelTarea.area}
-                        onBlur={e => { setPanelFields(p => ({ ...p, area: e.target.value })); setTimeout(guardarPanel, 0); }}
-                        className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#333]"
-                      >
-                        {Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-                      </select>
-                    ),
-                  },
-                  {
-                    label: "Asignado a",
-                    content: (
-                      <select
-                        key={panelTarea.id + "-asig"}
-                        defaultValue={panelTarea.asignadoA?.id ?? ""}
-                        onBlur={e => { setPanelFields(p => ({ ...p, asignadoAId: e.target.value || null })); setTimeout(guardarPanel, 0); }}
-                        className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#333]"
-                      >
-                        <option value="">Sin asignar</option>
-                        {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                    ),
-                  },
-                  {
-                    label: "Vencimiento",
-                    content: (
-                      <input type="date"
-                        key={panelTarea.id + "-fecha"}
-                        defaultValue={panelTarea.fechaVencimiento?.slice(0, 10) ?? ""}
-                        onBlur={e => { setPanelFields(p => ({ ...p, fechaVencimiento: e.target.value || null })); setTimeout(guardarPanel, 0); }}
-                        className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#333]"
-                      />
-                    ),
-                  },
-                  {
-                    label: "Iniciativa",
-                    content: (
-                      <select
-                        key={panelTarea.id + "-ini"}
-                        defaultValue={panelTarea.iniciativaId ?? ""}
-                        onBlur={e => { setPanelFields(p => ({ ...p, iniciativaId: e.target.value || null })); setTimeout(guardarPanel, 0); }}
-                        className="flex-1 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#333]"
-                      >
-                        <option value="">Sin iniciativa</option>
-                        {iniciativas.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                      </select>
-                    ),
-                  },
-                ].map(({ label, content }) => (
-                  <div key={label} className="flex items-center gap-3">
-                    <span className="text-xs text-[#444] w-24 shrink-0">{label}</span>
-                    {content}
-                  </div>
-                ))}
-              </div>
-
-              {/* Notas */}
-              <div>
-                <p className="text-xs text-[#444] mb-2">Notas</p>
-                <textarea
-                  key={panelTarea.id + "-notas"}
-                  defaultValue={panelTarea.notas ?? ""}
-                  onBlur={e => {
-                    const val = e.target.value || null;
-                    if (val !== panelTarea.notas) {
-                      setPanelFields(p => ({ ...p, notas: val }));
-                      setTimeout(guardarPanel, 0);
-                    }
-                  }}
-                  placeholder="Notas adicionales…"
-                  rows={4}
-                  className="w-full text-sm text-[#888] bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 outline-none resize-none focus:border-[#222] placeholder:text-[#333]"
-                />
-              </div>
-            </div>
-
-            {/* Panel footer */}
-            <div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center justify-between">
-              <span className="text-[10px] text-[#333]">
-                {panelTarea.creadoPor ? `Por ${panelTarea.creadoPor.name}` : ""}
-              </span>
-              <button
-                onClick={() => eliminarTarea(panelTarea.id)}
-                className="text-xs text-[#555] hover:text-red-400 transition-colors"
-              >
-                Eliminar
-              </button>
-            </div>
+      {/* ── TASK PANEL ────────────────────────────────────────────────────── */}
+      {selectedId && (
+        loadingPanel ? (
+          <aside className="w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-center">
+            <div className="w-5 h-5 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
           </aside>
-        </>
+        ) : selectedTask ? (
+          <TaskPanel
+            tarea={selectedTask}
+            usuarios={usuarios}
+            proyectos={proyectosNav}
+            iniciativas={iniciativas}
+            sessionId={sessionId}
+            onClose={() => setSelectedId(null)}
+            onSave={saveTarea}
+            onComplete={completeTarea}
+            onDelete={deleteTarea}
+            onAddSubtarea={addSubtarea}
+            onCompleteSubtarea={completeTarea}
+            onDeleteSubtarea={deleteTarea}
+          />
+        ) : null
       )}
 
-      {/* ══ Modal nueva iniciativa ═════════════════════════════════════════════ */}
-      {showNuevaIni && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowNuevaIni(false)} />
-          <div className="fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-[#0d0d0d] border border-[#1f1f1f] rounded-2xl p-6 shadow-2xl">
-            <h3 className="text-white font-semibold mb-4">Nueva iniciativa</h3>
-            <form onSubmit={crearIniciativa} className="space-y-3">
-              <input
-                value={iniForm.nombre}
-                onChange={e => setIniForm(p => ({ ...p, nombre: e.target.value }))}
-                placeholder="Nombre de la iniciativa *"
-                className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
-                autoFocus
-              />
-              <select
-                value={iniForm.area}
-                onChange={e => setIniForm(p => ({ ...p, area: e.target.value }))}
-                className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
-              >
-                {Object.entries(AREAS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[#555]">Color</span>
-                <input type="color" value={iniForm.color || "#B3985B"}
-                  onChange={e => setIniForm(p => ({ ...p, color: e.target.value }))}
-                  className="w-8 h-8 rounded cursor-pointer border border-[#333] bg-transparent"
-                />
-                <button type="button" onClick={() => setIniForm(p => ({ ...p, color: "" }))}
-                  className="text-xs text-[#444] hover:text-[#888]">Sin color</button>
+      {/* ── MODAL: Nuevo proyecto ──────────────────────────────────────────── */}
+      {showNuevoProyecto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowNuevoProyecto(false)}>
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-6 w-80 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-white font-semibold">Nuevo proyecto</h3>
+            <div className="space-y-3">
+              <input ref={proyectoInputRef} value={nuevoProyectoNombre}
+                onChange={e => setNuevoProyectoNombre(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") crearProyecto(); if (e.key === "Escape") setShowNuevoProyecto(false); }}
+                placeholder="Nombre del proyecto"
+                className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]" />
+              <div className="space-y-1">
+                <label className="text-[10px] text-[#555] uppercase tracking-wider">Color</label>
+                <div className="flex gap-2 flex-wrap">
+                  {PROJECT_COLORS.map(c => (
+                    <button key={c} onClick={() => setNuevoProyectoColor(c)}
+                      className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ${nuevoProyectoColor === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#0d0d0d]" : ""}`}
+                      style={{ backgroundColor: c }} />
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2 pt-1">
-                <button type="button" onClick={() => setShowNuevaIni(false)}
-                  className="flex-1 px-4 py-2 rounded-lg border border-[#222] text-[#888] text-sm hover:text-white transition-colors">
-                  Cancelar
-                </button>
-                <button type="submit" disabled={savingIni || !iniForm.nombre.trim()}
-                  className="flex-1 px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40">
-                  {savingIni ? "Creando…" : "Crear"}
-                </button>
+              <div className="space-y-1">
+                <label className="text-[10px] text-[#555] uppercase tracking-wider">Carpeta (opcional)</label>
+                <select value={nuevoProyectoCarpeta} onChange={e => setNuevoProyectoCarpeta(e.target.value)}
+                  className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Sin carpeta —</option>
+                  {carpetas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
               </div>
-            </form>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowNuevoProyecto(false)} className="px-3 py-1.5 text-sm text-[#555] hover:text-white">Cancelar</button>
+              <button onClick={crearProyecto} className="px-4 py-1.5 bg-[#B3985B] text-black text-sm font-medium rounded hover:bg-[#c9aa6a] transition-colors">
+                Crear
+              </button>
+            </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SectionBlock ────────────────────────────────────────────────────────────
+
+function SectionBlock({
+  seccion, proyectoId, selectedId,
+  onComplete, onSelect, onDelete, onAddTarea,
+  onToggleCollapse, onDeleteSection,
+}: {
+  seccion: SeccionDetalle;
+  proyectoId: string;
+  selectedId: string | null;
+  onComplete: (id: string) => void;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAddTarea: (data: {
+    titulo: string; fecha: string | null; fechaVencimiento: string | null;
+    prioridad: string; recurrencia: string | null;
+    proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
+  }) => void;
+  onToggleCollapse: (id: string, colapsada: boolean) => void;
+  onDeleteSection: (id: string) => void;
+}) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div className="mt-5">
+      <div className="flex items-center gap-2 group cursor-pointer mb-1"
+        onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+        onClick={() => onToggleCollapse(seccion.id, !seccion.colapsada)}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2"
+          style={{ transform: seccion.colapsada ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+        <span className="text-xs font-semibold text-[#666] hover:text-white transition-colors">{seccion.nombre}</span>
+        {seccion.tareas.length > 0 && <span className="text-[10px] text-[#333]">({seccion.tareas.length})</span>}
+        {hov && (
+          <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
+            className="ml-auto text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        )}
+      </div>
+      {!seccion.colapsada && (
+        <>
+          {seccion.tareas.map(t => (
+            <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+              onComplete={onComplete} onSelect={onSelect} onDelete={onDelete} />
+          ))}
+          <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
+            placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea} />
         </>
       )}
     </div>

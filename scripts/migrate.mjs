@@ -75,4 +75,70 @@ await run(`
   )
 `, "CREATE TABLE tareas");
 
+// ─── MÓDULO OPERACIONES v2: jerarquía, recurrencia, comentarios, archivos ────
+
+await run(`CREATE TABLE IF NOT EXISTS "tarea_carpetas" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "nombre"      TEXT NOT NULL,
+  "color"       TEXT,
+  "icono"       TEXT,
+  "orden"       INTEGER NOT NULL DEFAULT 0,
+  "creadoPorId" TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+  "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`, "CREATE TABLE tarea_carpetas");
+
+await run(`CREATE TABLE IF NOT EXISTS "tarea_proyectos" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "nombre"      TEXT NOT NULL,
+  "descripcion" TEXT,
+  "color"       TEXT,
+  "icono"       TEXT,
+  "orden"       INTEGER NOT NULL DEFAULT 0,
+  "archivado"   BOOLEAN NOT NULL DEFAULT FALSE,
+  "carpetaId"   TEXT REFERENCES "tarea_carpetas"("id") ON DELETE SET NULL,
+  "creadoPorId" TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+  "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`, "CREATE TABLE tarea_proyectos");
+
+await run(`CREATE TABLE IF NOT EXISTS "tarea_secciones" (
+  "id"         TEXT NOT NULL PRIMARY KEY,
+  "nombre"     TEXT NOT NULL,
+  "orden"      INTEGER NOT NULL DEFAULT 0,
+  "colapsada"  BOOLEAN NOT NULL DEFAULT FALSE,
+  "proyectoId" TEXT NOT NULL REFERENCES "tarea_proyectos"("id") ON DELETE CASCADE,
+  "createdAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`, "CREATE TABLE tarea_secciones");
+
+await run(`CREATE TABLE IF NOT EXISTS "tarea_comentarios" (
+  "id"        TEXT NOT NULL PRIMARY KEY,
+  "contenido" TEXT NOT NULL,
+  "tareaId"   TEXT NOT NULL REFERENCES "tareas"("id") ON DELETE CASCADE,
+  "autorId"   TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`, "CREATE TABLE tarea_comentarios");
+
+await run(`CREATE TABLE IF NOT EXISTS "tarea_archivos" (
+  "id"          TEXT NOT NULL PRIMARY KEY,
+  "nombre"      TEXT NOT NULL,
+  "url"         TEXT NOT NULL,
+  "tipo"        TEXT,
+  "tamano"      INTEGER,
+  "tareaId"     TEXT NOT NULL REFERENCES "tareas"("id") ON DELETE CASCADE,
+  "subidoPorId" TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+  "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+)`, "CREATE TABLE tarea_archivos");
+
+// Extend tareas table
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "carpetaId"       TEXT REFERENCES "tarea_carpetas"("id")  ON DELETE SET NULL`, "tareas.carpetaId");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "proyectoTareaId" TEXT REFERENCES "tarea_proyectos"("id") ON DELETE SET NULL`, "tareas.proyectoTareaId");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "seccionId"       TEXT REFERENCES "tarea_secciones"("id") ON DELETE SET NULL`, "tareas.seccionId");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "parentId"        TEXT REFERENCES "tareas"("id")          ON DELETE CASCADE`,   "tareas.parentId");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "fecha"           TIMESTAMP(3)`,                                                "tareas.fecha");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "recurrencia"     TEXT`,                                                        "tareas.recurrencia");
+await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "orden"           INTEGER NOT NULL DEFAULT 0`,                                  "tareas.orden");
+
 console.log("Migración completada.");
