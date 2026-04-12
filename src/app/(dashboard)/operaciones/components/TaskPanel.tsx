@@ -54,26 +54,6 @@ const AREAS = ["GENERAL", "VENTAS", "ADMINISTRACION", "PRODUCCION", "MARKETING",
 const PRIOS = ["BAJA", "MEDIA", "ALTA", "URGENTE"];
 const PRIO_COLORS: Record<string, string> = { URGENTE: "#f87171", ALTA: "#fb923c", MEDIA: "#eab308", BAJA: "#555" };
 
-function useAutoSave(
-  id: string,
-  field: string,
-  value: string,
-  onSave: (id: string, patch: Record<string, unknown>) => void,
-  delay = 600
-) {
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const prev  = useRef(value);
-  useEffect(() => {
-    if (value === prev.current) return;
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      onSave(id, { [field]: value || null });
-      prev.current = value;
-    }, delay);
-    return () => clearTimeout(timer.current);
-  }, [value]);  // eslint-disable-line react-hooks/exhaustive-deps
-}
-
 export default function TaskPanel({
   tarea, usuarios, proyectos, iniciativas, sessionId,
   onClose, onSave, onComplete, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
@@ -98,8 +78,16 @@ export default function TaskPanel({
   const [subtareasLocal, setSubtareasLocal] = useState<Subtarea[]>(tarea.subtareas ?? []);
   const [comentariosLocal, setComentariosLocal] = useState<Comentario[]>(tarea.comentarios ?? []);
   const [archivosLocal, setArchivosLocal] = useState<Archivo[]>(tarea.archivos ?? []);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading]           = useState(false);
   const [showFechaVenPicker, setShowFechaVenPicker] = useState(false);
+  const [dirty, setDirty]                   = useState(false);
+  const [saving, setSaving]                 = useState(false);
+  const pendingSave = useRef<(() => void) | null>(null);
+
+  // Auto-save when switching to another task if dirty
+  useEffect(() => {
+    return () => { pendingSave.current?.(); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset when tarea changes
   useEffect(() => {
@@ -114,22 +102,31 @@ export default function TaskPanel({
     setFecha(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
     setFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
     setShowFechaVenPicker(false);
+    setDirty(false);
     setSubtareasLocal(tarea.subtareas ?? []);
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
   }, [tarea.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useAutoSave(tarea.id, "titulo",      titulo,      onSave);
-  useAutoSave(tarea.id, "descripcion", descripcion, onSave);
-  useAutoSave(tarea.id, "notas",       notas,       onSave);
-
-  function handleSelectChange(field: string, value: string) {
-    onSave(tarea.id, { [field]: value || null });
+  async function handleSave() {
+    setSaving(true);
+    await onSave(tarea.id, {
+      titulo:           titulo           || null,
+      descripcion:      descripcion      || null,
+      notas:            notas            || null,
+      prioridad,
+      area,
+      asignadoAId:      asignadoAId      || null,
+      proyectoTareaId:  proyectoId       || null,
+      iniciativaId:     iniciativaId     || null,
+      fecha:            fecha            || null,
+      fechaVencimiento: fechaVen         || null,
+    });
+    setSaving(false);
+    setDirty(false);
   }
 
-  function handleFechaBlur(field: string, value: string) {
-    onSave(tarea.id, { [field]: value || null });
-  }
+  function mark() { setDirty(true); }
 
   const recDisplay = (() => {
     if (!tarea.recurrencia) return null;
@@ -227,6 +224,17 @@ export default function TaskPanel({
           </span>
         </div>
 
+        <button
+          onClick={handleSave}
+          disabled={!dirty || saving}
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
+            dirty
+              ? "bg-[#B3985B]/15 border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/25"
+              : "bg-transparent border border-transparent text-[#333] cursor-default"
+          }`}
+        >
+          {saving ? "Guardando…" : "Guardar"}
+        </button>
         <button onClick={() => onDelete(tarea.id)} className="text-[#333] hover:text-red-400 transition-colors p-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
@@ -244,7 +252,7 @@ export default function TaskPanel({
         {/* Title */}
         <textarea
           value={titulo}
-          onChange={e => setTitulo(e.target.value)}
+          onChange={e => { setTitulo(e.target.value); mark(); }}
           className="w-full bg-transparent text-white text-lg font-medium resize-none focus:outline-none placeholder-[#444] leading-snug"
           placeholder="Título de la tarea"
           rows={titulo.split("\n").length || 1}
@@ -253,7 +261,7 @@ export default function TaskPanel({
         {/* Description */}
         <textarea
           value={descripcion}
-          onChange={e => setDescripcion(e.target.value)}
+          onChange={e => { setDescripcion(e.target.value); mark(); }}
           placeholder="Descripción…"
           className="w-full bg-transparent text-sm text-[#888] resize-none focus:outline-none placeholder-[#333] leading-relaxed"
           rows={3}
@@ -265,14 +273,14 @@ export default function TaskPanel({
           <div className="flex gap-2">
             <div className="flex-1 space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Prioridad</label>
-              <select value={prioridad} onChange={e => { setPrioridad(e.target.value); handleSelectChange("prioridad", e.target.value); }}
+              <select value={prioridad} onChange={e => { setPrioridad(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 {PRIOS.map(p => <option key={p} value={p} style={{ color: PRIO_COLORS[p] }}>{p}</option>)}
               </select>
             </div>
             <div className="flex-1 space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Área</label>
-              <select value={area} onChange={e => { setArea(e.target.value); handleSelectChange("area", e.target.value); }}
+              <select value={area} onChange={e => { setArea(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
@@ -282,7 +290,7 @@ export default function TaskPanel({
           {/* Assignee */}
           <div className="space-y-0.5">
             <label className="text-[10px] text-[#444] uppercase tracking-wider">Asignado a</label>
-            <select value={asignadoAId} onChange={e => { setAsignadoAId(e.target.value); handleSelectChange("asignadoAId", e.target.value); }}
+            <select value={asignadoAId} onChange={e => { setAsignadoAId(e.target.value); mark(); }}
               className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
               <option value="">— Sin asignar —</option>
               {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -292,7 +300,7 @@ export default function TaskPanel({
           {/* Project */}
           <div className="space-y-0.5">
             <label className="text-[10px] text-[#444] uppercase tracking-wider">Proyecto</label>
-            <select value={proyectoId} onChange={e => { setProyectoId(e.target.value); handleSelectChange("proyectoTareaId", e.target.value); }}
+            <select value={proyectoId} onChange={e => { setProyectoId(e.target.value); mark(); }}
               className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
               <option value="">— Bandeja de entrada —</option>
               {proyectos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
@@ -303,7 +311,7 @@ export default function TaskPanel({
           {iniciativas.length > 0 && (
             <div className="space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Iniciativa</label>
-              <select value={iniciativaId} onChange={e => { setIniciativaId(e.target.value); handleSelectChange("iniciativaId", e.target.value); }}
+              <select value={iniciativaId} onChange={e => { setIniciativaId(e.target.value); mark(); }}
                 className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                 <option value="">— Ninguna —</option>
                 {iniciativas.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
@@ -317,7 +325,7 @@ export default function TaskPanel({
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha</label>
               <DatePicker
                 value={fecha}
-                onChange={val => { setFecha(val); handleFechaBlur("fecha", val); }}
+                onChange={val => { setFecha(val); mark(); }}
                 size="sm"
               />
             </div>
@@ -328,7 +336,7 @@ export default function TaskPanel({
                   value={fechaVen}
                   onChange={val => {
                     setFechaVen(val);
-                    handleFechaBlur("fechaVencimiento", val);
+                    mark();
                     if (!val) setShowFechaVenPicker(false);
                   }}
                   size="sm"
@@ -416,7 +424,7 @@ export default function TaskPanel({
         {/* Notas */}
         <div className="space-y-1">
           <label className="text-[10px] text-[#444] uppercase tracking-wider">Notas</label>
-          <textarea value={notas} onChange={e => setNotas(e.target.value)}
+          <textarea value={notas} onChange={e => { setNotas(e.target.value); mark(); }}
             placeholder="Notas adicionales…"
             className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded px-3 py-2 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#333] leading-relaxed"
             rows={4} />

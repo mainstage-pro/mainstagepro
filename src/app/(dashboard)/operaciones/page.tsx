@@ -265,15 +265,24 @@ export default function OperacionesPage() {
       if (selectedId === id) setSelectedId(null);
       return;
     }
-    if ("titulo" in patch) {
-      const upd = (arr: TareaItem[]) =>
-        arr.map(t => t.id === id ? { ...t, titulo: patch.titulo as string } : t);
-      setTareas(upd);
-      setProyectoDetalle(prev => prev ? {
-        ...prev, tareas: upd(prev.tareas),
-        secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
-      } : null);
-    }
+    // Update list items with any changed scalar fields
+    const upd = (arr: TareaItem[]) => arr.map(t => {
+      if (t.id !== id) return t;
+      return {
+        ...t,
+        ...(patch.titulo        != null ? { titulo:    patch.titulo    as string } : {}),
+        ...(patch.prioridad     != null ? { prioridad: patch.prioridad as string } : {}),
+        ...(patch.area          != null ? { area:      patch.area      as string } : {}),
+        ...(patch.estado        != null ? { estado:    patch.estado    as string } : {}),
+        ...(patch.fecha         !== undefined ? { fecha:            patch.fecha            as string | null } : {}),
+        ...(patch.fechaVencimiento !== undefined ? { fechaVencimiento: patch.fechaVencimiento as string | null } : {}),
+      };
+    });
+    setTareas(upd);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: upd(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
+    } : null);
   }, [vista, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteTarea = useCallback(async (id: string) => {
