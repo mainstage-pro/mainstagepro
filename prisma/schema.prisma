@@ -27,6 +27,9 @@ model User {
   bitacoras       ProyectoBitacora[]
   comisionesPagos ComisionPago[]
   moduloAccesos   ModuloAcceso[]
+  tareasAsignadas    Tarea[]             @relation("TareasAsignadas")
+  tareasCreadoPor    Tarea[]             @relation("TareasCreadoPor")
+  iniciativasCreadas IniciativaExterna[] @relation("IniciativasCreadas")
 
   @@map("users")
 }
@@ -1035,4 +1038,48 @@ model PlantillaEquipoItem {
   orden       Int             @default(0)
   notas       String?
   @@map("plantillas_equipo_items")
+}
+
+// ─── OPERACIONES ─────────────────────────────────────────────────────────────
+
+model IniciativaExterna {
+  id          String    @id @default(cuid())
+  nombre      String
+  descripcion String?
+  area        String    @default("GENERAL") // VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | RRHH | GENERAL
+  estado      String    @default("ACTIVA")  // ACTIVA | COMPLETADA | ARCHIVADA
+  color       String?
+  creadoPorId String?
+  creadoPor   User?     @relation("IniciativasCreadas", fields: [creadoPorId], references: [id])
+  fechaInicio DateTime?
+  fechaFin    DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tareas Tarea[]
+
+  @@map("iniciativas_externas")
+}
+
+model Tarea {
+  id               String             @id @default(cuid())
+  titulo           String
+  descripcion      String?
+  prioridad        String             @default("MEDIA")    // URGENTE | ALTA | MEDIA | BAJA
+  area             String             @default("GENERAL")  // VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | RRHH | GENERAL
+  estado           String             @default("PENDIENTE") // PENDIENTE | EN_PROGRESO | COMPLETADA | CANCELADA
+  asignadoAId      String?
+  asignadoA        User?              @relation("TareasAsignadas",  fields: [asignadoAId], references: [id])
+  creadoPorId      String?
+  creadoPor        User?              @relation("TareasCreadoPor",  fields: [creadoPorId], references: [id])
+  iniciativaId     String?
+  iniciativa       IniciativaExterna? @relation(fields: [iniciativaId], references: [id], onDelete: SetNull)
+  fechaVencimiento DateTime?
+  fechaCompletada  DateTime?
+  notas            String?
+  etiquetas        String?  // JSON string[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("tareas")
 }

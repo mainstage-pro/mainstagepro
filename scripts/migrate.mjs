@@ -37,4 +37,42 @@ await run(
   "proyectos.marketingData"
 );
 
+// ─── MÓDULO OPERACIONES ───────────────────────────────────────────────────────
+
+await run(`
+  CREATE TABLE IF NOT EXISTS "iniciativas_externas" (
+    "id"          TEXT NOT NULL PRIMARY KEY,
+    "nombre"      TEXT NOT NULL,
+    "descripcion" TEXT,
+    "area"        TEXT NOT NULL DEFAULT 'GENERAL',
+    "estado"      TEXT NOT NULL DEFAULT 'ACTIVA',
+    "color"       TEXT,
+    "creadoPorId" TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+    "fechaInicio" TIMESTAMP(3),
+    "fechaFin"    TIMESTAMP(3),
+    "createdAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`, "CREATE TABLE iniciativas_externas");
+
+await run(`
+  CREATE TABLE IF NOT EXISTS "tareas" (
+    "id"               TEXT NOT NULL PRIMARY KEY,
+    "titulo"           TEXT NOT NULL,
+    "descripcion"      TEXT,
+    "prioridad"        TEXT NOT NULL DEFAULT 'MEDIA',
+    "area"             TEXT NOT NULL DEFAULT 'GENERAL',
+    "estado"           TEXT NOT NULL DEFAULT 'PENDIENTE',
+    "asignadoAId"      TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+    "creadoPorId"      TEXT REFERENCES "users"("id") ON DELETE SET NULL,
+    "iniciativaId"     TEXT REFERENCES "iniciativas_externas"("id") ON DELETE SET NULL,
+    "fechaVencimiento" TIMESTAMP(3),
+    "fechaCompletada"  TIMESTAMP(3),
+    "notas"            TEXT,
+    "etiquetas"        TEXT,
+    "createdAt"        TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt"        TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+`, "CREATE TABLE tareas");
+
 console.log("Migración completada.");
