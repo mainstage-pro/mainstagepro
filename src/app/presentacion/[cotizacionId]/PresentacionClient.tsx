@@ -706,9 +706,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxAudio.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/equip-speaker.jpg",
+                   "/images/presentacion/m-crowd-pink.jpg",
                    "/images/presentacion/s-stage-full.png",
-                   "/images/presentacion/equip-speaker.jpg")}
+                   "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false}
                  className="w-full h-full object-cover" />
           </div>
@@ -817,8 +817,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxVideo.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/e-corp-outdoor.jpg",
-                   "/images/presentacion/e-corp-screens.jpg",
+                   "/images/presentacion/m-arch-neon.jpg",
+                   "/images/presentacion/s-couple-purple.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false}
                  className="w-full h-full object-cover" />
