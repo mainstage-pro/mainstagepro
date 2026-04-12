@@ -8,8 +8,6 @@ const MESES = [
 ];
 const DIAS = ["Do","Lu","Ma","Mi","Ju","Vi","Sá"];
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function toISO(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
 }
@@ -27,9 +25,6 @@ function displayDate(iso: string): string {
   if (!p) return "";
   return `${String(p.d).padStart(2,"0")}/${String(p.m + 1).padStart(2,"0")}/${p.y}`;
 }
-
-// ── Calendar grid ─────────────────────────────────────────────────────────────
-
 function buildGrid(year: number, month: number): (number | null)[] {
   const first = new Date(year, month, 1).getDay();
   const days  = new Date(year, month + 1, 0).getDate();
@@ -38,25 +33,20 @@ function buildGrid(year: number, month: number): (number | null)[] {
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
 }
-
-// ── Quick date chips ──────────────────────────────────────────────────────────
-
-function quickDates(): { label: string; iso: string }[] {
+function quickDates() {
   const d = new Date();
   const fmt = (dt: Date) => toISO(dt.getFullYear(), dt.getMonth(), dt.getDate());
   const man = new Date(d); man.setDate(d.getDate() + 1);
   const sem = new Date(d); sem.setDate(d.getDate() + 7);
   return [
-    { label: "Hoy",          iso: fmt(d)   },
-    { label: "Mañana",       iso: fmt(man) },
-    { label: "En una semana",iso: fmt(sem) },
+    { label: "Hoy",           iso: fmt(d)   },
+    { label: "Mañana",        iso: fmt(man) },
+    { label: "En una semana", iso: fmt(sem) },
   ];
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export interface DatePickerProps {
-  value: string;          // "YYYY-MM-DD" or ""
+  value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   className?: string;
@@ -64,56 +54,53 @@ export interface DatePickerProps {
   size?: "sm" | "md";
 }
 
+const CAL_W = 288; // fixed calendar width in px
+const CAL_H = 330; // approx calendar height for above/below decision
+
 export default function DatePicker({
   value, onChange, placeholder = "dd/mm/aaaa",
   className = "", showClear = true, size = "md",
 }: DatePickerProps) {
-  const today = todayISO();
+  const today  = todayISO();
   const parsed = parseISO(value);
 
   const [open, setOpen]           = useState(false);
   const [viewYear, setViewYear]   = useState(() => parsed?.y ?? new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parsed?.m ?? new Date().getMonth());
-  // Portal position
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, above: false });
+  const [style, setStyle]         = useState<React.CSSProperties>({});
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const calRef     = useRef<HTMLDivElement>(null);
 
-  // Calculate position when opening
   function openCalendar() {
     if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const above = spaceBelow < 320;
-    setPos({
-      top:   above ? rect.top + window.scrollY : rect.bottom + window.scrollY + 4,
-      left:  rect.left + window.scrollX,
-      width: Math.max(rect.width, 288),
-      above,
+    const r = triggerRef.current.getBoundingClientRect();
+    const above = window.innerHeight - r.bottom < CAL_H + 8;
+    // Clamp left so calendar doesn't go off-screen right
+    const left  = Math.min(r.left, window.innerWidth - CAL_W - 8);
+
+    setStyle({
+      position: "fixed",
+      left,
+      width: CAL_W,
+      ...(above
+        ? { bottom: window.innerHeight - r.top + 4 }
+        : { top: r.bottom + 4 }),
+      zIndex: 9999,
     });
     setOpen(true);
   }
 
-  // Close on outside click
+  // Close on outside click only
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      const target = e.target as Node;
-      if (triggerRef.current?.contains(target)) return;
-      if (calRef.current?.contains(target)) return;
+      const t = e.target as Node;
+      if (triggerRef.current?.contains(t) || calRef.current?.contains(t)) return;
       setOpen(false);
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
-
-  // Close on scroll (reposition would be complex, just close)
-  useEffect(() => {
-    if (!open) return;
-    function onScroll() { setOpen(false); }
-    window.addEventListener("scroll", onScroll, true);
-    return () => window.removeEventListener("scroll", onScroll, true);
   }, [open]);
 
   // Sync view when value changes externally
@@ -128,33 +115,17 @@ export default function DatePicker({
     setViewMonth(m => { if (m === 11) { setViewYear(y => y + 1); return 0; } return m + 1; });
   }, []);
 
-  function selectDay(day: number) {
-    onChange(toISO(viewYear, viewMonth, day));
-    setOpen(false);
-  }
-  function clearDate(e: React.MouseEvent) {
-    e.stopPropagation();
-    onChange("");
-  }
+  function selectDay(day: number) { onChange(toISO(viewYear, viewMonth, day)); setOpen(false); }
+  function clearDate(e: React.MouseEvent) { e.stopPropagation(); onChange(""); }
 
   const grid  = buildGrid(viewYear, viewMonth);
   const chips = quickDates();
   const szCls = size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm";
 
-  // ── Calendar popup (rendered in portal) ───────────────────────────────────
-  const calendar = open && typeof document !== "undefined" ? createPortal(
-    <div
-      ref={calRef}
-      style={{
-        position: "absolute",
-        top:  pos.above ? undefined : pos.top,
-        bottom: pos.above ? window.innerHeight - pos.top + window.scrollY + 4 : undefined,
-        left: pos.left,
-        width: pos.width,
-        zIndex: 9999,
-      }}
-      className="w-72 bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/70 overflow-hidden"
-    >
+  const popup = open && typeof document !== "undefined" ? createPortal(
+    <div ref={calRef} style={style}
+      className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
+
       {/* Quick chips */}
       <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
         {chips.map(c => (
@@ -163,14 +134,12 @@ export default function DatePicker({
               value === c.iso
                 ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
                 : "border-[#1a1a1a] text-[#555] hover:border-[#252525] hover:text-[#999]"
-            }`}>
-            {c.label}
-          </button>
+            }`}>{c.label}</button>
         ))}
       </div>
 
       {/* Month nav */}
-      <div className="flex items-center justify-between px-3 py-2.5">
+      <div className="flex items-center justify-between px-3 py-2">
         <button onClick={prevMonth}
           className="w-7 h-7 flex items-center justify-center rounded-lg text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-all">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -211,14 +180,12 @@ export default function DatePicker({
                 : isToday ? "ring-1 ring-[#B3985B]/50 text-[#B3985B] hover:bg-[#B3985B]/10"
                 : isPast  ? "text-[#333] hover:text-[#666] hover:bg-[#111]"
                 :           "text-[#ccc] hover:bg-[#1a1a1a] hover:text-white"
-              }`}>
-              {day}
-            </button>
+              }`}>{day}</button>
           );
         })}
       </div>
 
-      {/* Clear footer */}
+      {/* Clear */}
       {value && showClear && (
         <div className="border-t border-[#141414] px-3 py-2">
           <button onClick={() => { onChange(""); setOpen(false); }}
@@ -233,7 +200,6 @@ export default function DatePicker({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Trigger */}
       <button
         ref={triggerRef}
         type="button"
@@ -242,17 +208,15 @@ export default function DatePicker({
       >
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
           stroke={value ? "#B3985B" : "#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="shrink-0 transition-colors">
+          className="shrink-0">
           <rect x="3" y="4" width="18" height="18" rx="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
           <line x1="8"  y1="2" x2="8"  y2="6"/>
           <line x1="3"  y1="10" x2="21" y2="10"/>
         </svg>
-
         <span className={`flex-1 ${value ? "text-white" : "text-[#3a3a3a]"}`}>
           {value ? displayDate(value) : placeholder}
         </span>
-
         {value && showClear && (
           <span onClick={clearDate}
             className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
@@ -263,8 +227,7 @@ export default function DatePicker({
           </span>
         )}
       </button>
-
-      {calendar}
+      {popup}
     </div>
   );
 }
