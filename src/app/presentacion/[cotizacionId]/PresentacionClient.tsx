@@ -63,7 +63,7 @@ const MARCA_IMAGES: Record<string, string> = {
   "litetek":         "/images/presentacion/lite-tek-beam280.png",
   "lumos":           "/images/presentacion/lumos-l7.png",
   "sun star":        "/images/presentacion/sunstar-kaleidos.png",
-  "sunstar":         "/images/presentacion/sunstar-kaleidos.png",
+  "sunstar":         "/images/presentacion/sunstar-soul-rgbw.png",
   "steel pro":       "/images/presentacion/steel-pro-razor.png",
   // Video
   "blackmagic":      "/images/presentacion/blackmagic-atem.png",
@@ -107,8 +107,24 @@ const MODELO_IMAGES: Record<string, string> = {
   "Pinspot Bar":     "/images/presentacion/chauvet-pinspot-bar.png",
   // Sun Star
   "KALEIDOS":        "/images/presentacion/sunstar-kaleidos.png",
+  // Shure micrófonos específicos
+  "SM58":            "/images/presentacion/shure-sm58.png",
+  "SM57":            "/images/presentacion/shure-sm58.png",
+  "SM31":            "/images/presentacion/shure-sm58.png",
+  "SM81":            "/images/presentacion/shure-sm58.png",
+  "BETA 52A":        "/images/presentacion/shure-beta52a.png",
+  "BETA91A":         "/images/presentacion/shure-beta52a.png",
+  // MA Lighting
+  "Command Wing":    "/images/presentacion/ma-command-wing.png",
+  "MA3 Compact XT":  "/images/presentacion/grandma-ma3.png",
   // Lumos
   "L7":              "/images/presentacion/lumos-l7.png",
+  "L1 Retro":        "/images/presentacion/lumos-l1-retro.png",
+  "Maple Lamp":      "/images/presentacion/lumos-maple-lamp.png",
+  "Sixaline":        "/images/presentacion/lumos-sixaline.png",
+  // Sun Star
+  "SOUL RGBW":       "/images/presentacion/sunstar-soul-rgbw.png",
+  "KALEIDOS":        "/images/presentacion/sunstar-kaleidos.png",
   // Video
   "Atem Mini Pro":   "/images/presentacion/blackmagic-atem.png",
   // Rigging
