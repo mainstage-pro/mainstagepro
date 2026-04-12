@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 const MESES = [
   "Enero","Febrero","Marzo","Abril","Mayo","Junio",
@@ -30,11 +31,10 @@ function displayDate(iso: string): string {
 // ── Calendar grid ─────────────────────────────────────────────────────────────
 
 function buildGrid(year: number, month: number): (number | null)[] {
-  const first   = new Date(year, month, 1).getDay();   // 0=Dom
-  const days    = new Date(year, month + 1, 0).getDate();
+  const first = new Date(year, month, 1).getDay();
+  const days  = new Date(year, month + 1, 0).getDate();
   const cells: (number | null)[] = Array(first).fill(null);
   for (let i = 1; i <= days; i++) cells.push(i);
-  // Pad to full rows
   while (cells.length % 7 !== 0) cells.push(null);
   return cells;
 }
@@ -71,30 +71,49 @@ export default function DatePicker({
   const today = todayISO();
   const parsed = parseISO(value);
 
-  const [open, setOpen]         = useState(false);
-  const [viewYear, setViewYear] = useState(() => parsed?.y ?? new Date().getFullYear());
+  const [open, setOpen]           = useState(false);
+  const [viewYear, setViewYear]   = useState(() => parsed?.y ?? new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parsed?.m ?? new Date().getMonth());
-  const [above, setAbove]       = useState(false);
+  // Portal position
+  const [pos, setPos] = useState({ top: 0, left: 0, width: 0, above: false });
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const calRef       = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const calRef     = useRef<HTMLDivElement>(null);
+
+  // Calculate position when opening
+  function openCalendar() {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const above = spaceBelow < 320;
+    setPos({
+      top:   above ? rect.top + window.scrollY : rect.bottom + window.scrollY + 4,
+      left:  rect.left + window.scrollX,
+      width: Math.max(rect.width, 288),
+      above,
+    });
+    setOpen(true);
+  }
 
   // Close on outside click
   useEffect(() => {
     if (!open) return;
     function onDown(e: MouseEvent) {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target)) return;
+      if (calRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Position above/below
+  // Close on scroll (reposition would be complex, just close)
   useEffect(() => {
-    if (!open || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    setAbove(spaceBelow < 300);
+    if (!open) return;
+    function onScroll() { setOpen(false); }
+    window.addEventListener("scroll", onScroll, true);
+    return () => window.removeEventListener("scroll", onScroll, true);
   }, [open]);
 
   // Sync view when value changes externally
@@ -113,7 +132,6 @@ export default function DatePicker({
     onChange(toISO(viewYear, viewMonth, day));
     setOpen(false);
   }
-
   function clearDate(e: React.MouseEvent) {
     e.stopPropagation();
     onChange("");
@@ -121,19 +139,107 @@ export default function DatePicker({
 
   const grid  = buildGrid(viewYear, viewMonth);
   const chips = quickDates();
-  const szCls = size === "sm"
-    ? "px-2.5 py-1.5 text-xs"
-    : "px-3 py-2 text-sm";
+  const szCls = size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm";
+
+  // ── Calendar popup (rendered in portal) ───────────────────────────────────
+  const calendar = open && typeof document !== "undefined" ? createPortal(
+    <div
+      ref={calRef}
+      style={{
+        position: "absolute",
+        top:  pos.above ? undefined : pos.top,
+        bottom: pos.above ? window.innerHeight - pos.top + window.scrollY + 4 : undefined,
+        left: pos.left,
+        width: pos.width,
+        zIndex: 9999,
+      }}
+      className="w-72 bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/70 overflow-hidden"
+    >
+      {/* Quick chips */}
+      <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
+        {chips.map(c => (
+          <button key={c.iso} onClick={() => { onChange(c.iso); setOpen(false); }}
+            className={`flex-1 py-1 rounded-lg text-[11px] font-medium border transition-all ${
+              value === c.iso
+                ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
+                : "border-[#1a1a1a] text-[#555] hover:border-[#252525] hover:text-[#999]"
+            }`}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Month nav */}
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <button onClick={prevMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-all">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <button onClick={() => { setViewYear(new Date().getFullYear()); setViewMonth(new Date().getMonth()); }}
+          className="text-sm font-medium text-white hover:text-[#B3985B] transition-colors">
+          {MESES[viewMonth]} {viewYear}
+        </button>
+        <button onClick={nextMonth}
+          className="w-7 h-7 flex items-center justify-center rounded-lg text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-all">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Day headers */}
+      <div className="grid grid-cols-7 px-3 pb-1">
+        {DIAS.map(d => (
+          <div key={d} className="text-center text-[10px] text-[#444] font-medium py-1">{d}</div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+        {grid.map((day, i) => {
+          if (!day) return <div key={i} />;
+          const iso     = toISO(viewYear, viewMonth, day);
+          const isToday = iso === today;
+          const isSel   = iso === value;
+          const isPast  = iso < today;
+          return (
+            <button key={i} onClick={() => selectDay(day)}
+              className={`aspect-square flex items-center justify-center rounded-lg text-[13px] transition-all font-medium ${
+                isSel    ? "bg-[#B3985B] text-[#0a0a0a] shadow-md shadow-[#B3985B]/30"
+                : isToday ? "ring-1 ring-[#B3985B]/50 text-[#B3985B] hover:bg-[#B3985B]/10"
+                : isPast  ? "text-[#333] hover:text-[#666] hover:bg-[#111]"
+                :           "text-[#ccc] hover:bg-[#1a1a1a] hover:text-white"
+              }`}>
+              {day}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Clear footer */}
+      {value && showClear && (
+        <div className="border-t border-[#141414] px-3 py-2">
+          <button onClick={() => { onChange(""); setOpen(false); }}
+            className="text-xs text-[#444] hover:text-red-400 transition-colors">
+            Quitar fecha
+          </button>
+        </div>
+      )}
+    </div>,
+    document.body
+  ) : null;
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
+    <div className={`relative ${className}`}>
       {/* Trigger */}
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(o => !o)}
+        onClick={openCalendar}
         className={`group w-full flex items-center gap-2 ${szCls} bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg text-left transition-all hover:border-[#2a2a2a] focus:outline-none ${open ? "border-[#B3985B]/50 ring-1 ring-[#B3985B]/10" : ""}`}
       >
-        {/* Calendar icon */}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
           stroke={value ? "#B3985B" : "#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
           className="shrink-0 transition-colors">
@@ -147,7 +253,6 @@ export default function DatePicker({
           {value ? displayDate(value) : placeholder}
         </span>
 
-        {/* Clear button */}
         {value && showClear && (
           <span onClick={clearDate}
             className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
@@ -159,89 +264,7 @@ export default function DatePicker({
         )}
       </button>
 
-      {/* Calendar popup */}
-      {open && (
-        <div
-          ref={calRef}
-          className={`absolute z-50 ${above ? "bottom-full mb-1" : "top-full mt-1"} left-0 w-72 bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/70 overflow-hidden`}
-        >
-          {/* Quick chips */}
-          <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
-            {chips.map(c => (
-              <button key={c.iso} onClick={() => { onChange(c.iso); setOpen(false); }}
-                className={`flex-1 py-1 rounded-lg text-[11px] font-medium border transition-all ${
-                  value === c.iso
-                    ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                    : "border-[#1a1a1a] text-[#555] hover:border-[#252525] hover:text-[#999]"
-                }`}>
-                {c.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Month nav */}
-          <div className="flex items-center justify-between px-3 py-2.5">
-            <button onClick={prevMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-all">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="15 18 9 12 15 6"/>
-              </svg>
-            </button>
-            <button onClick={() => { setViewYear(new Date().getFullYear()); setViewMonth(new Date().getMonth()); }}
-              className="text-sm font-medium text-white hover:text-[#B3985B] transition-colors">
-              {MESES[viewMonth]} {viewYear}
-            </button>
-            <button onClick={nextMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#555] hover:text-white hover:bg-[#1a1a1a] transition-all">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="9 18 15 12 9 6"/>
-              </svg>
-            </button>
-          </div>
-
-          {/* Day headers */}
-          <div className="grid grid-cols-7 px-3 pb-1">
-            {DIAS.map(d => (
-              <div key={d} className="text-center text-[10px] text-[#444] font-medium py-1">{d}</div>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
-            {grid.map((day, i) => {
-              if (!day) return <div key={i} />;
-              const iso      = toISO(viewYear, viewMonth, day);
-              const isToday  = iso === today;
-              const isSel    = iso === value;
-              const isPast   = iso < today;
-              return (
-                <button key={i} onClick={() => selectDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-lg text-[13px] transition-all font-medium ${
-                    isSel
-                      ? "bg-[#B3985B] text-[#0a0a0a] shadow-md shadow-[#B3985B]/30"
-                      : isToday
-                      ? "ring-1 ring-[#B3985B]/50 text-[#B3985B] hover:bg-[#B3985B]/10"
-                      : isPast
-                      ? "text-[#333] hover:text-[#666] hover:bg-[#111]"
-                      : "text-[#ccc] hover:bg-[#1a1a1a] hover:text-white"
-                  }`}>
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Clear footer */}
-          {value && showClear && (
-            <div className="border-t border-[#141414] px-3 py-2">
-              <button onClick={() => { onChange(""); setOpen(false); }}
-                className="text-xs text-[#444] hover:text-red-400 transition-colors">
-                Quitar fecha
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {calendar}
     </div>
   );
 }
