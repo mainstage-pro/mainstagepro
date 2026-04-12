@@ -79,6 +79,63 @@ function fmtDateTime(s: string) {
   return new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
+// ─── Accesorios sugeridos por tipo de equipo ──────────────────────────────────
+function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
+  const d = descripcion.toLowerCase();
+  const c = categoria.toLowerCase();
+  if (/(sub|8006|18p|18sp|subgrave)/.test(d))
+    return ["Cable XLR 5m", "Cable de poder", "Clamp/gancho (si se cuelga)"];
+  if (/(ekx|hdl|6a|12p|bafle|speaker|satélite|top\b)/.test(d))
+    return ["Cable XLR 5m", "Cable de poder", "Soporte para bafle", "Espuma protectora"];
+  if (/\bmonitor\b/.test(d))
+    return ["Cable XLR 5m", "Cable de poder"];
+  if (/(sq5|sq6|sq7|dlive|x32|x18|wing|mg10|mg16|konsola|consola|mixer)/.test(d))
+    return ["Cables XLR (×6)", "Cables TRS 6.3mm", "Cable de poder", "Cable Ethernet"];
+  if (/(cdj-?3000|cdj-?2000|cdj\b)/.test(d))
+    return ["Cable RCA", "Cable USB", "Cable de poder", "Funda/case"];
+  if (/(djm|v10|a9|900nxs|rotary.*mix)/.test(d))
+    return ["Cables RCA (×2 pares)", "Cables XLR salida (×2)", "Cable de poder", "Funda/case"];
+  if (/(rmx.?1000|rmx.?500)/.test(d))
+    return ["Cable RCA de entrada", "Cable de poder", "Funda"];
+  if (/\bbooth\b/.test(d))
+    return ["Tornillería completa", "Almohadillas antivibración", "Herramienta de armado"];
+  if (/(inalámbric|inalambric|wireless.*mic|mic.*wireless|shure.*pg|shure.*sm|sennheiser|glxd|blxd|slx|ew[0-9])/.test(d))
+    return ["Baterías AA (pack)", "Cable XLR backup", "Clip de micrófono", "Stand de micrófono"];
+  if (/(iem|in.ear|g4\b|g10\b|ew300|ew400)/.test(d))
+    return ["Baterías AA (pack)", "In-ears de respaldo", "Cable de poder"];
+  if (/(diadema|headset|lavalier|solapa)/.test(d))
+    return ["Baterías AA (pack)", "Repuesto de esponja/windscreen", "Clip extra"];
+  if (/(par.led.inal|uplighting|wireless.*par)/.test(d))
+    return ["Cargador / base de carga", "Cable DMX (backup)", "Clamp (si se monta)"];
+  if (/(par.led|par64|par56)/.test(d))
+    return ["Cable DMX 3m", "Cable de poder", "Clamp"];
+  if (/\bbeam\b/.test(d))
+    return ["Cable DMX 5m", "Cable de poder", "Clamp/soporte"];
+  if (/(spot|wash|moving.head|cabeza móvil)/.test(d))
+    return ["Cable DMX 5m", "Cable de poder", "Clamp/soporte"];
+  if (/strobe/.test(d))
+    return ["Cable DMX 5m", "Cable de poder", "Clamp"];
+  if (/blinder/.test(d))
+    return ["Cable DMX 5m", "Cable de poder", "Clamp"];
+  if (/(barra.led|batten|lineal.*led)/.test(d))
+    return ["Cable DMX 3m", "Cable de poder", "Soporte/stand"];
+  if (/(haze|hazer|neblina|névoa)/.test(d))
+    return ["Líquido hazer 1L", "Cable DMX", "Cable de poder", "Manguera de drenaje"];
+  if (/(truss|torre.*luz|lighting.*tower)/.test(d))
+    return ["Herrajes de unión", "Tornillería extra", "Llave de golpe", "Base de soporte"];
+  if (/(pantalla.*led|led.*panel|ledwall|videowall|módulo.*led)/.test(d))
+    return ["Cables HDMI 5m", "Cable de poder (rack)", "Herramienta de ensamble"];
+  if (/(novastar|atem|vmix|resolume|procesador.*video)/.test(d))
+    return ["Cable HDMI ×2", "Cable de poder", "Laptop de respaldo"];
+  if (/(láser|laser)/.test(d))
+    return ["Cable DMX 3m", "Cable de poder", "Documentación reglamentaria"];
+  // fallback por categoría
+  if (/audio/.test(c)) return ["Cable XLR 5m", "Cable de poder"];
+  if (/iluminaci/.test(c)) return ["Cable DMX 5m", "Cable de poder"];
+  if (/video/.test(c)) return ["Cable HDMI 5m", "Cable de poder"];
+  return ["Cable de poder"];
+}
+
 // ─── Componente campo editable ────────────────────────────────────────────────
 function Campo({ label, value, field, onSave, type = "text", multiline = false }:
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean }) {
@@ -224,6 +281,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [nuevoItemRider, setNuevoItemRider] = useState("");
   const [addingItemRider, setAddingItemRider] = useState(false);
   const [generandoRider, setGenerandoRider] = useState(false);
+  // Rider visual por equipo (estado local, no persiste — guía de carga)
+  const [equipoCargado, setEquipoCargado] = useState<Record<string, boolean>>({});
+  const [accesorioCargado, setAccesorioCargado] = useState<Record<string, boolean>>({});
+  const [equipoExpanded, setEquipoExpanded] = useState<Record<string, boolean>>({});
 
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
@@ -1834,46 +1895,123 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* ── Sección RIDER (bodega) ── */}
+          {/* ── Sección RIDER por equipo ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <div>
-                <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Rider técnico / bodega</span>
-                <span className="text-gray-600 text-xs ml-2">
-                  ({checkRider.filter(c => c.completado).length}/{checkRider.length})
-                </span>
-              </div>
-              <button
-                onClick={generarRiderAutomatico}
-                disabled={generandoRider || proyecto.equipos.length === 0}
-                className="text-xs border border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-700 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                {generandoRider ? "Generando..." : "⚡ Auto-generar desde equipos"}
-              </button>
+            <div className="px-4 py-3 border-b border-[#1a1a1a]">
+              <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Rider técnico</span>
+              <p className="text-gray-600 text-[10px] mt-0.5">Equipos del proyecto · toca cada fila para ver accesorios sugeridos</p>
             </div>
 
-            {checkRider.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-6 italic">
-                Sin items de rider.{proyecto.equipos.length > 0 ? " Usa el botón para auto-generar desde los equipos del proyecto." : " Agrega equipos al proyecto primero."}
-              </p>
-            ) : (
-              checkRider.map(c => (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
-                  <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
-                    className="w-4 h-4 rounded accent-blue-500 shrink-0" />
-                  <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>
-                    {c.item}
-                  </span>
-                  <button onClick={() => eliminarItem(c.id)}
-                    className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
+            {proyecto.equipos.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6 italic">Sin equipos en este proyecto.</p>
+            ) : (() => {
+              // Agrupar por categoría
+              const grupos: Record<string, typeof proyecto.equipos> = {};
+              for (const e of proyecto.equipos) {
+                const cat = e.equipo.categoria.nombre;
+                if (!grupos[cat]) grupos[cat] = [];
+                grupos[cat].push(e);
+              }
+              return Object.entries(grupos).map(([cat, items]) => (
+                <div key={cat}>
+                  <div className="px-4 py-1.5 bg-[#0d0d0d]">
+                    <span className="text-[10px] text-[#555] font-bold uppercase tracking-widest">{cat}</span>
+                  </div>
+                  {items.map(e => {
+                    const accesorios = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre);
+                    const isExpanded = !!equipoExpanded[e.id];
+                    const isCargado = !!equipoCargado[e.id];
+                    const totalAcc = accesorios.length;
+                    const cargadosAcc = accesorios.filter((_, i) => !!accesorioCargado[`${e.id}_${i}`]).length;
+                    return (
+                      <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
+                        {/* Fila principal del equipo */}
+                        <div
+                          className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
+                          onClick={() => setEquipoExpanded(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isCargado}
+                            onChange={ev => { ev.stopPropagation(); setEquipoCargado(prev => ({ ...prev, [e.id]: !isCargado })); }}
+                            onClick={ev => ev.stopPropagation()}
+                            className="w-4 h-4 rounded accent-blue-500 shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-sm font-medium ${isCargado ? "line-through text-gray-600" : "text-white"}`}>
+                              {e.equipo.descripcion}
+                              {e.equipo.marca && <span className="text-gray-500 font-normal"> · {e.equipo.marca}</span>}
+                            </span>
+                            <span className="ml-2 text-[#B3985B] text-xs">×{e.cantidad}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {cargadosAcc > 0 && (
+                              <span className="text-[10px] text-blue-400">{cargadosAcc}/{totalAcc}</span>
+                            )}
+                            <svg
+                              className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Accesorios sugeridos */}
+                        {isExpanded && (
+                          <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-2 space-y-1">
+                            <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios sugeridos</p>
+                            {accesorios.map((acc, i) => {
+                              const key = `${e.id}_${i}`;
+                              const checked = !!accesorioCargado[key];
+                              return (
+                                <label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer group">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => setAccesorioCargado(prev => ({ ...prev, [key]: !checked }))}
+                                    className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0"
+                                  />
+                                  <span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>
+                                    {acc}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))
+              ));
+            })()}
+
+            {/* Items de bodega manuales (RIDER del DB) */}
+            {checkRider.length > 0 && (
+              <div className="border-t border-[#1a1a1a]">
+                <div className="px-4 py-1.5 bg-[#0d0d0d]">
+                  <span className="text-[10px] text-[#555] font-bold uppercase tracking-widest">Items adicionales de bodega</span>
+                </div>
+                {checkRider.map(c => (
+                  <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
+                    <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
+                      className="w-4 h-4 rounded accent-blue-500 shrink-0" />
+                    <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>
+                      {c.item}
+                    </span>
+                    <button onClick={() => eliminarItem(c.id)}
+                      className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {/* Agregar item rider manualmente */}
+            {/* Agregar item manual */}
             <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
               <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && agregarItemRider()}
-                placeholder="Agregar accesorio / item de bodega..."
+                placeholder="Agregar accesorio / item extra de bodega..."
                 className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
               <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()}
                 className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
