@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
+import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 
 interface Usuario { id: string; name: string }
@@ -312,17 +313,19 @@ export default function TaskPanel({
           <div className="flex gap-2">
             <div className="flex-1 space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha</label>
-              <input type="date" value={fecha}
-                onChange={e => setFecha(e.target.value)}
-                onBlur={e => handleFechaBlur("fecha", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
+              <DatePicker
+                value={fecha}
+                onChange={val => { setFecha(val); handleFechaBlur("fecha", val); }}
+                size="sm"
+              />
             </div>
             <div className="flex-1 space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha límite</label>
-              <input type="date" value={fechaVen}
-                onChange={e => setFechaVen(e.target.value)}
-                onBlur={e => handleFechaBlur("fechaVencimiento", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
+              <DatePicker
+                value={fechaVen}
+                onChange={val => { setFechaVen(val); handleFechaBlur("fechaVencimiento", val); }}
+                size="sm"
+              />
             </div>
           </div>
 

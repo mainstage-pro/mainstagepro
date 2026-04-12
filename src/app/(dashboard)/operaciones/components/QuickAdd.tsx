@@ -1,12 +1,16 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { parsearRecurrencia, formatearRecurrencia } from "@/lib/recurrencia";
+import DatePicker from "@/components/ui/DatePicker";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const IconCalendar = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    <rect x="3" y="4" width="18" height="18" rx="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/>
+    <line x1="8"  y1="2" x2="8"  y2="6"/>
+    <line x1="3"  y1="10" x2="21" y2="10"/>
   </svg>
 );
 const IconClock = () => (
@@ -15,8 +19,11 @@ const IconClock = () => (
   </svg>
 );
 const IconFlag = ({ color = "currentColor" }: { color?: string }) => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill={color !== "currentColor" ? color + "33" : "none"} stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+  <svg width="13" height="13" viewBox="0 0 24 24"
+    fill={color !== "currentColor" ? color + "28" : "none"}
+    stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+    <line x1="4" y1="22" x2="4" y2="15"/>
   </svg>
 );
 const IconRepeat = () => (
@@ -31,31 +38,24 @@ const IconPlus = () => (
   </svg>
 );
 
-// ── Priority config ────────────────────────────────────────────────────────────
+// ── Prioridad ─────────────────────────────────────────────────────────────────
 
 const PRIORIDADES = [
-  { key: "URGENTE", label: "Urgente", color: "#f87171", short: "P1" },
-  { key: "ALTA",    label: "Alta",    color: "#fb923c", short: "P2" },
-  { key: "MEDIA",   label: "Media",   color: "#B3985B", short: "P3" },
-  { key: "BAJA",    label: "Baja",    color: "#555",    short: "P4" },
+  { key: "URGENTE", label: "Urgente", color: "#f87171",  short: "P1" },
+  { key: "ALTA",    label: "Alta",    color: "#fb923c",  short: "P2" },
+  { key: "MEDIA",   label: "Media",   color: "#B3985B",  short: "P3" },
+  { key: "BAJA",    label: "Baja",    color: "#555",     short: "P4" },
 ] as const;
 
 type Prioridad = typeof PRIORIDADES[number]["key"];
 
-// ── Date helpers ──────────────────────────────────────────────────────────────
+// ── Recurrence presets ────────────────────────────────────────────────────────
 
-function today()    { return new Date().toISOString().substring(0, 10); }
-function tomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().substring(0, 10); }
-function nextWeek() { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().substring(0, 10); }
-
-function labelFecha(iso: string): string {
-  const d = new Date(iso + "T00:00:00");
-  const t = today();
-  const tom = tomorrow();
-  if (iso === t)   return "Hoy";
-  if (iso === tom) return "Mañana";
-  return d.toLocaleDateString("es-MX", { month: "short", day: "numeric" });
-}
+const REC_PRESETS = [
+  { label: "Cada día",    pat: "cada día" },
+  { label: "Cada semana", pat: "cada semana" },
+  { label: "Cada mes",    pat: "cada mes" },
+];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -77,7 +77,8 @@ interface Props {
   compact?: boolean;
 }
 
-type ActivePanel = "fecha" | "limite" | "prioridad" | "recurrencia" | null;
+type ActivePanel = "fecha" | "limite" | "prioridad" | null;
+type FechaTab    = "especifica" | "recurrente";
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -98,20 +99,46 @@ export default function QuickAdd({
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
   const [recError, setRecError]     = useState("");
   const [panel, setPanel]           = useState<ActivePanel>(null);
+  const [fechaTab, setFechaTab]     = useState<FechaTab>("especifica");
   const titleRef = useRef<HTMLInputElement>(null);
 
-  const prio = PRIORIDADES.find(p => p.key === prioridad)!;
+  const prio     = PRIORIDADES.find(p => p.key === prioridad)!;
+  const recLabel = recurrencia
+    ? (() => { try { return formatearRecurrencia(JSON.parse(recurrencia)); } catch { return ""; } })()
+    : null;
+
+  // Has date-type value for the "fecha" button
+  const hasFecha  = fechaTab === "especifica" ? !!fecha : !!recLabel;
+  const fechaLabel = fechaTab === "especifica" && fecha
+    ? formatDisplay(fecha)
+    : recLabel ?? "Fecha";
+
+  function formatDisplay(iso: string) {
+    const d = new Date(iso + "T00:00:00");
+    const t = new Date(); t.setHours(0,0,0,0);
+    const m = new Date(t); m.setDate(t.getDate() + 1);
+    if (iso === toISO(t))  return "Hoy";
+    if (iso === toISO(m))  return "Mañana";
+    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  }
+  function toISO(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  }
 
   function reset() {
     setTitulo(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA");
-    setRecTexto(""); setRecurrencia(null); setRecError(""); setPanel(null); setOpen(false);
+    setRecTexto(""); setRecurrencia(null); setRecError("");
+    setPanel(null); setFechaTab("especifica"); setOpen(false);
   }
 
   function submit() {
     if (!titulo.trim()) { titleRef.current?.focus(); return; }
     onAdd({
-      titulo: titulo.trim(), fecha: fecha || null,
-      fechaVencimiento: fechaVen || null, prioridad, recurrencia,
+      titulo: titulo.trim(),
+      fecha:           fechaTab === "especifica" ? (fecha || null) : null,
+      fechaVencimiento:fechaVen || null,
+      prioridad,
+      recurrencia:     fechaTab === "recurrente" ? recurrencia : null,
       proyectoTareaId, seccionId, parentId,
     });
     reset();
@@ -121,29 +148,23 @@ export default function QuickAdd({
     setPanel(prev => prev === p ? null : p);
   }
 
-  function applyRec() {
-    if (!recTexto.trim()) { setRecurrencia(null); setPanel(null); return; }
-    const cfg = parsearRecurrencia(recTexto.trim());
-    if (!cfg) { setRecError("Patrón no reconocido. Ej: 'cada lunes', 'cada martes y jueves'"); return; }
+  function applyRec(txt: string) {
+    if (!txt.trim()) { setRecurrencia(null); return; }
+    const cfg = parsearRecurrencia(txt.trim());
+    if (!cfg) { setRecError("No reconocido. Ej: 'cada lunes', 'cada martes y jueves'"); return; }
     setRecurrencia(JSON.stringify(cfg));
     setRecError("");
     setPanel(null);
   }
 
-  const recLabel = recurrencia
-    ? (() => { try { return formatearRecurrencia(JSON.parse(recurrencia)); } catch { return "Repetir"; } })()
-    : null;
-
-  // ── Closed ─────────────────────────────────────────────────────────────────
+  // ── Closed state ────────────────────────────────────────────────────────────
   if (!open) {
     return (
       <button
         onClick={() => { setOpen(true); setTimeout(() => titleRef.current?.focus(), 30); }}
-        className={`group w-full flex items-center gap-2.5 px-3 rounded-lg text-[#3a3a3a] hover:text-[#666] transition-all ${
-          compact ? "py-1.5" : "py-2"
-        }`}
+        className={`group w-full flex items-center gap-2.5 px-3 rounded-lg text-[#333] hover:text-[#666] transition-all ${compact ? "py-1.5" : "py-2"}`}
       >
-        <span className="flex items-center justify-center w-4 h-4 rounded-full border border-[#2a2a2a] group-hover:border-[#B3985B]/50 group-hover:text-[#B3985B]/70 transition-colors">
+        <span className="flex items-center justify-center w-4 h-4 rounded-full border border-[#222] group-hover:border-[#B3985B]/40 group-hover:text-[#B3985B]/60 transition-colors">
           <IconPlus />
         </span>
         <span className="text-sm">{placeholder}</span>
@@ -151,143 +172,116 @@ export default function QuickAdd({
     );
   }
 
-  // ── Open ───────────────────────────────────────────────────────────────────
+  // ── Open state ───────────────────────────────────────────────────────────────
   return (
-    <div className="mx-1 my-2 rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] shadow-2xl shadow-black/60 overflow-hidden ring-1 ring-[#B3985B]/10">
+    <div className="mx-1 my-2 rounded-xl border border-[#1e1e1e] bg-[#080808] shadow-2xl shadow-black/70 overflow-hidden ring-1 ring-[#B3985B]/8">
 
-      {/* ── Active panel ─────────────────────────────────────────────────── */}
+      {/* ── Panel: Fecha (específica + recurrente con tabs) ─────────────── */}
       {panel === "fecha" && (
-        <div className="px-4 py-3 border-b border-[#141414]">
-          <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-medium">Fecha de inicio</p>
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {[
-              { label: "Hoy",       val: today() },
-              { label: "Mañana",    val: tomorrow() },
-              { label: "Esta semana", val: nextWeek() },
-            ].map(opt => (
-              <button key={opt.label} onClick={() => { setFecha(opt.val); setPanel(null); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  fecha === opt.val
-                    ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                    : "border-[#1e1e1e] text-[#555] hover:border-[#2a2a2a] hover:text-[#999]"
+        <div className="border-b border-[#141414]">
+          {/* Tabs */}
+          <div className="flex border-b border-[#141414]">
+            {(["especifica","recurrente"] as FechaTab[]).map(tab => (
+              <button key={tab} onClick={() => setFechaTab(tab)}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                  fechaTab === tab
+                    ? "text-[#B3985B] border-b-2 border-[#B3985B] bg-[#B3985B]/5"
+                    : "text-[#444] hover:text-[#888]"
                 }`}>
-                {opt.label}
+                {tab === "especifica" ? "Fecha específica" : "Fecha recurrente"}
               </button>
             ))}
-            {fecha && (
-              <button onClick={() => { setFecha(""); setPanel(null); }}
-                className="px-2.5 py-1 rounded-lg text-xs border border-[#1e1e1e] text-[#444] hover:text-red-400 hover:border-red-900/50 transition-all">
-                Quitar
-              </button>
-            )}
           </div>
-          <input
-            type="date" value={fecha}
-            onChange={e => setFecha(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") setPanel(null); if (e.key === "Escape") setPanel(null); }}
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/50 transition-colors"
-          />
+
+          {fechaTab === "especifica" ? (
+            <div className="p-3">
+              <DatePicker
+                value={fecha}
+                onChange={val => { setFecha(val); if (val) setPanel(null); }}
+                placeholder="dd/mm/aaaa"
+                size="sm"
+              />
+            </div>
+          ) : (
+            <div className="p-3 space-y-2">
+              {/* Presets */}
+              <div className="flex flex-wrap gap-1.5">
+                {REC_PRESETS.map(p => {
+                  const cfg  = parsearRecurrencia(p.pat);
+                  const json = cfg ? JSON.stringify(cfg) : null;
+                  return (
+                    <button key={p.label} onClick={() => { if (json) { setRecurrencia(json); setRecTexto(""); setPanel(null); } }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
+                        recurrencia === json
+                          ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
+                          : "border-[#1e1e1e] text-[#555] hover:border-[#252525] hover:text-[#999]"
+                      }`}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+                {recurrencia && (
+                  <button onClick={() => { setRecurrencia(null); setRecTexto(""); }}
+                    className="px-2.5 py-1 rounded-lg text-xs border border-[#1e1e1e] text-[#444] hover:text-red-400 hover:border-red-900/40 transition-all">
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {/* Text input */}
+              <div className="flex gap-2">
+                <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
+                  onKeyDown={e => { if (e.key === "Enter") applyRec(recTexto); if (e.key === "Escape") setPanel(null); }}
+                  placeholder="cada lunes · cada martes y jueves · cada tercer viernes…"
+                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40 transition-colors" />
+                <button onClick={() => applyRec(recTexto)}
+                  className="px-3 py-1.5 bg-[#161616] hover:bg-[#1e1e1e] text-[#888] hover:text-white text-xs rounded-lg transition-all">
+                  OK
+                </button>
+              </div>
+              {recError && <p className="text-[11px] text-red-400">{recError}</p>}
+              {/* Preview */}
+              {recurrencia && !recError && (
+                <p className="text-[11px] text-[#B3985B] flex items-center gap-1">
+                  <IconRepeat />
+                  {recLabel}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── Panel: Fecha límite ──────────────────────────────────────────── */}
       {panel === "limite" && (
-        <div className="px-4 py-3 border-b border-[#141414]">
+        <div className="p-3 border-b border-[#141414]">
           <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-medium">Fecha límite</p>
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {[
-              { label: "Hoy",    val: today() },
-              { label: "Mañana", val: tomorrow() },
-              { label: "1 semana", val: nextWeek() },
-            ].map(opt => (
-              <button key={opt.label} onClick={() => { setFechaVen(opt.val); setPanel(null); }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                  fechaVen === opt.val
-                    ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                    : "border-[#1e1e1e] text-[#555] hover:border-[#2a2a2a] hover:text-[#999]"
-                }`}>
-                {opt.label}
-              </button>
-            ))}
-            {fechaVen && (
-              <button onClick={() => { setFechaVen(""); setPanel(null); }}
-                className="px-2.5 py-1 rounded-lg text-xs border border-[#1e1e1e] text-[#444] hover:text-red-400 hover:border-red-900/50 transition-all">
-                Quitar
-              </button>
-            )}
-          </div>
-          <input
-            type="date" value={fechaVen}
-            onChange={e => setFechaVen(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") setPanel(null); if (e.key === "Escape") setPanel(null); }}
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/50 transition-colors"
+          <DatePicker
+            value={fechaVen}
+            onChange={val => { setFechaVen(val); if (val) setPanel(null); }}
+            placeholder="dd/mm/aaaa"
+            size="sm"
           />
         </div>
       )}
 
+      {/* ── Panel: Prioridad ─────────────────────────────────────────────── */}
       {panel === "prioridad" && (
-        <div className="px-4 py-3 border-b border-[#141414]">
-          <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-medium">Prioridad</p>
+        <div className="p-3 border-b border-[#141414]">
+          <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2.5 font-medium">Prioridad</p>
           <div className="flex gap-2">
             {PRIORIDADES.map(p => (
               <button key={p.key} onClick={() => { setPrioridad(p.key); setPanel(null); }}
-                className={`flex-1 flex flex-col items-center gap-1.5 py-2 rounded-xl border transition-all ${
-                  prioridad === p.key
-                    ? "border-opacity-60 bg-opacity-10"
-                    : "border-[#1a1a1a] hover:border-[#282828]"
-                }`}
+                className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all"
                 style={{
-                  borderColor: prioridad === p.key ? p.color : undefined,
-                  backgroundColor: prioridad === p.key ? p.color + "12" : undefined,
+                  borderColor: prioridad === p.key ? p.color + "80" : "#1a1a1a",
+                  backgroundColor: prioridad === p.key ? p.color + "10" : "transparent",
                 }}>
                 <IconFlag color={p.color} />
-                <span className="text-[10px] font-medium" style={{ color: prioridad === p.key ? p.color : "#555" }}>{p.short}</span>
-                <span className="text-[9px]" style={{ color: prioridad === p.key ? p.color + "cc" : "#3a3a3a" }}>{p.label}</span>
+                <span className="text-[10px] font-bold" style={{ color: prioridad === p.key ? p.color : "#444" }}>{p.short}</span>
+                <span className="text-[9px]" style={{ color: prioridad === p.key ? p.color + "aa" : "#2e2e2e" }}>{p.label}</span>
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {panel === "recurrencia" && (
-        <div className="px-4 py-3 border-b border-[#141414]">
-          <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-medium">Recurrencia</p>
-          <div className="flex flex-wrap gap-1.5 mb-2.5">
-            {[
-              { label: "Cada día",    val: "cada día" },
-              { label: "Cada semana", val: "cada semana" },
-              { label: "Cada mes",    val: "cada mes" },
-            ].map(opt => {
-              const cfg = parsearRecurrencia(opt.val);
-              const json = cfg ? JSON.stringify(cfg) : null;
-              return (
-                <button key={opt.label} onClick={() => { if (json) { setRecurrencia(json); setRecTexto(""); setPanel(null); } }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                    recurrencia === json
-                      ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                      : "border-[#1e1e1e] text-[#555] hover:border-[#2a2a2a] hover:text-[#999]"
-                  }`}>
-                  {opt.label}
-                </button>
-              );
-            })}
-            {recurrencia && (
-              <button onClick={() => { setRecurrencia(null); setRecTexto(""); setPanel(null); }}
-                className="px-2.5 py-1 rounded-lg text-xs border border-[#1e1e1e] text-[#444] hover:text-red-400 hover:border-red-900/50 transition-all">
-                Quitar
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
-              onKeyDown={e => { if (e.key === "Enter") applyRec(); if (e.key === "Escape") setPanel(null); }}
-              placeholder='cada lunes · cada martes y jueves · cada tercer viernes…'
-              className="flex-1 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#2e2e2e] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
-            <button onClick={applyRec}
-              className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#222] text-[#888] hover:text-white text-xs rounded-lg transition-all">
-              OK
-            </button>
-          </div>
-          {recError && <p className="text-[11px] text-red-400 mt-1.5">{recError}</p>}
         </div>
       )}
 
@@ -302,21 +296,21 @@ export default function QuickAdd({
             if (e.key === "Escape") reset();
           }}
           placeholder={placeholder}
-          className="w-full bg-transparent text-[15px] text-white placeholder-[#2e2e2e] focus:outline-none leading-snug"
+          className="w-full bg-transparent text-[15px] text-white placeholder-[#252525] focus:outline-none leading-snug"
         />
       </div>
 
       {/* ── Divider ──────────────────────────────────────────────────────── */}
-      <div className="h-px bg-[#141414] mx-0" />
+      <div className="h-px bg-[#111]" />
 
       {/* ── Bottom toolbar ───────────────────────────────────────────────── */}
       <div className="flex items-center gap-0.5 px-3 py-2">
 
-        {/* Fecha */}
+        {/* Fecha (específica o recurrente) */}
         <ToolbarBtn
-          icon={<IconCalendar />}
-          label={fecha ? labelFecha(fecha) : "Fecha"}
-          active={!!fecha}
+          icon={fechaTab === "recurrente" && recurrencia ? <IconRepeat /> : <IconCalendar />}
+          label={fechaLabel}
+          active={hasFecha}
           activeColor="#B3985B"
           isOpen={panel === "fecha"}
           onClick={() => togglePanel("fecha")}
@@ -325,7 +319,7 @@ export default function QuickAdd({
         {/* Límite */}
         <ToolbarBtn
           icon={<IconClock />}
-          label={fechaVen ? labelFecha(fechaVen) : "Límite"}
+          label={fechaVen ? formatDisplay(fechaVen) : "Límite"}
           active={!!fechaVen}
           activeColor="#e85d04"
           isOpen={panel === "limite"}
@@ -342,29 +336,16 @@ export default function QuickAdd({
           onClick={() => togglePanel("prioridad")}
         />
 
-        {/* Recurrencia */}
-        <ToolbarBtn
-          icon={<IconRepeat />}
-          label={recLabel ?? "Repetir"}
-          active={!!recurrencia}
-          activeColor="#B3985B"
-          isOpen={panel === "recurrencia"}
-          onClick={() => togglePanel("recurrencia")}
-        />
-
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Cancel */}
         <button onClick={reset}
-          className="text-xs text-[#3a3a3a] hover:text-[#888] px-2.5 py-1.5 rounded-lg hover:bg-[#111] transition-all font-medium">
+          className="text-xs text-[#333] hover:text-[#777] px-2.5 py-1.5 rounded-lg hover:bg-[#0f0f0f] transition-all font-medium">
           Cancelar
         </button>
 
-        {/* Submit */}
         <button onClick={submit} disabled={!titulo.trim()}
-          className="text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-all ml-1 disabled:opacity-30 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#0a0a0a]"
-          style={{ boxShadow: titulo.trim() ? "0 0 12px #B3985B33" : "none" }}>
+          className="text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-all ml-1 disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
+          style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}>
           Agregar
         </button>
       </div>
@@ -387,14 +368,10 @@ function ToolbarBtn({
   return (
     <button onClick={onClick}
       className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-        isOpen
-          ? "bg-[#1a1a1a] text-white"
-          : active
-          ? "hover:bg-[#151515]"
-          : "text-[#3a3a3a] hover:text-[#777] hover:bg-[#111]"
+        isOpen ? "bg-[#151515] text-white" : "hover:bg-[#0f0f0f]"
       }`}
-      style={active && !isOpen ? { color: activeColor } : undefined}>
-      <span style={active ? { color: isOpen ? "white" : activeColor } : { color: isOpen ? "#888" : "#3a3a3a" }}>
+      style={{ color: isOpen ? "white" : active ? activeColor : "#333" }}>
+      <span style={{ color: isOpen ? "#888" : active ? activeColor : "#2e2e2e" }}>
         {icon}
       </span>
       <span className="hidden sm:inline">{label}</span>

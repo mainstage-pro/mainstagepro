@@ -4,6 +4,7 @@ import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskPanel, { type TareaDetalle } from "./components/TaskPanel";
 import QuickAdd from "./components/QuickAdd";
+import UndoToast, { type UndoState } from "./components/UndoToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -70,6 +71,12 @@ export default function OperacionesPage() {
   const [loadingPanel, setLoadingPanel]         = useState(false);
 
   const [sortHoy, setSortHoy]                   = useState(SORT_OPTIONS[0]);
+  const [showCompleted, setShowCompleted]       = useState(false);
+  const [undoState, setUndoState]               = useState<UndoState | null>(null);
+  const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const showCompletedRef = useRef(showCompleted);
+  useEffect(() => { showCompletedRef.current = showCompleted; }, [showCompleted]);
+
   const [carpetasOpen, setCarpetasOpen]         = useState<Set<string>>(new Set());
   const [proyectosSueltos, setProyectosSueltos] = useState(true);
 
@@ -165,23 +172,81 @@ export default function OperacionesPage() {
   }, [vista, proyectoDetalle]);
 
   const completeTarea = useCallback(async (id: string) => {
+    // Find titulo for undo toast
+    let titulo = "Tarea";
+    const findTitulo = (arr: TareaItem[]) => arr.find(t => t.id === id)?.titulo;
+    titulo = findTitulo(tareas) ?? (proyectoDetalle ? (findTitulo(proyectoDetalle.tareas) ?? proyectoDetalle.secciones.flatMap(s => s.tareas).find(t => t.id === id)?.titulo ?? titulo) : titulo);
+
     const res = await fetch(`/api/tareas/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "COMPLETADA" }),
     });
     if (!res.ok) return;
     const { nextTarea } = await res.json();
-    const removeAndAdd = (arr: TareaItem[]) => {
-      const f = arr.filter(t => t.id !== id);
-      return nextTarea ? [nextTarea, ...f] : f;
-    };
-    setTareas(removeAndAdd);
+
+    // Mark completed in state (keep visible for undo window)
+    const markCompleted = (arr: TareaItem[]) =>
+      arr.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t);
+    if (nextTarea) {
+      setTareas(prev => [nextTarea, ...markCompleted(prev)]);
+      setProyectoDetalle(prev => prev ? {
+        ...prev, tareas: [nextTarea, ...markCompleted(prev.tareas)],
+        secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
+      } : null);
+    } else {
+      setTareas(markCompleted);
+      setProyectoDetalle(prev => prev ? {
+        ...prev, tareas: markCompleted(prev.tareas),
+        secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
+      } : null);
+    }
+
+    // Show undo toast with 4s timer
+    clearTimeout(undoTimer.current);
+    setUndoState({ id, titulo, expiresAt: Date.now() + 4000 });
+    undoTimer.current = setTimeout(() => {
+      if (!showCompletedRef.current) {
+        const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+        setTareas(remove);
+        setProyectoDetalle(prev => prev ? {
+          ...prev, tareas: remove(prev.tareas),
+          secciones: prev.secciones.map(s => ({ ...s, tareas: remove(s.tareas) })),
+        } : null);
+      }
+      setUndoState(null);
+    }, 4000);
+  }, [tareas, proyectoDetalle]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleUndo = useCallback(async () => {
+    if (!undoState) return;
+    clearTimeout(undoTimer.current);
+    await fetch(`/api/tareas/${undoState.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "PENDIENTE" }),
+    });
+    const restore = (arr: TareaItem[]) =>
+      arr.map(t => t.id === undoState.id ? { ...t, estado: "PENDIENTE" } : t);
+    setTareas(restore);
     setProyectoDetalle(prev => prev ? {
-      ...prev, tareas: removeAndAdd(prev.tareas),
-      secciones: prev.secciones.map(s => ({ ...s, tareas: removeAndAdd(s.tareas) })),
+      ...prev, tareas: restore(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: restore(s.tareas) })),
     } : null);
-    if (selectedId === id) setSelectedId(nextTarea?.id ?? null);
-  }, [proyectoDetalle, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    setUndoState(null);
+  }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleDismissUndo = useCallback(() => {
+    clearTimeout(undoTimer.current);
+    if (!showCompletedRef.current && undoState) {
+      const id = undoState.id;
+      const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+      setTareas(remove);
+      setProyectoDetalle(prev => prev ? {
+        ...prev, tareas: remove(prev.tareas),
+        secciones: prev.secciones.map(s => ({ ...s, tareas: remove(s.tareas) })),
+      } : null);
+    }
+    setUndoState(null);
+  }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveTarea = useCallback(async (id: string, patch: Record<string, unknown>) => {
     await fetch(`/api/tareas/${id}`, {
@@ -419,6 +484,20 @@ export default function OperacionesPage() {
             </div>
           )}
 
+          {typeof vista === "string" && vista !== "integrada" && (
+            <button
+              onClick={() => setShowCompleted(v => !v)}
+              className={`ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors ${
+                vista === "hoy" ? "ml-2" : "ml-auto"
+              } ${showCompleted ? "text-[#B3985B] bg-[#B3985B]/10" : "text-[#444] hover:text-[#888]"}`}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Completadas
+            </button>
+          )}
+
           {typeof vista !== "string" && proyectoDetalle && (
             <button onClick={() => setShowNuevaSeccion(true)} className="ml-auto px-3 py-1 bg-[#1a1a1a] text-xs text-[#888] rounded hover:bg-[#222] hover:text-white transition-colors">
               + Sección
@@ -459,29 +538,34 @@ export default function OperacionesPage() {
             </div>
           ) : typeof vista === "string" ? (
             <div className="max-w-3xl mx-auto px-4 py-3">
-              {tareas.length === 0 ? (
-                <div className="text-center py-16 text-[#333]">
-                  <p className="text-4xl mb-3">{vista === "hoy" ? "☀️" : "📋"}</p>
-                  <p className="text-sm">
-                    {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
-                  </p>
-                </div>
-              ) : hoyGrouped ? (
-                hoyGrouped.map(group => (
-                  <div key={group.label} className="mb-4">
-                    <p className="text-xs text-[#444] font-semibold uppercase tracking-wider px-3 py-2">{group.label}</p>
-                    {group.tareas.map(t => (
-                      <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
-                    ))}
+              {(() => {
+                const visibleTareas = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
+                if (visibleTareas.length === 0) return (
+                  <div className="text-center py-16 text-[#333]">
+                    <p className="text-4xl mb-3">{vista === "hoy" ? "☀️" : "📋"}</p>
+                    <p className="text-sm">
+                      {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
+                    </p>
                   </div>
-                ))
-              ) : (
-                tareas.map(t => (
+                );
+                if (hoyGrouped) return hoyGrouped.map(group => {
+                  const groupVisible = showCompleted ? group.tareas : group.tareas.filter(t => t.estado !== "COMPLETADA");
+                  if (groupVisible.length === 0) return null;
+                  return (
+                    <div key={group.label} className="mb-4">
+                      <p className="text-xs text-[#444] font-semibold uppercase tracking-wider px-3 py-2">{group.label}</p>
+                      {groupVisible.map(t => (
+                        <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
+                      ))}
+                    </div>
+                  );
+                });
+                return visibleTareas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
-                ))
-              )}
+                ));
+              })()}
               <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" />
             </div>
           ) : (
@@ -571,6 +655,9 @@ export default function OperacionesPage() {
           />
         ) : null
       )}
+
+      {/* ── UNDO TOAST ────────────────────────────────────────────────────── */}
+      <UndoToast undo={undoState} onUndo={handleUndo} onDismiss={handleDismissUndo} />
 
       {/* ── MODAL: Nuevo proyecto ──────────────────────────────────────────── */}
       {showNuevoProyecto && (
