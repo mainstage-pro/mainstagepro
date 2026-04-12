@@ -16,7 +16,16 @@ interface Equipo {
   precioRenta: number;
   costoProveedor: number | null;
   cantidadTotal: number;
-  categoria: { nombre: string; orden: number };
+  categoria: { id: string; nombre: string; orden: number };
+}
+
+interface LineaOcasional {
+  id: string;
+  descripcion: string;
+  cantidad: number;
+  dias: number;
+  precioUnitario: number;
+  subtotal: number;
 }
 
 interface RolTecnico {
@@ -198,6 +207,16 @@ function CotizadorForm() {
   const [selLogPrecio, setSelLogPrecio] = useState(String(CONCEPTOS_COMIDA[0].precio));
   const [selLogCant, setSelLogCant] = useState("1"); const [selLogDias, setSelLogDias] = useState("1");
 
+  // Nuevos: modal nuevo equipo proveedor + adicionales
+  const [showNuevoEqModal, setShowNuevoEqModal] = useState(false);
+  const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1" });
+  const [guardandoEq, setGuardandoEq] = useState(false);
+  const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
+  const [selOcDesc, setSelOcDesc] = useState("");
+  const [selOcPrecio, setSelOcPrecio] = useState("");
+  const [selOcCant, setSelOcCant] = useState("1");
+  const [selOcDias, setSelOcDias] = useState("1");
+
   // Descuentos (null = automático)
   const [dVolumenManual, setDVolumenManual] = useState<string>("");
   const [dB2BManual, setDB2BManual] = useState<string>("");
@@ -295,6 +314,10 @@ function CotizadorForm() {
           concepto: l.descripcion, precioUnitario: l.precioUnitario,
           cantidad: l.cantidad, dias: l.dias, subtotal: l.subtotal,
         })));
+        setLineasOcasional(lineas.filter((l: {tipo:string}) => l.tipo === "OTRO").map((l: {descripcion:string;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
+          id: uid(), descripcion: l.descripcion,
+          cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
+        })));
         return;
       }
 
@@ -353,6 +376,15 @@ function CotizadorForm() {
 
   // Equipos externos (de terceros)
   const equiposExternos = useMemo(() => equipos.filter(e => e.tipo === "EXTERNO"), [equipos]);
+
+  // Categorías únicas derivadas del catálogo cargado
+  const categoriasList = useMemo(() => {
+    const map = new Map<string, { id: string; nombre: string }>();
+    for (const eq of equipos) {
+      if (!map.has(eq.categoria.id)) map.set(eq.categoria.id, { id: eq.categoria.id, nombre: eq.categoria.nombre });
+    }
+    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [equipos]);
 
   // ── Agregar equipo ──
   function agregarEquipo() {
@@ -457,6 +489,62 @@ function CotizadorForm() {
     setSelExt(""); setSelExtCant("1"); setSelExtDias(evento.diasEquipo);
   }
 
+  // ── Registrar nuevo equipo proveedor en DB y agregar a cotización ──
+  async function crearEquipoProveedor() {
+    if (!nuevoEqForm.descripcion || !nuevoEqForm.categoriaId) return;
+    setGuardandoEq(true);
+    try {
+      const res = await fetch("/api/equipos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          descripcion: nuevoEqForm.descripcion,
+          marca: nuevoEqForm.marca || null,
+          categoriaId: nuevoEqForm.categoriaId,
+          tipo: "EXTERNO",
+          precioRenta: parseFloat(nuevoEqForm.precioRenta) || 0,
+          costoProveedor: nuevoEqForm.costoProveedor ? parseFloat(nuevoEqForm.costoProveedor) : null,
+          cantidadTotal: parseInt(nuevoEqForm.cantidadTotal) || 1,
+        }),
+      });
+      if (!res.ok) return;
+      const { equipo: newEq } = await res.json();
+      // Añadir al catálogo local
+      setEquipos(prev => [...prev, newEq]);
+      // Agregar línea a la cotización
+      setLineasExterno(prev => [...prev, {
+        id: uid(),
+        equipoId: newEq.id,
+        descripcion: newEq.descripcion,
+        marca: newEq.marca ?? "",
+        cantidad: 1,
+        dias: parseInt(evento.diasEquipo) || 1,
+        precioUnitario: newEq.precioRenta,
+        costoProveedor: newEq.costoProveedor ?? 0,
+        subtotal: newEq.precioRenta * 1 * (parseInt(evento.diasEquipo) || 1),
+        costoTotal: (newEq.costoProveedor ?? 0) * 1 * (parseInt(evento.diasEquipo) || 1),
+      }]);
+      setNuevoEqForm({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1" });
+      setShowNuevoEqModal(false);
+    } finally {
+      setGuardandoEq(false);
+    }
+  }
+
+  // ── Agregar equipo/concepto ocasional (sin registro en DB) ──
+  function agregarOcasional() {
+    if (!selOcDesc.trim() || !selOcPrecio) return;
+    const precio = parseFloat(selOcPrecio) || 0;
+    const cant = parseFloat(selOcCant) || 1;
+    const dias = parseInt(selOcDias) || 1;
+    setLineasOcasional(prev => [...prev, {
+      id: uid(), descripcion: selOcDesc.trim(),
+      cantidad: cant, dias, precioUnitario: precio,
+      subtotal: precio * cant * dias,
+    }]);
+    setSelOcDesc(""); setSelOcPrecio(""); setSelOcCant("1"); setSelOcDias("1");
+  }
+
   function updateExterno(id: string, field: "cantidad" | "dias" | "precioUnitario", val: number) {
     setLineasExterno(prev => prev.map(l => {
       if (l.id !== id) return l;
@@ -558,8 +646,10 @@ function CotizadorForm() {
     const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
-    // Total incluye equipos propios (con descuento) + externos (sin descuento) + operación + logística
-    const total = subtotalEquiposNeto + subtotalExternos + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje;
+    const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
+
+    // Total incluye equipos propios (con descuento) + externos (sin descuento) + ocasionales + operación + logística
+    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
 
@@ -578,7 +668,7 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalExternos, costoExternos,
+      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, costoExternos,
       subtotalOperacion, subtotalDJ,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       autoVolumen, autoB2B, autoMultidia,
@@ -587,7 +677,7 @@ function CotizadorForm() {
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
     };
-  }, [lineasEquipo, lineasExterno, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
+  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
     dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, aplicaIva]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
@@ -631,6 +721,11 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: l.precioUnitario,
         subtotal: l.subtotal, esExterno: false, esIncluido: false,
       })),
+      ...lineasOcasional.map(l => ({
+        tipo: "OTRO", descripcion: l.descripcion, cantidad: l.cantidad, dias: l.dias,
+        precioUnitario: l.precioUnitario, costoUnitario: 0,
+        subtotal: l.subtotal, esExterno: false, esIncluido: false,
+      })),
     ];
 
     const payload = {
@@ -651,7 +746,7 @@ function CotizadorForm() {
       montoBeneficio: resumen.montoDescuento,
       subtotalEquiposNeto: resumen.subtotalEquiposNeto,
       subtotalPaquetes: 0,
-      subtotalTerceros: resumen.subtotalExternos,
+      subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
       subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
       subtotalTransporte: resumen.subtotalTransporte,
       subtotalComidas: resumen.subtotalComidas,
@@ -1017,57 +1112,154 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Equipos de terceros ── */}
-          {equiposExternos.length > 0 && (
-            <Seccion titulo="Equipos de terceros" hint="sin descuento por volumen · costo de proveedor afecta viabilidad">
-              <div className="flex gap-2 mb-4 items-end">
-                <div className="flex-1">
-                  <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
-                  <select value={selExt} onChange={e => setSelExt(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Selecciona equipo externo —</option>
-                    {equiposExternos.map(eq => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""} — cliente: {formatCurrency(eq.precioRenta)} / costo: {formatCurrency(eq.costoProveedor ?? 0)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                  <input type="number" min="1" value={selExtCant} onChange={e => setSelExtCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                  <input type="number" min="1" value={selExtDias} onChange={e => setSelExtDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <button onClick={agregarExterno} disabled={!selExt} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">+ Agregar</button>
-              </div>
-
-              {lineasExterno.length === 0 ? (
-                <p className="text-gray-600 text-sm text-center py-3">Sin equipos de terceros</p>
-              ) : (
-                <div className="border border-[#222] rounded-lg overflow-hidden">
-                  {lineasExterno.map(l => (
-                    <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{l.descripcion}</p>
-                        {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
-                        <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
-                      </div>
-                      <input type="number" value={l.cantidad} min="1" onChange={e => updateExterno(l.id, "cantidad", parseFloat(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Cantidad" />
-                      <input type="number" value={l.dias} min="1" onChange={e => updateExterno(l.id, "dias", parseInt(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Días" />
-                      <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
-                      <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
-                      <button onClick={() => setLineasExterno(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
-                    </div>
-                  ))}
-                  <div className="flex justify-between px-3 py-2 bg-[#0d0d0d] border-t border-[#222]">
-                    <span className="text-xs text-gray-500">Subtotal terceros (sin descuento)</span>
-                    <span className="text-sm font-medium text-white">{formatCurrency(resumen.subtotalExternos)}</span>
+          <Seccion titulo="Equipos de terceros" hint="sin descuento por volumen · costo de proveedor afecta viabilidad">
+            {/* Modal: registrar nuevo equipo proveedor */}
+            {showNuevoEqModal && (
+              <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
+                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-3">Registrar nuevo equipo de proveedor</p>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="col-span-2">
+                    <input value={nuevoEqForm.descripcion} onChange={e => setNuevoEqForm(p => ({ ...p, descripcion: e.target.value }))}
+                      placeholder="Descripción del equipo *"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
+                  <input value={nuevoEqForm.marca} onChange={e => setNuevoEqForm(p => ({ ...p, marca: e.target.value }))}
+                    placeholder="Marca / modelo"
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <select value={nuevoEqForm.categoriaId} onChange={e => setNuevoEqForm(p => ({ ...p, categoriaId: e.target.value }))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Categoría *</option>
+                    {categoriasList.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                  <input type="number" min="0" value={nuevoEqForm.precioRenta} onChange={e => setNuevoEqForm(p => ({ ...p, precioRenta: e.target.value }))}
+                    placeholder="Precio al cliente"
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <input type="number" min="0" value={nuevoEqForm.costoProveedor} onChange={e => setNuevoEqForm(p => ({ ...p, costoProveedor: e.target.value }))}
+                    placeholder="Costo del proveedor"
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <input type="number" min="1" value={nuevoEqForm.cantidadTotal} onChange={e => setNuevoEqForm(p => ({ ...p, cantidadTotal: e.target.value }))}
+                    placeholder="Cantidad en catálogo"
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
-              )}
-            </Seccion>
-          )}
+                <div className="flex gap-2">
+                  <button onClick={crearEquipoProveedor} disabled={guardandoEq || !nuevoEqForm.descripcion || !nuevoEqForm.categoriaId}
+                    className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">
+                    {guardandoEq ? "Guardando..." : "Guardar en catálogo y agregar"}
+                  </button>
+                  <button onClick={() => setShowNuevoEqModal(false)} className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 mb-4 items-end">
+              <div className="flex-1">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Equipo del catálogo</p>
+                <select value={selExt} onChange={e => setSelExt(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Selecciona equipo externo —</option>
+                  {equiposExternos.map(eq => (
+                    <option key={eq.id} value={eq.id}>
+                      {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""} — cliente: {formatCurrency(eq.precioRenta)} / costo: {formatCurrency(eq.costoProveedor ?? 0)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                <input type="number" min="1" value={selExtCant} onChange={e => setSelExtCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                <input type="number" min="1" value={selExtDias} onChange={e => setSelExtDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <button onClick={agregarExterno} disabled={!selExt} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">+ Agregar</button>
+            </div>
+
+            {lineasExterno.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-2">Sin equipos de terceros</p>
+            ) : (
+              <div className="border border-[#222] rounded-lg overflow-hidden">
+                {lineasExterno.map(l => (
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm truncate">{l.descripcion}</p>
+                      {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
+                      <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
+                    </div>
+                    <input type="number" value={l.cantidad} min="1" onChange={e => updateExterno(l.id, "cantidad", parseFloat(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Cantidad" />
+                    <input type="number" value={l.dias} min="1" onChange={e => updateExterno(l.id, "dias", parseInt(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Días" />
+                    <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
+                    <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasExterno(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                  </div>
+                ))}
+                <div className="flex justify-between px-3 py-2 bg-[#0d0d0d] border-t border-[#222]">
+                  <span className="text-xs text-gray-500">Subtotal terceros (sin descuento)</span>
+                  <span className="text-sm font-medium text-white">{formatCurrency(resumen.subtotalExternos)}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 pt-3 border-t border-[#1a1a1a]">
+              <button onClick={() => { setShowNuevoEqModal(p => !p); }}
+                className="text-xs text-[#B3985B] hover:text-white transition-colors flex items-center gap-1.5">
+                <span className="text-base leading-none">+</span>
+                <span>Registrar nuevo equipo de proveedor en catálogo</span>
+              </button>
+            </div>
+          </Seccion>
+
+          {/* ── Adicionales / conceptos ocasionales ── */}
+          <Seccion titulo="Adicionales" hint="conceptos únicos · sin descuento · no se registran en catálogo">
+            <div className="flex gap-2 mb-3 items-end flex-wrap">
+              <div className="flex-1 min-w-48">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Descripción</p>
+                <input value={selOcDesc} onChange={e => setSelOcDesc(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") agregarOcasional(); }}
+                  placeholder="Nombre del concepto u equipo..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
+                <input type="number" min="0" value={selOcPrecio} onChange={e => setSelOcPrecio(e.target.value)}
+                  placeholder="0"
+                  className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
+                <input type="number" min="1" value={selOcCant} onChange={e => setSelOcCant(e.target.value)}
+                  className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                <input type="number" min="1" value={selOcDias} onChange={e => setSelOcDias(e.target.value)}
+                  className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <button onClick={agregarOcasional} disabled={!selOcDesc.trim() || !selOcPrecio}
+                className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">
+                + Agregar
+              </button>
+            </div>
+            {lineasOcasional.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-2">Sin adicionales</p>
+            ) : (
+              <div className="border border-[#222] rounded-lg overflow-hidden">
+                {lineasOcasional.map(l => (
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <p className="flex-1 text-white text-sm truncate">{l.descripcion}</p>
+                    <span className="text-gray-500 text-xs shrink-0">×{l.cantidad} · {l.dias}d · {formatCurrency(l.precioUnitario)}</span>
+                    <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasOcasional(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                  </div>
+                ))}
+                <div className="flex justify-between px-3 py-2 bg-[#0d0d0d] border-t border-[#222]">
+                  <span className="text-xs text-gray-500">Subtotal adicionales</span>
+                  <span className="text-sm font-medium text-white">{formatCurrency(resumen.subtotalOcasionales)}</span>
+                </div>
+              </div>
+            )}
+          </Seccion>
 
           {/* ── Operación técnica ── */}
           <Seccion titulo="Operación técnica" hint="sin descuento">
@@ -1269,6 +1461,7 @@ function CotizadorForm() {
               {resumen.montoDescuento > 0 && <div className="flex justify-between text-red-400"><span>Descuento ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.montoDescuento)}</span></div>}
               <div className="flex justify-between text-white"><span>Equipos neto</span><span>{formatCurrency(resumen.subtotalEquiposNeto)}</span></div>
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
+              {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}
               {resumen.subtotalDJ > 0 && <div className="flex justify-between text-gray-400"><span>Servicio DJ</span><span>{formatCurrency(resumen.subtotalDJ)}</span></div>}
               {resumen.subtotalTransporte > 0 && <div className="flex justify-between text-gray-400"><span>Transporte</span><span>{formatCurrency(resumen.subtotalTransporte)}</span></div>}
