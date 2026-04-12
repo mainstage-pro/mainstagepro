@@ -108,6 +108,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             esIncluido: Boolean(l.esIncluido ?? false),
             equipoId: (l.equipoId as string | null) ?? null,
             rolTecnicoId: (l.rolTecnicoId as string | null) ?? null,
+            proveedorId: (l.proveedorId as string | null) ?? null,
             notas: (l.notas as string | null) ?? null,
           })),
         },

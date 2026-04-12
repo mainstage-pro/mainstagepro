@@ -16,6 +16,7 @@ interface Equipo {
   precioRenta: number;
   costoProveedor: number | null;
   cantidadTotal: number;
+  proveedorDefaultId: string | null;
   categoria: { id: string; nombre: string; orden: number };
 }
 
@@ -52,6 +53,7 @@ interface LineaExterno {
   costoProveedor: number;  // costo que nos cobra el proveedor
   subtotal: number;        // precioUnitario × cantidad × días
   costoTotal: number;      // costoProveedor × cantidad × días (para viabilidad)
+  proveedorId: string | null; // proveedor por defecto del equipo → se transfiere al proyecto
 }
 
 interface LineaOp {
@@ -207,9 +209,12 @@ function CotizadorForm() {
   const [selLogPrecio, setSelLogPrecio] = useState(String(CONCEPTOS_COMIDA[0].precio));
   const [selLogCant, setSelLogCant] = useState("1"); const [selLogDias, setSelLogDias] = useState("1");
 
+  // Proveedores para selector en modal nuevo equipo
+  const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string }>>([]);
+
   // Nuevos: modal nuevo equipo proveedor + adicionales
   const [showNuevoEqModal, setShowNuevoEqModal] = useState(false);
-  const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1" });
+  const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
   const [selOcDesc, setSelOcDesc] = useState("");
@@ -239,10 +244,12 @@ function CotizadorForm() {
       tratoId ? fetch(`/api/tratos/${tratoId}`).then(r => r.json()) : Promise.resolve(null),
       editId ? fetch(`/api/cotizaciones/${editId}`).then(r => r.json()) : Promise.resolve(null),
       clienteId ? fetch(`/api/clientes/${clienteId}/precios-equipos`).then(r => r.json()) : Promise.resolve(null),
-    ]).then(([eq, rol, cl, tr, editData, preciosData]) => {
+      fetch("/api/proveedores").then(r => r.json()),
+    ]).then(([eq, rol, cl, tr, editData, preciosData, provData]) => {
       const eqs: Equipo[] = eq.equipos ?? [];
       setEquipos(eqs);
       setRoles(rol.roles ?? []);
+      setProveedores(provData?.proveedores ?? []);
 
       // Cargar precios especiales del cliente
       if (preciosData?.precios) {
@@ -294,11 +301,12 @@ function CotizadorForm() {
           precioUnitario: l.precioUnitario, subtotal: l.subtotal,
           categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "",
         })));
-        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number}) => ({
+        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
           marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
           precioUnitario: l.precioUnitario, costoProveedor: l.costoUnitario ?? 0,
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
+          proveedorId: l.proveedorId ?? null,
         })));
         setLineasOp(lineas.filter((l: {tipo:string}) => l.tipo === "OPERACION_TECNICA").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
@@ -485,6 +493,7 @@ function CotizadorForm() {
       costoProveedor: costo,
       subtotal: eq.precioRenta * cant * dias,
       costoTotal: costo * cant * dias,
+      proveedorId: eq.proveedorDefaultId ?? null,
     }]);
     setSelExt(""); setSelExtCant("1"); setSelExtDias(evento.diasEquipo);
   }
@@ -505,6 +514,7 @@ function CotizadorForm() {
           precioRenta: parseFloat(nuevoEqForm.precioRenta) || 0,
           costoProveedor: nuevoEqForm.costoProveedor ? parseFloat(nuevoEqForm.costoProveedor) : null,
           cantidadTotal: parseInt(nuevoEqForm.cantidadTotal) || 1,
+          proveedorDefaultId: nuevoEqForm.proveedorId || null,
         }),
       });
       if (!res.ok) return;
@@ -523,8 +533,9 @@ function CotizadorForm() {
         costoProveedor: newEq.costoProveedor ?? 0,
         subtotal: newEq.precioRenta * 1 * (parseInt(evento.diasEquipo) || 1),
         costoTotal: (newEq.costoProveedor ?? 0) * 1 * (parseInt(evento.diasEquipo) || 1),
+        proveedorId: newEq.proveedorDefaultId ?? null,
       }]);
-      setNuevoEqForm({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1" });
+      setNuevoEqForm({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
       setShowNuevoEqModal(false);
     } finally {
       setGuardandoEq(false);
@@ -703,6 +714,7 @@ function CotizadorForm() {
         costoUnitario: l.costoProveedor, // guardamos el costo del proveedor para recuperarlo en edición
         subtotal: l.subtotal,
         esExterno: true, esIncluido: false, equipoId: l.equipoId,
+        proveedorId: l.proveedorId ?? null,
       })),
       ...lineasOp.map(l => ({
         tipo: "OPERACION_TECNICA", descripcion: l.descripcion,
@@ -1140,6 +1152,11 @@ function CotizadorForm() {
                   <input type="number" min="1" value={nuevoEqForm.cantidadTotal} onChange={e => setNuevoEqForm(p => ({ ...p, cantidadTotal: e.target.value }))}
                     placeholder="Cantidad en catálogo"
                     className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <select value={nuevoEqForm.proveedorId} onChange={e => setNuevoEqForm(p => ({ ...p, proveedorId: e.target.value }))}
+                    className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Proveedor (opcional)</option>
+                    {proveedores.map((p: {id:string;nombre:string}) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                  </select>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={crearEquipoProveedor} disabled={guardandoEq || !nuevoEqForm.descripcion || !nuevoEqForm.categoriaId}
