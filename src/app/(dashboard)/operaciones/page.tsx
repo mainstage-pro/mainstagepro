@@ -145,8 +145,9 @@ export default function OperacionesPage() {
 
   const addTarea = useCallback(async (data: {
     titulo: string; fecha: string | null; fechaVencimiento: string | null;
-    prioridad: string; recurrencia: string | null;
+    prioridad: string; area?: string; recurrencia: string | null;
     proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
+    asignadoAId?: string | null;
   }) => {
     const res = await fetch("/api/tareas", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -610,7 +611,7 @@ export default function OperacionesPage() {
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} showProject />
                 ));
               })()}
-              <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" />
+              <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios} />
             </div>
           ) : (
             <div className="max-w-3xl mx-auto px-4 py-3">
@@ -620,7 +621,7 @@ export default function OperacionesPage() {
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea} />
                   ))}
-                  <QuickAdd proyectoTareaId={proyectoDetalle.id} onAdd={addTarea} placeholder="Agregar tarea al proyecto…" />
+                  <QuickAdd proyectoTareaId={proyectoDetalle.id} onAdd={addTarea} placeholder="Agregar tarea al proyecto…" proyectos={proyectosNav} usuarios={usuarios} />
                   {proyectoDetalle.secciones.map(seccion => (
                     <SectionBlock
                       key={seccion.id}

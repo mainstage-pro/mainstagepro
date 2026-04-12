@@ -3,33 +3,48 @@ import { useState, useRef } from "react";
 import { parsearRecurrencia, formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+// ── Icons ──────────────────────────────────────────────────────────────────────
 
 const IconCalendar = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="4" width="18" height="18" rx="2"/>
-    <line x1="16" y1="2" x2="16" y2="6"/>
-    <line x1="8"  y1="2" x2="8"  y2="6"/>
-    <line x1="3"  y1="10" x2="21" y2="10"/>
+    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
   </svg>
 );
 const IconClock = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
   </svg>
 );
 const IconFlag = ({ color = "currentColor" }: { color?: string }) => (
   <svg width="13" height="13" viewBox="0 0 24 24"
     fill={color !== "currentColor" ? color + "28" : "none"}
-    stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
     <line x1="4" y1="22" x2="4" y2="15"/>
   </svg>
 );
 const IconRepeat = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
     <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+  </svg>
+);
+const IconFolder = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+  </svg>
+);
+const IconUser = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const IconTag = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+    <line x1="7" y1="7" x2="7.01" y2="7"/>
   </svg>
 );
 const IconPlus = () => (
@@ -38,7 +53,7 @@ const IconPlus = () => (
   </svg>
 );
 
-// ── Prioridad ─────────────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────────
 
 const PRIORIDADES = [
   { key: "URGENTE", label: "Urgente", color: "#f87171",  short: "P1" },
@@ -47,9 +62,14 @@ const PRIORIDADES = [
   { key: "BAJA",    label: "Baja",    color: "#555",     short: "P4" },
 ] as const;
 
-type Prioridad = typeof PRIORIDADES[number]["key"];
-
-// ── Recurrence presets ────────────────────────────────────────────────────────
+const AREAS = [
+  { key: "GENERAL",       label: "General"     },
+  { key: "VENTAS",        label: "Ventas"       },
+  { key: "ADMINISTRACION",label: "Adm."         },
+  { key: "PRODUCCION",    label: "Producción"   },
+  { key: "MARKETING",     label: "Marketing"    },
+  { key: "RRHH",          label: "RR.HH."       },
+] as const;
 
 const REC_PRESETS = [
   { label: "Cada día",    pat: "cada día" },
@@ -57,76 +77,92 @@ const REC_PRESETS = [
   { label: "Cada mes",    pat: "cada mes" },
 ];
 
-// ── Props ─────────────────────────────────────────────────────────────────────
+type Prioridad  = typeof PRIORIDADES[number]["key"];
+type Area       = typeof AREAS[number]["key"];
+type ActivePanel = "fecha" | "limite" | "prioridad" | "proyecto" | "area" | "asignado" | null;
+type FechaTab   = "especifica" | "recurrente";
+
+// ── Props ──────────────────────────────────────────────────────────────────────
+
+export interface ProyectoOption { id: string; nombre: string; color: string | null }
+export interface UsuarioOption  { id: string; name: string }
 
 interface Props {
   proyectoTareaId?: string | null;
   seccionId?: string | null;
   parentId?: string | null;
+  proyectos?: ProyectoOption[];
+  usuarios?: UsuarioOption[];
   onAdd: (tarea: {
     titulo: string;
     fecha: string | null;
     fechaVencimiento: string | null;
     prioridad: string;
+    area: string;
     recurrencia: string | null;
     proyectoTareaId: string | null;
     seccionId: string | null;
     parentId: string | null;
+    asignadoAId: string | null;
   }) => void;
   placeholder?: string;
   compact?: boolean;
 }
 
-type ActivePanel = "fecha" | "limite" | "prioridad" | null;
-type FechaTab    = "especifica" | "recurrente";
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function toISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function formatDisplay(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const t = new Date(); t.setHours(0,0,0,0);
+  const m = new Date(t); m.setDate(t.getDate() + 1);
+  if (iso === toISO(t)) return "Hoy";
+  if (iso === toISO(m)) return "Mañana";
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function QuickAdd({
   proyectoTareaId = null,
   seccionId = null,
   parentId = null,
+  proyectos = [],
+  usuarios = [],
   onAdd,
   placeholder = "Agregar tarea…",
   compact = false,
 }: Props) {
-  const [open, setOpen]             = useState(false);
-  const [titulo, setTitulo]         = useState("");
-  const [fecha, setFecha]           = useState("");
-  const [fechaVen, setFechaVen]     = useState("");
-  const [prioridad, setPrioridad]   = useState<Prioridad>("MEDIA");
-  const [recTexto, setRecTexto]     = useState("");
+  const [open, setOpen]               = useState(false);
+  const [titulo, setTitulo]           = useState("");
+  const [fecha, setFecha]             = useState("");
+  const [fechaVen, setFechaVen]       = useState("");
+  const [prioridad, setPrioridad]     = useState<Prioridad>("MEDIA");
+  const [area, setArea]               = useState<Area>("GENERAL");
+  const [proyectoSel, setProyectoSel] = useState<string | null>(proyectoTareaId);
+  const [asignadoSel, setAsignadoSel] = useState<string | null>(null);
+  const [recTexto, setRecTexto]       = useState("");
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
-  const [recError, setRecError]     = useState("");
-  const [panel, setPanel]           = useState<ActivePanel>(null);
-  const [fechaTab, setFechaTab]     = useState<FechaTab>("especifica");
+  const [recError, setRecError]       = useState("");
+  const [panel, setPanel]             = useState<ActivePanel>(null);
+  const [fechaTab, setFechaTab]       = useState<FechaTab>("especifica");
   const titleRef = useRef<HTMLInputElement>(null);
 
   const prio     = PRIORIDADES.find(p => p.key === prioridad)!;
+  const areaDef  = AREAS.find(a => a.key === area)!;
   const recLabel = recurrencia
     ? (() => { try { return formatearRecurrencia(JSON.parse(recurrencia)); } catch { return ""; } })()
     : null;
-
-  // Has date-type value for the "fecha" button
-  const hasFecha  = fechaTab === "especifica" ? !!fecha : !!recLabel;
-  const fechaLabel = fechaTab === "especifica" && fecha
-    ? formatDisplay(fecha)
-    : recLabel ?? "Fecha";
-
-  function formatDisplay(iso: string) {
-    const d = new Date(iso + "T00:00:00");
-    const t = new Date(); t.setHours(0,0,0,0);
-    const m = new Date(t); m.setDate(t.getDate() + 1);
-    if (iso === toISO(t))  return "Hoy";
-    if (iso === toISO(m))  return "Mañana";
-    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-  }
-  function toISO(d: Date) {
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-  }
+  const hasFecha     = fechaTab === "especifica" ? !!fecha : !!recLabel;
+  const fechaLabel   = fechaTab === "especifica" && fecha ? formatDisplay(fecha) : recLabel ?? "Fecha";
+  const proyectoInfo = proyectos.find(p => p.id === proyectoSel);
+  const usuarioInfo  = usuarios.find(u => u.id === asignadoSel);
 
   function reset() {
-    setTitulo(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA");
+    setTitulo(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
+    setProyectoSel(proyectoTareaId); setAsignadoSel(null);
     setRecTexto(""); setRecurrencia(null); setRecError("");
     setPanel(null); setFechaTab("especifica"); setOpen(false);
   }
@@ -135,18 +171,20 @@ export default function QuickAdd({
     if (!titulo.trim()) { titleRef.current?.focus(); return; }
     onAdd({
       titulo: titulo.trim(),
-      fecha:           fechaTab === "especifica" ? (fecha || null) : null,
-      fechaVencimiento:fechaVen || null,
+      fecha:            fechaTab === "especifica" ? (fecha || null) : null,
+      fechaVencimiento: fechaVen || null,
       prioridad,
-      recurrencia:     fechaTab === "recurrente" ? recurrencia : null,
-      proyectoTareaId, seccionId, parentId,
+      area,
+      recurrencia:      fechaTab === "recurrente" ? recurrencia : null,
+      proyectoTareaId:  proyectoSel,
+      seccionId,
+      parentId,
+      asignadoAId:      asignadoSel,
     });
     reset();
   }
 
-  function togglePanel(p: ActivePanel) {
-    setPanel(prev => prev === p ? null : p);
-  }
+  function togglePanel(p: ActivePanel) { setPanel(prev => prev === p ? null : p); }
 
   function applyRec(txt: string) {
     if (!txt.trim()) { setRecurrencia(null); return; }
@@ -157,67 +195,51 @@ export default function QuickAdd({
     setPanel(null);
   }
 
-  // ── Closed state ────────────────────────────────────────────────────────────
-  if (!open) {
-    return (
-      <button
-        onClick={() => { setOpen(true); setTimeout(() => titleRef.current?.focus(), 30); }}
-        className={`group w-full flex items-center gap-2.5 px-3 rounded-lg text-[#333] hover:text-[#666] transition-all ${compact ? "py-1.5" : "py-2"}`}
-      >
-        <span className="flex items-center justify-center w-4 h-4 rounded-full border border-[#222] group-hover:border-[#B3985B]/40 group-hover:text-[#B3985B]/60 transition-colors">
-          <IconPlus />
-        </span>
-        <span className="text-sm">{placeholder}</span>
-      </button>
-    );
-  }
+  // ── Closed state ─────────────────────────────────────────────────────────────
+  if (!open) return (
+    <button
+      onClick={() => { setOpen(true); setTimeout(() => titleRef.current?.focus(), 30); }}
+      className={`group w-full flex items-center gap-2.5 px-3 rounded-lg text-[#333] hover:text-[#666] transition-all ${compact ? "py-1.5" : "py-2"}`}
+    >
+      <span className="flex items-center justify-center w-4 h-4 rounded-full border border-[#222] group-hover:border-[#B3985B]/40 group-hover:text-[#B3985B]/60 transition-colors">
+        <IconPlus />
+      </span>
+      <span className="text-sm">{placeholder}</span>
+    </button>
+  );
 
-  // ── Open state ───────────────────────────────────────────────────────────────
+  // ── Open state ────────────────────────────────────────────────────────────────
   return (
     <div className="mx-1 my-2 rounded-xl border border-[#1e1e1e] bg-[#080808] shadow-2xl shadow-black/70 overflow-hidden ring-1 ring-[#B3985B]/8">
 
-      {/* ── Panel: Fecha (específica + recurrente con tabs) ─────────────── */}
+      {/* ── Panel: Fecha ─────────────────────────────────────────────────── */}
       {panel === "fecha" && (
         <div className="border-b border-[#141414]">
-          {/* Tabs */}
           <div className="flex border-b border-[#141414]">
             {(["especifica","recurrente"] as FechaTab[]).map(tab => (
               <button key={tab} onClick={() => setFechaTab(tab)}
                 className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                  fechaTab === tab
-                    ? "text-[#B3985B] border-b-2 border-[#B3985B] bg-[#B3985B]/5"
-                    : "text-[#444] hover:text-[#888]"
+                  fechaTab === tab ? "text-[#B3985B] border-b-2 border-[#B3985B] bg-[#B3985B]/5" : "text-[#444] hover:text-[#888]"
                 }`}>
                 {tab === "especifica" ? "Fecha específica" : "Fecha recurrente"}
               </button>
             ))}
           </div>
-
           {fechaTab === "especifica" ? (
             <div className="p-3">
-              <DatePicker
-                value={fecha}
-                onChange={val => { setFecha(val); if (val) setPanel(null); }}
-                placeholder="dd/mm/aaaa"
-                size="sm"
-              />
+              <DatePicker value={fecha} onChange={val => { setFecha(val); if (val) setPanel(null); }} placeholder="dd/mm/aaaa" size="sm" />
             </div>
           ) : (
             <div className="p-3 space-y-2">
-              {/* Presets */}
               <div className="flex flex-wrap gap-1.5">
                 {REC_PRESETS.map(p => {
-                  const cfg  = parsearRecurrencia(p.pat);
+                  const cfg = parsearRecurrencia(p.pat);
                   const json = cfg ? JSON.stringify(cfg) : null;
                   return (
                     <button key={p.label} onClick={() => { if (json) { setRecurrencia(json); setRecTexto(""); setPanel(null); } }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all ${
-                        recurrencia === json
-                          ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
-                          : "border-[#1e1e1e] text-[#555] hover:border-[#252525] hover:text-[#999]"
-                      }`}>
-                      {p.label}
-                    </button>
+                        recurrencia === json ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]" : "border-[#1e1e1e] text-[#555] hover:border-[#252525] hover:text-[#999]"
+                      }`}>{p.label}</button>
                   );
                 })}
                 {recurrencia && (
@@ -227,24 +249,17 @@ export default function QuickAdd({
                   </button>
                 )}
               </div>
-              {/* Text input */}
               <div className="flex gap-2">
                 <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
                   onKeyDown={e => { if (e.key === "Enter") applyRec(recTexto); if (e.key === "Escape") setPanel(null); }}
-                  placeholder="cada lunes · cada martes y jueves · cada tercer viernes…"
-                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40 transition-colors" />
+                  placeholder="cada lunes · cada martes y jueves…"
+                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40" />
                 <button onClick={() => applyRec(recTexto)}
-                  className="px-3 py-1.5 bg-[#161616] hover:bg-[#1e1e1e] text-[#888] hover:text-white text-xs rounded-lg transition-all">
-                  OK
-                </button>
+                  className="px-3 py-1.5 bg-[#161616] hover:bg-[#1e1e1e] text-[#888] hover:text-white text-xs rounded-lg transition-all">OK</button>
               </div>
               {recError && <p className="text-[11px] text-red-400">{recError}</p>}
-              {/* Preview */}
               {recurrencia && !recError && (
-                <p className="text-[11px] text-[#B3985B] flex items-center gap-1">
-                  <IconRepeat />
-                  {recLabel}
-                </p>
+                <p className="text-[11px] text-[#B3985B] flex items-center gap-1"><IconRepeat />{recLabel}</p>
               )}
             </div>
           )}
@@ -255,12 +270,7 @@ export default function QuickAdd({
       {panel === "limite" && (
         <div className="p-3 border-b border-[#141414]">
           <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-medium">Fecha límite</p>
-          <DatePicker
-            value={fechaVen}
-            onChange={val => { setFechaVen(val); if (val) setPanel(null); }}
-            placeholder="dd/mm/aaaa"
-            size="sm"
-          />
+          <DatePicker value={fechaVen} onChange={val => { setFechaVen(val); if (val) setPanel(null); }} placeholder="dd/mm/aaaa" size="sm" />
         </div>
       )}
 
@@ -272,13 +282,71 @@ export default function QuickAdd({
             {PRIORIDADES.map(p => (
               <button key={p.key} onClick={() => { setPrioridad(p.key); setPanel(null); }}
                 className="flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border transition-all"
-                style={{
-                  borderColor: prioridad === p.key ? p.color + "80" : "#1a1a1a",
-                  backgroundColor: prioridad === p.key ? p.color + "10" : "transparent",
-                }}>
+                style={{ borderColor: prioridad === p.key ? p.color+"80" : "#1a1a1a", backgroundColor: prioridad === p.key ? p.color+"10" : "transparent" }}>
                 <IconFlag color={p.color} />
                 <span className="text-[10px] font-bold" style={{ color: prioridad === p.key ? p.color : "#444" }}>{p.short}</span>
-                <span className="text-[9px]" style={{ color: prioridad === p.key ? p.color + "aa" : "#2e2e2e" }}>{p.label}</span>
+                <span className="text-[9px]" style={{ color: prioridad === p.key ? p.color+"aa" : "#2e2e2e" }}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel: Proyecto ──────────────────────────────────────────────── */}
+      {panel === "proyecto" && (
+        <div className="border-b border-[#141414]">
+          <p className="text-[10px] text-[#444] uppercase tracking-widest font-medium px-3 pt-3 pb-2">Proyecto</p>
+          <div className="max-h-44 overflow-y-auto pb-2">
+            <button onClick={() => { setProyectoSel(null); setPanel(null); }}
+              className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${!proyectoSel ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
+              <span className="w-2 h-2 rounded-full bg-[#333] shrink-0" />
+              Bandeja de entrada
+            </button>
+            {proyectos.map(p => (
+              <button key={p.id} onClick={() => { setProyectoSel(p.id); setPanel(null); }}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${proyectoSel === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                {p.nombre}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel: Área ──────────────────────────────────────────────────── */}
+      {panel === "area" && (
+        <div className="p-3 border-b border-[#141414]">
+          <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2.5 font-medium">Área</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {AREAS.map(a => (
+              <button key={a.key} onClick={() => { setArea(a.key); setPanel(null); }}
+                className={`py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                  area === a.key ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]" : "border-[#1a1a1a] text-[#444] hover:border-[#252525] hover:text-[#999]"
+                }`}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Panel: Asignado a ────────────────────────────────────────────── */}
+      {panel === "asignado" && usuarios.length > 0 && (
+        <div className="border-b border-[#141414]">
+          <p className="text-[10px] text-[#444] uppercase tracking-widest font-medium px-3 pt-3 pb-2">Asignar a</p>
+          <div className="max-h-36 overflow-y-auto pb-2">
+            <button onClick={() => { setAsignadoSel(null); setPanel(null); }}
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors ${!asignadoSel ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
+              <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] text-[#444]">—</span>
+              Sin asignar
+            </button>
+            {usuarios.map(u => (
+              <button key={u.id} onClick={() => { setAsignadoSel(u.id); setPanel(null); }}
+                className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-xs transition-colors ${asignadoSel === u.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
+                <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-[10px] text-[#B3985B] font-medium shrink-0">
+                  {u.name.charAt(0).toUpperCase()}
+                </span>
+                {u.name}
               </button>
             ))}
           </div>
@@ -291,50 +359,68 @@ export default function QuickAdd({
           ref={titleRef}
           value={titulo}
           onChange={e => setTitulo(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) submit();
-            if (e.key === "Escape") reset();
-          }}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) submit(); if (e.key === "Escape") reset(); }}
           placeholder={placeholder}
           className="w-full bg-transparent text-[15px] text-white placeholder-[#252525] focus:outline-none leading-snug"
         />
+        {/* Chips de lo seleccionado */}
+        {(proyectoInfo || asignadoSel || area !== "GENERAL") && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {proyectoInfo && (
+              <span className="flex items-center gap-1 text-[11px] text-[#B3985B] bg-[#B3985B]/8 border border-[#B3985B]/20 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: proyectoInfo.color ?? "#B3985B" }} />
+                {proyectoInfo.nombre}
+              </span>
+            )}
+            {area !== "GENERAL" && (
+              <span className="flex items-center gap-1 text-[11px] text-[#666] bg-[#111] border border-[#1e1e1e] px-2 py-0.5 rounded-full">
+                {areaDef.label}
+              </span>
+            )}
+            {usuarioInfo && (
+              <span className="flex items-center gap-1 text-[11px] text-[#666] bg-[#111] border border-[#1e1e1e] px-2 py-0.5 rounded-full">
+                {usuarioInfo.name}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Divider ──────────────────────────────────────────────────────── */}
       <div className="h-px bg-[#111]" />
 
       {/* ── Bottom toolbar ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-0.5 px-3 py-2">
+      <div className="flex items-center gap-0.5 px-3 py-2 flex-wrap">
 
-        {/* Fecha (específica o recurrente) */}
-        <ToolbarBtn
-          icon={fechaTab === "recurrente" && recurrencia ? <IconRepeat /> : <IconCalendar />}
-          label={fechaLabel}
-          active={hasFecha}
-          activeColor="#B3985B"
-          isOpen={panel === "fecha"}
-          onClick={() => togglePanel("fecha")}
-        />
+        <ToolbarBtn icon={fechaTab === "recurrente" && recurrencia ? <IconRepeat /> : <IconCalendar />}
+          label={fechaLabel} active={hasFecha} activeColor="#B3985B"
+          isOpen={panel === "fecha"} onClick={() => togglePanel("fecha")} />
 
-        {/* Límite */}
-        <ToolbarBtn
-          icon={<IconClock />}
-          label={fechaVen ? formatDisplay(fechaVen) : "Límite"}
-          active={!!fechaVen}
-          activeColor="#e85d04"
-          isOpen={panel === "limite"}
-          onClick={() => togglePanel("limite")}
-        />
+        <ToolbarBtn icon={<IconClock />}
+          label={fechaVen ? formatDisplay(fechaVen) : "Límite"} active={!!fechaVen} activeColor="#e85d04"
+          isOpen={panel === "limite"} onClick={() => togglePanel("limite")} />
 
-        {/* Prioridad */}
-        <ToolbarBtn
-          icon={<IconFlag color={prioridad !== "MEDIA" ? prio.color : undefined} />}
-          label={prioridad !== "MEDIA" ? prio.short : "P3"}
-          active={prioridad !== "MEDIA"}
-          activeColor={prio.color}
-          isOpen={panel === "prioridad"}
-          onClick={() => togglePanel("prioridad")}
-        />
+        <ToolbarBtn icon={<IconFlag color={prioridad !== "MEDIA" ? prio.color : undefined} />}
+          label={prioridad !== "MEDIA" ? prio.label : "Prioridad"} active={prioridad !== "MEDIA"} activeColor={prio.color}
+          isOpen={panel === "prioridad"} onClick={() => togglePanel("prioridad")} />
+
+        {!compact && (
+          <>
+            <ToolbarBtn icon={<IconFolder />}
+              label={proyectoInfo?.nombre ?? "Proyecto"} active={!!proyectoInfo} activeColor="#B3985B"
+              isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
+
+            <ToolbarBtn icon={<IconTag />}
+              label={area !== "GENERAL" ? areaDef.label : "Área"} active={area !== "GENERAL"} activeColor="#B3985B"
+              isOpen={panel === "area"} onClick={() => togglePanel("area")} />
+
+            {usuarios.length > 0 && (
+              <ToolbarBtn icon={<IconUser />}
+                label={usuarioInfo?.name.split(" ")[0] ?? "Asignar"} active={!!usuarioInfo} activeColor="#B3985B"
+                isOpen={panel === "asignado"} onClick={() => togglePanel("asignado")} />
+            )}
+          </>
+        )}
 
         <div className="flex-1" />
 
@@ -342,7 +428,6 @@ export default function QuickAdd({
           className="text-xs text-[#333] hover:text-[#777] px-2.5 py-1.5 rounded-lg hover:bg-[#0f0f0f] transition-all font-medium">
           Cancelar
         </button>
-
         <button onClick={submit} disabled={!titulo.trim()}
           className="text-xs font-semibold px-3.5 py-1.5 rounded-lg transition-all ml-1 disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
           style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}>
@@ -355,25 +440,15 @@ export default function QuickAdd({
 
 // ── ToolbarBtn ────────────────────────────────────────────────────────────────
 
-function ToolbarBtn({
-  icon, label, active, activeColor, isOpen, onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  activeColor: string;
-  isOpen: boolean;
-  onClick: () => void;
+function ToolbarBtn({ icon, label, active, activeColor, isOpen, onClick }: {
+  icon: React.ReactNode; label: string; active: boolean;
+  activeColor: string; isOpen: boolean; onClick: () => void;
 }) {
   return (
     <button onClick={onClick}
-      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${
-        isOpen ? "bg-[#151515] text-white" : "hover:bg-[#0f0f0f]"
-      }`}
+      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${isOpen ? "bg-[#151515] text-white" : "hover:bg-[#0f0f0f]"}`}
       style={{ color: isOpen ? "white" : active ? activeColor : "#333" }}>
-      <span style={{ color: isOpen ? "#888" : active ? activeColor : "#2e2e2e" }}>
-        {icon}
-      </span>
+      <span style={{ color: isOpen ? "#888" : active ? activeColor : "#2e2e2e" }}>{icon}</span>
       <span className="hidden sm:inline">{label}</span>
     </button>
   );
