@@ -51,6 +51,7 @@ const NAV: NavSection[] = [
         key: "finanzas",
         label: "Finanzas",
         children: [
+          { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-cxc", label: "Por cobrar", href: "/finanzas/cxc" },
           { key: "finanzas-cxp", label: "Por pagar", href: "/finanzas/cxp" },
