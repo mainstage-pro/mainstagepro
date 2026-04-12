@@ -36,31 +36,83 @@ interface Cotizacion {
 }
 
 // ─── Equipment Image Mapping ──────────────────────────────────────────────────
+// By brand (marca lowercase) → image path
 const MARCA_IMAGES: Record<string, string> = {
-  "rcf":             "/images/presentacion/rcf-hdl30a.jpg",
-  "allen & heath":   "/images/presentacion/allen-heath-dlive.jpg",
-  "allen&heath":     "/images/presentacion/allen-heath-dlive.jpg",
-  "pioneer":         "/images/presentacion/pioneer-cdj3000.webp",
-  "pioneer dj":      "/images/presentacion/pioneer-cdj3000.webp",
+  // Audio
+  "rcf":             "/images/presentacion/rcf-hdl30a.png",
+  "electro voice":   "/images/presentacion/ev-ekx12p.png",
+  "electro-voice":   "/images/presentacion/ev-ekx12p.png",
+  "ev":              "/images/presentacion/ev-ekx12p.png",
+  "allen & heath":   "/images/presentacion/allen-heath-dlive.png",
+  "allen&heath":     "/images/presentacion/allen-heath-dlive.png",
+  "midas":           "/images/presentacion/midas-m32.png",
+  "shure":           "/images/presentacion/shure-axient.png",
+  "sennheiser":      "/images/presentacion/sennheiser-iem.png",
+  "rode":            "/images/presentacion/rode-m5.png",
+  // DJ
+  "pioneer":         "/images/presentacion/pioneer-cdj3000.png",
+  "pioneer dj":      "/images/presentacion/pioneer-cdj3000.png",
+  // Iluminación
   "grand ma":        "/images/presentacion/grandma-ma3.png",
   "grandma":         "/images/presentacion/grandma-ma3.png",
+  "ma":              "/images/presentacion/grandma-ma3.png",
   "ma lighting":     "/images/presentacion/grandma-ma3.png",
-  "shure":           "/images/presentacion/shure-axient.png",
   "astera":          "/images/presentacion/astera-ax1.png",
-  "midas":           "/images/presentacion/midas-m32.jpg",
-  "chauvet":         "/images/presentacion/chauvet-spot260.jpg",
-  "blackmagic":      "/images/presentacion/blackmagic-atem.jpg",
-  "sennheiser":      "/images/presentacion/sennheiser-iem.jpg",
-  "electro-voice":   "/images/presentacion/ev-ekx12p.jpg",
-  "electro voice":   "/images/presentacion/ev-ekx12p.jpg",
-  "ev":              "/images/presentacion/ev-ekx12p.jpg",
+  "chauvet":         "/images/presentacion/chauvet-spot260.png",
+  "lite tek":        "/images/presentacion/lite-tek-beam280.png",
+  "litetek":         "/images/presentacion/lite-tek-beam280.png",
+  "lumos":           "/images/presentacion/lumos-l7.png",
+  "sun star":        "/images/presentacion/sunstar-kaleidos.png",
+  "sunstar":         "/images/presentacion/sunstar-kaleidos.png",
+  "steel pro":       "/images/presentacion/steel-pro-razor.png",
+  // Video
+  "blackmagic":      "/images/presentacion/blackmagic-atem.png",
+  // Eléctrico
+  "predator":        "/images/presentacion/predator-9500.png",
+  "wacker":          "/images/presentacion/wacker-g120.png",
 };
+
+// By exact model → image path (takes priority over marca)
 const MODELO_IMAGES: Record<string, string> = {
-  "DJM A9":       "/images/presentacion/pioneer-djmv10.png",
-  "DJM V10":      "/images/presentacion/pioneer-djmv10.png",
-  "DJM-V10":      "/images/presentacion/pioneer-djmv10.png",
-  "DJM 900 NXS2": "/images/presentacion/pioneer-djmv10.png",
-  "DJM S11":      "/images/presentacion/pioneer-djmv10.png",
+  // Pioneer DJ mixers
+  "DJM A9":          "/images/presentacion/pioneer-djmv10.png",
+  "DJM V10":         "/images/presentacion/pioneer-djmv10.png",
+  "DJM-V10":         "/images/presentacion/pioneer-djmv10.png",
+  "DJM 900 NXS2":    "/images/presentacion/pioneer-djmv10.png",
+  "DJM S11":         "/images/presentacion/pioneer-djmv10.png",
+  // Audio
+  "EKX 18P":         "/images/presentacion/ev-ekx18p.png",
+  "EKX 12P":         "/images/presentacion/ev-ekx12p.png",
+  "HDL 30A":         "/images/presentacion/rcf-hdl30a.png",
+  "HDL 6A":          "/images/presentacion/rcf-hdl30a.png",
+  "SUB 8006 AS":     "/images/presentacion/rcf-sub8006.png",
+  "SQ5":             "/images/presentacion/allen-heath-sq5.png",
+  "AR24/12":         "/images/presentacion/allen-heath-dlive.png",
+  "SLXD B58":        "/images/presentacion/shure-slxd.png",
+  "BLX24 SM58":      "/images/presentacion/shure-slxd.png",
+  "AXIENT B58/SM58": "/images/presentacion/shure-axient.png",
+  "IEM G4":          "/images/presentacion/sennheiser-iem.png",
+  "EK IEM G4":       "/images/presentacion/sennheiser-iem.png",
+  "PSM1000":         "/images/presentacion/shure-axient.png",
+  // Iluminación Lite Tek
+  "BAR 824i":        "/images/presentacion/lite-tek-bar824i.png",
+  "BEAM 280":        "/images/presentacion/lite-tek-beam280.png",
+  "BLINDER 200":     "/images/presentacion/lite-tek-blinder200.png",
+  "FLASHER 200":     "/images/presentacion/lite-tek-flasher200.png",
+  "18X10 Ambar":     "/images/presentacion/lite-tek-par.png",
+  "Fazer 1500":      "/images/presentacion/lite-tek-fazer1500.png",
+  // Iluminación Chauvet
+  "Int SPOT 260":    "/images/presentacion/chauvet-spot260.png",
+  "Slimpar Q12 BT":  "/images/presentacion/chauvet-slimpar.png",
+  "Pinspot Bar":     "/images/presentacion/chauvet-pinspot-bar.png",
+  // Sun Star
+  "KALEIDOS":        "/images/presentacion/sunstar-kaleidos.png",
+  // Lumos
+  "L7":              "/images/presentacion/lumos-l7.png",
+  // Video
+  "Atem Mini Pro":   "/images/presentacion/blackmagic-atem.png",
+  // Rigging
+  "Truss":           "/images/presentacion/truss.png",
 };
 
 function getEquipoImage(linea: Linea): string | null {
