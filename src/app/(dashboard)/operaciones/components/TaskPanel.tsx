@@ -99,6 +99,7 @@ export default function TaskPanel({
   const [comentariosLocal, setComentariosLocal] = useState<Comentario[]>(tarea.comentarios ?? []);
   const [archivosLocal, setArchivosLocal] = useState<Archivo[]>(tarea.archivos ?? []);
   const [uploading, setUploading] = useState(false);
+  const [showFechaVenPicker, setShowFechaVenPicker] = useState(false);
 
   // Reset when tarea changes
   useEffect(() => {
@@ -112,6 +113,7 @@ export default function TaskPanel({
     setIniciativaId(tarea.iniciativa?.id ?? "");
     setFecha(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
     setFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
+    setShowFechaVenPicker(false);
     setSubtareasLocal(tarea.subtareas ?? []);
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
@@ -321,11 +323,25 @@ export default function TaskPanel({
             </div>
             <div className="flex-1 space-y-0.5">
               <label className="text-[10px] text-[#444] uppercase tracking-wider">Fecha límite</label>
-              <DatePicker
-                value={fechaVen}
-                onChange={val => { setFechaVen(val); handleFechaBlur("fechaVencimiento", val); }}
-                size="sm"
-              />
+              {(fechaVen || showFechaVenPicker) ? (
+                <DatePicker
+                  value={fechaVen}
+                  onChange={val => {
+                    setFechaVen(val);
+                    handleFechaBlur("fechaVencimiento", val);
+                    if (!val) setShowFechaVenPicker(false);
+                  }}
+                  size="sm"
+                  showClear
+                />
+              ) : (
+                <button
+                  onClick={() => setShowFechaVenPicker(true)}
+                  className="w-full text-left text-xs text-[#333] hover:text-[#B3985B] transition-colors py-1.5 px-2.5"
+                >
+                  + Agregar
+                </button>
+              )}
             </div>
           </div>
 

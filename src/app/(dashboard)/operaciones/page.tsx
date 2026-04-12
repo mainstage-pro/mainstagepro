@@ -158,7 +158,9 @@ export default function OperacionesPage() {
     if (!res.ok) return;
     const { tarea } = await res.json();
     if (data.parentId) return;
+    // Si la tarea tiene proyecto y estamos en bandeja, no la agregamos a la lista plana
     if (typeof vista === "string" && vista !== "integrada") {
+      if (vista === "bandeja" && data.proyectoTareaId) return; // se fue al proyecto
       setTareas(prev => [...prev, tarea]);
     }
     if (typeof vista !== "string" && proyectoDetalle) {
@@ -256,6 +258,13 @@ export default function OperacionesPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
+    // When a project is assigned to a bandeja task, move it out of the bandeja list
+    if ("proyectoTareaId" in patch && patch.proyectoTareaId && vista === "bandeja") {
+      const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+      setTareas(rm);
+      if (selectedId === id) setSelectedId(null);
+      return;
+    }
     if ("titulo" in patch) {
       const upd = (arr: TareaItem[]) =>
         arr.map(t => t.id === id ? { ...t, titulo: patch.titulo as string } : t);
@@ -265,7 +274,7 @@ export default function OperacionesPage() {
         secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
       } : null);
     }
-  }, []);
+  }, [vista, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteTarea = useCallback(async (id: string) => {
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
