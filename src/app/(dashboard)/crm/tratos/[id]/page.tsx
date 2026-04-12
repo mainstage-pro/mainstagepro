@@ -245,7 +245,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
-  const [uploadingArchivo, setUploadingArchivo] = useState(false);
+  const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
 
   // Formulario para prospecto
   const [generandoToken, setGenerandoToken] = useState(false);
@@ -481,21 +481,18 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setTimeout(() => setLinkCopiado(false), 2000);
   }
 
-  async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+  async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>, tipo: string) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingArchivo(true);
+    setUploadingTipo(tipo);
     const fd = new FormData();
     fd.append("file", file);
-    // Detectar tipo según mime
-    const mime = file.type;
-    const tipo = mime.startsWith("image/") ? "IMAGEN" : "DOCUMENTO";
     fd.append("tipo", tipo);
     fd.append("nombre", file.name);
     const res = await fetch(`/api/tratos/${id}/archivos`, { method: "POST", body: fd });
     const data = await res.json();
     if (data.archivo) setArchivos(prev => [...prev, data.archivo]);
-    setUploadingArchivo(false);
+    setUploadingTipo(null);
     e.target.value = "";
   }
 
@@ -1520,48 +1517,98 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 text-gray-200 text-sm focus:outline-none focus:border-[#B3985B] resize-y leading-relaxed placeholder:text-gray-700"
         />
 
-        {/* Adjuntos */}
-        <div className="mt-4 border-t border-[#1a1a1a] pt-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Archivos adjuntos</p>
-            <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#333] text-xs cursor-pointer transition-colors ${uploadingArchivo ? "opacity-40 pointer-events-none" : "text-gray-400 hover:text-white hover:border-[#555]"}`}>
-              {uploadingArchivo ? "Subiendo..." : "+ Adjuntar archivo"}
-              <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip" onChange={subirArchivo} />
-            </label>
-          </div>
+        {/* Archivos por categoría */}
+        <div className="mt-4 border-t border-[#1a1a1a] pt-4 space-y-5">
 
-          {archivos.length === 0 ? (
-            <p className="text-gray-600 text-xs italic">Sin archivos adjuntos aún</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {archivos.map((a) => {
-                const esImagen = a.tipo === "IMAGEN" || /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
-                return (
-                  <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
-                    {esImagen ? (
-                      <a href={a.url} target="_blank" rel="noreferrer">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={a.url} alt={a.nombre} className="w-full h-24 object-cover hover:opacity-90 transition-opacity" />
-                      </a>
-                    ) : (
-                      <a href={a.url} target="_blank" rel="noreferrer"
-                        className="flex items-center gap-2 px-3 py-4 hover:bg-[#1a1a1a] transition-colors">
-                        <span className="text-2xl">
-                          {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}
-                        </span>
-                        <span className="text-gray-300 text-xs truncate">{a.nombre}</span>
-                      </a>
-                    )}
-                    <button
-                      onClick={() => eliminarArchivo(a.id)}
-                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors"
-                    >
-                      ×
-                    </button>
-                    <p className="px-2 py-1 text-gray-600 text-xs truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+          {/* Helper: renders a file grid for a given category */}
+          {(["SCOUTING", "REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
+            const catMeta = {
+              SCOUTING:   { label: "Fotos de scouting",           icon: "🗺️", accept: "image/*", hint: "Fotos del venue, accesos, instalaciones" },
+              REFERENCIA: { label: "Referencias del cliente",      icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+              DOCUMENTO:  { label: "Archivos adicionales del cliente", icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo adicional" },
+            }[cat];
+            const catArchivos = archivos.filter(a => a.tipo === cat);
+            const uploading = uploadingTipo === cat;
+            return (
+              <div key={cat}>
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
                   </div>
-                );
-              })}
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                    {uploading ? "Subiendo..." : "+ Agregar"}
+                    <input type="file" className="hidden" accept={catMeta.accept} onChange={e => subirArchivo(e, cat)} />
+                  </label>
+                </div>
+                {catArchivos.length === 0 ? (
+                  <p className="text-gray-700 text-[11px] italic">Sin archivos aún</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {catArchivos.map((a) => {
+                      const esImagen = /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
+                      return (
+                        <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                          {esImagen ? (
+                            <a href={a.url} target="_blank" rel="noreferrer">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                            </a>
+                          ) : (
+                            <a href={a.url} target="_blank" rel="noreferrer"
+                              className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
+                              <span className="text-xl">
+                                {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}
+                              </span>
+                              <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
+                            </a>
+                          )}
+                          <button
+                            onClick={() => eliminarArchivo(a.id)}
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors"
+                          >×</button>
+                          <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Legacy: show any files with other types (IMAGEN/OTRO) not caught above */}
+          {archivos.filter(a => !["SCOUTING","REFERENCIA","DOCUMENTO"].includes(a.tipo)).length > 0 && (
+            <div>
+              <p className="text-xs text-gray-500 mb-2">Otros archivos</p>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {archivos.filter(a => !["SCOUTING","REFERENCIA","DOCUMENTO"].includes(a.tipo)).map((a) => {
+                  const esImagen = a.tipo === "IMAGEN" || /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
+                  return (
+                    <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                      {esImagen ? (
+                        <a href={a.url} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                        </a>
+                      ) : (
+                        <a href={a.url} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-2 px-3 py-4 hover:bg-[#1a1a1a] transition-colors">
+                          <span className="text-xl">
+                            {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : "📎"}
+                          </span>
+                          <span className="text-gray-300 text-[10px] truncate">{a.nombre}</span>
+                        </a>
+                      )}
+                      <button
+                        onClick={() => eliminarArchivo(a.id)}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors"
+                      >×</button>
+                      <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
