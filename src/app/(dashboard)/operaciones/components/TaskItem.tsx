@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
+import DatePicker from "@/components/ui/DatePicker";
 
 export interface TareaItem {
   id: string;
@@ -43,6 +44,7 @@ interface Props {
   onComplete: (id: string) => void;
   onSelect:   (id: string) => void;
   onDelete:   (id: string) => void;
+  onDateChange?: (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
   isSelected: boolean;
   showProject?: boolean;
   depth?: number;
@@ -53,10 +55,13 @@ interface Props {
   isDragOver?: boolean;
 }
 
-export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSelected, showProject = false, depth = 0, draggable: isDraggable = false, onDragStart, onDragEnd, onDrop, isDragOver = false }: Props) {
-  const [hovered,    setHovered]    = useState(false);
-  const [completing, setCompleting] = useState(false);
-  const [dragOver,   setDragOver]   = useState(false);
+export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDateChange, isSelected, showProject = false, depth = 0, draggable: isDraggable = false, onDragStart, onDragEnd, onDrop, isDragOver = false }: Props) {
+  const [hovered,       setHovered]       = useState(false);
+  const [completing,    setCompleting]    = useState(false);
+  const [dragOver,      setDragOver]      = useState(false);
+  const [editingDate,   setEditingDate]   = useState<"fecha" | "fechaVencimiento" | null>(null);
+  const [localFecha,    setLocalFecha]    = useState(tarea.fecha    ? tarea.fecha.substring(0, 10)            : "");
+  const [localFechaVen, setLocalFechaVen] = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
   const isCompleted = tarea.estado === "COMPLETADA";
   const prio = PRIO[tarea.prioridad] ?? PRIO.BAJA;
 
@@ -151,22 +156,56 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, isSele
             )}
 
             {fecha && !isCompleted && (
-              <span className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium ${fecha.cls}`}>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-                {fecha.label}
+              <span className="relative">
+                {editingDate === "fecha" ? (
+                  <DatePicker
+                    value={localFecha}
+                    onChange={val => {
+                      setLocalFecha(val);
+                      onDateChange?.(tarea.id, "fecha", val);
+                    }}
+                    onClose={() => setEditingDate(null)}
+                    autoOpen hideTrigger showClear
+                    className="absolute"
+                  />
+                ) : null}
+                <button
+                  onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
+                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  {formatFecha(localFecha || tarea.fecha!).label}
+                </button>
               </span>
             )}
 
             {fechaVen && !isCompleted && (
-              <span className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium ${fechaVen.cls}`}>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                {fechaVen.label}
+              <span className="relative">
+                {editingDate === "fechaVencimiento" ? (
+                  <DatePicker
+                    value={localFechaVen}
+                    onChange={val => {
+                      setLocalFechaVen(val);
+                      onDateChange?.(tarea.id, "fechaVencimiento", val);
+                    }}
+                    onClose={() => setEditingDate(null)}
+                    autoOpen hideTrigger showClear
+                    className="absolute"
+                  />
+                ) : null}
+                <button
+                  onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
+                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                >
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  {formatFecha(localFechaVen || tarea.fechaVencimiento!).label}
+                </button>
               </span>
             )}
 

@@ -671,6 +671,7 @@ export default function OperacionesPage() {
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                         onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                         showProject draggable
                         onDragStart={setDraggingId}
                         onDragEnd={() => setDraggingId(null)}
@@ -684,6 +685,7 @@ export default function OperacionesPage() {
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                     showProject draggable
                     onDragStart={setDraggingId}
                     onDragEnd={() => setDraggingId(null)}
@@ -703,6 +705,7 @@ export default function OperacionesPage() {
                   {proyectoDetalle.tareas.map(t => (
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                       draggable
                       onDragStart={setDraggingId}
                       onDragEnd={() => setDraggingId(null)}
@@ -1032,6 +1035,7 @@ function SectionBlock({
           {seccion.tareas.map(t => (
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
               onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
+              onDateChange={(id, field, val) => { fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val || null }) }); }}
               draggable={!!draggingId || true}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}

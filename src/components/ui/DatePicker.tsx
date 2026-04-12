@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 
 const MESES = [
@@ -52,6 +52,9 @@ export interface DatePickerProps {
   className?: string;
   showClear?: boolean;
   size?: "sm" | "md";
+  autoOpen?: boolean;        // open calendar immediately on mount
+  hideTrigger?: boolean;     // hide the trigger button (chip mode)
+  onClose?: () => void;      // called when calendar closes
 }
 
 const CAL_W = 288; // fixed calendar width in px
@@ -60,6 +63,7 @@ const CAL_H = 330; // approx calendar height for above/below decision
 export default function DatePicker({
   value, onChange, placeholder = "dd/mm/aaaa",
   className = "", showClear = true, size = "md",
+  autoOpen = false, hideTrigger = false, onClose,
 }: DatePickerProps) {
   const today  = todayISO();
   const parsed = parseISO(value);
@@ -91,6 +95,11 @@ export default function DatePicker({
     setOpen(true);
   }
 
+  // Auto-open on mount
+  useLayoutEffect(() => {
+    if (autoOpen) openCalendar();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Close on outside click only
   useEffect(() => {
     if (!open) return;
@@ -98,10 +107,11 @@ export default function DatePicker({
       const t = e.target as Node;
       if (triggerRef.current?.contains(t) || calRef.current?.contains(t)) return;
       setOpen(false);
+      onClose?.();
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync view when value changes externally
   useEffect(() => {
@@ -115,8 +125,8 @@ export default function DatePicker({
     setViewMonth(m => { if (m === 11) { setViewYear(y => y + 1); return 0; } return m + 1; });
   }, []);
 
-  function selectDay(day: number) { onChange(toISO(viewYear, viewMonth, day)); setOpen(false); }
-  function clearDate(e: React.MouseEvent) { e.stopPropagation(); onChange(""); }
+  function selectDay(day: number) { onChange(toISO(viewYear, viewMonth, day)); setOpen(false); onClose?.(); }
+  function clearDate(e: React.MouseEvent) { e.stopPropagation(); onChange(""); onClose?.(); }
 
   const grid  = buildGrid(viewYear, viewMonth);
   const chips = quickDates();
@@ -188,7 +198,7 @@ export default function DatePicker({
       {/* Clear */}
       {value && showClear && (
         <div className="border-t border-[#141414] px-3 py-2">
-          <button onClick={() => { onChange(""); setOpen(false); }}
+          <button onClick={() => { onChange(""); setOpen(false); onClose?.(); }}
             className="text-xs text-[#444] hover:text-red-400 transition-colors">
             Quitar fecha
           </button>
@@ -200,33 +210,38 @@ export default function DatePicker({
 
   return (
     <div className={`relative ${className}`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={openCalendar}
-        className={`group w-full flex items-center gap-2 ${szCls} bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg text-left transition-all hover:border-[#2a2a2a] focus:outline-none ${open ? "border-[#B3985B]/50 ring-1 ring-[#B3985B]/10" : ""}`}
-      >
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-          stroke={value ? "#B3985B" : "#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-          className="shrink-0">
-          <rect x="3" y="4" width="18" height="18" rx="2"/>
-          <line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8"  y1="2" x2="8"  y2="6"/>
-          <line x1="3"  y1="10" x2="21" y2="10"/>
-        </svg>
-        <span className={`flex-1 ${value ? "text-white" : "text-[#3a3a3a]"}`}>
-          {value ? displayDate(value) : placeholder}
-        </span>
-        {value && showClear && (
-          <span onClick={clearDate}
-            className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
-            role="button" aria-label="Quitar fecha">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      {/* Invisible anchor for hideTrigger mode — calendar still positions from here */}
+      {hideTrigger
+        ? <button ref={triggerRef} type="button" aria-hidden tabIndex={-1}
+            className="absolute inset-0 w-full h-full opacity-0 pointer-events-none" />
+        : <button
+            ref={triggerRef}
+            type="button"
+            onClick={openCalendar}
+            className={`group w-full flex items-center gap-2 ${szCls} bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg text-left transition-all hover:border-[#2a2a2a] focus:outline-none ${open ? "border-[#B3985B]/50 ring-1 ring-[#B3985B]/10" : ""}`}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+              stroke={value ? "#B3985B" : "#444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              className="shrink-0">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8"  y1="2" x2="8"  y2="6"/>
+              <line x1="3"  y1="10" x2="21" y2="10"/>
             </svg>
-          </span>
-        )}
-      </button>
+            <span className={`flex-1 ${value ? "text-white" : "text-[#3a3a3a]"}`}>
+              {value ? displayDate(value) : placeholder}
+            </span>
+            {value && showClear && (
+              <span onClick={clearDate}
+                className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-red-400 transition-all"
+                role="button" aria-label="Quitar fecha">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </span>
+            )}
+          </button>
+      }
       {popup}
     </div>
   );
