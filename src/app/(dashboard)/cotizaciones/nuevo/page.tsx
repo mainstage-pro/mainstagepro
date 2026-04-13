@@ -202,7 +202,7 @@ function CotizadorForm() {
   // Selectores rápidos
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
-  const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("MEDIA"); const [selRolCant, setSelRolCant] = useState("1");
+  const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
   const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
   const [selLogTipo, setSelLogTipo] = useState<"COMIDA" | "TRANSPORTE" | "HOSPEDAJE">("COMIDA");
   const [selLogConcepto, setSelLogConcepto] = useState(CONCEPTOS_COMIDA[0].label);
@@ -1289,7 +1289,7 @@ function CotizadorForm() {
                 <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
               </select>
               <select value={selRolJornada} onChange={e => setSelRolJornada(e.target.value)} className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none">
-                <option value="CORTA">Corta (0-8h)</option><option value="MEDIA">Media (8-12h)</option><option value="LARGA">Larga (12h+)</option>
+                <option value="CORTA">0–8 hrs</option><option value="MEDIA">8–12 hrs</option><option value="LARGA">12+ hrs</option>
               </select>
               <input type="number" min="1" value={selRolCant} onChange={e => setSelRolCant(e.target.value)} className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>

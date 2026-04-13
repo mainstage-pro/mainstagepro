@@ -146,16 +146,17 @@ export default function RolesPage() {
 
           {form.tipoPago === "POR_JORNADA" && (
             <div className="mb-4">
-              <p className="text-xs text-[#6b7280] mb-2 uppercase tracking-wide">Tarifas por jornada (Corta / Media / Larga)</p>
+              <p className="text-xs text-[#6b7280] mb-2 uppercase tracking-wide">Tarifas por jornada (0–8 hrs / 8–12 hrs / 12+ hrs)</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {(["AAA","AA","A"] as const).map(nivel => (
                   <div key={nivel} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-3">
                     <p className="text-xs font-semibold text-[#B3985B] mb-2">Nivel {nivel}</p>
                     {(["Corta","Media","Larga"] as const).map(jornada => {
                       const key = `tarifa${nivel}${jornada}` as keyof Omit<Rol,"id">;
+                      const jornadaLabel = jornada === "Corta" ? "0–8 hrs" : jornada === "Media" ? "8–12 hrs" : "12+ hrs";
                       return (
                         <div key={jornada} className="mb-2">
-                          <label className="text-xs text-[#6b7280] block mb-1">{jornada}</label>
+                          <label className="text-xs text-[#6b7280] block mb-1">{jornadaLabel}</label>
                           <input
                             type="number"
                             value={numVal(key)}

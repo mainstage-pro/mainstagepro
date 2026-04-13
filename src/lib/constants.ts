@@ -96,9 +96,9 @@ export const TIPO_CLIENTE_LABELS: Record<string, string> = {
 
 // Jornadas
 export const JORNADA_LABELS: Record<string, string> = {
-  CORTA: "Corta (0-8 hrs)",
-  MEDIA: "Media (8-12 hrs)",
-  LARGA: "Larga (12+ hrs)",
+  CORTA: "0–8 hrs",
+  MEDIA: "8–12 hrs",
+  LARGA: "12+ hrs",
 };
 
 // Niveles técnicos

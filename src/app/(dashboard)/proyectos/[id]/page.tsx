@@ -1698,9 +1698,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <label className="text-xs text-gray-500 block mb-1">Jornada</label>
                   <select value={selJornada} onChange={e => setSelJornada(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                    <option value="CORTA">Corta (0–8h)</option>
-                    <option value="MEDIA">Media (8–12h)</option>
-                    <option value="LARGA">Larga (12h+)</option>
+                    <option value="CORTA">0–8 hrs</option>
+                    <option value="MEDIA">8–12 hrs</option>
+                    <option value="LARGA">12+ hrs</option>
                   </select>
                 </div>
                 <div>
