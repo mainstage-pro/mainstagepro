@@ -38,6 +38,7 @@ export default function TecnicosPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<"card" | "list">("card");
   const [search, setSearch] = useState("");
   const [filterNivel, setFilterNivel] = useState<string>("TODOS");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
@@ -149,10 +150,22 @@ export default function TecnicosPage() {
           </p>
         </div>
         {!showForm && (
-          <button onClick={startCreate}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + Nuevo técnico
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
+              <button onClick={() => setView("card")} title="Tarjetas"
+                className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
+              </button>
+              <button onClick={() => setView("list")} title="Lista"
+                className={`p-1.5 rounded-md transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
+              </button>
+            </div>
+            <button onClick={startCreate}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              + Nuevo técnico
+            </button>
+          </div>
         )}
       </div>
 
@@ -258,28 +271,83 @@ export default function TecnicosPage() {
         </div>
       )}
 
-      {/* Cards grid */}
       {activos.length === 0 && !creating ? (
         <div className="text-center py-12 text-gray-600">
           <p className="text-sm">{search || filterNivel !== "TODOS" || filterRol !== "TODOS" ? "Sin resultados para ese filtro." : "No hay técnicos registrados."}</p>
           {!search && <button onClick={startCreate} className="mt-2 text-[#B3985B] text-sm hover:underline">Agregar el primero</button>}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {activos.map(t => (
-            <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />
-          ))}
-        </div>
-      )}
-
-      {showInactivos && inactivos.length > 0 && (
-        <div className="mt-6">
-          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Inactivos ({inactivos.length})</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
-            {inactivos.map(t => (
-              <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />
-            ))}
+      ) : view === "card" ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />)}
           </div>
+          {showInactivos && inactivos.length > 0 && (
+            <div className="mt-6">
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Inactivos ({inactivos.length})</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
+                {inactivos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />)}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* ── LISTA ── */
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Técnico", "Rol", "Nivel", "Zona", "Contacto", ""].map(h => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]">
+              {activos.map(t => (
+                <tr key={t.id} className="hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
+                        <span className="text-[#B3985B] text-[10px] font-bold">
+                          {t.nombre.split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}
+                        </span>
+                      </div>
+                      <p className="text-white text-sm font-medium">{t.nombre}</p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#6b7280]">{t.rol?.nombre ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40"}`}>{t.nivel}</span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#6b7280]">{t.zonaHabitual ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[#6b7280]">
+                    {t.celular ? <a href={`tel:${t.celular}`} className="hover:text-[#B3985B] transition-colors">{t.celular}</a> : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
+                      <button onClick={() => toggleActivo(t)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {showInactivos && inactivos.map(t => (
+                <tr key={t.id} className="opacity-40 hover:opacity-60 transition-opacity">
+                  <td className="px-4 py-3">
+                    <p className="text-gray-400 text-sm">{t.nombre}</p>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#555]">{t.rol?.nombre ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-gray-600 bg-gray-800/20 border-gray-700/40">{t.nivel}</span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => toggleActivo(t)} className="text-gray-600 text-xs hover:text-[#B3985B] transition-colors">Activar</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
