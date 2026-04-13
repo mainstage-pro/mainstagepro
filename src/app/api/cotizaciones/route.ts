@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       observaciones = null,
       terminosComerciales = null,
       vigenciaDias = 30,
+      notasSecciones = null,
       ...campos
     } = body;
 
@@ -64,6 +65,7 @@ export async function POST(request: NextRequest) {
         observaciones,
         terminosComerciales,
         vigenciaDias,
+        notasSecciones: notasSecciones ?? null,
         nombreEvento: campos.nombreEvento || null,
         tipoEvento: campos.tipoEvento || null,
         tipoServicio: campos.tipoServicio || null,

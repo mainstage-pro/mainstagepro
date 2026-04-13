@@ -50,88 +50,101 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       observaciones,
     } = body;
 
-    // Borrar lineas existentes y re-crearlas
-    await prisma.cotizacionLinea.deleteMany({ where: { cotizacionId: id } });
-
-    const cotizacion = await prisma.cotizacion.update({
-      where: { id },
-      data: {
-        notasSecciones: notasSecciones ?? null,
-        nombreEvento: nombreEvento ?? null,
-        tipoEvento: tipoEvento ?? null,
-        tipoServicio: tipoServicio ?? null,
-        fechaEvento: fechaEvento ? new Date(fechaEvento) : null,
-        lugarEvento: lugarEvento ?? null,
-        horasOperacion: horasOperacion ? parseFloat(horasOperacion) : null,
-        diasEquipo: diasEquipo ? parseInt(diasEquipo) : 1,
-        diasOperacion: diasOperacion ? parseInt(diasOperacion) : 1,
-        descuentoVolumenPct: descuentoVolumenPct ?? 0,
-        descuentoB2bPct: descuentoB2bPct ?? 0,
-        descuentoMultidiaPct: descuentoMultidiaPct ?? 0,
-        descuentoPatrocinioPct: descuentoPatrocinioPct ?? 0,
-        descuentoPatrocinioNota: descuentoPatrocinioNota ?? null,
-        descuentoEspecialPct: descuentoEspecialPct ?? 0,
-        descuentoEspecialNota: descuentoEspecialNota ?? null,
-        descuentoTotalPct: descuentoTotalPct ?? 0,
-        montoDescuento: montoDescuento ?? 0,
-        montoBeneficio: montoBeneficio ?? 0,
-        subtotalEquiposBruto: subtotalEquiposBruto ?? 0,
-        subtotalEquiposNeto: subtotalEquiposNeto ?? 0,
-        subtotalPaquetes: subtotalPaquetes ?? 0,
-        subtotalTerceros: subtotalTerceros ?? 0,
-        subtotalOperacion: subtotalOperacion ?? 0,
-        subtotalTransporte: subtotalTransporte ?? 0,
-        subtotalComidas: subtotalComidas ?? 0,
-        subtotalHospedaje: subtotalHospedaje ?? 0,
-        total: total ?? 0,
-        aplicaIva: aplicaIva ?? false,
-        montoIva: montoIva ?? 0,
-        granTotal: granTotal ?? 0,
-        costosTotalesEstimados: costosTotalesEstimados ?? 0,
-        utilidadEstimada: utilidadEstimada ?? 0,
-        porcentajeUtilidad: porcentajeUtilidad ?? 0,
-        observaciones: observaciones ?? null,
-        lineas: {
-          create: (lineas as Record<string, unknown>[]).map((l, i) => ({
-            tipo: l.tipo as string,
-            orden: i,
-            descripcion: l.descripcion as string,
-            marca: (l.marca as string | null) ?? null,
-            nivel: (l.nivel as string | null) ?? null,
-            jornada: (l.jornada as string | null) ?? null,
-            cantidad: Number(l.cantidad ?? 1),
-            dias: Number(l.dias ?? 1),
-            precioUnitario: Number(l.precioUnitario ?? 0),
-            costoUnitario: Number(l.costoUnitario ?? 0),
-            subtotal: Number(l.subtotal ?? 0),
-            esExterno: Boolean(l.esExterno ?? false),
-            esIncluido: Boolean(l.esIncluido ?? false),
-            equipoId: (l.equipoId as string | null) ?? null,
-            rolTecnicoId: (l.rolTecnicoId as string | null) ?? null,
-            proveedorId: (l.proveedorId as string | null) ?? null,
-            notas: (l.notas as string | null) ?? null,
-          })),
-        },
-      },
-    });
-    return NextResponse.json({ cotizacion });
-  }
-
-  // Actualización parcial normal (estado, observaciones, etc.)
-  const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones"];
-  const data: Record<string, unknown> = {};
-  for (const key of allowed) {
-    if (key in body) {
-      if ((key === "fechaEnvio" || key === "fechaVencimiento") && body[key]) {
-        data[key] = new Date(body[key]);
-      } else {
-        data[key] = body[key];
-      }
+    try {
+      // Borrar lineas y actualizar cotización en una sola transacción
+      const cotizacion = await prisma.$transaction(async (tx) => {
+        await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: id } });
+        return tx.cotizacion.update({
+          where: { id },
+          data: {
+            notasSecciones: notasSecciones ?? null,
+            nombreEvento: nombreEvento ?? null,
+            tipoEvento: tipoEvento ?? null,
+            tipoServicio: tipoServicio ?? null,
+            fechaEvento: fechaEvento ? new Date(fechaEvento) : null,
+            lugarEvento: lugarEvento ?? null,
+            horasOperacion: horasOperacion ? parseFloat(horasOperacion) : null,
+            diasEquipo: diasEquipo ? parseInt(diasEquipo) : 1,
+            diasOperacion: diasOperacion ? parseInt(diasOperacion) : 1,
+            descuentoVolumenPct: descuentoVolumenPct ?? 0,
+            descuentoB2bPct: descuentoB2bPct ?? 0,
+            descuentoMultidiaPct: descuentoMultidiaPct ?? 0,
+            descuentoPatrocinioPct: descuentoPatrocinioPct ?? 0,
+            descuentoPatrocinioNota: descuentoPatrocinioNota ?? null,
+            descuentoEspecialPct: descuentoEspecialPct ?? 0,
+            descuentoEspecialNota: descuentoEspecialNota ?? null,
+            descuentoTotalPct: descuentoTotalPct ?? 0,
+            montoDescuento: montoDescuento ?? 0,
+            montoBeneficio: montoBeneficio ?? 0,
+            subtotalEquiposBruto: subtotalEquiposBruto ?? 0,
+            subtotalEquiposNeto: subtotalEquiposNeto ?? 0,
+            subtotalPaquetes: subtotalPaquetes ?? 0,
+            subtotalTerceros: subtotalTerceros ?? 0,
+            subtotalOperacion: subtotalOperacion ?? 0,
+            subtotalTransporte: subtotalTransporte ?? 0,
+            subtotalComidas: subtotalComidas ?? 0,
+            subtotalHospedaje: subtotalHospedaje ?? 0,
+            total: total ?? 0,
+            aplicaIva: aplicaIva ?? false,
+            montoIva: montoIva ?? 0,
+            granTotal: granTotal ?? 0,
+            costosTotalesEstimados: costosTotalesEstimados ?? 0,
+            utilidadEstimada: utilidadEstimada ?? 0,
+            porcentajeUtilidad: porcentajeUtilidad ?? 0,
+            observaciones: observaciones ?? null,
+            lineas: {
+              create: (lineas as Record<string, unknown>[]).map((l, i) => ({
+                tipo: l.tipo as string,
+                orden: i,
+                descripcion: l.descripcion as string,
+                marca: (l.marca as string) || null,
+                nivel: (l.nivel as string) || null,
+                jornada: (l.jornada as string) || null,
+                cantidad: Number(l.cantidad ?? 1),
+                dias: Number(l.dias ?? 1),
+                precioUnitario: Number(l.precioUnitario ?? 0),
+                costoUnitario: Number(l.costoUnitario ?? 0),
+                subtotal: Number(l.subtotal ?? 0),
+                esExterno: Boolean(l.esExterno ?? false),
+                esIncluido: Boolean(l.esIncluido ?? false),
+                equipoId: (l.equipoId as string) || null,
+                rolTecnicoId: (l.rolTecnicoId as string) || null,
+                proveedorId: (l.proveedorId as string) || null,
+                notas: (l.notas as string) || null,
+              })),
+            },
+          },
+        });
+      });
+      return NextResponse.json({ cotizacion });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[PATCH cotizacion lineas]", msg);
+      return NextResponse.json({ error: msg }, { status: 500 });
     }
   }
 
-  const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
-  return NextResponse.json({ cotizacion });
+  // Actualización parcial normal (estado, observaciones, etc.)
+  try {
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones"];
+    const data: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (key in body) {
+        if ((key === "fechaEnvio" || key === "fechaVencimiento") && body[key]) {
+          data[key] = new Date(body[key]);
+        } else {
+          data[key] = body[key];
+        }
+      }
+    }
+
+    const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
+    return NextResponse.json({ cotizacion });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[PATCH cotizacion estado]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

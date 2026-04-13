@@ -100,14 +100,23 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   async function cambiarEstado(estado: string) {
     setSaving(true);
-    const res = await fetch(`/api/cotizaciones/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado }),
-    });
-    const d = await res.json();
-    setCot((prev) => prev ? { ...prev, estado: d.cotizacion.estado } : prev);
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado }),
+      });
+      const d = await res.json();
+      if (!res.ok) {
+        alert(`Error al cambiar estado: ${d.error ?? "Error desconocido"}`);
+      } else {
+        setCot((prev) => prev ? { ...prev, estado: d.cotizacion?.estado ?? estado } : prev);
+      }
+    } catch {
+      alert("Error de conexión al cambiar el estado");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function eliminar() {
