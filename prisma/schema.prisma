@@ -316,6 +316,7 @@ model Proyecto {
   movimientos       MovimientoFinanciero[]
   evaluacionInterna EvaluacionInterna?
   evaluacionCliente EvaluacionCliente?
+  gastosOperativos  GastoOperativo[]
 
   @@map("proyectos")
 }
@@ -1167,6 +1168,26 @@ model TareaComentario {
   updatedAt DateTime @updatedAt
 
   @@map("tarea_comentarios")
+}
+
+// ─── GASTOS OPERATIVOS ───────────────────────────────────────────────────────
+// Efectivo que coordinación necesita antes del evento: comidas, transporte, hospedaje.
+// Se jalan de las líneas de cotización y admin marca si ya se entregó el dinero.
+model GastoOperativo {
+  id          String   @id @default(cuid())
+  proyectoId  String
+  proyecto    Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  tipo        String   // COMIDA | TRANSPORTE | HOSPEDAJE | OTRO
+  concepto    String
+  monto       Float
+  cantidad    Int      @default(1)
+  // Estado de entrega del efectivo a coordinación
+  entregado   Boolean  @default(false)
+  fechaEntrega DateTime?
+  notas       String?
+  createdAt   DateTime @default(now())
+
+  @@map("gastos_operativos")
 }
 
 model TareaArchivo {

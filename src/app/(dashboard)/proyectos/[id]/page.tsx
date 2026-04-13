@@ -23,6 +23,7 @@ interface Archivo { id: string; tipo: string; nombre: string; url: string; creat
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string }
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
+interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } }; proveedor: { nombre: string; telefono: string | null } | null }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
@@ -183,7 +184,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "personal" | "equipos" | "checklist" | "finanzas" | "bitacora" | "evaluacion">("info");
+  const [tab, setTab] = useState<"info" | "personal" | "equipos" | "checklist" | "finanzas" | "gastos" | "bitacora" | "evaluacion">("info");
+  const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
+  const [gastosLoaded, setGastosLoaded] = useState(false);
+  const [showGastoOpForm, setShowGastoOpForm] = useState(false);
+  const [gastoOpForm, setGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+  const [togglingGasto, setTogglingGasto] = useState<string | null>(null);
 
   // Evaluación interna
   type EvalData = {
@@ -450,6 +456,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Lazy-load evaluación cliente when evaluacion tab opens
   useEffect(() => {
     if (tab === "evaluacion") loadEvalCliente();
+    if (tab === "gastos" && !gastosLoaded) {
+      fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`)
+        .then(r => r.json())
+        .then(d => { setGastosOp(d.gastos ?? []); setGastosLoaded(true); });
+    }
   }, [tab]);
 
   // Sync JSON states when proyecto loads
@@ -932,12 +943,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
-        {(["info", "personal", "equipos", "checklist", "finanzas", "bitacora", "evaluacion"] as const).map(t => (
+        {(["info", "personal", "equipos", "checklist", "finanzas", "gastos", "bitacora", "evaluacion"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors capitalize ${
               tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
             }`}>
-            {t === "info" ? "Info" : t === "personal" ? "Personal" : t === "equipos" ? "Equipos" : t === "checklist" ? "Checklist" : t === "finanzas" ? "Finanzas" : t === "bitacora" ? "Bitácora" : "Eval."}
+            {t === "info" ? "Info" : t === "personal" ? "Personal" : t === "equipos" ? "Equipos" : t === "checklist" ? "Checklist" : t === "finanzas" ? "Finanzas" : t === "gastos" ? "Gastos Op." : t === "bitacora" ? "Bitácora" : "Eval."}
           </button>
         ))}
       </div>
@@ -2353,6 +2364,188 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
         </div>
+        );
+      })()}
+
+      {/* ────── TAB: GASTOS OPERATIVOS ────── */}
+      {tab === "gastos" && (() => {
+        const fmt2 = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+        const TIPO_LABELS: Record<string, string> = { COMIDA: "Comida", TRANSPORTE: "Transporte", HOSPEDAJE: "Hospedaje", OTRO: "Otro" };
+        const TIPO_COLORS: Record<string, string> = {
+          COMIDA: "bg-orange-900/30 text-orange-300",
+          TRANSPORTE: "bg-blue-900/30 text-blue-300",
+          HOSPEDAJE: "bg-purple-900/30 text-purple-300",
+          OTRO: "bg-gray-800 text-gray-400",
+        };
+
+        async function reloadGastos() {
+          const r = await fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`);
+          const d = await r.json();
+          setGastosOp(d.gastos ?? []);
+        }
+
+        async function agregarGasto() {
+          if (!gastoOpForm.concepto || !gastoOpForm.monto) return;
+          await fetch("/api/proyectos/gastos-operativos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) }),
+          });
+          setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+          setShowGastoOpForm(false);
+          await reloadGastos();
+        }
+
+        async function toggleGasto(g: GastoOp) {
+          setTogglingGasto(g.id);
+          await fetch("/api/proyectos/gastos-operativos", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
+          });
+          await reloadGastos();
+          setTogglingGasto(null);
+        }
+
+        async function eliminarGasto(g: GastoOp) {
+          await fetch("/api/proyectos/gastos-operativos", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: g.id }),
+          });
+          await reloadGastos();
+        }
+
+        const pendientes  = gastosOp.filter(g => !g.entregado);
+        const entregados  = gastosOp.filter(g =>  g.entregado);
+        const totalPendiente = pendientes.reduce((s, g) => s + g.monto * g.cantidad, 0);
+        const totalTotal     = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
+
+        return (
+          <div className="space-y-4">
+            {/* Resumen */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+                <p className="text-white text-lg font-bold">{gastosOp.length}</p>
+                <p className="text-gray-500 text-xs mt-0.5">Total gastos</p>
+              </div>
+              <div className="bg-[#111] border border-yellow-900/30 rounded-xl p-4 text-center">
+                <p className="text-yellow-300 text-lg font-bold">{fmt2(totalPendiente)}</p>
+                <p className="text-gray-500 text-xs mt-0.5">Por entregar</p>
+              </div>
+              <div className="bg-[#111] border border-green-900/30 rounded-xl p-4 text-center">
+                <p className="text-green-400 text-lg font-bold">{fmt2(totalTotal - totalPendiente)}</p>
+                <p className="text-gray-500 text-xs mt-0.5">Entregado</p>
+              </div>
+            </div>
+
+            {/* Botón agregar */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <button onClick={() => setShowGastoOpForm(v => !v)}
+                className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
+                {showGastoOpForm ? "− Cancelar" : "+ Agregar gasto operativo"}
+              </button>
+              {showGastoOpForm && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Tipo</label>
+                    <select value={gastoOpForm.tipo} onChange={e => setGastoOpForm(p => ({ ...p, tipo: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="COMIDA">Comida</option>
+                      <option value="TRANSPORTE">Transporte</option>
+                      <option value="HOSPEDAJE">Hospedaje</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2 md:col-span-1">
+                    <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                    <input value={gastoOpForm.concepto} onChange={e => setGastoOpForm(p => ({ ...p, concepto: e.target.value }))}
+                      placeholder="Ej: Cenas crew (8 personas)"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
+                    <input type="number" value={gastoOpForm.monto} onChange={e => setGastoOpForm(p => ({ ...p, monto: e.target.value }))}
+                      placeholder="0"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
+                    <input type="number" min="1" value={gastoOpForm.cantidad} onChange={e => setGastoOpForm(p => ({ ...p, cantidad: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-2 md:col-span-3">
+                    <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                    <input value={gastoOpForm.notas} onChange={e => setGastoOpForm(p => ({ ...p, notas: e.target.value }))}
+                      placeholder="Opcional"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={agregarGasto} disabled={!gastoOpForm.concepto || !gastoOpForm.monto}
+                      className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                      Agregar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lista pendientes */}
+            {pendientes.length > 0 && (
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-4 py-2.5 border-b border-[#1e1e1e] flex items-center justify-between">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Por entregar</p>
+                  <p className="text-xs text-gray-500">Total: {fmt2(totalPendiente)}</p>
+                </div>
+                {pendientes.map(g => (
+                  <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0 hover:bg-[#0d0d0d] transition-colors">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
+                      {TIPO_LABELS[g.tipo] ?? g.tipo}
+                    </span>
+                    <p className="flex-1 text-white/80 text-sm">{g.concepto}</p>
+                    {g.cantidad > 1 && <span className="text-gray-600 text-xs shrink-0">×{g.cantidad}</span>}
+                    <p className="text-white text-sm font-medium w-20 text-right shrink-0">{fmt2(g.monto * g.cantidad)}</p>
+                    <button onClick={() => toggleGasto(g)} disabled={togglingGasto === g.id}
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                        togglingGasto === g.id ? "opacity-50 cursor-wait border-[#333] text-gray-500" :
+                        "border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B] hover:text-black hover:border-[#B3985B]"
+                      }`}>
+                      Entregar
+                    </button>
+                    <button onClick={() => eliminarGasto(g)} className="text-gray-700 hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Lista entregados */}
+            {entregados.length > 0 && (
+              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden opacity-60">
+                <div className="px-4 py-2.5 border-b border-[#1a1a1a]">
+                  <p className="text-xs text-green-500 font-semibold uppercase tracking-wider">Entregados</p>
+                </div>
+                {entregados.map(g => (
+                  <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
+                      {TIPO_LABELS[g.tipo] ?? g.tipo}
+                    </span>
+                    <p className="flex-1 text-white/50 text-sm">{g.concepto}</p>
+                    <p className="text-gray-600 text-sm w-20 text-right shrink-0">{fmt2(g.monto * g.cantidad)}</p>
+                    <button onClick={() => toggleGasto(g)} className="text-gray-600 text-xs hover:text-white transition-colors shrink-0 px-2">
+                      Deshacer
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {gastosOp.length === 0 && (
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+                <p className="text-gray-600 text-sm">Sin gastos operativos registrados</p>
+                <p className="text-gray-700 text-xs mt-1">Agrega comidas, transportes y hospedaje para que administración prepare el efectivo</p>
+              </div>
+            )}
+          </div>
         );
       })()}
 
