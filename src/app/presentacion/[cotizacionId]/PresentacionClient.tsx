@@ -447,17 +447,10 @@ function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?
             </div>
           )}
         </div>
-        <div className="p-3 border-t border-white/5">
-          {linea.marca && (
-            <p className="text-[#B3985B] text-[9px] font-semibold uppercase tracking-widest mb-0.5 truncate">{linea.marca}</p>
-          )}
-          <p className="text-white text-xs font-semibold leading-tight truncate">{linea.modelo ?? linea.descripcion}</p>
-          {linea.modelo && linea.descripcion && (
-            <p className="text-white/25 text-[10px] mt-0.5 truncate leading-tight">{linea.descripcion}</p>
-          )}
-          {linea.cantidad > 1 && (
-            <p className="text-[#B3985B]/60 text-[9px] mt-1.5 font-semibold">×{linea.cantidad}</p>
-          )}
+        <div className="px-3 py-2.5 border-t border-white/5">
+          <p className="text-white text-xs font-semibold leading-tight truncate text-center">
+            {linea.modelo ?? linea.descripcion}
+          </p>
         </div>
       </div>
     </R>
@@ -472,25 +465,22 @@ function EquipoGrid({ lineas }: { lineas: Linea[] }) {
   );
 }
 
-// ─── Equipment spec list (v1 style — texto limpio con marca/modelo) ───────────
+// ─── Equipment spec list — cantidad + nombre + ubicación ─────────────────────
 function EquipoSpecList({ lineas }: { lineas: Linea[] }) {
   return (
     <div className="mt-2">
       {lineas.map((l, i) => (
         <R key={l.id} delay={180 + i * 30}>
-          <div className="flex items-center gap-3 py-3 border-t border-white/6">
+          <div className="flex items-center gap-4 py-3 border-t border-white/6">
+            <p className="text-[#B3985B] text-xs font-bold shrink-0 w-7 text-right">×{l.cantidad}</p>
             <div className="flex-1 min-w-0">
-              {l.marca && (
-                <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-0.5">{l.marca}</p>
-              )}
-              <p className="text-white/90 text-sm font-semibold leading-tight">{l.modelo ?? l.descripcion}</p>
+              <p className="text-white/90 text-sm font-semibold leading-tight truncate">
+                {l.modelo ?? l.descripcion}
+              </p>
               {l.modelo && l.descripcion && (
                 <p className="text-white/30 text-xs mt-0.5 leading-tight truncate">{l.descripcion}</p>
               )}
             </div>
-            {l.cantidad > 1 && (
-              <p className="text-white/25 text-xs shrink-0 font-medium">×{l.cantidad}</p>
-            )}
           </div>
         </R>
       ))}
@@ -766,10 +756,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Diseño de Iluminación</GoldLabel></R>
-            <div className="grid lg:grid-cols-[2fr,1fr] gap-12 items-start">
-              <R delay={100} y={30}>
-                <EquipoGrid lineas={ilum} />
-              </R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
                   <Heading className="mb-6">{ev.ilumHeadline}</Heading>
@@ -781,6 +768,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                 </R>
                 <EquipoSpecList lineas={ilum} />
               </div>
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={ilum} />
+              </R>
             </div>
           </div>
         </section>
@@ -840,10 +830,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Producción de Video</GoldLabel></R>
-            <div className="grid lg:grid-cols-[2fr,1fr] gap-12 items-start">
-              <R delay={100} y={30}>
-                <EquipoGrid lineas={video} />
-              </R>
+            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
                   <Heading className="mb-6">{ev.videoHeadline}</Heading>
@@ -855,6 +842,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                 </R>
                 <EquipoSpecList lineas={video} />
               </div>
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={video} />
+              </R>
             </div>
           </div>
         </section>
