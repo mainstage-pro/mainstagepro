@@ -104,11 +104,12 @@ export default function NuevoTratoPage() {
     } catch { setError("Error de conexión"); setLoading(false); }
   }
 
-  async function crearActivo() {
-    if (!s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return; }
+  async function crearActivo(sinDetalles = false) {
+    if (!sinDetalles && !s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return; }
     setError(""); setLoading(true);
     const payload: Record<string,unknown> = {
-      ...s1, ...s2,
+      ...s1,
+      ...(sinDetalles ? {} : s2),
       tipoProspecto: "ACTIVO",
       asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
     };
@@ -295,9 +296,15 @@ export default function NuevoTratoPage() {
                 {loading ? "Creando..." : "Crear trato →"}
               </button>
             ) : (
-              <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
-                Siguiente → ¿Qué busca?
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={()=>{if(validarCliente()) crearActivo(true);}} disabled={loading}
+                  className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+                  {loading ? "Guardando..." : "Guardar sin detalles"}
+                </button>
+                <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
+                  Siguiente → ¿Qué busca?
+                </button>
+              </div>
             )}
           </div>
         </div>
