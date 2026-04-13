@@ -39,7 +39,6 @@ const NAV: NavSection[] = [
           { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
         ],
       },
-      { key: "operaciones", label: "Operaciones", href: "/operaciones" },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
@@ -48,6 +47,7 @@ const NAV: NavSection[] = [
     key: "seccion-administracion",
     section: "ADMINISTRACIÓN",
     items: [
+      { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
       {
         key: "finanzas",
         label: "Finanzas",
