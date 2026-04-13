@@ -622,7 +622,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
              style={{ background: "radial-gradient(ellipse 70% 50% at 50% 60%, rgba(179,152,91,0.06) 0%, transparent 70%)" }} />
         <div className="absolute inset-0 bg-black/45" />
         {/* Gold tint overlay */}
-        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 90% 80% at 50% 50%, rgba(179,152,91,0.38) 0%, rgba(179,152,91,0.08) 60%, transparent 80%)" }} />
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, rgba(179,152,91,0.22) 0%, transparent 45%, rgba(179,152,91,0.16) 100%)" }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/40" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
 
