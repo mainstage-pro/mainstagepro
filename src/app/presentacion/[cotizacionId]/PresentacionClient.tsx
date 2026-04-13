@@ -179,14 +179,14 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     stmt1: "No es técnica.",
     stmt2: "Es el escenario\nque el show necesita.",
     stmtSub: "Un evento musical bien producido no se nota — simplemente se siente. Cada decisión técnica existe para servir a la música y al artista sobre el escenario.",
-    audioHeadline: "Cada nota, exactamente donde tiene que estar.",
-    audioBody: "Cobertura uniforme desde la primera fila hasta el fondo del venue. Sin zonas muertas, sin distorsión en picos. El audio que el artista necesita para dar lo mejor de sí.",
-    ilumHeadline: "La luz que hace que el show se sienta.",
-    ilumBody: "Iluminación que trabaja junto al set, no sobre él. No se trata de cuántos fixtures hay — sino de cómo construyen juntos la atmósfera del show.",
-    djHeadline: "El rider técnico, al pie de la letra.",
-    djBody: "El equipo que los mejores DJs piden. Setup completo, verificado antes del show, sin compromisos en la cadena de señal.",
-    videoHeadline: "El show, visible desde cualquier punto.",
-    videoBody: "Pantallas que llevan el show a cada rincón del venue. Contenido en alta resolución, sin lag, sin interrupciones.",
+    audioHeadline: "Sonido limpio en cada rincón del venue, sin puntos muertos.",
+    audioBody: "Line arrays, subwoofers y monitores calibrados para la acústica del espacio. La frecuencia llega uniforme desde el frente hasta el fondo — sin distorsión, sin retroalimentación.",
+    ilumHeadline: "Beams, colores y efectos que construyen la atmósfera del show.",
+    ilumBody: "Cabezas móviles, luces beam, strobes y efectos de pixel controlados desde consola. Cada cue programado para el momento exacto del set.",
+    djHeadline: "Tornamesas, mixer y booth listos antes de que llegue el DJ.",
+    djBody: "CDJs, mezcladora y booth de referencia — la misma cadena de señal que los DJs exigen en su rider. Verificado y en punto antes del soundcheck.",
+    videoHeadline: "Pantallas y señal de video estables durante todo el evento.",
+    videoBody: "Pantallas LED bien posicionadas, procesador de video y señal sin cortes. Resolución y brillo correctos para el espacio, de día o de noche.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
       { icon: "star",   title: "Conocemos los escenarios",        body: "Hemos trabajado en conciertos de distintos formatos. Sabemos qué funciona, qué falla y cómo anticiparnos antes de que el público llegue." },
@@ -200,14 +200,14 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     stmt1: "No es producción.",
     stmt2: "Es el fondo perfecto\npara los momentos\nque más importan.",
     stmtSub: "Los eventos sociales se recuerdan por cómo se sintieron. La música, la luz, el sonido del brindis — todo eso es técnica. Y la técnica bien hecha no se nota.",
-    audioHeadline: "El sonido que no se nota, pero que define la noche.",
-    audioBody: "Que la música suene bien durante la fiesta y el discurso llegue claro a cada mesa. Sin retroalimentación, sin volumen incómodo. Sonido que acompaña sin interrumpir.",
-    ilumHeadline: "Luz que cambia con los momentos de la noche.",
-    ilumBody: "Cálida para la cena, vibrante para la pista. La iluminación cambia de ambiente de forma natural a lo largo de la noche, sin transiciones bruscas.",
-    djHeadline: "El set técnico para que el DJ brille.",
-    djBody: "Equipo en condiciones, conectado y verificado antes de que llegue el primer invitado. Para que el DJ se concentre en la música, no en los problemas técnicos.",
-    videoHeadline: "Imágenes y contenido en el momento exacto.",
-    videoBody: "Fotos en vivo, video de la ceremonia, presentaciones especiales. Pantallas bien posicionadas para que todos puedan disfrutarlas sin esfuerzo.",
+    audioHeadline: "Sonido que se escucha bien en cada mesa, sin esfuerzo.",
+    audioBody: "Micrófonos inalámbricos para el brindis, la ceremonia y el discurso — sin retroalimentación. La música suena a buen volumen en la pista y se escucha a la distancia correcta en las mesas.",
+    ilumHeadline: "Iluminación cálida para la cena, vibrante para la pista.",
+    ilumBody: "Pares LED, cabezas móviles y efectos programados para cada momento de la noche. El ambiente cambia de forma suave y natural — sin cortes bruscos entre la cena y el baile.",
+    djHeadline: "Tornamesas y mixer calibrados antes de que llegue el primer invitado.",
+    djBody: "Equipo verificado y con señal lista antes del inicio del evento. El DJ llega y puede empezar — sin tiempo perdido en configuraciones.",
+    videoHeadline: "Pantallas para la ceremonia, el video y las presentaciones.",
+    videoBody: "Pantallas bien posicionadas para que todos los invitados vean el contenido sin esfuerzo. Señal estable para fotos en vivo, videos del evento o presentaciones especiales.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
       { icon: "star",   title: "Discretos durante el evento",          body: "Llegamos, montamos y nos quedamos en segundo plano. El protagonismo es del evento y los festejados, no del equipo técnico." },
@@ -221,14 +221,14 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     stmt1: "No es logística.",
     stmt2: "Es la imagen de\ntu empresa en\ncada detalle técnico.",
     stmtSub: "En un evento corporativo, la técnica es parte del mensaje. Un audio que falla distrae. Una pantalla mal ubicada resta. Cuando todo funciona bien, tu empresa se ve bien.",
-    audioHeadline: "Cada palabra, perfectamente audible.",
-    audioBody: "Que el orador se escuche claro, sin retroalimentación ni cortes. Micrófonos inalámbricos confiables, consola operada con precisión. El contenido que presentas, escuchado como debe ser.",
-    ilumHeadline: "Luz alineada con tu identidad de marca.",
-    ilumBody: "Ambiente profesional para presentaciones, dinámico para lanzamientos, elegante para cenas directivas. La iluminación correcta refuerza el mensaje de tu empresa sin competir con él.",
-    djHeadline: "Música de contexto o DJ para el cierre.",
-    djBody: "Desde música ambiental reproducida de forma profesional hasta un set de DJ para el cierre del evento. Equipo limpio y operadores que entienden el contexto corporativo.",
-    videoHeadline: "Tu contenido, claro y sin contratiempos.",
-    videoBody: "Pantallas bien posicionadas, señal estable, resolución adecuada al espacio. Compatible con la presentación del conferencista, el contenido de tu agencia y las transmisiones en vivo.",
+    audioHeadline: "El orador se escucha claro desde cualquier punto del salón.",
+    audioBody: "Micrófonos de solapa, headset o de mano — sin retroalimentación, sin cortes. La consola es operada durante toda la conferencia para que el volumen y la calidad de audio sean consistentes.",
+    ilumHeadline: "Iluminación profesional acorde al tono del evento.",
+    ilumBody: "Luz cálida y uniforme para las presentaciones, dinámica para los lanzamientos, elegante para las cenas. El ambiente refuerza el mensaje de tu empresa sin distraer la atención.",
+    djHeadline: "Música ambiental o DJ profesional para el cierre.",
+    djBody: "Señal de audio limpia para reproducción de música en contexto corporativo, o equipo completo de DJ para el networking y el cierre del evento.",
+    videoHeadline: "Tu presentación en pantalla, sin fallas técnicas.",
+    videoBody: "Pantallas bien posicionadas, procesador de señal y resolución adecuada al espacio. Compatible con laptops, señal HDMI, transmisiones en vivo y contenido de tu agencia.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
       { icon: "star",   title: "Entendemos el contexto corporativo",      body: "Eventos con directivos, clientes y medios. Operamos sabiendo que el margen de error es mínimo y que la imagen de tu empresa está en juego." },
@@ -341,7 +341,16 @@ function R({ children, delay = 0, y = 48, className = "" }: { children: React.Re
 }
 
 function GoldLabel({ children }: { children: React.ReactNode }) {
-  return <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-[0.22em] mb-5">{children}</p>;
+  return <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-[0.22em] mb-3">{children}</p>;
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-white font-bold mb-6 leading-tight"
+        style={{ fontSize: "clamp(1.6rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
+      {children}
+    </h3>
+  );
 }
 
 function Heading({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -718,11 +727,13 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
-            <R><GoldLabel>Sistema de Audio</GoldLabel></R>
+            <R>
+              <SectionTitle>Sistema de Audio</SectionTitle>
+            </R>
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">{ev.audioHeadline}</Heading>
+                  <p className="text-white/45 text-base italic mb-4 leading-snug">{ev.audioHeadline}</p>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
@@ -755,11 +766,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
-            <R><GoldLabel>Diseño de Iluminación</GoldLabel></R>
+            <R><SectionTitle>Diseño de Iluminación</SectionTitle></R>
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">{ev.ilumHeadline}</Heading>
+                  <p className="text-white/45 text-base italic mb-4 leading-snug">{ev.ilumHeadline}</p>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
@@ -792,11 +803,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
-            <R><GoldLabel>Setup DJ</GoldLabel></R>
+            <R><SectionTitle>Setup DJ</SectionTitle></R>
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">{ev.djHeadline}</Heading>
+                  <p className="text-white/45 text-base italic mb-4 leading-snug">{ev.djHeadline}</p>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
@@ -829,11 +840,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
-            <R><GoldLabel>Producción de Video</GoldLabel></R>
+            <R><SectionTitle>Producción de Video</SectionTitle></R>
             <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
               <div>
                 <R delay={60}>
-                  <Heading className="mb-6">{ev.videoHeadline}</Heading>
+                  <p className="text-white/45 text-base italic mb-4 leading-snug">{ev.videoHeadline}</p>
                 </R>
                 <R delay={140}>
                   <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
