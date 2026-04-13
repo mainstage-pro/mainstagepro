@@ -89,6 +89,13 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
+  async function eliminarEmpleado() {
+    if (!persona) return;
+    if (!confirm(`¿Eliminar permanentemente a ${persona.nombre}? Esta acción no se puede deshacer.`)) return;
+    await fetch(`/api/rrhh/personal/${id}`, { method: "DELETE" });
+    router.push("/rrhh/personal");
+  }
+
   if (loading || !persona) return <div className="p-3 md:p-6 text-gray-600 text-sm">Cargando...</div>;
 
   return (
@@ -113,6 +120,10 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
           <button onClick={() => { setEditForm({ ...persona }); setEditando(true); }}
             className="text-xs px-3 py-1.5 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
             Editar
+          </button>
+          <button onClick={eliminarEmpleado}
+            className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-600 hover:text-red-400 hover:border-red-900 transition-colors">
+            Eliminar
           </button>
         </div>
       </div>
