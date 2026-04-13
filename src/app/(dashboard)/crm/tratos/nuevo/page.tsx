@@ -77,7 +77,7 @@ export default function NuevoTratoPage() {
     origenLead: "ORGANICO", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
   });
   const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
-  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
+  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", nombreEvento:"", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
 
   useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
 
@@ -341,6 +341,7 @@ export default function NuevoTratoPage() {
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Detalles del evento</h2>
             <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Nombre del evento / proyecto</label><input value={s2.nombreEvento} onChange={e=>setS2(p=>({...p,nombreEvento:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: Boda García · Festival Verano 2025 · Lanzamiento Nike"/></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Fecha estimada</label><input type="date" value={s2.fechaEventoEstimada} onChange={e=>setS2(p=>({...p,fechaEventoEstimada:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"/></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Asistentes estimados</label><input type="number" value={s2.asistentesEstimados} onChange={e=>setS2(p=>({...p,asistentesEstimados:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: 300"/></div>
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Ciudad / Venue</label><input value={s2.lugarEstimado} onChange={e=>setS2(p=>({...p,lugarEstimado:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: Querétaro · Foro Independencia"/></div>

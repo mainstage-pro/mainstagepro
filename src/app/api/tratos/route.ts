@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
         canalAtencion: body.canalAtencion || null,
         rutaEntrada: body.rutaEntrada || "DESCUBRIR",
         etapaContratacion: body.etapaContratacion || null,
+        nombreEvento: body.nombreEvento || null,
         lugarEstimado: body.lugarEstimado || null,
         asistentesEstimados: body.asistentesEstimados ? parseInt(body.asistentesEstimados) : null,
         fechaEventoEstimada: body.fechaEventoEstimada ? new Date(body.fechaEventoEstimada) : null,
