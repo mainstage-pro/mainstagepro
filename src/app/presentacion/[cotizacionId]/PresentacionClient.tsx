@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
@@ -389,46 +389,111 @@ function WhyIcon({ type }: { type: string }) {
   );
 }
 
-// ─── Draggable Gallery ────────────────────────────────────────────────────────
-function DragGallery({ photos }: { photos: { src: string; caption: string }[] }) {
-  const trackRef = useRef<HTMLDivElement>(null);
-  const startX   = useRef(0);
-  const scrollL  = useRef(0);
-  const dragging = useRef(false);
+// ─── Cinematic Gallery ───────────────────────────────────────────────────────
+function CinematicGallery({ photos }: { photos: { src: string; caption: string }[] }) {
+  const [idx, setIdx]           = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [leaving, setLeaving]   = useState(false);
+  const DURATION = 5500;
 
-  const onDown = useCallback((e: React.MouseEvent) => {
-    dragging.current = true;
-    startX.current   = e.pageX - (trackRef.current?.offsetLeft ?? 0);
-    scrollL.current  = trackRef.current?.scrollLeft ?? 0;
-    if (trackRef.current) trackRef.current.style.cursor = "grabbing";
-  }, []);
-  const onUp   = useCallback(() => {
-    dragging.current = false;
-    if (trackRef.current) trackRef.current.style.cursor = "grab";
-  }, []);
-  const onMove = useCallback((e: React.MouseEvent) => {
-    if (!dragging.current || !trackRef.current) return;
-    e.preventDefault();
-    const x    = e.pageX - trackRef.current.offsetLeft;
-    const walk = (x - startX.current) * 1.8;
-    trackRef.current.scrollLeft = scrollL.current - walk;
-  }, []);
+  useEffect(() => {
+    setProgress(0);
+    setLeaving(false);
+    const start = Date.now();
+    const iv = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / DURATION);
+      setProgress(p);
+      if (p >= 1) {
+        clearInterval(iv);
+        setLeaving(true);
+        setTimeout(() => setIdx(i => (i + 1) % photos.length), 900);
+      }
+    }, 40);
+    return () => clearInterval(iv);
+  }, [idx, photos.length]);
 
   return (
-    <div ref={trackRef}
-         className="flex gap-3 overflow-x-auto select-none pb-4"
-         style={{ scrollSnapType: "x mandatory", cursor: "grab", scrollbarWidth: "none", msOverflowStyle: "none" }}
-         onMouseDown={onDown} onMouseUp={onUp} onMouseLeave={onUp} onMouseMove={onMove}>
-      {photos.map((p, i) => (
-        <div key={i} className="shrink-0 relative rounded-2xl overflow-hidden group"
-             style={{ width: "clamp(220px,32vw,340px)", height: "clamp(320px,48vw,500px)", scrollSnapAlign: "start" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={p.src} alt={p.caption} draggable={false}
-               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          <p className="absolute bottom-4 left-4 text-white/50 text-xs tracking-wide">{p.caption}</p>
+    <div className="relative w-full overflow-hidden" style={{ height: "72vh", minHeight: "520px" }}>
+      {photos.map((p, i) => {
+        const isActive = i === idx;
+        const isPrev   = leaving && i === (idx - 1 + photos.length) % photos.length;
+        return (
+          <div key={i} className="absolute inset-0"
+               style={{
+                 opacity: isActive ? 1 : isPrev ? 0 : 0,
+                 transition: isActive ? "opacity 1.4s ease" : "opacity 0.9s ease",
+                 zIndex: isActive ? 2 : isPrev ? 1 : 0,
+               }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={p.src} alt={p.caption} draggable={false}
+                 className="w-full h-full object-cover"
+                 style={{ animation: isActive ? "kenBurns 9s ease forwards" : "none" }} />
+          </div>
+        );
+      })}
+
+      {/* Gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent pointer-events-none" style={{ zIndex: 3 }} />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30 pointer-events-none" style={{ zIndex: 3 }} />
+
+      {/* Bottom bar: caption + counter + progress */}
+      <div className="absolute bottom-0 left-0 right-0 px-8 sm:px-16 pb-8" style={{ zIndex: 4 }}>
+        <div className="flex items-end justify-between mb-4">
+          <p className="text-white/70 text-sm tracking-wide leading-tight max-w-xs">
+            {photos[idx].caption}
+          </p>
+          <p className="text-white/25 text-xs font-mono tabular-nums shrink-0 ml-4">
+            {String(idx + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}
+          </p>
         </div>
-      ))}
+        {/* Progress bar */}
+        <div className="relative h-px w-full bg-white/10">
+          <div className="absolute inset-y-0 left-0 bg-[#B3985B]"
+               style={{ width: `${progress * 100}%`, transition: "width 0.08s linear" }} />
+        </div>
+      </div>
+
+      {/* Dot navigation */}
+      <div className="absolute top-6 right-8 flex gap-2" style={{ zIndex: 4 }}>
+        {photos.map((_, i) => (
+          <button key={i} onClick={() => setIdx(i)}
+                  className="rounded-full transition-all duration-300"
+                  style={{
+                    width:  i === idx ? "20px" : "6px",
+                    height: "6px",
+                    background: i === idx ? "#B3985B" : "rgba(255,255,255,0.2)",
+                  }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Scroll zoom — texto que se acerca/aleja con el scroll ────────────────────
+function ScrollZoom({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState({ transform: "scale(0.88)", opacity: 0 });
+  useEffect(() => {
+    const fn = () => {
+      if (!ref.current) return;
+      const rect = ref.current.getBoundingClientRect();
+      const vh   = window.innerHeight;
+      // 0 → element bottom at viewport bottom; 1 → element top past viewport top
+      const raw  = (vh - rect.top) / (vh + rect.height);
+      const p    = Math.max(0, Math.min(1, raw));
+      setStyle({
+        transform: `scale(${0.88 + p * 0.2})`,
+        opacity: Math.min(1, p * 3),
+      });
+    };
+    window.addEventListener("scroll", fn, { passive: true });
+    fn();
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  return (
+    <div ref={ref} className={className}
+         style={{ ...style, transition: "transform 0.25s cubic-bezier(0.16,1,0.3,1), opacity 0.25s ease", willChange: "transform, opacity" }}>
+      {children}
     </div>
   );
 }
@@ -686,13 +751,13 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {/* ── STATEMENT ───────────────────────────────────────────────────────── */}
       <section className="bg-[#040404] py-28 sm:py-36 px-6 text-center">
         <div className="max-w-4xl mx-auto">
-          <R>
+          <ScrollZoom className="text-center">
             <p className="text-white/20 text-xs uppercase tracking-[0.22em] mb-8">La diferencia</p>
             <Heading className="mb-8">
               {ev.stmt1}
               <br /><span className="text-white/40">{ev.stmt2.split("\n").join(" ")}</span>
             </Heading>
-          </R>
+          </ScrollZoom>
           <R delay={180}>
             <p className="text-white/40 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto">
               {ev.stmtSub}
@@ -702,15 +767,12 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       </section>
 
       {/* ── GALLERY ─────────────────────────────────────────────────────────── */}
-      <section className="bg-black py-20 overflow-hidden">
+      <section className="bg-black pt-20 pb-0 overflow-hidden">
         <R className="px-6 sm:px-12 lg:px-20 mb-10">
           <GoldLabel>Nuestro trabajo</GoldLabel>
           <Heading>Producción que<br />habla por sí sola.</Heading>
-          <p className="text-white/35 text-sm mt-3">Arrastra para explorar ·</p>
         </R>
-        <div className="px-6 sm:px-12 lg:px-20">
-          <DragGallery photos={gallery} />
-        </div>
+        <CinematicGallery photos={gallery} />
       </section>
 
       {/* ── AUDIO ───────────────────────────────────────────────────────────── */}
