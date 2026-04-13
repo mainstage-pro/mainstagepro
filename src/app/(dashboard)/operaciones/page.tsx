@@ -438,133 +438,98 @@ export default function OperacionesPage() {
   return (
     <div className="flex h-full overflow-hidden">
 
-      {/* ── LEFT NAV ──────────────────────────────────────────────────────── */}
-      <nav className="hidden md:flex w-60 shrink-0 flex-col bg-[#060606] border-r border-[#111] overflow-y-auto">
-        <div className="px-3 pt-4 pb-2 border-b border-[#111]">
-          <p className="text-[12px] text-[#333] uppercase tracking-widest font-bold px-1 mb-1">Operaciones</p>
-        </div>
-
-        <div className="px-2 py-2 space-y-0.5">
-          {([
-            { key:"bandeja",   label:"Bandeja de entrada",
-              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
-            { key:"hoy",       label:"Hoy",
-              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> },
-            { key:"proximas",  label:"Próximas",
-              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-            { key:"integrada", label:"Op. Integrada",
-              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
-          ] as const).map(item => (
-            <button key={item.key} onClick={() => setVista(item.key)}
-              className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm transition-all ${
-                vistaKey === item.key
-                  ? "bg-[#1a1a1a] text-[#B3985B]"
-                  : "text-[#444] hover:text-[#999] hover:bg-[#0f0f0f]"
-              }`}>
-              <span className={`shrink-0 transition-colors ${vistaKey === item.key ? "text-[#B3985B]" : "text-[#3a3a3a]"}`}>
-                {item.icon}
-              </span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="border-t border-[#111] mt-1 pt-2 px-2 flex-1 space-y-0.5">
-          <div className="flex items-center justify-between px-2 py-1">
-            <p className="text-[11px] text-[#333] uppercase tracking-widest font-bold">Proyectos</p>
-            <button onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
-              className="text-[#333] hover:text-[#B3985B] transition-colors" title="Nuevo proyecto">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-            </button>
-          </div>
-
-          {carpetas.map(carpeta => (
-            <NavCarpeta
-              key={carpeta.id}
-              carpeta={carpeta}
-              open={carpetasOpen.has(carpeta.id)}
-              vistaKey={vistaKey}
-              onToggle={() => setCarpetasOpen(prev => { const n = new Set(prev); n.has(carpeta.id) ? n.delete(carpeta.id) : n.add(carpeta.id); return n; })}
-              onSelectProyecto={id => setVista({ tipo:"proyecto", id })}
-              onRenameCarpeta={async (id, nombre) => {
-                await fetch(`/api/operaciones/carpetas/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
-                setCarpetas(prev => prev.map(c => c.id === id ? { ...c, nombre } : c));
-              }}
-              onDeleteCarpeta={async (id) => {
-                await fetch(`/api/operaciones/carpetas/${id}`, { method:"DELETE" });
-                setCarpetas(prev => prev.filter(c => c.id !== id));
-              }}
-              onRenameProyecto={async (id, nombre) => {
-                await fetch(`/api/operaciones/proyectos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
-                setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.map(p => p.id === id ? { ...p, nombre } : p) })));
-                setProyectosNav(prev => prev.map(p => p.id === id ? { ...p, nombre } : p));
-              }}
-              onDeleteProyecto={async (id) => {
-                await fetch(`/api/operaciones/proyectos/${id}`, { method:"DELETE" });
-                setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.filter(p => p.id !== id) })));
-                setProyectosNav(prev => prev.filter(p => p.id !== id));
-                if (vistaKey === id) setVista("bandeja");
-              }}
-            />
-          ))}
-
-          {proyectosSinCarpeta.length > 0 && (
-            <div>
-              <button onClick={() => setProyectosSueltos(!proyectosSueltos)}
-                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#333] hover:text-[#555] transition-colors">
-                <span className="text-[10px] inline-block" style={{ transform: proyectosSueltos ? "rotate(90deg)" : "" }}>▶</span>
-                Sin carpeta
-              </button>
-              {proyectosSueltos && proyectosSinCarpeta.map(p => (
-                <NavProyecto
-                  key={p.id}
-                  proyecto={p}
-                  isActive={vistaKey === p.id}
-                  indent={4}
-                  onSelect={() => setVista({ tipo:"proyecto", id: p.id })}
-                  onRename={async (nombre) => {
-                    await fetch(`/api/operaciones/proyectos/${p.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify({ nombre }) });
-                    setProyectosNav(prev => prev.map(x => x.id === p.id ? { ...x, nombre } : x));
-                  }}
-                  onDelete={async () => {
-                    await fetch(`/api/operaciones/proyectos/${p.id}`, { method:"DELETE" });
-                    setProyectosNav(prev => prev.filter(x => x.id !== p.id));
-                    if (vistaKey === p.id) setVista("bandeja");
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          {showNuevaCarpeta ? (
-            <div className="px-2 py-1 space-y-1">
-              <input ref={carpetaInputRef} value={nuevoCarpetaNombre} onChange={e => setNuevoCarpetaNombre(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") crearCarpeta(); if (e.key === "Escape") setShowNuevaCarpeta(false); }}
-                placeholder="Nombre de carpeta"
-                className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]" />
-              <div className="flex gap-2">
-                <button onClick={crearCarpeta} className="text-xs text-[#B3985B] hover:underline">Crear</button>
-                <button onClick={() => setShowNuevaCarpeta(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => { setShowNuevaCarpeta(true); setTimeout(() => carpetaInputRef.current?.focus(), 50); }}
-              className="w-full flex items-center gap-1.5 px-2 py-1 text-xs text-[#333] hover:text-[#555] transition-colors">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Nueva carpeta
-            </button>
-          )}
-        </div>
-      </nav>
-
       {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#111] shrink-0">
-          <h1 className="text-lg font-semibold text-white">{vistaLabel}</h1>
+
+        {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
+        <div className="shrink-0 border-b border-[#111] bg-[#060606]">
+          {/* Row 1: vistas fijas + acciones */}
+          <div className="flex items-center gap-1 px-4 pt-2">
+            {([
+              { key:"bandeja",   label:"Bandeja",
+                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
+              { key:"hoy",       label:"Hoy",
+                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> },
+              { key:"proximas",  label:"Próximas",
+                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+              { key:"integrada", label:"Integrada",
+                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+            ] as const).map(item => (
+              <button key={item.key} onClick={() => setVista(item.key)}
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors rounded-t-md ${
+                  vistaKey === item.key
+                    ? "text-[#B3985B] bg-[#0f0f0f]"
+                    : "text-[#444] hover:text-[#888]"
+                }`}>
+                <span className={vistaKey === item.key ? "text-[#B3985B]" : "text-[#3a3a3a]"}>{item.icon}</span>
+                {item.label}
+                {vistaKey === item.key && (
+                  <span className="absolute bottom-0 left-0 right-0 h-px bg-[#B3985B]" />
+                )}
+              </button>
+            ))}
+
+            {/* Divisor */}
+            <div className="w-px h-4 bg-[#1e1e1e] mx-1" />
+
+            {/* Proyectos abiertos como tabs */}
+            <div className="flex items-center gap-1 flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {/* Tabs de carpetas con proyectos dentro */}
+              {carpetas.flatMap(c => c.proyectos).concat(proyectosSinCarpeta).map(p => {
+                const isActive = vistaKey === p.id;
+                return (
+                  <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id: p.id })}
+                    className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors rounded-t-md whitespace-nowrap shrink-0 ${
+                      isActive ? "text-white bg-[#0f0f0f]" : "text-[#444] hover:text-[#777]"
+                    }`}>
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ background: p.color ?? "#555" }} />
+                    {p.nombre}
+                    {isActive && <span className="absolute bottom-0 left-0 right-0 h-px" style={{ background: p.color ?? "#B3985B" }} />}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Acciones: nuevo proyecto + nueva carpeta */}
+            <div className="flex items-center gap-1 ml-auto shrink-0">
+              <button
+                onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
+                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#B3985B] transition-colors rounded"
+                title="Nuevo proyecto">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Proyecto
+              </button>
+              <button
+                onClick={() => { setShowNuevaCarpeta(true); setTimeout(() => carpetaInputRef.current?.focus(), 50); }}
+                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#888] transition-colors rounded"
+                title="Nueva carpeta">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                Carpeta
+              </button>
+            </div>
+          </div>
+
+          {/* Formularios inline: nueva carpeta / nuevo proyecto */}
+          {(showNuevaCarpeta || showNuevoProyecto) && (
+            <div className="px-4 py-2 border-t border-[#111] flex items-center gap-3 flex-wrap">
+              {showNuevaCarpeta && (
+                <>
+                  <input ref={carpetaInputRef} value={nuevoCarpetaNombre} onChange={e => setNuevoCarpetaNombre(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") crearCarpeta(); if (e.key === "Escape") setShowNuevaCarpeta(false); }}
+                    placeholder="Nombre de carpeta"
+                    className="bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B] w-44" />
+                  <button onClick={crearCarpeta} className="text-xs text-[#B3985B] hover:underline">Crear carpeta</button>
+                  <button onClick={() => setShowNuevaCarpeta(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── CONTENT HEADER ──────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-6 py-3 border-b border-[#111] shrink-0">
+          <h1 className="text-sm font-semibold text-white">{vistaLabel}</h1>
 
           {(vista === "hoy" || vista === "proximas") && (
             <div className="ml-auto flex items-center gap-1 flex-wrap">
@@ -580,9 +545,7 @@ export default function OperacionesPage() {
           {typeof vista === "string" && vista !== "integrada" && (
             <button
               onClick={() => setShowCompleted(v => !v)}
-              className={`ml-auto flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors ${
-                vista === "hoy" ? "ml-2" : "ml-auto"
-              } ${showCompleted ? "text-[#B3985B] bg-[#B3985B]/10" : "text-[#444] hover:text-[#888]"}`}
+              className={`${vista === "hoy" ? "ml-2" : "ml-auto"} flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors ${showCompleted ? "text-[#B3985B] bg-[#B3985B]/10" : "text-[#444] hover:text-[#888]"}`}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="20 6 9 17 4 12"/>
