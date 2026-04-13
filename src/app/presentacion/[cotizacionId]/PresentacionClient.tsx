@@ -313,12 +313,18 @@ function useParallax(factor = 0.15) {
   useEffect(() => {
     const fn = () => {
       if (!ref.current) return;
+      // Disable parallax on mobile — viewport < 768px
+      if (window.innerWidth < 768) { setOffset(0); return; }
       const rect = ref.current.getBoundingClientRect();
       setOffset((rect.top + rect.height / 2 - window.innerHeight / 2) * factor);
     };
     window.addEventListener("scroll", fn, { passive: true });
+    window.addEventListener("resize", fn, { passive: true });
     fn();
-    return () => window.removeEventListener("scroll", fn);
+    return () => {
+      window.removeEventListener("scroll", fn);
+      window.removeEventListener("resize", fn);
+    };
   }, [factor]);
   return { ref, offset };
 }
@@ -779,14 +785,14 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {audio.length > 0 && (
         <section ref={parallaxAudio.ref as React.RefObject<HTMLElement>}
                  className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
-          <div className="absolute inset-[-20%] pointer-events-none"
+          <div className="absolute inset-0 md:inset-[-20%] pointer-events-none"
                style={{ transform: `translateY(${parallaxAudio.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-crowd-pink.jpg",
                    "/images/presentacion/s-stage-full.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false} className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover object-center" />
           </div>
           <div className="absolute inset-0 bg-black/82" />
 
@@ -818,14 +824,14 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {ilum.length > 0 && (
         <section ref={parallaxIlum.ref as React.RefObject<HTMLElement>}
                  className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
-          <div className="absolute inset-[-20%] pointer-events-none"
+          <div className="absolute inset-0 md:inset-[-20%] pointer-events-none"
                style={{ transform: `translateY(${parallaxIlum.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-laser-red.jpg",
                    "/images/presentacion/s-dinner-sunset.png",
                    "/images/presentacion/e-corp-screens.jpg")}
-                 alt="" draggable={false} className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover object-center" />
           </div>
           <div className="absolute inset-0 bg-black/82" />
 
@@ -855,14 +861,14 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {dj.length > 0 && (
         <section ref={parallaxDj.ref as React.RefObject<HTMLElement>}
                  className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
-          <div className="absolute inset-[-20%] pointer-events-none"
+          <div className="absolute inset-0 md:inset-[-20%] pointer-events-none"
                style={{ transform: `translateY(${parallaxDj.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-smoke-pink.jpg",
                    "/images/presentacion/s-vocalist.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false} className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover object-center" />
           </div>
           <div className="absolute inset-0 bg-black/82" />
 
@@ -892,14 +898,14 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {video.length > 0 && (
         <section ref={parallaxVideo.ref as React.RefObject<HTMLElement>}
                  className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
-          <div className="absolute inset-[-20%] pointer-events-none"
+          <div className="absolute inset-0 md:inset-[-20%] pointer-events-none"
                style={{ transform: `translateY(${parallaxVideo.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
                    "/images/presentacion/m-arch-neon.jpg",
                    "/images/presentacion/s-couple-purple.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false} className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover object-center" />
           </div>
           <div className="absolute inset-0 bg-black/82" />
 
