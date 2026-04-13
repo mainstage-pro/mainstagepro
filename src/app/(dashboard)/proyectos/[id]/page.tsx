@@ -1861,6 +1861,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 📲 Invitar
                               </button>
                             )}
+                            {p.tecnico && (
+                              <a
+                                href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Descargar carta responsiva freelance"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
+                              >
+                                📄 Carta
+                              </a>
+                            )}
                             <button onClick={() => eliminarPersonal(p.id)}
                               className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors">×</button>
                           </div>
