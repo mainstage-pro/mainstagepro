@@ -21,27 +21,29 @@ export const ETAPA_LABELS: Record<string, string> = {
   VENTA_PERDIDA: "Venta Perdida",
 };
 
-// Estados de cotización
+// Estados de cotización (activos: BORRADOR, ENVIADA, APROBADA, RECHAZADA, VENCIDA)
 export const ESTADO_COTIZACION_LABELS: Record<string, string> = {
   BORRADOR: "Borrador",
   ENVIADA: "Enviada",
-  EN_REVISION: "En Revisión",
-  AJUSTE_SOLICITADO: "Ajuste Solicitado",
-  REENVIADA: "Reenviada",
   APROBADA: "Aprobada",
   RECHAZADA: "Rechazada",
   VENCIDA: "Vencida",
+  // Legacy — kept for backward-compatible display of old records
+  EN_REVISION: "En Revisión",
+  AJUSTE_SOLICITADO: "Ajuste Solicitado",
+  REENVIADA: "Reenviada",
 };
 
 export const ESTADO_COTIZACION_COLORS: Record<string, string> = {
   BORRADOR: "bg-gray-100 text-gray-700",
   ENVIADA: "bg-blue-100 text-blue-700",
-  EN_REVISION: "bg-yellow-100 text-yellow-700",
-  AJUSTE_SOLICITADO: "bg-orange-100 text-orange-700",
-  REENVIADA: "bg-blue-100 text-blue-700",
   APROBADA: "bg-green-100 text-green-700",
   RECHAZADA: "bg-red-100 text-red-700",
   VENCIDA: "bg-gray-100 text-gray-500",
+  // Legacy
+  EN_REVISION: "bg-yellow-100 text-yellow-700",
+  AJUSTE_SOLICITADO: "bg-orange-100 text-orange-700",
+  REENVIADA: "bg-blue-100 text-blue-700",
 };
 
 // Estados de proyecto

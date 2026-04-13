@@ -26,6 +26,7 @@ interface NavSection {
 }
 
 const NAV: NavSection[] = [
+  // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
   {
     key: "seccion-direccion",
     section: "DIRECCIÓN",
@@ -35,11 +36,64 @@ const NAV: NavSection[] = [
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
   },
+
+  // ── COMERCIAL ──────────────────────────────────────────────────────────────
   {
-    key: "seccion-administracion",
-    section: "ADMINISTRACIÓN",
+    key: "seccion-comercial",
+    section: "COMERCIAL",
+    items: [
+      { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
+      { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
+      { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
+      {
+        key: "comisiones",
+        label: "Comisiones",
+        children: [
+          { key: "comisiones-pipeline", label: "Pipeline", href: "/ventas" },
+          { key: "comisiones-vendedores", label: "Vendedores", href: "/ventas/vendedores" },
+          { key: "comisiones-reporte", label: "Reporte", href: "/ventas/reporte" },
+          { key: "comisiones-config", label: "Configuración", href: "/ventas/config" },
+        ],
+      },
+    ],
+  },
+
+  // ── PRODUCCIÓN ─────────────────────────────────────────────────────────────
+  {
+    key: "seccion-produccion",
+    section: "PRODUCCIÓN",
     items: [
       { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
+      { key: "proyectos", label: "Proyectos", href: "/proyectos" },
+      {
+        key: "calendario",
+        label: "Calendario de eventos",
+        children: [
+          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
+          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+        ],
+      },
+    ],
+  },
+
+  // ── INVENTARIO ─────────────────────────────────────────────────────────────
+  {
+    key: "seccion-inventario",
+    section: "INVENTARIO",
+    items: [
+      { key: "inv-equipos", label: "Equipos", href: "/inventario/bodega" },
+      { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
+      { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
+      { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
+      { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
+    ],
+  },
+
+  // ── FINANZAS ───────────────────────────────────────────────────────────────
+  {
+    key: "seccion-finanzas",
+    section: "FINANZAS",
+    items: [
       {
         key: "finanzas",
         label: "Finanzas",
@@ -47,37 +101,45 @@ const NAV: NavSection[] = [
           { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
           { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
-          { key: "finanzas-cxc", label: "Por cobrar", href: "/finanzas/cxc" },
-          { key: "finanzas-cxp", label: "Por pagar", href: "/finanzas/cxp" },
+          { key: "finanzas-cobros-pagos", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
           { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
           { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
           { key: "finanzas-reporte", label: "Reporte", href: "/finanzas/reporte" },
         ],
       },
+    ],
+  },
+
+  // ── EQUIPO ─────────────────────────────────────────────────────────────────
+  {
+    key: "seccion-equipo",
+    section: "EQUIPO",
+    items: [
       {
         key: "rrhh",
-        label: "RR.HH.",
+        label: "Recursos Humanos",
         children: [
-          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
-          { key: "rrhh-personal", label: "Personal", href: "/rrhh/personal" },
+          { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
+          { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
           { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
         ],
       },
       {
-        key: "base-datos",
-        label: "Base de datos",
+        key: "ats",
+        label: "Reclutamiento",
         children: [
-          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
-          { key: "bd-tecnicos", label: "Técnicos", href: "/catalogo/tecnicos" },
-          { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
+          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
+          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
         ],
       },
     ],
   },
+
+  // ── MARKETING ──────────────────────────────────────────────────────────────
   {
     key: "seccion-marketing",
     section: "MARKETING",
@@ -96,58 +158,6 @@ const NAV: NavSection[] = [
         label: "Publicidad",
         children: [
           { key: "mkt-campanas", label: "Campañas", href: "/marketing/campanas" },
-        ],
-      },
-    ],
-  },
-  {
-    key: "seccion-ventas",
-    section: "VENTAS",
-    items: [
-      {
-        key: "crm",
-        label: "CRM",
-        children: [
-          { key: "crm-pipeline", label: "Pipeline", href: "/crm/pipeline" },
-          { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
-          { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
-        ],
-      },
-      { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
-      { key: "plantillas-equipo", label: "Plantillas de equipo", href: "/admin/plantillas-equipo" },
-      {
-        key: "comisiones",
-        label: "Comisiones",
-        children: [
-          { key: "comisiones-pipeline", label: "Pipeline", href: "/ventas" },
-          { key: "comisiones-reporte", label: "Reporte", href: "/ventas/reporte" },
-          { key: "comisiones-vendedores", label: "Vendedores", href: "/ventas/vendedores" },
-          { key: "comisiones-config", label: "Configuración", href: "/ventas/config" },
-        ],
-      },
-    ],
-  },
-  {
-    key: "seccion-produccion",
-    section: "PRODUCCIÓN",
-    items: [
-      {
-        key: "calendario",
-        label: "Calendario de eventos",
-        children: [
-          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
-          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
-        ],
-      },
-      { key: "proyectos", label: "Proyectos", href: "/proyectos" },
-      {
-        key: "inventario",
-        label: "Inventario",
-        children: [
-          { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
-          { key: "inv-equipos", label: "Inv. de equipos", href: "/catalogo/equipos" },
-          { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
-          { key: "inv-bodega", label: "Checklist semanal", href: "/inventario/bodega" },
         ],
       },
     ],
@@ -183,15 +193,13 @@ function canAccess(key: string | undefined, isAdmin: boolean, privateModules: st
 
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  if (pathname.startsWith("/crm")) open.add("crm");
   if (pathname.startsWith("/ventas")) open.add("comisiones");
-  if (pathname.startsWith("/inventario") || pathname.startsWith("/catalogo/equipos")) open.add("inventario");
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
-  if (pathname.startsWith("/catalogo/roles") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/proveedores")) open.add("base-datos");
-  if (pathname.startsWith("/rrhh")) open.add("rrhh");
+  if (pathname.startsWith("/rrhh") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/roles")) open.add("rrhh");
+  if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos")) open.add("ats");
   if (pathname.startsWith("/calendario")) open.add("calendario");
   if (pathname.startsWith("/marketing/campanas")) open.add("publicidad");
-  if (pathname.startsWith("/marketing/calendario") || pathname.startsWith("/marketing/contenidos") || pathname.startsWith("/marketing/reporte")) open.add("contenido-organico");
+  if (pathname.startsWith("/marketing")) open.add("contenido-organico");
   return open;
 }
 

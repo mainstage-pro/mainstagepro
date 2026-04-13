@@ -80,7 +80,36 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  const proyectoAntes = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true } });
   const proyecto = await prisma.proyecto.update({ where: { id }, data });
+
+  // ── Auto-crear CxP para técnicos con pago pendiente al marcar COMPLETADO ──
+  if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
+    const personalPendiente = await prisma.proyectoPersonal.findMany({
+      where: { proyectoId: id, estadoPago: "PENDIENTE", tarifaAcordada: { gt: 0 } },
+      include: { tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } },
+    });
+
+    if (personalPendiente.length > 0) {
+      // Fecha compromiso: 7 días después del evento
+      const fechaCompromiso = new Date(proyecto.fechaEvento ?? new Date());
+      fechaCompromiso.setDate(fechaCompromiso.getDate() + 7);
+
+      await prisma.cuentaPagar.createMany({
+        data: personalPendiente.map(p => ({
+          tipoAcreedor: "TECNICO",
+          tecnicoId: p.tecnicoId ?? undefined,
+          proyectoId: id,
+          concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
+          monto: p.tarifaAcordada!,
+          fechaCompromiso,
+          estado: "PENDIENTE",
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
   return NextResponse.json({ proyecto });
 }
 

@@ -41,12 +41,6 @@ const IconUser = () => (
     <circle cx="12" cy="7" r="4"/>
   </svg>
 );
-const IconTag = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-    <line x1="7" y1="7" x2="7.01" y2="7"/>
-  </svg>
-);
 const IconPlus = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -281,10 +275,6 @@ export default function QuickAdd({
               label={proyectoInfo?.nombre ?? "Proyecto"} active={!!proyectoInfo} activeColor="#B3985B"
               isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
 
-            <ToolbarBtn icon={<IconTag />}
-              label={area !== "GENERAL" ? areaDef.label : "Área"} active={area !== "GENERAL"} activeColor="#B3985B"
-              isOpen={panel === "area"} onClick={() => togglePanel("area")} />
-
             {usuarios.length > 0 && (
               <ToolbarBtn icon={<IconUser />}
                 label={usuarioInfo?.name.split(" ")[0] ?? "Asignar"} active={!!usuarioInfo} activeColor="#B3985B"
@@ -388,20 +378,6 @@ export default function QuickAdd({
                   className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${proyectoSel === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"}`}>
                   <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
                   {p.nombre}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Área */}
-          {panel === "area" && (
-            <div className="flex flex-wrap gap-1 px-2.5 py-2">
-              {AREAS.map(a => (
-                <button key={a.key} onClick={() => { setArea(a.key); setPanel(null); }}
-                  className={`px-2.5 py-1 rounded text-[12px] border transition-all ${
-                    area === a.key ? "bg-[#B3985B]/12 border-[#B3985B]/30 text-[#B3985B]" : "border-[#1a1a1a] text-[#444] hover:text-[#888]"
-                  }`}>
-                  {a.label}
                 </button>
               ))}
             </div>

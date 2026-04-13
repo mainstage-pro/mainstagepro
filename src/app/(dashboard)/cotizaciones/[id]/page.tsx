@@ -61,13 +61,16 @@ interface Cotizacion {
 const ESTADO_COLORS: Record<string, string> = {
   BORRADOR: "bg-gray-700 text-gray-300",
   ENVIADA: "bg-blue-900/50 text-blue-300",
-  EN_REVISION: "bg-yellow-900/50 text-yellow-300",
   APROBADA: "bg-green-900/50 text-green-300",
   RECHAZADA: "bg-red-900/50 text-red-300",
   VENCIDA: "bg-gray-800 text-gray-500",
+  // Legacy display only — not selectable
+  EN_REVISION: "bg-yellow-900/50 text-yellow-300",
+  AJUSTE_SOLICITADO: "bg-orange-900/50 text-orange-300",
+  REENVIADA: "bg-blue-900/50 text-blue-300",
 };
 
-const ESTADOS_FLUJO = ["BORRADOR", "ENVIADA", "EN_REVISION", "APROBADA", "RECHAZADA"];
+const ESTADOS_FLUJO = ["BORRADOR", "ENVIADA", "APROBADA", "RECHAZADA"];
 
 const TIPO_LINEA_LABELS: Record<string, string> = {
   TRANSPORTE: "Transporte",
