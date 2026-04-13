@@ -61,9 +61,22 @@ interface Props {
   onDeleteSubtarea: (id: string) => void;
 }
 
-const AREAS = ["GENERAL", "VENTAS", "ADMINISTRACION", "PRODUCCION", "MARKETING", "RRHH"];
-const PRIOS = ["BAJA", "MEDIA", "ALTA", "URGENTE"];
-const PRIO_COLORS: Record<string, string> = { URGENTE: "#f87171", ALTA: "#fb923c", MEDIA: "#eab308", BAJA: "#555" };
+const PRIOS: { key: string; label: string; color: string; fill: string }[] = [
+  { key: "URGENTE", label: "Urgente",  color: "#f87171", fill: "#f87171" },
+  { key: "ALTA",    label: "Alta",     color: "#fb923c", fill: "#fb923c" },
+  { key: "MEDIA",   label: "Media",    color: "#eab308", fill: "#eab308" },
+  { key: "BAJA",    label: "Baja",     color: "#444",    fill: "#333"    },
+];
+
+function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? color : "none"}
+      stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  );
+}
 
 export default function TaskPanel({
   tarea, usuarios, proyectos, iniciativas, sessionId,
@@ -280,21 +293,25 @@ export default function TaskPanel({
 
         {/* Meta fields */}
         <div className="space-y-2.5">
-          {/* Prioridad + Area */}
-          <div className="flex gap-2">
-            <div className="flex-1 space-y-0.5">
-              <label className="text-[11px] text-[#444] uppercase tracking-wider">Prioridad</label>
-              <select value={prioridad} onChange={e => { setPrioridad(e.target.value); mark(); }}
-                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-                {PRIOS.map(p => <option key={p} value={p} style={{ color: PRIO_COLORS[p] }}>{p}</option>)}
-              </select>
-            </div>
-            <div className="flex-1 space-y-0.5">
-              <label className="text-[11px] text-[#444] uppercase tracking-wider">Área</label>
-              <select value={area} onChange={e => { setArea(e.target.value); mark(); }}
-                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-                {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
+          {/* Prioridad — flags */}
+          <div className="space-y-1">
+            <label className="text-[11px] text-[#444] uppercase tracking-wider">Prioridad</label>
+            <div className="flex gap-1">
+              {PRIOS.map(p => (
+                <button key={p.key}
+                  onClick={() => { setPrioridad(p.key); mark(); }}
+                  title={p.label}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    prioridad === p.key
+                      ? "border-transparent text-white"
+                      : "border-[#1e1e1e] text-[#444] hover:text-[#888] hover:border-[#2a2a2a]"
+                  }`}
+                  style={prioridad === p.key ? { background: p.color + "22", borderColor: p.color + "55" } : {}}
+                >
+                  <FlagIcon color={p.color} filled={prioridad === p.key} />
+                  <span style={prioridad === p.key ? { color: p.color } : {}}>{p.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -330,64 +347,89 @@ export default function TaskPanel({
             </div>
           )}
 
-          {/* Dates */}
-          <div className="flex gap-2">
-            <div className="flex-1 space-y-0.5">
-              <label className="text-[11px] text-[#444] uppercase tracking-wider">Fecha</label>
-              <DatePicker
-                value={fecha}
-                onChange={val => { setFecha(val); mark(); }}
-                size="sm"
-              />
-            </div>
-            <div className="flex-1 space-y-0.5">
-              <label className="text-[11px] text-[#444] uppercase tracking-wider">Fecha límite</label>
-              {(fechaVen || showFechaVenPicker) ? (
-                <DatePicker
-                  value={fechaVen}
-                  onChange={val => {
-                    setFechaVen(val);
-                    mark();
-                    if (!val) setShowFechaVenPicker(false);
-                  }}
-                  size="sm"
-                  showClear
-                />
-              ) : (
-                <button
-                  onClick={() => setShowFechaVenPicker(true)}
-                  className="w-full text-left text-xs text-[#333] hover:text-[#B3985B] transition-colors py-1.5 px-2.5"
-                >
-                  + Agregar
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Recurrencia */}
-          <div className="space-y-1">
-            <label className="text-[11px] text-[#444] uppercase tracking-wider">Recurrencia</label>
-            {!editingRec ? (
-              <button onClick={() => setEditingRec(true)}
-                className="flex items-center gap-1.5 text-sm text-[#555] hover:text-white transition-colors">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          {/* Fecha / Recurrencia — mutuamente exclusivos */}
+          <div className="space-y-2">
+            {/* Tabs selector */}
+            <div className="flex rounded-lg overflow-hidden border border-[#1e1e1e] w-fit">
+              <button
+                onClick={() => {
+                  if (tarea.recurrencia) { onSave(tarea.id, { recurrencia: null }); }
+                  setEditingRec(false);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all ${
+                  !tarea.recurrencia
+                    ? "bg-[#1a1a1a] text-white"
+                    : "text-[#444] hover:text-[#777]"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Fecha fija
+              </button>
+              <div className="w-px bg-[#1e1e1e]" />
+              <button
+                onClick={() => setEditingRec(true)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all ${
+                  tarea.recurrencia || editingRec
+                    ? "bg-[#1a1a1a] text-[#B3985B]"
+                    : "text-[#444] hover:text-[#777]"
+                }`}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                   <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
-                {recDisplay ? <span className="text-[#B3985B]">{recDisplay}</span> : <span>Sin recurrencia</span>}
+                Recurrente
               </button>
-            ) : (
-              <div className="space-y-1">
+            </div>
+
+            {/* Fecha fija panel */}
+            {!editingRec && !tarea.recurrencia && (
+              <div className="space-y-2">
+                <DatePicker value={fecha} onChange={val => { setFecha(val); mark(); }} size="sm" />
+                {(fechaVen || showFechaVenPicker) ? (
+                  <DatePicker
+                    value={fechaVen}
+                    onChange={val => { setFechaVen(val); mark(); if (!val) setShowFechaVenPicker(false); }}
+                    size="sm" showClear placeholder="Fecha límite (opcional)"
+                  />
+                ) : (
+                  <button onClick={() => setShowFechaVenPicker(true)}
+                    className="text-xs text-[#333] hover:text-[#666] transition-colors py-0.5">
+                    + Fecha límite
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Fecha fija cuando hay recurrencia activa — mostrar sólo el DatePicker bloqueado */}
+            {!editingRec && tarea.recurrencia && (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#0d0d0d] border border-[#1e1e1e]">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+                <span className="text-xs text-[#B3985B] flex-1">{recDisplay}</span>
+                <button onClick={() => { onSave(tarea.id, { recurrencia: null }); }}
+                  className="text-[#444] hover:text-red-400 transition-colors text-xs">✕</button>
+              </div>
+            )}
+
+            {/* Recurrencia panel */}
+            {editingRec && (
+              <div className="space-y-1.5">
                 <input autoFocus value={recTexto} onChange={e => setRecTexto(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") applyRecurrencia(); if (e.key === "Escape") setEditingRec(false); }}
-                  placeholder="cada lunes, cada martes y jueves…"
-                  className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
-                <div className="flex gap-2 text-xs">
-                  <button onClick={applyRecurrencia} className="text-[#B3985B] hover:underline">Aplicar</button>
-                  {tarea.recurrencia && <button onClick={() => { onSave(tarea.id, { recurrencia: null }); setEditingRec(false); }} className="text-red-400 hover:underline">Quitar</button>}
+                  placeholder="cada lunes · cada martes y jueves · cada mes…"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
+                <div className="flex gap-3 text-xs">
+                  <button onClick={applyRecurrencia} className="text-[#B3985B] hover:underline font-medium">Aplicar</button>
                   <button onClick={() => setEditingRec(false)} className="text-[#555] hover:text-white">Cancelar</button>
                 </div>
-                <p className="text-[11px] text-[#333]">Ej: cada día · cada lunes · cada martes y jueves · cada tercer viernes · cada mes</p>
+                <p className="text-[10px] text-[#2a2a2a]">Ej: cada día · cada lunes · cada martes y jueves · cada tercer viernes</p>
               </div>
             )}
           </div>
