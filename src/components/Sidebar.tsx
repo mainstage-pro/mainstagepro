@@ -81,9 +81,10 @@ const NAV: NavSection[] = [
     key: "seccion-inventario",
     section: "INVENTARIO",
     items: [
-      { key: "inv-equipos", label: "Equipos", href: "/inventario/bodega" },
+      { key: "inv-equipos", label: "Equipos", href: "/inventario/equipos" },
       { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
       { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
+      { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
       { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
       { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
     ],
