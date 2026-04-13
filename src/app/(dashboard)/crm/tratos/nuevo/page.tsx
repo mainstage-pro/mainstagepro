@@ -363,7 +363,7 @@ export default function NuevoTratoPage() {
 
           <div className="flex gap-3 justify-between pb-6">
             <button onClick={()=>{setStep(1);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
-            <button onClick={crearActivo} disabled={loading} className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50">{loading?"Creando...":"Crear trato →"}</button>
+            <button onClick={() => crearActivo()} disabled={loading} className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50">{loading?"Creando...":"Crear trato →"}</button>
           </div>
         </div>
       )}
