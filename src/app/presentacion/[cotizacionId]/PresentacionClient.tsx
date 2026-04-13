@@ -620,9 +620,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         {/* Subtle gold glow overlay */}
         <div className="absolute inset-0 pointer-events-none"
              style={{ background: "radial-gradient(ellipse 70% 50% at 50% 60%, rgba(179,152,91,0.06) 0%, transparent 70%)" }} />
-        <div className="absolute inset-0 bg-black/55" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
+        <div className="absolute inset-0 bg-black/45" />
+        {/* Gold tint overlay */}
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 70% at 50% 50%, rgba(179,152,91,0.18) 0%, transparent 70%)" }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/25 via-transparent to-black/25" />
 
         <div className="relative z-10 text-center px-6 max-w-5xl mx-auto"
              style={{ opacity: heroOpacity, transform: `translateY(${heroY}px)` }}>
