@@ -36,9 +36,7 @@ interface Cotizacion {
 }
 
 // ─── Equipment Image Mapping ──────────────────────────────────────────────────
-// By brand (marca lowercase) → image path
 const MARCA_IMAGES: Record<string, string> = {
-  // Audio
   "rcf":             "/images/presentacion/rcf-hdl30a.png",
   "electro voice":   "/images/presentacion/ev-ekx12p.png",
   "electro-voice":   "/images/presentacion/ev-ekx12p.png",
@@ -49,10 +47,8 @@ const MARCA_IMAGES: Record<string, string> = {
   "shure":           "/images/presentacion/shure-axient.png",
   "sennheiser":      "/images/presentacion/sennheiser-iem.png",
   "rode":            "/images/presentacion/rode-m5.png",
-  // DJ
   "pioneer":         "/images/presentacion/pioneer-cdj3000.png",
   "pioneer dj":      "/images/presentacion/pioneer-cdj3000.png",
-  // Iluminación
   "grand ma":        "/images/presentacion/grandma-ma3.png",
   "grandma":         "/images/presentacion/grandma-ma3.png",
   "ma":              "/images/presentacion/grandma-ma3.png",
@@ -65,22 +61,17 @@ const MARCA_IMAGES: Record<string, string> = {
   "sun star":        "/images/presentacion/sunstar-kaleidos.png",
   "sunstar":         "/images/presentacion/sunstar-soul-rgbw.png",
   "steel pro":       "/images/presentacion/steel-pro-razor.png",
-  // Video
   "blackmagic":      "/images/presentacion/blackmagic-atem.png",
-  // Eléctrico
   "predator":        "/images/presentacion/predator-9500.png",
   "wacker":          "/images/presentacion/wacker-g120.png",
 };
 
-// By exact model → image path (takes priority over marca)
 const MODELO_IMAGES: Record<string, string> = {
-  // Pioneer DJ mixers
   "DJM A9":          "/images/presentacion/pioneer-djmv10.png",
   "DJM V10":         "/images/presentacion/pioneer-djmv10.png",
   "DJM-V10":         "/images/presentacion/pioneer-djmv10.png",
   "DJM 900 NXS2":    "/images/presentacion/pioneer-djmv10.png",
   "DJM S11":         "/images/presentacion/pioneer-djmv10.png",
-  // Audio
   "EKX 18P":         "/images/presentacion/ev-ekx18p.png",
   "EKX 12P":         "/images/presentacion/ev-ekx12p.png",
   "HDL 30A":         "/images/presentacion/rcf-hdl30a.png",
@@ -94,39 +85,30 @@ const MODELO_IMAGES: Record<string, string> = {
   "IEM G4":          "/images/presentacion/sennheiser-iem.png",
   "EK IEM G4":       "/images/presentacion/sennheiser-iem.png",
   "PSM1000":         "/images/presentacion/shure-axient.png",
-  // Iluminación Lite Tek
   "BAR 824i":        "/images/presentacion/lite-tek-bar824i.png",
   "BEAM 280":        "/images/presentacion/lite-tek-beam280.png",
   "BLINDER 200":     "/images/presentacion/lite-tek-blinder200.png",
   "FLASHER 200":     "/images/presentacion/lite-tek-flasher200.png",
   "18X10 Ambar":     "/images/presentacion/lite-tek-par.png",
   "Fazer 1500":      "/images/presentacion/lite-tek-fazer1500.png",
-  // Iluminación Chauvet
   "Int SPOT 260":    "/images/presentacion/chauvet-spot260.png",
   "Slimpar Q12 BT":  "/images/presentacion/chauvet-slimpar.png",
   "Pinspot Bar":     "/images/presentacion/chauvet-pinspot-bar.png",
-  // Sun Star
   "KALEIDOS":        "/images/presentacion/sunstar-kaleidos.png",
-  // Shure micrófonos específicos
   "SM58":            "/images/presentacion/shure-sm58.png",
   "SM57":            "/images/presentacion/shure-sm58.png",
   "SM31":            "/images/presentacion/shure-sm58.png",
   "SM81":            "/images/presentacion/shure-sm58.png",
   "BETA 52A":        "/images/presentacion/shure-beta52a.png",
   "BETA91A":         "/images/presentacion/shure-beta52a.png",
-  // MA Lighting
   "Command Wing":    "/images/presentacion/ma-command-wing.png",
   "MA3 Compact XT":  "/images/presentacion/grandma-ma3.png",
-  // Lumos
   "L7":              "/images/presentacion/lumos-l7.png",
   "L1 Retro":        "/images/presentacion/lumos-l1-retro.png",
   "Maple Lamp":      "/images/presentacion/lumos-maple-lamp.png",
   "Sixaline":        "/images/presentacion/lumos-sixaline.png",
-  // Sun Star
   "SOUL RGBW":       "/images/presentacion/sunstar-soul-rgbw.png",
-  // Video
   "Atem Mini Pro":   "/images/presentacion/blackmagic-atem.png",
-  // Rigging
   "Truss":           "/images/presentacion/truss.png",
 };
 
@@ -139,8 +121,7 @@ function getEquipoImage(linea: Linea): string | null {
   return null;
 }
 
-// ─── Gallery Data (fotos de eventos, nunca de equipo) ─────────────────────────
-// MUSICAL: solo conciertos y producciones grandes
+// ─── Gallery Data ─────────────────────────────────────────────────────────────
 const GALLERY_MUSICAL = [
   { src: "/images/presentacion/hero-festival.png",  caption: "Festival · Producción completa" },
   { src: "/images/presentacion/m-laser-red.jpg",    caption: "Show · Lasers y producción" },
@@ -150,20 +131,18 @@ const GALLERY_MUSICAL = [
   { src: "/images/presentacion/m-smoke-pink.jpg",   caption: "Producción · Humo y efectos" },
   { src: "/images/presentacion/m-arch-neon.jpg",    caption: "DJ Booth · Arco neón" },
 ];
-// SOCIAL: solo fotos de eventos sociales — bodas, galas, cenas
 const GALLERY_SOCIAL = [
   { src: "/images/presentacion/s-couple-purple.png", caption: "Boda · Iluminación especial" },
   { src: "/images/presentacion/s-dinner-sunset.png", caption: "Cena · Luz de ambiente" },
   { src: "/images/presentacion/s-vocalist.png",      caption: "En vivo · Vocals" },
   { src: "/images/presentacion/s-stage-full.png",    caption: "Escenario · Producción social" },
 ];
-// EMPRESARIAL: solo fotos corporativas — sin fotos de música ni equipo
 const GALLERY_CORP = [
   { src: "/images/presentacion/e-corp-screens.jpg",  caption: "Corporativo · Video walls" },
   { src: "/images/presentacion/e-corp-outdoor.jpg",  caption: "Evento exterior · Producción" },
 ];
 
-// ─── Copy por tipoServicio (modifica hero tagline únicamente) ─────────────────
+// ─── Copy por tipoServicio (solo hero tagline) ────────────────────────────────
 type SvcCfg = { heroTagline: string; heroSub: string };
 const SERVICIO_CONFIG: Record<string, SvcCfg> = {
   RENTA: {
@@ -200,20 +179,20 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     stmt1: "No es técnica.",
     stmt2: "Es el escenario\nque el show necesita.",
     stmtSub: "Un evento musical bien producido no se nota — simplemente se siente. Cada decisión técnica existe para servir a la música y al artista sobre el escenario.",
-    audioHeadline: "Que el sonido llegue. Que llegue bien.",
+    audioHeadline: "Cada nota, exactamente donde tiene que estar.",
     audioBody: "Cobertura uniforme desde la primera fila hasta el fondo del venue. Sin zonas muertas, sin distorsión en picos. El audio que el artista necesita para dar lo mejor de sí.",
-    ilumHeadline: "El escenario que la música pide.",
+    ilumHeadline: "La luz que hace que el show se sienta.",
     ilumBody: "Iluminación que trabaja junto al set, no sobre él. No se trata de cuántos fixtures hay — sino de cómo construyen juntos la atmósfera del show.",
-    djHeadline: "El rider técnico exacto.",
+    djHeadline: "El rider técnico, al pie de la letra.",
     djBody: "El equipo que los mejores DJs piden. Setup completo, verificado antes del show, sin compromisos en la cadena de señal.",
     videoHeadline: "El show, visible desde cualquier punto.",
     videoBody: "Pantallas que llevan el show a cada rincón del venue. Contenido en alta resolución, sin lag, sin interrupciones.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "◉", title: "Conocemos los escenarios", body: "Hemos trabajado en conciertos de distintos formatos. Sabemos qué funciona, qué falla y cómo anticiparnos antes de que el público llegue." },
-      { icon: "◈", title: "Setup limpio, a tiempo", body: "El equipo llega con margen para montar, calibrar y hacer prueba de sonido. Sin carreras de último minuto." },
-      { icon: "◐", title: "Operadores enfocados en el show", body: "Desde el primer cue hasta el final, nuestros operadores están en su posición. No improvisamos en vivo." },
-      { icon: "◇", title: "Revisamos el rider con anticipación", body: "Si hay requerimientos específicos, los revisamos antes del día. Preferimos aclarar cualquier duda con días de margen." },
+      { icon: "star",   title: "Conocemos los escenarios",        body: "Hemos trabajado en conciertos de distintos formatos. Sabemos qué funciona, qué falla y cómo anticiparnos antes de que el público llegue." },
+      { icon: "people", title: "Setup limpio, a tiempo",           body: "El equipo llega con margen para montar, calibrar y hacer prueba de sonido. Sin carreras de último minuto." },
+      { icon: "clock",  title: "Operadores enfocados en el show",  body: "Desde el primer cue hasta el final, nuestros operadores están en su posición. No improvisamos en vivo." },
+      { icon: "check",  title: "Revisamos el rider con anticipación", body: "Si hay requerimientos específicos, los revisamos antes del día. Preferimos aclarar cualquier duda con días de margen." },
     ],
     ctaLine: "La producción está lista. Solo falta confirmar la fecha.",
   },
@@ -221,9 +200,9 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     stmt1: "No es producción.",
     stmt2: "Es el fondo perfecto\npara los momentos\nque más importan.",
     stmtSub: "Los eventos sociales se recuerdan por cómo se sintieron. La música, la luz, el sonido del brindis — todo eso es técnica. Y la técnica bien hecha no se nota.",
-    audioHeadline: "La música y la voz, sin esfuerzo.",
+    audioHeadline: "El sonido que no se nota, pero que define la noche.",
     audioBody: "Que la música suene bien durante la fiesta y el discurso llegue claro a cada mesa. Sin retroalimentación, sin volumen incómodo. Sonido que acompaña sin interrumpir.",
-    ilumHeadline: "Luz que acompaña cada momento del evento.",
+    ilumHeadline: "Luz que cambia con los momentos de la noche.",
     ilumBody: "Cálida para la cena, vibrante para la pista. La iluminación cambia de ambiente de forma natural a lo largo de la noche, sin transiciones bruscas.",
     djHeadline: "El set técnico para que el DJ brille.",
     djBody: "Equipo en condiciones, conectado y verificado antes de que llegue el primer invitado. Para que el DJ se concentre en la música, no en los problemas técnicos.",
@@ -231,10 +210,10 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     videoBody: "Fotos en vivo, video de la ceremonia, presentaciones especiales. Pantallas bien posicionadas para que todos puedan disfrutarlas sin esfuerzo.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "◉", title: "Discretos durante el evento", body: "Llegamos, montamos y nos quedamos en segundo plano. El protagonismo es del evento y los festejados, no del equipo técnico." },
-      { icon: "◈", title: "Coordinación con otros proveedores", body: "Nos alineamos con decoración, venue y fotografía para que todo conviva sin fricciones el día del evento." },
-      { icon: "◐", title: "Conocemos el programa del evento", body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo antes para estar listos en cada momento clave." },
-      { icon: "◇", title: "Comunicación clara desde el inicio", body: "Revisamos cada detalle antes del evento. Si hay cambios de último minuto, nos adaptamos. Siempre con buena disposición." },
+      { icon: "star",   title: "Discretos durante el evento",          body: "Llegamos, montamos y nos quedamos en segundo plano. El protagonismo es del evento y los festejados, no del equipo técnico." },
+      { icon: "people", title: "Coordinación con otros proveedores",    body: "Nos alineamos con decoración, venue y fotografía para que todo conviva sin fricciones el día del evento." },
+      { icon: "clock",  title: "Conocemos el programa del evento",      body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo antes para estar listos en cada momento clave." },
+      { icon: "check",  title: "Comunicación clara desde el inicio",    body: "Revisamos cada detalle antes del evento. Si hay cambios de último minuto, nos adaptamos. Siempre con buena disposición." },
     ],
     ctaLine: "Asegura la fecha. El resto lo coordinamos nosotros.",
   },
@@ -252,17 +231,17 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     videoBody: "Pantallas bien posicionadas, señal estable, resolución adecuada al espacio. Compatible con la presentación del conferencista, el contenido de tu agencia y las transmisiones en vivo.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "◉", title: "Entendemos el contexto corporativo", body: "Eventos con directivos, clientes y medios. Operamos sabiendo que el margen de error es mínimo y que la imagen de tu empresa está en juego." },
-      { icon: "◈", title: "Puntuales y presentables", body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos profesionales durante todo el evento. Somos parte de tu equipo ese día." },
-      { icon: "◐", title: "Trabajamos con tu agencia o coordinador", body: "Si ya tienes coordinador de evento o agencia creativa, nos alineamos con ellos. Sin fricciones, sin egos." },
-      { icon: "◇", title: "Todo confirmado por escrito", body: "Propuesta, lista de equipo, horarios y condiciones — todo queda acordado antes del evento. Sin interpretaciones de último momento." },
+      { icon: "star",   title: "Entendemos el contexto corporativo",      body: "Eventos con directivos, clientes y medios. Operamos sabiendo que el margen de error es mínimo y que la imagen de tu empresa está en juego." },
+      { icon: "people", title: "Puntuales y presentables",                 body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos profesionales durante todo el evento. Somos parte de tu equipo ese día." },
+      { icon: "clock",  title: "Trabajamos con tu agencia o coordinador", body: "Si ya tienes coordinador de evento o agencia creativa, nos alineamos con ellos. Sin fricciones, sin egos." },
+      { icon: "check",  title: "Todo confirmado por escrito",             body: "Propuesta, lista de equipo, horarios y condiciones — todo queda acordado antes del evento. Sin interpretaciones de último momento." },
     ],
     ctaLine: "Confirmemos los detalles técnicos con tiempo suficiente.",
   },
 };
 const DEFAULT_EVENTO: EventoCfg = EVENTO_CONFIG.MUSICAL;
 
-// ─── Section bg images (solo del mismo tipo de evento) ────────────────────────
+// ─── Section bg por tipo de evento ────────────────────────────────────────────
 function sectionBg(tipoEvento: string, musical: string, social: string, corp: string) {
   if (tipoEvento === "SOCIAL")      return social;
   if (tipoEvento === "EMPRESARIAL") return corp;
@@ -374,6 +353,33 @@ function Heading({ children, className = "" }: { children: React.ReactNode; clas
   );
 }
 
+// ─── Why icon ─────────────────────────────────────────────────────────────────
+function WhyIcon({ type }: { type: string }) {
+  const cls = "text-[#B3985B]";
+  if (type === "star") return (
+    <svg className={cls} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  );
+  if (type === "people") return (
+    <svg className={cls} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  );
+  if (type === "clock") return (
+    <svg className={cls} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+  // check
+  return (
+    <svg className={cls} width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+  );
+}
+
 // ─── Draggable Gallery ────────────────────────────────────────────────────────
 function DragGallery({ photos }: { photos: { src: string; caption: string }[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -421,19 +427,13 @@ function DragGallery({ photos }: { photos: { src: string; caption: string }[] })
 // ─── Equipment photo card ─────────────────────────────────────────────────────
 function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?: number; index?: number }) {
   const img = getEquipoImage(linea);
-  const floatDelay = (index % 4) * 0.5; // 0, 0.5, 1.0, 1.5s
+  const floatDelay = (index % 4) * 0.5;
   return (
     <R delay={delay} y={30}>
       <div className="bg-white/[0.025] border border-white/8 rounded-xl overflow-hidden transition-all duration-300 group h-full"
-           style={{
-             animation: `float 4s ease-in-out ${floatDelay}s infinite`,
-           }}
-           onMouseEnter={e => {
-             (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(179,152,91,0.5), 0 8px 32px rgba(179,152,91,0.08)";
-           }}
-           onMouseLeave={e => {
-             (e.currentTarget as HTMLDivElement).style.boxShadow = "";
-           }}>
+           style={{ animation: `float 4s ease-in-out ${floatDelay}s infinite` }}
+           onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(179,152,91,0.5), 0 8px 32px rgba(179,152,91,0.08)"; }}
+           onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}>
         <div className="h-36 sm:h-40 bg-[#080808] flex items-center justify-center p-4">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -464,11 +464,36 @@ function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?
   );
 }
 
-// ─── Equipment grid section ───────────────────────────────────────────────────
 function EquipoGrid({ lineas }: { lineas: Linea[] }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
       {lineas.map((l, i) => <EquipoPhotoCard key={l.id} linea={l} delay={Math.min(i * 40, 400)} index={i} />)}
+    </div>
+  );
+}
+
+// ─── Equipment spec list (v1 style — texto limpio con marca/modelo) ───────────
+function EquipoSpecList({ lineas }: { lineas: Linea[] }) {
+  return (
+    <div className="mt-2">
+      {lineas.map((l, i) => (
+        <R key={l.id} delay={180 + i * 30}>
+          <div className="flex items-center gap-3 py-3 border-t border-white/6">
+            <div className="flex-1 min-w-0">
+              {l.marca && (
+                <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-0.5">{l.marca}</p>
+              )}
+              <p className="text-white/90 text-sm font-semibold leading-tight">{l.modelo ?? l.descripcion}</p>
+              {l.modelo && l.descripcion && (
+                <p className="text-white/30 text-xs mt-0.5 leading-tight truncate">{l.descripcion}</p>
+              )}
+            </div>
+            {l.cantidad > 1 && (
+              <p className="text-white/25 text-xs shrink-0 font-medium">×{l.cantidad}</p>
+            )}
+          </div>
+        </R>
+      ))}
     </div>
   );
 }
@@ -512,7 +537,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
   }, []);
 
   const { audio, ilum, dj, video, staff } = groupLineas(cotizacion.lineas);
-  const tipoEvento  = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
+  const tipoEvento   = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
   const tipoServicio = cotizacion.tipoServicio ?? "";
   const evento = cotizacion.nombreEvento ?? tipoEvento ?? "Tu Evento";
   const fecha  = fmtDate(cotizacion.fechaEvento);
@@ -528,13 +553,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
     tipoEvento === "EMPRESARIAL" ? GALLERY_CORP :
                                    GALLERY_MUSICAL;
 
-  // Hero slideshow
   useEffect(() => {
     const t = setInterval(() => setHeroIdx(i => (i + 1) % gallery.length), 5000);
     return () => clearInterval(t);
   }, [gallery.length]);
 
-  // Counters (always called in same order — constant array)
   /* eslint-disable react-hooks/rules-of-hooks */
   const stats = [
     { hook: useCounter(200),   suffix: "+", label: "Producciones" },
@@ -542,10 +565,6 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
     { hook: useCounter(6),     suffix: "+", label: "Años de experiencia" },
     { hook: useCounter(100),   suffix: "%", label: "Satisfacción de clientes" },
   ];
-  /* eslint-enable react-hooks/rules-of-hooks */
-
-  // Parallax hooks for equipment sections
-  /* eslint-disable react-hooks/rules-of-hooks */
   const parallaxAudio = useParallax(0.15);
   const parallaxIlum  = useParallax(0.15);
   const parallaxDj    = useParallax(0.15);
@@ -554,12 +573,6 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
   const heroOpacity = Math.max(0, 1 - scrollY / 600);
   const heroY       = scrollY * 0.38;
-
-  const heroImg =
-    tipoEvento === "MUSICAL"     ? "/images/presentacion/hero-festival.png" :
-    tipoEvento === "SOCIAL"      ? "/images/presentacion/s-couple-purple.png" :
-    tipoEvento === "EMPRESARIAL" ? "/images/presentacion/e-corp-screens.jpg" :
-                                   "/images/presentacion/hero-festival.png";
 
   return (
     <main className="bg-black text-white overflow-x-hidden"
@@ -599,13 +612,15 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
       {/* ── HERO ────────────────────────────────────────────────────────────── */}
       <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-        {/* Crossfade slideshow */}
         {gallery.map((p, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={i} src={p.src} alt="" draggable={false}
                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
                style={{ opacity: i === heroIdx ? 1 : 0, transition: "opacity 1.2s ease" }} />
         ))}
+        {/* Subtle gold glow overlay */}
+        <div className="absolute inset-0 pointer-events-none"
+             style={{ background: "radial-gradient(ellipse 70% 50% at 50% 60%, rgba(179,152,91,0.06) 0%, transparent 70%)" }} />
         <div className="absolute inset-0 bg-black/55" />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30" />
@@ -656,7 +671,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         </div>
       </section>
 
-      {/* ── MARQUEE STRIP ───────────────────────────────────────────────────── */}
+      {/* ── MARQUEE ─────────────────────────────────────────────────────────── */}
       <div className="bg-[#0a0a0a] border-y border-white/5 py-3.5 overflow-hidden select-none">
         <div style={{ display: "flex", width: "max-content", animation: "marquee 20s linear infinite" }}>
           {[0, 1].map(copy => (
@@ -701,7 +716,6 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {audio.length > 0 && (
         <section ref={parallaxAudio.ref as React.RefObject<HTMLElement>}
                  className="relative overflow-hidden py-24 px-6 sm:px-12 lg:px-20">
-          {/* Parallax background */}
           <div className="absolute inset-[-20%] pointer-events-none"
                style={{ transform: `translateY(${parallaxAudio.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -709,10 +723,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                    "/images/presentacion/m-crowd-pink.jpg",
                    "/images/presentacion/s-stage-full.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false}
-                 className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover" />
           </div>
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Sistema de Audio</GoldLabel></R>
@@ -722,10 +735,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                   <Heading className="mb-6">{ev.audioHeadline}</Heading>
                 </R>
                 <R delay={140}>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
                     {ev.audioBody}
                   </p>
                 </R>
+                <EquipoSpecList lineas={audio} />
               </div>
               <R delay={100} y={30}>
                 <EquipoGrid lineas={audio} />
@@ -746,27 +760,27 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                    "/images/presentacion/m-laser-red.jpg",
                    "/images/presentacion/s-dinner-sunset.png",
                    "/images/presentacion/e-corp-screens.jpg")}
-                 alt="" draggable={false}
-                 className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover" />
           </div>
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Diseño de Iluminación</GoldLabel></R>
-            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+            <div className="grid lg:grid-cols-[2fr,1fr] gap-12 items-start">
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={ilum} />
+              </R>
               <div>
                 <R delay={60}>
                   <Heading className="mb-6">{ev.ilumHeadline}</Heading>
                 </R>
                 <R delay={140}>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
                     {ev.ilumBody}
                   </p>
                 </R>
+                <EquipoSpecList lineas={ilum} />
               </div>
-              <R delay={100} y={30}>
-                <EquipoGrid lineas={ilum} />
-              </R>
             </div>
           </div>
         </section>
@@ -783,10 +797,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                    "/images/presentacion/m-smoke-pink.jpg",
                    "/images/presentacion/s-vocalist.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false}
-                 className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover" />
           </div>
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Setup DJ</GoldLabel></R>
@@ -796,10 +809,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                   <Heading className="mb-6">{ev.djHeadline}</Heading>
                 </R>
                 <R delay={140}>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
                     {ev.djBody}
                   </p>
                 </R>
+                <EquipoSpecList lineas={dj} />
               </div>
               <R delay={100} y={30}>
                 <EquipoGrid lineas={dj} />
@@ -820,27 +834,27 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                    "/images/presentacion/m-arch-neon.jpg",
                    "/images/presentacion/s-couple-purple.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
-                 alt="" draggable={false}
-                 className="w-full h-full object-cover" />
+                 alt="" draggable={false} className="w-full h-full object-cover" />
           </div>
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/82" />
 
           <div className="relative z-10 max-w-6xl mx-auto">
             <R><GoldLabel>Producción de Video</GoldLabel></R>
-            <div className="grid lg:grid-cols-[1fr,2fr] gap-12 items-start">
+            <div className="grid lg:grid-cols-[2fr,1fr] gap-12 items-start">
+              <R delay={100} y={30}>
+                <EquipoGrid lineas={video} />
+              </R>
               <div>
                 <R delay={60}>
                   <Heading className="mb-6">{ev.videoHeadline}</Heading>
                 </R>
                 <R delay={140}>
-                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-10">
+                  <p className="text-white/50 text-base sm:text-lg leading-relaxed mb-2">
                     {ev.videoBody}
                   </p>
                 </R>
+                <EquipoSpecList lineas={video} />
               </div>
-              <R delay={100} y={30}>
-                <EquipoGrid lineas={video} />
-              </R>
             </div>
           </div>
         </section>
@@ -894,16 +908,19 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       <section className="bg-black py-28 sm:py-36 px-6">
         <div className="max-w-5xl mx-auto">
           <R className="text-center mb-20">
-            <GoldLabel>Por qué Mainstage Pro</GoldLabel>
+            <GoldLabel>{ev.whyTitle}</GoldLabel>
             <Heading>
-              Lo que hacemos bien,<br /><span className="text-white/35">lo hacemos consistentemente.</span>
+              No producimos eventos.<br /><span className="text-white/35">Creamos momentos.</span>
             </Heading>
+            <p className="text-white/30 text-base mt-5 max-w-lg mx-auto">
+              Cuatro compromisos que hacemos realidad en cada producción.
+            </p>
           </R>
           <div className="grid sm:grid-cols-2 gap-px bg-white/5 rounded-3xl overflow-hidden">
             {ev.whyPoints.map((item, i) => (
               <R key={i} delay={i * 80}>
                 <div className="bg-[#060606] p-10 lg:p-14">
-                  <p className="text-[#B3985B] text-2xl mb-5">{item.icon}</p>
+                  <div className="mb-5"><WhyIcon type={item.icon} /></div>
                   <p className="text-white font-semibold text-xl mb-4">{item.title}</p>
                   <p className="text-white/35 text-base leading-relaxed">{item.body}</p>
                 </div>
@@ -1006,8 +1023,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       {/* ── CTA ─────────────────────────────────────────────────────────────── */}
       <section className="relative bg-[#040404] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={heroImg} alt="" draggable={false}
-             className="absolute inset-0 w-full h-full object-cover opacity-15" />
+        <img src={gallery[0].src} alt="" draggable={false}
+             className="absolute inset-0 w-full h-full object-cover opacity-12" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#040404] via-[#040404]/80 to-[#040404]" />
 
         <div className="relative z-10 py-32 px-6 text-center max-w-3xl mx-auto">
@@ -1015,23 +1032,34 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 mx-auto mb-14 opacity-50" draggable={false} />
             <Heading className="mb-5">
-              ¿Todo listo para confirmar?
+              Listos para hacer de<br /><span className="text-white/60">{evento}</span><br />algo que se recuerde.
             </Heading>
           </R>
           <R delay={120}>
             <p className="text-white/35 text-lg leading-relaxed mb-12">{ev.ctaLine}</p>
           </R>
-          {waUrl && (
-            <R delay={200}>
-              <a href={waUrl} target="_blank" rel="noreferrer"
-                 className="inline-flex items-center gap-3 bg-[#B3985B] hover:bg-[#c9a960] text-black font-bold px-8 py-4 rounded-full text-base transition-colors shadow-[0_0_40px_rgba(179,152,91,0.25)]">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                </svg>
-                Confirmar por WhatsApp
-              </a>
-            </R>
-          )}
+          <R delay={200}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              {waUrl && (
+                <a href={waUrl} target="_blank" rel="noreferrer"
+                   className="inline-flex items-center gap-3 bg-[#B3985B] hover:bg-[#c9a960] text-black font-bold px-8 py-4 rounded-full text-base transition-colors shadow-[0_0_40px_rgba(179,152,91,0.25)]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  Confirmar por WhatsApp
+                </a>
+              )}
+              {cotizacion.cliente.correo && (
+                <a href={`mailto:${cotizacion.cliente.correo}`}
+                   className="inline-flex items-center gap-3 border border-white/15 hover:border-white/30 text-white/70 hover:text-white font-semibold px-8 py-4 rounded-full text-base transition-colors">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                  </svg>
+                  Escribir por correo
+                </a>
+              )}
+            </div>
+          </R>
           <R delay={280}>
             <p className="text-white/15 text-xs mt-10">
               {cotizacion.cliente.correo && <>{cotizacion.cliente.correo} · </>}
@@ -1040,6 +1068,18 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           </R>
         </div>
       </section>
+
+      {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
+      <footer className="border-t border-white/5 py-10 px-8">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-white.png" alt="Mainstage Pro" className="h-4 opacity-25" draggable={false} />
+          <p className="text-white/20 text-xs text-center">
+            Cotización {cotizacion.numeroCotizacion} · Propuesta para {cotizacion.cliente.nombre}
+          </p>
+          <p className="text-white/20 text-xs">Querétaro, México</p>
+        </div>
+      </footer>
 
     </main>
   );
