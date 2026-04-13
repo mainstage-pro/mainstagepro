@@ -31,14 +31,6 @@ const NAV: NavSection[] = [
     section: "DIRECCIÓN",
     items: [
       { key: "dashboard", label: "Dashboard", href: "/dashboard" },
-      {
-        key: "calendario",
-        label: "Calendario de eventos",
-        children: [
-          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
-          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
-        ],
-      },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
@@ -136,6 +128,14 @@ const NAV: NavSection[] = [
     key: "seccion-produccion",
     section: "PRODUCCIÓN",
     items: [
+      {
+        key: "calendario",
+        label: "Calendario de eventos",
+        children: [
+          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
+          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+        ],
+      },
       { key: "proyectos", label: "Proyectos", href: "/proyectos" },
       {
         key: "inventario",
