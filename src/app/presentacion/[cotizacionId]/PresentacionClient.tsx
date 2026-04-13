@@ -570,7 +570,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
   const parallaxVideo = useParallax(0.15);
   /* eslint-enable react-hooks/rules-of-hooks */
 
-  const heroOpacity = Math.max(0, 1 - scrollY / 600);
+  const heroOpacity = Math.max(0, 1 - scrollY / 900);
   const heroY       = scrollY * 0.38;
 
   return (
@@ -630,7 +630,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             Mainstage Pro · Propuesta Exclusiva
           </p>
           <h1 className="font-bold text-white leading-[1.03] mb-5 animate-fadeUp"
-              style={{ fontSize: "clamp(2.6rem,9vw,7rem)", letterSpacing: "-0.025em", animationDelay: "0.1s" }}>
+              style={{ fontSize: "clamp(3rem,10vw,8rem)", letterSpacing: "-0.025em", animationDelay: "0.1s" }}>
             {evento}
           </h1>
           <p className="text-white/75 font-light animate-fadeUp mb-3"
@@ -657,7 +657,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             )}
             <span className="flex items-center gap-2 border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm bg-white/5">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              Para {cotizacion.cliente.empresa ?? cotizacion.cliente.nombre}
+              Para {cotizacion.cliente.empresa ? `${cotizacion.cliente.empresa} · ${cotizacion.cliente.nombre}` : cotizacion.cliente.nombre}
             </span>
           </div>
         </div>
@@ -911,7 +911,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <R className="text-center mb-20">
             <GoldLabel>{ev.whyTitle}</GoldLabel>
             <Heading>
-              No producimos eventos.<br /><span className="text-white/35">Creamos momentos.</span>
+              No producimos eventos,<br /><span className="text-white/35">creamos experiencias<br />que generan impacto.</span>
             </Heading>
             <p className="text-white/30 text-base mt-5 max-w-lg mx-auto">
               Cuatro compromisos que hacemos realidad en cada producción.
