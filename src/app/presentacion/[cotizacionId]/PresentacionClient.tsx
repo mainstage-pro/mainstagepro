@@ -630,7 +630,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             Mainstage Pro · Propuesta Exclusiva
           </p>
           <h1 className="font-bold text-white leading-[1.03] mb-5 animate-fadeUp"
-              style={{ fontSize: "clamp(3rem,10vw,8rem)", letterSpacing: "-0.025em", animationDelay: "0.1s" }}>
+              style={{ fontSize: "clamp(2.4rem,7vw,5.5rem)", letterSpacing: "-0.025em", animationDelay: "0.1s" }}>
             {evento}
           </h1>
           <p className="text-white/75 font-light animate-fadeUp mb-3"
