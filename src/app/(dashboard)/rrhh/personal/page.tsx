@@ -26,6 +26,7 @@ export default function PersonalPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [view, setView] = useState<"list" | "card">("list");
   const [form, setForm] = useState({ nombre: "", puesto: "", departamento: "GENERAL", tipo: "EMPLEADO", telefono: "", correo: "", salario: "", periodoPago: "MENSUAL", fechaIngreso: "", cuentaBancaria: "", datosFiscales: "", notas: "" });
 
   async function load() {
@@ -59,7 +60,33 @@ export default function PersonalPage() {
           <h1 className="text-xl font-semibold text-white">Personal Interno</h1>
           <p className="text-[#6b7280] text-sm">{activos.length} activos · {pagosPendientes.length > 0 ? <span className="text-yellow-400">{pagosPendientes.length} pagos pendientes ({fmt(totalPendiente)})</span> : "sin pagos pendientes"}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {/* Toggle vista */}
+          <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
+            <button
+              onClick={() => setView("list")}
+              title="Vista lista"
+              className={`p-1.5 rounded-md transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor"/>
+                <rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/>
+                <rect x="1" y="11" width="14" height="2" rx="1" fill="currentColor"/>
+              </svg>
+            </button>
+            <button
+              onClick={() => setView("card")}
+              title="Vista tarjetas"
+              className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/>
+                <rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor"/>
+                <rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor"/>
+                <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor"/>
+              </svg>
+            </button>
+          </div>
           <Link href="/rrhh/nomina" className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">Nómina</Link>
           {!showForm && (
             <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
@@ -142,10 +169,15 @@ export default function PersonalPage() {
         </div>
       )}
 
-      {/* Lista */}
+      {/* Lista / Tarjetas */}
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
-      ) : (
+      ) : personal.length === 0 ? (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+          <p className="text-gray-600 text-sm">Sin personal registrado</p>
+        </div>
+      ) : view === "list" ? (
+        /* ── LISTA ── */
         <div className="space-y-2">
           {activos.map(p => (
             <Link key={p.id} href={`/rrhh/personal/${p.id}`}
@@ -179,9 +211,57 @@ export default function PersonalPage() {
               ))}
             </div>
           )}
-          {personal.length === 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
-              <p className="text-gray-600 text-sm">Sin personal registrado</p>
+        </div>
+      ) : (
+        /* ── TARJETAS ── */
+        <div className="space-y-4">
+          {activos.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {activos.map(p => (
+                <Link key={p.id} href={`/rrhh/personal/${p.id}`}
+                  className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0">
+                      <span className="text-[#B3985B] text-base font-bold">{p.nombre.charAt(0)}</span>
+                    </div>
+                    {p.pagos.length > 0 && (
+                      <span className="text-yellow-400 text-[10px] font-medium bg-yellow-400/10 px-2 py-0.5 rounded-full">
+                        {p.pagos.length} pago{p.pagos.length !== 1 ? "s" : ""} pendiente{p.pagos.length !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-white text-sm font-semibold leading-tight">{p.nombre}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{p.puesto}</p>
+                  <div className="mt-3">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${DEPTO_COLORS[p.departamento] ?? "bg-gray-800 text-gray-400"}`}>
+                      {p.departamento}
+                    </span>
+                  </div>
+                  {p.salario && (
+                    <div className="mt-4 pt-3 border-t border-[#1a1a1a]">
+                      <p className="text-white text-sm font-semibold">{fmt(p.salario)}</p>
+                      <p className="text-[#555] text-[10px]">{p.periodoPago.toLowerCase()}</p>
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )}
+          {inactivos.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-600 uppercase tracking-wider px-1 mb-2">Inactivos ({inactivos.length})</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {inactivos.map(p => (
+                  <Link key={p.id} href={`/rrhh/personal/${p.id}`}
+                    className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 hover:bg-[#111] transition-all opacity-50">
+                    <div className="w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-3">
+                      <span className="text-gray-500 text-sm font-bold">{p.nombre.charAt(0)}</span>
+                    </div>
+                    <p className="text-gray-400 text-sm font-medium">{p.nombre}</p>
+                    <p className="text-gray-600 text-xs mt-0.5">{p.puesto}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>
