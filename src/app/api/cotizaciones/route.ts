@@ -24,9 +24,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Generar número de cotización
-    const count = await prisma.cotizacion.count();
-    const numeroCotizacion = `COT-${String(count + 1).padStart(4, "0")}`;
+    // Generar número de cotización — busca el número más alto existente para evitar colisiones
+    const last = await prisma.cotizacion.findFirst({
+      orderBy: { numeroCotizacion: "desc" },
+      select: { numeroCotizacion: true },
+    });
+    const lastNum = last ? parseInt(last.numeroCotizacion.replace("COT-", "")) || 0 : 0;
+    const numeroCotizacion = `COT-${String(lastNum + 1).padStart(4, "0")}`;
 
     const {
       tratoId,
