@@ -106,7 +106,6 @@ export async function POST(request: NextRequest) {
             rolTecnicoId: l.rolTecnicoId || null,
             descripcion: String(l.descripcion || ""),
             marca: l.marca as string || null,
-            modelo: l.modelo as string || null,
             nivel: l.nivel as string || null,
             jornada: l.jornada as string || null,
             esExterno: Boolean(l.esExterno),
@@ -127,7 +126,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ cotizacion });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Error al crear cotización" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[POST /api/cotizaciones]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

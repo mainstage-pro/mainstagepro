@@ -790,10 +790,10 @@ function CotizadorForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) { const d = await res.json(); setError(d.error || "Error"); setSaving(false); return; }
+      if (!res.ok) { const d = await res.json(); setError(d.error || "Error desconocido al crear"); setSaving(false); return; }
       const { cotizacion } = await res.json();
       router.push(`/cotizaciones/${cotizacion.id}`);
-    } catch { setError("Error de conexión"); setSaving(false); }
+    } catch (e) { setError(`Error de conexión: ${e instanceof Error ? e.message : String(e)}`); setSaving(false); }
   }
 
   const conceptosActuales = selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
