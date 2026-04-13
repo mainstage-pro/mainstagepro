@@ -58,6 +58,8 @@ const NAV: NavSection[] = [
         key: "rrhh",
         label: "RR.HH.",
         children: [
+          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
+          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
           { key: "rrhh-personal", label: "Personal", href: "/rrhh/personal" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },

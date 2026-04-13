@@ -1204,3 +1204,122 @@ model TareaArchivo {
 
   @@map("tarea_archivos")
 }
+
+// ─── TALENTO / ATS ───────────────────────────────────────────────────────────
+
+model PuestoIdeal {
+  id          String  @id @default(cuid())
+  titulo      String
+  area        String  // PRODUCCION | ADMINISTRACION | COMERCIAL | OPERACIONES | RRHH | TECNOLOGIA
+  descripcion String?
+  objetivoRol String?
+
+  // Perfil demográfico
+  edadMin           Int?
+  edadMax           Int?
+  ciudades          String? // JSON array
+  nivelEstudios     String? // BACHILLERATO | LICENCIATURA | POSGRADO | INDIFERENTE
+  carrerasSugeridas String?
+
+  // Competencias (JSON arrays de strings)
+  habilidadesTecnicas String?
+  habilidadesBlandas  String?
+  conocimientos       String?
+  aptitudes           String?
+  valores             String?
+  areasDesarrollo     String?
+
+  // Criterios de evaluación JSON: [{criterio, peso, descripcion}]
+  criteriosEvaluacion String?
+
+  // Condiciones
+  salarioMin   Float?
+  salarioMax   Float?
+  tipoContrato String? // NOMINA | HONORARIOS | FREELANCE
+  modalidad    String? // PRESENCIAL | REMOTO | HIBRIDO
+  horario      String?
+  prestaciones String? // JSON array
+
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postulaciones Postulacion[]
+
+  @@map("puestos_ideales")
+}
+
+model Candidato {
+  id       String  @id @default(cuid())
+  nombre   String
+  correo   String?
+  telefono String?
+  ciudad   String?
+  edad     Int?
+  nivelEstudios String?
+  carrera  String?
+
+  // Discovery form
+  experienciaEventos      String?  // describe su experiencia en eventos
+  aniosExperienciaEventos Int?
+  eventoDestacado         String?  // evento más relevante que ha trabajado
+  situacionResuelta       String?  // situación real que resolvió
+  comoResolveria          String?  // cómo resolvería un problema operativo
+  motivacion              String?  // por qué quiere trabajar en Mainstage
+  visionLargoPlazo        String?  // dónde se ve en 3-5 años
+  disposicionHorario      Boolean? // disponibilidad 9am-5pm L-V
+  disposicionFines        Boolean? // disponibilidad fines de semana / eventos nocturnos
+  salarioEsperado         Float?
+  habilidades             String?  // texto libre
+  experienciaPrevia       String?  // historial resumido
+  linkedin                String?
+  portfolio               String?
+  notas                   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  postulaciones Postulacion[]
+
+  @@map("candidatos")
+}
+
+model Postulacion {
+  id          String  @id @default(cuid())
+  candidatoId String
+  candidato   Candidato   @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
+  puestoId    String?
+  puesto      PuestoIdeal? @relation(fields: [puestoId], references: [id])
+
+  // Puesto manual si no hay PuestoIdeal vinculado
+  puestoManual String?
+  areaManual   String?
+
+  // Pipeline
+  etapa String @default("NUEVO") // NUEVO | EVALUACION | PROPUESTA_ENVIADA | APROBADO | CONTRATADO | RECHAZADO
+
+  // Propuesta de trabajo
+  salarioPropuesto     Float?
+  fechaIngresoEstimada DateTime?
+  beneficios           String?   // JSON array
+  observaciones        String?
+  propuestaToken       String?   @unique
+  propuestaAceptada    Boolean?
+  propuestaFechaEnvio  DateTime?
+
+  // Contrato
+  contratoGenerado Boolean  @default(false)
+  contratoFecha    DateTime?
+
+  // Link al PersonalInterno creado al contratar
+  personalInternoId String?
+
+  // Evaluación vs perfil
+  notasEvaluacion String?
+  puntajeTotal    Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("postulaciones")
+}
