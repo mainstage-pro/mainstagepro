@@ -346,7 +346,7 @@ function GoldLabel({ children }: { children: React.ReactNode }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-white font-bold mb-6 leading-tight"
+    <h3 className="text-[#B3985B] font-bold mb-6 leading-tight"
         style={{ fontSize: "clamp(1.6rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
       {children}
     </h3>
