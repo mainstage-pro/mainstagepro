@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id } = await params;
+  const tecnico = await prisma.tecnico.findUnique({
+    where: { id },
+    include: {
+      rol: { select: { nombre: true } },
+      cuentasPagar: {
+        include: { proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+      proyectoPersonal: {
+        include: { proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true, estado: true } } },
+        orderBy: { proyecto: { fechaEvento: "desc" } },
+        take: 20,
+      },
+    },
+  });
+  if (!tecnico) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  return NextResponse.json({ tecnico });
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -9,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "celular", "rolId", "nivel", "zonaHabitual", "cuentaBancaria", "datosFiscales", "activo", "comentarios"];
+  const allowed = ["nombre", "celular", "rolId", "nivel", "zonaHabitual", "cuentaBancaria", "datosFiscales", "activo", "comentarios", "habilidades"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] ?? null;

@@ -7,7 +7,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const users = await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    select: {
+      id: true, name: true, email: true, role: true, area: true, active: true, createdAt: true,
+      moduloAccesos: { select: { moduloKey: true } },
+    },
     orderBy: { createdAt: "asc" },
   });
 
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { name, email, password, role } = await req.json();
+  const { name, email, password, role, area } = await req.json();
 
   if (!name || !email || !password) {
     return NextResponse.json({ error: "Nombre, correo y contraseña son obligatorios" }, { status: 400 });
@@ -34,8 +37,8 @@ export async function POST(req: NextRequest) {
 
   const hashed = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { name, email, password: hashed, role: role ?? "REGULAR" },
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    data: { name, email, password: hashed, role: role ?? "USER", area: area ?? "GENERAL" },
+    select: { id: true, name: true, email: true, role: true, area: true, active: true, createdAt: true },
   });
 
   return NextResponse.json({ user });

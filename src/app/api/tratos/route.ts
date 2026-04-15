@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
 
   const where: Record<string, unknown> = {};
   if (responsableId) where.responsableId = responsableId;
-  // Vendedor solo ve sus propios tratos
-  if (session.role === "VENDEDOR") where.responsableId = session.id;
+  // Vendedores (área VENTAS) solo ven sus propios tratos
+  if (session.role !== "ADMIN" && (session as { area?: string }).area === "VENTAS") where.responsableId = session.id;
 
   const tratos = await prisma.trato.findMany({
     where,

@@ -14,6 +14,8 @@ const CAMPOS = [
   "rentabilidadReal",
   "resultadoGeneral",
   "notas",
+  "comentariosCriterios",
+  "reportePostEvento",
 ];
 
 export async function GET(

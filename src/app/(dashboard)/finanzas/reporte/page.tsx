@@ -7,6 +7,11 @@ const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits
 function mesLabel(key: string) { const [,m] = key.split("-"); return MESES[parseInt(m)-1]; }
 function pct(v: number, t: number) { return t === 0 ? 0 : Math.round((v/t)*100); }
 
+interface AgingItem { id: string; concepto: string; monto: number; montoCobrado: number; cliente: { nombre: string }; proyecto: { nombre: string; numeroProyecto: string } | null; fechaCompromiso: string }
+interface AgingBucket { items: AgingItem[]; total: number }
+interface AgingData { buckets: { corriente: AgingBucket; d0_30: AgingBucket; d31_60: AgingBucket; d60mas: AgingBucket }; total: number }
+interface MargenProyecto { id: string; nombre: string; numero: string; fecha: string | null; estado: string; ingresos: number; cobrado: number; egresos: number; margen: number; margenPct: number | null }
+
 interface KPIs {
   ingresosMes: number; egresosMes: number; utilidadMes: number; margenMes: number;
   totalIngresos: number; totalEgresos: number; utilidadPeriodo: number;
@@ -19,11 +24,18 @@ export default function FinanzasReportePage() {
   const [data, setData] = useState<{ kpis: KPIs; porMes: MesStat[]; porCategoria: CategoriaStat[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [rango, setRango] = useState(6);
+  const [aging, setAging] = useState<AgingData | null>(null);
+  const [margen, setMargen] = useState<MargenProyecto[] | null>(null);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/finanzas/reporte?meses=${rango}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
   }, [rango]);
+
+  useEffect(() => {
+    fetch("/api/finanzas/aging").then(r => r.json()).then(d => setAging(d));
+    fetch("/api/finanzas/margen").then(r => r.json()).then(d => setMargen(d.proyectos ?? []));
+  }, []);
 
   const maxMes = data ? Math.max(...data.porMes.map(m => Math.max(m.ingresos, m.egresos)), 1) : 1;
   const ingresos = data?.porCategoria.filter(c => c.tipo === "INGRESO") ?? [];
@@ -172,6 +184,87 @@ export default function FinanzasReportePage() {
       </div>
 
       </>)}
+
+      {/* ── Aging CxC ── */}
+      {aging && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <h2 className="text-white font-semibold text-sm mb-4">Aging — Cuentas por cobrar</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+            {[
+              { key: "corriente", label: "Al corriente", color: "text-green-400", bg: "border-green-800/40" },
+              { key: "d0_30",     label: "1–30 días",    color: "text-yellow-400", bg: "border-yellow-800/40" },
+              { key: "d31_60",    label: "31–60 días",   color: "text-orange-400", bg: "border-orange-800/40" },
+              { key: "d60mas",    label: "60+ días",     color: "text-red-400",    bg: "border-red-800/40" },
+            ].map(b => {
+              const bucket = aging.buckets[b.key as keyof typeof aging.buckets];
+              return (
+                <div key={b.key} className={`bg-[#0d0d0d] border ${b.bg} rounded-xl p-4`}>
+                  <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{b.label}</p>
+                  <p className={`text-xl font-bold ${b.color}`}>{fmt(bucket.total)}</p>
+                  <p className="text-gray-600 text-[10px] mt-0.5">{bucket.items.length} factura{bucket.items.length !== 1 ? "s" : ""}</p>
+                </div>
+              );
+            })}
+          </div>
+          {/* Items vencidos */}
+          {[...aging.buckets.d0_30.items, ...aging.buckets.d31_60.items, ...aging.buckets.d60mas.items].length > 0 && (
+            <div className="space-y-1 mt-2">
+              <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold mb-2">Vencidas</p>
+              {[...aging.buckets.d60mas.items, ...aging.buckets.d31_60.items, ...aging.buckets.d0_30.items].slice(0, 10).map(item => {
+                const saldo = item.monto - (item.montoCobrado ?? 0);
+                const dias = Math.floor((new Date().getTime() - new Date(item.fechaCompromiso).getTime()) / 86400000);
+                return (
+                  <div key={item.id} className="flex items-center justify-between bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-xs truncate">{item.cliente.nombre}</p>
+                      {item.proyecto && <p className="text-gray-600 text-[10px]">{item.proyecto.numeroProyecto} · {item.proyecto.nombre}</p>}
+                    </div>
+                    <div className="text-right ml-3 shrink-0">
+                      <p className="text-white text-xs font-semibold">{fmt(saldo)}</p>
+                      <p className="text-red-400 text-[10px]">{dias}d vencida</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Margen por proyecto ── */}
+      {margen && margen.length > 0 && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <h2 className="text-white font-semibold text-sm mb-4">Margen por proyecto (últimos 30)</h2>
+          <div className="space-y-2">
+            {margen.map(p => {
+              const maxVal = Math.max(...margen.map(x => x.ingresos), 1);
+              return (
+                <div key={p.id}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <div className="min-w-0 flex-1">
+                      <a href={`/proyectos/${p.id}`} className="text-white text-xs hover:text-[#B3985B] transition-colors truncate block">{p.nombre}</a>
+                      <p className="text-gray-600 text-[10px]">{p.numero}</p>
+                    </div>
+                    <div className="text-right ml-3 shrink-0">
+                      <p className={`text-xs font-semibold ${p.margen >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(p.margen)}</p>
+                      {p.margenPct !== null && <p className="text-gray-600 text-[10px]">{p.margenPct}% margen</p>}
+                    </div>
+                  </div>
+                  <div className="flex gap-0.5 h-2">
+                    <div className="h-full bg-green-600/50 rounded-l-full" style={{ width: `${pct(p.ingresos, maxVal)}%` }} title={`Ingresos: ${fmt(p.ingresos)}`} />
+                    <div className="h-full bg-red-700/40 rounded-r-full" style={{ width: `${pct(p.egresos, maxVal)}%` }} title={`Egresos: ${fmt(p.egresos)}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
+            {[{ c: "bg-green-600/50", l: "Ingresos" }, { c: "bg-red-700/40", l: "Egresos" }].map(l => (
+              <div key={l.l} className="flex items-center gap-1.5"><div className={`w-3 h-2 rounded-sm ${l.c}`} /><span className="text-gray-500 text-[10px]">{l.l}</span></div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

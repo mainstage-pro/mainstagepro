@@ -16,6 +16,7 @@ export async function PATCH(
   if (body.name !== undefined) data.name = body.name;
   if (body.email !== undefined) data.email = body.email;
   if (body.role !== undefined) data.role = body.role;
+  if (body.area !== undefined) data.area = body.area;
   if (body.active !== undefined) data.active = body.active;
   if (body.password) {
     if (body.password.length < 6) {
@@ -27,7 +28,7 @@ export async function PATCH(
   const user = await prisma.user.update({
     where: { id },
     data,
-    select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, area: true, active: true, createdAt: true },
   });
 
   return NextResponse.json({ user });

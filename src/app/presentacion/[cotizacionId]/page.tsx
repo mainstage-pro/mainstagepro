@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import PresentacionClient from "./PresentacionClient";
+import PresentacionRentaClient from "./PresentacionRentaClient";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function PresentacionPage({
       cliente: {
         select: { nombre: true, empresa: true, telefono: true, correo: true },
       },
-      trato: { select: { tipoEvento: true } },
+      trato: { select: { tipoEvento: true, ideasReferencias: true } },
       lineas: {
         orderBy: { orden: "asc" },
         include: {
@@ -40,6 +41,11 @@ export default async function PresentacionPage({
     fechaEnvio: cotizacion.fechaEnvio?.toISOString() ?? null,
     fechaVencimiento: cotizacion.fechaVencimiento?.toISOString() ?? null,
   };
+
+  // Rental quotes get a completely different, equipment-focused presentation
+  if (cotizacion.tipoServicio === "RENTA") {
+    return <PresentacionRentaClient cotizacion={data} />;
+  }
 
   return <PresentacionClient cotizacion={data} />;
 }

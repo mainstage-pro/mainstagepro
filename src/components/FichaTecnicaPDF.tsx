@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
+import { JORNADA_LABELS } from "@/lib/constants";
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const GOLD = "#B3985B";
@@ -534,7 +535,7 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
                       <View key={p.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                         <Text style={[s.tdBold, { width: "35%" }]}>{p.tecnico?.nombre ?? "—"}</Text>
                         <Text style={[s.tdText, { width: "15%" }]}>{p.nivel ?? "—"}</Text>
-                        <Text style={[s.tdText, { width: "20%" }]}>{p.jornada ?? "—"}</Text>
+                        <Text style={[s.tdText, { width: "20%" }]}>{p.jornada ? (JORNADA_LABELS[p.jornada] ?? p.jornada) : "—"}</Text>
                         <Text style={[s.tdText, { width: "20%" }]}>{p.responsabilidad ?? "—"}</Text>
                         <View style={{ width: "10%", alignItems: "flex-end" }}>
                           <Text style={p.confirmado ? s.confirmed : s.notConfirmed}>
@@ -623,23 +624,86 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
           )}
 
           {/* ── Logística ── */}
-          {(proyecto.transportes || proyecto.proveedorCatering) && (
-            <>
-              <SectionTitle title="Logística" />
-              <View style={s.infoGrid}>
-                {proyecto.transportes && <InfoField label="Transportes del evento" value={proyecto.transportes} full bold={false} />}
-                {proyecto.proveedorCatering && <InfoField label="Proveedor catering / alimentación" value={proyecto.proveedorCatering} full bold={false} />}
-              </View>
-            </>
-          )}
+          {(() => {
+            type TransporteSlot = { proveedor: string; marcaModelo: string; comentarios: string };
+            let transporteSlots: TransporteSlot[] = [];
+            try {
+              const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
+              if (Array.isArray(parsed)) transporteSlots = parsed;
+            } catch { /* raw string fallback */ }
+
+            const tieneTransportes = transporteSlots.some(t => t.proveedor || t.marcaModelo);
+            if (!tieneTransportes && !proyecto.proveedorCatering) return null;
+
+            return (
+              <>
+                <SectionTitle title="Logística" />
+                {tieneTransportes && (
+                  <View style={{ marginBottom: 10 }}>
+                    <Text style={{ fontSize: 7.5, color: LIGHT_GRAY, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>Transportes del evento</Text>
+                    <View style={s.table}>
+                      <View style={s.tableHeader}>
+                        <Text style={[s.thText, { width: "35%" }]}>Proveedor</Text>
+                        <Text style={[s.thText, { width: "30%" }]}>Vehículo / Modelo</Text>
+                        <Text style={[s.thText, { width: "35%" }]}>Comentarios</Text>
+                      </View>
+                      {transporteSlots.filter(t => t.proveedor || t.marcaModelo).map((t, i) => (
+                        <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                          <Text style={[s.tdBold, { width: "35%" }]}>{t.proveedor || "—"}</Text>
+                          <Text style={[s.tdText, { width: "30%" }]}>{t.marcaModelo || "—"}</Text>
+                          <Text style={[s.tdText, { width: "35%" }]}>{t.comentarios || "—"}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {proyecto.proveedorCatering && (
+                  <InfoField label="Proveedor catering / alimentación" value={proyecto.proveedorCatering} full bold={false} />
+                )}
+              </>
+            );
+          })()}
 
           {/* ── Cronograma ── */}
-          {proyecto.cronograma && (
-            <>
-              <SectionTitle title="Cronograma general del proyecto" />
-              <Text style={s.freeText}>{proyecto.cronograma}</Text>
-            </>
-          )}
+          {(() => {
+            type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string };
+            let rows: CronoRow[] = [];
+            let isJson = false;
+            try {
+              const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : null;
+              if (Array.isArray(parsed) && parsed.length > 0) { rows = parsed; isJson = true; }
+            } catch { /* raw text */ }
+
+            if (!proyecto.cronograma) return null;
+
+            return (
+              <>
+                <SectionTitle title="Cronograma general del proyecto" />
+                {isJson && rows.some(r => r.actividad) ? (
+                  <View style={s.table}>
+                    <View style={s.tableHeader}>
+                      <Text style={[s.thText, { width: "12%" }]}>Inicio</Text>
+                      <Text style={[s.thText, { width: "12%" }]}>Fin</Text>
+                      <Text style={[s.thText, { width: "36%" }]}>Actividad</Text>
+                      <Text style={[s.thText, { width: "20%" }]}>Responsable</Text>
+                      <Text style={[s.thText, { width: "20%" }]}>Involucrados</Text>
+                    </View>
+                    {rows.filter(r => r.actividad || r.horaInicio).map((r, i) => (
+                      <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                        <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
+                        <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
+                        <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
+                        <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
+                        <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={s.freeText}>{proyecto.cronograma}</Text>
+                )}
+              </>
+            );
+          })()}
 
           {/* ── Contactos dirección ── */}
           {proyecto.contactosDireccion && (

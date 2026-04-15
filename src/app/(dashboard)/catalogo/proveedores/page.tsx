@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 type Proveedor = {
   id: string;
@@ -28,11 +28,14 @@ export default function ProveedoresPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
   const [view, setView] = useState<"card" | "list">("card");
   const [search, setSearch] = useState("");
   const [filterGiro, setFilterGiro] = useState<string>("TODOS");
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
+  const currentEditId = useRef<string | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
     const res = await fetch("/api/proveedores");
@@ -42,7 +45,20 @@ export default function ProveedoresPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Auto-save when editing an existing record
+  useEffect(() => {
+    if (!editing || editing.id !== currentEditId.current) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      const payload = { nombre: form.nombre, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, cuentaBancaria: form.cuentaBancaria || null, datosFiscales: form.datosFiscales || null };
+      await fetch(`/api/proveedores/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      setProveedores(prev => prev.map(p => p.id === editing.id ? { ...p, ...payload } : p));
+      setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
+    }, 1200);
+  }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function startEdit(p: Proveedor) {
+    currentEditId.current = p.id;
     setEditing(p);
     setForm({
       nombre: p.nombre, empresa: p.empresa ?? "", giro: p.giro ?? "",
@@ -53,8 +69,8 @@ export default function ProveedoresPage() {
     setCreating(false);
   }
 
-  function startCreate() { setCreating(true); setEditing(null); setForm(EMPTY); }
-  function cancel() { setEditing(null); setCreating(false); }
+  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); }
+  function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
   function set(key: keyof typeof EMPTY, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
@@ -193,12 +209,15 @@ export default function ProveedoresPage() {
                 placeholder="Condiciones de pago, disponibilidad, referencias..." />
             </div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={save} disabled={saving || !form.nombre}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving ? "Guardando..." : editing ? "Actualizar" : "Agregar"}
-            </button>
-            <button onClick={cancel} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
+          <div className="flex items-center gap-3">
+            {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
+            {!editing && (
+              <button onClick={save} disabled={saving || !form.nombre}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+                {saving ? "Guardando..." : "Agregar"}
+              </button>
+            )}
+            <button onClick={cancel} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cerrar</button>
           </div>
         </div>
       )}
@@ -280,7 +299,16 @@ export default function ProveedoresPage() {
                     ) : <span className="text-[#555] text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
-                    {p.telefono ? <a href={`tel:${p.telefono}`} className="hover:text-[#B3985B] transition-colors">{p.telefono}</a> : "—"}
+                    {p.telefono ? (
+                      <div className="flex items-center gap-2">
+                        <span>{p.telefono}</span>
+                        <a href={`https://wa.me/${p.telefono.replace(/\D/g,"").replace(/^(?!52)/,"52")}?text=${encodeURIComponent(`Hola ${p.nombre.split(" ")[0]}! 👋`)}`}
+                           target="_blank" rel="noopener noreferrer"
+                           className="text-green-500 hover:text-green-400 transition-colors shrink-0" title="WhatsApp">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        </a>
+                      </div>
+                    ) : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {p.correo ? <a href={`mailto:${p.correo}`} className="hover:text-[#B3985B] transition-colors truncate">{p.correo}</a> : "—"}
@@ -343,7 +371,13 @@ function ProveedorCard({ proveedor: p, onEdit, onToggle }: {
         {p.telefono && (
           <div className="flex items-center gap-2">
             <span className="text-gray-600 w-14 shrink-0">Tel</span>
-            <a href={`tel:${p.telefono}`} className="text-white hover:text-[#B3985B] transition-colors">{p.telefono}</a>
+            <span className="text-white">{p.telefono}</span>
+            <a href={`https://wa.me/${p.telefono.replace(/\D/g,"").replace(/^(?!52)/,"52")}?text=${encodeURIComponent(`Hola ${p.nombre.split(" ")[0]}! 👋`)}`}
+               target="_blank" rel="noopener noreferrer"
+               className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors bg-green-900/20 hover:bg-green-900/30 border border-green-800/40 px-2 py-0.5 rounded-full text-[10px] font-medium">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WA
+            </a>
           </div>
         )}
         {p.correo && (

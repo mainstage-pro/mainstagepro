@@ -20,7 +20,7 @@ type Unidad = {
 type Registro = {
   id: string; fecha: string; tipo: string; accionRealizada: string;
   estadoEquipo: string | null; comentarios: string | null;
-  proximoMantenimiento: string | null;
+  proximoMantenimiento: string | null; fotoEvidencia: string | null;
   unidad: { id: string; codigo: string | null } | null;
   equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; estado: string; categoria: { nombre: string } };
 };
@@ -74,8 +74,27 @@ function unidadLabel(u: Unidad, idx: number) {
 const FORM_EMPTY = {
   fecha: new Date().toISOString().split("T")[0],
   tipo: "PREVENTIVO", accionRealizada: "", estadoEquipo: "",
-  comentarios: "", proximoMantenimiento: "",
+  comentarios: "", proximoMantenimiento: "", fotoEvidencia: "",
 };
+
+async function comprimirImagen(file: File, maxW = 1200, quality = 0.75): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxW / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 function MantenimientoContent() {
   const searchParams = useSearchParams();
@@ -174,6 +193,7 @@ function MantenimientoContent() {
         estadoEquipo: form.estadoEquipo || null,
         comentarios: form.comentarios || null,
         proximoMantenimiento: form.proximoMantenimiento || null,
+        fotoEvidencia: form.fotoEvidencia || null,
       }),
     });
     if (res.ok) {
@@ -532,6 +552,36 @@ function MantenimientoContent() {
                           placeholder="Piezas cambiadas, costo, observaciones..."
                           className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
                       </div>
+                      {/* Foto de evidencia */}
+                      <div className="md:col-span-3">
+                        <label className="text-gray-500 text-xs mb-1 block">Foto de evidencia</label>
+                        {form.fotoEvidencia ? (
+                          <div className="flex items-center gap-3">
+                            <img src={form.fotoEvidencia} alt="Evidencia" className="w-20 h-20 object-cover rounded-lg border border-[#333]" />
+                            <button onClick={() => setForm(p => ({ ...p, fotoEvidencia: "" }))}
+                              className="text-xs text-red-400 hover:text-red-300 transition-colors">
+                              Quitar foto
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex items-center gap-2 cursor-pointer w-fit">
+                            <div className="flex items-center gap-2 bg-[#111] border border-[#333] border-dashed rounded-lg px-4 py-3 hover:border-[#B3985B] transition-colors">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                                <polyline points="21 15 16 10 5 21"/>
+                              </svg>
+                              <span className="text-xs text-gray-500">Subir foto (cámara o galería)</span>
+                            </div>
+                            <input type="file" accept="image/*" capture="environment" className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const base64 = await comprimirImagen(file);
+                                setForm(p => ({ ...p, fotoEvidencia: base64 }));
+                              }} />
+                          </label>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-3">
                       <button onClick={guardar} disabled={saving || !form.accionRealizada.trim()}
@@ -581,6 +631,11 @@ function MantenimientoContent() {
                                   </span>
                                 )}
                               </div>
+                              {r.fotoEvidencia && (
+                                <a href={r.fotoEvidencia} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
+                                  <img src={r.fotoEvidencia} alt="Evidencia" className="w-16 h-16 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" />
+                                </a>
+                              )}
                             </div>
                           </div>
                         </div>

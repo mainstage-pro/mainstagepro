@@ -48,10 +48,12 @@ interface Cotizacion {
   costosTotalesEstimados: number;
   utilidadEstimada: number;
   porcentajeUtilidad: number;
+  planPagos: string | null;
+  mainstageTradeData: string | null;
   observaciones: string | null;
   vigenciaDias: number;
   createdAt: string;
-  cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string };
+  cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
   trato: { id: string; tipoEvento: string; etapa: string };
   creadaPor: { name: string } | null;
   lineas: Linea[];
@@ -91,6 +93,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [aprobando, setAprobando] = useState(false);
+  const [sharingPdf, setSharingPdf] = useState(false);
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [savingTrade, setSavingTrade] = useState(false);
 
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`)
@@ -119,6 +125,33 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  async function savePlan(plan: object) {
+    setSavingPlan(true);
+    const res = await fetch(`/api/cotizaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planPagos: JSON.stringify(plan) }),
+    });
+    if (res.ok) {
+      setCot(prev => prev ? { ...prev, planPagos: JSON.stringify(plan) } : prev);
+      setEditingPlan(false);
+    }
+    setSavingPlan(false);
+  }
+
+  async function saveTrade(data: object) {
+    setSavingTrade(true);
+    const res = await fetch(`/api/cotizaciones/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mainstageTradeData: JSON.stringify(data) }),
+    });
+    if (res.ok) {
+      setCot(prev => prev ? { ...prev, mainstageTradeData: JSON.stringify(data) } : prev);
+    }
+    setSavingTrade(false);
+  }
+
   async function eliminar() {
     if (!confirm("¿Eliminar esta cotización? Esta acción no se puede deshacer.")) return;
     setDeleting(true);
@@ -136,6 +169,55 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     } else {
       alert(`Error al crear proyecto: ${data.error ?? "Error desconocido"}`);
       setAprobando(false);
+    }
+  }
+
+  async function sharePdf() {
+    if (!cot) return;
+    setSharingPdf(true);
+    try {
+      const pdfUrl = `/api/cotizaciones/${cot.id}/pdf`;
+      const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
+
+      // Solo usar Web Share API en móvil (iOS/Android)
+      // En desktop macOS/Windows abre AirDrop/share sheet en lugar de descargar
+      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
+        const res = await fetch(pdfUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+        // Fallback móvil: share URL
+        if (navigator.share) {
+          await navigator.share({ title: filename, url: window.location.origin + pdfUrl });
+          return;
+        }
+      }
+
+      // Desktop o fallback: descarga directa a carpeta de descargas
+      const res = await fetch(pdfUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (e instanceof Error && e.name !== "AbortError") {
+        const a = document.createElement("a");
+        a.href = `/api/cotizaciones/${cot.id}/pdf`;
+        a.download = `${cot.numeroCotizacion}.pdf`;
+        a.click();
+      }
+    } finally {
+      setSharingPdf(false);
     }
   }
 
@@ -225,14 +307,40 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </svg>
               Ver presentación
             </a>
-            <a
-              href={`/api/cotizaciones/${cot.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            <button
+              onClick={sharePdf}
+              disabled={sharingPdf}
+              className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
-              Descargar PDF
-            </a>
+              {sharingPdf ? (
+                <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+                </svg>
+              )}
+              {sharingPdf ? "Preparando..." : "Descargar / Compartir PDF"}
+            </button>
+            {/* WhatsApp: compartir PDF */}
+            {cot.cliente.telefono && (() => {
+              const tel = cot.cliente.telefono.replace(/\D/g, "");
+              const pdfLink = `${typeof window !== "undefined" ? window.location.origin : ""}/api/cotizaciones/${cot.id}/pdf`;
+              const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}: ${pdfLink}`;
+              return (
+                <a
+                  href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                  title="Enviar PDF por WhatsApp al cliente"
+                >
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                  </svg>
+                  WhatsApp
+                </a>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -400,6 +508,211 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </div>
             </div>
           )}
+
+          {/* ── Plan de pagos ── */}
+          {cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (() => {
+            type Cuota = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
+            const ESQUEMAS: { label: string; key: string; pagos: Cuota[] }[] = [
+              { label: "50% + 50%", key: "50_50", pagos: [
+                { concepto: "Anticipo 50% — ", porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
+                { concepto: "Liquidación 50% — ", porcentaje: 50, diasAntes: 1, tipoPago: "LIQUIDACION" },
+              ]},
+              { label: "30% + 70%", key: "30_70", pagos: [
+                { concepto: "Anticipo 30% — ", porcentaje: 30, diasAntes: -3, tipoPago: "ANTICIPO" },
+                { concepto: "Liquidación 70% — ", porcentaje: 70, diasAntes: 1, tipoPago: "LIQUIDACION" },
+              ]},
+              { label: "100% adelanto", key: "100_ADELANTO", pagos: [
+                { concepto: "Pago total — ", porcentaje: 100, diasAntes: -3, tipoPago: "ANTICIPO" },
+              ]},
+              { label: "3 pagos (30/40/30)", key: "3_PAGOS", pagos: [
+                { concepto: "Anticipo 30% — ", porcentaje: 30, diasAntes: -7, tipoPago: "ANTICIPO" },
+                { concepto: "Segundo pago 40% — ", porcentaje: 40, diasAntes: -3, tipoPago: "LIQUIDACION" },
+                { concepto: "Liquidación 30% — ", porcentaje: 30, diasAntes: 1, tipoPago: "LIQUIDACION" },
+              ]},
+            ];
+
+            let currentPlan: { esquema?: string; pagos?: Cuota[] } | null = null;
+            try { currentPlan = cot.planPagos ? JSON.parse(cot.planPagos) : null; } catch { /* noop */ }
+            const activeKey = currentPlan?.esquema ?? "50_50";
+            const activePagos = currentPlan?.pagos ?? ESQUEMAS[0].pagos;
+
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+                  <div>
+                    <p className="text-white text-sm font-semibold">Plan de pagos</p>
+                    <p className="text-gray-600 text-xs mt-0.5">Define las cuotas que se generarán al aprobar la cotización</p>
+                  </div>
+                  <button onClick={() => setEditingPlan(!editingPlan)}
+                    className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                    {editingPlan ? "Cerrar" : "Editar"}
+                  </button>
+                </div>
+
+                {!editingPlan ? (
+                  <div className="px-4 py-3 space-y-1.5">
+                    {activePagos.map((p, i) => {
+                      const pct = `${p.porcentaje}%`;
+                      const fechaDesc = p.diasAntes <= 0
+                        ? `${Math.abs(p.diasAntes)} días tras aprobar`
+                        : p.diasAntes === 1 ? "1 día antes del evento"
+                        : `${p.diasAntes} días antes del evento`;
+                      const monto = Math.round(cot.granTotal * (p.porcentaje / 100));
+                      return (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">
+                            {p.concepto.replace(" — ", "") || `Pago ${i+1}`}
+                            <span className="text-gray-700 ml-2">· {fechaDesc}</span>
+                          </span>
+                          <span className="text-white font-medium">{pct} · {formatCurrency(monto)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-4 py-4 space-y-4">
+                    <div className="flex gap-2 flex-wrap">
+                      {ESQUEMAS.map(s => (
+                        <button key={s.key} onClick={() => savePlan({ esquema: s.key, pagos: s.pagos })}
+                          disabled={savingPlan}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                            activeKey === s.key
+                              ? "bg-[#B3985B]/15 border-[#B3985B]/50 text-[#B3985B]"
+                              : "border-[#333] text-gray-500 hover:text-white hover:border-[#444]"
+                          }`}>
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      {activePagos.map((p, i) => (
+                        <div key={i} className="grid gap-2" style={{ gridTemplateColumns: "1fr 80px 120px" }}>
+                          <input
+                            defaultValue={p.concepto.replace(" — ", "")}
+                            onBlur={e => {
+                              const updated = activePagos.map((q, j) => j === i ? { ...q, concepto: `${e.target.value} — ` } : q);
+                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                            }}
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                          />
+                          <div className="relative">
+                            <input type="number" min="1" max="100"
+                              defaultValue={p.porcentaje}
+                              onBlur={e => {
+                                const updated = activePagos.map((q, j) => j === i ? { ...q, porcentaje: parseInt(e.target.value) || q.porcentaje } : q);
+                                savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                              }}
+                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
+                          </div>
+                          <select defaultValue={p.diasAntes}
+                            onChange={e => {
+                              const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(e.target.value) } : q);
+                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                            }}
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
+                            <option value="-3">3d tras aprobar</option>
+                            <option value="-7">7d tras aprobar</option>
+                            <option value="-14">14d tras aprobar</option>
+                            <option value="30">30d antes evento</option>
+                            <option value="15">15d antes evento</option>
+                            <option value="7">7d antes evento</option>
+                            <option value="1">1d antes evento</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-gray-700">Los montos se calculan automáticamente sobre el gran total al aprobar</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Mainstage Trade ── */}
+          {!["APROBADA", "RECHAZADA"].includes(cot.estado) && (() => {
+            type TradeData = { activo: boolean; pct: number; entregables: string[] };
+            const ENTREGABLES_DEFAULT = [
+              { id: "logo_banner", label: "Logo en banner / backdrop del evento" },
+              { id: "mencion_maestro", label: "Mención del animador/maestro de ceremonias" },
+              { id: "post_instagram", label: "Post en Instagram etiquetando @mainstagepro" },
+              { id: "story_instagram", label: "Story en Instagram con tag" },
+              { id: "post_facebook", label: "Post en Facebook etiquetando Mainstage Pro" },
+              { id: "video_redes", label: "Video del evento para nuestras redes (autorización)" },
+              { id: "testimonio_escrito", label: "Testimonio escrito / reseña de Google" },
+              { id: "recomendacion_directa", label: "Recomendación activa a 2+ contactos" },
+            ];
+            let trade: TradeData = { activo: false, pct: 5, entregables: [] };
+            try { if (cot.mainstageTradeData) trade = { ...trade, ...JSON.parse(cot.mainstageTradeData) }; } catch { /* noop */ }
+            return (
+              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🤝</span>
+                    <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                    {trade.activo && <span className="text-[10px] bg-[#B3985B]/20 text-[#B3985B] px-2 py-0.5 rounded-full font-medium">Activo — {trade.pct}% desc.</span>}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const updated = { ...trade, activo: !trade.activo };
+                      saveTrade(updated);
+                    }}
+                    className={`text-xs px-3 py-1 rounded-lg border transition-colors ${trade.activo ? "border-[#B3985B]/40 text-[#B3985B] bg-[#B3985B]/10 hover:bg-[#B3985B]/20" : "border-[#333] text-gray-400 hover:text-white"}`}>
+                    {trade.activo ? "Desactivar" : "Activar"}
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs mb-4">El cliente recibe un descuento a cambio de visibilidad de marca para Mainstage Pro en su evento.</p>
+                {trade.activo && (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <label className="text-xs text-gray-400 min-w-max">Descuento acordado</label>
+                      <div className="flex items-center gap-1">
+                        {[3, 5, 7, 10, 15].map(p => (
+                          <button key={p} onClick={() => saveTrade({ ...trade, pct: p })}
+                            className={`text-xs px-2 py-1 rounded transition-colors ${trade.pct === p ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                            {p}%
+                          </button>
+                        ))}
+                      </div>
+                      <span className="text-gray-500 text-xs">sobre equipos</span>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">Entregables del cliente</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {ENTREGABLES_DEFAULT.map(e => {
+                          const selected = trade.entregables.includes(e.id);
+                          return (
+                            <button key={e.id}
+                              onClick={() => {
+                                const list = selected ? trade.entregables.filter(x => x !== e.id) : [...trade.entregables, e.id];
+                                saveTrade({ ...trade, entregables: list });
+                              }}
+                              className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors ${selected ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]"}`}>
+                              {selected ? "✓ " : ""}{e.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    {trade.entregables.length > 0 && (
+                      <div className="bg-[#1a1a1a] rounded-lg p-3 text-xs text-gray-400">
+                        <p className="text-[#B3985B] font-medium mb-1">Resumen del acuerdo Trade</p>
+                        <p>El cliente recibe un {trade.pct}% de descuento en equipos a cambio de:</p>
+                        <ul className="mt-1 space-y-0.5 pl-3">
+                          {trade.entregables.map(eid => {
+                            const e = ENTREGABLES_DEFAULT.find(x => x.id === eid);
+                            return e ? <li key={eid}>· {e.label}</li> : null;
+                          })}
+                        </ul>
+                      </div>
+                    )}
+                    {savingTrade && <p className="text-xs text-gray-600">Guardando...</p>}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {cot.observaciones && (
             <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">

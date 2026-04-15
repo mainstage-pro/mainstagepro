@@ -11,6 +11,7 @@ export default function ProyectosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/proyectos")
@@ -25,6 +26,21 @@ export default function ProyectosPage() {
 
   const activos = proyectos.filter(p => ["PLANEACION", "CONFIRMADO", "EN_CURSO"].includes(p.estado));
   const completados = proyectos.filter(p => p.estado === "COMPLETADO");
+  const [view, setView] = useState<"list" | "timeline">("list");
+  const [timelineMes, setTimelineMes] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+
+  async function eliminar(id: string, nombre: string, e: React.MouseEvent) {
+    e.preventDefault();
+    if (!confirm(`¿Eliminar el proyecto "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/proyectos/${id}`, { method: "DELETE" });
+      if (res.ok) setProyectos(prev => prev.filter(p => p.id !== id));
+      else { const d = await res.json(); alert(d.error ?? "Error al eliminar"); }
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
@@ -35,6 +51,12 @@ export default function ProyectosPage() {
             {loading ? "Cargando..." : `${activos.length} activos · ${completados.length} completados`}
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
+            <button onClick={() => setView("list")} className={`px-3 py-1.5 rounded-md text-xs transition-colors ${view === "list" ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-gray-300"}`}>Lista</button>
+            <button onClick={() => setView("timeline")} className={`px-3 py-1.5 rounded-md text-xs transition-colors ${view === "timeline" ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-gray-300"}`}>Calendario</button>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -44,18 +66,108 @@ export default function ProyectosPage() {
         </div>
       )}
 
-      {loading ? (
+      {/* ── TIMELINE / CALENDARIO ── */}
+      {view === "timeline" && !loading && (() => {
+        const year = timelineMes.getFullYear();
+        const month = timelineMes.getMonth();
+        const diasEnMes = new Date(year, month + 1, 0).getDate();
+        const primerDia = new Date(year, month, 1).getDay(); // 0=dom
+        const DIAS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+        const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+        // Proyectos con fecha en este mes
+        const proyectosMes = proyectos.filter(p => {
+          if (!p.fechaEvento) return false;
+          const f = new Date(p.fechaEvento);
+          return f.getFullYear() === year && f.getMonth() === month;
+        });
+
+        // Map day → proyectos
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const diaMap: Record<number, any[]> = {};
+        for (const p of proyectosMes) {
+          const d = new Date(p.fechaEvento).getDate();
+          if (!diaMap[d]) diaMap[d] = [];
+          diaMap[d].push(p);
+        }
+
+        return (
+          <div>
+            {/* Nav mes */}
+            <div className="flex items-center justify-between mb-4">
+              <button onClick={() => setTimelineMes(new Date(year, month - 1, 1))} className="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-[#222] hover:border-[#333] text-sm transition-colors">← Anterior</button>
+              <div className="text-center">
+                <p className="text-white font-semibold">{MESES_ES[month]} {year}</p>
+                <p className="text-gray-600 text-xs">{proyectosMes.length} proyecto{proyectosMes.length !== 1 ? "s" : ""} este mes</p>
+              </div>
+              <button onClick={() => setTimelineMes(new Date(year, month + 1, 1))} className="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-[#222] hover:border-[#333] text-sm transition-colors">Siguiente →</button>
+            </div>
+
+            {/* Cabeceras días */}
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {DIAS.map(d => <div key={d} className="text-center text-[10px] text-gray-600 font-semibold py-1">{d}</div>)}
+            </div>
+
+            {/* Celdas */}
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: primerDia }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: diasEnMes }).map((_, i) => {
+                const dia = i + 1;
+                const psDia = diaMap[dia] ?? [];
+                const hoy = new Date();
+                const esHoy = hoy.getFullYear() === year && hoy.getMonth() === month && hoy.getDate() === dia;
+                return (
+                  <div key={dia} className={`min-h-[60px] rounded-lg p-1.5 border transition-colors ${psDia.length > 0 ? "bg-[#111] border-[#B3985B]/30" : esHoy ? "bg-[#1a1a1a] border-[#B3985B]/20" : "bg-[#0a0a0a] border-[#1a1a1a]"}`}>
+                    <p className={`text-[10px] font-semibold mb-1 ${esHoy ? "text-[#B3985B]" : "text-gray-600"}`}>{dia}</p>
+                    {psDia.map(p => (
+                      <a key={p.id} href={`/proyectos/${p.id}`}
+                        className="block text-[9px] leading-tight px-1 py-0.5 rounded mb-0.5 truncate hover:opacity-80 transition-opacity"
+                        style={{ backgroundColor: `${TIPO_EVENTO_COLORS[p.tipoEvento] ?? "#333"}20`, color: TIPO_EVENTO_COLORS[p.tipoEvento] ?? "#888", border: `1px solid ${TIPO_EVENTO_COLORS[p.tipoEvento] ?? "#333"}40` }}
+                        title={p.nombre}
+                      >
+                        {p.nombre}
+                      </a>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Lista del mes */}
+            {proyectosMes.length > 0 && (
+              <div className="mt-6 space-y-2">
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-3">Proyectos en {MESES_ES[month]}</p>
+                {proyectosMes.sort((a, b) => new Date(a.fechaEvento).getTime() - new Date(b.fechaEvento).getTime()).map(p => (
+                  <Link key={p.id} href={`/proyectos/${p.id}`} className="flex items-center gap-3 bg-[#111] border border-[#1e1e1e] hover:border-[#333] rounded-xl px-4 py-3 transition-colors">
+                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[p.tipoEvento] ?? "#333" }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-sm font-medium truncate">{p.nombre}</p>
+                      <p className="text-gray-600 text-xs">{p.cliente?.nombre}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-white text-xs">{new Date(p.fechaEvento).toLocaleDateString("es-MX", { weekday: "short", day: "numeric" })}</p>
+                      <span className={`text-[10px] ${ESTADO_PROYECTO_COLORS[p.estado] ?? "text-gray-500"}`}>{ESTADO_PROYECTO_LABELS[p.estado] ?? p.estado}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {view === "list" && loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 animate-pulse h-24" />
           ))}
         </div>
-      ) : proyectos.length === 0 ? (
+      ) : view === "list" && proyectos.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
           <p className="text-[#6b7280] text-sm">No hay proyectos aún</p>
           <p className="text-[#444] text-xs mt-1">Los proyectos se crean automáticamente al aprobar una cotización</p>
         </div>
-      ) : (
+      ) : view === "list" ? (
         <div className="space-y-3">
           {proyectos.map((proyecto) => {
             const checklistTotal = proyecto.checklist?.length ?? 0;
@@ -133,13 +245,21 @@ export default function ProyectosPage() {
                         {proyecto.trato.responsable.name}
                       </span>
                     )}
+                    <button
+                      onClick={(e) => eliminar(proyecto.id, proyecto.nombre, e)}
+                      disabled={deletingId === proyecto.id}
+                      className="text-[#333] hover:text-red-400 text-xs transition-colors disabled:opacity-50 ml-auto"
+                      title="Eliminar proyecto"
+                    >
+                      {deletingId === proyecto.id ? "..." : "Eliminar"}
+                    </button>
                   </div>
                 </div>
               </Link>
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

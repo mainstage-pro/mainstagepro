@@ -11,7 +11,7 @@ function miercolesLimitePago(fecha: Date): Date {
   return d;
 }
 
-// Checklist operativo base que se genera automáticamente al crear un proyecto
+// Checklist operativo base para producción técnica / dirección técnica
 const CHECKLIST_BASE = [
   "Confirmar personal asignado",
   "Confirmar equipos propios",
@@ -25,6 +25,23 @@ const CHECKLIST_BASE = [
   "Solicitar a administración presupuesto operativo (gasolinas, emergencia y gastos necesarios)",
   "Solicitar y coordinar catering de producción de acuerdo al número de personal",
   "Cierre financiero preliminar confirmado",
+];
+
+// Checklist operativo base para renta de equipo
+const CHECKLIST_RENTA = [
+  "Confirmar lista de equipos a entregar",
+  "Verificar inventario y estado del equipo antes de salida",
+  "Preparar y revisar hoja de entrega (firmas y cantidades)",
+  "Confirmar dirección y horario de entrega",
+  "Confirmar fecha y horario de devolución/recolección",
+  "Confirmar si el cliente tiene técnico propio (y su contacto)",
+  "Confirmar anticipo y condiciones de pago",
+  "Confirmar contacto del cliente para el día de entrega",
+  "Empacar y etiquetar equipo por bulto",
+  "Registrar fotos del equipo al momento de entrega",
+  "Obtener firma de responsiva al entregar",
+  "Verificar regreso del equipo en buen estado",
+  "Cierre financiero confirmado",
 ];
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -59,12 +76,34 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // Fechas para CxC
   const hoy = new Date();
-  const fechaAnticipo = new Date(hoy.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 días
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const fechaLiquidacion = new Date(fechaEvento.getTime() - 24 * 60 * 60 * 1000); // día antes del evento
 
-  const anticipo = Math.round(cot.granTotal * 0.5 * 100) / 100;
-  const liquidacion = cot.granTotal - anticipo;
+  // ── Leer plan de pagos (o usar default 50/50) ──────────────────────────────
+  type PagoPlan = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
+  let cuotas: PagoPlan[];
+  try {
+    const plan = cot.planPagos ? JSON.parse(cot.planPagos) : null;
+    cuotas = (plan?.pagos && plan.pagos.length > 0)
+      ? plan.pagos
+      : [
+          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
+          { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "LIQUIDACION" },
+        ];
+  } catch {
+    cuotas = [
+      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
+      { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "LIQUIDACION" },
+    ];
+  }
+
+  function fechaPago(diasAntes: number): Date {
+    if (diasAntes <= 0) {
+      // diasAntes negativo = días DESPUÉS de hoy (anticipo)
+      return new Date(hoy.getTime() + Math.abs(diasAntes) * 24 * 60 * 60 * 1000);
+    }
+    // días ANTES del evento
+    return new Date(fechaEvento.getTime() - diasAntes * 24 * 60 * 60 * 1000);
+  }
 
   // Equipos propios y externos de la cotización para copiar al proyecto
   const lineasEquipo = cot.lineas.filter(
@@ -92,6 +131,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         estado: "PLANEACION",
         tipoEvento: cot.tipoEvento || cot.trato.tipoEvento || "OTRO",
         tipoServicio: cot.tipoServicio || cot.trato.tipoServicio,
+        recoleccionStatus: (cot.tipoServicio || cot.trato.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
         fechaEvento,
         lugarEvento: cot.lugarEvento,
         descripcionGeneral: cot.observaciones,
@@ -145,15 +185,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           rolTecnicoId: l.rolTecnicoId!,
           nivel: l.nivel ?? null,
           jornada: l.jornada ?? null,
+          tarifaAcordada: l.precioUnitario > 0 ? l.precioUnitario : null,
           confirmado: false,
         }))
       );
       await tx.proyectoPersonal.createMany({ data: personalData });
     }
 
-    // 4. Crear checklist base
+    // 4. Crear checklist base según tipo de servicio
+    const tipoServicio = cot.tipoServicio || cot.trato.tipoServicio;
+    const checklistItems = tipoServicio === "RENTA" ? CHECKLIST_RENTA : CHECKLIST_BASE;
     await tx.proyectoChecklist.createMany({
-      data: CHECKLIST_BASE.map((item, i) => ({
+      data: checklistItems.map((item, i) => ({
         proyectoId: proy.id,
         item,
         orden: i,
@@ -161,33 +204,44 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       })),
     });
 
-    // 5. Crear CxC: anticipo
-    await tx.cuentaCobrar.create({
-      data: {
-        clienteId: cot.clienteId,
-        proyectoId: proy.id,
-        cotizacionId: cot.id,
-        concepto: `Anticipo 50% — ${proy.nombre}`,
-        tipoPago: "ANTICIPO",
-        monto: anticipo,
-        fechaCompromiso: fechaAnticipo,
-        estado: "PENDIENTE",
-      },
-    });
+    // 4b. Para renta: copiar logística del trato al proyecto
+    if (tipoServicio === "RENTA" && cot.trato.ideasReferencias) {
+      try {
+        const rentaData = JSON.parse(cot.trato.ideasReferencias);
+        if (rentaData && typeof rentaData === "object" && rentaData.nivelServicio) {
+          await tx.proyecto.update({
+            where: { id: proy.id },
+            data: { logisticaRenta: cot.trato.ideasReferencias },
+          });
+        }
+      } catch { /* ideasReferencias es texto plano, no JSON */ }
+    }
 
-    // 6. Crear CxC: liquidación
-    await tx.cuentaCobrar.create({
-      data: {
-        clienteId: cot.clienteId,
-        proyectoId: proy.id,
-        cotizacionId: cot.id,
-        concepto: `Liquidación 50% — ${proy.nombre}`,
-        tipoPago: "LIQUIDACION",
-        monto: liquidacion,
-        fechaCompromiso: fechaLiquidacion,
-        estado: "PENDIENTE",
-      },
-    });
+    // 5 & 6. Crear CxC según plan de pagos
+    let acumulado = 0;
+    for (let i = 0; i < cuotas.length; i++) {
+      const cuota = cuotas[i];
+      const esUltima = i === cuotas.length - 1;
+      const monto = esUltima
+        ? Math.round((cot.granTotal - acumulado) * 100) / 100
+        : Math.round(cot.granTotal * (cuota.porcentaje / 100) * 100) / 100;
+      acumulado += monto;
+      const concepto = cuota.concepto.endsWith(" — ")
+        ? `${cuota.concepto}${proy.nombre}`
+        : cuota.concepto || `Pago ${i + 1} — ${proy.nombre}`;
+      await tx.cuentaCobrar.create({
+        data: {
+          clienteId: cot.clienteId,
+          proyectoId: proy.id,
+          cotizacionId: cot.id,
+          concepto,
+          tipoPago: cuota.tipoPago || (i === 0 ? "ANTICIPO" : "LIQUIDACION"),
+          monto,
+          fechaCompromiso: fechaPago(cuota.diasAntes),
+          estado: "PENDIENTE",
+        },
+      });
+    }
 
     // 7. Entrada en bitácora
     await tx.proyectoBitacora.create({

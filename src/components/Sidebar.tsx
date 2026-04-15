@@ -32,15 +32,24 @@ const NAV: NavSection[] = [
     section: "DIRECCIÓN",
     items: [
       { key: "dashboard", label: "Dashboard", href: "/dashboard" },
+      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
+      {
+        key: "calendario",
+        label: "Calendario de eventos",
+        children: [
+          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
+          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+        ],
+      },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
   },
 
-  // ── COMERCIAL ──────────────────────────────────────────────────────────────
+  // ── VENTAS ─────────────────────────────────────────────────────────────────
   {
-    key: "seccion-comercial",
-    section: "COMERCIAL",
+    key: "seccion-ventas",
+    section: "VENTAS",
     items: [
       { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
       { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
@@ -50,6 +59,7 @@ const NAV: NavSection[] = [
         label: "Comisiones",
         children: [
           { key: "comisiones-pipeline", label: "Pipeline", href: "/ventas" },
+          { key: "comisiones-metas", label: "Metas outbound", href: "/ventas/metas" },
           { key: "comisiones-vendedores", label: "Vendedores", href: "/ventas/vendedores" },
           { key: "comisiones-reporte", label: "Reporte", href: "/ventas/reporte" },
           { key: "comisiones-config", label: "Configuración", href: "/ventas/config" },
@@ -63,70 +73,55 @@ const NAV: NavSection[] = [
     key: "seccion-produccion",
     section: "PRODUCCIÓN",
     items: [
-      { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
       { key: "proyectos", label: "Proyectos", href: "/proyectos" },
+      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
       {
-        key: "calendario",
-        label: "Calendario de eventos",
+        key: "inventario",
+        label: "Inventario",
         children: [
-          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
-          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+          { key: "inv-equipos", label: "Equipos", href: "/inventario/equipos" },
+          { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
+          { key: "inv-recolecciones", label: "Recolecciones", href: "/inventario/recolecciones" },
+          { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
+          { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
+          { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
+          { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
         ],
       },
-    ],
-  },
-
-  // ── INVENTARIO ─────────────────────────────────────────────────────────────
-  {
-    key: "seccion-inventario",
-    section: "INVENTARIO",
-    items: [
-      { key: "inv-equipos", label: "Equipos", href: "/inventario/equipos" },
-      { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
-      { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
-      { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
-      { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
       { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
+      { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
+      { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
+      { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
     ],
   },
 
-  // ── FINANZAS ───────────────────────────────────────────────────────────────
+  // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
   {
-    key: "seccion-finanzas",
-    section: "FINANZAS",
+    key: "seccion-administracion",
+    section: "ADMINISTRACIÓN",
     items: [
       {
         key: "finanzas",
         label: "Finanzas",
         children: [
           { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
-          { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
-          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-cobros-pagos", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
+          { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
           { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
           { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
-          { key: "finanzas-reporte", label: "Reporte", href: "/finanzas/reporte" },
+          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
         ],
       },
-    ],
-  },
-
-  // ── EQUIPO ─────────────────────────────────────────────────────────────────
-  {
-    key: "seccion-equipo",
-    section: "EQUIPO",
-    items: [
       {
         key: "rrhh",
         label: "Recursos Humanos",
         children: [
           { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
-          { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
           { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
-          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
         ],
       },
       {
@@ -158,7 +153,9 @@ const NAV: NavSection[] = [
         key: "publicidad",
         label: "Publicidad",
         children: [
-          { key: "mkt-campanas", label: "Campañas", href: "/marketing/campanas" },
+          { key: "mkt-campanas-cal", label: "Calendario", href: "/marketing/campanas/calendario" },
+          { key: "mkt-campanas", label: "Tipos de campaña", href: "/marketing/campanas" },
+          { key: "mkt-meta-ads", label: "Meta Ads", href: "/marketing/meta-ads" },
         ],
       },
     ],
@@ -196,10 +193,11 @@ function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
   if (pathname.startsWith("/ventas")) open.add("comisiones");
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
-  if (pathname.startsWith("/rrhh") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/roles")) open.add("rrhh");
+  if (pathname.startsWith("/rrhh")) { open.add("rrhh"); }
   if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos")) open.add("ats");
   if (pathname.startsWith("/calendario")) open.add("calendario");
-  if (pathname.startsWith("/marketing/campanas")) open.add("publicidad");
+  if (pathname.startsWith("/inventario") || pathname.startsWith("/inventario/bodega/templates")) open.add("inventario");
+  if (pathname.startsWith("/marketing/campanas") || pathname.startsWith("/marketing/meta-ads")) open.add("publicidad");
   if (pathname.startsWith("/marketing")) open.add("contenido-organico");
   return open;
 }
@@ -327,7 +325,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           <div className="min-w-0">
             <p className="text-white text-xs font-medium truncate">{user.name}</p>
             <p className="text-[#555] text-[10px]">
-              {user.role === "ADMIN" ? "Administrador" : user.role === "VENDEDOR" ? "Vendedor" : "Usuario"}
+              {user.role === "ADMIN" ? "Administrador" : user.role === "READONLY" ? "Solo lectura" : "Usuario"}
             </p>
           </div>
         </div>

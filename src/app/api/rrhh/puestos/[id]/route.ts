@@ -14,19 +14,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const { id } = await params;
-  const body = await req.json();
+  try {
+    const { id } = await params;
+    const body = await req.json();
 
-  // Serialize JSON fields
-  const jsonFields = ["ciudades","habilidadesTecnicas","habilidadesBlandas","conocimientos","aptitudes","valores","areasDesarrollo","criteriosEvaluacion","prestaciones"] as const;
-  const data: Record<string, unknown> = { ...body };
-  for (const f of jsonFields) {
-    if (Array.isArray(data[f])) data[f] = JSON.stringify(data[f]);
+    // Serialize JSON fields
+    const jsonFields = ["ciudades","habilidadesTecnicas","habilidadesBlandas","conocimientos","aptitudes","valores","areasDesarrollo","criteriosEvaluacion","prestaciones"] as const;
+    const data: Record<string, unknown> = { ...body };
+    for (const f of jsonFields) {
+      if (Array.isArray(data[f])) data[f] = JSON.stringify(data[f]);
+    }
+    data.updatedAt = new Date();
+
+    const puesto = await prisma.puestoIdeal.update({ where: { id }, data });
+    return NextResponse.json({ puesto });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[rrhh/puestos PATCH]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-  data.updatedAt = new Date();
-
-  const puesto = await prisma.puestoIdeal.update({ where: { id }, data });
-  return NextResponse.json({ puesto });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento } = body;
+  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento, fotoEvidencia } = body;
 
   if (!equipoId || !fecha || !tipo || !accionRealizada) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       estadoEquipo: estadoEquipo ?? null,
       comentarios: comentarios ?? null,
       proximoMantenimiento: proximoMantenimiento ? new Date(proximoMantenimiento) : null,
+      fotoEvidencia: fotoEvidencia ?? null,
     },
     include: {
       equipo: {

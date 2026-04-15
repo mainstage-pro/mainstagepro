@@ -29,6 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Allow patching candidato fields AND/OR active postulacion fields
   const { postulacionId, etapa, salarioPropuesto, fechaIngresoEstimada,
     beneficios, observaciones, notasEvaluacion, puntajeTotal, puestoId, puestoManual, areaManual,
+    onboardingData,
     ...candidatoFields } = body;
 
   // Update candidato fields if any
@@ -51,6 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (puestoId !== undefined)           postData.puestoId = puestoId || null;
     if (puestoManual !== undefined)       postData.puestoManual = puestoManual;
     if (areaManual !== undefined)         postData.areaManual = areaManual;
+    if (onboardingData !== undefined)     postData.onboardingData = onboardingData;
     await prisma.postulacion.update({ where: { id: postulacionId }, data: postData });
   }
 

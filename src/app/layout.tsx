@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import OfflineProvider from "@/components/OfflineProvider";
 
 export const metadata: Metadata = {
   title: "Mainstage Pro",
@@ -23,7 +24,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full">
-      <body className="h-full antialiased">{children}</body>
+      <body className="h-full antialiased">
+        {children}
+        <OfflineProvider />
+      </body>
     </html>
   );
 }

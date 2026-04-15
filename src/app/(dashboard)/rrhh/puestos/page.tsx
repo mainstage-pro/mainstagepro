@@ -98,38 +98,49 @@ export default function PuestosPage() {
     return s.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
   }
 
+  const [saveError, setSaveError] = useState("");
+
   async function save() {
     setSaving(true);
-    const body = {
-      titulo: form.titulo, area: form.area,
-      descripcion: form.descripcion || null,
-      objetivoRol: form.objetivoRol || null,
-      edadMin: form.edadMin ? parseInt(form.edadMin) : null,
-      edadMax: form.edadMax ? parseInt(form.edadMax) : null,
-      ciudades: form.ciudades ? form.ciudades.split(",").map(x=>x.trim()).filter(Boolean) : null,
-      nivelEstudios: form.nivelEstudios || null,
-      carrerasSugeridas: form.carrerasSugeridas || null,
-      habilidadesTecnicas: toArr(form.habilidadesTecnicas),
-      habilidadesBlandas: toArr(form.habilidadesBlandas),
-      conocimientos: toArr(form.conocimientos),
-      aptitudes: toArr(form.aptitudes),
-      valores: toArr(form.valores),
-      areasDesarrollo: toArr(form.areasDesarrollo),
-      salarioMin: form.salarioMin ? parseFloat(form.salarioMin) : null,
-      salarioMax: form.salarioMax ? parseFloat(form.salarioMax) : null,
-      tipoContrato: form.tipoContrato || null,
-      modalidad: form.modalidad || null,
-      horario: form.horario || null,
-      prestaciones: toArr(form.prestaciones),
-    };
-    if (editing) {
-      await fetch(`/api/rrhh/puestos/${editing.id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
-    } else {
-      await fetch("/api/rrhh/puestos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    setSaveError("");
+    try {
+      const body = {
+        titulo: form.titulo, area: form.area,
+        descripcion: form.descripcion || null,
+        objetivoRol: form.objetivoRol || null,
+        edadMin: form.edadMin ? parseInt(form.edadMin) : null,
+        edadMax: form.edadMax ? parseInt(form.edadMax) : null,
+        ciudades: form.ciudades ? form.ciudades.split(",").map(x=>x.trim()).filter(Boolean) : null,
+        nivelEstudios: form.nivelEstudios || null,
+        carrerasSugeridas: form.carrerasSugeridas || null,
+        habilidadesTecnicas: toArr(form.habilidadesTecnicas),
+        habilidadesBlandas: toArr(form.habilidadesBlandas),
+        conocimientos: toArr(form.conocimientos),
+        aptitudes: toArr(form.aptitudes),
+        valores: toArr(form.valores),
+        areasDesarrollo: toArr(form.areasDesarrollo),
+        salarioMin: form.salarioMin ? parseFloat(form.salarioMin) : null,
+        salarioMax: form.salarioMax ? parseFloat(form.salarioMax) : null,
+        tipoContrato: form.tipoContrato || null,
+        modalidad: form.modalidad || null,
+        horario: form.horario || null,
+        prestaciones: toArr(form.prestaciones),
+      };
+      const url = editing ? `/api/rrhh/puestos/${editing.id}` : "/api/rrhh/puestos";
+      const method = editing ? "PATCH" : "POST";
+      const res = await fetch(url, { method, headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setSaveError(d.error ?? "Error al guardar");
+        return;
+      }
+      await load();
+      setShowForm(false);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Error de conexión");
+    } finally {
+      setSaving(false);
     }
-    await load();
-    setShowForm(false);
-    setSaving(false);
   }
 
   async function toggleActivo(p: Puesto) {
@@ -174,7 +185,9 @@ export default function PuestosPage() {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-gray-600 text-sm">Cargando...</div>
+        <div className="py-16 flex justify-center">
+          <div className="w-6 h-6 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" />
+        </div>
       ) : visible.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
           <p className="text-gray-500">Sin puestos definidos</p>
@@ -379,12 +392,15 @@ export default function PuestosPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-[#111] border-t border-[#222] px-6 py-4 flex justify-end gap-3">
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm px-4 py-2 transition-colors">Cancelar</button>
-              <button onClick={save} disabled={saving || !form.titulo}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
-                {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear puesto"}
-              </button>
+            <div className="sticky bottom-0 bg-[#111] border-t border-[#222] px-6 py-4 flex items-center justify-between gap-3">
+              {saveError && <p className="text-red-400 text-xs flex-1">{saveError}</p>}
+              <div className="flex gap-3 ml-auto">
+                <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm px-4 py-2 transition-colors">Cancelar</button>
+                <button onClick={save} disabled={saving || !form.titulo}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
+                  {saving ? "Guardando..." : editing ? "Guardar cambios" : "Crear puesto"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

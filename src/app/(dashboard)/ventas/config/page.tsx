@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 
 interface Config {
@@ -21,6 +21,8 @@ export default function ConfigComisionesPage() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const formLoaded = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch("/api/ventas/config")
@@ -30,29 +32,35 @@ export default function ConfigComisionesPage() {
         setForm(Object.fromEntries(
           Object.entries(d.config).filter(([k]) => k !== "id" && k !== "updatedAt").map(([k, v]) => [k, String(v)])
         ));
+        setTimeout(() => { formLoaded.current = true; }, 100);
       });
   }, []);
 
+  useEffect(() => {
+    if (!formLoaded.current) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setSaved(false);
+    setSaving(true);
+    saveTimer.current = setTimeout(async () => {
+      const res = await fetch("/api/ventas/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setConfig(d.config);
+        setSaved(true);
+      }
+      setSaving(false);
+    }, 1200);
+  }, [form]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-    setSaved(false);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    const res = await fetch("/api/ventas/config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const d = await res.json();
-      setConfig(d.config);
-      setSaved(true);
-    }
-    setSaving(false);
-  }
+  async function handleSubmit(e: React.FormEvent) { e.preventDefault(); }
 
   if (!config) return <div className="p-3 md:p-6 text-gray-500 text-sm">Cargando...</div>;
 
@@ -187,6 +195,26 @@ export default function ConfigComisionesPage() {
           </div>
         </div>
 
+        {/* Meta de prospección outbound */}
+        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Prospección outbound</h2>
+          <p className="text-xs text-gray-500 mb-4">Meta mínima de nuevos prospectos outbound por vendedor por día hábil</p>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-white flex-1">Meta diaria de prospectos nuevos</p>
+            <div className="flex items-center gap-2 w-28">
+              <input
+                name="metaProspectoDiaria"
+                type="number"
+                value={form.metaProspectoDiaria ?? "12"}
+                onChange={handleChange}
+                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] text-right"
+                min="1" max="100" step="1"
+              />
+              <span className="text-gray-400 text-sm">/ día</span>
+            </div>
+          </div>
+        </div>
+
         {/* Reglas fijas (informativas) */}
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Reglas fijas (del documento)</h2>
@@ -200,20 +228,9 @@ export default function ConfigComisionesPage() {
           </ul>
         </div>
 
-        {saved && (
-          <div className="bg-green-900/20 border border-green-700 text-green-400 text-sm px-4 py-3 rounded-lg">
-            Configuración guardada correctamente
-          </div>
-        )}
-
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-6 py-2.5 bg-[#B3985B] text-black font-semibold text-sm rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-          >
-            {saving ? "Guardando..." : "Guardar configuración"}
-          </button>
+        <div className="flex justify-end items-center gap-3">
+          {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
+          {saved && !saving && <span className="text-xs text-green-500">✓ Guardado automáticamente</span>}
         </div>
       </form>
     </div>

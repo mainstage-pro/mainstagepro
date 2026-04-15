@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import TimePicker from "@/components/ui/TimePicker";
+import VenuePicker from "@/components/ui/VenuePicker";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -17,7 +19,7 @@ interface Personal {
   rolTecnico: { nombre: string } | null;
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
-interface Proveedor { id: string; nombre: string }
+interface Proveedor { id: string; nombre: string; telefono: string | null; giro: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string }
@@ -44,8 +46,17 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
   logisticaRenta: string | null;
+  docsTecnicos: string | null;
+  protocoloSalida: string | null;
+  protocoloEntrada: string | null;
+  recoleccionStatus: string;
+  recoleccionNotas: string | null;
+  recoleccionFechaReal: string | null;
+  choferNombre: string | null;
+  choferExterno: boolean;
+  choferCosto: number | null;
   personal: Personal[];
   equipos: ProyectoEquipoItem[];
   checklist: CheckItem[];
@@ -58,6 +69,13 @@ interface Proyecto {
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const ESTADOS = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "COMPLETADO", "CANCELADO"];
+const ESTADO_LABELS: Record<string, string> = {
+  PLANEACION: "En preparación",
+  CONFIRMADO: "Confirmado",
+  EN_CURSO: "En evento",
+  COMPLETADO: "Finalizado",
+  CANCELADO: "Cancelado",
+};
 const ESTADO_COLORS: Record<string, string> = {
   PLANEACION: "bg-blue-900/50 text-blue-300",
   CONFIRMADO: "bg-green-900/50 text-green-300",
@@ -177,6 +195,35 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false }
   );
 }
 
+function CampoVenue({ label, value, field, onSave }: { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value ?? "");
+
+  function save() { onSave(field, val); setEditing(false); }
+
+  if (editing) {
+    return (
+      <div>
+        <label className="text-gray-500 text-xs mb-1 block">{label}</label>
+        <VenuePicker value={val} onChange={(v) => setVal(v)} />
+        <div className="flex gap-2 mt-1">
+          <button onClick={save} className="text-xs text-[#B3985B] hover:text-white">Guardar</button>
+          <button onClick={() => { setEditing(false); setVal(value ?? ""); }} className="text-xs text-gray-500 hover:text-white">Cancelar</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div onClick={() => setEditing(true)} className="cursor-pointer group">
+      <p className="text-gray-500 text-xs mb-0.5">{label}</p>
+      <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${value ? "text-white" : "text-gray-600 italic"}`}>
+        {value || "Click para editar..."}
+      </p>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -184,7 +231,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "personal" | "equipos" | "checklist" | "finanzas" | "gastos" | "bitacora" | "evaluacion">("info");
+  const [tab, setTab] = useState<"info" | "personal" | "equipos" | "rider" | "docs" | "checklist" | "finanzas" | "bitacora" | "evaluacion" | "protocolo">("info");
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
@@ -197,16 +244,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     resolucionOperativa: number; desempenoPersonal: number; comunicacionInterna: number;
     comunicacionCliente: number; usoEquipo: number; rentabilidadReal: number;
     resultadoGeneral: number; notas: string; promedioCalculado: number | null;
+    comentariosCriterios: Record<string, string>; // comentario por criterio
   };
+  type ReporteItem = { area: string; problema: string; causa: string; solucion: string };
   const EVAL_EMPTY: EvalData = {
     planeacionPrevia: 0, cumplimientoTecnico: 0, puntualidad: 0,
     resolucionOperativa: 0, desempenoPersonal: 0, comunicacionInterna: 0,
     comunicacionCliente: 0, usoEquipo: 0, rentabilidadReal: 0,
     resultadoGeneral: 0, notas: "", promedioCalculado: null,
+    comentariosCriterios: {},
   };
   const [evaluacion, setEvaluacion] = useState<EvalData>(EVAL_EMPTY);
+  const [reportePostEvento, setReportePostEvento] = useState<ReporteItem[]>([]);
+  const [savingReporte, setSavingReporte] = useState(false);
   const [evalLoaded, setEvalLoaded] = useState(false);
   const [savingEval, setSavingEval] = useState(false);
+
+  // Esquema de cobro
+  const [editandoEsquema, setEditandoEsquema] = useState(false);
+  const [esquemaAnticipoPct, setEsquemaAnticipoPct] = useState("25");
+  const [esquemaAnticipoMonto, setEsquemaAnticipoMonto] = useState("");
+  const [esquemaAnticipoTipo, setEsquemaAnticipoTipo] = useState<"porcentaje" | "monto">("porcentaje");
+  const [esquemaAnticipoFecha, setEsquemaAnticipoFecha] = useState("");
+  const [esquemaLiqFecha, setEsquemaLiqFecha] = useState("");
+  const [savingEsquema, setSavingEsquema] = useState(false);
 
   // Score foto/video
   const [scoreFotoVideo, setScoreFotoVideo] = useState<number>(0);
@@ -237,6 +298,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado de cronograma (tabla JSON)
   const [cronoRows, setCronoRows] = useState<CronoRow[]>([]);
   const [savingCrono, setSavingCrono] = useState(false);
+  const cronoLoaded = useRef(false);
+  const cronoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const CRONO_BASE: CronoRow[] = [
+    { horaInicio: "", horaFin: "", actividad: "Llamado en bodega", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Cargar transporte", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Traslado a venue", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Llegada a venue y descarga de equipos", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Acomodo seccionado de equipos", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Inicio de montaje", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Fin de montaje", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Pruebas de sonido", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Pruebas de iluminación", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Inicio de evento", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Fin de evento / Inicio de desmontaje", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Orden de equipos para carga a transporte", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Carga de equipos a transporte", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Traslado a bodega", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Llegada a bodega y descarga de equipos", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Acomodo de equipos en bodega", responsable: "", involucrados: "" },
+    { horaInicio: "", horaFin: "", actividad: "Fin de la jornada", responsable: "", involucrados: "" },
+  ];
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
@@ -248,13 +331,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estado catering
   type CateringData = {
-    contactoNombre: string; contactoTelefono: string;
-    personasCrew: string; comidas: string[]; notas: string;
+    proveedorId: string; contactoNombre: string; contactoTelefono: string;
+    personasCrew: string; comidasPorDia: string; notas: string;
   };
-  const CATERING_EMPTY: CateringData = { contactoNombre: "", contactoTelefono: "", personasCrew: "", comidas: [], notas: "" };
+  const CATERING_EMPTY: CateringData = { proveedorId: "", contactoNombre: "", contactoTelefono: "", personasCrew: "", comidasPorDia: "", notas: "" };
   const [catering, setCatering] = useState<CateringData>(CATERING_EMPTY);
   const [savingCatering, setSavingCatering] = useState(false);
-  const COMIDAS_OPTS = ["Desayuno", "Almuerzo", "Comida", "Cena", "Snack / coffee break"];
+  const cateringLoaded = useRef(false);
+  const cateringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estado para documentos
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -269,6 +353,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selEquipoCosto, setSelEquipoCosto] = useState("");
   const [selEquipoProveedor, setSelEquipoProveedor] = useState("");
   const [addingEquipo, setAddingEquipo] = useState(false);
+  const [agregarACot, setAgregarACot] = useState(false);
 
   // Estados para agregar personal
   const [showAddPersonal, setShowAddPersonal] = useState(false);
@@ -283,6 +368,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estados para checklist
   const [nuevoItem, setNuevoItem] = useState("");
+  const [aplicandoPlantilla, setAplicandoPlantilla] = useState(false);
   const [addingItem, setAddingItem] = useState(false);
   const [nuevoItemRider, setNuevoItemRider] = useState("");
   const [addingItemRider, setAddingItemRider] = useState(false);
@@ -321,6 +407,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
+  // Chofer asignado
+  const [choferEditando, setChoferEditando] = useState(false);
+  const [choferTipo, setChoferTipo] = useState<"INTERNO" | "EXTERNO">("INTERNO");
+  const [choferNombreInput, setChoferNombreInput] = useState("");
+  const [choferPersonalId, setChoferPersonalId] = useState("");
+  const [choferCostoInput, setChoferCostoInput] = useState("");
+  const [guardandoChofer, setGuardandoChofer] = useState(false);
+
   // Notificación de cambios en campos clave
   type CambioNotif = {
     campoLabel: string;
@@ -349,22 +443,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const res = await fetch(`/api/proyectos/${id}/evaluacion`);
     const d = await res.json();
     if (d.evaluacion) {
-      setEvaluacion({ ...EVAL_EMPTY, ...d.evaluacion, notas: d.evaluacion.notas ?? "" });
+      let comentariosCriterios: Record<string, string> = {};
+      try { comentariosCriterios = d.evaluacion.comentariosCriterios ? JSON.parse(d.evaluacion.comentariosCriterios) : {}; } catch { /* vacío */ }
+      let reporte: ReporteItem[] = [];
+      try { reporte = d.evaluacion.reportePostEvento ? JSON.parse(d.evaluacion.reportePostEvento) : []; } catch { /* vacío */ }
+      setEvaluacion({ ...EVAL_EMPTY, ...d.evaluacion, notas: d.evaluacion.notas ?? "", comentariosCriterios });
+      setReportePostEvento(reporte);
     }
     setEvalLoaded(true);
   }
 
   async function guardarEval() {
     setSavingEval(true);
+    const payload = {
+      ...evaluacion,
+      comentariosCriterios: JSON.stringify(evaluacion.comentariosCriterios),
+    };
     const res = await fetch(`/api/proyectos/${id}/evaluacion`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(evaluacion),
+      body: JSON.stringify(payload),
     });
     const d = await res.json();
     if (d.evaluacion) {
-      setEvaluacion({ ...EVAL_EMPTY, ...d.evaluacion, notas: d.evaluacion.notas ?? "" });
+      let comentariosCriterios: Record<string, string> = {};
+      try { comentariosCriterios = d.evaluacion.comentariosCriterios ? JSON.parse(d.evaluacion.comentariosCriterios) : {}; } catch { /* vacío */ }
+      setEvaluacion({ ...EVAL_EMPTY, ...d.evaluacion, notas: d.evaluacion.notas ?? "", comentariosCriterios });
     }
     setSavingEval(false);
+  }
+
+  async function guardarReporte() {
+    setSavingReporte(true);
+    await fetch(`/api/proyectos/${id}/evaluacion`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reportePostEvento: JSON.stringify(reportePostEvento) }),
+    });
+    setSavingReporte(false);
   }
 
   async function guardarScore() {
@@ -380,22 +494,51 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function agregarEquipo() {
     if (!selEquipoId) return;
     setAddingEquipo(true);
+    const cantidad = parseInt(selEquipoCantidad) || 1;
+    const dias = parseInt(selEquipoDias) || 1;
     await fetch(`/api/proyectos/${id}/equipos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         equipoId: selEquipoId,
         tipo: selEquipoTipo,
-        cantidad: parseInt(selEquipoCantidad) || 1,
-        dias: parseInt(selEquipoDias) || 1,
+        cantidad,
+        dias,
         costoExterno: selEquipoCosto ? parseFloat(selEquipoCosto) : null,
         proveedorId: selEquipoProveedor || null,
       }),
     });
+
+    // Si hay cotización vinculada y se pidió agregar a ella
+    if (agregarACot && proyecto?.cotizacion) {
+      const eq = equipoCatalogo.find(e => e.id === selEquipoId);
+      if (eq) {
+        await fetch(`/api/cotizaciones/${proyecto.cotizacion.id}/lineas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo: selEquipoTipo === "EXTERNO" ? "EQUIPO_EXTERNO" : "EQUIPO_PROPIO",
+            descripcion: eq.descripcion,
+            equipoId: selEquipoId,
+            proveedorId: selEquipoProveedor || null,
+            cantidad,
+            dias,
+            precioUnitario: 0, // coordinador puede editar la cotización después
+            costoUnitario: selEquipoCosto ? parseFloat(selEquipoCosto) : 0,
+            esExterno: selEquipoTipo === "EXTERNO",
+          }),
+        });
+      }
+    }
+
+    // Auto-actualizar rider
+    await fetch(`/api/proyectos/${id}/checklist/generar-rider`, { method: "POST" });
+
     await load();
     setShowAddEquipo(false);
     setSelEquipoId(""); setSelEquipoTipo("PROPIO"); setSelEquipoCantidad("1");
     setSelEquipoDias("1"); setSelEquipoCosto(""); setSelEquipoProveedor("");
+    setAgregarACot(false);
     setAddingEquipo(false);
   }
 
@@ -456,12 +599,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Lazy-load evaluación cliente when evaluacion tab opens
   useEffect(() => {
     if (tab === "evaluacion") loadEvalCliente();
-    if (tab === "gastos" && !gastosLoaded) {
-      fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`)
-        .then(r => r.json())
-        .then(d => { setGastosOp(d.gastos ?? []); setGastosLoaded(true); });
-    }
   }, [tab]);
+
+  // Pre-fill esquema form when opening editor
+  useEffect(() => {
+    if (!editandoEsquema || !proyecto) return;
+    const granTotal = proyecto.cotizacion?.granTotal ?? 0;
+    const existeAnticipo = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
+    const existeLiq = proyecto.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
+    if (existeAnticipo) {
+      setEsquemaAnticipoTipo("monto");
+      setEsquemaAnticipoMonto(String(existeAnticipo.monto));
+      if (granTotal > 0) {
+        setEsquemaAnticipoPct(String(Math.round(existeAnticipo.monto / granTotal * 100)));
+      }
+      setEsquemaAnticipoFecha(existeAnticipo.fechaCompromiso.slice(0, 10));
+    }
+    if (existeLiq) {
+      setEsquemaLiqFecha(existeLiq.fechaCompromiso.slice(0, 10));
+    }
+  }, [editandoEsquema]);
+
+  // Auto-sync personasCrew con número de personal confirmado
+  useEffect(() => {
+    if (!proyecto) return;
+    const count = proyecto.personal.length;
+    if (count > 0) {
+      setCatering(prev => ({
+        ...prev,
+        personasCrew: prev.personasCrew || String(count),
+      }));
+    }
+  }, [proyecto?.personal?.length]);
 
   // Sync JSON states when proyecto loads
   useEffect(() => {
@@ -485,9 +654,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     try {
       const c = proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {};
-      setCatering({ ...CATERING_EMPTY, ...c, comidas: Array.isArray(c.comidas) ? c.comidas : [] });
+      setCatering({ ...CATERING_EMPTY, ...c });
     } catch { setCatering(CATERING_EMPTY); }
+    // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
+    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
   }, [proyecto?.id]);
+
+  // Auto-save cronograma
+  useEffect(() => {
+    if (!cronoLoaded.current || !proyecto) return;
+    if (cronoTimer.current) clearTimeout(cronoTimer.current);
+    cronoTimer.current = setTimeout(() => { guardarCronograma(cronoRows); }, 1500);
+  }, [cronoRows]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save catering
+  useEffect(() => {
+    if (!cateringLoaded.current || !proyecto) return;
+    if (cateringTimer.current) clearTimeout(cateringTimer.current);
+    cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
+  }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -552,15 +737,56 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }
 
-  // ── Guardar cronograma ──
+  // ── Guardar cronograma (auto-sort por hora) ──
+  // ── Guardar chofer ──
+  async function guardarChofer() {
+    if (!proyecto) return;
+    setGuardandoChofer(true);
+    let nombre = "";
+    let externo = false;
+    let costo: number | null = null;
+    if (choferTipo === "INTERNO") {
+      // Buscar nombre del personal seleccionado
+      const p = proyecto.personal.find(p => p.id === choferPersonalId);
+      nombre = p?.tecnico?.nombre ?? choferNombreInput;
+      externo = false;
+      costo = null;
+    } else {
+      nombre = choferNombreInput;
+      externo = true;
+      costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
+    }
+    const res = await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ choferNombre: nombre || null, choferExterno: externo, choferCosto: costo }),
+    });
+    if (res.ok) {
+      setProyecto(prev => prev ? { ...prev, choferNombre: nombre || null, choferExterno: externo, choferCosto: costo } : prev);
+      setChoferEditando(false);
+    }
+    setGuardandoChofer(false);
+  }
+
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
+    const sorted = [...rows].sort((a, b) => {
+      if (!a.horaInicio && !b.horaInicio) return 0;
+      if (!a.horaInicio) return 1;
+      if (!b.horaInicio) return -1;
+      return a.horaInicio.localeCompare(b.horaInicio);
+    });
+    setCronoRows(sorted);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cronograma: JSON.stringify(rows) }),
+      body: JSON.stringify({ cronograma: JSON.stringify(sorted) }),
     });
-    setProyecto(prev => prev ? { ...prev, cronograma: JSON.stringify(rows) } : prev);
+    setProyecto(prev => prev ? { ...prev, cronograma: JSON.stringify(sorted) } : prev);
     setSavingCrono(false);
+  }
+
+  function cargarPlantillaCrono() {
+    if (cronoRows.length > 0 && !confirm("¿Reemplazar el cronograma actual con la plantilla base?")) return;
+    setCronoRows(CRONO_BASE.map(r => ({ ...r })));
   }
 
   function addCronoRow() {
@@ -607,9 +833,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const tel = catering.contactoTelefono.replace(/\D/g, "");
     const num = tel.startsWith("52") ? tel : `52${tel}`;
     const fechaStr = new Date(proyecto!.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const comidasStr = catering.comidas.length > 0 ? catering.comidas.join(", ") : "a definir";
     const personas = catering.personasCrew || "—";
-    const msg = `Hola${catering.contactoNombre ? ` ${catering.contactoNombre}` : ""}! Te contactamos de Mainstage Pro. Para el proyecto *${proyecto!.nombre}* el ${fechaStr}${proyecto!.lugarEvento ? ` en ${proyecto!.lugarEvento}` : ""}, necesitamos servicio de catering para *${personas} personas* de crew. Comidas requeridas: *${comidasStr}*.${catering.notas ? ` Notas: ${catering.notas}.` : ""} ¿Puedes confirmarnos disponibilidad y precio?`;
+    const dias = proyecto!.cotizacion?.diasComidas ?? 1;
+    const porDia = catering.comidasPorDia || "1";
+    const nombre = catering.contactoNombre ? ` ${catering.contactoNombre.split(" ")[0]}` : "";
+    const msg = `Hola${nombre}! 👋 Te contactamos de *Mainstage Pro*.\n\nPara el proyecto *${proyecto!.nombre}* el ${fechaStr}${proyecto!.lugarEvento ? ` en ${proyecto!.lugarEvento}` : ""}, necesitamos servicio de catering para *${personas} personas* de crew.\n\n📅 *${dias} día${dias !== 1 ? "s" : ""}* · *${porDia} servicio${Number(porDia) !== 1 ? "s" : ""} por día*\n👥 *${personas} elementos*${catering.notas ? `\n\n📝 Notas: ${catering.notas}` : ""}\n\n¿Puedes confirmarnos disponibilidad y precio? 🙏`;
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank");
   }
 
@@ -646,6 +874,77 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       ...prev,
       checklist: prev.checklist.map(c => c.id === checkId ? { ...c, completado: !completado } : c),
     } : prev);
+  }
+
+  // ── Checklist Templates ──
+  const CHECKLIST_TEMPLATES: Record<string, string[]> = {
+    GENERAL: [
+      "Confirmar rider técnico con cliente",
+      "Verificar plano del venue",
+      "Confirmar acceso vehicular y hora de entrada",
+      "Revisar restricciones eléctricas del lugar",
+      "Confirmar personal técnico asignado",
+      "Preparar kit de herramientas de campo",
+      "Cargar cables, consumibles y refacciones",
+      "Coordinar logística de transporte de equipo",
+      "Crear grupo de WhatsApp del evento",
+      "Imprimir o compartir cronograma del día",
+    ],
+    MUSICAL: [
+      "Solicitar stage plot y rider de la banda",
+      "Confirmar sistema PA requerido",
+      "Verificar requerimiento de monitores",
+      "Confirmar si hay IEM (in-ear monitors)",
+      "Verificar necesidad de backline",
+      "Coordinar soundcheck — hora y duración",
+      "Verificar sistema de luces escénicas",
+      "Confirmar pantallas o pantalla de fondo",
+      "Coordinar con producción de contenido",
+      "Revisar acústica del recinto",
+    ],
+    CORPORATIVO: [
+      "Confirmar sistema de audio para conferencias",
+      "Verificar pantallas y resolución requerida",
+      "Revisar sistema de micrófonos (inalámbricos/corbateros)",
+      "Confirmar señal de video HDMI/DP desde laptops",
+      "Coordinar telepromter si aplica",
+      "Confirmar sistema de traducción simultánea si aplica",
+      "Revisar iluminación corporativa del escenario",
+      "Confirmar sistema de grabación/transmisión",
+      "Verificar internet para streaming o presentaciones",
+      "Confirmar señalética y branding del cliente",
+    ],
+    SOCIAL: [
+      "Confirmar sistema de música ambiente / DJ",
+      "Verificar iluminación ambiental y efectos",
+      "Confirmar sistema de micrófono inalámbrico para brindis",
+      "Revisar pantalla para presentaciones o foto-slideshow",
+      "Coordinar con decoradores en horarios",
+      "Confirmar sistema de fotografía/video",
+      "Verificar restricción de decibeles del venue",
+      "Confirmar horario de cierre con el venue",
+      "Coordinar protocolo de montaje/desmontaje",
+    ],
+  };
+
+  async function aplicarPlantilla(tipo: string) {
+    if (!proyecto) return;
+    const items = CHECKLIST_TEMPLATES[tipo] ?? CHECKLIST_TEMPLATES.GENERAL;
+    setAplicandoPlantilla(true);
+    for (const item of items) {
+      // Skip if already exists (case-insensitive check)
+      const exists = proyecto.checklist.some(c => c.item.toLowerCase() === item.toLowerCase());
+      if (exists) continue;
+      const res = await fetch(`/api/proyectos/${id}/checklist`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ item }),
+      });
+      const d = await res.json();
+      if (d.check) {
+        setProyecto(prev => prev ? { ...prev, checklist: [...prev.checklist, d.check] } : prev);
+      }
+    }
+    setAplicandoPlantilla(false);
   }
 
   // ── Agregar item checklist ──
@@ -740,11 +1039,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Asignar técnico a fila sin asignar ──
-  async function asignarTecnico(pId: string) {
-    if (!selAsignar) return;
+  async function asignarTecnico(pId: string, tecnicoIdOverride?: string) {
+    const tid = tecnicoIdOverride ?? selAsignar;
+    if (!tid) return;
     const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tecnicoId: selAsignar }),
+      body: JSON.stringify({ tecnicoId: tid }),
     });
     const d = await res.json();
     setProyecto(prev => prev ? {
@@ -819,6 +1119,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setMontoPago("");
   }
 
+  // ── Guardar esquema de cobro (anticipo + liquidación) ──
+  async function guardarEsquema() {
+    if (!proyecto) return;
+    const granTotal = proyecto.cotizacion?.granTotal ?? 0;
+    if (granTotal <= 0) return;
+    const montoAnticipo = esquemaAnticipoTipo === "porcentaje"
+      ? Math.round(granTotal * (parseFloat(esquemaAnticipoPct) / 100) * 100) / 100
+      : Math.round(parseFloat(esquemaAnticipoMonto) * 100) / 100;
+    if (!montoAnticipo || isNaN(montoAnticipo) || montoAnticipo <= 0 || !esquemaAnticipoFecha) return;
+    const montoLiq = Math.round((granTotal - montoAnticipo) * 100) / 100;
+    setSavingEsquema(true);
+    const body: Record<string, unknown> = {
+      anticipo: { monto: montoAnticipo, fechaCompromiso: esquemaAnticipoFecha },
+    };
+    if (montoLiq > 0 && esquemaLiqFecha) {
+      body.liquidacion = { monto: montoLiq, fechaCompromiso: esquemaLiqFecha };
+    }
+    const res = await fetch(`/api/proyectos/${id}/esquema-cobro`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      setEditandoEsquema(false);
+      await load();
+    }
+    setSavingEsquema(false);
+  }
+
+  // ── Eliminar CxC individual ──
+  async function eliminarCxC(cxcId: string) {
+    if (!confirm("¿Eliminar esta cuenta por cobrar?")) return;
+    await fetch(`/api/cuentas-cobrar/${cxcId}`, { method: "DELETE" });
+    await load();
+  }
+
   // ── Registrar pago CxP ──
   async function registrarPagoCxP(cxpId: string) {
     setPagando(cxpId);
@@ -856,7 +1192,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[proyecto.estado]}`}>
-              {proyecto.estado.replace("_", " ")}
+              {ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}
             </span>
             {diasRestantes >= 0 && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${diasRestantes <= 7 ? "bg-red-900/50 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#222] text-gray-400"}`}>
@@ -882,22 +1218,41 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </Link>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={`/api/proyectos/${proyecto.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-              Ficha Técnica PDF
-            </a>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Hoja de entrega — solo renta */}
+            {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") ? (
+              <a
+                href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Hoja de Entrega
+              </a>
+            ) : (
+              <a
+                href={`/api/proyectos/${proyecto.id}/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Ficha Técnica PDF
+              </a>
+            )}
             <Link
               href={`/carta-responsiva/${proyecto.id}`}
               className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
@@ -923,7 +1278,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
                 e === proyecto.estado ? ESTADO_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
               }`}>
-              {e.replace("_", " ")}
+              {ESTADO_LABELS[e] ?? e.replace("_", " ")}
             </button>
           ))}
         </div>
@@ -956,20 +1311,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
-        {(["info", "personal", "equipos", "checklist", "finanzas", "gastos", "bitacora", "evaluacion"] as const).map(t => (
+      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
+        {(["info", "equipos", "rider", "docs", "checklist", "protocolo", "finanzas", "bitacora", "evaluacion"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors capitalize ${
+            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
               tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
             }`}>
-            {t === "info" ? "Info" : t === "personal" ? "Personal" : t === "equipos" ? "Equipos" : t === "checklist" ? "Checklist" : t === "finanzas" ? "Finanzas" : t === "gastos" ? "Gastos Op." : t === "bitacora" ? "Bitácora" : "Eval."}
+            {t === "info" ? "Info" : t === "equipos" ? "Equipos" : t === "rider" ? "Rider" : t === "docs" ? "Docs" : t === "checklist" ? "Checklist" : t === "protocolo" ? "Protocolo" : t === "finanzas" ? "Finanzas" : t === "bitacora" ? "Bitácora" : "Eval."}
           </button>
         ))}
       </div>
 
       {/* ────── TAB: INFO ────── */}
-      {tab === "info" && (
+      {tab === "info" && (() => {
+        // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
+        const fichaCamposFaltantes: string[] = [];
+        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
+        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin del evento");
+        if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
+        const fichaCompleta = fichaCamposFaltantes.length === 0;
+        const fichaTooltip = fichaCompleta
+          ? ""
+          : `Completa la ficha técnica antes de invitar: falta ${fichaCamposFaltantes.join(", ")}.`;
+        return (
         <div className="space-y-4">
+          {!fichaCompleta && (
+            <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-xl px-4 py-3 flex items-center gap-3">
+              <span className="text-yellow-400">⚠</span>
+              <p className="text-yellow-400/80 text-xs">
+                <span className="font-semibold text-yellow-400">Ficha incompleta — </span>
+                para enviar invitaciones a técnicos y proveedores necesitas llenar: <span className="font-medium">{fichaCamposFaltantes.join(", ")}</span>.
+              </p>
+            </div>
+          )}
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
           {/* ── Cliente ── */}
@@ -1002,6 +1376,92 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
+          {/* ── Chofer ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
+              {!choferEditando && (
+                <button onClick={() => {
+                  setChoferTipo(proyecto.choferExterno ? "EXTERNO" : "INTERNO");
+                  setChoferNombreInput(proyecto.choferNombre ?? "");
+                  setChoferPersonalId("");
+                  setChoferCostoInput(proyecto.choferCosto?.toString() ?? "");
+                  setChoferEditando(true);
+                }} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">
+                  {proyecto.choferNombre ? "Cambiar" : "Asignar chofer"}
+                </button>
+              )}
+            </div>
+            {!choferEditando ? (
+              proyecto.choferNombre ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] text-sm font-bold">
+                    {proyecto.choferNombre[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-white font-medium text-sm">{proyecto.choferNombre}</p>
+                    <p className="text-xs text-gray-500">
+                      {proyecto.choferExterno ? `Chofer externo${proyecto.choferCosto ? ` · $${proyecto.choferCosto.toLocaleString("es-MX")}` : ""}` : "Del personal del proyecto"}
+                    </p>
+                  </div>
+                  <div className="ml-auto">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${proyecto.choferExterno ? "bg-orange-900/30 text-orange-400" : "bg-green-900/30 text-green-400"}`}>
+                      {proyecto.choferExterno ? "Externo" : "Interno"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-600 text-sm italic">Sin chofer asignado</p>
+              )
+            ) : (
+              <div className="space-y-3">
+                <div className="flex gap-3">
+                  <button onClick={() => setChoferTipo("INTERNO")}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "INTERNO" ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
+                    Del personal del proyecto
+                  </button>
+                  <button onClick={() => setChoferTipo("EXTERNO")}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "EXTERNO" ? "bg-orange-900/20 border-orange-700 text-orange-400" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
+                    Chofer externo
+                  </button>
+                </div>
+                {choferTipo === "INTERNO" ? (
+                  <select value={choferPersonalId} onChange={e => setChoferPersonalId(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Seleccionar del personal —</option>
+                    {proyecto.personal.filter(p => p.tecnico).map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.tecnico!.nombre} · {p.rolTecnico?.nombre ?? p.participacion ?? "Personal"}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="space-y-2">
+                    <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
+                      placeholder="Nombre del chofer externo"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
+                      placeholder="Costo ($) — genera CxP automáticamente"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                )}
+                <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-lg px-3 py-2 text-xs text-yellow-500">
+                  El chofer <strong>debe descansar durante el desmontaje</strong>. No asignarle carga física en esa etapa.
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={guardarChofer} disabled={guardandoChofer || (choferTipo === "INTERNO" && !choferPersonalId) || (choferTipo === "EXTERNO" && !choferNombreInput)}
+                    className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                    {guardandoChofer ? "Guardando..." : "Guardar"}
+                  </button>
+                  <button onClick={() => setChoferEditando(false)}
+                    className="px-4 py-2 border border-[#333] text-gray-400 hover:text-white text-sm rounded-lg transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* ── Evento ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Evento</p>
@@ -1013,12 +1473,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div>
                 <p className="text-gray-500 text-xs mb-1">Tipo de evento</p>
                 <p className="text-white">{proyecto.tipoEvento}{proyecto.tipoServicio ? ` · ${proyecto.tipoServicio}` : ""}</p>
-              </div>
-              <div className="col-span-2">
-                <Campo label="Descripción general del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" onSave={guardarCampo} multiline />
-              </div>
-              <div className="col-span-2">
-                <Campo label="Detalles específicos del proyecto" value={proyecto.detallesEspecificos} field="detallesEspecificos" onSave={guardarCampo} multiline />
               </div>
             </div>
           </div>
@@ -1049,13 +1503,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             };
 
             return (
-              <div className="bg-[#111] border border-blue-900/30 rounded-xl p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Logística de renta</p>
-                  <span className="text-[10px] text-blue-400/60 bg-blue-900/20 px-2 py-0.5 rounded-full">RENTA DE EQUIPO</span>
+              <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Logística de renta</p>
+                  <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/8 px-2 py-0.5 rounded-full">RENTA DE EQUIPO</span>
                 </div>
+                <p className="text-gray-600 text-xs mb-4">Datos capturados en el descubrimiento del trato. Para modificarlos, edita el trato.</p>
                 {Object.keys(rentaData).length === 0 ? (
-                  <p className="text-gray-600 text-sm italic">Sin datos de logística. Completa el descubrimiento en el trato para ver esta información.</p>
+                  <p className="text-gray-600 text-sm italic">Sin datos de logística. Completa el descubrimiento en el trato asociado para ver esta información.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
                     {rentaData.nivelServicio && (
@@ -1078,7 +1533,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     )}
                     {rentaData.fechaDevolucion && (
                       <div>
-                        <p className="text-gray-500 text-xs mb-1">Fecha de devolución</p>
+                        <p className="text-gray-500 text-xs mb-1">Fecha de devolución/recolección</p>
                         <p className="text-white">{fmtDate(rentaData.fechaDevolucion)}{rentaData.horaDevolucion ? ` · ${rentaData.horaDevolucion}` : ""}</p>
                       </div>
                     )}
@@ -1106,6 +1561,86 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
+          {/* ── Recolección de equipo (solo RENTA) ── */}
+          {proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
+            let rentaData: Record<string, string> = {};
+            try {
+              const src = proyecto.logisticaRenta || proyecto.trato?.ideasReferencias;
+              if (src) rentaData = JSON.parse(src);
+            } catch { /* ignore */ }
+            const stConfig: Record<string, { label: string; bg: string; text: string; border: string }> = {
+              PENDIENTE:  { label: "Pendiente",   bg: "bg-yellow-900/20", text: "text-yellow-400",  border: "border-yellow-800/30" },
+              EN_CAMINO:  { label: "En camino",   bg: "bg-blue-900/20",   text: "text-blue-400",    border: "border-blue-800/30" },
+              COMPLETADA: { label: "Recolectado", bg: "bg-green-900/20",  text: "text-green-400",   border: "border-green-800/30" },
+            };
+            const sc = stConfig[proyecto.recoleccionStatus] ?? stConfig.PENDIENTE;
+            return (
+              <div className={`border rounded-xl p-5 ${sc.border} ${sc.bg}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#B3985B" }}>
+                    📦 Recolección de equipo
+                  </p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.text} bg-black/20`}>{sc.label}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                  {rentaData.fechaDevolucion && (
+                    <div>
+                      <p className="text-gray-500 text-xs mb-0.5">Fecha de devolución/recolección</p>
+                      <p className={`font-medium ${sc.text}`}>
+                        {new Date(rentaData.fechaDevolucion + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+                        {rentaData.horaDevolucion && <span className="text-gray-400 ml-1 font-normal">· {rentaData.horaDevolucion}</span>}
+                      </p>
+                    </div>
+                  )}
+                  {rentaData.direccionEntrega && (
+                    <div>
+                      <p className="text-gray-500 text-xs mb-0.5">Dirección</p>
+                      <p className="text-gray-300 text-xs">{rentaData.direccionEntrega}</p>
+                    </div>
+                  )}
+                  {proyecto.recoleccionStatus === "COMPLETADA" && proyecto.recoleccionFechaReal && (
+                    <div>
+                      <p className="text-gray-500 text-xs mb-0.5">Recolectado el</p>
+                      <p className="text-green-400 text-sm font-medium">
+                        {new Date(proyecto.recoleccionFechaReal).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                      </p>
+                    </div>
+                  )}
+                  {proyecto.recoleccionNotas && (
+                    <div className="col-span-2">
+                      <p className="text-gray-500 text-xs mb-0.5">Observaciones</p>
+                      <p className="text-gray-300 text-xs italic">"{proyecto.recoleccionNotas}"</p>
+                    </div>
+                  )}
+                </div>
+                {proyecto.recoleccionStatus !== "COMPLETADA" && (
+                  <div className="flex gap-2">
+                    {proyecto.recoleccionStatus !== "EN_CAMINO" && (
+                      <button onClick={async () => {
+                        await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recoleccionStatus: "EN_CAMINO" }) });
+                        setProyecto(prev => prev ? { ...prev, recoleccionStatus: "EN_CAMINO" } : prev);
+                      }} className="px-3 py-1.5 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
+                        🚚 Salió a recolectar
+                      </button>
+                    )}
+                    <button onClick={async () => {
+                      const notas = window.prompt("Observaciones al recibir (daños, faltantes, estado) — opcional:");
+                      if (notas === null) return;
+                      const body = { recoleccionStatus: "COMPLETADA", recoleccionNotas: notas || null, recoleccionFechaReal: new Date().toISOString() };
+                      await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                      setProyecto(prev => prev ? { ...prev, recoleccionStatus: "COMPLETADA", recoleccionNotas: notas || null } : prev);
+                    }} className="px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-800/40 text-green-400 text-xs font-semibold hover:bg-green-900/50 transition-colors">
+                      ✓ Equipo en bodega
+                    </button>
+                    <a href="/inventario/recolecciones" className="px-3 py-1.5 rounded-lg bg-[#111] border border-[#333] text-gray-400 text-xs hover:text-white transition-colors ml-auto">
+                      Ver todas las recolecciones →
+                    </a>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* ── Horarios ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Fechas y horarios</p>
@@ -1117,7 +1652,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <Campo label="Horario del evento (inicio)" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
               <Campo label="Horario del evento (fin)" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
               <Campo label="Día de montaje" value={proyecto.fechaMontaje ? proyecto.fechaMontaje.split("T")[0] : ""} field="fechaMontaje" onSave={guardarCampo} type="date" />
-              <Campo label="Hora inicio montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Hora inicio montaje</p>
+                <TimePicker
+                  value={proyecto.horaInicioMontaje ?? ""}
+                  onChange={v => guardarCampo("horaInicioMontaje", v)}
+                />
+              </div>
               <Campo label="Duración del montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? ""} field="duracionMontajeHrs" onSave={guardarCampo} type="number" />
               {/* Ventana de montaje — dato del venue proporcionado por el cliente */}
               {(proyecto.trato?.ventanaMontajeInicio || proyecto.trato?.ventanaMontajeFin) && (
@@ -1141,41 +1682,253 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Lugar del evento</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
               <div className="col-span-2">
-                <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                <CampoVenue label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
               </div>
               <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
               <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
             </div>
           </div>
 
-          {/* ── Personal (resumen) ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
-              <button onClick={() => setTab("personal")} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Ver tab Personal →</button>
+          {/* ── Briefing del proyecto (handoff ventas → producción) ── */}
+          <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Briefing del proyecto</p>
+              <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/10 px-2 py-0.5 rounded-full">Handoff ventas → producción</span>
             </div>
-            {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
-              const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
-              if (grupo.length === 0) return null;
-              const labels: Record<string, string> = { OPERACION: "Operadores del evento", MONTAJE: "Técnicos de montaje", DESMONTAJE: "Técnicos de desmontaje", TRANSPORTE: "Transportes", OTRO: "Otros" };
-              return (
-                <div key={tipo} className="mb-4">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">{labels[tipo]}</p>
-                  {grupo.map(p => (
-                    <div key={p.id} className="flex items-center gap-2 py-1 text-sm border-b border-[#1a1a1a] last:border-0">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${p.confirmado ? "bg-green-500" : "bg-gray-600"}`} />
-                      <span className="text-white flex-1">{p.tecnico?.nombre ?? <span className="text-gray-500 italic">Sin asignar</span>}</span>
-                      <span className="text-gray-500 text-xs">{p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "—"}</span>
-                      {p.responsabilidad && <span className="text-gray-600 text-xs">· {p.responsabilidad}</span>}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-            {proyecto.personal.length === 0 && <p className="text-gray-600 text-sm">Sin personal asignado aún</p>}
+            <div className="space-y-4">
+              <Campo label="Descripción general del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" onSave={guardarCampo} multiline />
+              <Campo label="Detalles específicos del proyecto" value={proyecto.detallesEspecificos} field="detallesEspecificos" onSave={guardarCampo} multiline />
+              {proyecto.trato?.ideasReferencias && (() => {
+                let ideas: Record<string, string> = {};
+                try { ideas = JSON.parse(proyecto.trato.ideasReferencias); } catch { return null; }
+                if (!ideas.ideasReferencias) return null;
+                return (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-1">Ideas / referencias del cliente (del descubrimiento)</p>
+                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{ideas.ideasReferencias}</p>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
-          {/* ── Logística ── */}
+          {/* ── Personal del evento (gestión completa) ── */}
+          <div className="space-y-3">
+            {/* Formulario agregar */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                <button onClick={() => setShowAddPersonal(v => !v)}
+                  className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
+                  {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
+                </button>
+              </div>
+
+              {showAddPersonal && (
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Participación en</label>
+                    <select value={selParticipacion} onChange={e => setSelParticipacion(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                      <option value="OPERACION">Operación del evento</option>
+                      <option value="MONTAJE">Montaje</option>
+                      <option value="DESMONTAJE">Desmontaje</option>
+                      <option value="TRANSPORTE">Transporte</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Técnico</label>
+                    <select value={selTecnico} onChange={e => setSelTecnico(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="">— Sin asignar —</option>
+                      {tecnicos.map(t => (
+                        <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>
+                    <select value={selRol} onChange={e => setSelRol(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="">— Rol —</option>
+                      {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Nivel</label>
+                    <select value={selNivel} onChange={e => setSelNivel(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                      <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Jornada</label>
+                    <select value={selJornada} onChange={e => setSelJornada(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
+                      <option value="CORTA">0–8 hrs</option>
+                      <option value="MEDIA">8–12 hrs</option>
+                      <option value="LARGA">12+ hrs</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
+                    <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-500 block mb-1">Responsabilidad / descripción</label>
+                    <input value={selResp} onChange={e => setSelResp(e.target.value)}
+                      placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="flex items-end">
+                    <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
+                      className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                      {addingPersonal ? "Agregando..." : "Agregar"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lista personal agrupada */}
+            {proyecto.personal.length === 0 ? (
+              <div className="bg-[#111] border border-[#222] rounded-xl p-6 text-center text-gray-600 text-sm">
+                Sin personal asignado aún
+              </div>
+            ) : (
+              (["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
+                const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
+                if (grupo.length === 0) return null;
+                const labels: Record<string, string> = {
+                  OPERACION: "Operadores del evento",
+                  MONTAJE: "Técnicos de montaje",
+                  DESMONTAJE: "Técnicos de desmontaje",
+                  TRANSPORTE: "Transportes",
+                  OTRO: "Otros",
+                };
+                const sinAsignar = grupo.filter(p => !p.tecnico).length;
+                return (
+                  <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                    <div className="px-4 py-3 bg-[#1a1a1a] flex items-center justify-between">
+                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{labels[tipo]} ({grupo.length})</p>
+                      {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                    </div>
+                    {grupo.map(p => (
+                      <div key={p.id} className="p-4 border-b border-[#0d0d0d] last:border-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            {!p.tecnico ? (
+                              asignandoId === p.id ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    autoFocus
+                                    defaultValue=""
+                                    onChange={e => { if (e.target.value) asignarTecnico(p.id, e.target.value); }}
+                                    className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                  >
+                                    <option value="">— Seleccionar técnico —</option>
+                                    {tecnicos.map(t => (
+                                      <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
+                                    ))}
+                                  </select>
+                                  <button onClick={() => { setAsignandoId(null); setSelAsignar(""); }}
+                                    className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-yellow-500 text-sm italic">Sin asignar</span>
+                                  {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); }}
+                                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors">
+                                    Asignar técnico
+                                  </button>
+                                </div>
+                              )
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
+                                {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                              </div>
+                            )}
+                            <p className="text-gray-500 text-xs mt-0.5">
+                              {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
+                              {p.jornada ? ` · ${p.jornada}` : ""}
+                              {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                            {p.tarifaAcordada != null && (
+                              <span className="text-gray-300 text-sm">{fmt(p.tarifaAcordada)}</span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
+                            }`}>
+                              {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
+                            </span>
+                            {p.confirmRespuesta && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
+                              }`}>
+                                {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
+                              </span>
+                            )}
+                            <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                                p.confirmado
+                                  ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700"
+                                  : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"
+                              }`}>
+                              {p.confirmado ? "✓ Confirmado" : "Confirmar"}
+                            </button>
+                            {p.tecnico && (
+                              <button
+                                disabled={!fichaCompleta}
+                                title={fichaCompleta ? "Enviar invitación por WhatsApp" : fichaTooltip}
+                                onClick={async () => {
+                                  const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
+                                  const d = await res.json();
+                                  if (d.whatsappUrl) {
+                                    window.open(d.whatsappUrl, "_blank");
+                                    await load();
+                                  } else if (d.token) {
+                                    const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
+                                    await navigator.clipboard.writeText(url).catch(() => {});
+                                    alert(`Sin número registrado. Link copiado al portapapeles:\n${url}`);
+                                    await load();
+                                  }
+                                }}
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+                                📲 Invitar
+                              </button>
+                            )}
+                            {p.tecnico && (
+                              <a
+                                href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Descargar carta responsiva freelance"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
+                              >
+                                📄 Carta
+                              </a>
+                            )}
+                            <button onClick={() => eliminarPersonal(p.id)}
+                              className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors">×</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── Logística (solo producción técnica / dirección técnica) ── */}
+          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
@@ -1222,7 +1975,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   {catering.contactoTelefono && (
                     <button onClick={abrirWhatsAppCatering}
                       className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                      📲 WhatsApp catering
+                      📲 Solicitar a proveedor
                     </button>
                   )}
                   <button onClick={() => guardarCatering(catering)} disabled={savingCatering}
@@ -1232,11 +1985,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
+                {/* Proveedor de catering */}
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 block mb-1">Proveedor de catering</label>
+                  <select
+                    value={catering.proveedorId}
+                    onChange={e => {
+                      const prov = proveedores.find(p => p.id === e.target.value);
+                      setCatering(prev => ({
+                        ...prev,
+                        proveedorId: e.target.value,
+                        contactoNombre: prov ? prov.nombre : prev.contactoNombre,
+                        contactoTelefono: prov?.telefono ?? prev.contactoTelefono,
+                      }));
+                    }}
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Seleccionar proveedor —</option>
+                    {proveedores.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre}{p.giro ? ` · ${p.giro}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Contacto (se auto-llena al seleccionar proveedor, editable) */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Contacto (nombre)</label>
+                  <label className="text-xs text-gray-500 block mb-1">Nombre de contacto</label>
                   <input value={catering.contactoNombre}
                     onChange={e => setCatering(p => ({ ...p, contactoNombre: e.target.value }))}
-                    placeholder="Nombre del proveedor o contacto"
+                    placeholder="Nombre del contacto"
                     className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div>
@@ -1246,34 +2023,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     placeholder="Ej: 4421234567"
                     className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                 </div>
+                {/* Personas */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Personas de crew a alimentar</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-gray-500">Elementos a alimentar</label>
+                    {proyecto.personal.length > 0 && (
+                      <button type="button"
+                        onClick={() => setCatering(p => ({ ...p, personasCrew: String(proyecto.personal.length) }))}
+                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">
+                        ↺ {proyecto.personal.length} técnicos
+                      </button>
+                    )}
+                  </div>
                   <input type="number" min="1" value={catering.personasCrew}
                     onChange={e => setCatering(p => ({ ...p, personasCrew: e.target.value }))}
                     placeholder="Ej: 8"
                     className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                 </div>
+                {/* Servicios por día */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Comidas requeridas</label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {COMIDAS_OPTS.map(c => (
-                      <button key={c} type="button"
-                        onClick={() => setCatering(p => ({
-                          ...p,
-                          comidas: p.comidas.includes(c) ? p.comidas.filter(x => x !== c) : [...p.comidas, c],
-                        }))}
-                        className={`text-[10px] px-2 py-1 rounded-full border transition-colors ${
-                          catering.comidas.includes(c)
-                            ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]"
-                            : "border-[#333] text-gray-500 hover:border-gray-500 hover:text-gray-300"
-                        }`}>
-                        {c}
-                      </button>
-                    ))}
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-gray-500">Servicios por día</label>
+                    {proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0 && (
+                      <span className="text-[10px] text-gray-600">
+                        {proyecto.cotizacion.diasComidas} día{proyecto.cotizacion.diasComidas !== 1 ? "s" : ""} cotizados
+                      </span>
+                    )}
                   </div>
+                  <input type="number" min="1" value={catering.comidasPorDia}
+                    onChange={e => setCatering(p => ({ ...p, comidasPorDia: e.target.value }))}
+                    placeholder="Ej: 2 (comida + cena)"
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Notas especiales (alergias, vegetarianos, restricciones…)</label>
+                  <label className="text-xs text-gray-500 block mb-1">Notas especiales (alergias, restricciones…)</label>
                   <input value={catering.notas}
                     onChange={e => setCatering(p => ({ ...p, notas: e.target.value }))}
                     placeholder="Ej: 2 vegetarianos, sin gluten para técnico de iluminación"
@@ -1282,13 +2065,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
           </div>
+          )}
 
-          {/* ── Cronograma (tabla) ── */}
+          {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
+          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
+                <button onClick={cargarPlantillaCrono}
+                  className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                  Plantilla base
+                </button>
                 <button onClick={addCronoRow}
                   className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
                   + Agregar fila
@@ -1302,49 +2091,50 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
             {cronoRows.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-6">Sin actividades. Agrega una fila para comenzar.</p>
+              <div className="text-center py-8 space-y-2">
+                <p className="text-gray-600 text-sm">Sin actividades aún.</p>
+                <p className="text-gray-700 text-xs">Presiona <span className="text-gray-400 font-medium">Plantilla base</span> para cargar las 17 actividades estándar del evento.</p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
-                      <th className="text-left py-2 pr-3 font-medium w-20">Inicio</th>
-                      <th className="text-left py-2 pr-3 font-medium w-20">Fin</th>
-                      <th className="text-left py-2 pr-3 font-medium">Actividad</th>
-                      <th className="text-left py-2 pr-3 font-medium w-32">Responsable</th>
-                      <th className="text-left py-2 pr-3 font-medium w-36">Involucrados</th>
+                      <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
+                      <th className="text-left py-2 pr-2 font-medium w-24">Fin</th>
+                      <th className="text-left py-2 pr-2 font-medium">Actividad</th>
+                      <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
+                      <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
                       <th className="w-6" />
                     </tr>
                   </thead>
                   <tbody>
                     {cronoRows.map((row, i) => (
-                      <tr key={i} className="border-b border-[#1a1a1a] last:border-0">
-                        <td className="py-1.5 pr-2">
-                          <input value={row.horaInicio} onChange={e => updateCronoRow(i, "horaInicio", e.target.value)}
-                            placeholder="09:00"
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                      <tr key={i} className={`border-b border-[#1a1a1a] last:border-0 ${i % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
+                        <td className="py-1 pr-2">
+                          <input type="time" value={row.horaInicio} onChange={e => updateCronoRow(i, "horaInicio", e.target.value)}
+                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B] [color-scheme:dark]" />
                         </td>
-                        <td className="py-1.5 pr-2">
-                          <input value={row.horaFin} onChange={e => updateCronoRow(i, "horaFin", e.target.value)}
-                            placeholder="10:00"
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                        <td className="py-1 pr-2">
+                          <input type="time" value={row.horaFin} onChange={e => updateCronoRow(i, "horaFin", e.target.value)}
+                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B] [color-scheme:dark]" />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="py-1 pr-2">
                           <input value={row.actividad} onChange={e => updateCronoRow(i, "actividad", e.target.value)}
-                            placeholder="Descripción de la actividad"
+                            placeholder="Actividad"
                             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="py-1 pr-2">
                           <input value={row.responsable} onChange={e => updateCronoRow(i, "responsable", e.target.value)}
-                            placeholder="Quién lidera"
+                            placeholder="Responsable"
                             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                         </td>
-                        <td className="py-1.5 pr-2">
+                        <td className="py-1 pr-2">
                           <input value={row.involucrados} onChange={e => updateCronoRow(i, "involucrados", e.target.value)}
-                            placeholder="Quiénes participan"
+                            placeholder="Involucrados"
                             className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                         </td>
-                        <td className="py-1.5 text-center">
+                        <td className="py-1 text-center">
                           <button onClick={() => removeCronoRow(i)}
                             className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
                         </td>
@@ -1355,11 +2145,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
           </div>
+          )}
 
           {/* ── Documentos operativos ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
-            {(["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const).map(tipo => {
+            {(() => {
+              const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
+              const tiposDoc = esRenta
+                ? (["RIDER", "OTRO"] as const)
+                : (["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const);
+              return tiposDoc;
+            })().map(tipo => {
               const labels: Record<string, string> = {
                 RENDER: "Render real",
                 PLOT_PATCH: "Render plot / patch",
@@ -1414,59 +2211,169 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* ── Marketing / Contenido ── */}
+          {/* ── Captura de contenido / Marketing ── */}
           {(() => {
-            let mkt: { activo: boolean; telefono: string; nombre: string } = { activo: false, telefono: "", nombre: "" };
+            type MktData = {
+              activo: boolean; nombre: string; telefono: string;
+              tiposContenido: string[];
+              capturista: string; capturistaExterno: boolean;
+              autorizacion: string;
+              entregaFecha: string;
+              usoRedes: boolean; usoPortfolio: boolean; usoWeb: boolean;
+              publicadoEn: string[];
+              notas: string;
+            };
+            const TIPOS = [
+              { id: "fotos_evento", label: "Fotos del evento" },
+              { id: "video_highlights", label: "Video highlights" },
+              { id: "reels_sociales", label: "Reels / TikTok" },
+              { id: "detras_camara", label: "Detrás de cámaras / making of" },
+              { id: "setup_equipo", label: "Fotos del setup / equipo" },
+              { id: "testimonio_video", label: "Testimonio en video" },
+              { id: "testimonio_escrito", label: "Testimonio escrito" },
+            ];
+            const PLATAFORMAS = ["Instagram", "Facebook", "TikTok", "YouTube", "Web", "Portfolio"];
+            let mkt: MktData = {
+              activo: false, nombre: "", telefono: "",
+              tiposContenido: [], capturista: "", capturistaExterno: false,
+              autorizacion: "PENDIENTE", entregaFecha: "",
+              usoRedes: true, usoPortfolio: true, usoWeb: false,
+              publicadoEn: [], notas: "",
+            };
             try { if (proyecto.marketingData) mkt = { ...mkt, ...JSON.parse(proyecto.marketingData) }; } catch { /* defaults */ }
 
-            async function toggleMarketing() {
-              const nuevo = { ...mkt, activo: !mkt.activo };
-              await guardarCampo("marketingData", JSON.stringify(nuevo));
-            }
-            async function saveContacto(field: "telefono" | "nombre", val: string) {
-              const nuevo = { ...mkt, [field]: val };
+            async function saveMkt(patch: Partial<MktData>) {
+              const nuevo = { ...mkt, ...patch };
               await guardarCampo("marketingData", JSON.stringify(nuevo));
             }
 
             const tel = mkt.telefono.replace(/\D/g, "");
-            const waLink = tel ? `https://wa.me/52${tel}?text=${encodeURIComponent(`Hola ${mkt.nombre || ""}! 📸 Hay un evento el ${new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long" })} — "${proyecto.nombre}". ¿Puedes confirmar disponibilidad para levantar contenido?`)}` : null;
+            const waLink = tel ? `https://wa.me/52${tel}?text=${encodeURIComponent(`Hola ${mkt.nombre || ""}! Para el evento "${proyecto.nombre}" del ${new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long" })} — queremos coordinar el levantamiento de contenido. ¿Tienes disponibilidad? ¿Qué necesitamos confirmar?`)}` : null;
 
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
+                {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <span className="text-base">📸</span>
                     <div>
-                      <p className="text-white text-sm font-medium">Contenido de marketing</p>
-                      <p className="text-gray-600 text-xs">¿Se levanta contenido en este evento?</p>
+                      <p className="text-white text-sm font-medium">Captura de contenido</p>
+                      <p className="text-gray-600 text-xs">¿Se levanta contenido para marketing en este evento?</p>
                     </div>
                   </div>
-                  <button onClick={toggleMarketing}
+                  <button onClick={() => saveMkt({ activo: !mkt.activo })}
                     className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${mkt.activo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mkt.activo ? "translate-x-4" : "translate-x-0"}`} />
                   </button>
                 </div>
 
-                {mkt.activo && (
-                  <div className="mt-3 pt-3 border-t border-[#1a1a1a] flex items-center gap-3 flex-wrap">
-                    <div className="flex gap-2 flex-1 min-w-0">
-                      <input defaultValue={mkt.nombre} onBlur={e => saveContacto("nombre", e.target.value)}
-                        placeholder="Nombre contacto marketing"
-                        className="flex-1 min-w-0 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                      <input defaultValue={mkt.telefono} onBlur={e => saveContacto("telefono", e.target.value)}
-                        placeholder="Teléfono (10 dígitos)"
-                        className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                {mkt.activo && (<>
+                  {/* Tipo de contenido */}
+                  <div className="pt-3 border-t border-[#1a1a1a]">
+                    <p className="text-xs text-gray-400 mb-2">Tipo de contenido a capturar</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TIPOS.map(t => {
+                        const sel = mkt.tiposContenido.includes(t.id);
+                        return (
+                          <button key={t.id}
+                            onClick={() => saveMkt({ tiposContenido: sel ? mkt.tiposContenido.filter(x => x !== t.id) : [...mkt.tiposContenido, t.id] })}
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sel ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#333] text-gray-500 hover:text-gray-300"}`}>
+                            {sel ? "✓ " : ""}{t.label}
+                          </button>
+                        );
+                      })}
                     </div>
-                    {waLink ? (
-                      <a href={waLink} target="_blank" rel="noopener noreferrer"
-                        className="shrink-0 flex items-center gap-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                        💬 Contactar
-                      </a>
-                    ) : (
-                      <span className="text-gray-600 text-xs shrink-0">Agrega teléfono para WA</span>
-                    )}
                   </div>
-                )}
+
+                  {/* Capturista */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Capturista / fotógrafo asignado</p>
+                      <input defaultValue={mkt.capturista} onBlur={e => saveMkt({ capturista: e.target.value })}
+                        placeholder="Nombre del capturista"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Fecha límite de entrega de contenido</p>
+                      <input type="date" defaultValue={mkt.entregaFecha} onBlur={e => saveMkt({ entregaFecha: e.target.value })}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+
+                  {/* Contacto de coordinación */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Contacto para coordinación de contenido</p>
+                    <div className="flex gap-2">
+                      <input defaultValue={mkt.nombre} onBlur={e => saveMkt({ nombre: e.target.value })}
+                        placeholder="Nombre"
+                        className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      <input defaultValue={mkt.telefono} onBlur={e => saveMkt({ telefono: e.target.value })}
+                        placeholder="Teléfono"
+                        className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      {waLink && (
+                        <a href={waLink} target="_blank" rel="noopener noreferrer"
+                          className="shrink-0 flex items-center gap-1 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
+                          💬
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Autorización y uso */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Autorización del cliente</p>
+                      <select value={mkt.autorizacion} onChange={e => saveMkt({ autorizacion: e.target.value })}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                        <option value="PENDIENTE">Pendiente de confirmar</option>
+                        <option value="AUTORIZADO">Autorizado por el cliente</option>
+                        <option value="RECHAZADO">No autorizado — uso interno</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">Usos autorizados</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {[{ k: "usoRedes" as const, l: "Redes" }, { k: "usoPortfolio" as const, l: "Portfolio" }, { k: "usoWeb" as const, l: "Web" }].map(u => (
+                          <button key={u.k} onClick={() => saveMkt({ [u.k]: !mkt[u.k] })}
+                            className={`text-xs px-2 py-1 rounded border transition-colors ${mkt[u.k] ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#333] text-gray-500"}`}>
+                            {mkt[u.k] ? "✓ " : ""}{u.l}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Publicado en */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Publicado en</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {PLATAFORMAS.map(p => {
+                        const pub = mkt.publicadoEn.includes(p);
+                        return (
+                          <button key={p} onClick={() => saveMkt({ publicadoEn: pub ? mkt.publicadoEn.filter(x => x !== p) : [...mkt.publicadoEn, p] })}
+                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${pub ? "border-green-600/50 bg-green-900/20 text-green-400" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
+                            {pub ? "✓ " : ""}{p}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Notas */}
+                  <div>
+                    <textarea defaultValue={mkt.notas} onBlur={e => saveMkt({ notas: e.target.value })}
+                      rows={2} placeholder="Notas sobre el contenido: ángulos clave, momentos específicos, restricciones del venue..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
+                  </div>
+
+                  {/* Status badge */}
+                  {mkt.autorizacion === "AUTORIZADO" && mkt.tiposContenido.length > 0 && (
+                    <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3 text-xs text-green-400">
+                      Contenido autorizado: {mkt.tiposContenido.map(id => TIPOS.find(t => t.id === id)?.label).filter(Boolean).join(", ")}
+                      {mkt.publicadoEn.length > 0 && ` · Publicado en: ${mkt.publicadoEn.join(", ")}`}
+                    </div>
+                  )}
+                </>)}
               </div>
             );
           })()}
@@ -1477,12 +2384,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <Campo label="" value={proyecto.comentariosFinales} field="comentariosFinales" onSave={guardarCampo} multiline />
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ────── TAB: EQUIPOS ────── */}
       {tab === "equipos" && (() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
+        const camposFaltantesEq: string[] = [];
+        if (!proyecto.horaInicioEvento) camposFaltantesEq.push("hora inicio del evento");
+        if (!proyecto.horaFinEvento) camposFaltantesEq.push("hora fin del evento");
+        if (!proyecto.lugarEvento) camposFaltantesEq.push("lugar del evento");
+        const fichaCompletaEq = camposFaltantesEq.length === 0;
+        const fichaTooltipEq = fichaCompletaEq ? "" : `Completa la ficha técnica antes de invitar: falta ${camposFaltantesEq.join(", ")}.`;
         const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 
         function EquipoRow({ eq }: { eq: ProyectoEquipoItem }) {
@@ -1524,6 +2438,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 {/* Botón invitar proveedor (solo equipo externo con proveedor) */}
                 {eq.tipo === "EXTERNO" && eq.proveedor && (
                   <button
+                    disabled={!fichaCompletaEq}
+                    title={fichaCompletaEq ? "Consultar disponibilidad al proveedor" : fichaTooltipEq}
                     onClick={async () => {
                       const res = await fetch(`/api/proyectos/${id}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
                       const d = await res.json();
@@ -1537,8 +2453,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         await load();
                       }
                     }}
-                    className="text-[10px] px-2 py-0.5 rounded-full font-medium border border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 transition-colors"
-                    title="Consultar disponibilidad al proveedor">
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompletaEq ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
                     📲 Proveedor
                   </button>
                 )}
@@ -1625,6 +2540,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </>
                   )}
                 </div>
+                {proyecto.cotizacion && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={agregarACot} onChange={e => setAgregarACot(e.target.checked)}
+                      className="w-4 h-4 rounded accent-[#B3985B]" />
+                    <span className="text-xs text-gray-400">
+                      Agregar también a la cotización <span className="text-[#B3985B]">{proyecto.cotizacion.numeroCotizacion}</span>
+                    </span>
+                  </label>
+                )}
                 {selEquipoTipo === "EXTERNO" && selEquipoCosto && selEquipoProveedor && (
                   <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
                 )}
@@ -1671,221 +2595,387 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── TAB: PERSONAL ────── */}
-      {tab === "personal" && (
-        <div className="space-y-3">
-          {/* Formulario agregar */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <button onClick={() => setShowAddPersonal(v => !v)}
-              className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
-              {showAddPersonal ? "− Cancelar" : "+ Agregar técnico al evento"}
-            </button>
+      {/* ────── TAB: DOCS ────── */}
+      {tab === "docs" && (() => {
+        const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
+        const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
+        const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
+        const esSocial = !esMusical && !esEmpresarial;
 
-            {showAddPersonal && (
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+        type DocsData = {
+          horarioGeneral: { hora: string; actividad: string; responsable: string }[];
+          // Musical
+          inputList: { canal: string; instrumento: string; artista: string; microfono: string; notas: string }[];
+          soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
+          runningOrder: { hora: string; acto: string; duracion: string; notas: string }[];
+          // Social
+          programaEvento: { hora: string; actividad: string; responsable: string; notas: string }[];
+          indicacionesMusicales: string;
+          coordinacionProveedores: { proveedor: string; contacto: string; horario: string; notas: string }[];
+          // Empresarial
+          avRundown: { hora: string; actividad: string; presentador: string; av: string; notas: string }[];
+          requerimientosAV: { ponente: string; micro: string; presentacion: string; notas: string }[];
+          setupTecnico: string;
+        };
+
+        const defaultDocs: DocsData = {
+          horarioGeneral: [{ hora: "", actividad: "", responsable: "" }],
+          inputList: [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }],
+          soundcheck: [{ hora: "", artista: "", duracion: "", notas: "" }],
+          runningOrder: [{ hora: "", acto: "", duracion: "", notas: "" }],
+          programaEvento: [{ hora: "", actividad: "", responsable: "", notas: "" }],
+          indicacionesMusicales: "",
+          coordinacionProveedores: [{ proveedor: "", contacto: "", horario: "", notas: "" }],
+          avRundown: [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }],
+          requerimientosAV: [{ ponente: "", micro: "", presentacion: "", notas: "" }],
+          setupTecnico: "",
+        };
+
+        let docs: DocsData;
+        try {
+          docs = proyecto.docsTecnicos ? { ...defaultDocs, ...JSON.parse(proyecto.docsTecnicos) } : defaultDocs;
+        } catch { docs = defaultDocs; }
+
+        const saveDocs = async (updated: DocsData) => {
+          const res = await fetch(`/api/proyectos/${proyecto.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ docsTecnicos: JSON.stringify(updated) }),
+          });
+          if (res.ok) {
+            const d = await res.json();
+            setProyecto(prev => prev ? { ...prev, docsTecnicos: d.proyecto?.docsTecnicos ?? JSON.stringify(updated) } : prev);
+          }
+        };
+
+        const TableHeader = ({ cols }: { cols: string[] }) => (
+          <div className={`grid gap-1 mb-1`} style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
+            {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
+            <div />
+          </div>
+        );
+
+        return (
+          <div className="space-y-6">
+            {/* Horario general del evento */}
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-[#222]">
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Participación en</label>
-                  <select value={selParticipacion} onChange={e => setSelParticipacion(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                    <option value="OPERACION">Operación del evento</option>
-                    <option value="MONTAJE">Montaje</option>
-                    <option value="DESMONTAJE">Desmontaje</option>
-                    <option value="TRANSPORTE">Transporte</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Técnico</label>
-                  <select value={selTecnico} onChange={e => setSelTecnico(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin asignar —</option>
-                    {tecnicos.map(t => (
-                      <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>
-                  <select value={selRol} onChange={e => setSelRol(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Rol —</option>
-                    {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Nivel</label>
-                  <select value={selNivel} onChange={e => setSelNivel(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                    <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Jornada</label>
-                  <select value={selJornada} onChange={e => setSelJornada(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                    <option value="CORTA">0–8 hrs</option>
-                    <option value="MEDIA">8–12 hrs</option>
-                    <option value="LARGA">12+ hrs</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
-                  <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Responsabilidad / descripción</label>
-                  <input value={selResp} onChange={e => setSelResp(e.target.value)}
-                    placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="flex items-end">
-                  <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
-                    className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                    {addingPersonal ? "Agregando..." : "Agregar"}
-                  </button>
+                  <p className="text-white text-sm font-semibold">Horario general del evento</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Cronograma maestro del día</p>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* Lista personal agrupada por participación */}
-          {proyecto.personal.length === 0 ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">
-              Sin personal asignado aún
-            </div>
-          ) : (
-            <>
-              {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
-                const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
-                if (grupo.length === 0) return null;
-                const labels: Record<string, string> = {
-                  OPERACION: "Operadores del evento",
-                  MONTAJE: "Técnicos de montaje",
-                  DESMONTAJE: "Técnicos de desmontaje",
-                  TRANSPORTE: "Transportes",
-                  OTRO: "Otros",
-                };
-                const sinAsignar = grupo.filter(p => !p.tecnico).length;
-                return (
-                  <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-[#1a1a1a] flex items-center justify-between">
-                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{labels[tipo]} ({grupo.length})</p>
-                      {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+              <div className="p-4 space-y-2">
+                <TableHeader cols={["Hora", "Actividad", "Responsable"]} />
+                {docs.horarioGeneral.map((row, i) => {
+                  const update = (field: string, val: string) => {
+                    const next = docs.horarioGeneral.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                    saveDocs({ ...docs, horarioGeneral: next });
+                  };
+                  return (
+                    <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "120px 1fr 1fr 32px" }}>
+                      <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
+                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                      <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad"
+                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                      <input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable"
+                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                      <button onClick={() => { const next = docs.horarioGeneral.filter((_, j) => j !== i); saveDocs({ ...docs, horarioGeneral: next.length ? next : [{ hora: "", actividad: "", responsable: "" }] }); }}
+                        className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
                     </div>
-                    {grupo.map(p => (
-                      <div key={p.id} className="p-4 border-b border-[#0d0d0d] last:border-0">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            {!p.tecnico ? (
-                              asignandoId === p.id ? (
-                                <div className="flex items-center gap-2">
-                                  <select value={selAsignar} onChange={e => setSelAsignar(e.target.value)}
-                                    className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none">
-                                    <option value="">— Seleccionar técnico —</option>
-                                    {tecnicos.map(t => (
-                                      <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
-                                    ))}
-                                  </select>
-                                  <button onClick={() => asignarTecnico(p.id)} disabled={!selAsignar}
-                                    className="bg-[#B3985B] disabled:opacity-40 text-black text-xs font-bold px-3 py-1 rounded-lg">✓</button>
-                                  <button onClick={() => { setAsignandoId(null); setSelAsignar(""); }}
-                                    className="text-gray-500 hover:text-white text-xs">Cancelar</button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span className="text-yellow-500 text-sm italic">Sin asignar</span>
-                                  {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); }}
-                                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors">
-                                    Asignar técnico
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
-                                {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                              </div>
-                            )}
-                            <p className="text-gray-500 text-xs mt-0.5">
-                              {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
-                              {p.jornada ? ` · ${p.jornada}` : ""}
-                              {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            {p.tarifaAcordada != null && (
-                              <span className="text-gray-300 text-sm">{fmt(p.tarifaAcordada)}</span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
-                            }`}>
-                              {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
-                            </span>
-                            {/* Respuesta de confirmación vía link */}
-                            {p.confirmRespuesta && (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-                              }`}>
-                                {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
-                              </span>
-                            )}
-                            <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
-                                p.confirmado
-                                  ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700"
-                                  : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"
-                              }`}>
-                              {p.confirmado ? "✓ Confirmado" : "Confirmar"}
-                            </button>
-                            {/* Botón invitar por WhatsApp */}
-                            {p.tecnico && (
-                              <button
-                                onClick={async () => {
-                                  const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
-                                  const d = await res.json();
-                                  if (d.whatsappUrl) {
-                                    window.open(d.whatsappUrl, "_blank");
-                                    await load();
-                                  } else if (d.token) {
-                                    const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
-                                    await navigator.clipboard.writeText(url).catch(() => {});
-                                    alert(`Sin número registrado. Link copiado al portapapeles:\n${url}`);
-                                    await load();
-                                  }
-                                }}
-                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 transition-colors"
-                                title="Enviar invitación por WhatsApp">
-                                📲 Invitar
-                              </button>
-                            )}
-                            {p.tecnico && (
-                              <a
-                                href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Descargar carta responsiva freelance"
-                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
-                              >
-                                📄 Carta
-                              </a>
-                            )}
-                            <button onClick={() => eliminarPersonal(p.id)}
-                              className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors">×</button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </>
-          )}
-        </div>
-      )}
+                  );
+                })}
+                <button onClick={() => saveDocs({ ...docs, horarioGeneral: [...docs.horarioGeneral, { hora: "", actividad: "", responsable: "" }] })}
+                  className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">
+                  + Agregar fila
+                </button>
+              </div>
+            </div>
 
+            {/* ── DOCUMENTOS MUSICALES ── */}
+            {esMusical && (
+              <>
+                {/* Input List */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Input List</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Canal por canal · micrófono, instrumento, artista</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
+                    {docs.inputList.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.inputList.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, inputList: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "50px 1fr 1fr 1fr 1fr 32px" }}>
+                          <input defaultValue={row.canal} onBlur={e => update("canal", e.target.value)} placeholder="#"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white text-center placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.instrumento} onBlur={e => update("instrumento", e.target.value)} placeholder="Instrumento"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.microfono} onBlur={e => update("microfono", e.target.value)} placeholder="Micrófono / DI"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.inputList.filter((_, j) => j !== i); saveDocs({ ...docs, inputList: next.length ? next : [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, inputList: [...docs.inputList, { canal: String(docs.inputList.length + 1), instrumento: "", artista: "", microfono: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar canal</button>
+                  </div>
+                </div>
+
+                {/* Soundcheck */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Orden de Soundcheck</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Secuencia y horario de pruebas de sonido</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
+                    {docs.soundcheck.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, soundcheck: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}>
+                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
+                  </div>
+                </div>
+
+                {/* Running Order / Show Schedule */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Show Schedule / Running Order</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Secuencia y tiempos del show</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
+                    {docs.runningOrder.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.runningOrder.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, runningOrder: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}>
+                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.acto} onBlur={e => update("acto", e.target.value)} placeholder="Acto / Momento"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="45 min"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Cambio de set, iluminación..."
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.runningOrder.filter((_, j) => j !== i); saveDocs({ ...docs, runningOrder: next.length ? next : [{ hora: "", acto: "", duracion: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, runningOrder: [...docs.runningOrder, { hora: "", acto: "", duracion: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar momento</button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── DOCUMENTOS SOCIALES ── */}
+            {esSocial && (
+              <>
+                {/* Programa del evento */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Programa del evento</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Secuencia completa de actividades</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
+                    {docs.programaEvento.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, programaEvento: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}>
+                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
+                  </div>
+                </div>
+
+                {/* Indicaciones musicales */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Indicaciones musicales</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Géneros, canciones específicas, restricciones</p>
+                  </div>
+                  <div className="p-4">
+                    <textarea defaultValue={docs.indicacionesMusicales}
+                      onBlur={e => saveDocs({ ...docs, indicacionesMusicales: e.target.value })}
+                      rows={4} placeholder="Ej: primer vals: 'A Thousand Years' · No reggaeton · Playlist de coctel: jazz suave..."
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
+                  </div>
+                </div>
+
+                {/* Coordinación proveedores */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Coordinación de proveedores</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Catering, decoración, fotografía, etc.</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
+                    {docs.coordinacionProveedores.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, coordinacionProveedores: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}>
+                          <input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── DOCUMENTOS EMPRESARIALES ── */}
+            {esEmpresarial && (
+              <>
+                {/* AV Rundown */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">AV Rundown</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Agenda técnica audiovisual por sesión</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
+                    {docs.avRundown.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.avRundown.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, avRundown: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 32px" }}>
+                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Sesión / actividad"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.presentador} onBlur={e => update("presentador", e.target.value)} placeholder="Ponente"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.av} onBlur={e => update("av", e.target.value)} placeholder="Pantalla, micro, video..."
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.avRundown.filter((_, j) => j !== i); saveDocs({ ...docs, avRundown: next.length ? next : [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, avRundown: [...docs.avRundown, { hora: "", actividad: "", presentador: "", av: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar sesión</button>
+                  </div>
+                </div>
+
+                {/* Requerimientos AV por ponente */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Requerimientos AV por ponente</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Necesidades técnicas individuales</p>
+                  </div>
+                  <div className="p-4 space-y-2">
+                    <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
+                    {docs.requerimientosAV.map((row, i) => {
+                      const update = (field: string, val: string) => {
+                        const next = docs.requerimientosAV.map((r, j) => j === i ? { ...r, [field]: val } : r);
+                        saveDocs({ ...docs, requerimientosAV: next });
+                      };
+                      return (
+                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr 32px" }}>
+                          <input defaultValue={row.ponente} onBlur={e => update("ponente", e.target.value)} placeholder="Nombre ponente"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.micro} onBlur={e => update("micro", e.target.value)} placeholder="Solapa / diadema / mano"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.presentacion} onBlur={e => update("presentacion", e.target.value)} placeholder="Laptop / HDMI / USB"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
+                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                          <button onClick={() => { const next = docs.requerimientosAV.filter((_, j) => j !== i); saveDocs({ ...docs, requerimientosAV: next.length ? next : [{ ponente: "", micro: "", presentacion: "", notas: "" }] }); }}
+                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
+                        </div>
+                      );
+                    })}
+                    <button onClick={() => saveDocs({ ...docs, requerimientosAV: [...docs.requerimientosAV, { ponente: "", micro: "", presentacion: "", notas: "" }] })}
+                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar ponente</button>
+                  </div>
+                </div>
+
+                {/* Setup técnico */}
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#222]">
+                    <p className="text-white text-sm font-semibold">Setup técnico</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Descripción del montaje de audio y video</p>
+                  </div>
+                  <div className="p-4">
+                    <textarea defaultValue={docs.setupTecnico}
+                      onBlur={e => saveDocs({ ...docs, setupTecnico: e.target.value })}
+                      rows={5} placeholder="Describe el setup: ubicación del mixer, pantallas, proyectores, cámaras, sistema de audio line array / puntual, etc."
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
+                  </div>
+                </div>
+              </>
+            )}
+
+            <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
+          </div>
+        );
+      })()}
+
+      {/* ────── TAB: PERSONAL ────── */}
       {/* ────── TAB: CHECKLIST ────── */}
       {tab === "checklist" && (
         <div className="space-y-4">
@@ -1902,8 +2992,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
 
+            {checkOp.length === 0 && (
+              <div className="px-4 py-4 border-b border-[#1a1a1a] space-y-2">
+                <p className="text-gray-500 text-xs font-medium mb-2">Aplicar plantilla:</p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { key: "GENERAL", label: "General" },
+                    { key: "MUSICAL", label: "Musical" },
+                    { key: "CORPORATIVO", label: "Corporativo" },
+                    { key: "SOCIAL", label: "Social" },
+                  ].map(({ key, label }) => (
+                    <button key={key} onClick={() => aplicarPlantilla(key)} disabled={aplicandoPlantilla}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B] disabled:opacity-40 transition-colors">
+                      {aplicandoPlantilla ? "Aplicando..." : `+ ${label}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             {checkOp.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-6 italic">Sin items de operación</p>
+              <p className="text-gray-600 text-sm text-center py-4 italic">Sin items de operación</p>
             ) : (
               checkOp.map(c => (
                 <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
@@ -1931,17 +3039,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* ── Sección RIDER por equipo ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#1a1a1a]">
-              <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Rider técnico</span>
-              <p className="text-gray-600 text-[10px] mt-0.5">Equipos del proyecto · toca cada fila para ver accesorios sugeridos</p>
-            </div>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between">
+            <p className="text-gray-500 text-sm">El rider técnico con accesorios está en la pestaña <span className="text-blue-400 font-medium">Rider</span>.</p>
+            <button onClick={() => setTab("rider")} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 px-3 py-1.5 rounded-lg transition-colors">
+              Ir al Rider →
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* ────── TAB: RIDER ────── */}
+      {tab === "rider" && (
+        <div className="space-y-4">
+          {/* Header + acciones */}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-semibold">Rider técnico</p>
+              <p className="text-gray-500 text-xs mt-0.5">Guía de carga del día del evento · toca un equipo para ver sus accesorios</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {proyecto.equipos.length > 0 && (
+                <button onClick={generarRiderAutomatico} disabled={generandoRider}
+                  className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors">
+                  {generandoRider ? "Generando..." : "↺ Regenerar rider"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Lista equipo + accesorios */}
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
             {proyecto.equipos.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-6 italic">Sin equipos en este proyecto.</p>
+              <div className="py-12 text-center">
+                <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
+                <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos para ver el rider</p>
+              </div>
             ) : (() => {
-              // Agrupar por categoría
               const grupos: Record<string, typeof proyecto.equipos> = {};
               for (const e of proyecto.equipos) {
                 const cat = e.equipo.categoria.nombre;
@@ -1950,8 +3083,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               }
               return Object.entries(grupos).map(([cat, items]) => (
                 <div key={cat}>
-                  <div className="px-4 py-1.5 bg-[#0d0d0d]">
-                    <span className="text-[10px] text-[#555] font-bold uppercase tracking-widest">{cat}</span>
+                  <div className="px-4 py-1.5 bg-[#0d0d0d] border-b border-[#1a1a1a]">
+                    <span className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest">{cat}</span>
                   </div>
                   {items.map(e => {
                     const accesorios = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre);
@@ -1961,18 +3094,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     const cargadosAcc = accesorios.filter((_, i) => !!accesorioCargado[`${e.id}_${i}`]).length;
                     return (
                       <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
-                        {/* Fila principal del equipo */}
                         <div
                           className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
                           onClick={() => setEquipoExpanded(prev => ({ ...prev, [e.id]: !isExpanded }))}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isCargado}
+                          <input type="checkbox" checked={isCargado}
                             onChange={ev => { ev.stopPropagation(); setEquipoCargado(prev => ({ ...prev, [e.id]: !isCargado })); }}
                             onClick={ev => ev.stopPropagation()}
-                            className="w-4 h-4 rounded accent-blue-500 shrink-0"
-                          />
+                            className="w-4 h-4 rounded accent-blue-500 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <span className={`text-sm font-medium ${isCargado ? "line-through text-gray-600" : "text-white"}`}>
                               {e.equipo.descripcion}
@@ -1981,36 +3110,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <span className="ml-2 text-[#B3985B] text-xs">×{e.cantidad}</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            {cargadosAcc > 0 && (
-                              <span className="text-[10px] text-blue-400">{cargadosAcc}/{totalAcc}</span>
-                            )}
-                            <svg
-                              className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
-                            >
+                            {cargadosAcc > 0 && <span className="text-[10px] text-blue-400">{cargadosAcc}/{totalAcc} acc</span>}
+                            <svg className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
                           </div>
                         </div>
-
-                        {/* Accesorios sugeridos */}
                         {isExpanded && (
-                          <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-2 space-y-1">
-                            <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios sugeridos</p>
+                          <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-5 py-3 space-y-1">
+                            <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios requeridos</p>
                             {accesorios.map((acc, i) => {
                               const key = `${e.id}_${i}`;
                               const checked = !!accesorioCargado[key];
                               return (
-                                <label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer group">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
+                                <label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer">
+                                  <input type="checkbox" checked={checked}
                                     onChange={() => setAccesorioCargado(prev => ({ ...prev, [key]: !checked }))}
-                                    className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0"
-                                  />
-                                  <span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>
-                                    {acc}
-                                  </span>
+                                    className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0" />
+                                  <span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>{acc}</span>
                                 </label>
                               );
                             })}
@@ -2022,50 +3140,219 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               ));
             })()}
-
-            {/* Items de bodega manuales (RIDER del DB) */}
-            {checkRider.length > 0 && (
-              <div className="border-t border-[#1a1a1a]">
-                <div className="px-4 py-1.5 bg-[#0d0d0d]">
-                  <span className="text-[10px] text-[#555] font-bold uppercase tracking-widest">Items adicionales de bodega</span>
-                </div>
-                {checkRider.map(c => (
-                  <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
-                    <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
-                      className="w-4 h-4 rounded accent-blue-500 shrink-0" />
-                    <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>
-                      {c.item}
-                    </span>
-                    <button onClick={() => eliminarItem(c.id)}
-                      className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Agregar item manual */}
-            <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-              <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && agregarItemRider()}
-                placeholder="Agregar accesorio / item extra de bodega..."
-                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
-              <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()}
-                className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                + Agregar
-              </button>
-            </div>
           </div>
+
+          {/* Items de rider persistidos (DB) */}
+          {(checkRider.length > 0 || true) && (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
+                  Items de bodega adicionales ({checkRider.length})
+                </span>
+              </div>
+              {checkRider.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-5 italic">Sin items adicionales</p>
+              ) : checkRider.map(c => (
+                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
+                  <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
+                    className="w-4 h-4 rounded accent-blue-500 shrink-0" />
+                  <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span>
+                  <button onClick={() => eliminarItem(c.id)}
+                    className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
+                </div>
+              ))}
+              <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
+                <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && agregarItemRider()}
+                  placeholder="Agregar accesorio / item extra de bodega..."
+                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
+                <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()}
+                  className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                  + Agregar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* ────── TAB: PROTOCOLO ────── */}
+      {tab === "protocolo" && (() => {
+        type ProtocoloData = {
+          estado: string; // PENDIENTE | EN_REVISION | OK
+          responsable: string;
+          hora: string;
+          observaciones: string;
+          fotos: string[]; // base64
+        };
+        const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
+
+        async function comprimirFoto(file: File): Promise<string> {
+          return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => {
+              const img = new Image();
+              img.onload = () => {
+                const scale = Math.min(1, 1200 / img.width);
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL("image/jpeg", 0.75));
+              };
+              img.src = e.target!.result as string;
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        let salida: ProtocoloData;
+        let entrada: ProtocoloData;
+        try { salida = proyecto.protocoloSalida ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloSalida) } : defaultProtocolo; }
+        catch { salida = defaultProtocolo; }
+        try { entrada = proyecto.protocoloEntrada ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloEntrada) } : defaultProtocolo; }
+        catch { entrada = defaultProtocolo; }
+
+        const saveProtocolo = async (tipo: "salida" | "entrada", data: ProtocoloData) => {
+          const field = tipo === "salida" ? "protocoloSalida" : "protocoloEntrada";
+          const res = await fetch(`/api/proyectos/${proyecto.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [field]: JSON.stringify(data) }),
+          });
+          if (res.ok) {
+            const d = await res.json();
+            setProyecto(prev => prev ? { ...prev, [field]: d.proyecto?.[field] ?? JSON.stringify(data) } : prev);
+          }
+        };
+
+        const ESTADO_OPTS = [
+          { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
+          { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
+          { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
+        ];
+
+        const ProtocoloPanel = ({ tipo, data }: { tipo: "salida" | "entrada"; data: ProtocoloData }) => {
+          const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
+          const icon = tipo === "salida" ? "🚚" : "🏠";
+          const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
+          const [local, setLocal] = useState<ProtocoloData>(data);
+          const [saving2, setSaving2] = useState(false);
+
+          const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const b64 = await comprimirFoto(file);
+            const next = { ...local, fotos: [...local.fotos, b64] };
+            setLocal(next);
+            await saveProtocolo(tipo, next);
+            e.target.value = "";
+          };
+
+          const removeFoto = async (idx: number) => {
+            const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) };
+            setLocal(next);
+            await saveProtocolo(tipo, next);
+          };
+
+          const save = async () => {
+            setSaving2(true);
+            await saveProtocolo(tipo, local);
+            setSaving2(false);
+          };
+
+          return (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{icon}</span>
+                  <div>
+                    <p className="text-white text-sm font-semibold">{title}</p>
+                    <p className="text-gray-500 text-xs">{desc}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {ESTADO_OPTS.map(opt => (
+                    <button key={opt.id}
+                      onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); saveProtocolo(tipo, next); }}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label>
+                    <input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))}
+                      placeholder="Nombre del técnico" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Hora de verificación</label>
+                    <input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))}
+                      placeholder="ej. 09:30" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Observaciones</label>
+                  <textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))}
+                    rows={3} placeholder="Estado del equipo, daños, faltantes, notas..."
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>
+                {/* Fotos */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label>
+                    <label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">
+                      + Agregar foto
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} />
+                    </label>
+                  </div>
+                  {local.fotos.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {local.fotos.map((foto, i) => (
+                        <div key={i} className="relative group">
+                          <a href={foto} target="_blank" rel="noopener noreferrer">
+                            <img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" />
+                          </a>
+                          <button onClick={() => removeFoto(i)}
+                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button onClick={save} disabled={saving2}
+                  className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">
+                  {saving2 ? "Guardando..." : "Guardar protocolo"}
+                </button>
+              </div>
+            </div>
+          );
+        };
+
+        return (
+          <div className="space-y-5">
+            <div>
+              <p className="text-white font-semibold">Protocolo de entrada / salida</p>
+              <p className="text-gray-500 text-xs mt-0.5">Verificación del estado de los equipos al salir y al regresar del evento</p>
+            </div>
+            <ProtocoloPanel tipo="salida" data={salida} />
+            <ProtocoloPanel tipo="entrada" data={entrada} />
+          </div>
+        );
+      })()}
 
       {/* ────── TAB: FINANZAS ────── */}
       {tab === "finanzas" && (() => {
         // ── P&L en tiempo real ──────────────────────────────────────────────
         const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
         const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
-        const costosPersonal = proyecto.cuentasPagar
-          .filter(c => c.tipoAcreedor === "TECNICO")
-          .reduce((s, c) => s + c.monto, 0);
+        // Costos personal: suma directamente las tarifas acordadas del personal (fuente de verdad)
+        const costosPersonal = proyecto.personal
+          .filter(p => p.tarifaAcordada && p.tarifaAcordada > 0)
+          .reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
         const costosProveedor = proyecto.cuentasPagar
           .filter(c => c.tipoAcreedor === "PROVEEDOR")
           .reduce((s, c) => s + c.monto, 0);
@@ -2158,67 +3445,302 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* CxC */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a]">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
-            </div>
-            {proyecto.cuentasCobrar.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por cobrar</p>
-            ) : (
-              proyecto.cuentasCobrar.map(c => (
-                <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="text-white text-sm font-medium">{c.concepto}</p>
-                      <p className="text-gray-500 text-xs">Vence: {fmtDate(c.fechaCompromiso)}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                        c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                        c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
-                        "bg-yellow-900/30 text-yellow-400"
-                      }`}>{c.estado}</span>
-                    </div>
-                  </div>
-                  {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                    <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
-                  )}
-                  {c.estado !== "LIQUIDADO" && (
-                    pagando === c.id ? (
-                      <div className="flex gap-2 mt-2">
-                        <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                          placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                        <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                          className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                        <button onClick={() => registrarPagoCxC(c.id)}
-                          className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
-                          Confirmar
-                        </button>
-                        <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
-                        className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
-                        + Registrar cobro
-                      </button>
-                    )
+          {(() => {
+            const granTotal = proyecto.cotizacion?.granTotal ?? 0;
+            const cxcAnticipo = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
+            const cxcLiq = proyecto.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
+            const cxcOtras = proyecto.cuentasCobrar.filter(c => c.tipoPago !== "ANTICIPO" && c.tipoPago !== "LIQUIDACION");
+
+            // Calc preview en el editor
+            const montoAnticipoPreview = esquemaAnticipoTipo === "porcentaje"
+              ? (granTotal * (parseFloat(esquemaAnticipoPct) || 0) / 100)
+              : (parseFloat(esquemaAnticipoMonto) || 0);
+            const montoLiqPreview = Math.max(0, granTotal - montoAnticipoPreview);
+
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
+                  {!editandoEsquema && (
+                    <button onClick={() => setEditandoEsquema(true)}
+                      className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                      {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
+                    </button>
                   )}
                 </div>
-              ))
-            )}
-          </div>
+
+                {/* ── Editor de esquema ── */}
+                {editandoEsquema && (
+                  <div className="px-5 py-5 border-b border-[#1a1a1a] bg-[#0a0a0a] space-y-4">
+                    {granTotal > 0 && (
+                      <p className="text-xs text-gray-500">
+                        Total cotización: <span className="text-white font-semibold">{fmt(granTotal)}</span>
+                      </p>
+                    )}
+
+                    {/* Anticipo */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Anticipo</p>
+                      <div className="flex gap-2">
+                        {(["porcentaje", "monto"] as const).map(t => (
+                          <button key={t} onClick={() => setEsquemaAnticipoTipo(t)}
+                            className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
+                              esquemaAnticipoTipo === t
+                                ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
+                                : "border-[#333] text-gray-400 hover:border-[#555]"
+                            }`}>
+                            {t === "porcentaje" ? "%" : "$ Fijo"}
+                          </button>
+                        ))}
+                      </div>
+                      {esquemaAnticipoTipo === "porcentaje" ? (
+                        <div className="flex gap-2 items-center flex-wrap">
+                          {["10", "25", "50"].map(p => (
+                            <button key={p} onClick={() => setEsquemaAnticipoPct(p)}
+                              className={`text-xs px-3 py-1 rounded-lg border transition-colors ${
+                                esquemaAnticipoPct === p
+                                  ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B] font-semibold"
+                                  : "border-[#333] text-gray-400 hover:border-[#555]"
+                              }`}>
+                              {p}%
+                            </button>
+                          ))}
+                          <input type="number" value={esquemaAnticipoPct} onChange={e => setEsquemaAnticipoPct(e.target.value)}
+                            placeholder="%" min="1" max="99"
+                            className="w-14 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                          {granTotal > 0 && montoAnticipoPreview > 0 && (
+                            <span className="text-[#B3985B] text-xs font-semibold">= {fmt(montoAnticipoPreview)}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <input type="number" value={esquemaAnticipoMonto} onChange={e => setEsquemaAnticipoMonto(e.target.value)}
+                          placeholder="Monto" min="0"
+                          className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      )}
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Fecha compromiso del anticipo</label>
+                        <input type="date" value={esquemaAnticipoFecha} onChange={e => setEsquemaAnticipoFecha(e.target.value)}
+                          className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                    </div>
+
+                    {/* Liquidación — auto-calculada */}
+                    {granTotal > 0 && montoAnticipoPreview > 0 && montoLiqPreview > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-[#1a1a1a]">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-green-400 font-semibold uppercase tracking-wider">Liquidación</p>
+                          <span className="text-white text-sm font-bold">{fmt(montoLiqPreview)}</span>
+                          <span className="text-gray-500 text-xs">(automático)</span>
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Fecha compromiso de la liquidación</label>
+                          <input type="date" value={esquemaLiqFecha} onChange={e => setEsquemaLiqFecha(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 pt-1">
+                      <button onClick={guardarEsquema} disabled={savingEsquema}
+                        className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">
+                        {savingEsquema ? "Guardando..." : "Guardar esquema"}
+                      </button>
+                      <button onClick={() => setEditandoEsquema(false)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Sin esquema configurado ── */}
+                {!editandoEsquema && !cxcAnticipo && !cxcLiq && cxcOtras.length === 0 && (
+                  <p className="text-gray-500 text-sm text-center py-6">Sin esquema de cobro. Presiona &ldquo;Configurar pagos&rdquo; para crear anticipo + liquidación.</p>
+                )}
+
+                {/* ── Filas del esquema (ANTICIPO + LIQUIDACION) ── */}
+                {[cxcAnticipo, cxcLiq].filter(Boolean).map(c => c && (
+                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-white text-sm font-medium">
+                            {c.tipoPago === "ANTICIPO" ? "Anticipo" : "Liquidación"}
+                          </p>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                            c.tipoPago === "ANTICIPO" ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-green-900/30 text-green-400"
+                          }`}>
+                            {c.tipoPago === "ANTICIPO" ? "ANTICIPO" : "LIQUIDACIÓN"}
+                          </span>
+                          {granTotal > 0 && (
+                            <span className="text-gray-600 text-[10px]">{Math.round(c.monto / granTotal * 100)}%</span>
+                          )}
+                        </div>
+                        <p className="text-gray-500 text-xs">Fecha: {fmtDate(c.fechaCompromiso)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
+                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Recibo
+                        </a>
+                        {c.estado !== "LIQUIDADO" && (
+                          <button onClick={() => eliminarCxC(c.id)}
+                            className="text-red-500/60 hover:text-red-400 text-[10px] border border-red-900/30 hover:border-red-700 px-2 py-1 rounded-lg transition-colors">
+                            ✕
+                          </button>
+                        )}
+                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
+                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
+                          c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
+                          "bg-yellow-900/30 text-yellow-400"
+                        }`}>{c.estado}</span>
+                      </div>
+                    </div>
+                    {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
+                      <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
+                    )}
+                    {c.estado !== "LIQUIDADO" && (
+                      pagando === c.id ? (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                          <button onClick={() => registrarPagoCxC(c.id)}
+                            className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
+                            Confirmar
+                          </button>
+                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
+                          className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
+                          + Registrar cobro
+                        </button>
+                      )
+                    )}
+                  </div>
+                ))}
+
+                {/* Otras CxC (que no son anticipo/liquidación) */}
+                {cxcOtras.map(c => (
+                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-white text-sm font-medium">{c.concepto}</p>
+                        <p className="text-gray-500 text-xs">Fecha: {fmtDate(c.fechaCompromiso)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
+                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                          Recibo
+                        </a>
+                        {c.estado !== "LIQUIDADO" && (
+                          <button onClick={() => eliminarCxC(c.id)}
+                            className="text-red-500/60 hover:text-red-400 text-[10px] border border-red-900/30 hover:border-red-700 px-2 py-1 rounded-lg transition-colors">
+                            ✕
+                          </button>
+                        )}
+                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
+                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
+                          c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
+                          "bg-yellow-900/30 text-yellow-400"
+                        }`}>{c.estado}</span>
+                      </div>
+                    </div>
+                    {c.estado !== "LIQUIDADO" && (
+                      pagando === c.id ? (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                          <button onClick={() => registrarPagoCxC(c.id)}
+                            className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
+                            Confirmar
+                          </button>
+                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
+                          className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
+                          + Registrar cobro
+                        </button>
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* CxP */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a]">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
+              {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
+                    const d = await res.json();
+                    if (res.ok) {
+                      alert(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
+                      // Recargar proyecto
+                      const r2 = await fetch(`/api/proyectos/${id}`);
+                      const d2 = await r2.json();
+                      if (d2.proyecto) setProyecto(d2.proyecto);
+                    } else {
+                      alert(d.error ?? "Error al sincronizar");
+                    }
+                  }}
+                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors"
+                >
+                  Sincronizar tarifas desde cotización
+                </button>
+              )}
             </div>
-            {proyecto.cuentasPagar.length === 0 ? (
+
+            {/* Personal técnico (siempre visible si hay personal) */}
+            {proyecto.personal.length > 0 && (
+              <div className="border-b border-[#1a1a1a]">
+                <div className="px-5 py-2 bg-[#0d0d0d]">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Personal técnico</p>
+                </div>
+                {proyecto.personal.map(p => {
+                  const nombre = p.tecnico?.nombre ?? "Por asignar";
+                  const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Técnico";
+                  const pagado = p.estadoPago === "PAGADO";
+                  return (
+                    <div key={p.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
+                      <div>
+                        <p className="text-white text-sm">{nombre}</p>
+                        <p className="text-gray-500 text-xs">{rol}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {p.tarifaAcordada != null && p.tarifaAcordada > 0 ? (
+                          <span className="text-white font-semibold text-sm">{fmt(p.tarifaAcordada)}</span>
+                        ) : (
+                          <span className="text-gray-600 text-xs italic">Sin tarifa</span>
+                        )}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pagado ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"}`}>
+                          {pagado ? "Pagado" : "Pendiente"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* CXP de proveedores */}
+            {proyecto.cuentasPagar.length === 0 && proyecto.personal.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por pagar</p>
-            ) : (
-              proyecto.cuentasPagar.map(c => (
+            ) : proyecto.cuentasPagar.length > 0 ? (
+              <>
+              {proyecto.cuentasPagar.map(c => (
                 <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
                   <div className="flex items-center justify-between mb-2">
                     <div>
@@ -2255,8 +3777,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     )
                   )}
                 </div>
-              ))
-            )}
+              ))}
+              </>
+            ) : null}
           </div>
 
           {/* Otros gastos */}
@@ -2392,187 +3915,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── TAB: GASTOS OPERATIVOS ────── */}
-      {tab === "gastos" && (() => {
-        const fmt2 = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
-        const TIPO_LABELS: Record<string, string> = { COMIDA: "Comida", TRANSPORTE: "Transporte", HOSPEDAJE: "Hospedaje", OTRO: "Otro" };
-        const TIPO_COLORS: Record<string, string> = {
-          COMIDA: "bg-orange-900/30 text-orange-300",
-          TRANSPORTE: "bg-blue-900/30 text-blue-300",
-          HOSPEDAJE: "bg-purple-900/30 text-purple-300",
-          OTRO: "bg-gray-800 text-gray-400",
-        };
-
-        async function reloadGastos() {
-          const r = await fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`);
-          const d = await r.json();
-          setGastosOp(d.gastos ?? []);
-        }
-
-        async function agregarGasto() {
-          if (!gastoOpForm.concepto || !gastoOpForm.monto) return;
-          await fetch("/api/proyectos/gastos-operativos", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) }),
-          });
-          setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-          setShowGastoOpForm(false);
-          await reloadGastos();
-        }
-
-        async function toggleGasto(g: GastoOp) {
-          setTogglingGasto(g.id);
-          await fetch("/api/proyectos/gastos-operativos", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
-          });
-          await reloadGastos();
-          setTogglingGasto(null);
-        }
-
-        async function eliminarGasto(g: GastoOp) {
-          await fetch("/api/proyectos/gastos-operativos", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: g.id }),
-          });
-          await reloadGastos();
-        }
-
-        const pendientes  = gastosOp.filter(g => !g.entregado);
-        const entregados  = gastosOp.filter(g =>  g.entregado);
-        const totalPendiente = pendientes.reduce((s, g) => s + g.monto * g.cantidad, 0);
-        const totalTotal     = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
-
-        return (
-          <div className="space-y-4">
-            {/* Resumen */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
-                <p className="text-white text-lg font-bold">{gastosOp.length}</p>
-                <p className="text-gray-500 text-xs mt-0.5">Total gastos</p>
-              </div>
-              <div className="bg-[#111] border border-yellow-900/30 rounded-xl p-4 text-center">
-                <p className="text-yellow-300 text-lg font-bold">{fmt2(totalPendiente)}</p>
-                <p className="text-gray-500 text-xs mt-0.5">Por entregar</p>
-              </div>
-              <div className="bg-[#111] border border-green-900/30 rounded-xl p-4 text-center">
-                <p className="text-green-400 text-lg font-bold">{fmt2(totalTotal - totalPendiente)}</p>
-                <p className="text-gray-500 text-xs mt-0.5">Entregado</p>
-              </div>
-            </div>
-
-            {/* Botón agregar */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <button onClick={() => setShowGastoOpForm(v => !v)}
-                className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
-                {showGastoOpForm ? "− Cancelar" : "+ Agregar gasto operativo"}
-              </button>
-              {showGastoOpForm && (
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Tipo</label>
-                    <select value={gastoOpForm.tipo} onChange={e => setGastoOpForm(p => ({ ...p, tipo: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="COMIDA">Comida</option>
-                      <option value="TRANSPORTE">Transporte</option>
-                      <option value="HOSPEDAJE">Hospedaje</option>
-                      <option value="OTRO">Otro</option>
-                    </select>
-                  </div>
-                  <div className="col-span-2 md:col-span-1">
-                    <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
-                    <input value={gastoOpForm.concepto} onChange={e => setGastoOpForm(p => ({ ...p, concepto: e.target.value }))}
-                      placeholder="Ej: Cenas crew (8 personas)"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
-                    <input type="number" value={gastoOpForm.monto} onChange={e => setGastoOpForm(p => ({ ...p, monto: e.target.value }))}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
-                    <input type="number" min="1" value={gastoOpForm.cantidad} onChange={e => setGastoOpForm(p => ({ ...p, cantidad: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-2 md:col-span-3">
-                    <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                    <input value={gastoOpForm.notas} onChange={e => setGastoOpForm(p => ({ ...p, notas: e.target.value }))}
-                      placeholder="Opcional"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="flex items-end">
-                    <button onClick={agregarGasto} disabled={!gastoOpForm.concepto || !gastoOpForm.monto}
-                      className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                      Agregar
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Lista pendientes */}
-            {pendientes.length > 0 && (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                <div className="px-4 py-2.5 border-b border-[#1e1e1e] flex items-center justify-between">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Por entregar</p>
-                  <p className="text-xs text-gray-500">Total: {fmt2(totalPendiente)}</p>
-                </div>
-                {pendientes.map(g => (
-                  <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0 hover:bg-[#0d0d0d] transition-colors">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
-                      {TIPO_LABELS[g.tipo] ?? g.tipo}
-                    </span>
-                    <p className="flex-1 text-white/80 text-sm">{g.concepto}</p>
-                    {g.cantidad > 1 && <span className="text-gray-600 text-xs shrink-0">×{g.cantidad}</span>}
-                    <p className="text-white text-sm font-medium w-20 text-right shrink-0">{fmt2(g.monto * g.cantidad)}</p>
-                    <button onClick={() => toggleGasto(g)} disabled={togglingGasto === g.id}
-                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-                        togglingGasto === g.id ? "opacity-50 cursor-wait border-[#333] text-gray-500" :
-                        "border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B] hover:text-black hover:border-[#B3985B]"
-                      }`}>
-                      Entregar
-                    </button>
-                    <button onClick={() => eliminarGasto(g)} className="text-gray-700 hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Lista entregados */}
-            {entregados.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden opacity-60">
-                <div className="px-4 py-2.5 border-b border-[#1a1a1a]">
-                  <p className="text-xs text-green-500 font-semibold uppercase tracking-wider">Entregados</p>
-                </div>
-                {entregados.map(g => (
-                  <div key={g.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
-                      {TIPO_LABELS[g.tipo] ?? g.tipo}
-                    </span>
-                    <p className="flex-1 text-white/50 text-sm">{g.concepto}</p>
-                    <p className="text-gray-600 text-sm w-20 text-right shrink-0">{fmt2(g.monto * g.cantidad)}</p>
-                    <button onClick={() => toggleGasto(g)} className="text-gray-600 text-xs hover:text-white transition-colors shrink-0 px-2">
-                      Deshacer
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {gastosOp.length === 0 && (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
-                <p className="text-gray-600 text-sm">Sin gastos operativos registrados</p>
-                <p className="text-gray-700 text-xs mt-1">Agrega comidas, transportes y hospedaje para que administración prepare el efectivo</p>
-              </div>
-            )}
-          </div>
-        );
-      })()}
 
       {/* ────── TAB: BITÁCORA ────── */}
       {tab === "bitacora" && (
@@ -2618,7 +3960,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ────── TAB: EVALUACIÓN ────── */}
       {tab === "evaluacion" && (() => {
-        const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = [
+        const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
+        const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
+          { key: "planeacionPrevia",    label: "Preparación de la renta",   desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
+          { key: "puntualidad",         label: "Puntualidad en entrega",     desc: "Entrega del equipo en el horario y fecha acordados con el cliente" },
+          { key: "usoEquipo",           label: "Estado del equipo",          desc: "Equipo entregado en buen estado, regresado completo y sin daños" },
+          { key: "comunicacionCliente", label: "Comunicación con cliente",   desc: "Claridad en la coordinación, firma de responsiva y trato durante el proceso" },
+          { key: "resolucionOperativa", label: "Resolución de imprevistos",  desc: "Manejo de situaciones no previstas: faltantes, cambios de última hora, daños" },
+          { key: "rentabilidadReal",    label: "Rentabilidad real",          desc: "Resultó rentable considerando costos de logística, combustible y tiempo invertido" },
+          { key: "resultadoGeneral",    label: "Resultado general",          desc: "Impresión global de la renta: ¿la repetiríamos en las mismas condiciones?" },
+        ] : [
           { key: "planeacionPrevia",    label: "Planeación previa",         desc: "Preparación técnica, logística y coordinación antes del evento" },
           { key: "cumplimientoTecnico", label: "Cumplimiento técnico",      desc: "Calidad del sonido, iluminación, video y operación en sitio" },
           { key: "puntualidad",         label: "Puntualidad",               desc: "Llegada, montaje y apertura en los tiempos acordados" },
@@ -2680,6 +4031,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="divide-y divide-[#1a1a1a]">
                 {CRITERIOS.map(({ key, label, desc }) => {
                   const val = evaluacion[key] as number;
+                  const comentario = evaluacion.comentariosCriterios[key] ?? "";
                   return (
                     <div key={key} className={`px-5 py-4 border border-transparent ${colorBg(val)}`}>
                       <div className="flex items-center justify-between gap-4">
@@ -2705,6 +4057,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           </div>
                         </div>
                       </div>
+                      {/* Comentario por criterio */}
+                      <input
+                        value={comentario}
+                        onChange={e => setEvaluacion(prev => ({
+                          ...prev,
+                          comentariosCriterios: { ...prev.comentariosCriterios, [key]: e.target.value },
+                        }))}
+                        placeholder="Comentario (opcional)..."
+                        className="mt-2 w-full bg-[#0d0d0d]/50 border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-gray-300 placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                      />
                     </div>
                   );
                 })}
@@ -2729,6 +4091,118 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">
                 {savingEval ? "Guardando..." : "Guardar evaluación"}
               </button>
+            </div>
+
+            {/* ── Reporte post-evento ── */}
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte de mejora post-evento</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Documenta problemas y sus soluciones por área para mejorar futuros eventos</p>
+                </div>
+                <button
+                  onClick={() => setReportePostEvento(prev => [...prev, { area: "", problema: "", causa: "", solucion: "" }])}
+                  className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:border-[#B3985B] hover:text-white px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  + Agregar área
+                </button>
+              </div>
+
+              {reportePostEvento.length === 0 ? (
+                <div className="py-8 text-center">
+                  <p className="text-gray-600 text-sm">Sin registros aún</p>
+                  <p className="text-gray-700 text-xs mt-1">Agrega cada área con el problema encontrado, causa y solución aplicada</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#1a1a1a]">
+                  {reportePostEvento.map((item, i) => (
+                    <div key={i} className="px-5 py-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <input
+                          value={item.area}
+                          onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, area: e.target.value } : x))}
+                          placeholder="Área (ej: Audio, Iluminación, Logística...)"
+                          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#B3985B] font-semibold text-sm focus:outline-none focus:border-[#B3985B]/60"
+                        />
+                        <button onClick={() => setReportePostEvento(prev => prev.filter((_, j) => j !== i))}
+                          className="ml-3 text-gray-600 hover:text-red-400 transition-colors text-lg shrink-0">×</button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Problema</label>
+                          <textarea
+                            value={item.problema}
+                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, problema: e.target.value } : x))}
+                            rows={3} placeholder="¿Qué falló o salió diferente?"
+                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-red-900/60 resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Causa raíz</label>
+                          <textarea
+                            value={item.causa}
+                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, causa: e.target.value } : x))}
+                            rows={3} placeholder="¿Por qué ocurrió?"
+                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-900/60 resize-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Solución aplicada / propuesta</label>
+                          <textarea
+                            value={item.solucion}
+                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, solucion: e.target.value } : x))}
+                            rows={3} placeholder="¿Qué se hizo o se hará diferente?"
+                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-green-900/60 resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {reportePostEvento.length > 0 && (
+                <div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center gap-2 flex-wrap">
+                  {/* Descargar PDF */}
+                  <a
+                    href={`/api/proyectos/${id}/reporte-post-evento/pdf`}
+                    download
+                    className="flex items-center gap-1.5 text-xs text-gray-300 border border-[#333] hover:bg-[#222] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar PDF
+                  </a>
+                  {/* WhatsApp — compartir PDF via Web Share API */}
+                  {proyecto.cliente?.telefono && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`);
+                          const blob = await res.blob();
+                          const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" });
+                          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({ files: [file], title: `Reporte post-evento: ${proyecto!.nombre}` });
+                          } else {
+                            // Fallback: abrir WhatsApp con texto si Web Share no disponible
+                            const tel = proyecto!.cliente!.telefono!.replace(/\D/g, "");
+                            window.open(`https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${proyecto!.cliente!.nombre}, adjunto el reporte de mejora del evento *${proyecto!.nombre}*.`)}`, "_blank");
+                          }
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                      className="flex items-center gap-1.5 text-xs text-green-500 border border-green-800/50 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                      Enviar a cliente
+                    </button>
+                  )}
+                  <button onClick={guardarReporte} disabled={savingReporte}
+                    className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">
+                    {savingReporte ? "Guardando..." : "Guardar reporte"}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Evaluación cliente */}

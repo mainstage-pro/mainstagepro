@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const vendedores = await prisma.user.findMany({
-    where: { role: "VENDEDOR", active: true },
+    where: { area: "VENTAS", active: true },
     select: {
       id: true,
       name: true,
@@ -44,7 +44,8 @@ export async function POST(request: NextRequest) {
       name,
       email,
       password: hashed,
-      role: "VENDEDOR",
+      area: "VENTAS",
+      role: "USER",
       fechaInicioVendedor: fechaInicioVendedor ? new Date(fechaInicioVendedor) : new Date(),
     },
     select: { id: true, name: true, email: true, role: true, fechaInicioVendedor: true, createdAt: true },

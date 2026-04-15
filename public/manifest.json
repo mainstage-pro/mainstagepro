@@ -3,10 +3,12 @@
   "short_name": "Mainstage",
   "description": "Sistema operativo de Mainstage Pro",
   "start_url": "/dashboard",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0d0d0d",
   "theme_color": "#0d0d0d",
   "orientation": "portrait-primary",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/logo-icon.png",
@@ -20,5 +22,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "categories": ["productivity", "business"]
 }

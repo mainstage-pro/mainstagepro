@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 type Rol = {
   id: string;
@@ -43,6 +43,9 @@ export default function RolesPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Omit<Rol, "id">>(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const currentEditId = useRef<string | null>(null);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
     const res = await fetch("/api/roles-tecnicos");
@@ -52,19 +55,33 @@ export default function RolesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Auto-save when editing existing rol
+  useEffect(() => {
+    if (!editing || editing.id !== currentEditId.current) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      await fetch(`/api/roles-tecnicos/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      setRoles(prev => prev.map(r => r.id === editing.id ? { ...r, ...form } : r));
+      setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
+    }, 1200);
+  }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function startEdit(r: Rol) {
+    currentEditId.current = r.id;
     setEditing(r);
     setForm({ ...r });
     setCreating(false);
   }
 
   function startCreate() {
+    currentEditId.current = null;
     setCreating(true);
     setEditing(null);
     setForm({ ...EMPTY });
   }
 
   function cancel() {
+    currentEditId.current = null;
     setEditing(null);
     setCreating(false);
   }
@@ -136,7 +153,7 @@ export default function RolesPage() {
                 onChange={e => set("tipoPago", e.target.value)}
                 className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
               >
-                <option value="POR_JORNADA">Por Jornada (Corta/Media/Larga)</option>
+                <option value="POR_JORNADA">Por Jornada (0–8 hrs / 8–12 hrs / 12+ hrs)</option>
                 <option value="TARIFA_PLANA">Tarifa Plana (por evento)</option>
                 <option value="POR_HORA">Por Hora</option>
                 <option value="POR_PROYECTO">Por Proyecto</option>
@@ -229,14 +246,14 @@ export default function RolesPage() {
             />
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={save}
-              disabled={saving || !form.nombre}
-              className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
-            >
-              {saving ? "Guardando..." : "Guardar"}
-            </button>
+          <div className="flex items-center gap-3">
+            {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
+            {!editing && (
+              <button onClick={save} disabled={saving || !form.nombre}
+                className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+                {saving ? "Guardando..." : "Agregar rol"}
+              </button>
+            )}
             <button
               onClick={cancel}
               className="text-sm text-[#6b7280] hover:text-white px-4 py-2 rounded-md border border-[#333] transition-colors"
@@ -266,7 +283,7 @@ export default function RolesPage() {
                     {["AAA","AA","A"].map(n => <div key={n} className="text-[#B3985B] font-semibold text-center">{n}</div>)}
                     {(["Corta","Media","Larga"] as const).map(j => (
                       <React.Fragment key={j}>
-                        <div className="text-[#6b7280]">{j}</div>
+                        <div className="text-[#6b7280]">{j === "Corta" ? "0–8 hrs" : j === "Media" ? "8–12 hrs" : "12+ hrs"}</div>
                         {(["AAA","AA","A"] as const).map(n => {
                           const key = `tarifa${n}${j}` as keyof Rol;
                           return <div key={n+j} className="text-white text-center">{fmt(r[key] as number | null)}</div>;

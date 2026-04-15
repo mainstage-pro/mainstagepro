@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 
 interface PrecioEspecial {
   equipoId: string;
   precio: number;
+  precioOriginal: number | null;  // precio de lista al momento de registrar
   nota: string | null;
   updatedAt: string;
   // enriquecido en frontend
@@ -79,7 +80,10 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
+  const formLoaded = useRef(false);
+  const formTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Precios especiales
   const [preciosEspeciales, setPreciosEspeciales] = useState<PrecioEspecial[]>([]);
@@ -110,13 +114,14 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       const catalogo: EquipoCatalogo[] = equiposData.equipos ?? [];
       setEquiposCatalogo(catalogo);
 
-      const mapa: Record<string, { precio: number; nota: string | null; updatedAt: string }> =
+      const mapa: Record<string, { precio: number; precioOriginal: number | null; nota: string | null; updatedAt: string }> =
         preciosData.precios ?? {};
       const enriquecidos: PrecioEspecial[] = Object.entries(mapa).map(([eqId, v]) => {
         const eq = catalogo.find((e) => e.id === eqId);
         return {
           equipoId: eqId,
           precio: v.precio,
+          precioOriginal: v.precioOriginal ?? null,
           nota: v.nota,
           updatedAt: v.updatedAt,
           descripcion: eq?.descripcion ?? eqId,
@@ -134,22 +139,24 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   async function guardarPrecioEspecial() {
     if (!selEqId || !nuevoPrecio) return;
     setGuardandoPrecio(true);
+    const precioOriginal = equiposCatalogo.find(e => e.id === selEqId)?.precioRenta ?? null;
     await fetch(`/api/clientes/${id}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ equipoId: selEqId, precio: parseFloat(nuevoPrecio), nota: nuevaNota || null }),
+      body: JSON.stringify({ equipoId: selEqId, precio: parseFloat(nuevoPrecio), precioOriginal, nota: nuevaNota || null }),
     });
     // Recargar
     const [preciosData] = await Promise.all([
       fetch(`/api/clientes/${id}/precios-equipos`).then((r) => r.json()),
     ]);
-    const mapa: Record<string, { precio: number; nota: string | null; updatedAt: string }> =
+    const mapa: Record<string, { precio: number; precioOriginal: number | null; nota: string | null; updatedAt: string }> =
       preciosData.precios ?? {};
     const enriquecidos: PrecioEspecial[] = Object.entries(mapa).map(([eqId, v]) => {
       const eq = equiposCatalogo.find((e) => e.id === eqId);
       return {
         equipoId: eqId,
         precio: v.precio,
+        precioOriginal: v.precioOriginal ?? null,
         nota: v.nota,
         updatedAt: v.updatedAt,
         descripcion: eq?.descripcion ?? eqId,
@@ -185,15 +192,27 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     setEditandoPrecio(null);
   }
 
-  async function guardar() {
+  // Auto-save when form changes while editing
+  useEffect(() => {
+    if (!editando || !formLoaded.current) return;
+    if (formTimer.current) clearTimeout(formTimer.current);
     setSaving(true);
-    const res = await fetch(`/api/clientes/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
+    formTimer.current = setTimeout(async () => {
+      const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const d = await res.json();
+      setCliente(prev => prev ? { ...prev, ...d.cliente } : prev);
+      setAutoSaved(true); setSaving(false);
+      setTimeout(() => setAutoSaved(false), 2000);
+    }, 1200);
+  }, [form]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function guardar() {
+    if (formTimer.current) clearTimeout(formTimer.current);
+    setSaving(true);
+    const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
     const d = await res.json();
     setCliente((prev) => prev ? { ...prev, ...d.cliente } : prev);
+    formLoaded.current = false;
     setEditando(false);
     setSaving(false);
   }
@@ -230,7 +249,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             + Nuevo trato
           </Link>
           <button
-            onClick={() => setEditando(!editando)}
+            onClick={() => { formLoaded.current = false; setEditando(v => { if (!v) setTimeout(() => { formLoaded.current = true; }, 100); return !v; }); }}
             className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
           >
             {editando ? "Cancelar" : "Editar"}
@@ -326,13 +345,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
               />
             </div>
-            <div className="flex justify-end">
-              <button
-                onClick={guardar}
-                disabled={saving}
-                className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50"
-              >
-                {saving ? "Guardando..." : "Guardar cambios"}
+            <div className="flex justify-end items-center gap-3">
+              {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
+              {autoSaved && !saving && <span className="text-xs text-green-500">✓ Guardado</span>}
+              <button onClick={guardar} disabled={saving}
+                className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
+                Guardar y cerrar
               </button>
             </div>
           </div>
@@ -340,7 +358,17 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
             <div>
               <p className="text-gray-500 text-xs mb-1">Teléfono</p>
-              <p className="text-white">{cliente.telefono || "—"}</p>
+              {cliente.telefono ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-white">{cliente.telefono}</span>
+                  <a href={`https://wa.me/${cliente.telefono.replace(/\D/g,"").replace(/^(?!52)/,"52")}?text=${encodeURIComponent(`Hola ${cliente.nombre.split(" ")[0]}! 👋`)}`}
+                     target="_blank" rel="noopener noreferrer"
+                     className="flex items-center gap-1 text-green-500 hover:text-green-400 bg-green-900/20 hover:bg-green-900/30 border border-green-800/40 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    WA
+                  </a>
+                </div>
+              ) : <span className="text-gray-400">—</span>}
             </div>
             <div>
               <p className="text-gray-500 text-xs mb-1">Correo</p>
@@ -482,7 +510,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                     <tr className="text-xs text-gray-500 border-b border-[#222]">
                       <th className="text-left pb-2 pr-4">Equipo</th>
                       <th className="text-left pb-2 pr-4">Categoría</th>
-                      <th className="text-right pb-2 pr-4">Precio base</th>
+                      <th className="text-right pb-2 pr-4">Precio lista original</th>
                       <th className="text-right pb-2 pr-4">Precio especial</th>
                       <th className="text-left pb-2 pr-4">Nota</th>
                       <th className="text-right pb-2 pr-4">Actualizado</th>
@@ -501,8 +529,17 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                             )}
                           </td>
                           <td className="py-2 pr-4 text-gray-400 text-xs">{pe.categoria ?? "—"}</td>
-                          <td className="py-2 pr-4 text-right text-gray-400">
-                            {pe.precioBase != null ? fmt(pe.precioBase) : "—"}
+                          <td className="py-2 pr-4 text-right">
+                            {pe.precioOriginal != null ? (
+                              <div>
+                                <span className="text-gray-400">{fmt(pe.precioOriginal)}</span>
+                                {pe.precioBase != null && pe.precioBase !== pe.precioOriginal && (
+                                  <p className="text-[10px] text-yellow-600 mt-0.5">Lista actual: {fmt(pe.precioBase)}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-600 text-xs">—</span>
+                            )}
                           </td>
                           <td className="py-2 pr-4 text-right">
                             {editandoPrecio === pe.equipoId ? (

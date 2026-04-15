@@ -147,15 +147,15 @@ type SvcCfg = { heroTagline: string; heroSub: string };
 const SERVICIO_CONFIG: Record<string, SvcCfg> = {
   RENTA: {
     heroTagline: "El equipo que necesitas, disponible para tu fecha.",
-    heroSub: "Inventario propio, sin intermediarios. Listo a tiempo.",
+    heroSub: "Inventario 100% propio, sin intermediarios. Entregado, instalado y listo a tiempo.",
   },
   PRODUCCION_TECNICA: {
-    heroTagline: "Producción técnica completa para tu evento.",
-    heroSub: "Equipo, operadores y coordinación en un solo servicio.",
+    heroTagline: "Producción técnica para eventos que no pueden fallar.",
+    heroSub: "Equipo, operadores y coordinación en un solo servicio. Una sola fuente de responsabilidad.",
   },
   DIRECCION_TECNICA: {
-    heroTagline: "Dirección técnica de principio a fin.",
-    heroSub: "Coordinación total del área técnica. Sin improvisaciones.",
+    heroTagline: "Dirección técnica integral — de principio a fin.",
+    heroSub: "Diseño, planeación y operación total del área técnica. Cuando llegas con Mainstage Pro, los problemas técnicos no son tu problema.",
   },
 };
 const DEFAULT_SVC: SvcCfg = {
@@ -189,10 +189,10 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     videoBody: "Pantallas LED bien posicionadas, procesador de video y señal sin cortes. Resolución y brillo correctos para el espacio, de día o de noche.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "star",   title: "Conocemos los escenarios",        body: "Hemos trabajado en conciertos de distintos formatos. Sabemos qué funciona, qué falla y cómo anticiparnos antes de que el público llegue." },
-      { icon: "people", title: "Setup limpio, a tiempo",           body: "El equipo llega con margen para montar, calibrar y hacer prueba de sonido. Sin carreras de último minuto." },
-      { icon: "clock",  title: "Operadores enfocados en el show",  body: "Desde el primer cue hasta el final, nuestros operadores están en su posición. No improvisamos en vivo." },
-      { icon: "check",  title: "Revisamos el rider con anticipación", body: "Si hay requerimientos específicos, los revisamos antes del día. Preferimos aclarar cualquier duda con días de margen." },
+      { icon: "star",   title: "Equipo 100% propio — sin intermediarios",  body: "Todo el inventario de tu propuesta es nuestro. No subcontratamos ni rentamos de terceros. Control total sobre lo que te entregamos, cada vez." },
+      { icon: "people", title: "Operadores formados internamente",           body: "Nuestros ingenieros conocen el equipo porque lo usan en cada evento. No improvisamos en vivo — cada cue está preparado antes del show." },
+      { icon: "clock",  title: "Setup limpio, a tiempo — sin carreras",      body: "El equipo llega con margen para montar, calibrar y hacer soundcheck. Si algo no está bien antes del show, lo resolvemos antes de que llegue el público." },
+      { icon: "check",  title: "Una sola fuente de responsabilidad",         body: "Audio, luz, video y operadores — en un solo servicio. No coordinas piezas sueltas. Cualquier cosa que pase, la resolvemos nosotros." },
     ],
     ctaLine: "La producción está lista. Solo falta confirmar la fecha.",
   },
@@ -210,10 +210,10 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     videoBody: "Pantallas bien posicionadas para que todos los invitados vean el contenido sin esfuerzo. Señal estable para fotos en vivo, videos del evento o presentaciones especiales.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "star",   title: "Discretos durante el evento",          body: "Llegamos, montamos y nos quedamos en segundo plano. El protagonismo es del evento y los festejados, no del equipo técnico." },
-      { icon: "people", title: "Coordinación con otros proveedores",    body: "Nos alineamos con decoración, venue y fotografía para que todo conviva sin fricciones el día del evento." },
-      { icon: "clock",  title: "Conocemos el programa del evento",      body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo antes para estar listos en cada momento clave." },
-      { icon: "check",  title: "Comunicación clara desde el inicio",    body: "Revisamos cada detalle antes del evento. Si hay cambios de último minuto, nos adaptamos. Siempre con buena disposición." },
+      { icon: "star",   title: "Equipo 100% propio — sin intermediarios",  body: "Todo el inventario de tu propuesta es nuestro. No subcontratamos. Llegamos con lo que confirmamos — sin sorpresas el día del evento." },
+      { icon: "people", title: "Discretos y coordinados con tu equipo",     body: "Nos alineamos con decoración, venue y fotografía para que todo conviva sin fricciones. El protagonismo es de los festejados, no nuestro." },
+      { icon: "clock",  title: "Conocemos el programa al detalle",          body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo con anticipación para estar listos en cada momento clave." },
+      { icon: "check",  title: "Una sola fuente de responsabilidad",        body: "Audio, luz, video y operadores — en un solo contrato. Cualquier cosa que pase, la resolvemos nosotros. No coordinas piezas sueltas." },
     ],
     ctaLine: "Asegura la fecha. El resto lo coordinamos nosotros.",
   },
@@ -231,10 +231,10 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     videoBody: "Pantallas bien posicionadas, procesador de señal y resolución adecuada al espacio. Compatible con laptops, señal HDMI, transmisiones en vivo y contenido de tu agencia.",
     whyTitle: "Por qué Mainstage Pro",
     whyPoints: [
-      { icon: "star",   title: "Entendemos el contexto corporativo",      body: "Eventos con directivos, clientes y medios. Operamos sabiendo que el margen de error es mínimo y que la imagen de tu empresa está en juego." },
-      { icon: "people", title: "Puntuales y presentables",                 body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos profesionales durante todo el evento. Somos parte de tu equipo ese día." },
-      { icon: "clock",  title: "Trabajamos con tu agencia o coordinador", body: "Si ya tienes coordinador de evento o agencia creativa, nos alineamos con ellos. Sin fricciones, sin egos." },
-      { icon: "check",  title: "Todo confirmado por escrito",             body: "Propuesta, lista de equipo, horarios y condiciones — todo queda acordado antes del evento. Sin interpretaciones de último momento." },
+      { icon: "star",   title: "Equipo 100% propio — sin intermediarios",    body: "Todo el inventario de tu propuesta es nuestro. Eso nos da control total sobre la calidad y los tiempos — crítico cuando la imagen de tu empresa está en juego." },
+      { icon: "people", title: "Puntuales, ordenados y profesionales",        body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos en segundo plano durante el evento. Somos parte de tu equipo ese día." },
+      { icon: "clock",  title: "Trabajamos con tu agencia o coordinador",     body: "Si ya tienes coordinador o agencia creativa, nos alineamos con ellos desde la planeación. Sin fricciones, sin egos." },
+      { icon: "check",  title: "Una sola fuente de responsabilidad",          body: "Audio, luz, video y operadores — en un solo contrato. Cualquier decisión técnica pasa por nosotros. No cinco proveedores sin coordinación entre sí." },
     ],
     ctaLine: "Confirmemos los detalles técnicos con tiempo suficiente.",
   },
@@ -748,7 +748,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         <div style={{ display: "flex", width: "max-content", animation: "marquee 20s linear infinite" }}>
           {[0, 1].map(copy => (
             <span key={copy} className="text-white/20 text-[11px] font-semibold uppercase tracking-[0.2em] whitespace-nowrap px-8">
-              Producción técnica · Audio profesional · Iluminación · DJ Setup · Video · Operadores con experiencia · Puntualidad · Confiabilidad · Mainstage Pro ·&nbsp;
+              Producción técnica · Equipo 100% propio · Sin intermediarios · Audio · Iluminación · Video · DJ Setup · Operadores especializados · Una sola fuente de responsabilidad · Eventos que no pueden fallar · Mainstage Pro ·&nbsp;
             </span>
           ))}
         </div>

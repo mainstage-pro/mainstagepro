@@ -26,6 +26,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
   }
+  if ("amperajeRequerido" in body) data.amperajeRequerido = body.amperajeRequerido !== "" && body.amperajeRequerido != null ? parseFloat(body.amperajeRequerido) : null;
+  if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? parseInt(body.voltajeRequerido) : null;
 
   const equipo = await prisma.equipo.update({
     where: { id },

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 
 interface Puesto {
@@ -15,11 +15,15 @@ interface Postulacion {
   salarioPropuesto?: number | null; fechaIngresoEstimada?: string | null;
   beneficios?: string | null; observaciones?: string | null;
   propuestaFechaEnvio?: string | null; propuestaAceptada?: boolean | null;
+  propuestaToken?: string | null;
   contratoGenerado: boolean; contratoFecha?: string | null;
   personalInternoId?: string | null; notasEvaluacion?: string | null;
   puntajeTotal?: number | null;
+  onboardingData?: string | null;
   puesto?: Puesto | null;
 }
+
+interface OnboardingItem { id: string; label: string; done: boolean; fecha?: string | null }
 interface Candidato {
   id: string; nombre: string; correo?: string | null; telefono?: string | null;
   ciudad?: string | null; edad?: number | null; nivelEstudios?: string | null; carrera?: string | null;
@@ -57,7 +61,15 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   const [candidato, setCandidato] = useState<Candidato | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"perfil"|"discovery"|"propuesta"|"contrato">("perfil");
+  const [autoSaved, setAutoSaved] = useState(false);
+  const [tab, setTab] = useState<"perfil"|"discovery"|"propuesta"|"contrato"|"onboarding">("perfil");
+  const [propuestaLink, setPropuestaLink] = useState<string | null>(null);
+  const [generandoLink, setGenerandoLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const editLoaded = useRef(false);
+  const propEditLoaded = useRef(false);
+  const editTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const propTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Edición inline candidato
   const [edit, setEdit] = useState<Partial<Candidato>>({});
@@ -85,33 +97,51 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       }
     }
     setLoading(false);
+    setTimeout(() => { propEditLoaded.current = true; editLoaded.current = true; }, 200);
   }
   useEffect(() => { load(); }, [id]);
 
+  // Auto-save edit (perfil del candidato)
+  useEffect(() => {
+    if (!editLoaded.current || Object.keys(edit).length === 0) return;
+    if (editTimer.current) clearTimeout(editTimer.current);
+    editTimer.current = setTimeout(async () => {
+      await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+      setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
+    }, 1200);
+  }, [edit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save propuesta
+  useEffect(() => {
+    if (!propEditLoaded.current) return;
+    const post = candidato?.postulaciones[0];
+    if (!post) return;
+    if (propTimer.current) clearTimeout(propTimer.current);
+    propTimer.current = setTimeout(async () => {
+      const bens = propEdit.beneficios.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
+      await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ postulacionId: post.id, salarioPropuesto: propEdit.salarioPropuesto ? parseFloat(propEdit.salarioPropuesto) : null, fechaIngresoEstimada: propEdit.fechaIngresoEstimada || null, beneficios: bens, observaciones: propEdit.observaciones || null, notasEvaluacion: propEdit.notasEvaluacion || null }),
+      });
+      setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
+    }, 1200);
+  }, [propEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function saveCandidato() {
+    if (editTimer.current) clearTimeout(editTimer.current);
     setSaving(true);
-    await fetch(`/api/rrhh/candidatos/${id}`, {
-      method:"PATCH", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(edit),
-    });
-    await load(); setEdit({}); setSaving(false);
+    await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+    await load(); setEdit({}); editLoaded.current = false; setSaving(false);
   }
 
   async function savePropuesta() {
+    if (propTimer.current) clearTimeout(propTimer.current);
     setSaving(true);
     const post = candidato?.postulaciones[0];
     if (!post) { setSaving(false); return; }
     const bens = propEdit.beneficios.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
     await fetch(`/api/rrhh/candidatos/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        postulacionId: post.id,
-        salarioPropuesto: propEdit.salarioPropuesto ? parseFloat(propEdit.salarioPropuesto) : null,
-        fechaIngresoEstimada: propEdit.fechaIngresoEstimada || null,
-        beneficios: bens,
-        observaciones: propEdit.observaciones || null,
-        notasEvaluacion: propEdit.notasEvaluacion || null,
-      }),
+      body: JSON.stringify({ postulacionId: post.id, salarioPropuesto: propEdit.salarioPropuesto ? parseFloat(propEdit.salarioPropuesto) : null, fechaIngresoEstimada: propEdit.fechaIngresoEstimada || null, beneficios: bens, observaciones: propEdit.observaciones || null, notasEvaluacion: propEdit.notasEvaluacion || null }),
     });
     await load(); setSaving(false);
   }
@@ -136,6 +166,49 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       body: JSON.stringify({ postulacionId: post.id }),
     });
     await load(); setSaving(false);
+  }
+
+  async function generarLinkPropuesta() {
+    const post = candidato?.postulaciones[0];
+    if (!post) return;
+    if (post.propuestaToken) {
+      const link = `${window.location.origin}/propuesta/candidato/${post.propuestaToken}`;
+      setPropuestaLink(link);
+      return;
+    }
+    setGenerandoLink(true);
+    try {
+      const res = await fetch(`/api/rrhh/candidatos/${id}/propuesta-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postulacionId: post.id }),
+      });
+      const d = await res.json();
+      if (d.token) {
+        const link = `${window.location.origin}/propuesta/candidato/${d.token}`;
+        setPropuestaLink(link);
+        await load();
+      }
+    } finally {
+      setGenerandoLink(false);
+    }
+  }
+
+  async function copiarLink() {
+    if (!propuestaLink) return;
+    await navigator.clipboard.writeText(propuestaLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
+
+  function buildWAPresentation() {
+    if (!candidato) return "";
+    const tel = candidato.telefono?.replace(/\D/g,"") ?? "";
+    const num = tel.startsWith("52") ? tel : `52${tel}`;
+    const nombre = candidato.nombre.split(" ")[0];
+    const url = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/presentacion/equipo`;
+    const msg = `Hola ${nombre} 👋\n\nAntes de enviarte una propuesta formal, queremos que conozcas quiénes somos y lo que hacemos en Mainstage Pro.\n\nTe compartimos esta presentación para que tengas un panorama completo de nuestro equipo, nuestros proyectos y lo que significa ser parte de nosotros:\n\n${url}\n\n¡Esperamos que te entusiasme lo que ves! 🎯`;
+    return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   }
 
   function buildWA() {
@@ -236,13 +309,13 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1a1a1a]">
-        {(["perfil","discovery","propuesta","contrato"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
+      <div className="flex gap-1 border-b border-[#1a1a1a] flex-wrap">
+        {(["perfil","discovery","propuesta","contrato",...(etapa === "CONTRATADO" ? ["onboarding"] : [])] as const).map(t => (
+          <button key={t} onClick={() => setTab(t as typeof tab)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t ? "border-[#B3985B] text-[#B3985B]" : "border-transparent text-gray-500 hover:text-white"
             }`}>
-            {t === "perfil" ? "Perfil" : t === "discovery" ? "Descubrimiento" : t === "propuesta" ? "Propuesta" : "Contrato"}
+            {t === "perfil" ? "Perfil" : t === "discovery" ? "Descubrimiento" : t === "propuesta" ? "Propuesta" : t === "contrato" ? "Contrato" : "Onboarding"}
           </button>
         ))}
       </div>
@@ -432,7 +505,16 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Acciones</p>
 
-              {/* Propuesta PDF + WA */}
+              {/* Presentación de la empresa por WhatsApp */}
+              {candidato.telefono && (
+                <a href={buildWAPresentation()} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between bg-green-900/20 hover:bg-green-900/30 border border-green-800/30 rounded-lg px-4 py-3 transition-colors">
+                  <span className="text-sm text-green-300">📲 Enviar presentación de Mainstage Pro</span>
+                  <span className="text-xs text-green-700">→</span>
+                </a>
+              )}
+
+              {/* Propuesta PDF + WA + Link candidato */}
               <div className="space-y-2">
                 {post && (
                   <a href={`/api/rrhh/candidatos/${id}/propuesta?postulacionId=${post.id}`}
@@ -449,6 +531,28 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
                     <span className="text-xs text-green-700">→</span>
                   </a>
                 )}
+                {/* Link de aceptación para el candidato */}
+                <div className="bg-[#0d0d0d] border border-[#222] rounded-lg px-4 py-3 space-y-2">
+                  <p className="text-xs text-gray-500">🔗 Link de aceptación para el candidato</p>
+                  {propuestaLink || post?.propuestaToken ? (
+                    <div className="flex items-center gap-2">
+                      <input readOnly
+                        value={propuestaLink ?? `${typeof window !== "undefined" ? window.location.origin : ""}/propuesta/candidato/${post?.propuestaToken}`}
+                        className="flex-1 bg-[#1a1a1a] border border-[#333] text-gray-400 text-xs rounded px-2 py-1 truncate" />
+                      <button onClick={copiarLink}
+                        className="text-xs bg-[#B3985B] text-black font-semibold px-3 py-1 rounded transition-colors hover:bg-[#c9a96a]">
+                        {linkCopied ? "✓ Copiado" : "Copiar"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={generarLinkPropuesta} disabled={generandoLink}
+                      className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      {generandoLink ? "Generando..." : "Generar link"}
+                    </button>
+                  )}
+                  {post?.propuestaAceptada === true && <p className="text-green-400 text-xs font-semibold">✓ Propuesta aceptada por el candidato</p>}
+                  {post?.propuestaAceptada === false && <p className="text-red-400 text-xs">✗ Propuesta declinada por el candidato</p>}
+                </div>
               </div>
 
               {post?.propuestaFechaEnvio && (
@@ -568,6 +672,92 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           )}
         </div>
       )}
+
+      {/* ── TAB ONBOARDING ── */}
+      {tab === "onboarding" && etapa === "CONTRATADO" && (() => {
+        const DEFAULT_ITEMS: OnboardingItem[] = [
+          { id: "contrato", label: "Firma de contrato", done: false },
+          { id: "imss", label: "Alta en IMSS / seguridad social", done: false },
+          { id: "cuenta", label: "Apertura de cuenta bancaria para nómina", done: false },
+          { id: "equipo", label: "Entrega de equipo de trabajo", done: false },
+          { id: "accesos", label: "Configuración de accesos a sistemas", done: false },
+          { id: "presentacion", label: "Presentación formal al equipo", done: false },
+          { id: "tour", label: "Tour por instalaciones / bodegas", done: false },
+          { id: "capacitacion", label: "Capacitación en procesos Mainstage Pro", done: false },
+          { id: "politicas", label: "Revisión de políticas y procedimientos", done: false },
+          { id: "evaluacion30", label: "Primera evaluación de 30 días agendada", done: false },
+        ];
+        let items: OnboardingItem[] = DEFAULT_ITEMS;
+        try { if (post?.onboardingData) items = JSON.parse(post.onboardingData); } catch { /* */ }
+        const done = items.filter(i => i.done).length;
+
+        async function toggleItem(itemId: string) {
+          const updated = items.map(i => i.id === itemId
+            ? { ...i, done: !i.done, fecha: !i.done ? new Date().toISOString().slice(0, 10) : null }
+            : i
+          );
+          await fetch(`/api/rrhh/candidatos/${id}`, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ postulacionId: post!.id, onboardingData: JSON.stringify(updated) }),
+          });
+          await load();
+        }
+
+        return (
+          <div className="max-w-xl space-y-4">
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-white font-semibold">Checklist de integración</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{candidato.nombre} · {post?.puesto?.titulo ?? post?.puestoManual}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[#B3985B] font-bold text-lg">{done}/{items.length}</p>
+                  <p className="text-gray-600 text-xs">completados</p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-[#1a1a1a] rounded-full h-1.5 mb-5">
+                <div
+                  className="bg-[#B3985B] h-1.5 rounded-full transition-all"
+                  style={{ width: `${Math.round((done / items.length) * 100)}%` }}
+                />
+              </div>
+
+              <div className="space-y-2">
+                {items.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => toggleItem(item.id)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                      item.done ? "bg-green-900/10 border border-green-800/20" : "bg-[#0d0d0d] border border-[#1a1a1a] hover:border-[#333]"
+                    }`}>
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                      item.done ? "bg-green-500 border-green-500" : "border-[#333]"
+                    }`}>
+                      {item.done && <span className="text-black text-xs font-bold">✓</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${item.done ? "text-gray-500 line-through" : "text-white"}`}>{item.label}</p>
+                    </div>
+                    {item.done && item.fecha && (
+                      <span className="text-xs text-gray-600 shrink-0">{item.fecha}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {done === items.length && (
+                <div className="mt-4 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-lg p-3 text-center">
+                  <p className="text-[#B3985B] font-semibold text-sm">🎉 Integración completa</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{candidato.nombre} está completamente integrado al equipo</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

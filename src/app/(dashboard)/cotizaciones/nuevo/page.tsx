@@ -3,8 +3,10 @@
 import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
-import { DESCUENTO_B2B, IVA, VIABILIDAD } from "@/lib/constants";
+import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
 import { getSugerencias, type SugItem } from "@/lib/sugerencias-equipo";
+import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
+import VenuePicker from "@/components/ui/VenuePicker";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -175,6 +177,8 @@ function CotizadorForm() {
   const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
+  // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
+  const [preciosClienteOriginal, setPreciosClienteOriginal] = useState<Record<string, number | null>>({});
   const [guardandoPrecio, setGuardandoPrecio] = useState<string | null>(null);
   const [asistentesEstimados, setAsistentesEstimados] = useState<number | null>(null);
 
@@ -204,10 +208,15 @@ function CotizadorForm() {
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
   const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
-  const [selLogTipo, setSelLogTipo] = useState<"COMIDA" | "TRANSPORTE" | "HOSPEDAJE">("COMIDA");
   const [selLogConcepto, setSelLogConcepto] = useState(CONCEPTOS_COMIDA[0].label);
   const [selLogPrecio, setSelLogPrecio] = useState(String(CONCEPTOS_COMIDA[0].precio));
   const [selLogCant, setSelLogCant] = useState("1"); const [selLogDias, setSelLogDias] = useState("1");
+  const [selLogConceptoTransporte, setSelLogConceptoTransporte] = useState(CONCEPTOS_TRANSPORTE[0].label);
+  const [selLogPrecioTransporte, setSelLogPrecioTransporte] = useState(String(CONCEPTOS_TRANSPORTE[0].precio));
+  const [selLogCantTransporte, setSelLogCantTransporte] = useState("1"); const [selLogDiasTransporte, setSelLogDiasTransporte] = useState("1");
+  const [selLogConceptoHospedaje, setSelLogConceptoHospedaje] = useState(CONCEPTOS_HOSPEDAJE[0].label);
+  const [selLogPrecioHospedaje, setSelLogPrecioHospedaje] = useState(String(CONCEPTOS_HOSPEDAJE[0].precio));
+  const [selLogCantHospedaje, setSelLogCantHospedaje] = useState("1"); const [selLogDiasHospedaje, setSelLogDiasHospedaje] = useState("1");
 
   // Proveedores para selector en modal nuevo equipo
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string }>>([]);
@@ -229,6 +238,8 @@ function CotizadorForm() {
   const [dPatrocinio, setDPatrocinio] = useState(""); const [dPatrocinioNota, setDPatrocinioNota] = useState("");
   const [dEspecial, setDEspecial] = useState(""); const [dEspecialNota, setDEspecialNota] = useState("");
   const [aplicaIva, setAplicaIva] = useState(false);
+  const [incluirChofer, setIncluirChofer] = useState(false);
+  const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
   const [observaciones, setObservaciones] = useState("");
 
   // Disponibilidad de inventario para la fecha del evento
@@ -254,10 +265,13 @@ function CotizadorForm() {
       // Cargar precios especiales del cliente
       if (preciosData?.precios) {
         const mapa: Record<string, number> = {};
-        for (const [eqId, v] of Object.entries(preciosData.precios as Record<string, { precio: number }>)) {
+        const mapaOrig: Record<string, number | null> = {};
+        for (const [eqId, v] of Object.entries(preciosData.precios as Record<string, { precio: number; precioOriginal: number | null }>)) {
           mapa[eqId] = v.precio;
+          mapaOrig[eqId] = v.precioOriginal ?? null;
         }
         setPreciosCliente(mapa);
+        setPreciosClienteOriginal(mapaOrig);
       }
 
       // Modo edición: cargar cotización existente
@@ -270,10 +284,13 @@ function CotizadorForm() {
           fetch(`/api/clientes/${cot.clienteId}/precios-equipos`).then(r => r.json()).then(pd => {
             if (pd?.precios) {
               const mapa: Record<string, number> = {};
-              for (const [eqId, v] of Object.entries(pd.precios as Record<string, { precio: number }>)) {
+              const mapaOrig: Record<string, number | null> = {};
+              for (const [eqId, v] of Object.entries(pd.precios as Record<string, { precio: number; precioOriginal: number | null }>)) {
                 mapa[eqId] = v.precio;
+                mapaOrig[eqId] = v.precioOriginal ?? null;
               }
               setPreciosCliente(mapa);
+              setPreciosClienteOriginal(mapaOrig);
             }
           });
         }
@@ -290,6 +307,7 @@ function CotizadorForm() {
           diasOperacion: String(cot.diasOperacion ?? 1),
         });
         setObservaciones(cot.observaciones ?? "");
+        setIncluirChofer(cot.incluirChofer ?? false);
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -351,6 +369,13 @@ function CotizadorForm() {
       }
     });
   }, [clienteId, tratoId]);
+
+  // Auto-calcular cantidad de comidas = total técnicos en cotización
+  useEffect(() => {
+    const totalTecnicos = lineasOp.reduce((s, l) => s + Math.round(l.cantidad), 0)
+      + lineasDJ.length;
+    if (totalTecnicos > 0) setSelLogCant(String(totalTecnicos));
+  }, [lineasOp, lineasDJ]);
 
   // Cargar disponibilidad cuando cambia la fecha del evento
   useEffect(() => {
@@ -455,6 +480,22 @@ function CotizadorForm() {
     }]);
   }
 
+  function agregarSugerenciaTecnico(keyword: string, cantidad: number) {
+    const kw = keyword.toLowerCase();
+    const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
+    if (!rol) return;
+    const dias = parseInt(evento.diasOperacion) || 1;
+    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
+    // Si ya existe ese rol exacto con mismo nivel/jornada, no duplicar
+    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.nivel === selRolNivel && l.jornada === selRolJornada);
+    if (yaExiste) return;
+    setLineasOp(prev => [...prev, {
+      id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
+      nivel: selRolNivel, jornada: selRolJornada, cantidad, dias,
+      precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
+    }]);
+  }
+
   function updateEquipo(id: string, field: keyof LineaEquipo, val: number) {
     setLineasEquipo(prev => prev.map(l => {
       if (l.id !== id) return l;
@@ -469,12 +510,15 @@ function CotizadorForm() {
     const cId = resolvedClienteId || clienteId;
     if (!cId || !linea.equipoId) return;
     setGuardandoPrecio(linea.id);
+    // precioOriginal = precio de lista del catálogo (se guarda para comparación futura)
+    const precioOriginal = equipos.find(e => e.id === linea.equipoId)?.precioRenta ?? null;
     await fetch(`/api/clientes/${cId}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ equipoId: linea.equipoId, precio: linea.precioUnitario }),
+      body: JSON.stringify({ equipoId: linea.equipoId, precio: linea.precioUnitario, precioOriginal }),
     });
     setPreciosCliente(prev => ({ ...prev, [linea.equipoId]: linea.precioUnitario }));
+    setPreciosClienteOriginal(prev => ({ ...prev, [linea.equipoId]: precioOriginal }));
     setGuardandoPrecio(null);
   }
 
@@ -599,34 +643,6 @@ function CotizadorForm() {
     }]);
   }
 
-  // ── Agregar logística ──
-  function agregarLogistica() {
-    const precio = parseFloat(selLogPrecio) || 0;
-    const cant = parseFloat(selLogCant) || 1;
-    const dias = parseInt(selLogDias) || 1;
-    setLineasLog(prev => [...prev, {
-      id: uid(), tipo: selLogTipo, concepto: selLogConcepto,
-      precioUnitario: precio, cantidad: cant, dias,
-      subtotal: precio * cant * dias,
-    }]);
-    setSelLogCant("1"); setSelLogDias("1");
-  }
-
-  // Actualizar selector de logística cuando cambia tipo/concepto
-  function cambiarTipoLog(tipo: "COMIDA" | "TRANSPORTE" | "HOSPEDAJE") {
-    setSelLogTipo(tipo);
-    const conceptos = tipo === "COMIDA" ? CONCEPTOS_COMIDA : tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-    setSelLogConcepto(conceptos[0].label);
-    setSelLogPrecio(String(conceptos[0].precio));
-  }
-
-  function cambiarConceptoLog(label: string) {
-    setSelLogConcepto(label);
-    const conceptos = selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-    const precio = conceptos.find(c => c.label === label)?.precio ?? 0;
-    setSelLogPrecio(String(precio));
-  }
-
   // ─── Cálculo del resumen ──────────────────────────────────────────────────
   const resumen = useMemo(() => {
     const subtotalEquiposBruto = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
@@ -658,9 +674,12 @@ function CotizadorForm() {
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
+    const descuentoMontaAdicionales = descuentoAplicaAdicionales ? subtotalOcasionales * descuentoTotalPct : 0;
+    const subtotalOcasionalesNeto = subtotalOcasionales - descuentoMontaAdicionales;
 
     // Total incluye equipos propios (con descuento) + externos (sin descuento) + ocasionales + operación + logística
-    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje;
+    const subtotalChofer = incluirChofer ? 500 : 0;
+    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
 
@@ -679,8 +698,8 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, costoExternos,
-      subtotalOperacion, subtotalDJ,
+      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, subtotalOcasionalesNeto, descuentoMontaAdicionales, costoExternos,
+      subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       autoVolumen, autoB2B, autoMultidia,
       dVolumen, dB2B, dMultidia, dPatro, dEsp,
@@ -689,7 +708,7 @@ function CotizadorForm() {
       costos, utilidad, pctUtilidad, semaforo,
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
-    dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, aplicaIva]);
+    dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -765,6 +784,7 @@ function CotizadorForm() {
       subtotalHospedaje: resumen.subtotalHospedaje,
       total: resumen.total,
       aplicaIva,
+      incluirChofer,
       montoIva: resumen.montoIva,
       granTotal: resumen.granTotal,
       costosTotalesEstimados: resumen.costos,
@@ -795,8 +815,6 @@ function CotizadorForm() {
       router.push(`/cotizaciones/${cotizacion.id}`);
     } catch (e) { setError(`Error de conexión: ${e instanceof Error ? e.message : String(e)}`); setSaving(false); }
   }
-
-  const conceptosActuales = selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -894,7 +912,9 @@ function CotizadorForm() {
                 <option value="DIRECCION_TECNICA">Dirección Técnica</option>
               </Select>
               <Input label="Fecha del evento" type="date" value={evento.fechaEvento} onChange={e => setEvento(p => ({ ...p, fechaEvento: e.target.value }))} />
-              <Input label="Lugar del evento" value={evento.lugarEvento} onChange={e => setEvento(p => ({ ...p, lugarEvento: e.target.value }))} placeholder="Venue, ciudad..." />
+              <div>
+                <VenuePicker label="Lugar del evento" value={evento.lugarEvento} onChange={(v) => setEvento(p => ({ ...p, lugarEvento: v }))} placeholder="Venue, ciudad..." />
+              </div>
               <Input label="Asistentes estimados" type="number" min="1" value={asistentesEstimados ?? ""} onChange={e => setAsistentesEstimados(e.target.value ? parseInt(e.target.value) : null)} placeholder="Número de invitados" />
               <Input label="Horas de operación" type="number" min="1" value={evento.horasOperacion} onChange={e => setEvento(p => ({ ...p, horasOperacion: e.target.value }))} />
               <div className="grid grid-cols-2 gap-2 col-span-1">
@@ -1016,6 +1036,7 @@ function CotizadorForm() {
                       {lins.map(l => {
                         const precioBase = equipos.find(e => e.id === l.equipoId)?.precioRenta ?? 0;
                         const tienePrecioEspecial = preciosCliente[l.equipoId] != null;
+                        const precioOriginalCliente = preciosClienteOriginal[l.equipoId] ?? null;
                         const esPrecioModificado = l.precioUnitario !== precioBase;
                         const esPrecioEspecialActivo = tienePrecioEspecial && l.precioUnitario === preciosCliente[l.equipoId];
                         const precioDifiere = l.precioUnitario !== (preciosCliente[l.equipoId] ?? precioBase);
@@ -1056,10 +1077,14 @@ function CotizadorForm() {
                               <div className="flex items-center gap-1.5">
                                 <p className="text-white text-sm truncate">{l.descripcion}</p>
                                 {esPrecioEspecialActivo && (
-                                  <span title="Precio especial de este cliente" className="text-[10px] px-1.5 py-0.5 bg-[#B3985B]/20 text-[#B3985B] rounded font-medium shrink-0">★ especial</span>
+                                  <span
+                                    title={precioOriginalCliente != null ? `Precio especial (lista original: ${formatCurrency(precioOriginalCliente)})` : "Precio especial de este cliente"}
+                                    className="text-[10px] px-1.5 py-0.5 bg-[#B3985B]/20 text-[#B3985B] rounded font-medium shrink-0 cursor-help">
+                                    ★ especial{precioOriginalCliente != null ? ` · lista ${formatCurrency(precioOriginalCliente)}` : ""}
+                                  </span>
                                 )}
                                 {!esPrecioEspecialActivo && esPrecioModificado && (
-                                  <span title="Precio modificado manualmente" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
+                                  <span title="Precio modificado manualmente en esta cotización" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
                                 )}
                               </div>
                               {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
@@ -1278,6 +1303,64 @@ function CotizadorForm() {
             )}
           </Seccion>
 
+          {/* ── Sugerencias de técnicos ── */}
+          {evento.tipoEvento && (asistentesEstimados ?? 0) > 0 && (() => {
+            const cats = [...new Set(lineasEquipo.map(l => l.categoria))];
+            const sugs = getSugerenciasTecnicos(evento.tipoEvento, asistentesEstimados ?? 0, cats);
+            if (sugs.length === 0) return null;
+            return (
+              <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
+                <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
+                  <span className="text-[#B3985B] text-sm font-semibold">Sugerencias de personal técnico</span>
+                  <span className="text-gray-500 text-xs">basado en equipos agregados y tamaño del evento</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-[#555] group-open:rotate-180 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
+                </summary>
+                <div className="px-5 pb-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {sugs.map(grupo => (
+                      <div key={grupo.categoria} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
+                        <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.categoria}</p>
+                        <div className="space-y-1.5">
+                          {grupo.items.map(item => {
+                            const kw = item.rolKeyword.toLowerCase();
+                            const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
+                            const yaAgregado = lineasOp.some(l => l.rolTecnicoId === rol?.id);
+                            return (
+                              <div key={item.rolKeyword} className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm ${item.esOpcional ? "text-gray-500" : "text-white"}`}>
+                                    {rol ? rol.nombre : <span className="text-gray-600 italic">{item.rolKeyword} (sin rol)</span>}
+                                    {item.cantidad > 1 && <span className="text-gray-500 text-xs ml-1">×{item.cantidad}</span>}
+                                    {item.esOpcional && <span className="text-[#555] text-[10px] ml-1">opcional</span>}
+                                  </p>
+                                  <p className="text-gray-600 text-[10px]">{item.motivo}</p>
+                                </div>
+                                {rol && (
+                                  <button
+                                    onClick={() => agregarSugerenciaTecnico(item.rolKeyword, item.cantidad)}
+                                    disabled={yaAgregado}
+                                    className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                                      yaAgregado
+                                        ? "text-green-500 bg-green-900/20 cursor-default"
+                                        : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
+                                    }`}
+                                  >
+                                    {yaAgregado ? "✓" : "+ Agregar"}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-gray-600 text-[10px] mt-3">Nivel y jornada se toman del selector activo. Ajusta antes de agregar si es necesario.</p>
+                </div>
+              </details>
+            );
+          })()}
+
           {/* ── Operación técnica ── */}
           <Seccion titulo="Operación técnica" hint="sin descuento">
             <div className="flex gap-2 mb-3">
@@ -1298,7 +1381,7 @@ function CotizadorForm() {
               <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
                 <div className="flex-1">
                   <p className="text-white text-sm">{l.descripcion}</p>
-                  <p className="text-gray-500 text-xs">{l.nivel} · {l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
+                  <p className="text-gray-500 text-xs">{l.nivel} · {JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
                 </div>
                 <input type="number" value={l.precioUnitario} onChange={e => updateOp(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" />
                 <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
@@ -1333,36 +1416,107 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Logística ── */}
-          <Seccion titulo="Logística" hint="comidas · transporte · hospedaje · sin descuento">
-            <div className="flex gap-2 mb-3 flex-wrap">
-              <div className="flex gap-1">
-                {(["COMIDA", "TRANSPORTE", "HOSPEDAJE"] as const).map(t => (
-                  <button key={t} onClick={() => cambiarTipoLog(t)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selLogTipo === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] border border-[#333] text-gray-400"}`}>
-                    {t === "COMIDA" ? "Comidas" : t === "TRANSPORTE" ? "Transporte" : "Hospedaje"}
-                  </button>
-                ))}
+          <Seccion titulo="Logística" hint="sin descuento">
+            <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+              {/* Header */}
+              <div className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 bg-[#0d0d0d] px-3 py-1.5 border-b border-[#1e1e1e] text-[10px] text-gray-600 uppercase tracking-wider">
+                <span>Tipo</span><span>Concepto</span><span className="text-right">Precio</span><span className="text-center">Cant</span><span className="text-center">Días</span><span className="text-right">Subtotal</span><span />
               </div>
-              <select value={selLogConcepto} onChange={e => cambiarConceptoLog(e.target.value)} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {conceptosActuales.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
-              </select>
-              <input type="number" value={selLogPrecio} onChange={e => setSelLogPrecio(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none" placeholder="Precio" />
-              <input type="number" min="1" value={selLogCant} onChange={e => setSelLogCant(e.target.value)} className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Cant" title="Cantidad" />
-              <input type="number" min="1" value={selLogDias} onChange={e => setSelLogDias(e.target.value)} className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" placeholder="Días" title="Días" />
-              <button onClick={agregarLogistica} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm">+ Agregar</button>
+              {/* Líneas existentes */}
+              {lineasLog.map(l => {
+                const conceptos = l.tipo === "COMIDA" ? CONCEPTOS_COMIDA : l.tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
+                const label = l.tipo === "COMIDA" ? "Comidas" : l.tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
+                return (
+                  <div key={l.id} className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 items-center px-3 py-2 border-b border-[#111]">
+                    <span className="text-[10px] font-semibold text-[#B3985B]">{label}</span>
+                    <select value={l.concepto} onChange={e => {
+                      const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? l.precioUnitario;
+                      setLineasLog(p => p.map(x => x.id === l.id ? { ...x, concepto: e.target.value, precioUnitario: precio, subtotal: precio * x.cantidad * x.dias } : x));
+                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                      {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
+                    </select>
+                    <input type="number" value={l.precioUnitario} onChange={e => {
+                      const p = parseFloat(e.target.value) || 0;
+                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
+                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-right focus:outline-none w-full" />
+                    <input type="number" min="1" value={l.cantidad} onChange={e => {
+                      const c = parseFloat(e.target.value) || 1;
+                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x));
+                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none w-full" />
+                    <input type="number" min="1" value={l.dias} onChange={e => {
+                      const d = parseInt(e.target.value) || 1;
+                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x));
+                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none w-full" />
+                    <span className="text-white text-xs font-medium text-right">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-base leading-none text-center">×</button>
+                  </div>
+                );
+              })}
+              {/* Agregar fila */}
+              {(["COMIDA", "TRANSPORTE", "HOSPEDAJE"] as const).map(tipo => {
+                const conceptos = tipo === "COMIDA" ? CONCEPTOS_COMIDA : tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
+                const selConcepto = tipo === "COMIDA" ? selLogConcepto : tipo === "TRANSPORTE" ? selLogConceptoTransporte : selLogConceptoHospedaje;
+                const selPrecio = tipo === "COMIDA" ? selLogPrecio : tipo === "TRANSPORTE" ? selLogPrecioTransporte : selLogPrecioHospedaje;
+                const selCant = tipo === "COMIDA" ? selLogCant : tipo === "TRANSPORTE" ? selLogCantTransporte : selLogCantHospedaje;
+                const selDias = tipo === "COMIDA" ? selLogDias : tipo === "TRANSPORTE" ? selLogDiasTransporte : selLogDiasHospedaje;
+                const label = tipo === "COMIDA" ? "Comidas" : tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
+                function setConcepto(v: string) {
+                  const precio = conceptos.find(c => c.label === v)?.precio ?? 0;
+                  if (tipo === "COMIDA") { setSelLogConcepto(v); setSelLogPrecio(String(precio)); }
+                  else if (tipo === "TRANSPORTE") { setSelLogConceptoTransporte(v); setSelLogPrecioTransporte(String(precio)); }
+                  else { setSelLogConceptoHospedaje(v); setSelLogPrecioHospedaje(String(precio)); }
+                }
+                function setPrecio(v: string) {
+                  if (tipo === "COMIDA") setSelLogPrecio(v);
+                  else if (tipo === "TRANSPORTE") setSelLogPrecioTransporte(v);
+                  else setSelLogPrecioHospedaje(v);
+                }
+                function setCant(v: string) {
+                  if (tipo === "COMIDA") setSelLogCant(v);
+                  else if (tipo === "TRANSPORTE") setSelLogCantTransporte(v);
+                  else setSelLogCantHospedaje(v);
+                }
+                function setDias(v: string) {
+                  if (tipo === "COMIDA") setSelLogDias(v);
+                  else if (tipo === "TRANSPORTE") setSelLogDiasTransporte(v);
+                  else setSelLogDiasHospedaje(v);
+                }
+                function agregar() {
+                  const precio = parseFloat(selPrecio) || 0;
+                  const cant = parseFloat(selCant) || 1;
+                  const dias = parseInt(selDias) || 1;
+                  setLineasLog(prev => [...prev, { id: uid(), tipo, concepto: selConcepto, precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
+                  setCant("1"); setDias("1");
+                }
+                return (
+                  <div key={tipo} className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 items-center px-3 py-1.5 border-b border-[#0a0a0a] bg-[#080808]">
+                    <span className="text-[10px] text-gray-600">{label}</span>
+                    <select value={selConcepto} onChange={e => setConcepto(e.target.value)}
+                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs focus:outline-none focus:border-[#B3985B]">
+                      {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
+                    </select>
+                    <input type="number" value={selPrecio} onChange={e => setPrecio(e.target.value)}
+                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-right focus:outline-none w-full" placeholder="$" />
+                    <input type="number" min="1" value={selCant} onChange={e => setCant(e.target.value)}
+                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-center focus:outline-none w-full" />
+                    <input type="number" min="1" value={selDias} onChange={e => setDias(e.target.value)}
+                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-center focus:outline-none w-full" />
+                    <span className="text-gray-600 text-xs text-right">{formatCurrency((parseFloat(selPrecio)||0)*(parseFloat(selCant)||1)*(parseInt(selDias)||1))}</span>
+                    <button onClick={agregar} className="text-[#B3985B] hover:text-white text-base leading-none text-center font-bold" title="Agregar">+</button>
+                  </div>
+                );
+              })}
+              {/* Totales */}
+              {lineasLog.length > 0 && (
+                <div className="flex justify-end px-4 py-2 bg-[#0d0d0d] gap-6 text-xs">
+                  {(["COMIDA", "TRANSPORTE", "HOSPEDAJE"] as const).map(tipo => {
+                    const s = lineasLog.filter(l => l.tipo === tipo).reduce((a, b) => a + b.subtotal, 0);
+                    const label = tipo === "COMIDA" ? "Comidas" : tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
+                    return s > 0 ? <span key={tipo} className="text-gray-500">{label}: <span className="text-white">{formatCurrency(s)}</span></span> : null;
+                  })}
+                </div>
+              )}
             </div>
-            {lineasLog.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin logística agregada</p> : lineasLog.map(l => (
-              <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a]">
-                <div>
-                  <span className="text-[10px] text-gray-500 uppercase mr-2">{l.tipo}</span>
-                  <span className="text-white text-sm">{l.concepto}</span>
-                  <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d · {formatCurrency(l.precioUnitario)}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
-                  <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
-                </div>
-              </div>
-            ))}
           </Seccion>
 
           {/* ── Descuentos ── */}
@@ -1441,8 +1595,25 @@ function CotizadorForm() {
                 <span className="text-white text-sm font-medium">Descuento total</span>
                 <span className="text-red-400 font-bold">{formatPct(resumen.descuentoTotalPct)} — {formatCurrency(resumen.montoDescuento)}</span>
               </div>
-              {/* IVA */}
+              {/* Descuento a adicionales */}
               <div className="flex items-center gap-3 pt-2 border-t border-[#222]">
+                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                  <input type="checkbox" checked={descuentoAplicaAdicionales} onChange={e => setDescuentoAplicaAdicionales(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
+                  <span className="text-sm text-gray-300">Aplicar descuentos también a equipos adicionales</span>
+                </label>
+                {descuentoAplicaAdicionales && resumen.descuentoMontaAdicionales > 0 && (
+                  <span className="text-red-400 text-sm shrink-0">-{formatCurrency(resumen.descuentoMontaAdicionales)}</span>
+                )}
+              </div>
+              {/* Chofer */}
+              <div className="flex items-center gap-3 pt-2 border-t border-[#222]">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={incluirChofer} onChange={e => setIncluirChofer(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
+                  <span className="text-sm text-gray-300">Incluir chofer de producción <span className="text-[#B3985B] font-semibold">+$500</span></span>
+                </label>
+              </div>
+              {/* IVA */}
+              <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={aplicaIva} onChange={e => setAplicaIva(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
                   <span className="text-sm text-gray-300">Aplica IVA 16% (cliente pide factura)</span>
@@ -1479,11 +1650,13 @@ function CotizadorForm() {
               <div className="flex justify-between text-white"><span>Equipos neto</span><span>{formatCurrency(resumen.subtotalEquiposNeto)}</span></div>
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
+              {resumen.descuentoMontaAdicionales > 0 && <div className="flex justify-between text-red-400"><span>Desc. adicionales ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.descuentoMontaAdicionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}
               {resumen.subtotalDJ > 0 && <div className="flex justify-between text-gray-400"><span>Servicio DJ</span><span>{formatCurrency(resumen.subtotalDJ)}</span></div>}
               {resumen.subtotalTransporte > 0 && <div className="flex justify-between text-gray-400"><span>Transporte</span><span>{formatCurrency(resumen.subtotalTransporte)}</span></div>}
               {resumen.subtotalComidas > 0 && <div className="flex justify-between text-gray-400"><span>Comidas</span><span>{formatCurrency(resumen.subtotalComidas)}</span></div>}
               {resumen.subtotalHospedaje > 0 && <div className="flex justify-between text-gray-400"><span>Hospedaje</span><span>{formatCurrency(resumen.subtotalHospedaje)}</span></div>}
+              {resumen.subtotalChofer > 0 && <div className="flex justify-between text-gray-400"><span>Chofer de producción</span><span>{formatCurrency(resumen.subtotalChofer)}</span></div>}
               <div className="flex justify-between text-white font-semibold border-t border-[#333] pt-2"><span>Subtotal</span><span>{formatCurrency(resumen.total)}</span></div>
               {aplicaIva && <div className="flex justify-between text-gray-400"><span>IVA 16%</span><span>{formatCurrency(resumen.montoIva)}</span></div>}
               <div className="flex justify-between text-[#B3985B] font-bold text-base border-t border-[#333] pt-2"><span>Total</span><span>{formatCurrency(resumen.granTotal)}</span></div>

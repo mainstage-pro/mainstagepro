@@ -14,7 +14,8 @@ model User {
   name                String
   email               String    @unique
   password            String
-  role                String    @default("REGULAR") // ADMIN | VENDEDOR | REGULAR
+  role                String    @default("USER") // ADMIN | USER | READONLY
+  area                String?   @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | GENERAL
   active              Boolean   @default(true)
   fechaInicioVendedor DateTime?
   createdAt           DateTime  @default(now())
@@ -69,9 +70,10 @@ model PrecioClienteEquipo {
   cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   equipoId  String
   equipo    Equipo  @relation(fields: [equipoId], references: [id], onDelete: Cascade)
-  precio    Float
-  nota      String?
-  updatedAt DateTime @updatedAt
+  precio         Float
+  precioOriginal Float?   // precio de lista al momento de registrar el especial
+  nota           String?
+  updatedAt      DateTime @updatedAt
 
   @@unique([clienteId, equipoId])
   @@map("precios_cliente_equipo")
@@ -125,6 +127,7 @@ model Trato {
   ventanaMontajeFin     String?  // ej: "14:00" — hora límite para terminar montaje
   // ─────────────────────────────────────────────────────────────────────────
 
+  scoutingData        String?  // JSON: venue scouting form data
   tipoProspecto       String   @default("ACTIVO")  // ACTIVO | NURTURING
   nurturingData       String?  // JSON: { etapa, temperatura, nextFollowup, nextMotivo, log[] }
   motivoPerdida       String?
@@ -135,9 +138,10 @@ model Trato {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  cotizaciones Cotizacion[]
-  proyecto     Proyecto?
-  archivos     TratoArchivo[]
+  cotizaciones           Cotizacion[]
+  proyecto               Proyecto?
+  archivos               TratoArchivo[]
+  levantamientoContenido LevantamientoContenido?
 
   @@map("tratos")
 }
@@ -202,6 +206,7 @@ model Cotizacion {
   subtotalHospedaje      Float @default(0)
   total                  Float @default(0)
   aplicaIva              Boolean @default(false)
+  incluirChofer          Boolean @default(false)  // Toggle: agregar servicio de chofer ($500)
   montoIva               Float @default(0)
   granTotal              Float @default(0)
 
@@ -212,6 +217,8 @@ model Cotizacion {
   utilidadEstimada       Float @default(0)
   porcentajeUtilidad     Float @default(0)
 
+  mainstageTradeData  String?  // JSON: { activo, pct, entregables[] }
+  planPagos           String?  // JSON: esquema de pagos (porcentajes y fechas para CxC)
   observaciones       String?
   terminosComerciales String?
   vigenciaDias        Int      @default(30)
@@ -303,6 +310,18 @@ model Proyecto {
   reporteCatering        String?
   // Marketing content (JSON: { activo: boolean, telefono: string, nombre: string })
   marketingData          String?
+  // Documentos técnicos por tipo de evento (JSON estructurado)
+  docsTecnicos           String?
+  // Chofer asignado al proyecto
+  choferNombre           String?   // Nombre del chofer (del personal del proyecto o externo)
+  choferExterno          Boolean   @default(false)  // true = chofer externo (genera CxP)
+  choferCosto            Float?    // Costo del chofer externo
+  // Recolección de equipo rentado (solo proyectos RENTA)
+  recoleccionStatus      String    @default("NO_APLICA")  // NO_APLICA | PENDIENTE | EN_CAMINO | COMPLETADA
+  recoleccionNotas       String?   // Observaciones al recolectar (daños, faltantes, etc.)
+  recoleccionFechaReal   DateTime? // Fecha/hora real en que se recolectó el equipo
+  protocoloSalida        String?   // JSON: protocolo de entrega al cliente (responsable, condicion, items[], timestamp)
+  protocoloEntrada       String?   // JSON: protocolo de recepción en bodega (responsable, condicion, danios, items[], timestamp)
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -421,6 +440,8 @@ model Equipo {
   costoProveedor       Float?                        // Costo que nos cobra el proveedor (solo equipos externos)
   costoInternoEstimado Float?                        // Costo interno estimado (mantenimiento, para equipos propios)
   estado               String          @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
+  amperajeRequerido    Float?          // Consumo eléctrico en amperes
+  voltajeRequerido     Int?            // Voltaje requerido (110 | 220 | etc.)
   notas                String?
   activo               Boolean         @default(true)
   createdAt            DateTime        @default(now())
@@ -493,6 +514,7 @@ model Tecnico {
   datosFiscales      String?
   activo             Boolean    @default(true)
   comentarios        String?
+  habilidades        String?    // JSON array of skill tags
   createdAt          DateTime   @default(now())
 
   proyectoPersonal ProyectoPersonal[]
@@ -642,22 +664,24 @@ model CuentaPagar {
 // ─── EVALUACIÓN ──────────────────────────────────────────────────────────────
 
 model EvaluacionInterna {
-  id                   String   @id @default(cuid())
-  proyectoId           String   @unique
-  proyecto             Proyecto @relation(fields: [proyectoId], references: [id])
-  planeacionPrevia     Int?
-  cumplimientoTecnico  Int?
-  puntualidad          Int?
-  resolucionOperativa  Int?
-  desempenoPersonal    Int?
-  comunicacionInterna  Int?
-  comunicacionCliente  Int?
-  usoEquipo            Int?
-  rentabilidadReal     Int?
-  resultadoGeneral     Int?
-  promedioCalculado    Float?
-  notas                String?
-  createdAt            DateTime @default(now())
+  id                    String   @id @default(cuid())
+  proyectoId            String   @unique
+  proyecto              Proyecto @relation(fields: [proyectoId], references: [id])
+  planeacionPrevia      Int?
+  cumplimientoTecnico   Int?
+  puntualidad           Int?
+  resolucionOperativa   Int?
+  desempenoPersonal     Int?
+  comunicacionInterna   Int?
+  comunicacionCliente   Int?
+  usoEquipo             Int?
+  rentabilidadReal      Int?
+  resultadoGeneral      Int?
+  promedioCalculado     Float?
+  notas                 String?
+  comentariosCriterios  String?  // JSON: {criterioKey: "texto"}
+  reportePostEvento     String?  // JSON: [{area, problema, causa, solucion}]
+  createdAt             DateTime @default(now())
 
   @@map("evaluaciones_internas")
 }
@@ -707,6 +731,8 @@ model ConfigComisiones {
   pctAsignadoOrigen    Float    @default(5)    // 5% al vendedor original (cliente asignado)
   // Bono
   pctBono              Float    @default(3)    // 3% si alcanza el piso
+  // Metas de prospección outbound
+  metaProspectoDiaria  Int      @default(12)   // prospectos outbound mínimos por día
   updatedAt            DateTime @updatedAt
 
   @@map("config_comisiones")
@@ -753,6 +779,7 @@ model MantenimientoEquipo {
   estadoEquipo         String?
   comentarios          String?
   proximoMantenimiento DateTime?
+  fotoEvidencia        String?       // base64 data URL
   createdAt            DateTime      @default(now())
 
   @@map("mantenimientos_equipos")
@@ -1045,6 +1072,48 @@ model PlantillaEquipoItem {
   @@map("plantillas_equipo_items")
 }
 
+// ─── VEHÍCULOS Y MANTENIMIENTO ───────────────────────────────────────────────
+
+model Vehiculo {
+  id                   String    @id @default(cuid())
+  nombre               String    // Nombre identificador Ej. "Sprinter Negra"
+  marca                String?
+  modelo               String?
+  anio                 Int?
+  placas               String?
+  color                String?
+  kilometraje          Int?      // Km actuales del odómetro
+  proximoServicioKm    Int?      // Km en que toca el próximo servicio
+  proximoServicioFecha DateTime? // Fecha del próximo servicio programado
+  activo               Boolean   @default(true)
+  notas                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  mantenimientos       MantenimientoVehiculo[]
+  @@map("vehiculos")
+}
+
+model MantenimientoVehiculo {
+  id             String    @id @default(cuid())
+  vehiculoId     String
+  vehiculo       Vehiculo  @relation(fields: [vehiculoId], references: [id], onDelete: Cascade)
+  fecha          DateTime
+  km             Int?      // Km al momento del registro
+  tipoRegistro   String    // SERVICIO | REPARACION | REVISION | ACCIDENTE | OTRO
+  servicio       String    // Descripción del trabajo realizado
+  aceite         String?   // Tipo/número de aceite utilizado
+  anticongelante String?   // Tipo/número de anticongelante
+  estadoLlantas  String?   // Descripción del estado de llantas
+  proximoKm      Int?      // Km para el próximo servicio
+  proximaFecha   DateTime? // Fecha para el próximo servicio
+  prioridad      String    @default("NORMAL") // BAJA | NORMAL | ALTA | URGENTE
+  estatus        String    @default("COMPLETADO") // PENDIENTE | EN_PROCESO | COMPLETADO
+  costo          Float?
+  comentarios    String?
+  createdAt      DateTime  @default(now())
+  @@map("mantenimiento_vehiculos")
+}
+
 // ─── OPERACIONES ─────────────────────────────────────────────────────────────
 
 model IniciativaExterna {
@@ -1212,37 +1281,37 @@ model PuestoIdeal {
   titulo      String
   area        String  // PRODUCCION | ADMINISTRACION | COMERCIAL | OPERACIONES | RRHH | TECNOLOGIA
   descripcion String?
-  objetivoRol String?
+  objetivoRol String? @map("objetivo_rol")
 
   // Perfil demográfico
-  edadMin           Int?
-  edadMax           Int?
+  edadMin           Int?    @map("edad_min")
+  edadMax           Int?    @map("edad_max")
   ciudades          String? // JSON array
-  nivelEstudios     String? // BACHILLERATO | LICENCIATURA | POSGRADO | INDIFERENTE
-  carrerasSugeridas String?
+  nivelEstudios     String? @map("nivel_estudios") // BACHILLERATO | LICENCIATURA | POSGRADO | INDIFERENTE
+  carrerasSugeridas String? @map("carreras_sugeridas")
 
   // Competencias (JSON arrays de strings)
-  habilidadesTecnicas String?
-  habilidadesBlandas  String?
+  habilidadesTecnicas String? @map("habilidades_tecnicas")
+  habilidadesBlandas  String? @map("habilidades_blandas")
   conocimientos       String?
   aptitudes           String?
   valores             String?
-  areasDesarrollo     String?
+  areasDesarrollo     String? @map("areas_desarrollo")
 
   // Criterios de evaluación JSON: [{criterio, peso, descripcion}]
-  criteriosEvaluacion String?
+  criteriosEvaluacion String? @map("criterios_evaluacion")
 
   // Condiciones
-  salarioMin   Float?
-  salarioMax   Float?
-  tipoContrato String? // NOMINA | HONORARIOS | FREELANCE
+  salarioMin   Float?  @map("salario_min")
+  salarioMax   Float?  @map("salario_max")
+  tipoContrato String? @map("tipo_contrato") // NOMINA | HONORARIOS | FREELANCE
   modalidad    String? // PRESENCIAL | REMOTO | HIBRIDO
   horario      String?
   prestaciones String? // JSON array
 
   activo    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
 
   postulaciones Postulacion[]
 
@@ -1256,28 +1325,28 @@ model Candidato {
   telefono String?
   ciudad   String?
   edad     Int?
-  nivelEstudios String?
+  nivelEstudios String? @map("nivel_estudios")
   carrera  String?
 
   // Discovery form
-  experienciaEventos      String?  // describe su experiencia en eventos
-  aniosExperienciaEventos Int?
-  eventoDestacado         String?  // evento más relevante que ha trabajado
-  situacionResuelta       String?  // situación real que resolvió
-  comoResolveria          String?  // cómo resolvería un problema operativo
-  motivacion              String?  // por qué quiere trabajar en Mainstage
-  visionLargoPlazo        String?  // dónde se ve en 3-5 años
-  disposicionHorario      Boolean? // disponibilidad 9am-5pm L-V
-  disposicionFines        Boolean? // disponibilidad fines de semana / eventos nocturnos
-  salarioEsperado         Float?
-  habilidades             String?  // texto libre
-  experienciaPrevia       String?  // historial resumido
+  experienciaEventos      String?  @map("experiencia_eventos")
+  aniosExperienciaEventos Int?     @map("anios_experiencia_eventos")
+  eventoDestacado         String?  @map("evento_destacado")
+  situacionResuelta       String?  @map("situacion_resuelta")
+  comoResolveria          String?  @map("como_resolveria")
+  motivacion              String?
+  visionLargoPlazo        String?  @map("vision_largo_plazo")
+  disposicionHorario      Boolean? @map("disposicion_horario")
+  disposicionFines        Boolean? @map("disposicion_fines")
+  salarioEsperado         Float?   @map("salario_esperado")
+  habilidades             String?
+  experienciaPrevia       String?  @map("experiencia_previa")
   linkedin                String?
   portfolio               String?
   notas                   String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
 
   postulaciones Postulacion[]
 
@@ -1286,40 +1355,231 @@ model Candidato {
 
 model Postulacion {
   id          String  @id @default(cuid())
-  candidatoId String
+  candidatoId String  @map("candidato_id")
   candidato   Candidato   @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
-  puestoId    String?
+  puestoId    String? @map("puesto_id")
   puesto      PuestoIdeal? @relation(fields: [puestoId], references: [id])
 
   // Puesto manual si no hay PuestoIdeal vinculado
-  puestoManual String?
-  areaManual   String?
+  puestoManual String? @map("puesto_manual")
+  areaManual   String? @map("area_manual")
 
   // Pipeline
   etapa String @default("NUEVO") // NUEVO | EVALUACION | PROPUESTA_ENVIADA | APROBADO | CONTRATADO | RECHAZADO
 
   // Propuesta de trabajo
-  salarioPropuesto     Float?
-  fechaIngresoEstimada DateTime?
+  salarioPropuesto     Float?    @map("salario_propuesto")
+  fechaIngresoEstimada DateTime? @map("fecha_ingreso_estimada")
   beneficios           String?   // JSON array
   observaciones        String?
-  propuestaToken       String?   @unique
-  propuestaAceptada    Boolean?
-  propuestaFechaEnvio  DateTime?
+  propuestaToken       String?   @unique @map("propuesta_token")
+  propuestaAceptada    Boolean?  @map("propuesta_aceptada")
+  propuestaFechaEnvio  DateTime? @map("propuesta_fecha_envio")
 
   // Contrato
-  contratoGenerado Boolean  @default(false)
-  contratoFecha    DateTime?
+  contratoGenerado Boolean  @default(false) @map("contrato_generado")
+  contratoFecha    DateTime? @map("contrato_fecha")
 
   // Link al PersonalInterno creado al contratar
-  personalInternoId String?
+  personalInternoId String? @map("personal_interno_id")
 
   // Evaluación vs perfil
-  notasEvaluacion String?
-  puntajeTotal    Float?
+  notasEvaluacion String? @map("notas_evaluacion")
+  puntajeTotal    Float?  @map("puntaje_total")
+
+  // Onboarding checklist (JSON: [{id,label,done,fecha}])
+  onboardingData  String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  @@map("postulaciones")
+}
+
+// ─── CAMPAÑAS ─────────────────────────────────────────────────────────────────
+
+model TipoCampana {
+  id                  String   @id @default(cuid())
+  nombre              String
+  objetivo            String   @default("INFORMATIVO")  // INFORMATIVO | VENTA | ENTRETENIMIENTO | POSICIONAMIENTO
+  objetivoMeta        String   @default("RECONOCIMIENTO") // RECONOCIMIENTO | TRAFICO | INTERACCION | LEADS | VENTAS
+  formato             String   @default("VIDEO")         // IMAGEN | VIDEO | CARRUSEL | REEL | HISTORIA | COLECCION
+  recurrencia         String   @default("MENSUAL")       // MENSUAL | QUINCENAL | SEMANAL
+  canal               String   @default("META")
+  duracionDias        Int      @default(14)
+  presupuestoEstimado Float?
+  publicoEdadMin      Int      @default(25)
+  publicoEdadMax      Int      @default(55)
+  publicoGenero       String   @default("TODOS")         // TODOS | HOMBRES | MUJERES
+  ubicaciones         String   @default("FEED_IG,REELS_IG,STORIES_IG")
+  cta                 String   @default("MAS_INFORMACION")
+  copyReferencia      String?
+  pixelEvento         String?
+  descripcion         String?
+  color               String   @default("#B3985B")
+  activo              Boolean  @default(true)
+  orden               Int      @default(0)
+  createdAt           DateTime @default(now())
+
+  ejecuciones         EjecucionCampana[]
+
+  @@map("tipos_campana")
+}
+
+model EjecucionCampana {
+  id             String       @id @default(cuid())
+  tipoId         String?
+  tipo           TipoCampana? @relation(fields: [tipoId], references: [id])
+  nombre         String
+  objetivo       String?
+  canal          String?
+  color          String?
+  fechaInicio    DateTime
+  fechaFin       DateTime
+  estado         String       @default("PLANIFICADA") // PLANIFICADA | EN_EJECUCION | COMPLETADA | CANCELADA
+  presupuesto    Float?
+  notas          String?
+  mes            String       // YYYY-MM
+  idMetaAds      String?
+  alcance        Int?
+  impresiones    Int?
+  clics          Int?
+  ctr            Float?
+  cantResultados Int?
+  costoResultado Float?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("ejecuciones_campana")
+}
+
+// ─── META ADS ─────────────────────────────────────────────────────────────────
+
+model MetaCampana {
+  id             String   @id @default(cuid())
+  nombre         String
+  objetivo       String   @default("LEADS")   // LEADS | AWARENESS | CONVERSIONES | TRAFICO
+  estado         String   @default("BORRADOR") // BORRADOR | ACTIVA | PAUSADA | FINALIZADA
+  presupuesto    Float    @default(0)
+  fechaInicio    DateTime?
+  fechaFin       DateTime?
+  audiencia      String?  // JSON: segmentación de audiencia
+  ubicaciones    String?  // JSON: plataformas (Facebook, Instagram, Audience Network)
+  notas          String?
+  creadoPorId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  anuncios       MetaAnuncio[]
+  resultados     MetaResultado[]
+
+  @@map("meta_campanas")
+}
+
+model MetaAnuncio {
+  id          String   @id @default(cuid())
+  campanaId   String
+  campana     MetaCampana @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+  nombre      String
+  formato     String   @default("IMAGEN") // IMAGEN | VIDEO | CARRUSEL | HISTORIA
+  titular     String?
+  descripcion String?
+  cta         String?  // Texto del call-to-action
+  urlDestino  String?
+  estado      String   @default("ACTIVO") // ACTIVO | PAUSADO | RECHAZADO
+  notas       String?
+  createdAt   DateTime @default(now())
+
+  @@map("meta_anuncios")
+}
+
+model MetaResultado {
+  id             String   @id @default(cuid())
+  campanaId      String
+  campana        MetaCampana @relation(fields: [campanaId], references: [id], onDelete: Cascade)
+  fecha          DateTime
+  impresiones    Int      @default(0)
+  alcance        Int      @default(0)
+  clics          Int      @default(0)
+  leads          Int      @default(0)
+  gastado        Float    @default(0)
+  cpm            Float?   // Costo por mil impresiones
+  cpc            Float?   // Costo por clic
+  cpl            Float?   // Costo por lead
+  frecuencia     Float?
+  notas          String?
+  createdAt      DateTime @default(now())
+
+  @@map("meta_resultados")
+}
+
+// ─── LEVANTAMIENTO DE CONTENIDO ──────────────────────────────────────────────
+
+model LevantamientoContenido {
+  id                          String    @id @default(cuid())
+  tratoId                     String    @unique
+  trato                       Trato     @relation(fields: [tratoId], references: [id], onDelete: Cascade)
+
+  nombreEvento                String?
+  tipoEvento                  String?
+  fecha                       DateTime?
+  horarioEvento               String?
+  horarioCobertura            String?
+  lugar                       String?
+  nombreCliente               String?
+  redesSocialesCliente        String?
+  tieneProveedoresAdicionales String?   // SI | NO | SIN_INFO
+  proveedoresDetalle          String?
+  objetivosContenido          String?   // JSON array de strings
+  detalleObjetivo             String?
+  planCobertura               String?   // BASICO | ESTANDAR | PLUS | INTEGRAL | OTRO
+  planCoberturaOtro           String?
+  temasSugeridos              String?
+  colaboradoresCamara         Boolean?
+  colaboradoresNombres        String?
+  notasAdicionales            String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("postulaciones")
+  @@map("levantamientos_contenido")
+}
+
+// ─── VENUES ──────────────────────────────────────────────────────────────────
+
+model Venue {
+  id                  String   @id @default(cuid())
+  nombre              String
+  direccion           String?
+  ciudad              String?
+  contacto            String?
+  telefonoContacto    String?
+  emailContacto       String?
+  capacidadPersonas   Int?
+  // Dimensiones
+  largoM              Float?
+  anchoM              Float?
+  alturaMaximaM       Float?
+  // Acceso
+  accesoVehicular     String?
+  puntoDescarga       String?
+  // Electricidad
+  voltajeDisponible   String?
+  amperajeTotal       Float?
+  fases               String?
+  ubicacionTablero    String?
+  // Restricciones
+  restriccionDecibeles  String?
+  restriccionHorario    String?
+  restriccionInstalacion String?
+  // Información adicional
+  tiposEvento         String?  // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL"]
+  calificacion        Float?   // 1-5
+  notas               String?
+  fotoPortada         String?  // base64
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("venues")
 }

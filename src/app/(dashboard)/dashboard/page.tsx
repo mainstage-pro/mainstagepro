@@ -39,6 +39,8 @@ export default async function DashboardPage() {
     cxpVence7dias,
     movimientosMes,
     cuentasBancarias,
+    // ── ESTA SEMANA ─────────────────────────────
+    proyectosEstaSemana,
     // ── MARKETING ───────────────────────────────
     pubsPorEstado,
     pubsProximas,
@@ -158,6 +160,16 @@ export default async function DashboardPage() {
       },
     }),
 
+    // ── ESTA SEMANA ─────────────────────────────
+    prisma.proyecto.findMany({
+      where: { estado: { in: ["PLANEACION","CONFIRMADO","EN_CURSO"] }, fechaEvento: { gte: ahora, lte: en7dias } },
+      include: {
+        cliente: { select: { nombre: true } },
+        personal: { where: { confirmado: false }, select: { id: true, tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } } },
+      },
+      orderBy: { fechaEvento: "asc" },
+    }),
+
     // ── MARKETING ───────────────────────────────
     prisma.publicacion.groupBy({
       by: ["estado"],
@@ -260,6 +272,82 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ESTA SEMANA
+      ══════════════════════════════════════════════════════════════════════ */}
+      {(proyectosEstaSemana.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] font-bold text-[#B3985B] uppercase tracking-widest">Esta semana</p>
+            <div className="flex-1 h-px bg-[#B3985B]/20" />
+            <span className="text-[10px] text-[#B3985B]/60">próximos 7 días</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Proyectos */}
+            <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider">Eventos</p>
+                <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded-full">{proyectosEstaSemana.length}</span>
+              </div>
+              {proyectosEstaSemana.length === 0 ? (
+                <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
+              ) : proyectosEstaSemana.map(p => {
+                const dias = Math.ceil((new Date(p.fechaEvento!).getTime() - ahora.getTime()) / 86400000);
+                const sinConfirmar = p.personal.length;
+                return (
+                  <a key={p.id} href={`/proyectos/${p.id}`} className="block px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-white text-xs font-medium truncate">{p.nombre}</p>
+                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias <= 1 ? "bg-red-900/40 text-red-300" : dias <= 3 ? "bg-yellow-900/40 text-yellow-300" : "bg-[#1e1e1e] text-gray-400"}`}>
+                        {dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : `${dias}d`}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-[10px] mt-0.5">{p.cliente.nombre}</p>
+                    {sinConfirmar > 0 && (
+                      <p className="text-orange-400 text-[10px] mt-0.5">⚠ {sinConfirmar} técnico{sinConfirmar !== 1 ? "s" : ""} sin confirmar</p>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+            {/* CxC */}
+            <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider">Cobros</p>
+                <span className="text-[10px] text-yellow-400 bg-yellow-900/20 px-2 py-0.5 rounded-full">{cxcVence7dias.length}</span>
+              </div>
+              {cxcVence7dias.length === 0 ? (
+                <p className="text-gray-600 text-xs px-4 py-3">Sin cobros próximos</p>
+              ) : cxcVence7dias.map((c, i) => (
+                <a key={i} href="/finanzas/cobros-pagos" className="flex items-center justify-between px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
+                  <p className="text-white text-xs truncate">{c.cliente.nombre}</p>
+                  <p className="text-yellow-400 text-[10px] font-semibold ml-2 shrink-0">
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                  </p>
+                </a>
+              ))}
+            </div>
+            {/* CxP */}
+            <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider">Pagos</p>
+                <span className="text-[10px] text-orange-400 bg-orange-900/20 px-2 py-0.5 rounded-full">{cxpVence7dias.length}</span>
+              </div>
+              {cxpVence7dias.length === 0 ? (
+                <p className="text-gray-600 text-xs px-4 py-3">Sin pagos próximos</p>
+              ) : cxpVence7dias.map((c, i) => (
+                <a key={i} href="/finanzas/cobros-pagos" className="flex items-center justify-between px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
+                  <p className="text-white text-xs truncate">{c.concepto ?? "Pago"}</p>
+                  <p className="text-orange-400 text-[10px] font-semibold ml-2 shrink-0">
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           ADMINISTRACIÓN

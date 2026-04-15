@@ -82,7 +82,27 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { personalId } = await params;
+  const { id: proyectoId, personalId } = await params;
+
+  // Obtener el técnico asignado antes de borrar
+  const personal = await prisma.proyectoPersonal.findUnique({
+    where: { id: personalId },
+    select: { tecnicoId: true },
+  });
+
   await prisma.proyectoPersonal.delete({ where: { id: personalId } });
+
+  // Borrar la CxP vinculada a este técnico en este proyecto (si existe y está pendiente)
+  if (personal?.tecnicoId) {
+    await prisma.cuentaPagar.deleteMany({
+      where: {
+        tecnicoId: personal.tecnicoId,
+        proyectoId,
+        estado: "PENDIENTE",
+        tipoAcreedor: "TECNICO",
+      },
+    });
+  }
+
   return NextResponse.json({ ok: true });
 }

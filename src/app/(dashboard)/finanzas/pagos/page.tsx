@@ -14,7 +14,7 @@ interface CxP {
   notas: string | null;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   proveedor: { id: string; nombre: string; telefono: string | null } | null;
-  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string; cliente: { nombre: string } | null } | null;
 }
 
 interface Semana {
@@ -33,8 +33,18 @@ interface GrupoPersona {
   totalPendiente: number;
 }
 
+interface GrupoProyecto {
+  proyectoId: string;
+  proyectoNombre: string;
+  proyectoNumero: string;
+  fechaEvento: string | null;
+  clienteNombre: string | null;
+  items: CxP[];
+  totalPendiente: number;
+}
+
 type Tab = "TECNICO" | "PROVEEDOR";
-type Vista = "semana" | "elemento";
+type Vista = "semana" | "elemento" | "proyecto";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
@@ -92,6 +102,16 @@ function AccionesCxP({
     });
     setSaving(false);
     setMode(null);
+    // Abrir WA de confirmación si hay teléfono
+    const tel = (item.tecnico?.celular ?? item.proveedor?.telefono ?? "").replace(/\D/g, "");
+    const nombre = item.tecnico?.nombre ?? item.proveedor?.nombre ?? "";
+    if (tel) {
+      const num = tel.startsWith("52") ? tel : `52${tel}`;
+      const monto = parseFloat(pagarMonto) || item.monto;
+      const proyecto = item.proyecto ? `${item.proyecto.nombre} (${item.proyecto.numeroProyecto})` : "";
+      const msg = `Hola ${nombre.split(" ")[0]}! 👋\n\nTe confirmamos el pago de *${new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(monto)}* correspondiente a:\n\n📋 *${item.concepto}*${proyecto ? `\n🎪 ${proyecto}` : ""}\n\n¡Gracias! 🙌 Mainstage Pro`;
+      window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, "_blank");
+    }
     onDone();
   }
 
@@ -399,6 +419,152 @@ function CardElemento({
   );
 }
 
+// ─── Vista por proyecto: card de un proyecto ──────────────────────────────────
+function CardProyecto({ grupo, tab, onDone }: { grupo: GrupoProyecto; tab: Tab; onDone: () => void }) {
+  const [open, setOpen] = useState(true);
+  const pendientes = grupo.items.filter(i => i.estado !== "LIQUIDADO");
+  const pagados = grupo.items.filter(i => i.estado === "LIQUIDADO");
+  const tieneVencido = pendientes.some(i => esVencido(i));
+
+  return (
+    <div className={`bg-[#111] border rounded-xl overflow-hidden ${tieneVencido ? "border-red-900/40" : "border-[#222]"}`}>
+      {/* Header del proyecto */}
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-3 px-4 py-3 bg-[#0d0d0d] border-b border-[#1a1a1a] hover:bg-[#111] transition-colors text-left"
+      >
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${tieneVencido ? "bg-red-900/30 text-red-400" : "bg-[#B3985B]/15 text-[#B3985B]"}`}>
+          #{grupo.proyectoNumero}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href={`/proyectos/${grupo.proyectoId}`}
+              onClick={e => e.stopPropagation()}
+              className="text-white font-semibold text-sm hover:text-[#B3985B] transition-colors"
+            >
+              {grupo.proyectoNombre}
+            </Link>
+            {tieneVencido && <span className="text-[10px] text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">Vencido</span>}
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+            {grupo.clienteNombre && (
+              <span className="text-xs text-gray-500">{grupo.clienteNombre}</span>
+            )}
+            {grupo.fechaEvento && (
+              <span className="text-xs text-[#B3985B]/70">{fmtFechaMini(grupo.fechaEvento.slice(0, 10))}</span>
+            )}
+            <span className="text-[10px] text-gray-600">
+              {pendientes.length} pago{pendientes.length !== 1 ? "s" : ""} pendiente{pendientes.length !== 1 ? "s" : ""}
+              {pagados.length > 0 ? ` · ${pagados.length} pagado${pagados.length !== 1 ? "s" : ""}` : ""}
+            </span>
+          </div>
+        </div>
+        <div className="text-right shrink-0 mr-2">
+          <p className="text-white font-bold text-base">{fmt(grupo.totalPendiente)}</p>
+          <p className="text-gray-600 text-[10px]">pendiente</p>
+        </div>
+        <span className="text-gray-600 text-xs shrink-0">{open ? "▲" : "▼"}</span>
+      </button>
+
+      {/* Tabla de pagos del proyecto */}
+      {open && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1a1a1a]">
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider px-4 py-2">
+                  {tab === "TECNICO" ? "Técnico" : "Proveedor"}
+                </th>
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider px-3 py-2">Concepto</th>
+                <th className="text-right text-[10px] font-semibold text-[#555] uppercase tracking-wider px-3 py-2">Monto</th>
+                <th className="text-center text-[10px] font-semibold text-[#555] uppercase tracking-wider px-3 py-2">Fecha</th>
+                <th className="text-center text-[10px] font-semibold text-[#555] uppercase tracking-wider px-3 py-2">Estado</th>
+                <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider px-4 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]">
+              {grupo.items.map(item => {
+                const vencido = esVencido(item);
+                const pagado = item.estado === "LIQUIDADO";
+                const nombre = tab === "TECNICO" ? (item.tecnico?.nombre ?? "—") : (item.proveedor?.nombre ?? "—");
+                const rol = tab === "TECNICO" ? item.tecnico?.rol?.nombre : null;
+                const contacto = tab === "TECNICO" ? item.tecnico?.celular : item.proveedor?.telefono;
+                const waText = `Hola ${nombre}! 👋 Tu pago de ${fmt(item.monto)} por "${item.concepto}" está programado.`;
+                const waLink = contacto
+                  ? `https://wa.me/52${contacto.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`
+                  : null;
+
+                return (
+                  <tr key={item.id} className={`${pagado ? "opacity-40" : ""} hover:bg-[#1a1a1a]/40 transition-colors`}>
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${vencido && !pagado ? "bg-red-900/30 text-red-400" : "bg-[#B3985B]/15 text-[#B3985B]"}`}>
+                          {nombre.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-white text-xs font-medium leading-none">{nombre}</p>
+                          {rol && <p className="text-gray-500 text-[10px]">{rol}</p>}
+                        </div>
+                        {waLink && (
+                          <a href={waLink} target="_blank" rel="noopener noreferrer"
+                            className="p-1 rounded bg-green-900/20 hover:bg-green-900/40 text-green-400 transition-colors"
+                            title="WhatsApp">
+                            {WA_ICON}
+                          </a>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <p className="text-gray-300 text-xs leading-snug max-w-48">{item.concepto}</p>
+                      {item.notas && <span className="text-[10px] text-orange-400">★ No contemplado</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className="text-white font-semibold text-sm">{fmt(item.monto)}</span>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`text-xs ${vencido && !pagado ? "text-red-400 font-semibold" : "text-gray-400"}`}>
+                        {fmtFechaCorta(item.fechaCompromiso.slice(0, 10))}
+                      </span>
+                      {vencido && !pagado && <p className="text-[10px] text-red-500">vencido</p>}
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        pagado ? "bg-green-900/30 text-green-400"
+                        : vencido ? "bg-red-900/30 text-red-400"
+                        : item.estado === "PARCIAL" ? "bg-blue-900/30 text-blue-400"
+                        : "bg-yellow-900/30 text-yellow-400"
+                      }`}>
+                        {pagado ? "Pagado" : vencido ? "Vencido" : item.estado === "PARCIAL" ? "Parcial" : "Pendiente"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <AccionesCxP item={item} onDone={onDone} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {pendientes.length > 1 && (
+              <tfoot>
+                <tr className="border-t border-[#333] bg-[#0d0d0d]">
+                  <td colSpan={2} className="px-4 py-2.5 text-xs text-gray-500 font-medium">
+                    Total pendiente — {grupo.proyectoNombre}
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <span className="text-white font-bold text-sm">{fmt(grupo.totalPendiente)}</span>
+                  </td>
+                  <td colSpan={3} />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Vista por semana: fila de CxP ────────────────────────────────────────────
 function FilaSemana({ item, tab, onDone }: { item: CxP; tab: Tab; onDone: () => void }) {
   const nombre = tab === "TECNICO" ? (item.tecnico?.nombre ?? "—") : (item.proveedor?.nombre ?? "—");
@@ -578,7 +744,7 @@ function FormNuevoNoContemplado({
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function PagosSemanaPage() {
   const [tab, setTab] = useState<Tab>("TECNICO");
-  const [vista, setVista] = useState<Vista>("elemento");
+  const [vista, setVista] = useState<Vista>("proyecto");
   const [semanas, setSemanas] = useState<Semana[]>([]);
   const [loading, setLoading] = useState(true);
   const [semanaSelIdx, setSemanaSelIdx] = useState(0);
@@ -652,6 +818,36 @@ export default function PagosSemanaPage() {
     return Array.from(map.values()).sort((a, b) => b.totalPendiente - a.totalPendiente);
   })();
 
+  // ── Agrupar por proyecto ──
+  const gruposProyecto: GrupoProyecto[] = (() => {
+    const map = new Map<string, GrupoProyecto>();
+    for (const item of todosItems) {
+      if (!item.proyecto) continue;
+      const key = item.proyecto.id;
+      if (!map.has(key)) {
+        map.set(key, {
+          proyectoId: item.proyecto.id,
+          proyectoNombre: item.proyecto.nombre,
+          proyectoNumero: item.proyecto.numeroProyecto,
+          fechaEvento: item.proyecto.fechaEvento ?? null,
+          clienteNombre: item.proyecto.cliente?.nombre ?? null,
+          items: [],
+          totalPendiente: 0,
+        });
+      }
+      const g = map.get(key)!;
+      g.items.push(item);
+      if (item.estado !== "LIQUIDADO") g.totalPendiente += item.monto;
+    }
+    // Ordenar por fecha de evento más próxima primero
+    return Array.from(map.values()).sort((a, b) => {
+      if (!a.fechaEvento && !b.fechaEvento) return 0;
+      if (!a.fechaEvento) return 1;
+      if (!b.fechaEvento) return -1;
+      return a.fechaEvento.localeCompare(b.fechaEvento);
+    });
+  })();
+
   // ── Próximo miércoles de la semana actual ──
   const proximoMiercoles = semanas.find(s => s.lunesIso === lunesDeSemana(hoy))?.miercolesIso
     ?? semanas[0]?.miercolesIso;
@@ -686,6 +882,10 @@ export default function PagosSemanaPage() {
 
         {/* Toggle vista */}
         <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
+          <button onClick={() => setVista("proyecto")}
+            className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${vista === "proyecto" ? "bg-[#222] text-white" : "text-gray-500 hover:text-white"}`}>
+            <span>🎪</span> Por proyecto
+          </button>
           <button onClick={() => setVista("elemento")}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${vista === "elemento" ? "bg-[#222] text-white" : "text-gray-500 hover:text-white"}`}>
             <span>👤</span> Por elemento
@@ -717,9 +917,9 @@ export default function PagosSemanaPage() {
           <p className="text-gray-600 text-xs">{proximoMiercoles ? fmtFechaCorta(proximoMiercoles) : "—"}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Elementos</p>
-          <p className="text-white text-lg font-bold">{gruposElemento.filter(g => g.totalPendiente > 0).length}</p>
-          <p className="text-gray-600 text-xs">{tab === "TECNICO" ? "técnicos" : "proveedores"} con saldo</p>
+          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Proyectos</p>
+          <p className="text-white text-lg font-bold">{gruposProyecto.filter(g => g.totalPendiente > 0).length}</p>
+          <p className="text-gray-600 text-xs">con pagos pendientes</p>
         </div>
       </div>
 
@@ -731,6 +931,19 @@ export default function PagosSemanaPage() {
         </div>
       ) : (
         <>
+          {/* ── VISTA POR PROYECTO ── */}
+          {vista === "proyecto" && (
+            <div className="space-y-4">
+              {gruposProyecto.length === 0 ? (
+                <div className="py-10 text-center text-gray-600 text-sm">No hay pagos pendientes por proyecto</div>
+              ) : (
+                gruposProyecto.map(grupo => (
+                  <CardProyecto key={grupo.proyectoId} grupo={grupo} tab={tab} onDone={cargar} />
+                ))
+              )}
+            </div>
+          )}
+
           {/* ── VISTA POR ELEMENTO ── */}
           {vista === "elemento" && (
             <div className="space-y-4">

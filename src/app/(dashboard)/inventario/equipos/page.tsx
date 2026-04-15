@@ -20,6 +20,8 @@ type Equipo = {
   categoria: { id: string; nombre: string; orden: number };
   notas: string | null;
   activo: boolean;
+  amperajeRequerido: number | null;
+  voltajeRequerido: number | null;
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -32,12 +34,14 @@ type EditForm = {
   descripcion: string; marca: string; modelo: string; tipo: string;
   precioRenta: string; costoProveedor: string; cantidadTotal: string;
   proveedorDefaultId: string; notas: string; categoriaId: string;
+  amperajeRequerido: string; voltajeRequerido: string;
 };
 
 const EMPTY_FORM: EditForm = {
   descripcion: "", marca: "", modelo: "", tipo: "PROPIO",
   precioRenta: "0", costoProveedor: "", cantidadTotal: "1",
   proveedorDefaultId: "", notas: "", categoriaId: "",
+  amperajeRequerido: "", voltajeRequerido: "",
 };
 
 function fmt(n: number) {
@@ -57,6 +61,28 @@ export default function InventarioEquiposPage() {
   const [nuevoForm, setNuevoForm] = useState<EditForm>(EMPTY_FORM);
   const [creando, setCreando]     = useState(false);
   const [verInactivos, setVerInactivos] = useState(false);
+  const [descargandoPDF, setDescargandoPDF] = useState(false);
+  const [tipoFiltro, setTipoFiltro] = useState<"TODOS" | "PROPIO" | "EXTERNO">("TODOS");
+  const [proveedorFiltro, setProveedorFiltro] = useState<string>("");
+
+  async function descargarPDF() {
+    setDescargandoPDF(true);
+    try {
+      const res = await fetch("/api/inventario/pdf");
+      if (!res.ok) throw new Error("Error al generar PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Inventario-MainstagePro-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargandoPDF(false);
+    }
+  }
 
   async function load() {
     const [eqRes, provRes] = await Promise.all([
@@ -89,6 +115,8 @@ export default function InventarioEquiposPage() {
       proveedorDefaultId: e.proveedorDefaultId ?? "",
       notas: e.notas ?? "",
       categoriaId: e.categoria.id,
+      amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
+      voltajeRequerido: e.voltajeRequerido != null ? String(e.voltajeRequerido) : "",
     });
   }
 
@@ -109,6 +137,8 @@ export default function InventarioEquiposPage() {
         cantidadTotal: nuevoForm.cantidadTotal,
         proveedorDefaultId: nuevoForm.proveedorDefaultId || null,
         notas: nuevoForm.notas || null,
+        amperajeRequerido: nuevoForm.amperajeRequerido !== "" ? nuevoForm.amperajeRequerido : null,
+        voltajeRequerido: nuevoForm.voltajeRequerido !== "" ? nuevoForm.voltajeRequerido : null,
       }),
     });
     await load();
@@ -135,6 +165,8 @@ export default function InventarioEquiposPage() {
         cantidadTotal: parseInt(form.cantidadTotal) || 1,
         proveedorDefaultId: form.proveedorDefaultId || null,
         notas: form.notas || null,
+        amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
+        voltajeRequerido: form.voltajeRequerido !== "" ? parseInt(form.voltajeRequerido) : null,
       }),
     });
     await load();
@@ -151,15 +183,25 @@ export default function InventarioEquiposPage() {
     await load();
   }
 
-  const filtered = search
-    ? equipos.filter(e =>
-        e.descripcion.toLowerCase().includes(search.toLowerCase()) ||
-        (e.marca ?? "").toLowerCase().includes(search.toLowerCase()) ||
-        (e.modelo ?? "").toLowerCase().includes(search.toLowerCase())
-      )
-    : equipos;
+  const filtered = equipos.filter(e => {
+    if (search && !(
+      e.descripcion.toLowerCase().includes(search.toLowerCase()) ||
+      (e.marca ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (e.modelo ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (e.proveedorDefault?.nombre ?? "").toLowerCase().includes(search.toLowerCase())
+    )) return false;
+    if (tipoFiltro === "PROPIO" && e.tipo !== "PROPIO") return false;
+    if (tipoFiltro === "EXTERNO" && e.tipo !== "EXTERNO") return false;
+    if (proveedorFiltro && e.proveedorDefaultId !== proveedorFiltro) return false;
+    return true;
+  });
 
-  const visibles    = verInactivos ? filtered : filtered.filter(e => e.activo);
+  const visibles = verInactivos ? filtered : filtered.filter(e => e.activo);
+
+  // Proveedores que tienen al menos un equipo externo
+  const proveedoresConEquipo = proveedores.filter(p =>
+    equipos.some(e => e.tipo === "EXTERNO" && e.proveedorDefaultId === p.id)
+  );
   const totalActivos   = equipos.filter(e => e.activo).length;
   const totalInactivos = equipos.filter(e => !e.activo).length;
   const porCategoria = categorias.map(cat => ({
@@ -187,6 +229,16 @@ export default function InventarioEquiposPage() {
               {verInactivos ? "Ocultar desactivados" : `Ver desactivados (${totalInactivos})`}
             </button>
           )}
+          <button
+            onClick={descargarPDF}
+            disabled={descargandoPDF}
+            className="flex items-center gap-2 border border-[#333] hover:border-[#B3985B]/50 text-[#6b7280] hover:text-[#B3985B] text-sm px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+            </svg>
+            {descargandoPDF ? "Generando..." : "Descargar PDF"}
+          </button>
           <button
             onClick={() => { setShowNuevo(v => !v); setEditingId(null); setForm(null); }}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -260,6 +312,16 @@ export default function InventarioEquiposPage() {
                 </div>
               </>
             )}
+            <div>
+              <label className="text-xs text-[#6b7280] block mb-1">Amperaje (A)</label>
+              <input type="number" step="0.1" value={nuevoForm.amperajeRequerido} onChange={e => setNuevoForm(f => ({ ...f, amperajeRequerido: e.target.value }))}
+                placeholder="Ej. 15" className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
+            </div>
+            <div>
+              <label className="text-xs text-[#6b7280] block mb-1">Voltaje (V)</label>
+              <input type="number" value={nuevoForm.voltajeRequerido} onChange={e => setNuevoForm(f => ({ ...f, voltajeRequerido: e.target.value }))}
+                placeholder="110 / 220" className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
+            </div>
             <div className="col-span-2">
               <label className="text-xs text-[#6b7280] block mb-1">Notas internas</label>
               <input value={nuevoForm.notas} onChange={e => setNuevoForm(f => ({ ...f, notas: e.target.value }))}
@@ -280,13 +342,54 @@ export default function InventarioEquiposPage() {
         </div>
       )}
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* Búsqueda */}
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar equipo..."
-          className="w-full md:w-80 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+          placeholder="Buscar equipo, marca, proveedor..."
+          className="w-full md:w-72 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
         />
+
+        {/* Filtro por tipo */}
+        <div className="flex gap-1">
+          {(["TODOS", "PROPIO", "EXTERNO"] as const).map(t => (
+            <button key={t} onClick={() => { setTipoFiltro(t); if (t !== "EXTERNO") setProveedorFiltro(""); }}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                tipoFiltro === t
+                  ? t === "PROPIO" ? "bg-green-900/40 border border-green-700/60 text-green-400"
+                    : t === "EXTERNO" ? "bg-blue-900/40 border border-blue-700/60 text-blue-400"
+                    : "bg-[#B3985B] text-black"
+                  : "bg-[#111] border border-[#222] text-gray-400 hover:text-white"
+              }`}>
+              {t === "TODOS" ? `Todos (${equipos.filter(e => e.activo || verInactivos).length})`
+                : t === "PROPIO" ? `Propios (${equipos.filter(e => e.tipo === "PROPIO" && (e.activo || verInactivos)).length})`
+                : `De proveedor (${equipos.filter(e => e.tipo === "EXTERNO" && (e.activo || verInactivos)).length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtro por proveedor (solo visible cuando tipo = EXTERNO o TODOS con proveedores) */}
+        {proveedoresConEquipo.length > 0 && tipoFiltro !== "PROPIO" && (
+          <select
+            value={proveedorFiltro}
+            onChange={e => { setProveedorFiltro(e.target.value); if (e.target.value) setTipoFiltro("EXTERNO"); }}
+            className="bg-[#111] border border-[#222] text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#B3985B]"
+          >
+            <option value="">Todos los proveedores</option>
+            {proveedoresConEquipo.map(p => (
+              <option key={p.id} value={p.id}>{p.nombre}</option>
+            ))}
+          </select>
+        )}
+
+        {/* Limpiar filtros */}
+        {(tipoFiltro !== "TODOS" || proveedorFiltro || search) && (
+          <button onClick={() => { setTipoFiltro("TODOS"); setProveedorFiltro(""); setSearch(""); }}
+            className="text-xs text-gray-500 hover:text-white transition-colors px-2 py-1 border border-[#222] rounded-lg">
+            ✕ Limpiar
+          </button>
+        )}
       </div>
 
       <div className="space-y-6">
@@ -361,6 +464,16 @@ export default function InventarioEquiposPage() {
                                 </div>
                               </>
                             )}
+                            <div>
+                              <label className="text-xs text-[#6b7280] block mb-1">Amperaje (A)</label>
+                              <input type="number" step="0.1" value={form.amperajeRequerido} onChange={ev => setForm(f => f ? { ...f, amperajeRequerido: ev.target.value } : f)}
+                                placeholder="Ej. 15" className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
+                            </div>
+                            <div>
+                              <label className="text-xs text-[#6b7280] block mb-1">Voltaje (V)</label>
+                              <input type="number" value={form.voltajeRequerido} onChange={ev => setForm(f => f ? { ...f, voltajeRequerido: ev.target.value } : f)}
+                                placeholder="110 / 220" className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
+                            </div>
                             <div className="col-span-2">
                               <label className="text-xs text-[#6b7280] block mb-1">Notas internas</label>
                               <input value={form.notas} onChange={ev => setForm(f => f ? { ...f, notas: ev.target.value } : f)}
@@ -388,7 +501,14 @@ export default function InventarioEquiposPage() {
                             <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${e.activo ? "text-white" : "text-[#555] line-through"}`}>{e.descripcion}</p>
                             {!e.activo && <span className="text-[9px] bg-orange-900/40 text-orange-400 border border-orange-800 px-1.5 py-0.5 rounded font-medium">INACTIVO</span>}
                           </div>
-                          {e.notas && <p className="text-[#555] text-xs mt-0.5">{e.notas}</p>}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {e.notas && <p className="text-[#555] text-xs">{e.notas}</p>}
+                            {(e.amperajeRequerido != null || e.voltajeRequerido != null) && (
+                              <span className="text-[10px] text-yellow-600/70">
+                                ⚡ {e.amperajeRequerido != null ? `${e.amperajeRequerido}A` : ""}{e.amperajeRequerido != null && e.voltajeRequerido != null ? " · " : ""}{e.voltajeRequerido != null ? `${e.voltajeRequerido}V` : ""}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-[#6b7280]">
                           {[e.marca, e.modelo].filter(Boolean).join(" ") || "—"}
@@ -439,7 +559,14 @@ export default function InventarioEquiposPage() {
         ))}
         {porCategoria.length === 0 && (
           <div className="text-center py-20 text-[#333]">
-            <p className="text-sm">No hay equipos{search ? " que coincidan con la búsqueda" : " en el inventario"}</p>
+            <p className="text-sm">No hay equipos{
+              search ? " que coincidan con la búsqueda"
+              : tipoFiltro === "PROPIO" ? " propios"
+              : tipoFiltro === "EXTERNO" && proveedorFiltro
+                ? ` de ${proveedoresConEquipo.find(p => p.id === proveedorFiltro)?.nombre ?? "este proveedor"}`
+              : tipoFiltro === "EXTERNO" ? " de proveedor"
+              : " en el inventario"
+            }</p>
           </div>
         )}
       </div>

@@ -17,6 +17,8 @@ const EQUIPO_SELECT = {
   categoria: { select: { id: true, nombre: true, orden: true } },
   notas: true,
   activo: true,
+  amperajeRequerido: true,
+  voltajeRequerido: true,
 };
 
 export async function GET(req: NextRequest) {
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, cantidadTotal, proveedorDefaultId, notas } = body;
+  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido } = body;
 
   if (!descripcion || !categoriaId) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
@@ -61,6 +63,8 @@ export async function POST(req: NextRequest) {
       cantidadTotal: parseInt(cantidadTotal) || 1,
       proveedorDefaultId: proveedorDefaultId || null,
       notas: notas || null,
+      amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
+      voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? parseInt(voltajeRequerido) : null,
       activo: true,
     },
     select: EQUIPO_SELECT,

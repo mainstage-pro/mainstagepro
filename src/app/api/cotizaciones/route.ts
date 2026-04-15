@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       terminosComerciales = null,
       vigenciaDias = 30,
       notasSecciones = null,
+      incluirChofer = false,
       ...campos
     } = body;
 
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         descuentoEspecialNota,
         tipoBeneficio,
         aplicaIva,
+        incluirChofer,
         observaciones,
         terminosComerciales,
         vigenciaDias,

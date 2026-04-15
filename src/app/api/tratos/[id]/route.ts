@@ -39,6 +39,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId",
+    // Scouting
+    "scoutingData",
     // Nurturing
     "tipoProspecto", "nurturingData",
     // Descubrimiento

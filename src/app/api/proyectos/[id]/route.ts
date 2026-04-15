@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
       encargado: { select: { name: true } },
       trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-      cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true } },
+      cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
       personal: {
         include: {
           tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -66,8 +66,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoLugarContacto", "descripcionGeneral", "detallesEspecificos",
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
-    "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData",
+    "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
   ];
+  // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
+  const booleanFields = ["choferExterno"];
+  const numberFields = ["choferCosto"];
+  const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
@@ -79,9 +83,59 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
   }
+  // Campos de chofer
+  for (const key of booleanFields) {
+    if (key in body) data[key] = Boolean(body[key]);
+  }
+  for (const key of numberFields) {
+    if (key in body) data[key] = body[key] != null ? Number(body[key]) : null;
+  }
+  for (const key of textNullableFields) {
+    if (key in body) data[key] = body[key] || null;
+  }
+  // recoleccionFechaReal es DateTime
+  if ("recoleccionFechaReal" in body) {
+    data["recoleccionFechaReal"] = body["recoleccionFechaReal"] ? new Date(body["recoleccionFechaReal"]) : null;
+  }
 
-  const proyectoAntes = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true } });
-  const proyecto = await prisma.proyecto.update({ where: { id }, data });
+  const proyectoAntes = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true, choferExterno: true, choferNombre: true, choferCosto: true } });
+  let proyecto = await prisma.proyecto.update({ where: { id }, data });
+
+  // ── Auto-crear/actualizar CxP para chofer externo ──────────────────────────
+  if ("choferNombre" in body || "choferExterno" in body || "choferCosto" in body) {
+    const esExterno = (data.choferExterno ?? proyectoAntes?.choferExterno) as boolean;
+    const costo = (data.choferCosto ?? proyectoAntes?.choferCosto) as number | null | undefined;
+    const nombre = (data.choferNombre ?? proyectoAntes?.choferNombre) as string | null | undefined;
+    if (esExterno && costo && costo > 0 && nombre) {
+      // Buscar CxP existente de chofer para este proyecto
+      const cxpExistente = await prisma.cuentaPagar.findFirst({
+        where: { proyectoId: id, concepto: { contains: "Chofer" }, tipoAcreedor: "OTRO" },
+      });
+      const fechaEvento = proyecto.fechaEvento ?? new Date();
+      const fechaCompromiso = new Date(fechaEvento);
+      fechaCompromiso.setDate(fechaCompromiso.getDate() - 1);
+      if (cxpExistente) {
+        await prisma.cuentaPagar.update({
+          where: { id: cxpExistente.id },
+          data: { concepto: `Chofer externo — ${nombre}`, monto: costo, fechaCompromiso },
+        });
+      } else {
+        await prisma.cuentaPagar.create({
+          data: {
+            tipoAcreedor: "OTRO",
+            proyectoId: id,
+            concepto: `Chofer externo — ${nombre}`,
+            monto: costo as number,
+            fechaCompromiso,
+            estado: "PENDIENTE",
+            notas: "Generado automáticamente al asignar chofer externo.",
+          },
+        });
+      }
+      // Refrescar proyecto con CxP
+      proyecto = await prisma.proyecto.findUnique({ where: { id } }) as typeof proyecto;
+    }
+  }
 
   // ── Auto-crear CxP para técnicos con pago pendiente al marcar COMPLETADO ──
   if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {

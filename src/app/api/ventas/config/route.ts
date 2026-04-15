@@ -27,7 +27,7 @@ export async function PATCH(request: NextRequest) {
   const allowed = [
     "metaMes1", "metaMes2", "metaMes3", "metaMesNormal",
     "pctClientePropio", "pctPublicidad", "pctAsignadoVendedor", "pctAsignadoOrigen",
-    "pctBono",
+    "pctBono", "metaProspectoDiaria",
   ];
 
   const config = await getConfig();
