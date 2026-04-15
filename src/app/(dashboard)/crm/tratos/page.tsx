@@ -79,60 +79,70 @@ export default function TratosPage() {
             </Link>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
-                {["Cliente", "Tipo evento", "Etapa", "Origen", "Próxima acción", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
-              {tratos.map((trato) => (
-                <tr key={trato.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-3">
-                    <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-                      {trato.cliente.nombre}
-                    </Link>
-                    {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-[#9ca3af]">
-                    {TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ETAPA_COLORS[trato.etapa] ?? "bg-gray-800 text-gray-400"}`}>
-                      {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">
-                    {ORIGEN_LEAD_LABELS[trato.origenLead] ?? trato.origenLead}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">
-                    {trato.fechaProximaAccion
-                      ? new Date(trato.fechaProximaAccion).toLocaleDateString("es-MX", { day: "numeric", month: "short" })
-                      : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-3">
-                      <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-xs hover:underline">
-                        Ver →
-                      </Link>
-                      <button
-                        onClick={() => eliminar(trato.id, trato.cliente.nombre)}
-                        disabled={deletingId === trato.id}
-                        className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50"
-                        title="Eliminar trato"
-                      >
-                        {deletingId === trato.id ? "..." : "Eliminar"}
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px]">
+              <colgroup>
+                <col className="w-[30%]" />
+                <col className="w-[18%]" />
+                <col className="w-[15%]" />
+                <col className="w-[15%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-[#1e1e1e]">
+                  {["Cliente", "Tipo evento", "Etapa", "Origen", "Próx. acción", ""].map(h => (
+                    <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-[#1a1a1a]">
+                {tratos.map((trato) => (
+                  <tr key={trato.id} className="hover:bg-[#1a1a1a] transition-colors">
+                    <td className="px-4 py-3">
+                      <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                        {trato.cliente.nombre}
+                      </Link>
+                      {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-[#9ca3af]">
+                      {TIPO_EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${ETAPA_COLORS[trato.etapa] ?? "bg-gray-800 text-gray-400"}`}>
+                        {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[#6b7280]">
+                      {ORIGEN_LEAD_LABELS[trato.origenLead] ?? trato.origenLead}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">
+                      {trato.fechaProximaAccion
+                        ? new Date(trato.fechaProximaAccion).toLocaleDateString("es-MX", { day: "numeric", month: "short" })
+                        : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-xs hover:underline">
+                          Ver →
+                        </Link>
+                        <button
+                          onClick={() => eliminar(trato.id, trato.cliente.nombre)}
+                          disabled={deletingId === trato.id}
+                          className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50"
+                          title="Eliminar trato"
+                        >
+                          {deletingId === trato.id ? "..." : "Eliminar"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

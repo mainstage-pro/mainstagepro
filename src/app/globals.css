@@ -52,6 +52,7 @@
 
 html {
   font-size: 106.25%; /* 17px base — scales text-xs/sm/base/lg etc. +1px across the board */
+  overflow-y: scroll; /* Siempre reservar espacio del scrollbar — evita el salto de layout */
 }
 
 body {
