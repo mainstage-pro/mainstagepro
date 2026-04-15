@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function miercolesLimitePago(fecha: Date): Date {
+function diaSiguienteEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
-  let dias = (3 - d.getDay() + 7) % 7;
-  if (dias < 3) dias += 7;
-  d.setDate(d.getDate() + dias);
+  d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -79,6 +77,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   // ── Leer plan de pagos (o usar default 50/50) ──────────────────────────────
+  // Convención diasAntes:
+  //   > 0  → días ANTES del evento  (ej: 3 = 3 días antes)
+  //   = 0  → día del evento
+  //   < 0  → días DESPUÉS del evento (ej: -1 = 1 día después = día siguiente)
   type PagoPlan = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
   let cuotas: PagoPlan[];
   try {
@@ -86,22 +88,18 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     cuotas = (plan?.pagos && plan.pagos.length > 0)
       ? plan.pagos
       : [
-          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
-          { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "LIQUIDACION" },
+          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
+          { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
         ];
   } catch {
     cuotas = [
-      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
-      { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "LIQUIDACION" },
+      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
+      { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
     ];
   }
 
   function fechaPago(diasAntes: number): Date {
-    if (diasAntes <= 0) {
-      // diasAntes negativo = días DESPUÉS de hoy (anticipo)
-      return new Date(hoy.getTime() + Math.abs(diasAntes) * 24 * 60 * 60 * 1000);
-    }
-    // días ANTES del evento
+    // Siempre relativo al evento: positivo = antes, negativo = después
     return new Date(fechaEvento.getTime() - diasAntes * 24 * 60 * 60 * 1000);
   }
 
@@ -162,7 +160,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0
     );
     if (lineasExternas.length > 0) {
-      const fechaCxP = miercolesLimitePago(fechaEvento);
+      const fechaCxP = diaSiguienteEvento(fechaEvento);
       await tx.cuentaPagar.createMany({
         data: lineasExternas.map((l) => ({
           tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",

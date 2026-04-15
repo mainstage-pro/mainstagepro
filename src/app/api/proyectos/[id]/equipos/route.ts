@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function miercolesLimitePago(fecha: Date): Date {
+function diaSiguienteEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
-  let dias = (3 - d.getDay() + 7) % 7;
-  if (dias < 3) dias += 7;
-  d.setDate(d.getDate() + dias);
+  d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -47,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     const equipoNombre = item.equipo.descripcion;
     const proveedorNombre = item.proveedor?.nombre ?? "Proveedor";
-    const fechaCompromiso = miercolesLimitePago(proyecto?.fechaEvento ?? new Date());
+    const fechaCompromiso = diaSiguienteEvento(proyecto?.fechaEvento ?? new Date());
 
     await prisma.cuentaPagar.create({
       data: {

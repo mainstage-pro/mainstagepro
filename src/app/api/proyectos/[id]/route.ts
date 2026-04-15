@@ -113,7 +113,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       });
       const fechaEvento = proyecto.fechaEvento ?? new Date();
       const fechaCompromiso = new Date(fechaEvento);
-      fechaCompromiso.setDate(fechaCompromiso.getDate() - 1);
+      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1); // día siguiente al evento
       if (cxpExistente) {
         await prisma.cuentaPagar.update({
           where: { id: cxpExistente.id },
@@ -153,9 +153,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
 
     if (personalPendiente.length > 0) {
-      // Fecha compromiso: 7 días después del evento
+      // Fecha compromiso: día siguiente al evento
       const fechaCompromiso = new Date(proyecto.fechaEvento ?? new Date());
-      fechaCompromiso.setDate(fechaCompromiso.getDate() + 7);
+      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1);
 
       await prisma.cuentaPagar.createMany({
         data: personalPendiente.map(p => ({

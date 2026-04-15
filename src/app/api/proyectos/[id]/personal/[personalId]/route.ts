@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function miercolesLimitePago(fecha: Date): Date {
+function diaSiguienteEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
-  let dias = (3 - d.getDay() + 7) % 7;
-  if (dias < 3) dias += 7;
-  d.setDate(d.getDate() + dias);
+  d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -54,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     const rolNombre = personal.rolTecnico?.nombre ?? personal.tecnico?.rol?.nombre ?? "Técnico";
     const tecNombre = personal.tecnico?.nombre ?? "Sin nombre";
-    const fechaCompromiso = miercolesLimitePago(proyecto?.fechaEvento ?? new Date());
+    const fechaCompromiso = diaSiguienteEvento(proyecto?.fechaEvento ?? new Date());
 
     // Verificar que no exista ya una CxP para este técnico+proyecto
     const existente = await prisma.cuentaPagar.findFirst({

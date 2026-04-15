@@ -2,16 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-/**
- * Fecha límite de pago = el próximo miércoles que esté al menos 3 días después del evento.
- * Dom(3d) Sáb(4d) Vie(5d) Jue(6d) Mié(7d) Mar(8d) Lun(9d) → y se repite el ciclo.
- */
-function miercolesLimitePago(fecha: Date): Date {
+/** Día siguiente al evento — fecha de compromiso de pago */
+function diaSiguienteEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
-  let dias = (3 - d.getDay() + 7) % 7; // días al miércoles más próximo
-  if (dias < 3) dias += 7;              // si está a menos de 3 días, saltar al siguiente
-  d.setDate(d.getDate() + dias);
+  d.setDate(d.getDate() + 1);
   return d;
 }
 
@@ -53,8 +48,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const rolNombre = personal.rolTecnico?.nombre ?? personal.tecnico?.rol?.nombre ?? "Técnico";
     const tecNombre = personal.tecnico ? personal.tecnico.nombre ?? "Sin nombre" : "Por asignar";
 
-    // Fecha compromiso = miércoles siguiente después del evento
-    const fechaCompromiso = miercolesLimitePago(proyecto?.fechaEvento ?? new Date());
+    // Fecha compromiso = día siguiente al evento
+    const fechaCompromiso = diaSiguienteEvento(proyecto?.fechaEvento ?? new Date());
 
     await prisma.cuentaPagar.create({
       data: {

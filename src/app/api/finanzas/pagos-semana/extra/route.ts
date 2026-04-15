@@ -44,19 +44,17 @@ export async function POST(req: NextRequest) {
   });
   if (!proyecto) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
 
-  // Calcular fecha de compromiso (miércoles post-evento) si no se envía
-  function miercolesLimitePago(fecha: Date): Date {
+  // Fecha de compromiso = día siguiente al evento si no se envía explícitamente
+  function diaSiguienteEvento(fecha: Date): Date {
     const d = new Date(fecha);
     d.setHours(0, 0, 0, 0);
-    let dias = (3 - d.getDay() + 7) % 7;
-    if (dias < 3) dias += 7;
-    d.setDate(d.getDate() + dias);
+    d.setDate(d.getDate() + 1);
     return d;
   }
 
   const fechaPago = fechaCompromiso
     ? new Date(fechaCompromiso)
-    : miercolesLimitePago(proyecto.fechaEvento);
+    : diaSiguienteEvento(proyecto.fechaEvento);
 
   const montoNum = parseFloat(monto);
 
