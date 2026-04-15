@@ -44,6 +44,8 @@ export default async function DashboardPage() {
     // ── MARKETING ───────────────────────────────
     pubsPorEstado,
     pubsProximas,
+    // ── COTIZACIONES SIN RESPUESTA ───────────────
+    cotizacionesSinRespuesta,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -189,6 +191,17 @@ export default async function DashboardPage() {
       include: { tipo: { select: { nombre: true } } },
       orderBy: { fecha: "asc" },
       take: 5,
+    }),
+
+    // ── COTIZACIONES SIN RESPUESTA ───────────────
+    prisma.cotizacion.findMany({
+      where: { estado: "ENVIADA" },
+      select: {
+        id: true, numeroCotizacion: true, nombreEvento: true, granTotal: true, updatedAt: true,
+        cliente: { select: { id: true, nombre: true, telefono: true } },
+      },
+      orderBy: { updatedAt: "asc" },
+      take: 8,
     }),
   ]);
 
@@ -543,6 +556,59 @@ export default async function DashboardPage() {
           <KpiCard label="Valor aprobado" value={formatCurrency(valorCotizacionesMes._sum.granTotal ?? 0)}
             sub="cotizaciones aprobadas / enviadas" />
         </div>
+
+        {/* Cotizaciones sin respuesta */}
+        {cotizacionesSinRespuesta.length > 0 && (
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Cotizaciones sin respuesta</p>
+              </div>
+              <Link href="/cotizaciones" className="text-[#B3985B] text-xs hover:underline">Ver todas →</Link>
+            </div>
+            <div className="divide-y divide-[#1a1a1a]">
+              {cotizacionesSinRespuesta.map(c => {
+                const diasEspera = Math.floor((ahora.getTime() - new Date(c.updatedAt).getTime()) / 86400000);
+                const waMsg = `Hola ${c.cliente.nombre.split(" ")[0]}! 👋 Te escribimos de Mainstage Pro para dar seguimiento a la cotización *${c.numeroCotizacion}*${c.nombreEvento ? ` para ${c.nombreEvento}` : ""}. ¿Tuviste oportunidad de revisarla? Quedamos al pendiente. 🎪`;
+                return (
+                  <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link href={`/cotizaciones/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors truncate">
+                          {c.cliente.nombre}
+                        </Link>
+                        <span className="text-[10px] text-gray-600 font-mono">{c.numeroCotizacion}</span>
+                      </div>
+                      {c.nombreEvento && <p className="text-gray-500 text-xs truncate">{c.nombreEvento}</p>}
+                    </div>
+                    <div className="text-right shrink-0 flex items-center gap-2">
+                      <div>
+                        <p className="text-white text-sm font-semibold">{formatCurrency(c.granTotal)}</p>
+                        <p className={`text-[10px] ${diasEspera > 5 ? "text-red-400" : diasEspera > 2 ? "text-yellow-400" : "text-gray-600"}`}>
+                          {diasEspera === 0 ? "Hoy" : `${diasEspera}d esperando`}
+                        </p>
+                      </div>
+                      {c.cliente.telefono && (
+                        <a
+                          href={`https://wa.me/52${c.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(waMsg)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          className="p-1.5 rounded-lg bg-green-900/20 hover:bg-green-900/40 text-green-400 transition-colors"
+                          title="Dar seguimiento por WhatsApp"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Funnel */}
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">

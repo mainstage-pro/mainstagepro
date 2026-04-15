@@ -20,6 +20,8 @@ export default function TratosPage() {
   const [tratos, setTratos] = useState<Trato[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [filtroEtapa, setFiltroEtapa] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     fetch("/api/tratos")
@@ -40,13 +42,24 @@ export default function TratosPage() {
     }
   }
 
+  const tratosFiltrados = tratos.filter(t => {
+    const matchEtapa = !filtroEtapa || t.etapa === filtroEtapa;
+    const q = busqueda.toLowerCase();
+    const matchBusqueda = !q ||
+      t.cliente.nombre.toLowerCase().includes(q) ||
+      (t.cliente.empresa ?? "").toLowerCase().includes(q) ||
+      (t.nombreEvento ?? "").toLowerCase().includes(q) ||
+      (t.lugarEvento ?? "").toLowerCase().includes(q);
+    return matchEtapa && matchBusqueda;
+  });
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Tratos</h1>
           <p className="text-[#6b7280] text-sm">
-            {loading ? "Cargando..." : `${tratos.length} tratos registrados`}
+            {loading ? "Cargando..." : `${tratosFiltrados.length} de ${tratos.length} tratos`}
           </p>
         </div>
         <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
@@ -54,17 +67,49 @@ export default function TratosPage() {
         </Link>
       </div>
 
-      {/* Filtros por etapa */}
+      {/* Barra de búsqueda + filtros */}
       {!loading && (
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
-          <span className="shrink-0 px-3 py-1.5 rounded-full text-xs bg-[#B3985B] text-black font-medium">
-            Todos ({tratos.length})
-          </span>
-          {ETAPAS.map((etapa) => (
-            <span key={etapa} className="shrink-0 px-3 py-1.5 rounded-full text-xs bg-[#1a1a1a] text-[#6b7280]">
-              {ETAPA_LABELS[etapa]} ({tratos.filter(t => t.etapa === etapa).length})
-            </span>
-          ))}
+        <div className="flex flex-col gap-3 mb-6">
+          {/* Búsqueda */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
+            </svg>
+            <input
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por cliente, empresa, evento..."
+              className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
+            )}
+          </div>
+          {/* Filtros etapa */}
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            <button
+              onClick={() => setFiltroEtapa(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                !filtroEtapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"
+              }`}>
+              Todos ({tratos.length})
+            </button>
+            {ETAPAS.map((etapa) => {
+              const count = tratos.filter(t => t.etapa === etapa).length;
+              return (
+                <button
+                  key={etapa}
+                  onClick={() => setFiltroEtapa(filtroEtapa === etapa ? null : etapa)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    filtroEtapa === etapa
+                      ? "bg-[#B3985B] text-black"
+                      : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"
+                  }`}>
+                  {ETAPA_LABELS[etapa]} ({count})
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -99,7 +144,11 @@ export default function TratosPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1a1a1a]">
-                {tratos.map((trato) => (
+                {tratosFiltrados.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-12 text-[#6b7280] text-sm">
+                    Sin tratos que coincidan con el filtro
+                  </td></tr>
+                ) : tratosFiltrados.map((trato) => (
                   <tr key={trato.id} className="hover:bg-[#1a1a1a] transition-colors">
                     <td className="px-4 py-3">
                       <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">

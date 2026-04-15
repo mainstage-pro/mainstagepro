@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import BusquedaGlobal from "@/components/BusquedaGlobal";
 
 interface NavChild {
   key?: string;
@@ -345,13 +346,14 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
       {/* DESKTOP */}
       <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
               <p className="text-[#555] text-[10px]">Sistema operativo</p>
             </div>
           </Link>
+          <BusquedaGlobal />
         </div>
         {navContent}
       </aside>
