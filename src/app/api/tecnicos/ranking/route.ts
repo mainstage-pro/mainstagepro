@@ -25,6 +25,8 @@ export async function GET() {
     orderBy: { proyecto: { fechaEvento: "desc" } },
   });
 
+  const ahora = new Date();
+
   // Aggregate per tecnico
   const map = new Map<string, {
     tecnico: NonNullable<typeof asignaciones[0]["tecnico"]>;
@@ -32,13 +34,14 @@ export async function GET() {
     scores: number[];
     puntualidades: number[];
     ultimos3: { nombre: string; numero: string; fecha: Date | null; score: number | null }[];
+    ultimaFecha: Date | null;
   }>();
 
   for (const a of asignaciones) {
     if (!a.tecnicoId || !a.tecnico) continue;
     const key = a.tecnicoId;
     if (!map.has(key)) {
-      map.set(key, { tecnico: a.tecnico, proyectos: 0, scores: [], puntualidades: [], ultimos3: [] });
+      map.set(key, { tecnico: a.tecnico, proyectos: 0, scores: [], puntualidades: [], ultimos3: [], ultimaFecha: null });
     }
     const entry = map.get(key)!;
     entry.proyectos++;
@@ -54,15 +57,29 @@ export async function GET() {
         score,
       });
     }
+    // Track most recent event
+    if (a.proyecto.fechaEvento) {
+      const fecha = new Date(a.proyecto.fechaEvento);
+      if (fecha <= ahora && (!entry.ultimaFecha || fecha > entry.ultimaFecha)) {
+        entry.ultimaFecha = fecha;
+      }
+    }
   }
 
-  const ranking = Array.from(map.values()).map(entry => ({
-    ...entry.tecnico,
-    proyectos: entry.proyectos,
-    scorePromedio: entry.scores.length ? +(entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length).toFixed(1) : null,
-    puntualidadPromedio: entry.puntualidades.length ? +(entry.puntualidades.reduce((a, b) => a + b, 0) / entry.puntualidades.length).toFixed(1) : null,
-    ultimos3: entry.ultimos3,
-  }));
+  const ranking = Array.from(map.values()).map(entry => {
+    const diasSinTrabajar = entry.ultimaFecha
+      ? Math.floor((ahora.getTime() - entry.ultimaFecha.getTime()) / 86400000)
+      : null;
+    return {
+      ...entry.tecnico,
+      proyectos: entry.proyectos,
+      scorePromedio: entry.scores.length ? +(entry.scores.reduce((a, b) => a + b, 0) / entry.scores.length).toFixed(1) : null,
+      puntualidadPromedio: entry.puntualidades.length ? +(entry.puntualidades.reduce((a, b) => a + b, 0) / entry.puntualidades.length).toFixed(1) : null,
+      ultimos3: entry.ultimos3,
+      ultimaFecha: entry.ultimaFecha?.toISOString() ?? null,
+      diasSinTrabajar,
+    };
+  });
 
   ranking.sort((a, b) => {
     if (a.scorePromedio === null && b.scorePromedio === null) return b.proyectos - a.proyectos;

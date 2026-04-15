@@ -137,6 +137,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  // ── Auto-crear evaluación de cliente al marcar COMPLETADO ──
+  if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
+    const evalExistente = await prisma.evaluacionCliente.findUnique({ where: { proyectoId: id } });
+    if (!evalExistente) {
+      await prisma.evaluacionCliente.create({ data: { proyectoId: id } });
+    }
+  }
+
   // ── Auto-crear CxP para técnicos con pago pendiente al marcar COMPLETADO ──
   if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
     const personalPendiente = await prisma.proyectoPersonal.findMany({

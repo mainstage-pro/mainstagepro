@@ -23,6 +23,7 @@ type RankingItem = {
   id: string; nombre: string; nivel: string; activo: boolean;
   rol: Rol | null; proyectos: number;
   scorePromedio: number | null; puntualidadPromedio: number | null;
+  ultimaFecha: string | null; diasSinTrabajar: number | null;
   ultimos3: { nombre: string; numero: string; fecha: string | null; score: number | null }[];
 };
 
@@ -447,11 +448,11 @@ export default function TecnicosPage() {
           {loadingRanking ? (
             <div className="py-12 text-center text-gray-600 text-sm">Calculando ranking...</div>
           ) : (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-              <table className="w-full">
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden overflow-x-auto">
+              <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#1e1e1e]">
-                    {["#", "Técnico", "Rol", "Nivel", "Proyectos", "Score", "Puntualidad", "Últimos"].map(h => (
+                    {["#", "Técnico", "Rol", "Nivel", "Proyectos", "Score", "Puntualidad", "Último evento", "Últimos"].map(h => (
                       <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
                     ))}
                   </tr>
@@ -478,6 +479,18 @@ export default function TecnicosPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400">{r.puntualidadPromedio ?? "—"}</td>
                       <td className="px-4 py-3">
+                        {r.ultimaFecha ? (
+                          <div>
+                            <p className="text-gray-300 text-xs">{new Date(r.ultimaFecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" })}</p>
+                            {r.diasSinTrabajar !== null && (
+                              <p className={`text-[10px] ${r.diasSinTrabajar > 60 ? "text-red-400" : r.diasSinTrabajar > 30 ? "text-yellow-400" : "text-gray-600"}`}>
+                                hace {r.diasSinTrabajar}d
+                              </p>
+                            )}
+                          </div>
+                        ) : <span className="text-gray-600 text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
                         <div className="flex gap-1 flex-wrap">
                           {r.ultimos3.map((p, j) => (
                             <span key={j} className={`text-[10px] px-1.5 py-0.5 rounded border ${p.score !== null && p.score >= 8 ? "border-green-800/40 text-green-400" : p.score !== null && p.score >= 6 ? "border-[#B3985B]/40 text-[#B3985B]" : "border-[#222] text-gray-600"}`}>
@@ -491,7 +504,7 @@ export default function TecnicosPage() {
                 </tbody>
               </table>
               {ranking.filter(r => r.activo).length === 0 && !loadingRanking && (
-                <p className="text-gray-600 text-sm text-center py-8">Sin datos de evaluación por ahora</p>
+                <p className="text-gray-600 text-sm text-center py-8">Sin datos de ranking aún — se calcula a partir de evaluaciones internas de proyectos</p>
               )}
             </div>
           )}

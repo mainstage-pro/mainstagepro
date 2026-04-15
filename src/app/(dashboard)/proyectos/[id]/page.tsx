@@ -682,6 +682,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ estado }),
     });
     setProyecto(prev => prev ? { ...prev, estado } : prev);
+    // Si se marca como COMPLETADO → cargar encuesta auto-generada y cambiar a esa tab
+    if (estado === "COMPLETADO") {
+      const r = await fetch(`/api/evaluacion-cliente?proyectoId=${id}`);
+      const d = await r.json().catch(() => ({}));
+      if (d.evaluacion) {
+        setEvalCliente(d.evaluacion);
+        setEvalClienteLoaded(true);
+        setTab("evaluacion");
+      }
+    }
     setSaving(false);
   }
 

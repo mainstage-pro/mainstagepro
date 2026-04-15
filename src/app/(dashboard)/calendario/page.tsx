@@ -1,236 +1,326 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
+interface Evento {
+  id: string; dia: number; tipo: string; titulo: string;
+  subtitulo: string; estado: string; url: string;
+}
+
+const CAPAS = [
+  { key: "EVENTO",      label: "Eventos",         color: "bg-green-500",   textColor: "text-green-200",  bg: "bg-green-900/60 border-l-2 border-green-500" },
+  { key: "MONTAJE",     label: "Montajes",         color: "bg-[#B3985B]",   textColor: "text-[#B3985B]",  bg: "bg-[#B3985B]/20 border-l-2 border-[#B3985B]" },
+  { key: "CXC",         label: "Cobros",           color: "bg-blue-400",    textColor: "text-blue-200",   bg: "bg-blue-900/50 border-l-2 border-blue-400" },
+  { key: "SEGUIMIENTO", label: "Seguimientos",     color: "bg-purple-500",  textColor: "text-purple-200", bg: "bg-purple-900/40 border-l-2 border-purple-500" },
+  { key: "MARKETING",   label: "Marketing",        color: "bg-pink-500",    textColor: "text-pink-200",   bg: "bg-pink-900/40 border-l-2 border-pink-500" },
+] as const;
+
+const CAPA_MAP = Object.fromEntries(CAPAS.map(c => [c.key, c]));
+
 const ESTADO_COLORS: Record<string, string> = {
-  PLANEACION: "bg-blue-900/60 border-l-2 border-blue-500 text-blue-200",
-  CONFIRMADO: "bg-green-900/60 border-l-2 border-green-500 text-green-200",
-  EN_CURSO:   "bg-yellow-900/60 border-l-2 border-yellow-500 text-yellow-200",
-  COMPLETADO: "bg-[#1e1e1e] border-l-2 border-gray-600 text-gray-400",
-  CANCELADO:  "bg-red-900/30 border-l-2 border-red-700 text-red-400",
+  PLANEACION: "bg-blue-900/60 border-l-2 border-blue-500",
+  CONFIRMADO: "bg-green-900/60 border-l-2 border-green-500",
+  EN_CURSO:   "bg-yellow-900/60 border-l-2 border-yellow-500",
+  COMPLETADO: "bg-[#1e1e1e] border-l-2 border-gray-600",
+  CANCELADO:  "bg-red-900/30 border-l-2 border-red-700",
 };
 
-function getCalendario(year: number, month: number) {
-  const primerDia = new Date(year, month, 1).getDay(); // 0=dom
+const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+function getMesData(year: number, month: number) {
+  const primerDia = new Date(year, month, 1).getDay();
   const diasEnMes = new Date(year, month + 1, 0).getDate();
-  // Ajustar para que semana inicie lunes
   const offset = primerDia === 0 ? 6 : primerDia - 1;
   return { offset, diasEnMes };
 }
 
-export default async function CalendarioPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ mes?: string }>;
-}) {
-  const sp = await searchParams;
+export default function CalendarioPage() {
   const ahora = new Date();
-  let year = ahora.getFullYear();
-  let month = ahora.getMonth();
+  const [year, setYear] = useState(ahora.getFullYear());
+  const [month, setMonth] = useState(ahora.getMonth());
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [capasActivas, setCapasActivas] = useState<Set<string>>(
+    new Set(["EVENTO", "MONTAJE", "CXC", "SEGUIMIENTO", "MARKETING"])
+  );
+  const [diaSeleccionado, setDiaSeleccionado] = useState<number | null>(null);
 
-  if (sp.mes) {
-    const [y, m] = sp.mes.split("-").map(Number);
-    if (!isNaN(y) && !isNaN(m)) { year = y; month = m - 1; }
+  const mesStr = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    const r = await fetch(`/api/calendario?mes=${mesStr}`);
+    const d = await r.json();
+    setEventos(d.eventos ?? []);
+    setLoading(false);
+  }, [mesStr]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  function navMes(delta: number) {
+    setDiaSeleccionado(null);
+    const d = new Date(year, month + delta, 1);
+    setYear(d.getFullYear());
+    setMonth(d.getMonth());
   }
 
-  const inicioRango = new Date(year, month, 1);
-  const finRango    = new Date(year, month + 1, 0, 23, 59, 59);
-
-  const proyectos = await prisma.proyecto.findMany({
-    where: {
-      fechaEvento: { gte: inicioRango, lte: finRango },
-      estado: { not: "CANCELADO" },
-    },
-    include: { cliente: { select: { nombre: true } } },
-    orderBy: { fechaEvento: "asc" },
-  });
-
-  // También los de montaje en el mismo mes
-  const montajes = await prisma.proyecto.findMany({
-    where: {
-      fechaMontaje: { gte: inicioRango, lte: finRango },
-      estado: { not: "CANCELADO" },
-    },
-    include: { cliente: { select: { nombre: true } } },
-    orderBy: { fechaMontaje: "asc" },
-  });
-
-  // Agrupar por día
-  const eventosPorDia: Record<number, { id: string; nombre: string; cliente: string; estado: string; esMontaje?: boolean }[]> = {};
-  for (const p of proyectos) {
-    const dia = new Date(p.fechaEvento).getDate();
-    if (!eventosPorDia[dia]) eventosPorDia[dia] = [];
-    eventosPorDia[dia].push({ id: p.id, nombre: p.nombre, cliente: p.cliente.nombre, estado: p.estado });
-  }
-  for (const p of montajes) {
-    if (!p.fechaMontaje) continue;
-    const dia = new Date(p.fechaMontaje).getDate();
-    if (!eventosPorDia[dia]) eventosPorDia[dia] = [];
-    // No duplicar si ya está el evento
-    const yaTiene = eventosPorDia[dia].some(e => e.id === p.id && !e.esMontaje);
-    if (!yaTiene) {
-      eventosPorDia[dia].push({ id: p.id, nombre: `[Montaje] ${p.nombre}`, cliente: p.cliente.nombre, estado: p.estado, esMontaje: true });
-    }
+  function toggleCapa(key: string) {
+    setCapasActivas(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
   }
 
-  const { offset, diasEnMes } = getCalendario(year, month);
-  const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const eventosFiltrados = eventos.filter(e => capasActivas.has(e.tipo));
+  const eventosPorDia: Record<number, Evento[]> = {};
+  for (const e of eventosFiltrados) {
+    if (!eventosPorDia[e.dia]) eventosPorDia[e.dia] = [];
+    eventosPorDia[e.dia].push(e);
+  }
+
+  const { offset, diasEnMes } = getMesData(year, month);
   const totalCeldas = Math.ceil((offset + diasEnMes) / 7) * 7;
-
-  // Navegación mes previo/siguiente
-  const mesActual = `${year}-${String(month + 1).padStart(2, "0")}`;
-  const mesPrev = month === 0 ? `${year - 1}-12` : `${year}-${String(month).padStart(2, "0")}`;
-  const mesSig  = month === 11 ? `${year + 1}-01` : `${year}-${String(month + 2).padStart(2, "0")}`;
   const esMesActual = year === ahora.getFullYear() && month === ahora.getMonth();
   const nombreMes = new Date(year, month, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
+  const totalEventos = eventosFiltrados.filter(e => e.tipo === "EVENTO").length;
+  const totalCobros = eventosFiltrados.filter(e => e.tipo === "CXC").length;
+
+  // Eventos del día seleccionado o resumen del mes
+  const eventosPanel = diaSeleccionado !== null
+    ? eventosFiltrados.filter(e => e.dia === diaSeleccionado)
+    : null;
+
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white capitalize">{nombreMes}</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{proyectos.length} evento{proyectos.length !== 1 ? "s" : ""} este mes</p>
+          <p className="text-gray-500 text-sm mt-0.5">
+            {totalEventos > 0 && <span>{totalEventos} evento{totalEventos !== 1 ? "s" : ""}</span>}
+            {totalEventos > 0 && totalCobros > 0 && <span className="mx-1">·</span>}
+            {totalCobros > 0 && <span>{totalCobros} cobro{totalCobros !== 1 ? "s" : ""} pendiente{totalCobros !== 1 ? "s" : ""}</span>}
+            {totalEventos === 0 && totalCobros === 0 && <span>Sin elementos en el mes</span>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/calendario?mes=${mesPrev}`}
+          <button onClick={() => navMes(-1)}
             className="bg-[#111] border border-[#222] text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors">
             ← Anterior
-          </Link>
+          </button>
           {!esMesActual && (
-            <Link href="/calendario"
-              className="bg-[#1a1a1a] border border-[#333] text-[#B3985B] px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[#222]">
+            <button
+              onClick={() => { setYear(ahora.getFullYear()); setMonth(ahora.getMonth()); setDiaSeleccionado(null); }}
+              className="bg-[#1a1a1a] border border-[#333] text-[#B3985B] px-3 py-2 rounded-lg text-sm hover:bg-[#222] transition-colors">
               Hoy
-            </Link>
+            </button>
           )}
-          <Link href={`/calendario?mes=${mesSig}`}
+          <button onClick={() => navMes(1)}
             className="bg-[#111] border border-[#222] text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors">
             Siguiente →
-          </Link>
+          </button>
         </div>
       </div>
 
-      {/* Leyenda */}
-      <div className="flex items-center gap-4 flex-wrap">
-        {[
-          { label: "Planeación", color: "bg-blue-500" },
-          { label: "Confirmado", color: "bg-green-500" },
-          { label: "En curso",   color: "bg-yellow-500" },
-          { label: "Completado", color: "bg-gray-600" },
-        ].map(({ label, color }) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <span className={`w-2.5 h-2.5 rounded-sm ${color}`} />
-            <span className="text-gray-500 text-xs">{label}</span>
-          </div>
+      {/* Filtros de capas */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {CAPAS.map(capa => (
+          <button
+            key={capa.key}
+            onClick={() => toggleCapa(capa.key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              capasActivas.has(capa.key)
+                ? "border-transparent text-white bg-[#1e1e1e]"
+                : "border-[#222] text-gray-600 bg-transparent opacity-50"
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${capa.color}`} />
+            {capa.label}
+          </button>
         ))}
-        <div className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-[#B3985B]" />
-          <span className="text-gray-500 text-xs">Montaje</span>
-        </div>
+        <button
+          onClick={() => setCapasActivas(new Set(CAPAS.map(c => c.key)))}
+          className="text-gray-600 hover:text-gray-400 text-xs px-2 transition-colors"
+        >
+          Mostrar todo
+        </button>
       </div>
 
-      {/* Grilla del mes */}
-      <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-        {/* Encabezado días */}
-        <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
-          {DIAS_SEMANA.map(d => (
-            <div key={d} className="py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {d}
+      <div className="flex gap-4">
+        {/* Grilla */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
+              {DIAS_SEMANA.map(d => (
+                <div key={d} className="py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{d}</div>
+              ))}
             </div>
-          ))}
-        </div>
+            <div className="grid grid-cols-7">
+              {Array.from({ length: totalCeldas }).map((_, i) => {
+                const dia = i - offset + 1;
+                const esValido = dia >= 1 && dia <= diasEnMes;
+                const esHoy = esValido && esMesActual && dia === ahora.getDate();
+                const esSeleccionado = esValido && dia === diaSeleccionado;
+                const evs = esValido ? (eventosPorDia[dia] ?? []) : [];
+                const semana = Math.floor(i / 7);
+                const maxSemanas = Math.ceil(totalCeldas / 7);
 
-        {/* Celdas */}
-        <div className="grid grid-cols-7">
-          {Array.from({ length: totalCeldas }).map((_, i) => {
-            const dia = i - offset + 1;
-            const esValido = dia >= 1 && dia <= diasEnMes;
-            const esHoy = esValido && esMesActual && dia === ahora.getDate();
-            const eventos = esValido ? (eventosPorDia[dia] ?? []) : [];
-            const semana = Math.floor(i / 7);
-            const maxSemanas = Math.ceil(totalCeldas / 7);
-
-            return (
-              <div key={i}
-                className={`min-h-[100px] p-1.5 border-b border-r border-[#1a1a1a] last:border-r-0
-                  ${!esValido ? "bg-[#0d0d0d]" : ""}
-                  ${semana === maxSemanas - 1 ? "border-b-0" : ""}
-                  ${i % 7 === 6 ? "border-r-0" : ""}
-                `}>
-                {esValido && (
-                  <>
-                    <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs mb-1 mx-auto
-                      ${esHoy ? "bg-[#B3985B] text-black font-bold" : "text-gray-500 hover:text-white"}`}>
-                      {dia}
-                    </div>
-                    <div className="space-y-0.5">
-                      {eventos.map(e => (
-                        <Link key={`${e.id}-${e.esMontaje}`} href={`/proyectos/${e.id}`}
-                          className={`block px-1.5 py-0.5 rounded text-[10px] truncate leading-tight
-                            hover:opacity-80 transition-opacity
-                            ${e.esMontaje ? "bg-[#B3985B]/20 border-l-2 border-[#B3985B] text-[#B3985B]" : ESTADO_COLORS[e.estado] ?? "bg-[#222] text-gray-400"}`}
-                          title={`${e.nombre} — ${e.cliente}`}>
-                          <span className="font-medium">{e.nombre}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Lista de eventos del mes */}
-      {proyectos.length > 0 && (
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-[#1a1a1a]">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agenda del mes</p>
-          </div>
-          <div className="divide-y divide-[#1a1a1a]">
-            {proyectos.map(p => {
-              const dias = Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000);
-              return (
-                <Link key={p.id} href={`/proyectos/${p.id}`}
-                  className="flex items-center justify-between px-5 py-3.5 hover:bg-[#1a1a1a] transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center w-12 shrink-0">
-                      <p className="text-[#B3985B] text-lg font-bold leading-none">
-                        {new Date(p.fechaEvento).getDate()}
-                      </p>
-                      <p className="text-gray-600 text-[10px] uppercase">
-                        {new Date(p.fechaEvento).toLocaleDateString("es-MX", { weekday: "short" })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-white text-sm font-medium">{p.nombre}</p>
-                      <p className="text-gray-500 text-xs">{p.cliente.nombre}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      p.estado === "CONFIRMADO" ? "bg-green-900/50 text-green-300" :
-                      p.estado === "EN_CURSO"   ? "bg-yellow-900/50 text-yellow-300" :
-                      p.estado === "PLANEACION" ? "bg-blue-900/50 text-blue-300" :
-                      "bg-[#222] text-gray-400"
-                    }`}>{p.estado.replace(/_/g, " ")}</span>
-                    {dias >= 0 && (
-                      <span className={`text-xs font-medium ${
-                        dias === 0 ? "text-[#B3985B]" :
-                        dias <= 3 ? "text-red-400" :
-                        dias <= 7 ? "text-yellow-400" :
-                        "text-gray-500"
-                      }`}>
-                        {dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : `En ${dias} días`}
-                      </span>
+                return (
+                  <div
+                    key={i}
+                    onClick={() => esValido && setDiaSeleccionado(dia === diaSeleccionado ? null : dia)}
+                    className={`min-h-[90px] p-1 border-b border-r border-[#1a1a1a] transition-colors
+                      ${!esValido ? "bg-[#0d0d0d]" : "cursor-pointer hover:bg-[#141414]"}
+                      ${esSeleccionado ? "bg-[#1a1a1a]" : ""}
+                      ${semana === maxSemanas - 1 ? "border-b-0" : ""}
+                      ${i % 7 === 6 ? "border-r-0" : ""}
+                    `}
+                  >
+                    {esValido && (
+                      <>
+                        <div className={`w-6 h-6 flex items-center justify-center rounded-full text-xs mb-1 mx-auto font-medium
+                          ${esHoy ? "bg-[#B3985B] text-black font-bold" : esSeleccionado ? "bg-[#333] text-white" : "text-gray-500"}`}>
+                          {dia}
+                        </div>
+                        {loading ? (
+                          <div className="h-2 bg-[#1e1e1e] rounded animate-pulse mx-1" />
+                        ) : (
+                          <div className="space-y-0.5">
+                            {evs.slice(0, 3).map(e => {
+                              const capa = CAPA_MAP[e.tipo as keyof typeof CAPA_MAP];
+                              const bgClass = e.tipo === "EVENTO" ? (ESTADO_COLORS[e.estado] ?? "bg-[#222] border-l-2 border-gray-600") : capa?.bg ?? "bg-[#222]";
+                              return (
+                                <div
+                                  key={e.id}
+                                  className={`px-1 py-0.5 rounded text-[10px] truncate leading-tight ${bgClass} ${capa?.textColor ?? "text-gray-300"}`}
+                                  title={`${e.titulo} — ${e.subtitulo}`}
+                                >
+                                  {e.titulo}
+                                </div>
+                              );
+                            })}
+                            {evs.length > 3 && (
+                              <div className="text-[10px] text-gray-600 px-1">+{evs.length - 3} más</div>
+                            )}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-                </Link>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Panel lateral: día seleccionado o agenda del mes */}
+        <div className="w-72 shrink-0 hidden lg:block">
+          {diaSeleccionado !== null ? (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden sticky top-4">
+              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                <p className="text-white text-sm font-semibold">
+                  {new Date(year, month, diaSeleccionado).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+                </p>
+                <button onClick={() => setDiaSeleccionado(null)} className="text-gray-600 hover:text-gray-300 text-xs">✕</button>
+              </div>
+              {eventosPanel && eventosPanel.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin elementos</p>
+              ) : (
+                <div className="divide-y divide-[#1a1a1a] max-h-[60vh] overflow-y-auto">
+                  {(eventosPanel ?? []).map(e => {
+                    const capa = CAPA_MAP[e.tipo as keyof typeof CAPA_MAP];
+                    return (
+                      <Link key={e.id} href={e.url}
+                        className="flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
+                        <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${capa?.color ?? "bg-gray-500"}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-medium truncate">{e.titulo}</p>
+                          <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
+                          {e.estado === "VENCIDO" && <span className="text-red-400 text-[10px]">Vencido</span>}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden sticky top-4">
+              <div className="px-4 py-3 border-b border-[#1a1a1a]">
+                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agenda del mes</p>
+              </div>
+              {loading ? (
+                <div className="p-4 space-y-2">
+                  {[1,2,3].map(i => <div key={i} className="h-10 bg-[#1a1a1a] rounded animate-pulse" />)}
+                </div>
+              ) : eventosFiltrados.length === 0 ? (
+                <p className="text-gray-600 text-sm text-center py-8">Sin elementos</p>
+              ) : (
+                <div className="divide-y divide-[#1a1a1a] max-h-[70vh] overflow-y-auto">
+                  {eventosFiltrados
+                    .sort((a, b) => a.dia - b.dia)
+                    .map(e => {
+                      const capa = CAPA_MAP[e.tipo as keyof typeof CAPA_MAP];
+                      return (
+                        <Link key={e.id} href={e.url}
+                          className="flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
+                          <div className="text-center w-8 shrink-0">
+                            <p className="text-[#B3985B] text-base font-bold leading-none">{e.dia}</p>
+                            <p className="text-gray-600 text-[10px]">
+                              {new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}
+                            </p>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${capa?.color ?? "bg-gray-500"}`} />
+                              <p className="text-white text-xs font-medium truncate">{e.titulo}</p>
+                            </div>
+                            <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Agenda móvil (< lg) */}
+      <div className="lg:hidden">
+        {eventosFiltrados.length > 0 && (
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#1a1a1a]">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agenda del mes</p>
+            </div>
+            <div className="divide-y divide-[#1a1a1a]">
+              {eventosFiltrados
+                .sort((a, b) => a.dia - b.dia)
+                .map(e => {
+                  const capa = CAPA_MAP[e.tipo as keyof typeof CAPA_MAP];
+                  return (
+                    <Link key={e.id} href={e.url}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
+                      <div className="text-center w-8 shrink-0">
+                        <p className="text-[#B3985B] text-base font-bold leading-none">{e.dia}</p>
+                        <p className="text-gray-600 text-[10px]">{new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}</p>
+                      </div>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${capa?.color ?? "bg-gray-500"}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-white text-sm truncate">{e.titulo}</p>
+                        <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

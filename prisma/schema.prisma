@@ -224,6 +224,9 @@ model Cotizacion {
   vigenciaDias        Int      @default(30)
   fechaEnvio          DateTime?
   fechaVencimiento    DateTime?
+  aprobacionToken     String?  @unique @map("aprobacion_token")
+  aprobacionFecha     DateTime? @map("aprobacion_fecha")
+  aprobacionNombre    String?  @map("aprobacion_nombre")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -336,6 +339,7 @@ model Proyecto {
   evaluacionInterna EvaluacionInterna?
   evaluacionCliente EvaluacionCliente?
   gastosOperativos  GastoOperativo[]
+  ordenesCompra     OrdenCompra[]
 
   @@map("proyectos")
 }
@@ -541,8 +545,34 @@ model Proveedor {
   proyectoEquipos  ProyectoEquipo[]
   cuentasPagar     CuentaPagar[]
   movimientos      MovimientoFinanciero[]
+  ordenesCompra    OrdenCompra[]
 
   @@map("proveedores")
+}
+
+// ─── ÓRDENES DE COMPRA ───────────────────────────────────────────────────────
+
+model OrdenCompra {
+  id            String    @id @default(cuid())
+  numero        String    @unique
+  proveedorId   String    @map("proveedor_id")
+  proveedor     Proveedor @relation(fields: [proveedorId], references: [id])
+  proyectoId    String?   @map("proyecto_id")
+  proyecto      Proyecto? @relation(fields: [proyectoId], references: [id])
+  descripcion   String
+  estado        String    @default("PENDIENTE") @map("estado") // PENDIENTE | CONFIRMADA | RECIBIDA | CANCELADA
+  fechaRequerida DateTime? @map("fecha_requerida")
+  fechaEntrega   DateTime? @map("fecha_entrega")
+  monto         Float     @default(0)
+  montoIva      Float     @default(0) @map("monto_iva")
+  total         Float     @default(0)
+  notas         String?
+  lineas        String?   // JSON: [{descripcion, cantidad, precioUnitario, subtotal}]
+  creadoPorId   String?   @map("creado_por_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt      @map("updated_at")
+
+  @@map("ordenes_compra")
 }
 
 // ─── FINANZAS ────────────────────────────────────────────────────────────────
