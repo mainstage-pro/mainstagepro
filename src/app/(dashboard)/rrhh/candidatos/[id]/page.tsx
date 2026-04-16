@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 interface Puesto {
   id: string; titulo: string; area: string; descripcion?: string | null;
@@ -58,6 +60,8 @@ function fmtDate(s?: string | null) {
 
 export default function CandidatoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const toast = useToast();
+  const confirm = useConfirm();
   const [candidato, setCandidato] = useState<Candidato | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -159,12 +163,13 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   async function contratar() {
     const post = candidato?.postulaciones[0];
     if (!post) return;
-    if (!confirm(`¿Confirmar contratación de ${candidato?.nombre}? Se creará su expediente en Personal.`)) return;
+    if (!await confirm({ message: `¿Confirmar contratación de ${candidato?.nombre}? Se creará su expediente en Personal.`, confirmText: "Contratar", danger: false })) return;
     setSaving(true);
     await fetch(`/api/rrhh/candidatos/${id}/contratar`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id }),
     });
+    toast.success("Candidato contratado — expediente creado en Personal");
     await load(); setSaving(false);
   }
 

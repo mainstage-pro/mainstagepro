@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { SkeletonCards } from "@/components/Skeleton";
 
 interface Categoria {
   id: string;
@@ -20,6 +23,8 @@ const TIPO_COLORS: Record<string, string> = {
 };
 
 export default function CategoriasPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ nombre: "", tipo: "GASTO", orden: 0 });
@@ -62,8 +67,9 @@ export default function CategoriasPage() {
   }
 
   async function deleteCategoria(id: string) {
-    if (!confirm("¿Eliminar esta categoría? Los movimientos vinculados perderán la categoría.")) return;
+    if (!await confirm({ message: "¿Eliminar esta categoría? Los movimientos vinculados perderán la categoría.", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/categorias-financieras/${id}`, { method: "DELETE" });
+    toast.success("Categoría eliminada");
     await load();
   }
 
@@ -127,7 +133,7 @@ export default function CategoriasPage() {
 
       {/* Lista agrupada por tipo */}
       {loading ? (
-        <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+        <SkeletonCards count={6} />
       ) : categorias.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center text-gray-600 text-sm">
           Sin categorías registradas

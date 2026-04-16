@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 interface Personal { id: string; nombre: string; puesto: string; salario: number | null; periodoPago: string; }
 interface TipoIncidencia { id: string; nombre: string; categoria: string; calculoTipo: string; valor: number; esDescuento: boolean; descripcion: string | null; activo: boolean; }
@@ -28,6 +30,8 @@ const TIPO_EMPTY = { nombre:"", categoria:"ASISTENCIA", calculoTipo:"SIN_DESCUEN
 const INC_EMPTY = { personalId:"", tipoId:"", fecha:"", descripcion:"", periodoNomina:"" };
 
 export default function IncidenciasPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [personal, setPersonal] = useState<Personal[]>([]);
   const [tipos, setTipos] = useState<TipoIncidencia[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
@@ -64,8 +68,9 @@ export default function IncidenciasPage() {
   }
 
   async function deleteTipo(id: string, nombre: string) {
-    if (!confirm(`¿Eliminar "${nombre}"?`)) return;
+    if (!await confirm({ message: `¿Eliminar "${nombre}"?`, danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/rrhh/tipos-incidencia/${id}`,{ method:"DELETE" });
+    toast.success("Tipo eliminado");
     await loadAll();
   }
 
@@ -77,8 +82,9 @@ export default function IncidenciasPage() {
   }
 
   async function deleteInc(id: string) {
-    if (!confirm("¿Eliminar esta incidencia?")) return;
+    if (!await confirm({ message: "¿Eliminar esta incidencia?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/rrhh/incidencias/${id}`,{ method:"DELETE" });
+    toast.success("Incidencia eliminada");
     await loadAll();
   }
 

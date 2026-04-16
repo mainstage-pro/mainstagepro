@@ -25,10 +25,9 @@ export default function NuevoClientePage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.nombre.trim()) {
-      setError("El nombre es requerido");
-      return;
-    }
+    if (!form.nombre.trim()) { setError("El nombre es requerido"); return; }
+    if (form.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.correo)) { setError("El correo no tiene un formato válido"); return; }
+    if (form.telefono && !/^[\d\s\-\+\(\)]{7,15}$/.test(form.telefono)) { setError("El teléfono no tiene un formato válido"); return; }
     setLoading(true);
     setError("");
 

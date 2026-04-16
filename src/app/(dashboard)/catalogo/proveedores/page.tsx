@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { CopyButton } from "@/components/CopyButton";
 
 type Proveedor = {
   id: string;
@@ -302,6 +303,7 @@ export default function ProveedoresPage() {
                     {p.telefono ? (
                       <div className="flex items-center gap-2">
                         <span>{p.telefono}</span>
+                        <CopyButton value={p.telefono} size="xs" />
                         <a href={`https://wa.me/${p.telefono.replace(/\D/g,"").replace(/^(?!52)/,"52")}?text=${encodeURIComponent(`Hola ${p.nombre.split(" ")[0]}! 👋`)}`}
                            target="_blank" rel="noopener noreferrer"
                            className="text-green-500 hover:text-green-400 transition-colors shrink-0" title="WhatsApp">

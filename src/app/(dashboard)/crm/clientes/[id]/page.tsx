@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
+import { CopyButton } from "@/components/CopyButton";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -361,6 +362,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
               {cliente.telefono ? (
                 <div className="flex items-center gap-2">
                   <span className="text-white">{cliente.telefono}</span>
+                  <CopyButton value={cliente.telefono} size="xs" />
                   <a href={`https://wa.me/${cliente.telefono.replace(/\D/g,"").replace(/^(?!52)/,"52")}?text=${encodeURIComponent(`Hola ${cliente.nombre.split(" ")[0]}! 👋`)}`}
                      target="_blank" rel="noopener noreferrer"
                      className="flex items-center gap-1 text-green-500 hover:text-green-400 bg-green-900/20 hover:bg-green-900/30 border border-green-800/40 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors">

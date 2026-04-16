@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SkeletonCards } from "@/components/Skeleton";
 import Link from "next/link";
 
 interface PersonalInterno {
@@ -171,7 +172,7 @@ export default function PersonalPage() {
 
       {/* Lista / Tarjetas */}
       {loading ? (
-        <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+        <SkeletonCards count={5} />
       ) : personal.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
           <p className="text-gray-600 text-sm">Sin personal registrado</p>

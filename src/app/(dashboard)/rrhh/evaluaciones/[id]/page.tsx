@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
@@ -57,6 +59,8 @@ function ScoreRow({ label, value }: { label: string; value: number }) {
 export default function EvaluacionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [evaluacion, setEvaluacion] = useState<Evaluacion | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,8 +71,9 @@ export default function EvaluacionDetailPage() {
   }, [id]);
 
   async function deleteEval() {
-    if (!confirm("¿Eliminar esta evaluación?")) return;
+    if (!await confirm({ message: "¿Eliminar esta evaluación?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/rrhh/evaluaciones/${id}`, { method: "DELETE" });
+    toast.success("Evaluación eliminada");
     router.push("/rrhh/evaluaciones");
   }
 

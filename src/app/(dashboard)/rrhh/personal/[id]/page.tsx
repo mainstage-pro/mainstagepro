@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
 interface PagoNomina { id: string; periodo: string; tipoPeriodo: string; monto: number; concepto: string | null; estado: string; fechaPago: string | null; metodoPago: string; notas: string | null; cuentaOrigen: { nombre: string } | null }
@@ -23,6 +25,8 @@ function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString("
 export default function PersonalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [persona, setPersona] = useState<PersonalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [cuentas, setCuentas] = useState<CuentaBancaria[]>([]);
@@ -96,8 +100,9 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function eliminarPago(pagoId: string) {
-    if (!confirm("¿Eliminar este registro de pago?")) return;
+    if (!await confirm({ message: "¿Eliminar este registro de pago?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/rrhh/personal/${id}/pagos/${pagoId}`, { method: "DELETE" });
+    toast.success("Pago eliminado");
     await load();
   }
 
@@ -109,7 +114,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
   async function eliminarEmpleado() {
     if (!persona) return;
-    if (!confirm(`¿Eliminar permanentemente a ${persona.nombre}? Esta acción no se puede deshacer.`)) return;
+    if (!await confirm({ message: `¿Eliminar permanentemente a ${persona.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/rrhh/personal/${id}`, { method: "DELETE" });
     router.push("/rrhh/personal");
   }

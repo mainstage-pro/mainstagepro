@@ -356,6 +356,16 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           <BusquedaGlobal />
         </div>
         {navContent}
+        <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0">
+          <button
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[#444] hover:text-gray-400 hover:bg-[#1a1a1a] transition-colors text-xs"
+            title="Ver atajos de teclado"
+          >
+            <span className="font-mono bg-[#1a1a1a] border border-[#333] rounded px-1 text-[10px]">?</span>
+            <span>Atajos de teclado</span>
+          </button>
+        </div>
       </aside>
 
       {/* MOBILE: barra superior */}

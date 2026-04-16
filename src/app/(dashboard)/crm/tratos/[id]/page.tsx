@@ -6,6 +6,8 @@ import Link from "next/link";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -483,6 +485,8 @@ const NURTURING_PLAYBOOK: Record<string, NPlaybookEtapa> = {
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [trato, setTrato] = useState<Trato | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1035,8 +1039,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             }
             return (
               <button onClick={async () => {
-                if (!confirm("¿Eliminar este trato? Esta acción no se puede deshacer.")) return;
+                if (!await confirm({ message: "¿Eliminar este trato? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
                 await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
+                toast.success("Trato eliminado");
                 router.push("/crm/tratos");
               }} className="px-4 py-2 rounded-lg border border-red-800 text-red-400 hover:bg-red-900/20 text-sm transition-colors">
                 Eliminar

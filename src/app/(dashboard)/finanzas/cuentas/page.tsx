@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { SkeletonTable } from "@/components/Skeleton";
 
 interface CuentaBancaria {
   id: string;
@@ -18,6 +21,8 @@ const EMPTY: Omit<CuentaBancaria, "id" | "activa"> = {
 };
 
 export default function CuentasPage() {
+  const toast = useToast();
+  const confirm = useConfirm();
   const [cuentas, setCuentas] = useState<CuentaBancaria[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...EMPTY });
@@ -65,8 +70,9 @@ export default function CuentasPage() {
   }
 
   async function deleteCuenta(id: string) {
-    if (!confirm("¿Eliminar esta cuenta bancaria?")) return;
+    if (!await confirm({ message: "¿Eliminar esta cuenta bancaria?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/cuentas/${id}`, { method: "DELETE" });
+    toast.success("Cuenta eliminada");
     await load();
   }
 
@@ -144,7 +150,7 @@ export default function CuentasPage() {
       {/* Lista */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+          <SkeletonTable rows={4} cols={4} />
         ) : cuentas.length === 0 ? (
           <div className="py-12 text-center text-gray-600 text-sm">Sin cuentas bancarias registradas</div>
         ) : (
