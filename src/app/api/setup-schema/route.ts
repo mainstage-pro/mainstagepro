@@ -97,6 +97,12 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ proyectos.portalToken");
 
+    // 5. notasPortal column on proyectos
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "proyectos" ADD COLUMN IF NOT EXISTS "notasPortal" TEXT;
+    `);
+    results.push("✅ proyectos.notasPortal");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
