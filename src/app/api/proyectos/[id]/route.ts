@@ -46,6 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
       },
       cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+      // notasPortal is a scalar field returned automatically with include
     },
   });
 
@@ -68,6 +69,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
+    "notasPortal",
   ];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
   const booleanFields = ["choferExterno"];

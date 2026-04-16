@@ -70,6 +70,7 @@ interface Proyecto {
   movimientos: Gasto[];
   cierreFinanciero: { cerradoEn: string; notas: string | null } | null;
   portalToken: string | null;
+  notasPortal: string | null;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -335,6 +336,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Portal de clientes
   const [generandoToken, setGenerandoToken] = useState(false);
   const [revocandoToken, setRevocandoToken] = useState(false);
+  const [notasPortal, setNotasPortal] = useState("");
+  const [savingNotasPortal, setSavingNotasPortal] = useState(false);
 
   async function generarPortalToken() {
     setGenerandoToken(true);
@@ -351,6 +354,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
     setRevocandoToken(false);
     toast.success("Enlace revocado");
+    await load();
+  }
+
+  async function guardarNotasPortal() {
+    setSavingNotasPortal(true);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notasPortal: notasPortal || null }),
+    });
+    setSavingNotasPortal(false);
+    toast.success("Notas del portal guardadas");
     await load();
   }
 
@@ -503,6 +518,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const res = await fetch(`/api/proyectos/${id}`);
     const d = await res.json();
     setProyecto(d.proyecto);
+    setNotasPortal(d.proyecto?.notasPortal ?? "");
     setLoading(false);
   }
 
@@ -4148,10 +4164,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               )}
             </div>
+            {/* Notas para el cliente (siempre visible si tiene token) */}
+            {proyecto.portalToken && (
+              <div className="mt-4 pt-4 border-t border-[#1e1e1e] space-y-2">
+                <label className="text-gray-500 text-xs block">Mensaje al cliente (visible en su portal)</label>
+                <textarea
+                  value={notasPortal}
+                  onChange={e => setNotasPortal(e.target.value)}
+                  placeholder="Ej: Todo confirmado para tu evento. Estaremos en contacto 48 hrs antes para coordinar acceso al venue..."
+                  rows={3}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none"
+                />
+                <button
+                  onClick={guardarNotasPortal}
+                  disabled={savingNotasPortal}
+                  className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
+                >
+                  {savingNotasPortal ? "Guardando..." : "Guardar mensaje"}
+                </button>
+              </div>
+            )}
+
             {proyecto.portalToken && (() => {
               const portalUrl = `https://mainstagepro.vercel.app/portal/${proyecto.portalToken}`;
               return (
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
                     <span className="text-[#B3985B] text-sm">🔗</span>
                     <p className="flex-1 text-[10px] text-gray-400 truncate font-mono">{portalUrl}</p>

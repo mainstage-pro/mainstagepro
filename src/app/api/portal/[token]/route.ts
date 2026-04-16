@@ -15,9 +15,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       fechaEvento: true,
       horaInicioEvento: true,
       horaFinEvento: true,
+      fechaMontaje: true,
+      horaInicioMontaje: true,
       lugarEvento: true,
       descripcionGeneral: true,
-      cliente: { select: { nombre: true, empresa: true, telefono: true, correo: true } },
+      notasPortal: true,
+      cliente: { select: { nombre: true, empresa: true } },
+      encargado: { select: { name: true } },
       personal: {
         where: { confirmado: true },
         select: {
@@ -27,9 +31,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       },
       cotizacion: {
         select: {
+          id: true,
           numeroCotizacion: true,
           granTotal: true,
           estado: true,
+          aprobacionFecha: true,
+          lineas: {
+            select: {
+              tipo: true,
+              descripcion: true,
+              cantidad: true,
+              dias: true,
+              esIncluido: true,
+            },
+            orderBy: { orden: "asc" },
+          },
         },
       },
       cuentasCobrar: {
