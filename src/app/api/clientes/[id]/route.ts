@@ -31,6 +31,25 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ cliente });
 }
 
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (session.role !== "ADMIN") return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+
+  const { id } = await params;
+
+  // Verificar que no tenga proyectos activos
+  const activos = await prisma.proyecto.count({
+    where: { clienteId: id, estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] } },
+  });
+  if (activos > 0) {
+    return NextResponse.json({ error: `El cliente tiene ${activos} proyecto(s) activo(s). Ciérralos antes de eliminar.` }, { status: 409 });
+  }
+
+  await prisma.cliente.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });

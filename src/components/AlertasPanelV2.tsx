@@ -76,7 +76,7 @@ export default function AlertasPanelV2() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-10 z-50 w-[380px] bg-[#0f0f0f] border border-[#222] rounded-2xl shadow-2xl overflow-hidden">
+          <div className="absolute left-0 top-10 z-50 w-[380px] bg-[#0f0f0f] border border-[#222] rounded-2xl shadow-2xl overflow-hidden">
             {/* Header */}
             <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
               <div>

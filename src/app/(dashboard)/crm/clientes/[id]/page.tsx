@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CopyButton } from "@/components/CopyButton";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -83,6 +86,10 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const formLoaded = useRef(false);
   const formTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -218,6 +225,21 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     setSaving(false);
   }
 
+  async function eliminarCliente() {
+    const ok = await confirm(`¿Eliminar a "${cliente?.nombre}"? Esta acción no se puede deshacer.`);
+    if (!ok) return;
+    setDeleting(true);
+    const res = await fetch(`/api/clientes/${id}`, { method: "DELETE" });
+    const d = await res.json();
+    if (!res.ok) {
+      toast.error(d.error ?? "Error al eliminar");
+      setDeleting(false);
+      return;
+    }
+    toast.success("Cliente eliminado");
+    router.push("/crm/clientes");
+  }
+
   if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
   if (!cliente) return <div className="text-red-400 text-sm">Cliente no encontrado</div>;
 
@@ -254,6 +276,13 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
           >
             {editando ? "Cancelar" : "Editar"}
+          </button>
+          <button
+            onClick={eliminarCliente}
+            disabled={deleting}
+            className="px-3 py-2 rounded-lg border border-red-900/40 text-red-500 hover:bg-red-900/20 text-sm transition-colors disabled:opacity-50"
+          >
+            {deleting ? "Eliminando..." : "Eliminar"}
           </button>
         </div>
       </div>
