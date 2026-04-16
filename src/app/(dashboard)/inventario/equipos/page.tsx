@@ -536,6 +536,11 @@ export default function InventarioEquiposPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link href={`/inventario/equipos/${e.id}`}
+                              onClick={ev => ev.stopPropagation()}
+                              className="text-[10px] text-[#B3985B] hover:text-white transition-colors whitespace-nowrap font-medium">
+                              Ver ficha
+                            </Link>
                             {e.tipo === "PROPIO" && (
                               <Link href={`/inventario/mantenimiento?equipoId=${e.id}`}
                                 onClick={ev => ev.stopPropagation()}

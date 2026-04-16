@@ -68,6 +68,8 @@ interface Proyecto {
   cuentasPagar: CxP[];
   bitacora: Bitacora[];
   movimientos: Gasto[];
+  cierreFinanciero: { cerradoEn: string; notas: string | null } | null;
+  portalToken: string | null;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -293,6 +295,64 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [evalClienteLoaded, setEvalClienteLoaded] = useState(false);
   const [loadingEvalCliente, setLoadingEvalCliente] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
+
+  // Cierre financiero
+  type CierreData = {
+    estimado: { granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number };
+    real: { totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number };
+    desgloseCostos: { categoria: string; monto: number }[];
+    cierreExistente: { cerradoEn: string; notas: string | null } | null;
+  };
+  const [cierreData, setCierreData] = useState<CierreData | null>(null);
+  const [loadingCierre, setLoadingCierre] = useState(false);
+  const [savingCierre, setSavingCierre] = useState(false);
+  const [cierreNotas, setCierreNotas] = useState("");
+  const [showCierreModal, setShowCierreModal] = useState(false);
+
+  async function loadCierre() {
+    setLoadingCierre(true);
+    const res = await fetch(`/api/proyectos/${id}/cierre`);
+    const d = await res.json();
+    setCierreData(d);
+    setCierreNotas(d.cierreExistente?.notas ?? "");
+    setLoadingCierre(false);
+  }
+
+  async function guardarCierre() {
+    if (!cierreData) return;
+    setSavingCierre(true);
+    await fetch(`/api/proyectos/${id}/cierre`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...cierreData.real, ...cierreData.estimado, desgloseCostos: cierreData.desgloseCostos, notas: cierreNotas }),
+    });
+    setSavingCierre(false);
+    setShowCierreModal(false);
+    toast.success("Cierre financiero guardado");
+    await load();
+  }
+
+  // Portal de clientes
+  const [generandoToken, setGenerandoToken] = useState(false);
+  const [revocandoToken, setRevocandoToken] = useState(false);
+
+  async function generarPortalToken() {
+    setGenerandoToken(true);
+    await fetch(`/api/proyectos/${id}/portal-token`, { method: "POST" });
+    setGenerandoToken(false);
+    toast.success("Enlace de portal generado");
+    await load();
+  }
+
+  async function revocarPortalToken() {
+    const ok = await confirm("¿Revocar el enlace del portal? El cliente ya no podrá acceder con el enlace anterior.");
+    if (!ok) return;
+    setRevocandoToken(true);
+    await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
+    setRevocandoToken(false);
+    toast.success("Enlace revocado");
+    await load();
+  }
 
   // Catálogos
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
@@ -4037,10 +4097,153 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             );
           })()}
+
+          {/* ── Cierre financiero ── */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
+                <p className="text-gray-600 text-xs mt-0.5">Comparativa real vs estimado al cerrar el proyecto</p>
+              </div>
+              <button
+                onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
+                disabled={loadingCierre}
+                className="px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
+              >
+                {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
+              </button>
+            </div>
+            {proyecto.cierreFinanciero && (
+              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
+                <span className="text-green-400 text-sm">✓</span>
+                <p className="text-green-400 text-xs font-medium">
+                  Cierre registrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Portal de clientes */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="text-white font-semibold text-sm">Portal de cliente</h3>
+                <p className="text-gray-600 text-xs mt-0.5">Enlace público con estado del proyecto, pagos y equipo</p>
+              </div>
+              {!proyecto.portalToken ? (
+                <button
+                  onClick={generarPortalToken}
+                  disabled={generandoToken}
+                  className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {generandoToken ? "Generando..." : "Generar enlace"}
+                </button>
+              ) : (
+                <button
+                  onClick={revocarPortalToken}
+                  disabled={revocandoToken}
+                  className="px-3 py-1.5 text-red-500 border border-red-900/40 text-xs font-medium rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                >
+                  {revocandoToken ? "Revocando..." : "Revocar"}
+                </button>
+              )}
+            </div>
+            {proyecto.portalToken && (
+              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
+                <span className="text-[#B3985B] text-sm">🔗</span>
+                <p className="flex-1 text-xs text-gray-400 truncate font-mono">
+                  {typeof window !== "undefined" ? `${window.location.origin}/portal/${proyecto.portalToken}` : `/portal/${proyecto.portalToken}`}
+                </p>
+                <CopyButton value={typeof window !== "undefined" ? `${window.location.origin}/portal/${proyecto.portalToken}` : `/portal/${proyecto.portalToken}`} />
+              </div>
+            )}
+          </div>
+
         </div>
         );
       })()}
 
+      {/* ── Modal cierre financiero ── */}
+      {showCierreModal && cierreData && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="px-6 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+              <h2 className="text-white font-semibold">Cierre financiero · {proyecto.nombre}</h2>
+              <button onClick={() => setShowCierreModal(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+            </div>
+            <div className="p-6 space-y-5">
+              {/* Comparativa */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Estimado (cotización)</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs"><span className="text-gray-400">Gran total</span><span className="text-white font-semibold">{fmt(cierreData.estimado.granTotalEstimado)}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-gray-400">Costo est.</span><span className="text-red-400">{fmt(cierreData.estimado.costoEstimado)}</span></div>
+                    <div className="flex justify-between text-xs border-t border-[#1e1e1e] pt-2"><span className="text-gray-400">Utilidad est.</span><span className="text-green-400 font-semibold">{fmt(cierreData.estimado.utilidadEstimada)}</span></div>
+                  </div>
+                </div>
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Real (al cierre)</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs"><span className="text-gray-400">Total cobrado</span><span className="text-white font-semibold">{fmt(cierreData.real.totalCobrado)}</span></div>
+                    <div className="flex justify-between text-xs"><span className="text-gray-400">Total gastado</span><span className="text-red-400">{fmt(cierreData.real.totalGastado)}</span></div>
+                    <div className="flex justify-between text-xs border-t border-[#1e1e1e] pt-2">
+                      <span className="text-gray-400">Utilidad real</span>
+                      <span className={`font-semibold ${cierreData.real.utilidadReal >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(cierreData.real.utilidadReal)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Margen */}
+              <div className={`border rounded-xl p-4 text-center ${cierreData.real.margenReal >= 20 ? "border-green-800/40 bg-green-900/10" : cierreData.real.margenReal >= 0 ? "border-yellow-800/40 bg-yellow-900/10" : "border-red-800/40 bg-red-900/10"}`}>
+                <p className="text-gray-500 text-xs mb-1">Margen real</p>
+                <p className={`text-3xl font-bold ${cierreData.real.margenReal >= 20 ? "text-green-400" : cierreData.real.margenReal >= 0 ? "text-yellow-400" : "text-red-400"}`}>
+                  {cierreData.real.margenReal.toFixed(1)}%
+                </p>
+                <p className="text-gray-600 text-xs mt-1">
+                  {cierreData.real.margenReal >= 20 ? "Excelente rentabilidad" : cierreData.real.margenReal >= 10 ? "Rentabilidad aceptable" : cierreData.real.margenReal >= 0 ? "Margen bajo — revisar costos" : "Evento con pérdida"}
+                </p>
+              </div>
+
+              {/* Desglose */}
+              {cierreData.desgloseCostos.length > 0 && (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Desglose de costos reales</p>
+                  <div className="space-y-2">
+                    {cierreData.desgloseCostos.map(d => (
+                      <div key={d.categoria} className="flex justify-between text-xs">
+                        <span className="text-gray-400">{d.categoria}</span>
+                        <span className="text-red-400">{fmt(d.monto)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Notas */}
+              <div>
+                <label className="text-gray-500 text-xs block mb-1">Notas del cierre (opcional)</label>
+                <textarea
+                  value={cierreNotas}
+                  onChange={e => setCierreNotas(e.target.value)}
+                  placeholder="Observaciones, aprendizajes, ajustes para futuros eventos..."
+                  rows={3}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                />
+              </div>
+
+              <button
+                onClick={guardarCierre}
+                disabled={savingCierre}
+                className="w-full py-3 bg-[#B3985B] text-black font-semibold rounded-xl hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
+              >
+                {savingCierre ? "Guardando..." : "Guardar cierre y marcar como Completado"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ────── TAB: BITÁCORA ────── */}
       {tab === "bitacora" && (

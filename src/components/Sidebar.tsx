@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
+import AlertasPanelV2 from "@/components/AlertasPanelV2";
 
 interface NavChild {
   key?: string;
@@ -113,6 +114,7 @@ const NAV: NavSection[] = [
           { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
           { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
           { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
+          { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad" },
         ],
       },
       {
@@ -353,7 +355,10 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
               <p className="text-[#555] text-[10px]">Sistema operativo</p>
             </div>
           </Link>
-          <BusquedaGlobal />
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex-1"><BusquedaGlobal /></div>
+            <AlertasPanelV2 />
+          </div>
         </div>
         {navContent}
         <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0">
@@ -386,6 +391,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
         <Link href="/dashboard" className={`flex-1 flex ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
           <Image src="/logo-white.png" alt="Mainstage Pro" width={100} height={26} className="object-contain hover:opacity-80 transition-opacity" />
         </Link>
+        <AlertasPanelV2 />
         <button
           onClick={() => setMobileOpen(true)}
           className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors shrink-0"

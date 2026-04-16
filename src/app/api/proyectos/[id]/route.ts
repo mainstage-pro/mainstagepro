@@ -45,6 +45,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           proveedor: { select: { nombre: true } },
         },
       },
+      cierreFinanciero: { select: { cerradoEn: true, notas: true } },
     },
   });
 

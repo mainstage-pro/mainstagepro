@@ -325,6 +325,7 @@ model Proyecto {
   recoleccionFechaReal   DateTime? // Fecha/hora real en que se recolectó el equipo
   protocoloSalida        String?   // JSON: protocolo de entrega al cliente (responsable, condicion, items[], timestamp)
   protocoloEntrada       String?   // JSON: protocolo de recepción en bodega (responsable, condicion, danios, items[], timestamp)
+  portalToken            String?   @unique // Token público para portal de cliente
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -340,6 +341,7 @@ model Proyecto {
   evaluacionCliente EvaluacionCliente?
   gastosOperativos  GastoOperativo[]
   ordenesCompra     OrdenCompra[]
+  cierreFinanciero  CierreFinanciero?
 
   @@map("proyectos")
 }
@@ -455,6 +457,7 @@ model Equipo {
   proyectoEquipos      ProyectoEquipo[]
   mantenimientos       MantenimientoEquipo[]
   plantillaItems       PlantillaEquipoItem[]
+  plantillaCotizacionLineas PlantillaCotizacionLinea[]
   preciosClientes      PrecioClienteEquipo[]
   checklistBodegaItems ChecklistBodegaItem[]
   unidades             EquipoUnidad[]
@@ -1612,4 +1615,89 @@ model Venue {
   updatedAt           DateTime @updatedAt
 
   @@map("venues")
+}
+
+// ─── PLANTILLAS DE COTIZACIÓN ─────────────────────────────────────────────────
+
+model PlantillaCotizacion {
+  id            String   @id @default(cuid())
+  nombre        String
+  descripcion   String?
+  tipoEvento    String?
+  tipoServicio  String?
+  activo        Boolean  @default(true)
+  creadaPorId   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Campos de cotización que se copian
+  horasOperacion   Float?
+  tipoJornada      String?
+  diasEquipo       Int     @default(1)
+  diasOperacion    Int     @default(1)
+  diasTransporte   Int     @default(1)
+  diasHospedaje    Int     @default(1)
+  diasComidas      Int     @default(1)
+  observaciones    String?
+  terminosComerciales String?
+  vigenciaDias     Int     @default(30)
+  aplicaIva        Boolean @default(false)
+
+  lineas PlantillaCotizacionLinea[]
+
+  @@map("plantillas_cotizacion")
+}
+
+model PlantillaCotizacionLinea {
+  id          String               @id @default(cuid())
+  plantillaId String
+  plantilla   PlantillaCotizacion  @relation(fields: [plantillaId], references: [id], onDelete: Cascade)
+  tipo         String
+  equipoId     String?
+  equipo       Equipo?  @relation(fields: [equipoId], references: [id])
+  rolTecnicoId String?
+  descripcion    String
+  marca          String?
+  modelo         String?
+  nivel          String?
+  jornada        String?
+  esExterno      Boolean @default(false)
+  cantidad       Float   @default(1)
+  dias           Int     @default(1)
+  precioUnitario Float   @default(0)
+  costoUnitario  Float   @default(0)
+  subtotal       Float   @default(0)
+  esIncluido     Boolean @default(false)
+  notas          String?
+  orden          Int     @default(0)
+
+  @@map("plantillas_cotizacion_lineas")
+}
+
+// ─── CIERRE FINANCIERO DE PROYECTO ───────────────────────────────────────────
+
+model CierreFinanciero {
+  id         String   @id @default(cuid())
+  proyectoId String   @unique
+  proyecto   Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+
+  // Estimado (de cotización)
+  granTotalEstimado       Float @default(0)
+  costoEstimado           Float @default(0)
+  utilidadEstimada        Float @default(0)
+
+  // Real (calculado al cierre)
+  totalCobrado            Float @default(0)
+  totalGastado            Float @default(0)
+  utilidadReal            Float @default(0)
+  margenReal              Float @default(0)
+
+  // Detalle por categoría (JSON)
+  desgloseCostos          String? // JSON: [{categoria, monto}]
+  notas                   String?
+
+  cerradoEn               DateTime @default(now())
+  cerradoPorId            String?
+
+  @@map("cierres_financieros")
 }

@@ -1,0 +1,104 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+const SECRET = "setup-mainstage-2026-schema";
+
+export async function POST(req: NextRequest) {
+  const { secret } = await req.json().catch(() => ({}));
+  if (secret !== SECRET) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const results: string[] = [];
+
+  try {
+    // 1. plantillas_cotizacion
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "plantillas_cotizacion" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "descripcion" TEXT,
+        "tipoEvento" TEXT,
+        "tipoServicio" TEXT,
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "creadaPorId" TEXT,
+        "horasOperacion" DOUBLE PRECISION,
+        "tipoJornada" TEXT,
+        "diasEquipo" INTEGER NOT NULL DEFAULT 1,
+        "diasOperacion" INTEGER NOT NULL DEFAULT 1,
+        "diasTransporte" INTEGER NOT NULL DEFAULT 1,
+        "diasHospedaje" INTEGER NOT NULL DEFAULT 1,
+        "diasComidas" INTEGER NOT NULL DEFAULT 1,
+        "observaciones" TEXT,
+        "terminosComerciales" TEXT,
+        "vigenciaDias" INTEGER NOT NULL DEFAULT 30,
+        "aplicaIva" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "plantillas_cotizacion_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    results.push("✅ plantillas_cotizacion");
+
+    // 2. plantillas_cotizacion_lineas
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "plantillas_cotizacion_lineas" (
+        "id" TEXT NOT NULL,
+        "plantillaId" TEXT NOT NULL,
+        "tipo" TEXT NOT NULL,
+        "equipoId" TEXT,
+        "rolTecnicoId" TEXT,
+        "descripcion" TEXT NOT NULL,
+        "marca" TEXT,
+        "modelo" TEXT,
+        "nivel" TEXT,
+        "jornada" TEXT,
+        "esExterno" BOOLEAN NOT NULL DEFAULT false,
+        "cantidad" DOUBLE PRECISION NOT NULL DEFAULT 1,
+        "dias" INTEGER NOT NULL DEFAULT 1,
+        "precioUnitario" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "costoUnitario" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "subtotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "esIncluido" BOOLEAN NOT NULL DEFAULT false,
+        "notas" TEXT,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        CONSTRAINT "plantillas_cotizacion_lineas_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "plantillas_cotizacion_lineas_plantillaId_fkey"
+          FOREIGN KEY ("plantillaId") REFERENCES "plantillas_cotizacion"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ plantillas_cotizacion_lineas");
+
+    // 3. cierres_financieros
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "cierres_financieros" (
+        "id" TEXT NOT NULL,
+        "proyectoId" TEXT NOT NULL,
+        "granTotalEstimado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "costoEstimado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "utilidadEstimada" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalCobrado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalGastado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "utilidadReal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "margenReal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "desgloseCostos" TEXT,
+        "notas" TEXT,
+        "cerradoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "cerradoPorId" TEXT,
+        CONSTRAINT "cierres_financieros_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "cierres_financieros_proyectoId_key" UNIQUE ("proyectoId"),
+        CONSTRAINT "cierres_financieros_proyectoId_fkey"
+          FOREIGN KEY ("proyectoId") REFERENCES "proyectos"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ cierres_financieros");
+
+    // 4. portalToken column on proyectos
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "proyectos" ADD COLUMN IF NOT EXISTS "portalToken" TEXT UNIQUE;
+    `);
+    results.push("✅ proyectos.portalToken");
+
+    return NextResponse.json({ ok: true, results });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
+  }
+}

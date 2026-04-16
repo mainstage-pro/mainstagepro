@@ -2,6 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id } = await params;
+  const equipo = await prisma.equipo.findUnique({
+    where: { id },
+    include: {
+      categoria: { select: { id: true, nombre: true } },
+      proveedorDefault: { select: { id: true, nombre: true, correo: true, telefono: true } },
+      mantenimientos: {
+        orderBy: { fecha: "desc" },
+        take: 10,
+        select: { id: true, fecha: true, tipo: true, accionRealizada: true, estadoEquipo: true, comentarios: true, proximoMantenimiento: true },
+      },
+      proyectoEquipos: {
+        include: { proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true, estado: true, cliente: { select: { nombre: true } } } } },
+        orderBy: { id: "desc" },
+        take: 20,
+      },
+      unidades: { orderBy: { id: "asc" } },
+    },
+  });
+  if (!equipo) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  return NextResponse.json({ equipo });
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });

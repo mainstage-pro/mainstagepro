@@ -109,6 +109,32 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+
+  async function guardarComoPlantilla() {
+    if (!cot) return;
+    const nombre = window.prompt("Nombre de la plantilla:", cot.nombreEvento ? `${cot.nombreEvento} - ${cot.tipoEvento ?? ""}` : cot.numeroCotizacion);
+    if (!nombre) return;
+    setGuardandoPlantilla(true);
+    const res = await fetch("/api/plantillas-cotizacion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre,
+        tipoEvento: cot.tipoEvento ?? null,
+        tipoServicio: cot.tipoServicio ?? null,
+        cotizacionId: cot.id,
+        diasEquipo: cot.diasEquipo,
+        diasOperacion: cot.diasOperacion,
+        observaciones: cot.observaciones,
+        vigenciaDias: cot.vigenciaDias,
+        aplicaIva: cot.aplicaIva,
+      }),
+    });
+    setGuardandoPlantilla(false);
+    if (res.ok) toast.success("Plantilla guardada");
+    else toast.error("Error al guardar plantilla");
+  }
 
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`)
@@ -347,6 +373,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
             >
               {duplicando ? "Duplicando..." : "Duplicar"}
+            </button>
+            <button
+              onClick={guardarComoPlantilla}
+              disabled={guardandoPlantilla}
+              title="Guardar esta cotización como plantilla reutilizable"
+              className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {guardandoPlantilla ? "Guardando..." : "💾 Plantilla"}
             </button>
             {cot.estado === "APROBADA" && !cot.proyecto && (
               <button

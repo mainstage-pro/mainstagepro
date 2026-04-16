@@ -181,6 +181,10 @@ function CotizadorForm() {
   const [preciosClienteOriginal, setPreciosClienteOriginal] = useState<Record<string, number | null>>({});
   const [guardandoPrecio, setGuardandoPrecio] = useState<string | null>(null);
   const [asistentesEstimados, setAsistentesEstimados] = useState<number | null>(null);
+  // Plantillas
+  const [plantillas, setPlantillas] = useState<{ id: string; nombre: string; tipoEvento: string | null; lineas: unknown[] }[]>([]);
+  const [showPlantillas, setShowPlantillas] = useState(false);
+  const [cargandoPlantilla, setCargandoPlantilla] = useState(false);
 
   const [evento, setEvento] = useState({
     nombreEvento: "",
@@ -248,6 +252,7 @@ function CotizadorForm() {
 
   // Cargar datos (modo nuevo O modo edición)
   useEffect(() => {
+    fetch("/api/plantillas-cotizacion").then(r => r.json()).then(d => setPlantillas(d.plantillas ?? [])).catch(() => {});
     Promise.all([
       fetch("/api/equipos").then(r => r.json()),
       fetch("/api/roles-tecnicos").then(r => r.json()),
@@ -824,12 +829,67 @@ function CotizadorForm() {
           {clienteNombre && <p className="text-[#B3985B] text-sm mt-0.5">{clienteNombre}</p>}
         </div>
         <div className="flex gap-3">
+          {!editId && plantillas.length > 0 && (
+            <button
+              onClick={() => setShowPlantillas(true)}
+              className="px-4 py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-sm font-medium"
+            >
+              📋 Cargar plantilla
+            </button>
+          )}
           <button onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm">Cancelar</button>
           <button onClick={guardar} disabled={saving} className="px-6 py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
             {saving ? "Guardando..." : editId ? "Guardar cambios" : "Guardar borrador"}
           </button>
         </div>
       </div>
+
+      {/* Modal cargar plantilla */}
+      {showPlantillas && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg">
+            <div className="px-6 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+              <h2 className="text-white font-semibold">Cargar plantilla</h2>
+              <button onClick={() => setShowPlantillas(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+            </div>
+            <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+              {plantillas.length === 0 ? (
+                <p className="text-gray-500 text-sm text-center py-6">Sin plantillas guardadas aún</p>
+              ) : plantillas.map(p => (
+                <button
+                  key={p.id}
+                  disabled={cargandoPlantilla}
+                  onClick={async () => {
+                    setCargandoPlantilla(true);
+                    const res = await fetch(`/api/plantillas-cotizacion`);
+                    const d = await res.json();
+                    const plantilla = d.plantillas?.find((pl: { id: string }) => pl.id === p.id);
+                    if (plantilla) {
+                      // Cargar líneas de equipos de la plantilla
+                      const newLineasEquipo: LineaEquipo[] = (plantilla.lineas as { tipo: string; equipoId: string | null; descripcion: string; marca: string | null; cantidad: number; dias: number; precioUnitario: number; categoria: string | null }[])
+                        .filter((l) => l.tipo === "EQUIPO_PROPIO")
+                        .map(l => ({
+                          id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
+                          marca: l.marca ?? "", categoria: l.categoria ?? "",
+                          cantidad: l.cantidad, dias: l.dias,
+                          precioUnitario: l.precioUnitario,
+                          subtotal: l.precioUnitario * l.cantidad * l.dias,
+                        }));
+                      if (newLineasEquipo.length > 0) setLineasEquipo(newLineasEquipo);
+                    }
+                    setCargandoPlantilla(false);
+                    setShowPlantillas(false);
+                  }}
+                  className="w-full text-left bg-[#111] border border-[#222] hover:border-[#B3985B]/50 rounded-xl px-4 py-3 transition-colors"
+                >
+                  <p className="text-white text-sm font-medium">{p.nombre}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{p.tipoEvento ?? "Todos los tipos"} · {p.lineas.length} líneas</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && <div className="mb-4 bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
 
