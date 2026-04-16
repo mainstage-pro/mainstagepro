@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ESTADO_COTIZACION_LABELS, ESTADO_COTIZACION_COLORS, TIPO_EVENTO_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Cotizacion = any;
@@ -12,6 +15,8 @@ export default function CotizacionesPage() {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     fetch("/api/cotizaciones")
@@ -21,12 +26,13 @@ export default function CotizacionesPage() {
   }, []);
 
   async function eliminar(id: string, numero: string) {
-    if (!confirm(`¿Eliminar cotización ${numero}? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({ message: `¿Eliminar cotización ${numero}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/cotizaciones/${id}`, { method: "DELETE" });
-      if (res.ok) setCotizaciones(prev => prev.filter(c => c.id !== id));
-      else { const d = await res.json(); alert(d.error ?? "Error al eliminar"); }
+      if (res.ok) { setCotizaciones(prev => prev.filter(c => c.id !== id)); toast.success("Cotización eliminada"); }
+      else { const d = await res.json(); toast.error(d.error ?? "Error al eliminar"); }
     } finally {
       setDeletingId(null);
     }
@@ -45,7 +51,7 @@ export default function CotizacionesPage() {
 
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="text-center py-16 text-[#6b7280] text-sm">Cargando...</div>
+          <SkeletonPage rows={5} cols={5} />
         ) : cotizaciones.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-[#6b7280] text-sm">No hay cotizaciones</p>

@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Trato = any;
@@ -22,6 +25,8 @@ export default function TratosPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filtroEtapa, setFiltroEtapa] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     fetch("/api/tratos")
@@ -31,12 +36,13 @@ export default function TratosPage() {
   }, []);
 
   async function eliminar(id: string, nombre: string) {
-    if (!confirm(`¿Eliminar el trato de "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({ message: `¿Eliminar el trato de "${nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/tratos/${id}`, { method: "DELETE" });
-      if (res.ok) setTratos(prev => prev.filter(t => t.id !== id));
-      else { const d = await res.json(); alert(d.error ?? "Error al eliminar"); }
+      if (res.ok) { setTratos(prev => prev.filter(t => t.id !== id)); toast.success("Trato eliminado"); }
+      else { const d = await res.json(); toast.error(d.error ?? "Error al eliminar"); }
     } finally {
       setDeletingId(null);
     }
@@ -115,7 +121,7 @@ export default function TratosPage() {
 
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
         {loading ? (
-          <div className="text-center py-16 text-[#6b7280] text-sm">Cargando...</div>
+          <SkeletonPage rows={5} cols={5} />
         ) : tratos.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>

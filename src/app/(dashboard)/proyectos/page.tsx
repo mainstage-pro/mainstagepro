@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_COLORS, TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Proyecto = any;
@@ -12,6 +15,8 @@ export default function ProyectosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const toast = useToast();
+  const confirm = useConfirm();
 
   useEffect(() => {
     fetch("/api/proyectos")
@@ -31,12 +36,13 @@ export default function ProyectosPage() {
 
   async function eliminar(id: string, nombre: string, e: React.MouseEvent) {
     e.preventDefault();
-    if (!confirm(`¿Eliminar el proyecto "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const ok = await confirm({ message: `¿Eliminar el proyecto "${nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/proyectos/${id}`, { method: "DELETE" });
-      if (res.ok) setProyectos(prev => prev.filter(p => p.id !== id));
-      else { const d = await res.json(); alert(d.error ?? "Error al eliminar"); }
+      if (res.ok) { setProyectos(prev => prev.filter(p => p.id !== id)); toast.success("Proyecto eliminado"); }
+      else { const d = await res.json(); toast.error(d.error ?? "Error al eliminar"); }
     } finally {
       setDeletingId(null);
     }

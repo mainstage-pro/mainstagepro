@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
+import { CopyButton } from "@/components/CopyButton";
 
 interface Cliente {
   id: string;
@@ -111,7 +112,7 @@ export default function ClientesClient({ clientes }: { clientes: Cliente[] }) {
                   <td className="px-4 py-3">
                     <p className="text-white text-sm font-medium">{c.nombre}</p>
                     {c.empresa && <p className="text-[#6b7280] text-xs">{c.empresa}</p>}
-                    {c.correo && <p className="text-[#555] text-xs">{c.correo}</p>}
+                    {c.correo && <span className="flex items-center gap-1"><p className="text-[#555] text-xs">{c.correo}</p><CopyButton value={c.correo} size="xs" /></span>}
                   </td>
                   <td className="px-4 py-3"><TipoBadge tipo={c.tipoCliente} /></td>
                   <td className="px-4 py-3"><ClasificacionBadge clasificacion={c.clasificacion} /></td>

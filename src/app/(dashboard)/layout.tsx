@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
 import GlobalQuickTask from "@/components/GlobalQuickTask";
+import { Providers } from "@/components/Providers";
 
 export default async function DashboardLayout({
   children,
@@ -34,17 +35,19 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
-      <Sidebar
-        user={session}
-        labels={labels}
-        privateModules={privateModules}
-        userModuleKeys={userModuleKeys}
-      />
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
-        {children}
-      </main>
-      <GlobalQuickTask />
-    </div>
+    <Providers>
+      <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
+        <Sidebar
+          user={session}
+          labels={labels}
+          privateModules={privateModules}
+          userModuleKeys={userModuleKeys}
+        />
+        <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
+          {children}
+        </main>
+        <GlobalQuickTask />
+      </div>
+    </Providers>
   );
 }

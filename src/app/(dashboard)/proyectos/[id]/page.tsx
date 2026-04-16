@@ -5,6 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { CopyButton } from "@/components/CopyButton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -228,6 +231,8 @@ function CampoVenue({ label, value, field, onSave }: { label: string; value: str
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1016,7 +1021,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       });
     }
     setGenerandoRider(false);
-    if (d.mensaje) alert(d.mensaje);
+    if (d.mensaje) toast.info(d.mensaje);
   }
 
   // ── Agregar personal ──
@@ -1108,7 +1113,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (d.ok) {
       router.push(`/cotizaciones/${d.cotizacionId}`);
     } else {
-      alert("Error al eliminar el proyecto: " + (d.error ?? "desconocido"));
+      toast.error("Error al eliminar el proyecto: " + (d.error ?? "desconocido"));
       setBorrando(false);
     }
   }
@@ -1172,7 +1177,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // ── Eliminar CxC individual ──
   async function eliminarCxC(cxcId: string) {
-    if (!confirm("¿Eliminar esta cuenta por cobrar?")) return;
+    if (!await confirm({ message: "¿Eliminar esta cuenta por cobrar?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/cuentas-cobrar/${cxcId}`, { method: "DELETE" });
     await load();
   }
@@ -1212,7 +1217,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
+              <CopyButton value={proyecto.numeroProyecto} size="xs" />
+            </span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[proyecto.estado]}`}>
               {ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}
             </span>
@@ -2014,7 +2022,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   } else if (d.token) {
                                     const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
                                     await navigator.clipboard.writeText(url).catch(() => {});
-                                    alert(`Sin número registrado. Link copiado al portapapeles:\n${url}`);
+                                    toast.info("Sin número registrado. Link copiado al portapapeles.");
                                     await load();
                                   }
                                 }}
@@ -2567,7 +2575,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       } else if (d.token) {
                         const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
                         await navigator.clipboard.writeText(url).catch(() => {});
-                        alert(`Sin número registrado. Link copiado:\n${url}`);
+                        toast.info("Sin número registrado. Link copiado al portapapeles.");
                         await load();
                       }
                     }}
@@ -3805,13 +3813,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
                     const d = await res.json();
                     if (res.ok) {
-                      alert(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
+                      toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
                       // Recargar proyecto
                       const r2 = await fetch(`/api/proyectos/${id}`);
                       const d2 = await r2.json();
                       if (d2.proyecto) setProyecto(d2.proyecto);
                     } else {
-                      alert(d.error ?? "Error al sincronizar");
+                      toast.error(d.error ?? "Error al sincronizar");
                     }
                   }}
                   className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors"

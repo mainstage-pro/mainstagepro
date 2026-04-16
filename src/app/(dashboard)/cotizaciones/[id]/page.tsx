@@ -4,6 +4,9 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, formatPct } from "@/lib/cotizador";
+import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
+import { CopyButton } from "@/components/CopyButton";
 
 interface Linea {
   id: string;
@@ -91,6 +94,8 @@ function fmtDate(s: string | null) {
 export default function CotizacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
+  const confirm = useConfirm();
   const [cot, setCot] = useState<Cotizacion | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -121,12 +126,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       });
       const d = await res.json();
       if (!res.ok) {
-        alert(`Error al cambiar estado: ${d.error ?? "Error desconocido"}`);
+        toast.error(d.error ?? "Error al cambiar estado");
       } else {
         setCot((prev) => prev ? { ...prev, estado: d.cotizacion?.estado ?? estado } : prev);
+        toast.success("Estado actualizado");
       }
     } catch {
-      alert("Error de conexión al cambiar el estado");
+      toast.error("Error de conexión al cambiar el estado");
     } finally {
       setSaving(false);
     }
@@ -160,34 +166,38 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   }
 
   async function duplicar() {
-    if (!confirm("¿Duplicar esta cotización? Se creará una copia en estado Borrador.")) return;
+    const ok = await confirm({ message: "¿Duplicar esta cotización? Se creará una copia en estado Borrador.", confirmText: "Duplicar", danger: false });
+    if (!ok) return;
     setDuplicando(true);
     try {
       const res = await fetch(`/api/cotizaciones/${id}/duplicar`, { method: "POST" });
       const d = await res.json();
-      if (res.ok) router.push(`/cotizaciones/${d.id}`);
-      else alert(d.error ?? "Error al duplicar");
+      if (res.ok) { toast.success("Cotización duplicada"); router.push(`/cotizaciones/${d.id}`); }
+      else toast.error(d.error ?? "Error al duplicar");
     } finally {
       setDuplicando(false);
     }
   }
 
   async function eliminar() {
-    if (!confirm("¿Eliminar esta cotización? Esta acción no se puede deshacer.")) return;
+    const ok = await confirm({ message: "¿Eliminar esta cotización? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
     setDeleting(true);
     await fetch(`/api/cotizaciones/${id}`, { method: "DELETE" });
     router.push("/cotizaciones");
   }
 
   async function aprobar() {
-    if (!confirm("¿Aprobar esta cotización y crear el proyecto? El trato pasará a Venta Cerrada.")) return;
+    const ok = await confirm({ message: "¿Aprobar esta cotización y crear el proyecto? El trato pasará a Venta Cerrada.", confirmText: "Aprobar y crear proyecto", danger: false });
+    if (!ok) return;
     setAprobando(true);
     const res = await fetch(`/api/cotizaciones/${id}/aprobar`, { method: "POST" });
     const data = await res.json();
     if (data.proyectoId) {
+      toast.success("Proyecto creado exitosamente");
       router.push(`/proyectos/${data.proyectoId}`);
     } else {
-      alert(`Error al crear proyecto: ${data.error ?? "Error desconocido"}`);
+      toast.error(data.error ?? "Error al crear proyecto");
       setAprobando(false);
     }
   }
@@ -302,7 +312,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <span className="text-gray-400 text-sm font-mono">{cot.numeroCotizacion}</span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-gray-400 text-sm font-mono">{cot.numeroCotizacion}</span>
+              <CopyButton value={cot.numeroCotizacion} size="xs" />
+            </span>
             <span className="text-gray-500 text-sm">v{cot.version}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cot.estado] || "bg-gray-700 text-gray-300"}`}>
               {cot.estado}

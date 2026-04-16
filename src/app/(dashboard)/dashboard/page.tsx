@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
 import AlertasPanel from "@/components/AlertasPanel";
+import { AnimatedNumber } from "@/components/AnimatedNumber";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -368,14 +369,14 @@ export default async function DashboardPage() {
       <Section label="ADMINISTRACIÓN" href="/finanzas/movimientos">
         {/* KPIs del mes */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Ingresos del mes"  value={formatCurrency(ingresosDelMes)} subColor="text-green-400" sub="registrados" />
-          <KpiCard label="Gastos del mes"    value={formatCurrency(gastosDelMes)}   subColor="text-red-400"   sub="registrados" />
+          <KpiCard label="Ingresos del mes"  value={formatCurrency(ingresosDelMes)} subColor="text-green-400" sub="registrados" animate={{ amount: ingresosDelMes, prefix: "$", decimals: 0 }} />
+          <KpiCard label="Gastos del mes"    value={formatCurrency(gastosDelMes)}   subColor="text-red-400"   sub="registrados" animate={{ amount: gastosDelMes, prefix: "$", decimals: 0 }} />
           <KpiCard label="Flujo neto"        value={formatCurrency(flujoNeto)}
             subColor={flujoNeto >= 0 ? "text-green-400" : "text-red-400"}
-            sub={flujoNeto >= 0 ? "positivo" : "negativo"} />
+            sub={flujoNeto >= 0 ? "positivo" : "negativo"} animate={{ amount: flujoNeto, prefix: "$", decimals: 0 }} />
           <KpiCard label="Disponible neto"   value={formatCurrency(disponibleNeto)}
             subColor={disponibleNeto >= 0 ? "text-white" : "text-red-400"}
-            sub="bancos − CxP" />
+            sub="bancos − CxP" animate={{ amount: disponibleNeto, prefix: "$", decimals: 0 }} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -546,7 +547,7 @@ export default async function DashboardPage() {
       <Section label="VENTAS" href="/crm/pipeline">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" />
+          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} />
           <KpiCard label="Cerrados" value={totalCerrados}
             sub={`${tasaConversion}% tasa de cierre`}
             subColor={tasaConversion >= 40 ? "text-green-400" : "text-yellow-400"} />
@@ -648,8 +649,8 @@ export default async function DashboardPage() {
       <Section label="PRODUCCIÓN" href="/proyectos">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Proyectos activos" value={proyectosActivos} sub="en operación" />
-          <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" />
+          <KpiCard label="Proyectos activos" value={proyectosActivos} sub="en operación" animate={{ amount: proyectosActivos }} />
+          <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} />
           <KpiCard label="Equipos en mant." value={equiposMantenimiento}
             sub="fuera de servicio"
             subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} />
@@ -742,13 +743,22 @@ function Section({ label, href, children }: {
   );
 }
 
-function KpiCard({ label, value, sub, subColor = "text-gray-500" }: {
+function KpiCard({ label, value, sub, subColor = "text-gray-500", animate }: {
   label: string; value: string | number; sub?: string; subColor?: string;
+  animate?: { amount: number; prefix?: string; decimals?: number };
 }) {
   return (
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
       <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{label}</p>
-      <p className="text-2xl font-semibold text-white">{value}</p>
+      <p className="text-2xl font-semibold text-white">
+        {animate ? (
+          <AnimatedNumber
+            value={animate.amount}
+            prefix={animate.prefix ?? ""}
+            decimals={animate.decimals ?? 0}
+          />
+        ) : value}
+      </p>
       {sub && <p className={`text-xs mt-1 ${subColor}`}>{sub}</p>}
     </div>
   );
