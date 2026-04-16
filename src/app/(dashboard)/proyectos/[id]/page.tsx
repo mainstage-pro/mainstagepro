@@ -4148,15 +4148,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               )}
             </div>
-            {proyecto.portalToken && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-                <span className="text-[#B3985B] text-sm">🔗</span>
-                <p className="flex-1 text-xs text-gray-400 truncate font-mono">
-                  {typeof window !== "undefined" ? `${window.location.origin}/portal/${proyecto.portalToken}` : `/portal/${proyecto.portalToken}`}
-                </p>
-                <CopyButton value={typeof window !== "undefined" ? `${window.location.origin}/portal/${proyecto.portalToken}` : `/portal/${proyecto.portalToken}`} />
-              </div>
-            )}
+            {proyecto.portalToken && (() => {
+              const portalUrl = `https://mainstagepro.vercel.app/portal/${proyecto.portalToken}`;
+              return (
+                <div className="space-y-2">
+                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
+                    <span className="text-[#B3985B] text-sm">🔗</span>
+                    <p className="flex-1 text-[10px] text-gray-400 truncate font-mono">{portalUrl}</p>
+                    <CopyButton value={portalUrl} />
+                  </div>
+                  <a href={portalUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-xs font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Abrir portal del cliente
+                  </a>
+                </div>
+              );
+            })()}
           </div>
 
         </div>
