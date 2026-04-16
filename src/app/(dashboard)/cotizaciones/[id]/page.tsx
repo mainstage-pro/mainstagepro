@@ -298,7 +298,16 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  if (loading) return <div className="text-gray-400 text-sm p-6">Cargando...</div>;
+  if (loading) return (
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
+      <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
+      <div className="h-5 w-48 bg-[#1a1a1a] rounded animate-pulse" />
+      <div className="h-12 w-full bg-[#1a1a1a] rounded-xl animate-pulse" />
+      <div className="space-y-2">
+        {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+      </div>
+    </div>
+  );
   if (!cot) return <div className="text-red-400 text-sm p-6">Cotización no encontrada</div>;
 
   // Viabilidad recalculada en vivo (ignora valor guardado en BD)

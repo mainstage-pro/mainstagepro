@@ -34,6 +34,7 @@ const NAV: NavSection[] = [
     section: "DIRECCIÓN",
     items: [
       { key: "dashboard", label: "Dashboard", href: "/dashboard" },
+      { key: "agenda", label: "Mi agenda", href: "/agenda" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
         key: "calendario",
@@ -56,6 +57,7 @@ const NAV: NavSection[] = [
       { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
       { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
       { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
+      { key: "cotizaciones-plantillas", label: "Plantillas", href: "/cotizaciones/plantillas" },
       {
         key: "comisiones",
         label: "Comisiones",

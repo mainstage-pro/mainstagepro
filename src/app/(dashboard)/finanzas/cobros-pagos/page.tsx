@@ -219,8 +219,10 @@ export default function CobrosPagosPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-5 h-5 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin" />
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl h-20 animate-pulse" />
+          ))}
         </div>
       ) : tab === "cobrar" ? (
         // ── CxC Cards ──
