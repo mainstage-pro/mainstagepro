@@ -365,6 +365,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selResp, setSelResp] = useState("");
   const [selParticipacion, setSelParticipacion] = useState("OPERACION");
   const [addingPersonal, setAddingPersonal] = useState(false);
+  const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
+  const [showBroadcast, setShowBroadcast] = useState(false);
 
   // Estados para checklist
   const [nuevoItem, setNuevoItem] = useState("");
@@ -600,6 +602,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     if (tab === "evaluacion") loadEvalCliente();
   }, [tab]);
+
+  // Check disponibilidad cuando cambia el técnico seleccionado
+  useEffect(() => {
+    if (!selTecnico || !proyecto?.fechaEvento) { setDisponibilidad(null); return; }
+    const fecha = proyecto.fechaEvento.slice(0, 10);
+    fetch(`/api/tecnicos/${selTecnico}/disponibilidad?fecha=${fecha}&proyectoId=${id}`)
+      .then(r => r.json())
+      .then(d => setDisponibilidad(d))
+      .catch(() => setDisponibilidad(null));
+  }, [selTecnico, proyecto?.fechaEvento, id]);
 
   // Pre-fill esquema form when opening editor
   useEffect(() => {
@@ -1320,6 +1332,56 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
+      {/* ── Semáforo de preparación del evento ── */}
+      {(() => {
+        const anticipo = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
+        const anticipoCobrado = anticipo ? anticipo.montoCobrado >= anticipo.monto : false;
+        const equiposTotal = proyecto.equipos?.length ?? 0;
+        const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
+        const items = [
+          {
+            label: "Personal",
+            ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
+            warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
+            txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
+          },
+          {
+            label: "Equipos",
+            ok: equiposTotal > 0 && equiposConf === equiposTotal,
+            warn: equiposTotal > 0 && equiposConf < equiposTotal,
+            txt: equiposTotal === 0 ? "Sin asignar" : `${equiposConf}/${equiposTotal} confirmados`,
+          },
+          {
+            label: "Anticipo",
+            ok: anticipoCobrado,
+            warn: anticipo && !anticipoCobrado,
+            txt: anticipo ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
+          },
+          {
+            label: "Checklist",
+            ok: checkTotal > 0 && checkDone === checkTotal,
+            warn: checkTotal > 0 && checkDone < checkTotal,
+            txt: checkTotal === 0 ? "Sin items" : `${checkDone}/${checkTotal} listos`,
+          },
+        ];
+        const allOk = items.every(i => i.ok);
+        const anyWarn = items.some(i => i.warn);
+        return (
+          <div className={`rounded-xl border px-4 py-3 flex flex-wrap gap-4 items-center ${allOk ? "bg-green-900/10 border-green-800/40" : anyWarn ? "bg-yellow-900/10 border-yellow-800/30" : "bg-[#111] border-[#222]"}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider shrink-0 ${allOk ? "text-green-400" : anyWarn ? "text-yellow-400" : "text-gray-500"}`}>
+              {allOk ? "✓ Evento listo" : anyWarn ? "⚠ Preparación incompleta" : "Preparación"}
+            </p>
+            {items.map(item => (
+              <div key={item.label} className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${item.ok ? "bg-green-500" : item.warn ? "bg-yellow-500" : "bg-gray-600"}`} />
+                <span className="text-xs text-gray-400">{item.label}:</span>
+                <span className={`text-xs font-medium ${item.ok ? "text-green-400" : item.warn ? "text-yellow-400" : "text-gray-500"}`}>{item.txt}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
         {(["info", "equipos", "rider", "docs", "checklist", "protocolo", "finanzas", "bitacora", "evaluacion"] as const).map(t => (
@@ -1726,13 +1788,51 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
-                <button onClick={() => setShowAddPersonal(v => !v)}
-                  className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
-                  {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
-                </button>
+                <div className="flex items-center gap-2">
+                  {proyecto.personal.length > 0 && (
+                    <button
+                      onClick={() => setShowBroadcast(v => !v)}
+                      className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium border border-green-800/40 rounded-lg px-2 py-1"
+                      title="Enviar detalles del evento a todo el equipo por WhatsApp"
+                    >
+                      📣 Broadcast WA
+                    </button>
+                  )}
+                  <button onClick={() => setShowAddPersonal(v => !v)}
+                    className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
+                    {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
+                  </button>
+                </div>
               </div>
+              {showBroadcast && (() => {
+                const fecha = new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
+                const hora = proyecto.horaInicioEvento ? ` a las ${proyecto.horaInicioEvento}` : "";
+                const msg = `Hola, te confirmamos tu participación en el evento *${proyecto.nombre}* del cliente *${proyecto.cliente.nombre}*.\n\n📅 Fecha: ${fecha}${hora}\n📍 Lugar: ${lugar}\n\nPor favor confirma tu asistencia. ¡Gracias!`;
+                return (
+                  <div className="mt-3 bg-[#0a0a0a] border border-green-800/30 rounded-lg p-3 space-y-2">
+                    <p className="text-xs text-green-400 font-medium">Mensaje a enviar:</p>
+                    <pre className="text-xs text-gray-300 whitespace-pre-wrap font-sans">{msg}</pre>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {proyecto.personal.filter(p => p.tecnico?.celular).map(p => {
+                        const tel = (p.tecnico!.celular!).replace(/\D/g, "");
+                        return (
+                          <a key={p.id}
+                            href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 bg-green-800/30 hover:bg-green-700/40 border border-green-700/40 text-green-300 text-xs px-2 py-1 rounded-lg transition-colors"
+                          >
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                            {p.tecnico!.nombre.split(" ")[0]}
+                          </a>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {showAddPersonal && (
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -1750,12 +1850,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Técnico</label>
                     <select value={selTecnico} onChange={e => setSelTecnico(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}>
                       <option value="">— Sin asignar —</option>
                       {tecnicos.map(t => (
                         <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
                       ))}
                     </select>
+                    {disponibilidad && !disponibilidad.disponible && (
+                      <p className="text-red-400 text-xs mt-1">
+                        ⚠ Conflicto: asignado en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}
+                      </p>
+                    )}
+                    {disponibilidad?.disponible && selTecnico && (
+                      <p className="text-green-500 text-xs mt-1">✓ Disponible para esta fecha</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>

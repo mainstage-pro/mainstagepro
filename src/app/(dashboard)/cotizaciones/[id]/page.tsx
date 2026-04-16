@@ -103,6 +103,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [editingPlan, setEditingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingTrade, setSavingTrade] = useState(false);
+  const [duplicando, setDuplicando] = useState(false);
 
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`)
@@ -156,6 +157,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       setCot(prev => prev ? { ...prev, mainstageTradeData: JSON.stringify(data) } : prev);
     }
     setSavingTrade(false);
+  }
+
+  async function duplicar() {
+    if (!confirm("¿Duplicar esta cotización? Se creará una copia en estado Borrador.")) return;
+    setDuplicando(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}/duplicar`, { method: "POST" });
+      const d = await res.json();
+      if (res.ok) router.push(`/cotizaciones/${d.id}`);
+      else alert(d.error ?? "Error al duplicar");
+    } finally {
+      setDuplicando(false);
+    }
   }
 
   async function eliminar() {
@@ -314,6 +328,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 Editar
               </Link>
             )}
+            <button
+              onClick={duplicar}
+              disabled={duplicando}
+              className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {duplicando ? "Duplicando..." : "Duplicar"}
+            </button>
             {cot.estado === "APROBADA" && !cot.proyecto && (
               <button
                 onClick={aprobar}
