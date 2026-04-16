@@ -769,6 +769,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
+    // Bloquear COMPLETADO si no hay cierre financiero
+    if (estado === "COMPLETADO" && !proyecto?.cierreFinanciero) {
+      const ok = await confirm({
+        message: "Este proyecto no tiene cierre financiero registrado. Se recomienda completar el cierre antes de marcar como COMPLETADO. ¿Continuar de todas formas?",
+        confirmText: "Continuar sin cierre",
+        danger: true,
+      });
+      if (!ok) return;
+    }
     setSaving(true);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },

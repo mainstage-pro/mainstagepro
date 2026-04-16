@@ -33,6 +33,9 @@ export default function ProyectosPage() {
   const completados = proyectos.filter(p => p.estado === "COMPLETADO");
   const [view, setView] = useState<"list" | "timeline">("list");
   const [timelineMes, setTimelineMes] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+  const [busqueda, setBusqueda] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
+  const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
 
   async function eliminar(id: string, nombre: string, e: React.MouseEvent) {
     e.preventDefault();
@@ -173,9 +176,55 @@ export default function ProyectosPage() {
           <p className="text-[#6b7280] text-sm">No hay proyectos aún</p>
           <p className="text-[#444] text-xs mt-1">Los proyectos se crean automáticamente al aprobar una cotización</p>
         </div>
-      ) : view === "list" ? (
+      ) : view === "list" ? (() => {
+        const tiposDisponibles = [...new Set(proyectos.map((p: Proyecto) => p.tipoEvento).filter(Boolean))];
+        const proyectosFiltrados = proyectos.filter((p: Proyecto) => {
+          const matchBusqueda = !busqueda || p.nombre.toLowerCase().includes(busqueda.toLowerCase()) || p.numeroProyecto?.toLowerCase().includes(busqueda.toLowerCase()) || p.cliente?.nombre?.toLowerCase().includes(busqueda.toLowerCase());
+          const matchEstado = filtroEstado === "TODOS" || p.estado === filtroEstado;
+          const matchTipo = filtroTipo === "TODOS" || p.tipoEvento === filtroTipo;
+          return matchBusqueda && matchEstado && matchTipo;
+        });
+        return (
         <div className="space-y-3">
-          {proyectos.map((proyecto) => {
+          {/* Filtros */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              type="text"
+              placeholder="Buscar proyecto, número o cliente..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              className="flex-1 min-w-[200px] bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50"
+            />
+            <div className="flex gap-1">
+              {(["TODOS","PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO","CANCELADO"] as const).map(e => (
+                <button key={e} onClick={() => setFiltroEstado(e)}
+                  className={`text-[10px] px-2 py-1 rounded transition-colors ${filtroEstado === e ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#222]"}`}>
+                  {e === "TODOS" ? "Todos" : e === "PLANEACION" ? "Prep." : e === "EN_CURSO" ? "En curso" : e === "COMPLETADO" ? "Completado" : e === "CANCELADO" ? "Cancelado" : e.charAt(0) + e.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
+            {tiposDisponibles.length > 1 && (
+              <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
+                className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-[11px] text-gray-400 focus:outline-none focus:border-[#B3985B]/50">
+                <option value="TODOS">Tipo: Todos</option>
+                {tiposDisponibles.map((t: string) => (
+                  <option key={t} value={t}>{TIPO_EVENTO_LABELS[t] ?? t}</option>
+                ))}
+              </select>
+            )}
+            {(busqueda || filtroEstado !== "TODOS" || filtroTipo !== "TODOS") && (
+              <button onClick={() => { setBusqueda(""); setFiltroEstado("TODOS"); setFiltroTipo("TODOS"); }}
+                className="text-[10px] text-gray-600 hover:text-white transition-colors px-2 py-1 rounded border border-[#222] bg-[#1a1a1a]">
+                ✕ Limpiar
+              </button>
+            )}
+          </div>
+          {proyectosFiltrados.length === 0 && (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-12">
+              <p className="text-gray-600 text-sm">Sin resultados para los filtros aplicados</p>
+            </div>
+          )}
+          {proyectosFiltrados.map((proyecto: Proyecto) => {
             const checklistTotal = proyecto.checklist?.length ?? 0;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const checklistDone = proyecto.checklist?.filter((c: any) => c.completado).length ?? 0;
@@ -265,7 +314,8 @@ export default function ProyectosPage() {
             );
           })}
         </div>
-      ) : null}
+        );
+      })() : null}
     </div>
   );
 }

@@ -370,14 +370,14 @@ export default async function DashboardPage() {
       <Section label="ADMINISTRACIÓN" href="/finanzas/movimientos">
         {/* KPIs del mes */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Ingresos del mes"  value={formatCurrency(ingresosDelMes)} subColor="text-green-400" sub="registrados" animate={{ amount: ingresosDelMes, prefix: "$", decimals: 0 }} />
-          <KpiCard label="Gastos del mes"    value={formatCurrency(gastosDelMes)}   subColor="text-red-400"   sub="registrados" animate={{ amount: gastosDelMes, prefix: "$", decimals: 0 }} />
+          <KpiCard label="Ingresos del mes"  value={formatCurrency(ingresosDelMes)} subColor="text-green-400" sub="registrados" animate={{ amount: ingresosDelMes, prefix: "$", decimals: 0 }} href="/finanzas/movimientos" />
+          <KpiCard label="Gastos del mes"    value={formatCurrency(gastosDelMes)}   subColor="text-red-400"   sub="registrados" animate={{ amount: gastosDelMes, prefix: "$", decimals: 0 }} href="/finanzas/movimientos" />
           <KpiCard label="Flujo neto"        value={formatCurrency(flujoNeto)}
             subColor={flujoNeto >= 0 ? "text-green-400" : "text-red-400"}
-            sub={flujoNeto >= 0 ? "positivo" : "negativo"} animate={{ amount: flujoNeto, prefix: "$", decimals: 0 }} />
+            sub={flujoNeto >= 0 ? "positivo" : "negativo"} animate={{ amount: flujoNeto, prefix: "$", decimals: 0 }} href="/finanzas/reporte" />
           <KpiCard label="Disponible neto"   value={formatCurrency(disponibleNeto)}
             subColor={disponibleNeto >= 0 ? "text-white" : "text-red-400"}
-            sub="bancos − CxP" animate={{ amount: disponibleNeto, prefix: "$", decimals: 0 }} />
+            sub="bancos − CxP" animate={{ amount: disponibleNeto, prefix: "$", decimals: 0 }} href="/finanzas/cuentas" />
         </div>
 
         <GraficaIngresos />
@@ -419,10 +419,10 @@ export default async function DashboardPage() {
               <p className="text-white font-bold">{formatCurrency(cxcPendiente._sum.monto ?? 0)}</p>
             </div>
             {cxcVencidas > 0 && (
-              <div className="px-5 py-3 flex items-center justify-between bg-red-900/10">
-                <p className="text-red-400 text-xs font-medium">Vencidas</p>
+              <Link href="/finanzas/cxc" className="px-5 py-3 flex items-center justify-between bg-red-900/10 hover:bg-red-900/20 transition-colors">
+                <p className="text-red-400 text-xs font-medium">Vencidas → ver detalle</p>
                 <p className="text-red-400 font-bold text-sm">{cxcVencidas}</p>
-              </div>
+              </Link>
             )}
             <div className="divide-y divide-[#1a1a1a]">
               {cxcVence7dias.length === 0 ? (
@@ -550,15 +550,15 @@ export default async function DashboardPage() {
       <Section label="VENTAS" href="/crm/pipeline">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} />
+          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/pipeline" />
           <KpiCard label="Cerrados" value={totalCerrados}
             sub={`${tasaConversion}% tasa de cierre`}
-            subColor={tasaConversion >= 40 ? "text-green-400" : "text-yellow-400"} />
+            subColor={tasaConversion >= 40 ? "text-green-400" : "text-yellow-400"} href="/crm/tratos" />
           <KpiCard label="Cotizaciones mes" value={cotizacionesMesCount}
             sub={`${cotizacionesAprobadas} aprobadas`}
-            subColor={cotizacionesAprobadas > 0 ? "text-green-400" : "text-gray-500"} />
+            subColor={cotizacionesAprobadas > 0 ? "text-green-400" : "text-gray-500"} href="/cotizaciones" />
           <KpiCard label="Valor aprobado" value={formatCurrency(valorCotizacionesMes._sum.granTotal ?? 0)}
-            sub="cotizaciones aprobadas / enviadas" />
+            sub="cotizaciones aprobadas / enviadas" href="/cotizaciones" />
         </div>
 
         {/* Cotizaciones sin respuesta */}
@@ -652,14 +652,14 @@ export default async function DashboardPage() {
       <Section label="PRODUCCIÓN" href="/proyectos">
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <KpiCard label="Proyectos activos" value={proyectosActivos} sub="en operación" animate={{ amount: proyectosActivos }} />
-          <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} />
+          <KpiCard label="Proyectos activos" value={proyectosActivos} sub="en operación" animate={{ amount: proyectosActivos }} href="/proyectos" />
+          <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} href="/proyectos" />
           <KpiCard label="Equipos en mant." value={equiposMantenimiento}
             sub="fuera de servicio"
-            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} />
+            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} href="/inventario" />
           <KpiCard label="Nómina pendiente" value={formatCurrency(nominaPendiente._sum.monto ?? 0)}
             sub="por pagar"
-            subColor={(nominaPendiente._sum.monto ?? 0) > 0 ? "text-yellow-400" : "text-gray-500"} />
+            subColor={(nominaPendiente._sum.monto ?? 0) > 0 ? "text-yellow-400" : "text-gray-500"} href="/rrhh/nomina" />
         </div>
 
         {/* Estados + próximos eventos */}
@@ -674,10 +674,10 @@ export default async function DashboardPage() {
                 { estado: "EN_CURSO",   label: "En curso",    color: "text-yellow-400" },
                 { estado: "COMPLETADO", label: "Completados", color: "text-gray-400" },
               ].map(({ estado, label, color }) => (
-                <div key={estado} className="text-center bg-[#0d0d0d] rounded-lg py-3">
+                <Link key={estado} href="/proyectos" className="text-center bg-[#0d0d0d] rounded-lg py-3 hover:bg-[#151515] transition-colors block">
                   <p className={`text-2xl font-bold ${color}`}>{estadosMap[estado] ?? 0}</p>
                   <p className="text-gray-600 text-xs mt-0.5">{label}</p>
-                </div>
+                </Link>
               ))}
             </div>
             {proyectosSinPersonal > 0 && (
@@ -746,14 +746,15 @@ function Section({ label, href, children }: {
   );
 }
 
-function KpiCard({ label, value, sub, subColor = "text-gray-500", animate }: {
+function KpiCard({ label, value, sub, subColor = "text-gray-500", animate, href }: {
   label: string; value: string | number; sub?: string; subColor?: string;
   animate?: { amount: number; prefix?: string; decimals?: number };
+  href?: string;
 }) {
-  return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+  const inner = (
+    <div className={`bg-[#111] border border-[#1e1e1e] rounded-xl p-5 ${href ? "hover:border-[#333] transition-colors group" : ""}`}>
       <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{label}</p>
-      <p className="text-2xl font-semibold text-white">
+      <p className={`text-2xl font-semibold text-white ${href ? "group-hover:text-[#B3985B] transition-colors" : ""}`}>
         {animate ? (
           <AnimatedNumber
             value={animate.amount}
@@ -765,4 +766,5 @@ function KpiCard({ label, value, sub, subColor = "text-gray-500", animate }: {
       {sub && <p className={`text-xs mt-1 ${subColor}`}>{sub}</p>}
     </div>
   );
+  return href ? <Link href={href}>{inner}</Link> : inner;
 }
