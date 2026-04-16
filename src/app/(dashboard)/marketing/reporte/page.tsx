@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from "recharts";
 
 interface MesStat {
   mes: string; total: number; publicadas: number; pendientes: number; listas: number; enProceso: number;
@@ -45,7 +49,6 @@ export default function MarketingReportePage() {
       .then(d => { setData(d); setLoading(false); });
   }, [rango]);
 
-  const maxMesTotal = data ? Math.max(...data.porMes.map(m => m.total), 1) : 1;
   const maxTipoTotal = data ? Math.max(...data.porTipo.map(t => t.total), 1) : 1;
   const totalPlataformas = data
     ? data.plataformas.facebook + data.plataformas.instagram + data.plataformas.tiktok + data.plataformas.youtube
@@ -98,73 +101,77 @@ export default function MarketingReportePage() {
             ))}
           </div>
 
-          {/* Por mes — bar chart */}
+          {/* Por mes — recharts stacked bar */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
             <h2 className="text-white font-semibold text-sm mb-4">Publicaciones por mes</h2>
             {data.porMes.length === 0 ? (
               <p className="text-gray-600 text-xs text-center py-8">Sin datos en este período</p>
             ) : (
-              <div className="space-y-3">
-                {data.porMes.map(m => (
-                  <div key={m.mes} className="flex items-center gap-3">
-                    <span className="text-gray-500 text-[10px] w-8 shrink-0 text-right">{mesLabel(m.mes)}</span>
-                    <div className="flex-1 flex gap-0.5 h-6 rounded overflow-hidden bg-[#1a1a1a]">
-                      {/* Publicadas */}
-                      {m.publicadas > 0 && (
-                        <div
-                          className="bg-green-600/70 h-full transition-all"
-                          style={{ width: `${pct(m.publicadas, maxMesTotal)}%` }}
-                          title={`Publicadas: ${m.publicadas}`}
-                        />
-                      )}
-                      {/* Listas */}
-                      {m.listas > 0 && (
-                        <div
-                          className="bg-yellow-600/70 h-full transition-all"
-                          style={{ width: `${pct(m.listas, maxMesTotal)}%` }}
-                          title={`Listas: ${m.listas}`}
-                        />
-                      )}
-                      {/* En proceso */}
-                      {m.enProceso > 0 && (
-                        <div
-                          className="bg-blue-600/70 h-full transition-all"
-                          style={{ width: `${pct(m.enProceso, maxMesTotal)}%` }}
-                          title={`En proceso: ${m.enProceso}`}
-                        />
-                      )}
-                      {/* Pendientes */}
-                      {m.pendientes > 0 && (
-                        <div
-                          className="bg-gray-700/70 h-full transition-all"
-                          style={{ width: `${pct(m.pendientes, maxMesTotal)}%` }}
-                          title={`Pendientes: ${m.pendientes}`}
-                        />
-                      )}
+              <>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart
+                    data={data.porMes.map(m => ({
+                      name: mesLabel(m.mes),
+                      Publicadas: m.publicadas,
+                      Listas: m.listas,
+                      "En proceso": m.enProceso,
+                      Pendientes: m.pendientes,
+                    }))}
+                    margin={{ top: 5, right: 5, left: -20, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#6b7280", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }) => {
+                        if (!active || !payload?.length) return null;
+                        const total = payload.reduce((s, p) => s + ((p.value as number) ?? 0), 0);
+                        return (
+                          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-lg">
+                            <p className="text-gray-400 mb-1.5 font-semibold">{label} · {total} total</p>
+                            {payload.map(p => (p.value as number) > 0 && (
+                              <div key={p.name} className="flex items-center gap-2 mb-0.5">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
+                                <span className="text-gray-400">{p.name}:</span>
+                                <span className="text-white font-semibold">{p.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      }}
+                      cursor={{ fill: "#ffffff06" }}
+                    />
+                    <Bar dataKey="Publicadas" stackId="a" fill="#4ade80" opacity={0.85} radius={[0,0,0,0]} maxBarSize={40} />
+                    <Bar dataKey="Listas" stackId="a" fill="#facc15" opacity={0.85} maxBarSize={40} />
+                    <Bar dataKey="En proceso" stackId="a" fill="#60a5fa" opacity={0.85} maxBarSize={40} />
+                    <Bar dataKey="Pendientes" stackId="a" fill="#6b7280" opacity={0.7} radius={[3,3,0,0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-3 mt-3 pt-3 border-t border-[#1a1a1a]">
+                  {[
+                    { color: "#4ade80", label: "Publicadas" },
+                    { color: "#facc15", label: "Listas" },
+                    { color: "#60a5fa", label: "En proceso" },
+                    { color: "#6b7280", label: "Pendientes" },
+                  ].map(l => (
+                    <div key={l.label} className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
+                      <span className="text-gray-500 text-[10px]">{l.label}</span>
                     </div>
-                    <div className="flex gap-3 text-[10px] shrink-0 w-48">
-                      <span className="text-white font-semibold w-4">{m.total}</span>
-                      {m.publicadas > 0 && <span className="text-green-400">{m.publicadas} pub</span>}
-                      {m.pendientes > 0 && <span className="text-gray-500">{m.pendientes} pend</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Legend */}
-            <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
-              {[
-                { color: "bg-green-600/70", label: "Publicadas" },
-                { color: "bg-yellow-600/70", label: "Listas" },
-                { color: "bg-blue-600/70", label: "En proceso" },
-                { color: "bg-gray-700/70", label: "Pendientes" },
-              ].map(l => (
-                <div key={l.label} className="flex items-center gap-1.5">
-                  <div className={`w-2.5 h-2.5 rounded-sm ${l.color}`} />
-                  <span className="text-gray-500 text-[10px]">{l.label}</span>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
 
           {/* Bottom row: formato + tipo + plataformas */}

@@ -4,6 +4,7 @@ import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
 import AlertasPanel from "@/components/AlertasPanel";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { GraficaIngresos } from "@/components/GraficaIngresos";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -378,6 +379,8 @@ export default async function DashboardPage() {
             subColor={disponibleNeto >= 0 ? "text-white" : "text-red-400"}
             sub="bancos − CxP" animate={{ amount: disponibleNeto, prefix: "$", decimals: 0 }} />
         </div>
+
+        <GraficaIngresos />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Posición bancaria */}

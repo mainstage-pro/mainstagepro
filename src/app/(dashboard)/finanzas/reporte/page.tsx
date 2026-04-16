@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from "recharts";
 
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -37,10 +41,16 @@ export default function FinanzasReportePage() {
     fetch("/api/finanzas/margen").then(r => r.json()).then(d => setMargen(d.proyectos ?? []));
   }, []);
 
-  const maxMes = data ? Math.max(...data.porMes.map(m => Math.max(m.ingresos, m.egresos)), 1) : 1;
   const ingresos = data?.porCategoria.filter(c => c.tipo === "INGRESO") ?? [];
   const egresos  = data?.porCategoria.filter(c => c.tipo === "GASTO") ?? [];
   const maxCat   = Math.max(...(data?.porCategoria.map(c => c.total) ?? [1]), 1);
+
+  const chartData = (data?.porMes ?? []).map(m => ({
+    name: mesLabel(m.mes),
+    Ingresos: m.ingresos,
+    Gastos: m.egresos,
+    flujo: m.ingresos - m.egresos,
+  }));
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
@@ -116,43 +126,69 @@ export default function FinanzasReportePage() {
         </div>
       </div>
 
-      {/* Gráfica por mes */}
+      {/* Gráfica por mes — recharts */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-        <h2 className="text-white font-semibold text-sm mb-5">Ingresos vs Egresos por mes</h2>
-        <div className="space-y-3">
-          {data.porMes.map(m => (
-            <div key={m.mes} className="flex items-center gap-3">
-              <span className="text-gray-500 text-[10px] w-8 text-right shrink-0">{mesLabel(m.mes)}</span>
-              <div className="flex-1 space-y-1">
-                {m.ingresos > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 bg-green-600/60 rounded-sm flex items-center px-1.5 transition-all" style={{ width: `${pct(m.ingresos, maxMes)}%`, minWidth: "4px" }}>
-                      {pct(m.ingresos, maxMes) > 20 && <span className="text-[9px] text-green-200 font-semibold">{fmt(m.ingresos)}</span>}
-                    </div>
-                    {pct(m.ingresos, maxMes) <= 20 && <span className="text-[9px] text-green-400">{fmt(m.ingresos)}</span>}
-                  </div>
-                )}
-                {m.egresos > 0 && (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 bg-red-700/50 rounded-sm flex items-center px-1.5 transition-all" style={{ width: `${pct(m.egresos, maxMes)}%`, minWidth: "4px" }}>
-                      {pct(m.egresos, maxMes) > 20 && <span className="text-[9px] text-red-200 font-semibold">{fmt(m.egresos)}</span>}
-                    </div>
-                    {pct(m.egresos, maxMes) <= 20 && <span className="text-[9px] text-red-400">{fmt(m.egresos)}</span>}
-                  </div>
-                )}
-                {m.ingresos === 0 && m.egresos === 0 && <div className="h-4 flex items-center"><span className="text-[9px] text-gray-700 italic">Sin movimientos</span></div>}
-              </div>
-              <div className="text-right w-20 shrink-0">
-                <p className={`text-[10px] font-semibold ${(m.ingresos-m.egresos)>=0?"text-green-400":"text-red-400"}`}>{fmt(m.ingresos-m.egresos)}</p>
-              </div>
+        <h2 className="text-white font-semibold text-sm mb-4">Ingresos vs Egresos por mes</h2>
+        {chartData.length === 0 ? (
+          <p className="text-gray-700 text-xs text-center py-8">Sin movimientos en el período</p>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barGap={3}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#6b7280", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={v => `$${v >= 1000 ? (v / 1000).toFixed(0) + "k" : v}`}
+                  tick={{ fill: "#6b7280", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null;
+                    const ing = payload.find(p => p.dataKey === "Ingresos")?.value as number ?? 0;
+                    const gas = payload.find(p => p.dataKey === "Gastos")?.value as number ?? 0;
+                    return (
+                      <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-lg">
+                        <p className="text-gray-400 mb-1.5 font-semibold">{label}</p>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className="w-2 h-2 rounded-full bg-green-400" />
+                          <span className="text-gray-400">Ingresos:</span>
+                          <span className="text-white font-semibold">{fmt(ing)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <div className="w-2 h-2 rounded-full bg-red-400" />
+                          <span className="text-gray-400">Gastos:</span>
+                          <span className="text-white font-semibold">{fmt(gas)}</span>
+                        </div>
+                        <div className="mt-1.5 pt-1.5 border-t border-[#333] flex items-center gap-2">
+                          <span className="text-gray-500">Flujo:</span>
+                          <span className={`font-semibold ${(ing - gas) >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(ing - gas)}</span>
+                        </div>
+                      </div>
+                    );
+                  }}
+                  cursor={{ fill: "#ffffff06" }}
+                />
+                <Bar dataKey="Ingresos" fill="#4ade80" opacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={32} />
+                <Bar dataKey="Gastos" fill="#f87171" opacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex gap-4 mt-3 pt-3 border-t border-[#1a1a1a]">
+              {[{ color: "#4ade80", label: "Ingresos" }, { color: "#f87171", label: "Gastos" }].map(l => (
+                <div key={l.label} className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
+                  <span className="text-gray-500 text-[10px]">{l.label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
-          {[{c:"bg-green-600/60",l:"Ingresos"},{c:"bg-red-700/50",l:"Egresos"}].map(l=>(
-            <div key={l.l} className="flex items-center gap-1.5"><div className={`w-3 h-3 rounded-sm ${l.c}`}/><span className="text-gray-500 text-[10px]">{l.l}</span></div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Por categoría */}
