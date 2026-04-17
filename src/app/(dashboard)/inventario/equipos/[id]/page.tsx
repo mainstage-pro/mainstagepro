@@ -1,373 +1,410 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useToast } from "@/components/Toast";
-import { useConfirm } from "@/components/Confirm";
-import { SkeletonPage } from "@/components/Skeleton";
-
-const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0 })}`;
-function fmtDate(s: string | null) {
-  if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-}
-
-const ESTADO_BADGE: Record<string, string> = {
-  ACTIVO: "bg-green-900/30 text-green-400 border-green-800/40",
-  EN_MANTENIMIENTO: "bg-yellow-900/30 text-yellow-400 border-yellow-800/40",
-  DADO_DE_BAJA: "bg-red-900/30 text-red-400 border-red-800/40",
-};
-
-const TIPO_BADGE: Record<string, string> = {
-  PROPIO: "bg-blue-900/30 text-blue-400 border-blue-800/40",
-  EXTERNO: "bg-orange-900/30 text-orange-400 border-orange-800/40",
-};
-
-const MANT_BADGE: Record<string, string> = {
-  PREVENTIVO: "bg-blue-900/30 text-blue-400",
-  CORRECTIVO: "bg-red-900/30 text-red-400",
-  ESTETICO: "bg-purple-900/30 text-purple-400",
-  FUNCIONAL: "bg-green-900/30 text-green-400",
-};
 
 type Equipo = {
-  id: string; descripcion: string; marca: string | null; modelo: string | null;
-  tipo: string; estado: string; precioRenta: number; costoProveedor: number | null;
-  cantidadTotal: number; notas: string | null; activo: boolean;
-  amperajeRequerido: number | null; voltajeRequerido: number | null;
+  id: string;
+  descripcion: string;
+  marca: string | null;
+  modelo: string | null;
+  tipo: string;
+  estado: string;
+  precioRenta: number;
+  costoProveedor: number | null;
+  cantidadTotal: number;
+  notas: string | null;
+  activo: boolean;
+  amperajeRequerido: number | null;
+  voltajeRequerido: number | null;
+  imagenUrl: string | null;
+  imagenesUrls: string | null;
   categoria: { id: string; nombre: string };
   proveedorDefault: { id: string; nombre: string; correo: string | null; telefono: string | null } | null;
-  mantenimientos: { id: string; fecha: string; tipo: string; accionRealizada: string; estadoEquipo: string | null; comentarios: string | null; proximoMantenimiento: string | null }[];
-  proyectoEquipos: { id: string; cantidad: number; proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null; estado: string; cliente: { nombre: string } } }[];
-  unidades: { id: string; codigoInterno: string | null; serie: string | null; estado: string; notas: string | null }[];
+  mantenimientos: Array<{
+    id: string; fecha: string; tipo: string;
+    accionRealizada: string; estadoEquipo: string;
+    comentarios: string | null; proximoMantenimiento: string | null;
+  }>;
+  proyectoEquipos: Array<{
+    id: string;
+    proyecto: {
+      id: string; nombre: string; numeroProyecto: number;
+      fechaEvento: string | null; estado: string;
+      cliente: { nombre: string };
+    };
+  }>;
 };
 
-type EditForm = {
-  descripcion: string; marca: string; modelo: string; tipo: string; estado: string;
-  precioRenta: string; costoProveedor: string; cantidadTotal: string;
-  notas: string; amperajeRequerido: string; voltajeRequerido: string;
-};
+function fmt(n: number) {
+  if (n === 0) return "INCLUYE";
+  return `$${n.toLocaleString("es-MX")}`;
+}
 
-export default function EquipoDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params.id;
-  const router = useRouter();
-  const toast = useToast();
-  const confirm = useConfirm();
+async function compressImage(file: File, maxPx = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
+export default function EquipoFichaPage() {
+  const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<EditForm | null>(null);
-  const [tab, setTab] = useState<"historial" | "proyectos" | "unidades">("historial");
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const fileMainRef = useRef<HTMLInputElement>(null);
+  const fileExtraRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const res = await fetch(`/api/equipos/${id}`);
-    const d = await res.json();
-    if (d.equipo) {
-      setEquipo(d.equipo);
-      setForm({
-        descripcion: d.equipo.descripcion,
-        marca: d.equipo.marca ?? "",
-        modelo: d.equipo.modelo ?? "",
-        tipo: d.equipo.tipo,
-        estado: d.equipo.estado,
-        precioRenta: String(d.equipo.precioRenta),
-        costoProveedor: d.equipo.costoProveedor !== null ? String(d.equipo.costoProveedor) : "",
-        cantidadTotal: String(d.equipo.cantidadTotal),
-        notas: d.equipo.notas ?? "",
-        amperajeRequerido: d.equipo.amperajeRequerido !== null ? String(d.equipo.amperajeRequerido) : "",
-        voltajeRequerido: d.equipo.voltajeRequerido !== null ? String(d.equipo.voltajeRequerido) : "",
-      });
-    }
+    const data = await res.json();
+    setEquipo(data.equipo ?? null);
     setLoading(false);
   }
 
   useEffect(() => { load(); }, [id]);
 
-  async function guardar() {
-    if (!form) return;
-    setSaving(true);
-    const res = await fetch(`/api/equipos/${id}`, {
+  async function handleMainFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const base64 = await compressImage(file);
+      await fetch(`/api/equipos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagenUrl: base64 }),
+      });
+      await load();
+    } finally {
+      setUploading(false);
+      if (fileMainRef.current) fileMainRef.current.value = "";
+    }
+  }
+
+  async function handleExtraFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !equipo) return;
+    setUploading(true);
+    try {
+      const base64 = await compressImage(file);
+      const existing: string[] = equipo.imagenesUrls ? JSON.parse(equipo.imagenesUrls) : [];
+      await fetch(`/api/equipos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagenesUrls: JSON.stringify([...existing, base64]) }),
+      });
+      await load();
+    } finally {
+      setUploading(false);
+      if (fileExtraRef.current) fileExtraRef.current.value = "";
+    }
+  }
+
+  async function removeExtra(index: number) {
+    if (!equipo) return;
+    const existing: string[] = equipo.imagenesUrls ? JSON.parse(equipo.imagenesUrls) : [];
+    const filtered = existing.filter((_, i) => i !== index);
+    await fetch(`/api/equipos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ imagenesUrls: filtered.length ? JSON.stringify(filtered) : null }),
     });
-    setSaving(false);
-    if (res.ok) { toast.success("Equipo actualizado"); setEditing(false); await load(); }
-    else toast.error("Error al guardar");
+    await load();
   }
 
-  async function eliminar() {
-    const ok = await confirm({ message: `¿Eliminar "${equipo?.descripcion}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
-    if (!ok) return;
-    const res = await fetch(`/api/equipos/${id}`, { method: "DELETE" });
-    if (res.ok) { toast.success("Equipo eliminado"); router.push("/inventario/equipos"); }
-    else toast.error("No se puede eliminar — puede tener registros asociados");
+  async function removePrimary() {
+    if (!equipo) return;
+    const extras: string[] = equipo.imagenesUrls ? JSON.parse(equipo.imagenesUrls) : [];
+    const newPrimary = extras[0] ?? null;
+    const newExtras = extras.length > 1 ? JSON.stringify(extras.slice(1)) : null;
+    await fetch(`/api/equipos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imagenUrl: newPrimary, imagenesUrls: newExtras }),
+    });
+    await load();
   }
 
-  if (loading) return <SkeletonPage rows={5} cols={4} />;
-  if (!equipo || !form) return <div className="p-6 text-red-400 text-sm">Equipo no encontrado</div>;
-
-  // Estadísticas de uso
-  const veces = equipo.proyectoEquipos.length;
-  const ultimoUso = equipo.proyectoEquipos[0]?.proyecto.fechaEvento;
-  const margen = equipo.costoProveedor && equipo.costoProveedor > 0
-    ? ((equipo.precioRenta - equipo.costoProveedor) / equipo.precioRenta * 100).toFixed(1)
-    : null;
-
-  return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link href="/inventario/equipos" className="text-xs text-gray-500 hover:text-gray-300">← Inventario</Link>
-          </div>
-          <h1 className="text-2xl font-bold text-white">{equipo.descripcion}</h1>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className="text-gray-400 text-sm">{equipo.marca}{equipo.modelo ? ` · ${equipo.modelo}` : ""}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${TIPO_BADGE[equipo.tipo] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>{equipo.tipo}</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${ESTADO_BADGE[equipo.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>{equipo.estado.replace(/_/g, " ")}</span>
+  if (loading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="animate-pulse space-y-4">
+          <div className="h-5 bg-[#1a1a1a] rounded w-48" />
+          <div className="h-7 bg-[#1a1a1a] rounded w-96" />
+          <div className="grid grid-cols-2 gap-6 mt-6">
+            <div className="h-64 bg-[#1a1a1a] rounded-xl" />
+            <div className="h-64 bg-[#1a1a1a] rounded-xl" />
           </div>
         </div>
-        <div className="flex gap-2 shrink-0">
-          {editing ? (
-            <>
-              <button onClick={() => setEditing(false)} className="px-3 py-2 text-sm text-gray-400 border border-[#333] rounded-lg hover:text-white">Cancelar</button>
-              <button onClick={guardar} disabled={saving} className="px-4 py-2 text-sm bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] disabled:opacity-50">{saving ? "Guardando..." : "Guardar"}</button>
-            </>
-          ) : (
-            <>
-              <button onClick={() => setEditing(true)} className="px-4 py-2 text-sm bg-[#1a1a1a] border border-[#333] text-white rounded-lg hover:bg-[#222]">Editar</button>
-              <button onClick={eliminar} className="px-4 py-2 text-sm bg-red-900/20 border border-red-800/40 text-red-400 rounded-lg hover:bg-red-900/30">Eliminar</button>
-            </>
+      </div>
+    );
+  }
+
+  if (!equipo) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto text-center space-y-3">
+        <p className="text-[#6b7280]">Equipo no encontrado.</p>
+        <Link href="/inventario/equipos" className="text-[#B3985B] text-sm hover:underline">← Volver al inventario</Link>
+      </div>
+    );
+  }
+
+  const extras: string[] = equipo.imagenesUrls ? JSON.parse(equipo.imagenesUrls) : [];
+
+  return (
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <Link href="/inventario/equipos" className="text-xs text-[#6b7280] hover:text-[#B3985B] transition-colors mb-1.5 inline-flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            Inventario de equipos
+          </Link>
+          <h1 className="text-xl font-semibold text-white">{equipo.descripcion}</h1>
+          <p className="text-[#6b7280] text-sm mt-0.5">
+            {[equipo.marca, equipo.modelo].filter(Boolean).join(" · ")}
+            {[equipo.marca, equipo.modelo].filter(Boolean).length > 0 && " · "}
+            {equipo.categoria.nombre}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-xs px-2 py-1 rounded font-medium ${equipo.activo ? "bg-green-900/30 text-green-400" : "bg-red-900/30 text-red-400"}`}>
+            {equipo.activo ? "ACTIVO" : "INACTIVO"}
+          </span>
+          <span className="text-xs px-2 py-1 rounded bg-[#1a1a1a] text-[#6b7280] border border-[#222]">
+            {equipo.tipo === "PROPIO" ? "Propio" : "Externo"}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* ── Imágenes ── */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Imágenes del equipo</h2>
+
+          {/* Imagen principal */}
+          <div>
+            {equipo.imagenUrl ? (
+              <div
+                className="w-full aspect-video bg-[#0a0a0a] rounded-lg overflow-hidden flex items-center justify-center cursor-zoom-in mb-3"
+                onClick={() => setLightbox(equipo.imagenUrl!)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={equipo.imagenUrl}
+                  alt={equipo.descripcion}
+                  className={`max-h-full max-w-full object-contain transition-opacity ${uploading ? "opacity-40" : ""}`}
+                />
+              </div>
+            ) : (
+              <div className="w-full aspect-video bg-[#0a0a0a] rounded-lg border-2 border-dashed border-[#222] flex flex-col items-center justify-center gap-2 mb-3">
+                <svg className="w-12 h-12 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-[#444] text-sm">Sin imagen principal</p>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <input ref={fileMainRef} type="file" accept="image/*" className="hidden" onChange={handleMainFile} />
+              <button
+                onClick={() => fileMainRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold px-3 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {uploading ? "Subiendo..." : equipo.imagenUrl ? "Cambiar imagen principal" : "Subir imagen principal"}
+              </button>
+              {equipo.imagenUrl && !uploading && (
+                <button
+                  onClick={removePrimary}
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-900/40 hover:border-red-700/60 px-2.5 py-2 rounded-lg transition-colors"
+                >
+                  Quitar
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Imágenes adicionales */}
+          <div>
+            <p className="text-xs text-[#555] mb-2">
+              Imágenes adicionales{extras.length > 0 ? ` (${extras.length})` : ""}
+            </p>
+            <div className="flex flex-wrap gap-2 items-end">
+              {extras.map((url, i) => (
+                <div key={i} className="relative group/thumb">
+                  <div
+                    className="w-16 h-16 bg-[#0a0a0a] rounded-lg border border-[#222] overflow-hidden flex items-center justify-center cursor-zoom-in"
+                    onClick={() => setLightbox(url)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <button
+                    onClick={() => removeExtra(i)}
+                    className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 w-5 h-5 bg-red-600 hover:bg-red-500 text-white rounded-full text-[10px] flex items-center justify-center opacity-0 group-hover/thumb:opacity-100 transition-opacity leading-none"
+                  >✕</button>
+                </div>
+              ))}
+
+              {/* Agregar extra */}
+              <label className="w-16 h-16 bg-[#0a0a0a] rounded-lg border border-dashed border-[#2a2a2a] hover:border-[#B3985B]/50 flex flex-col items-center justify-center cursor-pointer transition-colors">
+                <span className="text-[#444] text-xl leading-none">+</span>
+                <span className="text-[9px] text-[#444] mt-0.5">Agregar</span>
+                <input ref={fileExtraRef} type="file" accept="image/*" className="hidden" onChange={handleExtraFile} disabled={uploading} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Info técnica ── */}
+        <div className="space-y-4">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">Datos del equipo</h2>
+            <dl className="space-y-2.5 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-[#6b7280]">Precio al cliente</dt>
+                <dd className="text-white font-medium">{fmt(equipo.precioRenta)}</dd>
+              </div>
+              {equipo.tipo === "EXTERNO" && equipo.costoProveedor != null && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-[#6b7280]">Costo proveedor</dt>
+                  <dd className="text-white">{fmt(equipo.costoProveedor)}</dd>
+                </div>
+              )}
+              <div className="flex justify-between gap-4">
+                <dt className="text-[#6b7280]">Cantidad en inventario</dt>
+                <dd className="text-white">{equipo.cantidadTotal}</dd>
+              </div>
+              {(equipo.amperajeRequerido != null || equipo.voltajeRequerido != null) && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-[#6b7280]">Requerimientos eléctricos</dt>
+                  <dd className="text-yellow-400 text-xs">
+                    {equipo.amperajeRequerido != null ? `${equipo.amperajeRequerido}A` : ""}
+                    {equipo.amperajeRequerido != null && equipo.voltajeRequerido != null ? " · " : ""}
+                    {equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : ""}
+                  </dd>
+                </div>
+              )}
+              {equipo.notas && (
+                <div className="pt-2 border-t border-[#1a1a1a]">
+                  <dt className="text-[#6b7280] text-xs mb-1">Notas internas</dt>
+                  <dd className="text-[#9ca3af] text-xs leading-relaxed">{equipo.notas}</dd>
+                </div>
+              )}
+              {equipo.proveedorDefault && (
+                <div className="pt-2 border-t border-[#1a1a1a]">
+                  <dt className="text-[#6b7280] text-xs mb-1">Proveedor</dt>
+                  <dd className="text-white text-xs">{equipo.proveedorDefault.nombre}</dd>
+                  {equipo.proveedorDefault.telefono && (
+                    <dd className="text-[#6b7280] text-xs mt-0.5">{equipo.proveedorDefault.telefono}</dd>
+                  )}
+                </div>
+              )}
+            </dl>
+          </div>
+
+          {/* Últimos proyectos */}
+          {equipo.proyectoEquipos.length > 0 && (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">
+                Últimos proyectos ({equipo.proyectoEquipos.length})
+              </h2>
+              <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                {equipo.proyectoEquipos.slice(0, 12).map(pe => (
+                  <Link
+                    key={pe.id}
+                    href={`/proyectos/${pe.proyecto.id}`}
+                    className="flex items-center justify-between text-xs p-2 rounded bg-[#0d0d0d] hover:bg-[#1a1a1a] transition-colors group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-white group-hover:text-[#B3985B] transition-colors truncate">
+                        #{pe.proyecto.numeroProyecto} — {pe.proyecto.nombre}
+                      </p>
+                      <p className="text-[#555] truncate">{pe.proyecto.cliente.nombre}</p>
+                    </div>
+                    {pe.proyecto.fechaEvento && (
+                      <span className="text-[#555] shrink-0 ml-3">
+                        {new Date(pe.proyecto.fechaEvento).toLocaleDateString("es-MX", { month: "short", day: "numeric", year: "2-digit" })}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Precio renta</p>
-          <p className="text-white font-bold text-lg">{fmt(equipo.precioRenta)}</p>
-          {equipo.precioRenta === 0 && <p className="text-gray-600 text-[10px]">Incluido</p>}
-        </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Costo proveedor</p>
-          <p className="text-white font-bold text-lg">{equipo.costoProveedor !== null ? fmt(equipo.costoProveedor) : "—"}</p>
-          {margen && <p className="text-green-400 text-[10px]">{margen}% margen</p>}
-        </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Cantidad total</p>
-          <p className="text-white font-bold text-lg">{equipo.cantidadTotal}</p>
-          <p className="text-gray-600 text-[10px]">unidades</p>
-        </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Usos en proyectos</p>
-          <p className="text-white font-bold text-lg">{veces}</p>
-          {ultimoUso && <p className="text-gray-600 text-[10px]">último: {fmtDate(ultimoUso)}</p>}
-        </div>
-      </div>
-
-      {/* Formulario de edición */}
-      {editing && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5">
-          <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-4">Editando equipo</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Descripción *</label>
-              <input value={form.descripcion} onChange={e => setForm(f => f ? {...f, descripcion: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Marca</label>
-              <input value={form.marca} onChange={e => setForm(f => f ? {...f, marca: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Modelo</label>
-              <input value={form.modelo} onChange={e => setForm(f => f ? {...f, modelo: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Tipo</label>
-              <select value={form.tipo} onChange={e => setForm(f => f ? {...f, tipo: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="PROPIO">Propio</option>
-                <option value="EXTERNO">Externo</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Estado</label>
-              <select value={form.estado} onChange={e => setForm(f => f ? {...f, estado: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="ACTIVO">Activo</option>
-                <option value="EN_MANTENIMIENTO">En mantenimiento</option>
-                <option value="DADO_DE_BAJA">Dado de baja</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Precio renta</label>
-              <input type="number" value={form.precioRenta} onChange={e => setForm(f => f ? {...f, precioRenta: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Costo proveedor</label>
-              <input type="number" value={form.costoProveedor} onChange={e => setForm(f => f ? {...f, costoProveedor: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Cantidad total</label>
-              <input type="number" value={form.cantidadTotal} onChange={e => setForm(f => f ? {...f, cantidadTotal: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Amperaje (A)</label>
-              <input type="number" value={form.amperajeRequerido} onChange={e => setForm(f => f ? {...f, amperajeRequerido: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-gray-500 text-xs block mb-1">Voltaje (V)</label>
-              <input type="number" value={form.voltajeRequerido} onChange={e => setForm(f => f ? {...f, voltajeRequerido: e.target.value} : f)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-gray-500 text-xs block mb-1">Notas</label>
-              <textarea value={form.notas} onChange={e => setForm(f => f ? {...f, notas: e.target.value} : f)} rows={2}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Info básica */}
-      {!editing && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
-            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">Información</p>
-            <Row label="Categoría" value={equipo.categoria.nombre} />
-            <Row label="Tipo" value={equipo.tipo} />
-            <Row label="Estado" value={equipo.estado.replace(/_/g, " ")} />
-            {equipo.amperajeRequerido && <Row label="Amperaje" value={`${equipo.amperajeRequerido}A`} />}
-            {equipo.voltajeRequerido && <Row label="Voltaje" value={`${equipo.voltajeRequerido}V`} />}
-            {equipo.notas && <Row label="Notas" value={equipo.notas} />}
-          </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
-            <p className="text-gray-500 text-[10px] uppercase tracking-wider font-semibold">Proveedor</p>
-            {equipo.proveedorDefault ? (
-              <>
-                <Row label="Nombre" value={equipo.proveedorDefault.nombre} />
-                {equipo.proveedorDefault.telefono && <Row label="Teléfono" value={equipo.proveedorDefault.telefono} />}
-                {equipo.proveedorDefault.correo && <Row label="Correo" value={equipo.proveedorDefault.correo} />}
-              </>
-            ) : <p className="text-gray-600 text-xs">Sin proveedor asignado</p>}
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div>
-        <div className="flex gap-1 border-b border-[#1e1e1e] mb-4">
-          {(["historial", "proyectos", "unidades"] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-4 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${tab === t ? "border-[#B3985B] text-[#B3985B]" : "border-transparent text-gray-500 hover:text-gray-300"}`}>
-              {t === "historial" ? `Mantenimientos (${equipo.mantenimientos.length})` : t === "proyectos" ? `Proyectos (${equipo.proyectoEquipos.length})` : `Unidades (${equipo.unidades.length})`}
-            </button>
-          ))}
-        </div>
-
-        {tab === "historial" && (
+      {/* Historial de mantenimiento */}
+      {equipo.mantenimientos.length > 0 && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">
+            Historial de mantenimiento ({equipo.mantenimientos.length})
+          </h2>
           <div className="space-y-2">
-            {equipo.mantenimientos.length === 0 ? (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center">
-                <p className="text-gray-600 text-sm">Sin registros de mantenimiento</p>
-                <Link href="/inventario/mantenimiento" className="text-[#B3985B] text-xs hover:underline mt-1 block">Registrar mantenimiento →</Link>
-              </div>
-            ) : equipo.mantenimientos.map(m => (
-              <div key={m.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-semibold ${MANT_BADGE[m.tipo] ?? "bg-gray-800 text-gray-400"}`}>{m.tipo}</span>
-                    <span className="text-gray-400 text-xs">{fmtDate(m.fecha)}</span>
-                  </div>
+            {equipo.mantenimientos.map(m => (
+              <div key={m.id} className="flex items-start gap-4 text-xs p-3 bg-[#0d0d0d] rounded-lg">
+                <div className="shrink-0 text-[#555] w-20 pt-0.5">
+                  {new Date(m.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" })}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white">{m.accionRealizada}</p>
+                  {m.comentarios && <p className="text-[#6b7280] mt-0.5">{m.comentarios}</p>}
                   {m.proximoMantenimiento && (
-                    <span className="text-yellow-400 text-[10px]">próx: {fmtDate(m.proximoMantenimiento)}</span>
+                    <p className="text-yellow-600/70 mt-0.5">
+                      Próximo: {new Date(m.proximoMantenimiento).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" })}
+                    </p>
                   )}
                 </div>
-                <p className="text-white text-sm">{m.accionRealizada}</p>
-                {m.estadoEquipo && <p className="text-gray-500 text-xs mt-0.5">Estado: {m.estadoEquipo}</p>}
-                {m.comentarios && <p className="text-gray-500 text-xs mt-0.5">{m.comentarios}</p>}
-              </div>
-            ))}
-            <div className="text-center pt-2">
-              <Link href="/inventario/mantenimiento" className="text-[#B3985B] text-xs hover:underline">+ Registrar mantenimiento</Link>
-            </div>
-          </div>
-        )}
-
-        {tab === "proyectos" && (
-          <div className="space-y-2">
-            {equipo.proyectoEquipos.length === 0 ? (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center">
-                <p className="text-gray-600 text-sm">Sin historial de proyectos</p>
-              </div>
-            ) : equipo.proyectoEquipos.map(pe => {
-              const p = pe.proyecto;
-              const ESTADO_C: Record<string, string> = {
-                PLANEACION: "text-blue-400", CONFIRMADO: "text-green-400",
-                EN_CURSO: "text-yellow-400", COMPLETADO: "text-gray-400", CANCELADO: "text-red-400",
-              };
-              return (
-                <Link key={pe.id} href={`/proyectos/${p.id}`}
-                  className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-xl px-4 py-3 transition-colors">
-                  <div>
-                    <p className="text-white text-sm font-medium">{p.nombre}</p>
-                    <p className="text-gray-500 text-xs">{p.cliente.nombre} · {p.numeroProyecto}</p>
-                  </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className={`text-xs font-semibold ${ESTADO_C[p.estado] ?? "text-gray-400"}`}>{p.estado}</p>
-                    <p className="text-gray-600 text-xs">{fmtDate(p.fechaEvento)} · ×{pe.cantidad}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-
-        {tab === "unidades" && (
-          <div className="space-y-2">
-            {equipo.unidades.length === 0 ? (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center">
-                <p className="text-gray-600 text-sm">Sin unidades individuales registradas</p>
-                <p className="text-gray-700 text-xs mt-1">Las unidades permiten rastrear números de serie y estado de cada pieza</p>
-              </div>
-            ) : equipo.unidades.map(u => (
-              <div key={u.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white text-sm font-medium">{u.codigoInterno ?? "Sin código"}</p>
-                    {u.serie && <p className="text-gray-500 text-xs">Serie: {u.serie}</p>}
-                    {u.notas && <p className="text-gray-500 text-xs">{u.notas}</p>}
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded ${ESTADO_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"} border`}>{u.estado}</span>
-                </div>
+                <span className="shrink-0 px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#6b7280] text-[10px]">{m.tipo}</span>
               </div>
             ))}
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
+        </div>
+      )}
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <span className="text-gray-500 text-xs shrink-0">{label}</span>
-      <span className="text-gray-300 text-xs text-right">{value}</span>
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/92 flex items-center justify-center p-6"
+          onClick={() => setLightbox(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt=""
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-5 right-5 text-white text-xl bg-black/60 hover:bg-black/90 w-9 h-9 flex items-center justify-center rounded-full transition-colors"
+          >✕</button>
+        </div>
+      )}
     </div>
   );
 }
