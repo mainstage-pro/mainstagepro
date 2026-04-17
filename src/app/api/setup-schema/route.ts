@@ -246,6 +246,104 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "rol_id" TEXT;`);
     results.push("✅ tecnicos.rol_id");
 
+    // 13. Asignar roles a técnicos importados
+    await prisma.$executeRawUnsafe(`
+      UPDATE "tecnicos" SET "rol_id" = CASE "id"
+        WHEN 'tec-001' THEN 'rol-produccion'
+        WHEN 'tec-002' THEN 'rol-coordinacion'
+        WHEN 'tec-003' THEN 'rol-coordinacion'
+        WHEN 'tec-004' THEN 'rol-dj'
+        WHEN 'tec-005' THEN 'rol-audio'
+        WHEN 'tec-006' THEN 'rol-video'
+        WHEN 'tec-007' THEN 'rol-audio'
+        WHEN 'tec-008' THEN 'rol-audio'
+        WHEN 'tec-009' THEN 'rol-audio'
+        WHEN 'tec-010' THEN 'rol-audio'
+        WHEN 'tec-011' THEN 'rol-audio'
+        WHEN 'tec-012' THEN 'rol-audio'
+        WHEN 'tec-013' THEN 'rol-audio'
+        WHEN 'tec-014' THEN 'rol-audio'
+        WHEN 'tec-015' THEN 'rol-iluminacion'
+        WHEN 'tec-016' THEN 'rol-iluminacion'
+        WHEN 'tec-017' THEN 'rol-iluminacion'
+        WHEN 'tec-018' THEN 'rol-iluminacion'
+        WHEN 'tec-019' THEN 'rol-iluminacion'
+        WHEN 'tec-020' THEN 'rol-iluminacion'
+        WHEN 'tec-021' THEN 'rol-iluminacion'
+        WHEN 'tec-022' THEN 'rol-iluminacion'
+        WHEN 'tec-023' THEN 'rol-iluminacion'
+        WHEN 'tec-024' THEN 'rol-iluminacion'
+        WHEN 'tec-025' THEN 'rol-rigging'
+        WHEN 'tec-026' THEN 'rol-stagehand'
+        WHEN 'tec-027' THEN 'rol-stagehand'
+        WHEN 'tec-028' THEN 'rol-stagehand'
+        WHEN 'tec-029' THEN 'rol-stagehand'
+        WHEN 'tec-030' THEN 'rol-stagehand'
+        WHEN 'tec-031' THEN 'rol-stagehand'
+        WHEN 'tec-032' THEN 'rol-stagehand'
+        WHEN 'tec-033' THEN 'rol-stagehand'
+        WHEN 'tec-034' THEN 'rol-stagehand'
+        WHEN 'tec-035' THEN 'rol-stagehand'
+        WHEN 'tec-036' THEN 'rol-stagehand'
+        WHEN 'tec-037' THEN 'rol-stagehand'
+        WHEN 'tec-038' THEN 'rol-stagehand'
+        WHEN 'tec-039' THEN 'rol-stagehand'
+        WHEN 'tec-040' THEN 'rol-stagehand'
+        WHEN 'tec-041' THEN 'rol-stagehand'
+        WHEN 'tec-042' THEN 'rol-stagehand'
+        WHEN 'tec-043' THEN 'rol-dj'
+        WHEN 'tec-044' THEN 'rol-dj'
+        WHEN 'tec-045' THEN 'rol-dj'
+        WHEN 'tec-046' THEN 'rol-dj'
+        WHEN 'tec-047' THEN 'rol-dj'
+        WHEN 'tec-048' THEN 'rol-dj'
+        WHEN 'tec-049' THEN 'rol-dj'
+        WHEN 'tec-050' THEN 'rol-dj'
+        WHEN 'tec-051' THEN 'rol-dj'
+        WHEN 'tec-052' THEN 'rol-dj'
+        WHEN 'tec-053' THEN 'rol-dj'
+        ELSE "rol_id"
+      END
+      WHERE "id" LIKE 'tec-%';
+    `);
+    results.push("✅ tecnicos — roles asignados");
+
+    // 14. Asignar comentarios a técnicos
+    await prisma.$executeRawUnsafe(`
+      UPDATE "tecnicos" SET "comentarios" = CASE "id"
+        WHEN 'tec-002' THEN 'Coordinador de eventos musicales principalmente, puede realizar coordinación de sociales y empresariales. También: Operador de Iluminación AAA, Stagehand.'
+        WHEN 'tec-003' THEN 'También: Supervisión AAA, Operador de Video AA, Stagehand.'
+        WHEN 'tec-004' THEN 'Especialidad: Social. También: Coordinación A, Supervisión AA.'
+        WHEN 'tec-006' THEN 'También: Operador de Audio A, Stagehand.'
+        WHEN 'tec-007' THEN 'También: Operador de Iluminación AA, Stagehand.'
+        WHEN 'tec-008' THEN 'También: Stagehand.'
+        WHEN 'tec-011' THEN 'También: Stagehand AA.'
+        WHEN 'tec-017' THEN 'También: Stagehand.'
+        WHEN 'tec-019' THEN 'También: DJ Open Format AA.'
+        WHEN 'tec-021' THEN 'También: Stagehand.'
+        WHEN 'tec-022' THEN 'También: Stagehand.'
+        WHEN 'tec-023' THEN 'También: Stagehand.'
+        WHEN 'tec-025' THEN 'También: Stagehand AA.'
+        WHEN 'tec-033' THEN 'Conocido como Sock.'
+        WHEN 'tec-034' THEN 'Amigo de Roy.'
+        WHEN 'tec-041' THEN 'Papá de Luna.'
+        WHEN 'tec-043' THEN 'Especialidad: Social. También: Stagehand.'
+        WHEN 'tec-044' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-045' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-046' THEN 'Especialidad: Social.'
+        WHEN 'tec-047' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-048' THEN 'Especialidad: Social.'
+        WHEN 'tec-049' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-050' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-051' THEN 'Especialidad: Social.'
+        WHEN 'tec-052' THEN 'Especialidad: Open Format.'
+        WHEN 'tec-053' THEN 'Especialidad: Social.'
+        ELSE "comentarios"
+      END
+      WHERE "id" LIKE 'tec-%';
+    `);
+    results.push("✅ tecnicos — comentarios asignados");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
