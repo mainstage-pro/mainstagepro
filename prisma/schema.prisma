@@ -1424,10 +1424,62 @@ model Postulacion {
   // Onboarding checklist (JSON: [{id,label,done,fecha}])
   onboardingData  String?
 
+  onboardingPlan  OnboardingPlan?
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
   @@map("postulaciones")
+}
+
+// ─── ONBOARDING ───────────────────────────────────────────────────────────────
+
+model OnboardingPlan {
+  id             String   @id @default(cuid())
+  nombre         String
+  puesto         String
+  area           String?
+  fechaIngreso   DateTime? @map("fecha_ingreso")
+  estado         String   @default("EN_CURSO") // EN_CURSO | COMPLETADO | PAUSADO | CANCELADO
+  notas          String?
+  postulacionId  String?  @unique @map("postulacion_id")
+  postulacion    Postulacion? @relation(fields: [postulacionId], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt      @map("updated_at")
+  modulos        OnboardingModulo[]
+
+  @@map("onboarding_planes")
+}
+
+model OnboardingModulo {
+  id           String   @id @default(cuid())
+  planId       String   @map("plan_id")
+  plan         OnboardingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  nombre       String
+  descripcion  String?
+  tipo         String   @default("ALINEACION") // ALINEACION | TECNICO | ADMINISTRATIVO | CULTURAL | PRACTICO
+  orden        Int      @default(0)
+  duracionDias Int?     @map("duracion_dias")
+  completado   Boolean  @default(false)
+  tareas       OnboardingTarea[]
+
+  @@map("onboarding_modulos")
+}
+
+model OnboardingTarea {
+  id           String    @id @default(cuid())
+  moduloId     String    @map("modulo_id")
+  modulo       OnboardingModulo @relation(fields: [moduloId], references: [id], onDelete: Cascade)
+  titulo       String
+  descripcion  String?
+  tipo         String    @default("LECTURA") // LECTURA | VIDEO | PRACTICA | EVALUACION | REUNION | SHADOWING
+  orden        Int       @default(0)
+  completada   Boolean   @default(false)
+  completadaEn DateTime? @map("completada_en")
+  recurso      String?
+  notas        String?
+
+  @@map("onboarding_tareas")
 }
 
 // ─── CAMPAÑAS ─────────────────────────────────────────────────────────────────

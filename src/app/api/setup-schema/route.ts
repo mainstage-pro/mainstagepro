@@ -103,6 +103,64 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ proyectos.notasPortal");
 
+    // 6. onboarding_planes
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "onboarding_planes" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "puesto" TEXT NOT NULL,
+        "area" TEXT,
+        "fecha_ingreso" TIMESTAMP(3),
+        "estado" TEXT NOT NULL DEFAULT 'EN_CURSO',
+        "notas" TEXT,
+        "postulacion_id" TEXT UNIQUE,
+        "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "onboarding_planes_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "onboarding_planes_postulacion_fkey"
+          FOREIGN KEY ("postulacion_id") REFERENCES "postulaciones"("id") ON DELETE SET NULL
+      );
+    `);
+    results.push("✅ onboarding_planes");
+
+    // 7. onboarding_modulos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "onboarding_modulos" (
+        "id" TEXT NOT NULL,
+        "plan_id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "descripcion" TEXT,
+        "tipo" TEXT NOT NULL DEFAULT 'ALINEACION',
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "duracion_dias" INTEGER,
+        "completado" BOOLEAN NOT NULL DEFAULT false,
+        CONSTRAINT "onboarding_modulos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "onboarding_modulos_plan_fkey"
+          FOREIGN KEY ("plan_id") REFERENCES "onboarding_planes"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ onboarding_modulos");
+
+    // 8. onboarding_tareas
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "onboarding_tareas" (
+        "id" TEXT NOT NULL,
+        "modulo_id" TEXT NOT NULL,
+        "titulo" TEXT NOT NULL,
+        "descripcion" TEXT,
+        "tipo" TEXT NOT NULL DEFAULT 'LECTURA',
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "completada" BOOLEAN NOT NULL DEFAULT false,
+        "completada_en" TIMESTAMP(3),
+        "recurso" TEXT,
+        "notas" TEXT,
+        CONSTRAINT "onboarding_tareas_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "onboarding_tareas_modulo_fkey"
+          FOREIGN KEY ("modulo_id") REFERENCES "onboarding_modulos"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ onboarding_tareas");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

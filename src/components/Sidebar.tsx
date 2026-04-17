@@ -129,6 +129,7 @@ const NAV: NavSection[] = [
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
           { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
         ],
       },
       {
