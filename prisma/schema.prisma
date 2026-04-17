@@ -542,6 +542,7 @@ model Proveedor {
   cuentaBancaria String?
   datosFiscales  String?
   activo         Boolean  @default(true)
+  portalToken    String?  @unique @map("portal_token")
   createdAt      DateTime @default(now())
 
   equiposDefault   Equipo[]           @relation("ProveedorDefault")
@@ -550,8 +551,56 @@ model Proveedor {
   cuentasPagar     CuentaPagar[]
   movimientos      MovimientoFinanciero[]
   ordenesCompra    OrdenCompra[]
+  equiposPortal    EquipoProveedor[]
 
   @@map("proveedores")
+}
+
+model EquipoProveedor {
+  id               String    @id @default(cuid())
+  proveedorId      String    @map("proveedor_id")
+  proveedor        Proveedor @relation(fields: [proveedorId], references: [id], onDelete: Cascade)
+
+  // Identificación
+  categoria        String    @default("OTRO")  // AUDIO | VIDEO | ILUMINACION | BACKLINE | ESCENOGRAFIA | LOGISTICA | OTRO
+  descripcion      String
+  marca            String?
+  modelo           String?
+  serialNum        String?   @map("serial_num")
+  anioFabricacion  Int?      @map("anio_fabricacion")
+
+  // Inventario y condición
+  cantidad         Int       @default(1)
+  condicion        String    @default("BUENO")  // NUEVO | BUENO | REGULAR | NECESITA_REVISION
+  disponibilidad   String    @default("DISPONIBLE") // DISPONIBLE | EN_USO | EN_MANTENIMIENTO | NO_DISPONIBLE
+
+  // Especificaciones técnicas
+  potenciaW        Float?    @map("potencia_w")
+  voltaje          String?   // "110" | "220" | "110/220"
+  amperaje         Float?
+  pesoKg           Float?    @map("peso_kg")
+  dimensiones      String?   // "L x A x H cm"
+  incluyeCase      Boolean   @default(false) @map("incluye_case")
+  tiempoSetupMin   Int?      @map("tiempo_setup_min")
+
+  // Precios
+  precioDia        Float?    @map("precio_dia")
+  precioEventoFull Float?    @map("precio_evento_full")
+  precioMinimoEvent Float?   @map("precio_minimo_event")
+
+  // Notas y documentación
+  notas            String?
+  fotosUrls        String?   @map("fotos_urls")   // JSON array de URLs
+  fichaTecnicaUrl  String?   @map("ficha_tecnica_url")
+
+  // Control interno
+  aprobado         Boolean   @default(false)
+  importadoEquipoId String?  @map("importado_equipo_id")
+
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt      @map("updated_at")
+
+  @@map("equipos_proveedor")
 }
 
 // ─── ÓRDENES DE COMPRA ───────────────────────────────────────────────────────
