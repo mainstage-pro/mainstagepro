@@ -447,104 +447,295 @@ export default function AnalisisInventarioPage() {
       )}
 
       {/* ── TAB: Socios & Inversión ──────────────────────────────────────────── */}
-      {!loading && data && tab === "socios" && (
-        <div className="space-y-6">
-          {/* Investment analysis */}
-          {data.proveedoresEquipo.filter(e => e.inversionPotencial).length > 0 && (
-            <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Oportunidades de inversión</p>
-                <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/10 px-2 py-0.5 rounded-full">Basado en subrentas frecuentes</span>
+      {!loading && data && tab === "socios" && (() => {
+        const d = data!;
+        const mesLabel = meses.find(m => m.value === mes)?.label ?? mes;
+        const oportunidades = d.proveedoresEquipo.filter(e => e.inversionPotencial);
+        // Annualize based on this month's data (rough projection)
+        const factorAnual = 10; // assume ~10 meses activos/año
+
+        function waParaSocio(s: Socio) {
+          const activos = s.activos.map(a => `  • ${a.nombre} (${a.categoria})`).join("\n");
+          const opsSocio = oportunidades.filter(op =>
+            s.activos.some(a =>
+              a.categoria.toLowerCase() === op.descripcion.toLowerCase().split(" ")[0] ||
+              op.descripcion.toLowerCase().includes(a.categoria.toLowerCase())
+            )
+          );
+          const opsGlobal = oportunidades.slice(0, 3);
+          const opsMsg = (opsSocio.length > 0 ? opsSocio : opsGlobal).map(op =>
+            `  📦 ${op.descripcion}\n     ${op.vecesAprobadas} evento(s) este mes · Revenue ${fmtMXN(op.revenueGenerado)} · Costo prov. ${fmtMXN(op.costoTotal)}\n     Proyección anual: ${fmtMXN(op.costoTotal * factorAnual)} en ahorro si fuera propio`
+          ).join("\n\n");
+
+          const topRent = d.topMasUsados.slice(0, 3).map((e, i) =>
+            `  ${i + 1}. ${e.descripcion} — ${e.vecesAprobadas} evento(s), ${fmtMXN(e.revenueGenerado)}`
+          ).join("\n");
+
+          const msg =
+            `Hola ${s.nombre} 👋\n\n` +
+            `Te compartimos el análisis de *${mesLabel}* de Mainstage Pro para orientar decisiones de inversión.\n\n` +
+            `📊 *Resumen del mes:*\n` +
+            `  • Cotizaciones aprobadas: ${d.resumen.cotizacionesAprobadas}\n` +
+            `  • Revenue de equipo propio: ${fmtMXN(d.resumen.revenueEquipoPropio)}\n` +
+            `  • Equipos activos: ${d.resumen.equiposActivosMes} de ${d.resumen.totalEquiposPropio}\n\n` +
+            `🏆 *Equipos más rentados:*\n${topRent || "  Sin datos este mes"}\n\n` +
+            `💡 *Oportunidades de inversión detectadas:*\n${opsMsg || "  Sin oportunidades destacadas este mes"}\n\n` +
+            (s.activos.length > 0
+              ? `🗂 *Tu portafolio actual:*\n${activos}\n\n`
+              : "") +
+            `El dinero que salió a proveedores externos este mes fue *${fmtMXN(d.resumen.costoExterno)}*. Con inversión propia, ese costo se convierte en utilidad.\n\n` +
+            `_Mainstage Pro — Análisis de inventario_`;
+          return `https://wa.me/?text=${encodeURIComponent(msg)}`;
+        }
+
+        return (
+          <div className="space-y-6">
+
+            {/* ── Reporte ejecutivo ──────────────────────────────────────────── */}
+            <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                <div>
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte ejecutivo de inversión</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{mesLabel} · Listo para compartir con socios</p>
+                </div>
+                <button onClick={() => window.print()}
+                  className="text-xs bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 px-3 py-1.5 rounded-lg transition-colors">
+                  🖨 Imprimir / PDF
+                </button>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {data.proveedoresEquipo.filter(e => e.inversionPotencial).map((e, i) => (
-                  <div key={i} className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-4">
-                    <p className="text-white font-medium text-sm">{e.descripcion}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">{e.proveedorNombre}</p>
-                    <div className="grid grid-cols-3 gap-2 mt-3 text-center">
-                      <div>
-                        <p className="text-[10px] text-gray-600">Eventos</p>
-                        <p className="text-white font-semibold">{e.vecesAprobadas}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-600">Revenue</p>
-                        <p className="text-[#B3985B] font-semibold text-xs">{fmtMXN(e.revenueGenerado)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-gray-600">Ahorro/evento</p>
-                        <p className="text-green-400 font-semibold text-xs">
-                          {e.vecesAprobadas > 0 ? fmtMXN(e.costoTotal / e.vecesAprobadas) : "—"}
+
+              {/* KPI highlights */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {[
+                  { label: "Cotizaciones aprobadas", value: String(d.resumen.cotizacionesAprobadas), sub: `de ${d.resumen.cotizacionesMes} emitidas`, color: "text-white" },
+                  { label: "Revenue equipo propio", value: fmtMXN(d.resumen.revenueEquipoPropio), sub: `${d.resumen.equiposActivosMes} equipos activos`, color: "text-[#B3985B]" },
+                  { label: "Costo a proveedores externos", value: fmtMXN(d.resumen.costoExterno), sub: "Potencial de inversión mensual", color: "text-red-400" },
+                  { label: "Proyección anual de ahorro", value: fmtMXN(d.resumen.costoExterno * factorAnual), sub: "Si se invierte en los equipos top", color: "text-green-400" },
+                ].map(k => (
+                  <div key={k.label} className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
+                    <p className="text-gray-600 text-[10px] mb-1">{k.label}</p>
+                    <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
+                    <p className="text-gray-700 text-[10px] mt-0.5">{k.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Top rentados */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">🏆 Más rentados este mes</p>
+                  <div className="space-y-1.5">
+                    {d.topMasUsados.length === 0
+                      ? <p className="text-gray-600 text-xs">Sin datos</p>
+                      : d.topMasUsados.map((e, i) => (
+                        <div key={e.id} className="flex items-center gap-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                          <span className="text-[#B3985B] font-bold text-sm w-4">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-medium truncate">{e.descripcion}</p>
+                            <p className="text-gray-600 text-[10px]">{e.categoria}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[#B3985B] text-xs font-semibold">{fmtMXN(e.revenueGenerado)}</p>
+                            <p className="text-gray-600 text-[10px]">{e.vecesAprobadas} evento(s)</p>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">⚠️ Más subarrendados (costo externo)</p>
+                  <div className="space-y-1.5">
+                    {oportunidades.length === 0
+                      ? <p className="text-gray-600 text-xs">Sin subrentas frecuentes este mes</p>
+                      : oportunidades.slice(0, 5).map((e, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                          <span className="text-orange-400 font-bold text-sm w-4">{i + 1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-medium truncate">{e.descripcion}</p>
+                            <p className="text-gray-600 text-[10px]">{e.proveedorNombre}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-red-400 text-xs font-semibold">{fmtMXN(e.costoTotal)}</p>
+                            <p className="text-gray-600 text-[10px]">{e.vecesAprobadas} evento(s)</p>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Narrative insight */}
+              <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-4 py-3 text-sm text-gray-400 leading-relaxed">
+                En {mesLabel}, Mainstage Pro generó{" "}
+                <span className="text-white font-medium">{fmtMXN(d.resumen.revenueEquipoPropio)}</span> con su propio inventario
+                ({d.resumen.equiposActivosMes} equipos activos de {d.resumen.totalEquiposPropio} disponibles) y pagó{" "}
+                <span className="text-red-400 font-medium">{fmtMXN(d.resumen.costoExterno)}</span> a proveedores externos por{" "}
+                {d.resumen.vecesSubarrendado} subrentas.{" "}
+                {d.resumen.costoExterno > 0
+                  ? `Proyectado a 10 meses activos, eso representa ${fmtMXN(d.resumen.costoExterno * factorAnual)} anuales en costo externo que podrían convertirse en utilidad con inversión directa en equipo.`
+                  : "No se registraron subrentas externas este mes."}
+              </div>
+            </div>
+
+            {/* ── Oportunidades de inversión con señal ROI ──────────────────── */}
+            {oportunidades.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Oportunidades de inversión — señal de ROI</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {oportunidades.map((e, i) => {
+                    const costoMensual = e.costoTotal;
+                    const revenueMensual = e.revenueGenerado;
+                    const ahorroAnual = costoMensual * factorAnual;
+                    const prioridad = e.vecesAprobadas >= 4 ? "alta" : "media";
+                    return (
+                      <div key={i} className={`bg-[#0a0a0a] border rounded-xl p-4 ${prioridad === "alta" ? "border-[#B3985B]/40" : "border-[#1e1e1e]"}`}>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white font-medium text-sm leading-tight">{e.descripcion}</p>
+                            <p className="text-gray-600 text-[10px] mt-0.5">{e.proveedorNombre}</p>
+                          </div>
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2 ${prioridad === "alta" ? "bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#1a1a1a] text-gray-400 border border-[#222]"}`}>
+                            {prioridad === "alta" ? "⚡ Alta prioridad" : "💡 Considerar"}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          <div className="bg-[#111] rounded-lg p-2 text-center">
+                            <p className="text-[10px] text-gray-600">Eventos/mes</p>
+                            <p className="text-white font-bold">{e.vecesAprobadas}</p>
+                          </div>
+                          <div className="bg-[#111] rounded-lg p-2 text-center">
+                            <p className="text-[10px] text-gray-600">Revenue/mes</p>
+                            <p className="text-[#B3985B] font-bold text-xs">{fmtMXN(revenueMensual)}</p>
+                          </div>
+                          <div className="bg-[#111] rounded-lg p-2 text-center">
+                            <p className="text-[10px] text-gray-600">Costo a prov/mes</p>
+                            <p className="text-red-400 font-bold text-xs">{fmtMXN(costoMensual)}</p>
+                          </div>
+                          <div className="bg-[#111] rounded-lg p-2 text-center">
+                            <p className="text-[10px] text-gray-600">Ahorro anual est.</p>
+                            <p className="text-green-400 font-bold text-xs">{fmtMXN(ahorroAnual)}</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-600 mt-2 leading-snug">
+                          Margen actual: <span className="text-white">{Math.round(e.margenPct)}%</span> — si fuera propio el margen sería del <span className="text-green-400">100%</span> sobre el revenue.
                         </p>
                       </div>
-                    </div>
-                    <p className="text-[10px] text-gray-600 mt-2">
-                      Si fuera propio ahorrarías <span className="text-green-400 font-medium">{fmtMXN(e.costoTotal)}</span> solo en este mes.
-                    </p>
-                  </div>
-                ))}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Socios equipment */}
-          {data.socios.length === 0 ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center">
-              <p className="text-gray-500 text-sm">Sin socios inversionistas activos</p>
-              <Link href="/socios" className="text-[#B3985B] text-sm hover:underline mt-2 inline-block">Gestionar socios →</Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Activos de socios inversionistas</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {data.socios.map(s => (
-                  <div key={s.id} className="bg-[#111] border border-[#222] rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <p className="text-white font-medium text-sm">{s.nombre}</p>
-                      <Link href={`/socios/${s.id}`} className="text-[10px] text-[#B3985B] hover:underline">Ver perfil →</Link>
-                    </div>
-                    {s.activos.length === 0 ? (
-                      <p className="text-gray-600 text-xs">Sin activos registrados</p>
-                    ) : (
-                      <div className="space-y-1.5">
-                        {s.activos.map(a => {
-                          const frecuenciaMatch = data.proveedoresEquipo.find(p =>
-                            p.descripcion.toLowerCase().includes(a.nombre.toLowerCase().split(" ")[0]) ||
-                            a.nombre.toLowerCase().includes(p.descripcion.toLowerCase().split(" ")[0])
-                          );
-                          return (
-                            <div key={a.id} className="flex items-center justify-between py-1.5 border-b border-[#1a1a1a] last:border-0">
-                              <div>
-                                <p className="text-gray-300 text-xs">{a.nombre}</p>
-                                <p className="text-gray-600 text-[10px]">{a.categoria} · {fmtMXN(a.precioDia)}/día</p>
-                              </div>
-                              <div className="text-right">
-                                {frecuenciaMatch && (
-                                  <span className="text-[10px] bg-green-900/20 text-green-400 border border-green-800/30 px-1.5 py-0.5 rounded">
-                                    Similar subarrendado
-                                  </span>
-                                )}
-                                <p className="text-gray-600 text-[10px] mt-0.5">{fmtMXN(a.valorDeclarado)}</p>
-                              </div>
+            {/* ── Por socio: portafolio + WhatsApp ──────────────────────────── */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Socios inversionistas — enviar reporte</p>
+                {d.socios.length === 0 && (
+                  <Link href="/socios" className="text-xs text-[#B3985B] hover:underline">Gestionar socios →</Link>
+                )}
+              </div>
+              {d.socios.length === 0 ? (
+                <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center text-gray-500 text-sm">
+                  Sin socios inversionistas activos registrados.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {d.socios.map(s => {
+                    const opsSocio = oportunidades.filter(op =>
+                      s.activos.some(a =>
+                        a.categoria.toLowerCase() === op.descripcion.toLowerCase().split(" ")[0] ||
+                        op.descripcion.toLowerCase().includes(a.categoria.toLowerCase())
+                      )
+                    );
+                    const opsAMostrar = opsSocio.length > 0 ? opsSocio : oportunidades.slice(0, 2);
+                    return (
+                      <div key={s.id} className="bg-[#111] border border-[#222] rounded-xl p-4">
+                        {/* Header del socio */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-white font-medium text-sm">{s.nombre}</p>
+                            <p className="text-gray-600 text-[10px]">{s.activos.length} activo(s) registrado(s)</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Link href={`/socios/${s.id}`} className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors">Ver perfil</Link>
+                            <a href={waParaSocio(s)} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-900/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors font-medium">
+                              <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current shrink-0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                              Enviar reporte
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Activos del socio */}
+                        {s.activos.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Portafolio actual</p>
+                            <div className="space-y-1">
+                              {s.activos.map(a => {
+                                const matchSubrenta = d.proveedoresEquipo.find(p =>
+                                  p.descripcion.toLowerCase().includes(a.nombre.toLowerCase().split(" ")[0]) ||
+                                  a.nombre.toLowerCase().includes(p.descripcion.toLowerCase().split(" ")[0])
+                                );
+                                return (
+                                  <div key={a.id} className="flex items-center justify-between py-1 border-b border-[#1a1a1a] last:border-0">
+                                    <div>
+                                      <p className="text-gray-300 text-xs">{a.nombre}</p>
+                                      <p className="text-gray-600 text-[10px]">{a.categoria} · {fmtMXN(a.precioDia)}/día</p>
+                                    </div>
+                                    {matchSubrenta ? (
+                                      <span className="text-[10px] bg-green-900/20 text-green-400 border border-green-800/30 px-1.5 py-0.5 rounded shrink-0">
+                                        En demanda
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-700 text-[10px]">{fmtMXN(a.valorDeclarado)}</span>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+                          </div>
+                        )}
 
-          {/* Resumen por categoría */}
-          {data.proveedoresEquipo.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Costo de subrentas por mes — potencial de inversión total</p>
-              <p className="text-3xl font-bold text-[#B3985B]">{fmtMXN(data.resumen.costoExterno)}</p>
-              <p className="text-gray-500 text-sm mt-1">
-                Es el dinero que salió a proveedores este mes. Si invirtieras en esos equipos, este costo se convierte en utilidad adicional.
-              </p>
-              <div className="mt-4 flex gap-3">
+                        {/* Oportunidades para este socio */}
+                        {opsAMostrar.length > 0 && (
+                          <div>
+                            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">
+                              {opsSocio.length > 0 ? "Oportunidades afines a su perfil" : "Oportunidades del mes"}
+                            </p>
+                            <div className="space-y-1">
+                              {opsAMostrar.slice(0, 3).map((op, i) => (
+                                <div key={i} className="flex items-center justify-between py-1 bg-[#0a0a0a] border border-[#1a1a1a] rounded px-2">
+                                  <p className="text-gray-400 text-xs truncate flex-1">{op.descripcion}</p>
+                                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                                    <span className="text-[10px] text-red-400">{fmtMXN(op.costoTotal)}/mes</span>
+                                    <span className="text-[10px] text-[#B3985B]">{op.vecesAprobadas}×</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ── Cierre: total oportunidad ──────────────────────────────────── */}
+            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl p-5 flex items-center gap-6 flex-wrap">
+              <div>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Potencial de inversión mensual</p>
+                <p className="text-3xl font-bold text-[#B3985B] mt-1">{fmtMXN(d.resumen.costoExterno)}</p>
+              </div>
+              <div className="h-12 w-px bg-[#222] hidden md:block" />
+              <div>
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Proyección anual (10 meses)</p>
+                <p className="text-3xl font-bold text-green-400 mt-1">{fmtMXN(d.resumen.costoExterno * factorAnual)}</p>
+              </div>
+              <div className="flex gap-2 ml-auto">
                 <Link href="/socios" className="text-sm bg-[#B3985B]/20 hover:bg-[#B3985B]/30 border border-[#B3985B]/30 text-[#B3985B] px-4 py-2 rounded-lg transition-colors">
                   Gestionar socios →
                 </Link>
@@ -553,9 +744,10 @@ export default function AnalisisInventarioPage() {
                 </Link>
               </div>
             </div>
-          )}
-        </div>
-      )}
+
+          </div>
+        );
+      })()}
     </div>
   );
 }
