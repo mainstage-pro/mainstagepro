@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -46,6 +47,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: `El cliente tiene ${activos} proyecto(s) activo(s). Ciérralos antes de eliminar.` }, { status: 409 });
   }
 
+  const cliente = await prisma.cliente.findUnique({ where: { id }, select: { nombre: true, empresa: true } });
+  await logActividad(session.id, "ELIMINAR", "cliente", id, `Cliente eliminado: ${cliente?.nombre ?? id} (${cliente?.empresa ?? ""})`);
   await prisma.cliente.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { CopyButton } from "@/components/CopyButton";
 import { SkeletonPage } from "@/components/Skeleton";
+import VersionHistorial from "@/components/VersionHistorial";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -73,6 +74,7 @@ interface Proyecto {
   cierreFinanciero: { cerradoEn: string; notas: string | null } | null;
   portalToken: string | null;
   notasPortal: string | null;
+  responsables: string | null;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -371,6 +373,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
+  async function guardarResponsables() {
+    setSavingResp(true);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responsables: JSON.stringify(responsables) }),
+    });
+    setSavingResp(false);
+    toast.success("Responsables guardados");
+  }
+
   // Catálogos
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [roles, setRoles] = useState<RolTecnico[]>([]);
@@ -507,6 +520,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [guardandoChofer, setGuardandoChofer] = useState(false);
   const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
   const [vehiculoId, setVehiculoId] = useState("");
+  const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
+  type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
+  const [responsables, setResponsables] = useState<Responsables>({ produccion: "", logistica: "", finanzas: "", marketing: "" });
+  const [savingResp, setSavingResp] = useState(false);
 
   // Notificación de cambios en campos clave
   type CambioNotif = {
@@ -530,6 +547,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const d = await res.json();
     setProyecto(d.proyecto);
     setNotasPortal(d.proyecto?.notasPortal ?? "");
+    try {
+      const resp = d.proyecto?.responsables ? JSON.parse(d.proyecto.responsables) : {};
+      setResponsables({ produccion: resp.produccion ?? "", logistica: resp.logistica ?? "", finanzas: resp.finanzas ?? "", marketing: resp.marketing ?? "" });
+    } catch { /* ignore */ }
     setLoading(false);
   }
 
@@ -682,13 +703,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       fetch("/api/proveedores").then(r => r.json()),
       fetch("/api/equipos?todos=true").then(r => r.json()),
       fetch("/api/vehiculos").then(r => r.json()),
-    ]).then(([t, r, c, p, eq, v]) => {
+      fetch("/api/usuarios-activos").then(r => r.json()),
+    ]).then(([t, r, c, p, eq, v, u]) => {
       setTecnicos(t.tecnicos ?? []);
       setRoles(r.roles ?? []);
       setCategorias((c.categorias ?? []).filter((x: CatFinanciera) => x.tipo === "GASTO"));
       setProveedores(p.proveedores ?? []);
       setEquipoCatalogo(eq.equipos ?? []);
       setVehiculos((v.vehiculos ?? []).filter((x: { activo: boolean }) => x.activo));
+      setUsuariosActivos(u.usuarios ?? []);
     });
   }, [id]);
 
@@ -1627,6 +1650,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ── Responsables por área ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Responsables por área</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              {(["produccion", "logistica", "finanzas", "marketing"] as const).map(area => (
+                <div key={area}>
+                  <label className="text-gray-500 text-xs mb-1 block capitalize">{area}</label>
+                  <select
+                    value={responsables[area]}
+                    onChange={e => setResponsables(prev => ({ ...prev, [area]: e.target.value }))}
+                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {usuariosActivos.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}{u.area ? ` (${u.area})` : ""}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={guardarResponsables}
+              disabled={savingResp}
+              className="mt-4 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              {savingResp ? "Guardando..." : "Guardar responsables"}
+            </button>
           </div>
 
           {/* ── Chofer ── */}
@@ -4980,6 +5032,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         )}
       </div>
 
+      <div className="mt-6">
+        <VersionHistorial entidad="proyecto" entidadId={proyecto.id} />
+      </div>
     </div>
 
     {/* ── Panel flotante de notificación de cambios ── */}

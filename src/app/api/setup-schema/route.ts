@@ -646,6 +646,10 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "version_historial_entidad_idx" ON "version_historial"("entidad", "entidadId")`);
     results.push("✅ version_historial");
 
+    // 33. responsables column on proyectos
+    await prisma.$executeRawUnsafe(`ALTER TABLE "proyectos" ADD COLUMN IF NOT EXISTS "responsables" TEXT`);
+    results.push("✅ proyectos.responsables");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

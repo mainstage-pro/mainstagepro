@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
+import { guardarVersion } from "@/lib/versiones";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -135,6 +137,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           },
         });
       });
+      await logActividad(session.id, "EDITAR", "cotizacion", id, `Cotización editada: ${nombreEvento ?? id}`);
+      await guardarVersion(session.id, "cotizacion", id, { nombreEvento, granTotal, lineas: lineas.length });
       return NextResponse.json({ cotizacion });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -158,6 +162,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
+    if (body.estado) {
+      await logActividad(session.id, "ESTADO", "cotizacion", id, `Estado cambiado a ${body.estado}`);
+    }
     return NextResponse.json({ cotizacion });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -171,6 +178,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+  await logActividad(session.id, "ELIMINAR", "cotizacion", id, `Cotización eliminada`);
   await prisma.cotizacion.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

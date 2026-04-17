@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
+import { guardarVersion } from "@/lib/versiones";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -69,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
-    "notasPortal",
+    "notasPortal", "responsables",
   ];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
   const booleanFields = ["choferExterno"];
@@ -175,6 +177,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  if (data.estado && data.estado !== proyectoAntes?.estado) {
+    await logActividad(session.id, "ESTADO", "proyecto", id, `Proyecto pasó a ${data.estado}: ${proyecto.nombre}`);
+  } else if (Object.keys(data).length > 0) {
+    await logActividad(session.id, "EDITAR", "proyecto", id, `Proyecto actualizado: ${proyecto.nombre}`);
+    await guardarVersion(session.id, "proyecto", id, { nombre: proyecto.nombre, estado: proyecto.estado });
+  }
   return NextResponse.json({ proyecto });
 }
 

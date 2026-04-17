@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
 
 export async function GET() {
   const session = await getSession();
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
       include: { lineas: true },
     });
 
+    await logActividad(session.id, "CREAR", "cotizacion", cotizacion.id, `Cotización ${numeroCotizacion} creada`);
     return NextResponse.json({ cotizacion });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

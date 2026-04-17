@@ -7,6 +7,7 @@ import { formatCurrency, formatPct } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { CopyButton } from "@/components/CopyButton";
+import VersionHistorial from "@/components/VersionHistorial";
 
 interface Linea {
   id: string;
@@ -1138,6 +1139,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <p className="text-white">{cot.trato.tipoEvento}</p>
             <p className="text-gray-400 text-xs">{cot.trato.etapa.replace(/_/g, " ")}</p>
           </Link>
+
+          <VersionHistorial entidad="cotizacion" entidadId={cot.id} />
         </div>
       </div>
     </div>

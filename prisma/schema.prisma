@@ -367,6 +367,7 @@ model Proyecto {
   protocoloEntrada       String?   // JSON: protocolo de recepción en bodega (responsable, condicion, danios, items[], timestamp)
   portalToken            String?   @unique // Token público para portal de cliente
   notasPortal            String?   // Mensaje visible al cliente en su portal
+  responsables           String?   // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

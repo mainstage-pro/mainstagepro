@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { logActividad } from "@/lib/actividad";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -62,6 +63,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+  const socio = await prisma.socio.findUnique({ where: { id }, select: { nombre: true } });
+  await logActividad(session.id, "ELIMINAR", "socio", id, `Socio eliminado: ${socio?.nombre ?? id}`);
   await prisma.socio.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
