@@ -13,7 +13,6 @@ interface AgendaData {
   proyectosActivos: AnyObj[];
   cxcPendientes: AnyObj[];
   cotizacionesSinRespuesta: AnyObj[];
-  alertasPersonales: AnyObj[];
 }
 
 function diasHasta(fecha: string) {
@@ -47,7 +46,7 @@ export default function AgendaPage() {
 
   if (!data) return null;
 
-  const { usuario, proyectosActivos, cxcPendientes, cotizacionesSinRespuesta, alertasPersonales } = data;
+  const { usuario, proyectosActivos, cxcPendientes, cotizacionesSinRespuesta } = data;
 
   const proyectosUrgentes = proyectosActivos.filter((p: AnyObj) => {
     const d = diasHasta(p.fechaEvento);
@@ -68,27 +67,6 @@ export default function AgendaPage() {
           {usuario.name} · {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
-
-      {/* Alertas personales */}
-      {alertasPersonales.length > 0 && (
-        <div className="space-y-2">
-          {alertasPersonales.map((a: AnyObj, i: number) => (
-            <Link key={i} href={a.href}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
-                a.prioridad === "ALTA" ? "bg-red-900/10 border-red-800/40 hover:bg-red-900/20" : "bg-yellow-900/10 border-yellow-800/40 hover:bg-yellow-900/20"
-              }`}>
-              <span className="text-base shrink-0">{a.icono}</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{a.titulo}</p>
-                <p className="text-gray-500 text-xs truncate">{a.detalle}</p>
-              </div>
-              <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded font-semibold ${
-                a.prioridad === "ALTA" ? "text-red-400 bg-red-900/20" : "text-yellow-400 bg-yellow-900/20"
-              }`}>{a.prioridad}</span>
-            </Link>
-          ))}
-        </div>
-      )}
 
       {/* Proyectos urgentes (≤ 14 días) */}
       {proyectosUrgentes.length > 0 && (

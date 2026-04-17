@@ -2,7 +2,6 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
-import AlertasPanel from "@/components/AlertasPanel";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
 
@@ -24,18 +23,15 @@ export default async function DashboardPage() {
     cotizacionesAprobadas,
     valorCotizacionesMes,
     tratosSeguimientoVencido,
-    tratosSeguimientoItems,
     // ── PRODUCCIÓN ──────────────────────────────
     proyectosPorEstado,
     proyectosProximos,
     equiposMantenimiento,
     proyectosSinPersonal,
-    proyectosSinPersonalItems,
     nominaPendiente,
     // ── ADMINISTRACIÓN ──────────────────────────
     cxcPendiente,
     cxcVencidas,
-    cxcVencidasItems,
     cxcVence7dias,
     cxpPendiente,
     cxpVence7dias,
@@ -65,16 +61,6 @@ export default async function DashboardPage() {
     prisma.trato.count({
       where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, fechaProximaAccion: { lt: ahora } },
     }),
-    prisma.trato.findMany({
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, fechaProximaAccion: { lt: ahora } },
-      select: {
-        id: true, nombreEvento: true, fechaProximaAccion: true,
-        cliente: { select: { nombre: true } },
-        responsable: { select: { name: true } },
-      },
-      orderBy: { fechaProximaAccion: "asc" },
-      take: 10,
-    }),
 
     // ── PRODUCCIÓN ──────────────────────────────
     prisma.proyecto.groupBy({
@@ -99,19 +85,6 @@ export default async function DashboardPage() {
         fechaEvento: { lte: en30dias, gte: ahora },
       },
     }),
-    prisma.proyecto.findMany({
-      where: {
-        estado: { in: ["PLANEACION", "CONFIRMADO"] },
-        personal: { none: { confirmado: true } },
-        fechaEvento: { lte: en30dias, gte: ahora },
-      },
-      select: {
-        id: true, nombre: true, numeroProyecto: true, fechaEvento: true,
-        cliente: { select: { nombre: true } },
-      },
-      orderBy: { fechaEvento: "asc" },
-      take: 10,
-    }),
     prisma.pagoNomina.aggregate({
       _sum: { monto: true },
       where: { estado: "PENDIENTE" },
@@ -124,16 +97,6 @@ export default async function DashboardPage() {
     }),
     prisma.cuentaCobrar.count({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: ahora } },
-    }),
-    prisma.cuentaCobrar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: ahora } },
-      select: {
-        id: true, concepto: true, monto: true, fechaCompromiso: true,
-        cliente: { select: { nombre: true } },
-        proyecto: { select: { nombre: true, numeroProyecto: true } },
-      },
-      orderBy: { fechaCompromiso: "asc" },
-      take: 20,
     }),
     prisma.cuentaCobrar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
@@ -239,8 +202,6 @@ export default async function DashboardPage() {
   const pubsPublicadas  = pubsMap.PUBLICADO ?? 0;
   const pubsPendientes  = (pubsMap.PENDIENTE ?? 0) + (pubsMap.EN_PROCESO ?? 0);
 
-  const alertaTotal = cxcVencidas + tratosSeguimientoVencido + proyectosSinPersonal;
-
   const ESTADO_PUB_COLORS: Record<string, string> = {
     PENDIENTE:  "bg-gray-800 text-gray-400",
     EN_PROCESO: "bg-blue-900/40 text-blue-300",
@@ -260,32 +221,12 @@ export default async function DashboardPage() {
           </h1>
           <p className="text-gray-500 text-sm capitalize">{mes}</p>
         </div>
-        <div className="flex items-center gap-3">
-          <AlertasPanel
-            total={alertaTotal}
-            cxcVencidas={cxcVencidasItems.map(c => ({
-              ...c,
-              fechaCompromiso: c.fechaCompromiso.toISOString(),
-            }))}
-            tratosVencidos={tratosSeguimientoItems.map(t => ({
-              id: t.id,
-              nombreEvento: t.nombreEvento ?? null,
-              cliente: t.cliente,
-              fechaProximaAccion: t.fechaProximaAccion?.toISOString() ?? null,
-              responsable: t.responsable ?? null,
-            }))}
-            proyectosSinPersonal={proyectosSinPersonalItems.map(p => ({
-              ...p,
-              fechaEvento: p.fechaEvento.toISOString(),
-            }))}
-          />
-          <Link
-            href="/crm/tratos/nuevo"
-            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
-          >
-            + Nuevo trato
-          </Link>
-        </div>
+        <Link
+          href="/crm/tratos/nuevo"
+          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
+        >
+          + Nuevo trato
+        </Link>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
