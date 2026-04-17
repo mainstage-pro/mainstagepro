@@ -21,7 +21,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cotizacion) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ cotizacion });
+  // Cargar opciones hermanas del mismo grupo
+  let opciones: { id: string; numeroCotizacion: string; opcionLetra: string; estado: string; granTotal: number }[] = [];
+  if (cotizacion.grupoId) {
+    opciones = await prisma.cotizacion.findMany({
+      where: { grupoId: cotizacion.grupoId },
+      select: { id: true, numeroCotizacion: true, opcionLetra: true, estado: true, granTotal: true },
+      orderBy: { opcionLetra: "asc" },
+    });
+  } else {
+    // La cotización es la única, exponerla como "Opción A" para consistencia en UI
+    opciones = [{ id: cotizacion.id, numeroCotizacion: cotizacion.numeroCotizacion, opcionLetra: cotizacion.opcionLetra, estado: cotizacion.estado, granTotal: cotizacion.granTotal }];
+  }
+
+  return NextResponse.json({ cotizacion, opciones });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

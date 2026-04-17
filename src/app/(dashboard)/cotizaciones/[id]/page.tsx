@@ -23,10 +23,20 @@ interface Linea {
   notas: string | null;
 }
 
+interface OpcionHermana {
+  id: string;
+  numeroCotizacion: string;
+  opcionLetra: string;
+  estado: string;
+  granTotal: number;
+}
+
 interface Cotizacion {
   id: string;
   numeroCotizacion: string;
   version: number;
+  opcionLetra: string;
+  grupoId: string | null;
   estado: string;
   nombreEvento: string | null;
   tipoEvento: string | null;
@@ -110,6 +120,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
+  const [creandoOpcion, setCreandoOpcion] = useState(false);
 
   async function guardarComoPlantilla() {
     if (!cot) return;
@@ -139,8 +151,24 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`)
       .then((r) => r.json())
-      .then((d) => { setCot(d.cotizacion); setLoading(false); });
+      .then((d) => { setCot(d.cotizacion); setOpciones(d.opciones ?? []); setLoading(false); });
   }, [id]);
+
+  async function crearNuevaOpcion() {
+    setCreandoOpcion(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}/nueva-opcion`, { method: "POST" });
+      const d = await res.json();
+      if (res.ok) {
+        toast.success(`Opción ${d.opcionLetra} creada — ${d.numeroCotizacion}`);
+        router.push(`/cotizaciones/nuevo?editId=${d.id}`);
+      } else {
+        toast.error(d.error ?? "Error al crear opción");
+      }
+    } finally {
+      setCreandoOpcion(false);
+    }
+  }
 
   async function cambiarEstado(estado: string) {
     setSaving(true);
@@ -341,8 +369,49 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     equiposPorCat[cat].push(l);
   }
 
+  const LETRAS_LABELS = ["A", "B", "C", "D", "E"];
+  const letrasUsadas = new Set(opciones.map(o => o.opcionLetra));
+  const siguienteLetra = LETRAS_LABELS.find(l => !letrasUsadas.has(l));
+  const tieneOpciones = opciones.length > 1 || (opciones.length === 1 && cot.grupoId);
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
+
+      {/* Tabs de opciones */}
+      {(tieneOpciones || opciones.length > 0) && (
+        <div className="flex items-center gap-1 flex-wrap">
+          {opciones.map(op => (
+            <Link
+              key={op.id}
+              href={`/cotizaciones/${op.id}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${op.id === id
+                ? "bg-[#B3985B] text-black border-[#B3985B]"
+                : "bg-[#111] text-gray-400 border-[#222] hover:border-[#B3985B]/40 hover:text-white"
+              }`}
+            >
+              <span className="font-bold">Opción {op.opcionLetra}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${op.id === id ? "bg-black/20 text-black/70" : ESTADO_COLORS[op.estado] ?? "bg-gray-700 text-gray-400"}`}>
+                {op.estado}
+              </span>
+              <span className={`text-xs ${op.id === id ? "text-black/80" : "text-gray-500"}`}>
+                {formatCurrency(op.granTotal)}
+              </span>
+            </Link>
+          ))}
+          {siguienteLetra && opciones.length < 5 && (
+            <button
+              onClick={crearNuevaOpcion}
+              disabled={creandoOpcion}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-dashed border-[#333] text-gray-600 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors disabled:opacity-40"
+              title={`Crear Opción ${siguienteLetra} (copia editable de esta cotización)`}
+            >
+              <span className="text-base leading-none">+</span>
+              {creandoOpcion ? "Creando..." : `Opción ${siguienteLetra}`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -351,6 +420,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               <span className="text-gray-400 text-sm font-mono">{cot.numeroCotizacion}</span>
               <CopyButton value={cot.numeroCotizacion} size="xs" />
             </span>
+            {cot.grupoId && (
+              <span className="text-xs font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 px-2 py-0.5 rounded-full">
+                Opción {cot.opcionLetra}
+              </span>
+            )}
             <span className="text-gray-500 text-sm">v{cot.version}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cot.estado] || "bg-gray-700 text-gray-300"}`}>
               {cot.estado}
@@ -375,6 +449,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               >
                 Editar
               </Link>
+            )}
+            {siguienteLetra && opciones.length < 5 && (
+              <button
+                onClick={crearNuevaOpcion}
+                disabled={creandoOpcion}
+                className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B] text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {creandoOpcion ? "Creando..." : `+ Opción ${siguienteLetra}`}
+              </button>
             )}
             <button
               onClick={duplicar}

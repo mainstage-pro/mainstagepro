@@ -165,6 +165,8 @@ model Cotizacion {
   id               String   @id @default(cuid())
   numeroCotizacion String   @unique
   version          Int      @default(1)
+  opcionLetra      String   @default("A") @map("opcion_letra")
+  grupoId          String?  @map("grupo_id")
   tratoId          String
   trato            Trato    @relation(fields: [tratoId], references: [id])
   clienteId        String

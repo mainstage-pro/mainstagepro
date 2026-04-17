@@ -161,7 +161,18 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ onboarding_tareas");
 
-    // 9. portal_token on proveedores
+    // 9. opcion_letra + grupo_id on cotizaciones
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "cotizaciones" ADD COLUMN IF NOT EXISTS "opcion_letra" TEXT NOT NULL DEFAULT 'A';
+    `);
+    results.push("✅ cotizaciones.opcion_letra");
+
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "cotizaciones" ADD COLUMN IF NOT EXISTS "grupo_id" TEXT;
+    `);
+    results.push("✅ cotizaciones.grupo_id");
+
+    // 10. portal_token on proveedores
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "proveedores" ADD COLUMN IF NOT EXISTS "portal_token" TEXT UNIQUE;
     `);

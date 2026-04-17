@@ -8,8 +8,19 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Cotizacion = any;
+type Cotizacion = {
+  id: string;
+  numeroCotizacion: string;
+  estado: string;
+  opcionLetra: string;
+  grupoId: string | null;
+  granTotal: number;
+  nombreEvento: string | null;
+  tipoEvento: string | null;
+  createdAt: string;
+  cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string };
+  trato: { tipoEvento: string };
+};
 
 export default function CotizacionesPage() {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
@@ -72,8 +83,14 @@ export default function CotizacionesPage() {
               {cotizaciones.map((cot) => (
                 <tr key={cot.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
-                    <span className="text-[#B3985B] text-xs font-mono">{cot.numeroCotizacion}</span>
-                    {cot.version > 1 && <span className="text-[#555] text-[10px] ml-1">v{cot.version}</span>}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[#B3985B] text-xs font-mono">{cot.numeroCotizacion}</span>
+                      {cot.grupoId && (
+                        <span className="text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 px-1.5 py-0.5 rounded-full leading-none">
+                          {cot.opcionLetra}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-white text-sm hover:text-[#B3985B] transition-colors">
