@@ -598,6 +598,18 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "cotizaciones" ADD COLUMN IF NOT EXISTS "trade_token" TEXT UNIQUE`);
     results.push("✅ cotizaciones — trade_token");
 
+    // 29. Family & Friends discount on cotizaciones
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cotizaciones" ADD COLUMN IF NOT EXISTS "descuentoFamilyFriendsPct" DOUBLE PRECISION NOT NULL DEFAULT 0`);
+    results.push("✅ cotizaciones — descuentoFamilyFriendsPct");
+
+    // 30. Vehiculos category in categoria_equipos (seed if not exists)
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO "categoria_equipos" ("id", "nombre", "descripcion", "orden")
+      SELECT gen_random_uuid()::text, 'Vehículos', 'Vehículos de carga y transporte de equipo', 99
+      WHERE NOT EXISTS (SELECT 1 FROM "categoria_equipos" WHERE "nombre" = 'Vehículos')
+    `);
+    results.push("✅ categoria_equipos — Vehículos");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

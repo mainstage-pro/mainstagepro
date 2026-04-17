@@ -201,9 +201,10 @@ model Cotizacion {
   descuentoMultidiaPct   Float @default(0)
   descuentoPatrocinioPct Float @default(0)
   descuentoPatrocinioNota String?
-  descuentoEspecialPct   Float @default(0)
-  descuentoEspecialNota  String?
-  descuentoTotalPct      Float @default(0)
+  descuentoEspecialPct        Float @default(0)
+  descuentoEspecialNota       String?
+  descuentoFamilyFriendsPct   Float @default(0)
+  descuentoTotalPct           Float @default(0)
   montoDescuento         Float @default(0)
   subtotalEquiposNeto    Float @default(0)
   subtotalPaquetes       Float @default(0)

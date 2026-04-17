@@ -35,6 +35,7 @@ export interface ResumenCotizacion {
   descuentoMultidiaPct: number;
   descuentoPatrocinioPct: number;
   descuentoEspecialPct: number;
+  descuentoFamilyFriendsPct: number;
   descuentoTotalPct: number;
   montoDescuento: number;
   montoBeneficio: number;
@@ -71,6 +72,7 @@ export function calcularResumen(params: {
   diasEquipo: number;
   descuentoPatrocinioPct: number;
   descuentoEspecialPct: number;
+  descuentoFamilyFriendsPct?: number;
   aplicaIva: boolean;
 }): ResumenCotizacion {
   const {
@@ -79,6 +81,7 @@ export function calcularResumen(params: {
     diasEquipo,
     descuentoPatrocinioPct,
     descuentoEspecialPct,
+    descuentoFamilyFriendsPct = 0,
     aplicaIva,
   } = params;
 
@@ -121,7 +124,8 @@ export function calcularResumen(params: {
     descuentoB2bPct +
     descuentoMultidiaPct +
     descuentoPatrocinioPct +
-    descuentoEspecialPct;
+    descuentoEspecialPct +
+    descuentoFamilyFriendsPct;
 
   const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
   const montoBeneficio = montoDescuento;
@@ -164,6 +168,7 @@ export function calcularResumen(params: {
     descuentoMultidiaPct,
     descuentoPatrocinioPct,
     descuentoEspecialPct,
+    descuentoFamilyFriendsPct,
     descuentoTotalPct,
     montoDescuento,
     montoBeneficio,

@@ -196,6 +196,22 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
   const [creando, setCreando] = useState(false);
   const [utilidad, setUtilidad] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loadingUtilidad, setLoadingUtilidad] = useState(false);
+
+  async function abrirCreando() {
+    setCreando(true);
+    setLoadingUtilidad(true);
+    try {
+      const r = await fetch("/api/finanzas/reporte?meses=1");
+      const d = await r.json();
+      const mesKey = new Date().toISOString().slice(0, 7);
+      const mesData = (d.porMes as { mes: string; utilidadMes: number }[])?.find(m => m.mes === mesKey);
+      if (mesData?.utilidadMes && mesData.utilidadMes > 0) {
+        setUtilidad(String(Math.round(mesData.utilidadMes)));
+      }
+    } catch { /* noop */ }
+    setLoadingUtilidad(false);
+  }
 
   // Calcular monto estimado en pantalla
   const utilNum = utilidad ? parseFloat(utilidad.replace(/,/g, "")) : null;
@@ -299,7 +315,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
               Captura la utilidad neta del mes para calcular el modo híbrido. Si no tienes el dato, déjalo vacío y se usará el monto fijo.
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <Inp label="Utilidad neta del mes (opcional)" hint="Si está vacío → modo fijo" value={utilidad} onChange={setUtilidad} type="number" prefix="$" />
+              <Inp label={loadingUtilidad ? "Cargando utilidad del reporte…" : "Utilidad de cierre del mes"} hint="Auto-cargado del reporte financiero · Si está vacío → modo fijo" value={utilidad} onChange={setUtilidad} type="number" prefix="$" />
               <div className="flex flex-col gap-1">
                 <p className="text-[11px] text-gray-500">Monto calculado</p>
                 <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-3 mt-0.5">
@@ -327,7 +343,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
               <p className="text-gray-400 text-sm">Aún no se ha registrado el pago de este mes</p>
               <p className="text-gray-600 text-xs mt-0.5">Monto fijo estimado: <span className="text-white font-semibold">{fmt(montoFijoMensual)}</span></p>
             </div>
-            <button onClick={() => setCreando(true)}
+            <button onClick={abrirCreando}
               className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg">
               Registrar mes
             </button>

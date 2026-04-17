@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 
@@ -44,8 +45,20 @@ function ClasificacionBadge({ clasificacion }: { clasificacion: string }) {
   );
 }
 
-export default function ClientesClient({ clientes }: { clientes: Cliente[] }) {
+export default function ClientesClient({ clientes: initial }: { clientes: Cliente[] }) {
   const [view, setView] = useState<"list" | "card">("list");
+  const [clientes, setClientes] = useState<Cliente[]>(initial);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function eliminar(c: Cliente) {
+    if (!confirm(`¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(c.id);
+    await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
+    setClientes(prev => prev.filter(x => x.id !== c.id));
+    setDeletingId(null);
+    router.refresh();
+  }
 
   return (
     <>
@@ -122,7 +135,13 @@ export default function ClientesClient({ clientes }: { clientes: Cliente[] }) {
                   <td className="px-4 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
                   <td className="px-4 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
                   <td className="px-4 py-3 text-right">
-                    <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+                      <button onClick={() => eliminar(c)} disabled={deletingId === c.id}
+                        className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar cliente">
+                        {deletingId === c.id ? "…" : "✕"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

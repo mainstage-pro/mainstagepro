@@ -311,7 +311,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                   onClick={() => toggleSection(section.key)}
                   className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
                 >
-                  <span className={`text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                  <span className={`text-[13px] font-bold uppercase tracking-widest transition-colors ${
                     isSectionActive && !isSectionOpen ? "text-[#B3985B]" : "text-[#B3985B]/50 group-hover:text-[#B3985B]/80"
                   }`}>
                     {sectionLabel}
@@ -332,7 +332,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                           onClick={() => toggleGroup(groupKey)}
                           className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
                             isGroupActive
-                              ? "text-[#B3985B]"
+                              ? "text-white font-semibold"
                               : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                           }`}
                         >
@@ -349,7 +349,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                                   href={child.href}
                                   className={`block px-2 py-1.5 rounded text-sm transition-colors ${
                                     isActive(child.href)
-                                      ? "text-[#B3985B] font-medium"
+                                      ? "text-white font-semibold"
                                       : "text-[#5a6370] hover:text-white"
                                   }`}
                                 >
@@ -368,7 +368,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                       href={item.href!}
                       className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive(item.href!)
-                          ? "bg-[#1a1a1a] text-white"
+                          ? "bg-[#1a1a1a] text-white font-semibold"
                           : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                       }`}
                     >

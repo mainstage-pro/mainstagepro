@@ -242,6 +242,7 @@ function CotizadorForm() {
   const [dMultidiaManual, setDMultidiaManual] = useState<string>("");
   const [dPatrocinio, setDPatrocinio] = useState(""); const [dPatrocinioNota, setDPatrocinioNota] = useState("");
   const [dEspecial, setDEspecial] = useState(""); const [dEspecialNota, setDEspecialNota] = useState("");
+  const [dFamilyFriends, setDFamilyFriends] = useState("");
   const [aplicaIva, setAplicaIva] = useState(false);
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
@@ -674,8 +675,9 @@ function CotizadorForm() {
     const dMultidia = dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia;
     const dPatro = parseFloat(dPatrocinio) / 100 || 0;
     const dEsp = parseFloat(dEspecial) / 100 || 0;
+    const dFF = dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0;
 
-    const descuentoTotalPct = dVolumen + dB2B + dMultidia + dPatro + dEsp;
+    const descuentoTotalPct = dVolumen + dB2B + dMultidia + dPatro + dEsp + dFF;
     const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
@@ -708,13 +710,13 @@ function CotizadorForm() {
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       autoVolumen, autoB2B, autoMultidia,
-      dVolumen, dB2B, dMultidia, dPatro, dEsp,
+      dVolumen, dB2B, dMultidia, dPatro, dEsp, dFF,
       descuentoTotalPct, montoDescuento,
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
-    dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
+    dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -778,6 +780,7 @@ function CotizadorForm() {
       descuentoMultidiaPct: resumen.dMultidia,
       descuentoPatrocinioPct: resumen.dPatro,
       descuentoEspecialPct: resumen.dEsp,
+      descuentoFamilyFriendsPct: resumen.dFF,
       descuentoTotalPct: resumen.descuentoTotalPct,
       montoDescuento: resumen.montoDescuento,
       montoBeneficio: resumen.montoDescuento,
@@ -1741,6 +1744,22 @@ function CotizadorForm() {
                   <span className="text-gray-400 text-sm">%</span>
                 </div>
                 <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dEsp)}</span>
+              </div>
+              {/* Family & Friends */}
+              <div className="flex items-center gap-3">
+                <span className="text-gray-400 text-sm w-40">Family &amp; Friends</span>
+                <span className="text-gray-500 text-xs flex-1">Clientes referidos / red cercana</span>
+                <div className="flex items-center gap-1">
+                  <input type="number" min="0" max="100" step="1"
+                    value={dFamilyFriends}
+                    onChange={e => setDFamilyFriends(e.target.value)}
+                    placeholder="20"
+                    className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <span className="text-gray-400 text-sm">%</span>
+                  {dFamilyFriends !== "" && <button onClick={() => setDFamilyFriends("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Limpiar</button>}
+                </div>
+                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dFF)}</span>
               </div>
               {/* Total descuento */}
               <div className="flex items-center justify-between pt-2 border-t border-[#222]">

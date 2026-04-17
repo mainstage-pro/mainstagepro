@@ -103,9 +103,24 @@ export default function UsuariosPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [expandedPermisos, setExpandedPermisos] = useState<string | null>(null);
+
+  async function expandPermisos(userId: string | null) {
+    setExpandedPermisos(userId);
+    if (userId && proyectosList.length === 0) {
+      setLoadingProyectos(true);
+      const r = await fetch("/api/proyectos");
+      const d = await r.json();
+      setProyectosList((d.proyectos ?? []).map((p: { id: string; nombre: string; numeroProyecto: string }) => ({
+        id: p.id, nombre: p.nombre, numeroProyecto: p.numeroProyecto,
+      })));
+      setLoadingProyectos(false);
+    }
+  }
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
   const [accessControlEnabled, setAccessControlEnabled] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
+  const [proyectosList, setProyectosList] = useState<{ id: string; nombre: string; numeroProyecto: string }[]>([]);
+  const [loadingProyectos, setLoadingProyectos] = useState(false);
 
   async function load() {
     const [usersRes, configRes] = await Promise.all([
@@ -258,11 +273,11 @@ export default function UsuariosPage() {
       <div className="bg-[#111] border border-[#222] rounded-xl p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-white text-sm font-semibold">Control de acceso por módulo</p>
+            <p className="text-white text-sm font-semibold">Control de acceso por sección y proyecto</p>
             <p className="text-gray-500 text-xs mt-0.5">
               {accessControlEnabled
-                ? "Activo — los usuarios solo ven los módulos que se les asignaron"
-                : "Inactivo — todos los usuarios pueden ver todos los módulos"}
+                ? "Activo — los usuarios solo ven las secciones y proyectos asignados"
+                : "Inactivo — todos los usuarios pueden ver toda la plataforma"}
             </p>
           </div>
           <button onClick={toggleAccessControl} disabled={savingConfig}
@@ -370,14 +385,14 @@ export default function UsuariosPage() {
                     )}
                     {!u.active && <span className="text-xs text-[#555]">Inactivo</span>}
                     {accessControlEnabled && !isAdminUser && (
-                      <span className="text-xs text-gray-600">{grantedCount}/{ALL_MODULE_KEYS.length} módulos</span>
+                      <span className="text-xs text-gray-600">{grantedCount}/{ALL_MODULE_KEYS.length} secciones</span>
                     )}
                   </div>
                   <p className="text-[#555] text-xs">{u.email}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {accessControlEnabled && !isAdminUser && (
-                    <button onClick={() => setExpandedPermisos(isExpanded ? null : u.id)}
+                    <button onClick={() => expandPermisos(isExpanded ? null : u.id)}
                       className={`text-xs px-2 py-1 border rounded transition-colors ${
                         isExpanded ? "text-[#B3985B] border-[#B3985B]/40" : "text-[#6b7280] hover:text-white border-[#333]"
                       }`}>
@@ -407,7 +422,7 @@ export default function UsuariosPage() {
                 <div className="border-t border-[#1a1a1a] bg-[#0d0d0d] p-4">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-xs text-gray-400">
-                      Módulos accesibles para <span className="text-white font-medium">{u.name}</span>
+                      Secciones accesibles para <span className="text-white font-medium">{u.name}</span>
                     </p>
                     <div className="flex gap-2">
                       <button onClick={() => grantAll(u.id)}
@@ -460,6 +475,43 @@ export default function UsuariosPage() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Proyectos específicos */}
+                  {userKeys.has("proyectos") && (
+                    <div className="mt-5 pt-4 border-t border-[#1a1a1a]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <p className="text-[10px] text-[#3a3a3a] uppercase tracking-widest font-bold">Restricción por proyecto</p>
+                        <span className="text-[10px] text-gray-700">Si no se selecciona ninguno, el usuario ve todos</span>
+                      </div>
+                      {loadingProyectos ? (
+                        <p className="text-xs text-gray-600">Cargando proyectos...</p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-1 max-h-40 overflow-y-auto">
+                          {proyectosList.map(p => {
+                            const key = `proyecto:${p.id}`;
+                            const hasAccess = userKeys.has(key);
+                            const lockKey = `${u.id}-${key}`;
+                            const isToggling = togglingKey === lockKey;
+                            return (
+                              <label key={p.id}
+                                className="flex items-center gap-2 py-1 px-2 rounded hover:bg-[#1a1a1a] cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={hasAccess}
+                                  disabled={isToggling}
+                                  onChange={() => toggleModulo(u.id, key, hasAccess)}
+                                  className="w-3 h-3 rounded accent-[#B3985B] shrink-0"
+                                />
+                                <span className={`text-[11px] ${hasAccess ? "text-white" : "text-[#444]"}`}>
+                                  {p.numeroProyecto} · {p.nombre}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

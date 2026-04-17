@@ -40,6 +40,7 @@ export default function SociosPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const cargar = async () => {
     setLoading(true);
@@ -58,6 +59,14 @@ export default function SociosPage() {
       if (k === "pctMainstage") n.pctSocio = String(100 - parseFloat(v || "0"));
       return n as typeof EMPTY;
     });
+  };
+
+  const eliminarSocio = async (s: Socio) => {
+    if (!confirm(`¿Eliminar el socio "${s.nombre}"? Esta acción eliminará también sus activos y registros asociados.`)) return;
+    setDeletingId(s.id);
+    await fetch(`/api/socios/${s.id}`, { method: "DELETE" });
+    setSocios(prev => prev.filter(x => x.id !== s.id));
+    setDeletingId(null);
   };
 
   const crear = async (e: React.FormEvent) => {
@@ -263,9 +272,15 @@ export default function SociosPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link href={`/socios/${s.id}`} className="text-[#B3985B] text-xs hover:underline">
-                        Ver detalle →
-                      </Link>
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/socios/${s.id}`} className="text-[#B3985B] text-xs hover:underline">
+                          Ver detalle →
+                        </Link>
+                        <button onClick={() => eliminarSocio(s)} disabled={deletingId === s.id}
+                          className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar socio">
+                          {deletingId === s.id ? "…" : "✕"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

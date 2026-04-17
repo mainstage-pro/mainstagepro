@@ -62,6 +62,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.socio.update({ where: { id }, data: { status: "INACTIVO" } });
+  await prisma.socio.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

@@ -505,6 +505,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [choferPersonalId, setChoferPersonalId] = useState("");
   const [choferCostoInput, setChoferCostoInput] = useState("");
   const [guardandoChofer, setGuardandoChofer] = useState(false);
+  const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
+  const [vehiculoId, setVehiculoId] = useState("");
 
   // Notificación de cambios en campos clave
   type CambioNotif = {
@@ -679,12 +681,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       fetch("/api/categorias-financieras").then(r => r.json()),
       fetch("/api/proveedores").then(r => r.json()),
       fetch("/api/equipos?todos=true").then(r => r.json()),
-    ]).then(([t, r, c, p, eq]) => {
+      fetch("/api/vehiculos").then(r => r.json()),
+    ]).then(([t, r, c, p, eq, v]) => {
       setTecnicos(t.tecnicos ?? []);
       setRoles(r.roles ?? []);
       setCategorias((c.categorias ?? []).filter((x: CatFinanciera) => x.tipo === "GASTO"));
       setProveedores(p.proveedores ?? []);
       setEquipoCatalogo(eq.equipos ?? []);
+      setVehiculos((v.vehiculos ?? []).filter((x: { activo: boolean }) => x.activo));
     });
   }, [id]);
 
@@ -1692,6 +1696,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
                       placeholder="Costo ($) — genera CxP automáticamente"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                )}
+                {vehiculos.length > 0 && (
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
+                    <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="">— Sin vehículo específico —</option>
+                      {vehiculos.map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-lg px-3 py-2 text-xs text-yellow-500">

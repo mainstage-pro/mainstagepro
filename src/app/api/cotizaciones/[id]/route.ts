@@ -57,6 +57,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       descuentoVolumenPct, descuentoB2bPct, descuentoMultidiaPct,
       descuentoPatrocinioPct, descuentoPatrocinioNota,
       descuentoEspecialPct, descuentoEspecialNota,
+      descuentoFamilyFriendsPct,
       descuentoTotalPct, montoDescuento, montoBeneficio,
       subtotalEquiposBruto, subtotalEquiposNeto,
       subtotalPaquetes, subtotalTerceros, subtotalOperacion,
@@ -89,6 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             descuentoPatrocinioNota: descuentoPatrocinioNota ?? null,
             descuentoEspecialPct: descuentoEspecialPct ?? 0,
             descuentoEspecialNota: descuentoEspecialNota ?? null,
+            descuentoFamilyFriendsPct: descuentoFamilyFriendsPct ?? 0,
             descuentoTotalPct: descuentoTotalPct ?? 0,
             montoDescuento: montoDescuento ?? 0,
             montoBeneficio: montoBeneficio ?? 0,
@@ -143,7 +145,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {
