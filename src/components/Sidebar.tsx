@@ -177,6 +177,7 @@ const NAV: NavSection[] = [
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
           { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
           { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
+          { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
         ],
       },
       {
