@@ -67,6 +67,7 @@ interface Cotizacion {
   observaciones: string | null;
   vigenciaDias: number;
   createdAt: string;
+  tradeToken: string | null;
   aprobacionToken: string | null;
   aprobacionFecha: string | null;
   aprobacionNombre: string | null;
@@ -207,17 +208,42 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     setSavingPlan(false);
   }
 
-  async function saveTrade(data: object) {
+  async function saveTrade(data: object, extra?: Record<string, unknown>) {
     setSavingTrade(true);
+    const body: Record<string, unknown> = { mainstageTradeData: JSON.stringify(data), ...extra };
     const res = await fetch(`/api/cotizaciones/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mainstageTradeData: JSON.stringify(data) }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
-      setCot(prev => prev ? { ...prev, mainstageTradeData: JSON.stringify(data) } : prev);
+      const d = await res.json();
+      setCot(prev => prev ? { ...prev, mainstageTradeData: JSON.stringify(data), tradeToken: d.cotizacion?.tradeToken ?? prev.tradeToken, ...extra } : prev);
     }
     setSavingTrade(false);
+  }
+
+  async function generarTradeToken() {
+    setSavingTrade(true);
+    const token = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+    await saveTrade(
+      JSON.parse(cot!.mainstageTradeData ?? "{}"),
+      { tradeToken: token }
+    );
+  }
+
+  async function aplicarNivelTrade() {
+    if (!cot) return;
+    setSavingTrade(true);
+    try {
+      let trade = JSON.parse(cot.mainstageTradeData ?? "{}");
+      const nivelAplicado = trade.nivelSeleccionado;
+      trade = { ...trade, nivelAplicado, activo: true };
+      await saveTrade(trade);
+      toast.success(`Nivel ${nivelAplicado} aplicado — ${trade.pct}% descuento`);
+    } finally {
+      setSavingTrade(false);
+    }
   }
 
   async function duplicar() {
@@ -874,84 +900,153 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* ── Mainstage Trade ── */}
           {!["APROBADA", "RECHAZADA"].includes(cot.estado) && (() => {
-            type TradeData = { activo: boolean; pct: number; entregables: string[] };
-            const ENTREGABLES_DEFAULT = [
-              { id: "logo_banner", label: "Logo en banner / backdrop del evento" },
-              { id: "mencion_maestro", label: "Mención del animador/maestro de ceremonias" },
-              { id: "post_instagram", label: "Post en Instagram etiquetando @mainstagepro" },
-              { id: "story_instagram", label: "Story en Instagram con tag" },
-              { id: "post_facebook", label: "Post en Facebook etiquetando Mainstage Pro" },
-              { id: "video_redes", label: "Video del evento para nuestras redes (autorización)" },
-              { id: "testimonio_escrito", label: "Testimonio escrito / reseña de Google" },
-              { id: "recomendacion_directa", label: "Recomendación activa a 2+ contactos" },
+            type TradeData = {
+              activo: boolean; pct: number; entregables: string[];
+              checklist: Record<string, boolean>; checklistCompleto: boolean;
+              nivelSeleccionado: number | null; nivelAplicado: number | null;
+              bonoVariable: string | null; clienteSeleccionoEn: string | null;
+            };
+            const CHECKLIST = [
+              { id: "q1", label: "¿El evento es estratégico para Mainstage Pro por reputación, networking o posicionamiento?" },
+              { id: "q2", label: "¿La contraprestación (visibilidad, contenido) está clara y es medible?" },
+              { id: "q3", label: "¿El descuento solicitado sigue dejando un margen sano en esta cotización?" },
+              { id: "q4", label: "¿Los entregables de contenido y menciones ya están definidos con el cliente?" },
+              { id: "q5", label: "¿Quedó por escrito que el descuento aplica solo sobre renta de equipos Mainstage?" },
             ];
-            let trade: TradeData = { activo: false, pct: 5, entregables: [] };
+            const NIVEL_LABELS: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+            const BONO_LABELS: Record<string, string> = { boletaje: "Acceso a entradas", utilidad: "% sobre utilidad", escalonado: "Bono por referidos" };
+            let trade: TradeData = { activo: false, pct: 5, entregables: [], checklist: {}, checklistCompleto: false, nivelSeleccionado: null, nivelAplicado: null, bonoVariable: null, clienteSeleccionoEn: null };
             try { if (cot.mainstageTradeData) trade = { ...trade, ...JSON.parse(cot.mainstageTradeData) }; } catch { /* noop */ }
+
+            const checkCount = CHECKLIST.filter(q => trade.checklist[q.id]).length;
+            const checklistOk = checkCount === CHECKLIST.length;
+            const ivaFactor = cot.aplicaIva ? 1.16 : 1;
+
+            // Step determination
+            const step = trade.nivelAplicado !== null ? 5
+              : trade.nivelSeleccionado !== null ? 4
+              : cot.tradeToken ? 3
+              : checklistOk ? 2
+              : 1;
+
             return (
-              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🤝</span>
-                    <p className="text-white text-sm font-semibold whitespace-nowrap">Mainstage Trade</p>
-                    {trade.activo && <span className="text-[10px] bg-[#B3985B]/20 text-[#B3985B] px-2 py-0.5 rounded-full font-medium">Activo — {trade.pct}% desc.</span>}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const updated = { ...trade, activo: !trade.activo };
-                      saveTrade(updated);
-                    }}
-                    className={`text-xs px-3 py-1 rounded-lg border transition-colors ${trade.activo ? "border-[#B3985B]/40 text-[#B3985B] bg-[#B3985B]/10 hover:bg-[#B3985B]/20" : "border-[#333] text-gray-400 hover:text-white"}`}>
-                    {trade.activo ? "Desactivar" : "Activar"}
-                  </button>
+              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🤝</span>
+                  <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                  {step === 5 && (
+                    <span className="text-[10px] bg-[#B3985B]/20 text-[#B3985B] px-2 py-0.5 rounded-full font-medium">
+                      Activo · Nivel {trade.nivelAplicado} {NIVEL_LABELS[trade.nivelAplicado!]} · {trade.pct}% desc.
+                    </span>
+                  )}
+                  {step === 3 && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded-full">Esperando al cliente</span>}
+                  {step === 4 && <span className="text-[10px] bg-yellow-900/30 text-yellow-400 px-2 py-0.5 rounded-full">Cliente seleccionó · Pendiente aplicar</span>}
                 </div>
-                <p className="text-gray-500 text-xs mb-4">El cliente recibe un descuento a cambio de visibilidad de marca para Mainstage Pro en su evento.</p>
-                {trade.activo && (
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <label className="text-xs text-gray-400 min-w-max">Descuento acordado</label>
-                      <div className="flex items-center gap-1">
-                        {[3, 5, 7, 10, 15].map(p => (
-                          <button key={p} onClick={() => saveTrade({ ...trade, pct: p })}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${trade.pct === p ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                            {p}%
-                          </button>
-                        ))}
-                      </div>
-                      <span className="text-gray-500 text-xs">sobre equipos</span>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 mb-2">Entregables del cliente</p>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        {ENTREGABLES_DEFAULT.map(e => {
-                          const selected = trade.entregables.includes(e.id);
-                          return (
-                            <button key={e.id}
-                              onClick={() => {
-                                const list = selected ? trade.entregables.filter(x => x !== e.id) : [...trade.entregables, e.id];
-                                saveTrade({ ...trade, entregables: list });
-                              }}
-                              className={`text-left text-xs px-3 py-2 rounded-lg border transition-colors ${selected ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]"}`}>
-                              {selected ? "✓ " : ""}{e.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {trade.entregables.length > 0 && (
-                      <div className="bg-[#1a1a1a] rounded-lg p-3 text-xs text-gray-400">
-                        <p className="text-[#B3985B] font-medium mb-1">Resumen del acuerdo Trade</p>
-                        <p>El cliente recibe un {trade.pct}% de descuento en equipos a cambio de:</p>
-                        <ul className="mt-1 space-y-0.5 pl-3">
-                          {trade.entregables.map(eid => {
-                            const e = ENTREGABLES_DEFAULT.find(x => x.id === eid);
-                            return e ? <li key={eid}>· {e.label}</li> : null;
-                          })}
-                        </ul>
-                      </div>
-                    )}
-                    {savingTrade && <p className="text-xs text-gray-600">Guardando...</p>}
+
+                {/* Step 1: Checklist */}
+                {step <= 2 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500">Verifica los criterios antes de activar el esquema Trade:</p>
+                    {CHECKLIST.map(q => (
+                      <button
+                        key={q.id}
+                        onClick={() => {
+                          const updated = { ...trade, checklist: { ...trade.checklist, [q.id]: !trade.checklist[q.id] } };
+                          updated.checklistCompleto = CHECKLIST.every(qq => updated.checklist[qq.id]);
+                          saveTrade(updated);
+                        }}
+                        className={`w-full text-left flex gap-2.5 items-start px-3 py-2.5 rounded-lg border text-xs transition-colors ${trade.checklist[q.id] ? "border-[#B3985B]/30 bg-[#B3985B]/5 text-gray-300" : "border-[#1e1e1e] text-gray-500 hover:border-[#2a2a2a] hover:text-gray-400"}`}>
+                        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold ${trade.checklist[q.id] ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333]"}`}>
+                          {trade.checklist[q.id] ? "✓" : ""}
+                        </span>
+                        {q.label}
+                      </button>
+                    ))}
+                    <p className="text-[10px] text-gray-700">{checkCount}/{CHECKLIST.length} criterios cumplidos</p>
                   </div>
                 )}
+
+                {/* Step 2: Generate link */}
+                {step === 2 && (
+                  <div className="border-t border-[#1e1e1e] pt-3 space-y-2">
+                    <p className="text-xs text-green-400 font-medium">✓ Checklist completo — listo para generar propuesta</p>
+                    <p className="text-xs text-gray-500">Genera el enlace que enviarás al cliente con las 3 opciones de colaboración y montos reales.</p>
+                    <button
+                      onClick={generarTradeToken}
+                      disabled={savingTrade}
+                      className="text-xs bg-[#B3985B] text-black font-semibold px-4 py-2 rounded-lg hover:bg-[#c4aa6b] transition-colors disabled:opacity-50">
+                      {savingTrade ? "Generando…" : "Generar propuesta Trade"}
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 3: Link generated, waiting for client */}
+                {step === 3 && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500">Envía este enlace al cliente para que elija su nivel de colaboración:</p>
+                      <div className="flex items-center gap-2 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                        <span className="text-xs text-gray-400 flex-1 truncate">{typeof window !== "undefined" ? window.location.origin : ""}/trade/{cot.tradeToken}</span>
+                        <CopyButton value={`${typeof window !== "undefined" ? window.location.origin : ""}/trade/${cot.tradeToken}`} />
+                      </div>
+                    </div>
+                    {cot.cliente.telefono && (
+                      <a
+                        href={`https://wa.me/${cot.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${cot.cliente.nombre}, te comparto la propuesta de colaboración Trade para tu evento.\n\n${typeof window !== "undefined" ? window.location.origin : ""}/trade/${cot.tradeToken}`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-xs text-green-400 hover:text-green-300 transition-colors">
+                        <span>📱</span> Enviar por WhatsApp
+                      </a>
+                    )}
+                    <p className="text-[10px] text-gray-700">El cliente podrá ver los 3 niveles con montos reales y seleccionar el que prefiera. Regresa aquí para aplicar su elección.</p>
+                  </div>
+                )}
+
+                {/* Step 4: Client selected, pending apply */}
+                {step === 4 && (() => {
+                  const n = trade.nivelSeleccionado!;
+                  const pctMap: Record<number, number> = { 1: 5, 2: 10, 3: 12 };
+                  const pct = pctMap[n];
+                  const descuento = cot.subtotalEquiposBruto * (pct / 100);
+                  const ahorro = descuento * ivaFactor;
+                  return (
+                    <div className="border border-yellow-800/30 bg-yellow-900/10 rounded-xl p-4 space-y-3">
+                      <div>
+                        <p className="text-yellow-400 text-xs font-semibold mb-1">El cliente eligió:</p>
+                        <p className="text-white text-sm font-bold">Nivel {n} — {NIVEL_LABELS[n]} ({pct}% descuento)</p>
+                        {trade.bonoVariable && <p className="text-xs text-gray-400 mt-0.5">Bono variable: {BONO_LABELS[trade.bonoVariable]}</p>}
+                        {trade.clienteSeleccionoEn && <p className="text-[10px] text-gray-600 mt-1">Seleccionó el {new Date(trade.clienteSeleccionoEn).toLocaleString("es-MX")}</p>}
+                      </div>
+                      <div className="bg-black/20 rounded-lg p-3 text-xs space-y-1">
+                        <div className="flex justify-between text-gray-400"><span>Ahorro para el cliente</span><span className="text-green-400">- {formatCurrency(ahorro)}</span></div>
+                        <div className="flex justify-between text-gray-300 font-medium"><span>Total con Trade</span><span>{formatCurrency(cot.granTotal - ahorro)}</span></div>
+                      </div>
+                      <button
+                        onClick={aplicarNivelTrade}
+                        disabled={savingTrade}
+                        className="w-full text-xs bg-[#B3985B] text-black font-bold py-2.5 rounded-lg hover:bg-[#c4aa6b] transition-colors disabled:opacity-50">
+                        {savingTrade ? "Aplicando…" : "Confirmar y aplicar descuento Trade"}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Step 5: Applied */}
+                {step === 5 && (() => {
+                  const n = trade.nivelAplicado!;
+                  const ahorro = cot.subtotalEquiposBruto * (trade.pct / 100) * ivaFactor;
+                  return (
+                    <div className="bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-4 space-y-2">
+                      <p className="text-[#B3985B] text-xs font-semibold">✓ Acuerdo Trade activo</p>
+                      <p className="text-gray-300 text-sm">Nivel {n} — {({ 1: "Base", 2: "Estratégico", 3: "Premium" })[n]} · <span className="text-[#B3985B] font-bold">{trade.pct}% descuento</span></p>
+                      <p className="text-xs text-gray-500">Ahorro cliente: <span className="text-green-400">{formatCurrency(ahorro)}</span> · Total con Trade: <span className="text-white">{formatCurrency(cot.granTotal - ahorro)}</span></p>
+                      {trade.bonoVariable && <p className="text-xs text-gray-500">Bono variable: {BONO_LABELS[trade.bonoVariable]}</p>}
+                    </div>
+                  );
+                })()}
+
+                {savingTrade && step < 3 && <p className="text-xs text-gray-700">Guardando…</p>}
               </div>
             );
           })()}

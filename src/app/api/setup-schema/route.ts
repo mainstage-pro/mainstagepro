@@ -594,6 +594,10 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "equipos" ADD COLUMN IF NOT EXISTS "imagenesUrls" TEXT`);
     results.push("✅ equipos — campos de imágenes");
 
+    // 28. Mainstage Trade token
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cotizaciones" ADD COLUMN IF NOT EXISTS "trade_token" TEXT UNIQUE`);
+    results.push("✅ cotizaciones — trade_token");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
