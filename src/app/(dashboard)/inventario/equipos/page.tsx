@@ -503,7 +503,8 @@ export default function InventarioEquiposPage() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-80 group-hover:opacity-100" />
                             ) : (
-                              <div className="w-8 h-8 rounded bg-[#1a1a1a] border border-[#2a2a2a] shrink-0 flex items-center justify-center text-[#333] text-[10px]">IMG</div>
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                             )}
                             <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${e.activo ? "text-white" : "text-[#555] line-through"}`}>{e.descripcion}</p>
                             {!e.activo && <span className="text-[9px] bg-orange-900/40 text-orange-400 border border-orange-800 px-1.5 py-0.5 rounded font-medium">INACTIVO</span>}

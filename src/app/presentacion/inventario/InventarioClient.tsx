@@ -190,10 +190,9 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
                  className="max-h-full max-w-full object-contain transition-all duration-500"
                  style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl font-bold"
-                 style={{ background: `${GOLD}10`, color: `${GOLD}60`, border: `1px solid ${GOLD}20` }}>
-              {(eq.marca ?? eq.descripcion).charAt(0).toUpperCase()}
-            </div>
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false}
+                 className="w-16 h-16 object-contain opacity-10" />
           )}
           {/* Qty badge */}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"

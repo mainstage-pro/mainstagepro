@@ -649,7 +649,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={l.equipo.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-75" />
                           ) : (
-                            <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                           )}
                           <div>
                           <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.descripcion}</span>
