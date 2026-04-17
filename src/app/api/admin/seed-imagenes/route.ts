@@ -148,6 +148,8 @@ export async function GET(req: NextRequest) {
     imagenesAdicionales: string[];
     score: number;
   }> = [];
+  const equiposSinImagen: Array<{ equipoId: string; descripcion: string }> = [];
+  const usedGroupKeys = new Set<string>();
 
   for (const eq of equipos) {
     const eqText = [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ");
@@ -165,6 +167,7 @@ export async function GET(req: NextRequest) {
 
     if (bestScore >= 0.2) {
       const imgs = groups.get(bestKey)!;
+      usedGroupKeys.add(bestKey);
       matches.push({
         equipoId: eq.id,
         descripcion: eqText,
@@ -173,11 +176,17 @@ export async function GET(req: NextRequest) {
         imagenesAdicionales: imgs.slice(1).map((f) => BASE_PATH + f),
         score: Math.round(bestScore * 100) / 100,
       });
+    } else {
+      equiposSinImagen.push({ equipoId: eq.id, descripcion: eqText });
     }
   }
 
+  const imagenesHuerfanas = groupKeys
+    .filter((k) => !usedGroupKeys.has(k))
+    .map((k) => ({ key: k, archivos: groups.get(k)!.map((f) => BASE_PATH + f) }));
+
   matches.sort((a, b) => b.score - a.score);
-  return NextResponse.json({ total: matches.length, matches });
+  return NextResponse.json({ total: matches.length, matches, equiposSinImagen, imagenesHuerfanas });
 }
 
 export async function POST(req: NextRequest) {
