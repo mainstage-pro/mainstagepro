@@ -252,7 +252,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(ALL_SECTION_KEYS));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
