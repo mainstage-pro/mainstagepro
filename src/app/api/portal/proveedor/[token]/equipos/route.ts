@@ -13,10 +13,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const body = await req.json();
   const {
-    categoria, descripcion, marca, modelo, serialNum, anioFabricacion,
-    cantidad, condicion, disponibilidad,
+    categoria, descripcion, marca, modelo, anioFabricacion,
+    cantidad,
     potenciaW, voltaje, amperaje, pesoKg, dimensiones, incluyeCase, tiempoSetupMin,
-    precioDia, precioEventoFull, precioMinimoEvent,
+    precioPublico, precioMainstage,
     notas, fotosUrls, fichaTecnicaUrl,
   } = body;
 
@@ -29,11 +29,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       descripcion: descripcion.trim(),
       marca: marca || null,
       modelo: modelo || null,
-      serialNum: serialNum || null,
       anioFabricacion: anioFabricacion ? parseInt(anioFabricacion) : null,
       cantidad: parseInt(cantidad) || 1,
-      condicion: condicion || "BUENO",
-      disponibilidad: disponibilidad || "DISPONIBLE",
       potenciaW: potenciaW ? parseFloat(potenciaW) : null,
       voltaje: voltaje || null,
       amperaje: amperaje ? parseFloat(amperaje) : null,
@@ -41,9 +38,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       dimensiones: dimensiones || null,
       incluyeCase: !!incluyeCase,
       tiempoSetupMin: tiempoSetupMin ? parseInt(tiempoSetupMin) : null,
-      precioDia: precioDia ? parseFloat(precioDia) : null,
-      precioEventoFull: precioEventoFull ? parseFloat(precioEventoFull) : null,
-      precioMinimoEvent: precioMinimoEvent ? parseFloat(precioMinimoEvent) : null,
+      precioPublico: precioPublico ? parseFloat(precioPublico) : null,
+      precioMainstage: precioMainstage ? parseFloat(precioMainstage) : null,
       notas: notas || null,
       fotosUrls: fotosUrls || null,
       fichaTecnicaUrl: fichaTecnicaUrl || null,

@@ -22,10 +22,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 
   const body = await req.json();
   const {
-    categoria, descripcion, marca, modelo, serialNum, anioFabricacion,
-    cantidad, condicion, disponibilidad,
+    categoria, descripcion, marca, modelo, anioFabricacion,
+    cantidad,
     potenciaW, voltaje, amperaje, pesoKg, dimensiones, incluyeCase, tiempoSetupMin,
-    precioDia, precioEventoFull, precioMinimoEvent,
+    precioPublico, precioMainstage,
     notas, fotosUrls, fichaTecnicaUrl,
   } = body;
 
@@ -36,11 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       ...(descripcion !== undefined && { descripcion }),
       ...(marca !== undefined && { marca: marca || null }),
       ...(modelo !== undefined && { modelo: modelo || null }),
-      ...(serialNum !== undefined && { serialNum: serialNum || null }),
       ...(anioFabricacion !== undefined && { anioFabricacion: anioFabricacion ? parseInt(anioFabricacion) : null }),
       ...(cantidad !== undefined && { cantidad: parseInt(cantidad) || 1 }),
-      ...(condicion !== undefined && { condicion }),
-      ...(disponibilidad !== undefined && { disponibilidad }),
       ...(potenciaW !== undefined && { potenciaW: potenciaW ? parseFloat(potenciaW) : null }),
       ...(voltaje !== undefined && { voltaje: voltaje || null }),
       ...(amperaje !== undefined && { amperaje: amperaje ? parseFloat(amperaje) : null }),
@@ -48,9 +45,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
       ...(dimensiones !== undefined && { dimensiones: dimensiones || null }),
       ...(incluyeCase !== undefined && { incluyeCase: !!incluyeCase }),
       ...(tiempoSetupMin !== undefined && { tiempoSetupMin: tiempoSetupMin ? parseInt(tiempoSetupMin) : null }),
-      ...(precioDia !== undefined && { precioDia: precioDia ? parseFloat(precioDia) : null }),
-      ...(precioEventoFull !== undefined && { precioEventoFull: precioEventoFull ? parseFloat(precioEventoFull) : null }),
-      ...(precioMinimoEvent !== undefined && { precioMinimoEvent: precioMinimoEvent ? parseFloat(precioMinimoEvent) : null }),
+      ...(precioPublico !== undefined && { precioPublico: precioPublico ? parseFloat(precioPublico) : null }),
+      ...(precioMainstage !== undefined && { precioMainstage: precioMainstage ? parseFloat(precioMainstage) : null }),
       ...(notas !== undefined && { notas: notas || null }),
       ...(fotosUrls !== undefined && { fotosUrls: fotosUrls || null }),
       ...(fichaTecnicaUrl !== undefined && { fichaTecnicaUrl: fichaTecnicaUrl || null }),

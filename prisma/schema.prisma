@@ -585,10 +585,13 @@ model EquipoProveedor {
   incluyeCase      Boolean   @default(false) @map("incluye_case")
   tiempoSetupMin   Int?      @map("tiempo_setup_min")
 
-  // Precios
+  // Precios (legado)
   precioDia        Float?    @map("precio_dia")
   precioEventoFull Float?    @map("precio_evento_full")
   precioMinimoEvent Float?   @map("precio_minimo_event")
+  // Precios nuevos
+  precioPublico    Float?    @map("precio_publico")    // Precio sugerido al público por el proveedor
+  precioMainstage  Float?    @map("precio_mainstage")  // Precio que cobra a Mainstage
 
   // Notas y documentación
   notas            String?

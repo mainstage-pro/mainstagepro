@@ -24,32 +24,22 @@ type EquipoPortal = {
   marca: string | null;
   modelo: string | null;
   cantidad: number;
-  condicion: string;
-  disponibilidad: string;
   potenciaW: number | null;
   voltaje: string | null;
   pesoKg: number | null;
-  precioDia: number | null;
-  precioEventoFull: number | null;
+  precioPublico: number | null;
+  precioMainstage: number | null;
   notas: string | null;
   fotosUrls: string | null;
   fichaTecnicaUrl: string | null;
   aprobado: boolean;
   incluyeCase: boolean;
+  importadoEquipoId: string | null;
 };
 
 const CAT_LABEL: Record<string, string> = {
   AUDIO: "Audio", VIDEO: "Video", ILUMINACION: "Iluminación",
   BACKLINE: "Backline", ESCENOGRAFIA: "Escenografía", LOGISTICA: "Logística", OTRO: "Otro",
-};
-const COND_COLOR: Record<string, string> = {
-  NUEVO: "text-green-400 bg-green-900/20 border-green-700/40",
-  BUENO: "text-blue-400 bg-blue-900/20 border-blue-700/40",
-  REGULAR: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
-  NECESITA_REVISION: "text-red-400 bg-red-900/20 border-red-700/40",
-};
-const COND_LABEL: Record<string, string> = {
-  NUEVO: "Nuevo", BUENO: "Bueno", REGULAR: "Regular", NECESITA_REVISION: "Necesita revisión",
 };
 const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 
@@ -119,14 +109,16 @@ export default function ProveedoresPage() {
 
   async function toggleAprobado(proveedorId: string, equipoId: string, aprobado: boolean) {
     setAprobando(equipoId);
-    await fetch(`/api/proveedores/${proveedorId}/equipos-portal`, {
+    const res = await fetch(`/api/proveedores/${proveedorId}/equipos-portal`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId, aprobado }),
     });
+    const d = await res.json();
+    const importadoEquipoId = d.equipo?.importadoEquipoId ?? null;
     setEquiposPanel(prev => prev ? {
       ...prev,
-      equipos: prev.equipos.map(e => e.id === equipoId ? { ...e, aprobado } : e),
+      equipos: prev.equipos.map(e => e.id === equipoId ? { ...e, aprobado, importadoEquipoId } : e),
     } : prev);
     setAprobando(null);
   }
@@ -379,22 +371,22 @@ export default function ProveedoresPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded">{CAT_LABEL[e.categoria] ?? e.categoria}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${COND_COLOR[e.condicion] ?? "text-gray-400 bg-gray-900/20 border-gray-700/40"}`}>{COND_LABEL[e.condicion] ?? e.condicion}</span>
-                          {e.aprobado && <span className="text-[10px] text-green-400 bg-green-900/20 border border-green-700/40 px-1.5 py-0.5 rounded">Aprobado</span>}
+                          {e.cantidad > 1 && <span className="text-[10px] text-gray-400 bg-[#1a1a1a] px-1.5 py-0.5 rounded">x{e.cantidad}</span>}
+                          {e.aprobado && !e.importadoEquipoId && <span className="text-[10px] text-green-400 bg-green-900/20 border border-green-700/40 px-1.5 py-0.5 rounded">Aprobado</span>}
+                          {e.importadoEquipoId && <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 px-1.5 py-0.5 rounded">✓ En catálogo</span>}
                         </div>
                         <p className="text-white text-sm font-medium mt-1">{e.descripcion}</p>
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-gray-500">
                           {e.marca && <span>Marca: <span className="text-gray-300">{e.marca}</span></span>}
                           {e.modelo && <span>Modelo: <span className="text-gray-300">{e.modelo}</span></span>}
-                          {e.cantidad > 1 && <span>Cant: <span className="text-gray-300">{e.cantidad}</span></span>}
                           {e.potenciaW && <span>Potencia: <span className="text-gray-300">{e.potenciaW}W</span></span>}
                           {e.voltaje && <span>Voltaje: <span className="text-gray-300">{e.voltaje}</span></span>}
                           {e.pesoKg && <span>Peso: <span className="text-gray-300">{e.pesoKg}kg</span></span>}
                           {e.incluyeCase && <span className="text-blue-400">Incluye case</span>}
                         </div>
-                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px]">
-                          {e.precioDia && <span className="text-[#B3985B]">{fmt(e.precioDia)}/día</span>}
-                          {e.precioEventoFull && <span className="text-[#B3985B]">{fmt(e.precioEventoFull)}/evento</span>}
+                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 text-[11px]">
+                          {e.precioPublico && <span className="text-gray-400">Público: <span className="text-white font-medium">{fmt(e.precioPublico)}</span></span>}
+                          {e.precioMainstage && <span className="text-gray-400">Mainstage: <span className="text-[#B3985B] font-medium">{fmt(e.precioMainstage)}</span></span>}
                         </div>
                         {e.notas && <p className="text-[11px] text-gray-500 italic mt-1">{e.notas}</p>}
                         {(e.fotosUrls || e.fichaTecnicaUrl) && (

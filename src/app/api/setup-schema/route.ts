@@ -216,6 +216,17 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ equipos_proveedor");
 
+    // 11. precio_publico + precio_mainstage on equipos_proveedor
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "equipos_proveedor" ADD COLUMN IF NOT EXISTS "precio_publico" DOUBLE PRECISION;
+    `);
+    results.push("✅ equipos_proveedor.precio_publico");
+
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "equipos_proveedor" ADD COLUMN IF NOT EXISTS "precio_mainstage" DOUBLE PRECISION;
+    `);
+    results.push("✅ equipos_proveedor.precio_mainstage");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
