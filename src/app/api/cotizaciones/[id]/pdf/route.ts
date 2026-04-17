@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           id: true, tipo: true, descripcion: true, marca: true, modelo: true,
           nivel: true, jornada: true, cantidad: true, dias: true,
           precioUnitario: true, subtotal: true, esIncluido: true, notas: true,
+          equipo: { select: { imagenUrl: true } },
         },
       },
     },
@@ -36,8 +37,31 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
+  // Resolve equipment images to base64 for react-pdf
+  function resolveImg(url: string | null | undefined): string | null {
+    if (!url) return null;
+    if (url.startsWith("data:")) return url; // already base64
+    if (url.startsWith("/")) {
+      const filePath = path.join(process.cwd(), "public", url);
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath).slice(1).toLowerCase();
+        const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+        return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
+      }
+    }
+    return null;
+  }
+
+  const cotizacionWithImgs = {
+    ...cotizacion,
+    lineas: cotizacion.lineas.map(l => ({
+      ...l,
+      imagenUrl: resolveImg(l.equipo?.imagenUrl),
+    })),
+  };
+
   const pdfStream = await ReactPDF.renderToStream(
-    React.createElement(CotizacionPDF, { cotizacion, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(CotizacionPDF, { cotizacion: cotizacionWithImgs, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const chunks: Uint8Array[] = [];

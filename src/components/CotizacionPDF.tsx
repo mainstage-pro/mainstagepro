@@ -172,7 +172,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 40,
     borderBottom: "1 solid #f5f3ef",
   },
-  colDesc: { flex: 4 },
+  colImg: { width: 22, marginRight: 4 },
+  colDesc: { flex: 3.5 },
   colMarca: { flex: 2 },
   colCant: { flex: 1, textAlign: "center" },
   colDias: { flex: 1, textAlign: "center" },
@@ -456,6 +457,7 @@ interface Linea {
   subtotal: number;
   esIncluido: boolean;
   notas: string | null;
+  imagenUrl?: string | null;
 }
 
 interface CotizacionData {
@@ -506,6 +508,12 @@ interface CotizacionData {
 function FilaEquipo({ l, i }: { l: Linea; i: number }) {
   return (
     <View style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
+      {/* Thumbnail */}
+      <View style={[s.colImg, { justifyContent: "center", alignItems: "center" }]}>
+        {l.imagenUrl ? (
+          <Image src={l.imagenUrl} style={{ width: 18, height: 18, objectFit: "contain" }} />
+        ) : null}
+      </View>
       <Text style={[s.cellDesc, s.colDesc]}>{l.descripcion}</Text>
       <Text style={[s.cellMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || "—"}</Text>
       <Text style={[s.cellNum, s.colCant]}>{l.cantidad}</Text>
@@ -548,6 +556,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
       </View>
       {/* Header tabla */}
       <View style={s.tablaHeader}>
+        <View style={s.colImg} />
         <Text style={[s.tablaHeaderTexto, s.colDesc]}>DESCRIPCIÓN</Text>
         <Text style={[s.tablaHeaderTexto, s.colMarca]}>MARCA / MODELO</Text>
         <Text style={[s.tablaHeaderTexto, s.colCant, { textAlign: "center" }]}>CANT</Text>
@@ -573,6 +582,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
               {lins.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
               {catIncluidas.map((l) => (
                 <View key={l.id} style={s.tablaIncluido}>
+                  <View style={s.colImg} />
                   <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
                   <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
                   <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
@@ -597,6 +607,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
           {propias.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
           {incluidas.map((l) => (
             <View key={l.id} style={s.tablaIncluido}>
+              <View style={s.colImg} />
               <Text style={[s.cellIncluido, s.colDesc]}>✓ {l.descripcion}</Text>
               <Text style={[s.cellIncluido, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || ""}</Text>
               <Text style={[s.cellIncluido, s.colCant, { textAlign: "center" }]}>{l.cantidad}</Text>
