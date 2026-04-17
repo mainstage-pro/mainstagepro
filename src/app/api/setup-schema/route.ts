@@ -344,6 +344,70 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ tecnicos — comentarios asignados");
 
+    // 15. hervam_activos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "hervam_activos" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "descripcion" TEXT,
+        "categoria" TEXT NOT NULL DEFAULT 'EQUIPO',
+        "valorAdquisicion" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "valorActual" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "fechaAdquisicion" TIMESTAMP(3),
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "hervam_activos_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    results.push("✅ hervam_activos");
+
+    // 16. hervam_config
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "hervam_config" (
+        "id" TEXT NOT NULL,
+        "valorTotalActivos" DOUBLE PRECISION NOT NULL DEFAULT 5000000,
+        "tasaAnualRendimiento" DOUBLE PRECISION NOT NULL DEFAULT 15,
+        "usarSumaActivos" BOOLEAN NOT NULL DEFAULT false,
+        "modoActivo" TEXT NOT NULL DEFAULT 'HIBRIDO',
+        "porcentajeVariable" DOUBLE PRECISION NOT NULL DEFAULT 25,
+        "pisoMinimoFijo" DOUBLE PRECISION NOT NULL DEFAULT 50,
+        "creditoSaldoInicial" DOUBLE PRECISION NOT NULL DEFAULT 800000,
+        "creditoSaldoActual" DOUBLE PRECISION NOT NULL DEFAULT 800000,
+        "creditoCuotaMensual" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "creditoPlazoMeses" INTEGER NOT NULL DEFAULT 48,
+        "creditoFechaInicio" TIMESTAMP(3),
+        "notas" TEXT,
+        "actualizadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "hervam_config_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    results.push("✅ hervam_config");
+
+    // 17. hervam_pagos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "hervam_pagos" (
+        "id" TEXT NOT NULL,
+        "mes" INTEGER NOT NULL,
+        "anio" INTEGER NOT NULL,
+        "montoFijo" DOUBLE PRECISION NOT NULL,
+        "utilidadMes" DOUBLE PRECISION,
+        "montoVariable" DOUBLE PRECISION,
+        "montoAcordado" DOUBLE PRECISION NOT NULL,
+        "montoPagado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "estado" TEXT NOT NULL DEFAULT 'PENDIENTE',
+        "modoPago" TEXT,
+        "notas" TEXT,
+        "pagadoEn" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "hervam_pagos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "hervam_pagos_mes_anio_key" UNIQUE ("mes", "anio")
+      );
+    `);
+    results.push("✅ hervam_pagos");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

@@ -1808,3 +1808,61 @@ model CierreFinanciero {
 
   @@map("cierres_financieros")
 }
+
+// ─── ESTRUCTURA DE CAPITAL (HERVAM) ──────────────────────────────────────────
+
+model HervamActivo {
+  id               String   @id @default(cuid())
+  nombre           String
+  descripcion      String?
+  categoria        String   @default("EQUIPO") // EQUIPO | VEHICULO | INMUEBLE | INTANGIBLE | OTRO
+  valorAdquisicion Float    @default(0)
+  valorActual      Float    @default(0)
+  fechaAdquisicion DateTime?
+  activo           Boolean  @default(true)
+  notas            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@map("hervam_activos")
+}
+
+model HervamConfig {
+  id                   String   @id @default(cuid())
+  // Valuación
+  valorTotalActivos    Float    @default(5000000)
+  tasaAnualRendimiento Float    @default(15)
+  usarSumaActivos      Boolean  @default(false) // true = calcula desde activos; false = usa valorTotalActivos
+  // Modo
+  modoActivo           String   @default("HIBRIDO") // FIJO | VARIABLE | HIBRIDO
+  porcentajeVariable   Float    @default(25)
+  pisoMinimoFijo       Float    @default(50)  // % del monto fijo como garantía mínima
+  // Crédito
+  creditoSaldoInicial  Float    @default(800000)
+  creditoSaldoActual   Float    @default(800000)
+  creditoCuotaMensual  Float    @default(0)
+  creditoPlazoMeses    Int      @default(48)
+  creditoFechaInicio   DateTime?
+  // Meta
+  notas                String?
+  actualizadoEn        DateTime @updatedAt
+  @@map("hervam_config")
+}
+
+model HervamPago {
+  id            String    @id @default(cuid())
+  mes           Int
+  anio          Int
+  montoFijo     Float
+  utilidadMes   Float?
+  montoVariable Float?
+  montoAcordado Float
+  montoPagado   Float     @default(0)
+  estado        String    @default("PENDIENTE") // PENDIENTE | PARCIAL | PAGADO | DIFERIDO
+  modoPago      String?   // FIJO | VARIABLE
+  notas         String?
+  pagadoEn      DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  @@unique([mes, anio])
+  @@map("hervam_pagos")
+}

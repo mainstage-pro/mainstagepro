@@ -118,6 +118,7 @@ const NAV: NavSection[] = [
           { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
           { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad" },
           { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
+          { key: "finanzas-hervam", label: "Estructura de Capital", href: "/finanzas/hervam" },
         ],
       },
       {
