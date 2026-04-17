@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
 type Activo = {
   id: string; codigoInventario: string; nombre: string; marca: string | null; modelo: string | null;
@@ -13,7 +12,6 @@ type Activo = {
   precioDia: number; pctSocioOverride: number | null; pctMainstageOverride: number | null;
   activo: boolean; notas: string | null;
   _count: { rentas: number; mantenimientos: number };
-  mantenimientos: { createdAt: string; tipo: string }[];
 };
 type Renta = {
   id: string; descripcion: string; mes: number; anio: number; dias: number;
@@ -24,8 +22,7 @@ type Renta = {
 type Mantenimiento = {
   id: string; tipo: string; descripcion: string; fechaEjecucion: string | null;
   costoTotal: number; costoSocio: number; costoMainstage: number; realizadoPor: string | null;
-  notas: string | null; createdAt: string;
-  activo: { nombre: string; codigoInventario: string };
+  createdAt: string; activo: { nombre: string; codigoInventario: string };
 };
 type Reporte = {
   id: string; mes: number; anio: number; totalEventos: number; totalDias: number;
@@ -38,51 +35,72 @@ type Socio = {
   ciudad: string | null; estado: string | null; cp: string | null;
   status: string; notas: string | null; pctSocio: number; pctMainstage: number;
   contratoInicio: string | null; contratoFin: string | null;
-  checklist: Requisito[];
-  activos: Activo[];
-  reportes: Reporte[];
+  checklist: Requisito[]; activos: Activo[]; reportes: Reporte[];
 };
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
-
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
-
 const MESES = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const now = new Date();
 
-const STATUS_COLOR: Record<string, string> = {
-  EN_REVISION: "bg-yellow-100 text-yellow-800",
-  ACTIVO: "bg-green-100 text-green-800",
-  SUSPENDIDO: "bg-orange-100 text-orange-800",
-  INACTIVO: "bg-gray-100 text-gray-500",
+const STATUS_COLORS: Record<string, string> = {
+  EN_REVISION: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
+  ACTIVO: "text-green-400 bg-green-900/20 border-green-700/40",
+  SUSPENDIDO: "text-orange-400 bg-orange-900/20 border-orange-700/40",
+  INACTIVO: "text-gray-500 bg-gray-800/20 border-gray-700/40",
 };
 const STATUS_LABEL: Record<string, string> = {
   EN_REVISION: "En revisión", ACTIVO: "Activo", SUSPENDIDO: "Suspendido", INACTIVO: "Inactivo",
 };
-
-const CAT_COLOR: Record<string, string> = {
-  AUDIO: "bg-blue-100 text-blue-800", ILUMINACION: "bg-yellow-100 text-yellow-800",
-  VIDEO: "bg-purple-100 text-purple-800", ESTRUCTURAS: "bg-orange-100 text-orange-800",
-  ACCESORIOS: "bg-gray-100 text-gray-700", OTRO: "bg-gray-100 text-gray-500",
+const CAT_COLORS: Record<string, string> = {
+  AUDIO: "text-blue-400 bg-blue-900/20 border-blue-700/40",
+  ILUMINACION: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
+  VIDEO: "text-purple-400 bg-purple-900/20 border-purple-700/40",
+  ESTRUCTURAS: "text-orange-400 bg-orange-900/20 border-orange-700/40",
+  ACCESORIOS: "text-gray-400 bg-gray-800/20 border-gray-700/40",
+  OTRO: "text-gray-500 bg-gray-800/20 border-gray-700/40",
+};
+const RPT_COLORS: Record<string, string> = {
+  BORRADOR: "text-gray-400 bg-gray-800/20 border-gray-700/40",
+  ENVIADO: "text-blue-400 bg-blue-900/20 border-blue-700/40",
+  PAGADO: "text-green-400 bg-green-900/20 border-green-700/40",
+};
+const COND_COLORS: Record<string, string> = {
+  NUEVO: "text-green-400", EXCELENTE: "text-green-400", BUENO: "text-blue-400",
+  REGULAR: "text-yellow-400", REQUIERE_MANTENIMIENTO: "text-red-400",
 };
 
-const COND_COLOR: Record<string, string> = {
-  NUEVO: "text-green-700", EXCELENTE: "text-green-600", BUENO: "text-blue-600",
-  REGULAR: "text-yellow-600", REQUIERE_MANTENIMIENTO: "text-red-600",
-};
+// ─── Input / Select helpers ───────────────────────────────────────────────────
+const DarkInput = ({ value, onChange, placeholder, type = "text", readOnly, required }: {
+  value: string; onChange?: (v: string) => void; placeholder?: string; type?: string; readOnly?: boolean; required?: boolean;
+}) => (
+  <input type={type} value={value} readOnly={readOnly} required={required}
+    onChange={onChange ? (e) => onChange(e.target.value) : undefined}
+    placeholder={placeholder}
+    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-50" />
+);
 
-const RPT_COLOR: Record<string, string> = {
-  BORRADOR: "bg-gray-100 text-gray-600", ENVIADO: "bg-blue-100 text-blue-700", PAGADO: "bg-green-100 text-green-700",
-};
+const DarkSelect = ({ value, onChange, children }: {
+  value: string; onChange: (v: string) => void; children: React.ReactNode;
+}) => (
+  <select value={value} onChange={(e) => onChange(e.target.value)}
+    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+    {children}
+  </select>
+);
 
-const now = new Date();
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <label className="text-xs text-gray-500 mb-1 block">{children}</label>
+);
 
 // ─── Tab: Perfil ──────────────────────────────────────────────────────────────
-
 function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ ...socio });
   const [saving, setSaving] = useState(false);
+
+  const f = (k: keyof typeof form, v: string | number) => setForm((p) => ({ ...p, [k]: v }));
 
   const save = async () => {
     setSaving(true);
@@ -101,41 +119,40 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
     reload();
   };
 
-  const f = (k: keyof typeof form, v: string | number) => setForm((p) => ({ ...p, [k]: v }));
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-gray-900">Información del Socio</h3>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Información del socio</p>
         {edit ? (
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button onClick={() => { setEdit(false); setForm({ ...socio }); }}
-              className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
+              className="text-gray-500 hover:text-white text-sm transition-colors">Cancelar</button>
             <button onClick={save} disabled={saving}
-              className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-4 py-1.5 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Guardar"}
             </button>
           </div>
         ) : (
           <button onClick={() => setEdit(true)}
-            className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Editar</button>
+            className="text-[#B3985B] text-xs hover:underline">Editar</button>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Estado */}
-        <div className="col-span-2">
-          <label className="text-xs font-medium text-gray-500 block mb-1">Estado</label>
+        <div className="col-span-2 flex items-center gap-3">
+          <FieldLabel>Estado:</FieldLabel>
           {edit ? (
-            <select value={form.status} onChange={(e) => f("status", e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm bg-white w-48">
-              <option value="EN_REVISION">En revisión</option>
-              <option value="ACTIVO">Activo</option>
-              <option value="SUSPENDIDO">Suspendido</option>
-              <option value="INACTIVO">Inactivo</option>
-            </select>
+            <div className="w-48">
+              <DarkSelect value={form.status} onChange={(v) => f("status", v)}>
+                <option value="EN_REVISION">En revisión</option>
+                <option value="ACTIVO">Activo</option>
+                <option value="SUSPENDIDO">Suspendido</option>
+                <option value="INACTIVO">Inactivo</option>
+              </DarkSelect>
+            </div>
           ) : (
-            <span className={`text-sm px-3 py-1 rounded-full font-medium ${STATUS_COLOR[socio.status]}`}>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_COLORS[socio.status]}`}>
               {STATUS_LABEL[socio.status]}
             </span>
           )}
@@ -143,7 +160,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
         {[
           { label: "Nombre completo", key: "nombre" as const },
-          { label: "Tipo", key: "tipo" as const, sel: [["FISICA","Persona Física"],["MORAL","Persona Moral"]] },
+          { label: "Tipo", key: "tipo" as const, sel: [["FISICA","Persona Física"],["MORAL","Persona Moral"]] as [string,string][] },
           { label: "RFC", key: "rfc" as const },
           { label: "CURP", key: "curp" as const },
           { label: "Teléfono", key: "telefono" as const },
@@ -151,64 +168,58 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           { label: "Domicilio", key: "domicilio" as const },
           { label: "Colonia", key: "colonia" as const },
           { label: "Ciudad", key: "ciudad" as const },
-          { label: "Estado/Prov.", key: "estado" as const },
+          { label: "Estado / Provincia", key: "estado" as const },
           { label: "CP", key: "cp" as const },
         ].map(({ label, key, sel }) => (
           <div key={key}>
-            <label className="text-xs font-medium text-gray-500 block mb-1">{label}</label>
+            <FieldLabel>{label}</FieldLabel>
             {edit ? (
               sel ? (
-                <select value={(form[key] as string) || ""} onChange={(e) => f(key, e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                <DarkSelect value={(form[key] as string) || ""} onChange={(v) => f(key, v)}>
                   {sel.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
+                </DarkSelect>
               ) : (
-                <input value={(form[key] as string) || ""} onChange={(e) => f(key, e.target.value)}
-                  className="w-full border rounded-lg px-3 py-2 text-sm" />
+                <DarkInput value={(form[key] as string) || ""} onChange={(v) => f(key, v)} />
               )
             ) : (
-              <p className="text-sm text-gray-900">{(socio[key] as string) || <span className="text-gray-400">—</span>}</p>
+              <p className="text-sm text-white">{(socio[key] as string) || <span className="text-[#555]">—</span>}</p>
             )}
           </div>
         ))}
 
         {/* Split */}
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">% Socio</label>
+          <FieldLabel>% Socio</FieldLabel>
           {edit ? (
-            <input type="number" min="0" max="100" value={form.pctSocio}
-              onChange={(e) => { f("pctSocio", parseFloat(e.target.value)); f("pctMainstage", 100 - parseFloat(e.target.value)); }}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          ) : <p className="text-sm text-gray-900 font-semibold">{socio.pctSocio}%</p>}
+            <DarkInput type="number" value={String(form.pctSocio)}
+              onChange={(v) => { f("pctSocio", parseFloat(v)); f("pctMainstage", 100 - parseFloat(v)); }} />
+          ) : <p className="text-sm text-white font-semibold">{socio.pctSocio}%</p>}
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">% Mainstage (fee)</label>
+          <FieldLabel>% Mainstage (fee)</FieldLabel>
           {edit ? (
-            <input type="number" min="0" max="100" value={form.pctMainstage}
-              onChange={(e) => { f("pctMainstage", parseFloat(e.target.value)); f("pctSocio", 100 - parseFloat(e.target.value)); }}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          ) : <p className="text-sm text-gray-900 font-semibold">{socio.pctMainstage}%</p>}
+            <DarkInput type="number" value={String(form.pctMainstage)}
+              onChange={(v) => { f("pctMainstage", parseFloat(v)); f("pctSocio", 100 - parseFloat(v)); }} />
+          ) : <p className="text-sm text-white font-semibold">{socio.pctMainstage}%</p>}
         </div>
 
         {/* Contrato */}
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Inicio de contrato</label>
+          <FieldLabel>Inicio de contrato</FieldLabel>
           {edit ? (
-            <input type="date" value={form.contratoInicio ? form.contratoInicio.split("T")[0] : ""}
-              onChange={(e) => f("contratoInicio", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          ) : <p className="text-sm text-gray-900">{socio.contratoInicio ? new Date(socio.contratoInicio).toLocaleDateString("es-MX") : "—"}</p>}
+            <DarkInput type="date" value={form.contratoInicio ? form.contratoInicio.split("T")[0] : ""}
+              onChange={(v) => f("contratoInicio", v)} />
+          ) : <p className="text-sm text-white">{socio.contratoInicio ? new Date(socio.contratoInicio).toLocaleDateString("es-MX") : "—"}</p>}
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-500 block mb-1">Vencimiento de contrato</label>
+          <FieldLabel>Vencimiento de contrato</FieldLabel>
           {edit ? (
-            <input type="date" value={form.contratoFin ? form.contratoFin.split("T")[0] : ""}
-              onChange={(e) => f("contratoFin", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <DarkInput type="date" value={form.contratoFin ? form.contratoFin.split("T")[0] : ""}
+              onChange={(v) => f("contratoFin", v)} />
           ) : (
             <p className={`text-sm font-medium ${
               socio.contratoFin && (new Date(socio.contratoFin).getTime() - Date.now()) / 86400000 < 30
-                ? "text-red-600" : "text-gray-900"
+                ? "text-red-400" : "text-white"
             }`}>
               {socio.contratoFin ? new Date(socio.contratoFin).toLocaleDateString("es-MX") : "—"}
             </p>
@@ -216,40 +227,42 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
         </div>
 
         <div className="col-span-2">
-          <label className="text-xs font-medium text-gray-500 block mb-1">Notas internas</label>
+          <FieldLabel>Notas internas</FieldLabel>
           {edit ? (
             <textarea value={form.notas || ""} onChange={(e) => f("notas", e.target.value)} rows={3}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          ) : <p className="text-sm text-gray-700">{socio.notas || <span className="text-gray-400">Sin notas</span>}</p>}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+          ) : <p className="text-sm text-[#6b7280]">{socio.notas || <span className="text-[#555]">Sin notas</span>}</p>}
         </div>
       </div>
 
-      {/* Checklist de requisitos */}
+      {/* Checklist */}
       <div>
-        <h3 className="font-semibold text-gray-900 mb-3">Requisitos de ingreso</h3>
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Requisitos de ingreso</p>
         <div className="space-y-2">
           {socio.checklist.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <input type="checkbox" checked={r.completado} onChange={async (e) => {
-                await fetch(`/api/socios/${socio.id}/requisitos`, {
-                  method: "PATCH", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ id: r.id, completado: e.target.checked }),
-                });
-                reload();
-              }} className="w-4 h-4 accent-indigo-600" />
-              <span className={`text-sm flex-1 ${r.completado ? "line-through text-gray-400" : "text-gray-800"}`}>
+            <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
+              <input type="checkbox" checked={r.completado}
+                onChange={async (e) => {
+                  await fetch(`/api/socios/${socio.id}/requisitos`, {
+                    method: "PATCH", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: r.id, completado: e.target.checked }),
+                  });
+                  reload();
+                }}
+                className="w-4 h-4 accent-[#B3985B]" />
+              <span className={`text-sm flex-1 ${r.completado ? "line-through text-[#555]" : "text-white"}`}>
                 {r.requisito}
               </span>
-              {r.completado && <span className="text-xs text-green-600 font-medium">✓ Completado</span>}
+              {r.completado && <span className="text-[10px] text-green-400 font-semibold">✓</span>}
             </div>
           ))}
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-gray-500">
-            {socio.checklist.filter((r) => r.completado).length} de {socio.checklist.length} requisitos completados
+        <div className="mt-3 flex items-center gap-3">
+          <span className="text-xs text-[#6b7280]">
+            {socio.checklist.filter((r) => r.completado).length} de {socio.checklist.length} completados
           </span>
-          {socio.checklist.every((r) => r.completado) && socio.checklist.length > 0 && (
-            <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full">
+          {socio.checklist.length > 0 && socio.checklist.every((r) => r.completado) && (
+            <span className="text-[10px] text-green-400 font-semibold border border-green-700/40 bg-green-900/20 px-2 py-0.5 rounded">
               Listo para activar
             </span>
           )}
@@ -260,40 +273,20 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 }
 
 // ─── Tab: Activos ─────────────────────────────────────────────────────────────
-
 function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    nombre: "", marca: "", modelo: "", serial: "", categoria: "AUDIO",
-    condicion: "BUENO", valorDeclarado: "", precioDia: "", notas: "",
-    pctSocioOverride: "", pctMainstageOverride: "",
-  });
-
-  const resetForm = () => setForm({
-    nombre: "", marca: "", modelo: "", serial: "", categoria: "AUDIO",
-    condicion: "BUENO", valorDeclarado: "", precioDia: "", notas: "",
-    pctSocioOverride: "", pctMainstageOverride: "",
-  });
+  const EMPTY_A = { nombre: "", marca: "", modelo: "", serial: "", categoria: "AUDIO", condicion: "BUENO", valorDeclarado: "", precioDia: "", pctSocioOverride: "", pctMainstageOverride: "", notas: "" };
+  const [form, setForm] = useState(EMPTY_A);
+  const f = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   const guardar = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    if (editId) {
-      await fetch(`/api/socios/${socio.id}/activos/${editId}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-      });
-      setEditId(null);
-    } else {
-      await fetch(`/api/socios/${socio.id}/activos`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-      });
-    }
-    resetForm();
-    setShowForm(false);
-    setSaving(false);
-    reload();
+    const url = editId ? `/api/socios/${socio.id}/activos/${editId}` : `/api/socios/${socio.id}/activos`;
+    await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    setForm(EMPTY_A); setShowForm(false); setEditId(null); setSaving(false); reload();
   };
 
   const eliminar = async (id: string) => {
@@ -302,43 +295,38 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
     reload();
   };
 
-  const editarActivo = (a: Activo) => {
-    setForm({
-      nombre: a.nombre, marca: a.marca || "", modelo: a.modelo || "", serial: a.serial || "",
+  const editar = (a: Activo) => {
+    setForm({ nombre: a.nombre, marca: a.marca || "", modelo: a.modelo || "", serial: a.serial || "",
       categoria: a.categoria, condicion: a.condicion, valorDeclarado: String(a.valorDeclarado),
       precioDia: String(a.precioDia), notas: a.notas || "",
       pctSocioOverride: a.pctSocioOverride !== null ? String(a.pctSocioOverride) : "",
       pctMainstageOverride: a.pctMainstageOverride !== null ? String(a.pctMainstageOverride) : "",
     });
-    setEditId(a.id);
-    setShowForm(true);
+    setEditId(a.id); setShowForm(true);
   };
 
   const totalValor = activos.reduce((s, a) => s + a.valorDeclarado, 0);
-  const totalPrecioDia = activos.reduce((s, a) => s + a.precioDia, 0);
+  const totalDia = activos.reduce((s, a) => s + a.precioDia, 0);
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <div>
-          <h3 className="font-semibold text-gray-900">Equipos del socio</h3>
-          {activos.length > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">
-              {activos.length} equipos · Valor total declarado: {fmt(totalValor)} · Precio/día total: {fmt(totalPrecioDia)}
-            </p>
-          )}
-        </div>
-        <button onClick={() => { resetForm(); setEditId(null); setShowForm(!showForm); }}
-          className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700">
-          + Agregar Equipo
-        </button>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+          Equipos — {activos.length} registrados
+        </p>
+        {!showForm && (
+          <button onClick={() => { setForm(EMPTY_A); setEditId(null); setShowForm(true); }}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            + Agregar equipo
+          </button>
+        )}
       </div>
 
       {showForm && (
-        <form onSubmit={guardar} className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 grid grid-cols-3 gap-3">
-          <div className="col-span-3">
-            <h4 className="font-medium text-indigo-900 text-sm mb-2">{editId ? "Editar equipo" : "Nuevo equipo"}</h4>
-          </div>
+        <form onSubmit={guardar} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-3 gap-4">
+          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+            {editId ? "Editar equipo" : "Nuevo equipo"}
+          </p>
           {[
             { label: "Nombre *", key: "nombre", span: 2 },
             { label: "Categoría", key: "categoria", sel: ["AUDIO","ILUMINACION","VIDEO","ESTRUCTURAS","ACCESORIOS","OTRO"] },
@@ -352,100 +340,86 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
             { label: "% Mainstage override", key: "pctMainstageOverride", type: "number" },
           ].map(({ label, key, sel, type, span }) => (
             <div key={key} className={span ? `col-span-${span}` : ""}>
-              <label className="text-xs font-medium text-gray-700 block mb-1">{label}</label>
+              <FieldLabel>{label}</FieldLabel>
               {sel ? (
-                <select value={(form as Record<string,string>)[key]}
-                  onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+                <DarkSelect value={(form as Record<string,string>)[key]} onChange={(v) => f(key, v)}>
                   {sel.map((v) => <option key={v} value={v}>{v}</option>)}
-                </select>
+                </DarkSelect>
               ) : (
-                <input value={(form as Record<string,string>)[key]} type={type || "text"}
-                  onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
+                <DarkInput value={(form as Record<string,string>)[key]} type={type || "text"}
+                  onChange={(v) => f(key, v)}
                   placeholder={key.includes("Override") ? `Default: ${key === "pctSocioOverride" ? socio.pctSocio : socio.pctMainstage}%` : ""} />
               )}
             </div>
           ))}
           <div className="col-span-3">
-            <label className="text-xs font-medium text-gray-700 block mb-1">Notas</label>
-            <input value={form.notas} onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <FieldLabel>Notas</FieldLabel>
+            <DarkInput value={form.notas} onChange={(v) => f("notas", v)} />
           </div>
-          <div className="col-span-3 flex justify-end gap-2">
-            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }}
-              className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
+          <div className="col-span-3 flex items-center gap-3">
             <button type="submit" disabled={saving || !form.nombre.trim()}
-              className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
             </button>
+            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }}
+              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
       )}
 
       {activos.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No hay equipos registrados aún</div>
+        <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 text-xs text-gray-500">
-                <th className="text-left py-2 pr-3">Código</th>
-                <th className="text-left py-2 pr-3">Equipo</th>
-                <th className="text-left py-2 pr-3">Categoría</th>
-                <th className="text-left py-2 pr-3">Condición</th>
-                <th className="text-right py-2 pr-3">Valor declarado</th>
-                <th className="text-right py-2 pr-3">Precio/día</th>
-                <th className="text-center py-2 pr-3">Split efectivo</th>
-                <th className="text-center py-2 pr-3">Rentas</th>
-                <th className="py-2"></th>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Código","Equipo","Cat.","Condición","Valor declarado","Precio/día","Split","Rentas",""].map((h) => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#1a1a1a]">
               {activos.map((a) => {
                 const pS = a.pctSocioOverride ?? socio.pctSocio;
                 const pM = a.pctMainstageOverride ?? socio.pctMainstage;
                 return (
-                  <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-2.5 pr-3 font-mono text-xs text-gray-500">{a.codigoInventario}</td>
-                    <td className="py-2.5 pr-3">
-                      <p className="font-medium text-gray-900">{a.nombre}</p>
+                  <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
+                    <td className="px-4 py-3 font-mono text-[10px] text-[#555]">{a.codigoInventario}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-white text-sm font-medium">{a.nombre}</p>
                       {(a.marca || a.modelo) && (
-                        <p className="text-xs text-gray-400">{[a.marca, a.modelo].filter(Boolean).join(" · ")}</p>
+                        <p className="text-[#555] text-[10px]">{[a.marca, a.modelo].filter(Boolean).join(" · ")}</p>
                       )}
                     </td>
-                    <td className="py-2.5 pr-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${CAT_COLOR[a.categoria] || "bg-gray-100 text-gray-600"}`}>
+                    <td className="px-4 py-3">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${CAT_COLORS[a.categoria] || "text-gray-500 bg-gray-800/20 border-gray-700/40"}`}>
                         {a.categoria}
                       </span>
                     </td>
-                    <td className={`py-2.5 pr-3 text-xs font-medium ${COND_COLOR[a.condicion]}`}>{a.condicion}</td>
-                    <td className="py-2.5 pr-3 text-right text-gray-700">{fmt(a.valorDeclarado)}</td>
-                    <td className="py-2.5 pr-3 text-right font-medium text-gray-900">{fmt(a.precioDia)}</td>
-                    <td className="py-2.5 pr-3 text-center text-xs text-gray-600">
+                    <td className={`px-4 py-3 text-xs font-semibold ${COND_COLORS[a.condicion]}`}>{a.condicion}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorDeclarado)}</td>
+                    <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.precioDia)}</td>
+                    <td className="px-4 py-3 text-[#6b7280] text-xs">
                       {pS}% / {pM}%
-                      {(a.pctSocioOverride !== null) && (
-                        <span className="ml-1 text-indigo-500 text-xs">(custom)</span>
-                      )}
+                      {a.pctSocioOverride !== null && <span className="ml-1 text-[#B3985B]">*</span>}
                     </td>
-                    <td className="py-2.5 pr-3 text-center text-gray-600">{a._count.rentas}</td>
-                    <td className="py-2.5 text-right">
-                      <div className="flex items-center gap-2 justify-end">
-                        <button onClick={() => editarActivo(a)}
-                          className="text-xs text-indigo-600 hover:underline">Editar</button>
-                        <button onClick={() => eliminar(a.id)}
-                          className="text-xs text-red-500 hover:underline">Baja</button>
+                    <td className="px-4 py-3 text-[#6b7280] text-sm text-center">{a._count.rentas}</td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-3">
+                        <button onClick={() => editar(a)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
+                        <button onClick={() => eliminar(a.id)} className="text-gray-600 text-xs hover:text-red-400 transition-colors">Baja</button>
                       </div>
                     </td>
                   </tr>
                 );
               })}
             </tbody>
-            <tfoot className="border-t-2 border-gray-300">
+            <tfoot className="border-t border-[#2a2a2a]">
               <tr>
-                <td colSpan={4} className="py-2 text-xs font-semibold text-gray-600">Totales</td>
-                <td className="py-2 text-right font-bold text-gray-900">{fmt(totalValor)}</td>
-                <td className="py-2 text-right font-bold text-gray-900">{fmt(totalPrecioDia)}</td>
+                <td colSpan={4} className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#555] font-semibold">Totales</td>
+                <td className="px-4 py-2.5 text-white font-bold text-sm">{fmt(totalValor)}</td>
+                <td className="px-4 py-2.5 text-white font-bold text-sm">{fmt(totalDia)}</td>
                 <td colSpan={3}></td>
               </tr>
             </tfoot>
@@ -457,7 +431,6 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
 }
 
 // ─── Tab: Rentas ──────────────────────────────────────────────────────────────
-
 function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
   const [rentas, setRentas] = useState<Renta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -465,10 +438,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
   const [saving, setSaving] = useState(false);
   const [filMes, setFilMes] = useState(now.getMonth() + 1);
   const [filAnio, setFilAnio] = useState(now.getFullYear());
-  const [form, setForm] = useState({
-    activoId: activos[0]?.id || "", descripcion: "", mes: now.getMonth() + 1,
-    anio: now.getFullYear(), dias: 1, fechaInicio: "", fechaFin: "", notas: "",
-  });
+  const EMPTY_R = { activoId: activos[0]?.id || "", descripcion: "", mes: now.getMonth() + 1, anio: now.getFullYear(), dias: 1, fechaInicio: "", fechaFin: "", notas: "" };
+  const [form, setForm] = useState(EMPTY_R);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -492,159 +463,137 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/rentas`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-    });
-    setShowForm(false);
-    setSaving(false);
-    cargar();
+    await fetch(`/api/socios/${socio.id}/rentas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    setShowForm(false); setSaving(false); cargar();
   };
 
   const eliminar = async (id: string) => {
-    if (!confirm("¿Eliminar este registro de renta?")) return;
+    if (!confirm("¿Eliminar este registro?")) return;
     await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
     cargar();
   };
 
   const totales = rentas.reduce((s, r) => ({
-    subtotal: s.subtotal + r.subtotal,
-    socio: s.socio + r.montoSocio,
-    mainstage: s.mainstage + r.montoMainstage,
-    dias: s.dias + r.dias,
+    subtotal: s.subtotal + r.subtotal, socio: s.socio + r.montoSocio,
+    mainstage: s.mainstage + r.montoMainstage, dias: s.dias + r.dias,
   }), { subtotal: 0, socio: 0, mainstage: 0, dias: 0 });
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="font-semibold text-gray-900">Registro de rentas</h3>
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Rentas</p>
           <select value={filMes} onChange={(e) => setFilMes(parseInt(e.target.value))}
-            className="border rounded-lg px-2 py-1 text-sm bg-white">
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
             {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
           </select>
           <select value={filAnio} onChange={(e) => setFilAnio(parseInt(e.target.value))}
-            className="border rounded-lg px-2 py-1 text-sm bg-white">
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
             {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
           </select>
         </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700">
-          + Registrar Renta
-        </button>
+        {!showForm && activos.length > 0 && (
+          <button onClick={() => setShowForm(true)}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            + Registrar renta
+          </button>
+        )}
       </div>
 
+      {activos.length === 0 && (
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-[#6b7280] mb-4">
+          Primero registra equipos en la pestaña Activos.
+        </div>
+      )}
+
       {showForm && activos.length > 0 && (
-        <form onSubmit={crear} className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 grid grid-cols-3 gap-3">
-          <div className="col-span-3 font-medium text-indigo-900 text-sm">Nueva renta</div>
+        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-3 gap-4">
+          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva renta</p>
           <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-700 block mb-1">Evento / descripción *</label>
-            <input value={form.descripcion} required onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ej. Boda García - Hotel Camino Real" />
+            <FieldLabel>Evento / descripción *</FieldLabel>
+            <DarkInput value={form.descripcion} required onChange={(v) => setForm((p) => ({ ...p, descripcion: v }))}
+              placeholder="Ej. Boda García — Hotel Camino Real" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Equipo *</label>
-            <select value={form.activoId} onChange={(e) => setForm((p) => ({ ...p, activoId: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+            <FieldLabel>Equipo *</FieldLabel>
+            <DarkSelect value={form.activoId} onChange={(v) => setForm((p) => ({ ...p, activoId: v }))}>
               {activos.map((a) => <option key={a.id} value={a.id}>{a.codigoInventario} — {a.nombre}</option>)}
-            </select>
+            </DarkSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Días</label>
-            <input type="number" min="1" value={form.dias} onChange={(e) => setForm((p) => ({ ...p, dias: parseInt(e.target.value) || 1 }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <FieldLabel>Días</FieldLabel>
+            <DarkInput type="number" value={String(form.dias)}
+              onChange={(v) => setForm((p) => ({ ...p, dias: parseInt(v) || 1 }))} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Mes</label>
-            <select value={form.mes} onChange={(e) => setForm((p) => ({ ...p, mes: parseInt(e.target.value) }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+            <FieldLabel>Mes</FieldLabel>
+            <DarkSelect value={String(form.mes)} onChange={(v) => setForm((p) => ({ ...p, mes: parseInt(v) }))}>
               {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-            </select>
+            </DarkSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Año</label>
-            <select value={form.anio} onChange={(e) => setForm((p) => ({ ...p, anio: parseInt(e.target.value) }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+            <FieldLabel>Año</FieldLabel>
+            <DarkSelect value={String(form.anio)} onChange={(v) => setForm((p) => ({ ...p, anio: parseInt(v) }))}>
               {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Fecha inicio</label>
-            <input type="date" value={form.fechaInicio} onChange={(e) => setForm((p) => ({ ...p, fechaInicio: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Fecha fin</label>
-            <input type="date" value={form.fechaFin} onChange={(e) => setForm((p) => ({ ...p, fechaFin: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            </DarkSelect>
           </div>
           {preview && (
-            <div className="col-span-3 bg-white rounded-lg p-3 border flex gap-6 text-sm">
-              <div><span className="text-gray-500">Subtotal: </span><strong>{fmt(preview.subtotal)}</strong></div>
-              <div><span className="text-gray-500">Socio ({pctS}%): </span><strong className="text-green-700">{fmt(preview.socio)}</strong></div>
-              <div><span className="text-gray-500">Mainstage ({pctM}%): </span><strong className="text-indigo-700">{fmt(preview.mainstage)}</strong></div>
+            <div className="col-span-3 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 flex gap-6 text-sm">
+              <div><span className="text-[#555]">Subtotal: </span><span className="text-white font-semibold">{fmt(preview.subtotal)}</span></div>
+              <div><span className="text-[#555]">Socio ({pctS}%): </span><span className="text-green-400 font-semibold">{fmt(preview.socio)}</span></div>
+              <div><span className="text-[#555]">Mainstage ({pctM}%): </span><span className="text-[#B3985B] font-semibold">{fmt(preview.mainstage)}</span></div>
             </div>
           )}
-          <div className="col-span-3 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)}
-              className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
+          <div className="col-span-3 flex items-center gap-3">
             <button type="submit" disabled={saving}
-              className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg disabled:opacity-50">
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
+            <button type="button" onClick={() => setShowForm(false)}
+              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
       )}
 
-      {activos.length === 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800 mb-4">
-          Primero registra equipos en la pestaña &quot;Activos&quot;
-        </div>
-      )}
-
       {loading ? (
-        <div className="text-center py-8 text-gray-400">Cargando...</div>
+        <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>
       ) : rentas.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Sin rentas en {MESES[filMes]} {filAnio}</div>
+        <div className="text-center py-12 text-gray-600 text-sm">Sin rentas en {MESES[filMes]} {filAnio}</div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <table className="w-full">
             <thead>
-              <tr className="border-b text-xs text-gray-500">
-                <th className="text-left py-2 pr-3">Evento</th>
-                <th className="text-left py-2 pr-3">Equipo</th>
-                <th className="text-center py-2 pr-3">Días</th>
-                <th className="text-right py-2 pr-3">Precio/día</th>
-                <th className="text-right py-2 pr-3">Subtotal</th>
-                <th className="text-right py-2 pr-3">Monto socio</th>
-                <th className="text-right py-2 pr-3">Fee Mainstage</th>
-                <th className="py-2"></th>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Evento","Equipo","Días","Precio/día","Subtotal","Socio","Fee Mainstage",""].map((h) => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-[#1a1a1a]">
               {rentas.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-2.5 pr-3 font-medium text-gray-900">{r.descripcion}</td>
-                  <td className="py-2.5 pr-3 text-gray-600 text-xs">{r.activo.codigoInventario} — {r.activo.nombre}</td>
-                  <td className="py-2.5 pr-3 text-center text-gray-700">{r.dias}</td>
-                  <td className="py-2.5 pr-3 text-right text-gray-700">{fmt(r.precioDia)}</td>
-                  <td className="py-2.5 pr-3 text-right font-semibold text-gray-900">{fmt(r.subtotal)}</td>
-                  <td className="py-2.5 pr-3 text-right text-green-700 font-semibold">{fmt(r.montoSocio)}</td>
-                  <td className="py-2.5 pr-3 text-right text-indigo-700 font-semibold">{fmt(r.montoMainstage)}</td>
-                  <td className="py-2.5 text-right">
-                    <button onClick={() => eliminar(r.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
+                <tr key={r.id} className="hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3 text-white text-sm font-medium">{r.descripcion}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-xs">{r.activo.codigoInventario}<br/>{r.activo.nombre}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-sm text-center">{r.dias}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(r.precioDia)}</td>
+                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(r.subtotal)}</td>
+                  <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(r.montoSocio)}</td>
+                  <td className="px-4 py-3 text-[#B3985B] text-sm font-semibold">{fmt(r.montoMainstage)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button onClick={() => eliminar(r.id)} className="text-gray-600 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="border-t-2 border-gray-300">
+            <tfoot className="border-t border-[#2a2a2a]">
               <tr>
-                <td colSpan={3} className="py-2 text-xs font-semibold text-gray-600">
-                  Total {MESES[filMes]} {filAnio} · {rentas.length} eventos · {totales.dias} días
+                <td colSpan={3} className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#555] font-semibold">
+                  {MESES[filMes]} {filAnio} · {rentas.length} eventos · {totales.dias} días
                 </td>
                 <td></td>
-                <td className="py-2 text-right font-bold text-gray-900">{fmt(totales.subtotal)}</td>
-                <td className="py-2 text-right font-bold text-green-700">{fmt(totales.socio)}</td>
-                <td className="py-2 text-right font-bold text-indigo-700">{fmt(totales.mainstage)}</td>
+                <td className="px-4 py-2.5 text-white font-bold text-sm">{fmt(totales.subtotal)}</td>
+                <td className="px-4 py-2.5 text-green-400 font-bold text-sm">{fmt(totales.socio)}</td>
+                <td className="px-4 py-2.5 text-[#B3985B] font-bold text-sm">{fmt(totales.mainstage)}</td>
                 <td></td>
               </tr>
             </tfoot>
@@ -656,7 +605,6 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
 }
 
 // ─── Tab: Reportes ────────────────────────────────────────────────────────────
-
 function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
   const [genMes, setGenMes] = useState(now.getMonth() + 1);
   const [genAnio, setGenAnio] = useState(now.getFullYear());
@@ -681,69 +629,69 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Reportes mensuales</h3>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reportes mensuales</p>
         <div className="flex items-center gap-2">
           <select value={genMes} onChange={(e) => setGenMes(parseInt(e.target.value))}
-            className="border rounded-lg px-2 py-1.5 text-sm bg-white">
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
             {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
           </select>
           <select value={genAnio} onChange={(e) => setGenAnio(parseInt(e.target.value))}
-            className="border rounded-lg px-2 py-1.5 text-sm bg-white">
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
             {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
           </select>
           <button onClick={generar} disabled={generating}
-            className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
-            {generating ? "Generando..." : "Generar / Actualizar Reporte"}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            {generating ? "Generando..." : "Generar / Actualizar"}
           </button>
         </div>
       </div>
 
       {socio.reportes.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No hay reportes generados aún</div>
+        <div className="text-center py-12 text-gray-600 text-sm">No hay reportes generados aún</div>
       ) : (
-        <div className="grid gap-3">
+        <div className="space-y-3">
           {socio.reportes.map((r) => (
-            <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div key={r.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <h4 className="font-semibold text-gray-900">{MESES[r.mes]} {r.anio}</h4>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${RPT_COLOR[r.estado]}`}>
+                  <p className="text-white font-semibold">{MESES[r.mes]} {r.anio}</p>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${RPT_COLORS[r.estado]}`}>
                     {r.estado}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {r.estado === "BORRADOR" && (
                     <button onClick={() => cambiarEstado(r.id, "ENVIADO")}
-                      className="text-xs px-3 py-1.5 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50">
+                      className="text-xs border border-[#2a2a2a] text-[#6b7280] hover:text-white hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
                       Marcar enviado
                     </button>
                   )}
                   {r.estado === "ENVIADO" && (
                     <button onClick={() => cambiarEstado(r.id, "PAGADO")}
-                      className="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                      className="text-xs bg-green-900/30 border border-green-700/40 text-green-400 hover:bg-green-900/50 px-3 py-1.5 rounded-lg transition-colors">
                       Marcar pagado
                     </button>
                   )}
                   {r.estado === "PAGADO" && r.pagadoEn && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-[#555]">
                       Pagado el {new Date(r.pagadoEn).toLocaleDateString("es-MX")}
                     </span>
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-4 text-center">
+              <div className="grid grid-cols-5 gap-3">
                 {[
-                  { label: "Eventos", value: r.totalEventos, type: "count" },
-                  { label: "Días rentados", value: r.totalDias, type: "count" },
-                  { label: "Total facturado", value: r.totalFacturado, type: "money" },
-                  { label: "Para el socio", value: r.totalSocio, type: "money", color: "text-green-700" },
-                  { label: "Fee Mainstage", value: r.totalMainstage, type: "money", color: "text-indigo-700" },
-                ].map(({ label, value, type, color }) => (
-                  <div key={label} className="bg-gray-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">{label}</p>
-                    <p className={`text-lg font-bold ${color || "text-gray-900"}`}>
-                      {type === "money" ? fmt(value as number) : value}
+                  { label: "Eventos", value: r.totalEventos, fmt: false },
+                  { label: "Días", value: r.totalDias, fmt: false },
+                  { label: "Total facturado", value: r.totalFacturado, fmt: true, color: "text-white" },
+                  { label: "Para el socio", value: r.totalSocio, fmt: true, color: "text-green-400" },
+                  { label: "Fee Mainstage", value: r.totalMainstage, fmt: true, color: "text-[#B3985B]" },
+                ].map(({ label, value, fmt: useFmt, color }) => (
+                  <div key={label} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-[#555] mb-1">{label}</p>
+                    <p className={`text-base font-bold ${color || "text-white"}`}>
+                      {useFmt ? fmt(value as number) : value}
                     </p>
                   </div>
                 ))}
@@ -757,16 +705,14 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
 }
 
 // ─── Tab: Mantenimiento ───────────────────────────────────────────────────────
-
 function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] }) {
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    activoId: activos[0]?.id || "", tipo: "PREVENTIVO", descripcion: "",
-    fechaEjecucion: "", costoTotal: "", costoSocio: "0", costoMainstage: "0", realizadoPor: "", notas: "",
-  });
+  const EMPTY_M = { activoId: activos[0]?.id || "", tipo: "PREVENTIVO", descripcion: "", fechaEjecucion: "", costoTotal: "", costoSocio: "0", costoMainstage: "0", realizadoPor: "" };
+  const [form, setForm] = useState(EMPTY_M);
+  const f = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }));
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -781,113 +727,107 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/mantenimientos`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-    });
-    setShowForm(false);
-    setSaving(false);
-    cargar();
+    await fetch(`/api/socios/${socio.id}/mantenimientos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    setForm(EMPTY_M); setShowForm(false); setSaving(false); cargar();
   };
 
-  const TIPO_COLOR: Record<string, string> = {
-    PREVENTIVO: "bg-blue-100 text-blue-700",
-    CORRECTIVO: "bg-red-100 text-red-700",
-    INSPECCION: "bg-gray-100 text-gray-600",
+  const TIPO_COLORS: Record<string, string> = {
+    PREVENTIVO: "text-blue-400 bg-blue-900/20 border-blue-700/40",
+    CORRECTIVO: "text-red-400 bg-red-900/20 border-red-700/40",
+    INSPECCION: "text-gray-400 bg-gray-800/20 border-gray-700/40",
   };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold text-gray-900">Historial de mantenimiento</h3>
-        <button onClick={() => setShowForm(!showForm)}
-          className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-700">
-          + Registrar
-        </button>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Mantenimiento</p>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            + Registrar
+          </button>
+        )}
       </div>
 
       {showForm && (
-        <form onSubmit={crear} className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 grid grid-cols-2 gap-3">
-          <div className="col-span-2 font-medium text-indigo-900 text-sm">Nuevo registro de mantenimiento</div>
+        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-2 gap-4">
+          <p className="col-span-2 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo registro</p>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Equipo *</label>
-            <select value={form.activoId} onChange={(e) => setForm((p) => ({ ...p, activoId: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+            <FieldLabel>Equipo *</FieldLabel>
+            <DarkSelect value={form.activoId} onChange={(v) => f("activoId", v)}>
               {activos.map((a) => <option key={a.id} value={a.id}>{a.codigoInventario} — {a.nombre}</option>)}
-            </select>
+            </DarkSelect>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Tipo</label>
-            <select value={form.tipo} onChange={(e) => setForm((p) => ({ ...p, tipo: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
+            <FieldLabel>Tipo</FieldLabel>
+            <DarkSelect value={form.tipo} onChange={(v) => f("tipo", v)}>
               <option value="PREVENTIVO">Preventivo</option>
               <option value="CORRECTIVO">Correctivo</option>
               <option value="INSPECCION">Inspección</option>
-            </select>
+            </DarkSelect>
           </div>
           <div className="col-span-2">
-            <label className="text-xs font-medium text-gray-700 block mb-1">Descripción *</label>
-            <input required value={form.descripcion} onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ej. Limpieza de conectores, calibración de amplificador" />
+            <FieldLabel>Descripción *</FieldLabel>
+            <DarkInput value={form.descripcion} required onChange={(v) => f("descripcion", v)}
+              placeholder="Ej. Limpieza de conectores, calibración de amplificador" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Fecha de ejecución</label>
-            <input type="date" value={form.fechaEjecucion} onChange={(e) => setForm((p) => ({ ...p, fechaEjecucion: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <FieldLabel>Fecha de ejecución</FieldLabel>
+            <DarkInput type="date" value={form.fechaEjecucion} onChange={(v) => f("fechaEjecucion", v)} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Realizado por</label>
-            <input value={form.realizadoPor} onChange={(e) => setForm((p) => ({ ...p, realizadoPor: e.target.value }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Técnico o taller" />
+            <FieldLabel>Realizado por</FieldLabel>
+            <DarkInput value={form.realizadoPor} onChange={(v) => f("realizadoPor", v)} placeholder="Técnico o taller" />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Costo total ($)</label>
-            <input type="number" value={form.costoTotal} onChange={(e) => setForm((p) => ({ ...p, costoTotal: e.target.value, costoMainstage: e.target.value, costoSocio: "0" }))}
-              className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <FieldLabel>Costo total ($)</FieldLabel>
+            <DarkInput type="number" value={form.costoTotal}
+              onChange={(v) => { f("costoTotal", v); f("costoMainstage", v); f("costoSocio", "0"); }} />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <div className="flex-1">
-              <label className="text-xs font-medium text-gray-700 block mb-1">Costo Mainstage</label>
-              <input type="number" value={form.costoMainstage} onChange={(e) => setForm((p) => ({ ...p, costoMainstage: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <FieldLabel>Costo Mainstage</FieldLabel>
+              <DarkInput type="number" value={form.costoMainstage} onChange={(v) => f("costoMainstage", v)} />
             </div>
             <div className="flex-1">
-              <label className="text-xs font-medium text-gray-700 block mb-1">Costo Socio</label>
-              <input type="number" value={form.costoSocio} onChange={(e) => setForm((p) => ({ ...p, costoSocio: e.target.value }))}
-                className="w-full border rounded-lg px-3 py-2 text-sm" />
+              <FieldLabel>Costo Socio</FieldLabel>
+              <DarkInput type="number" value={form.costoSocio} onChange={(v) => f("costoSocio", v)} />
             </div>
           </div>
-          <div className="col-span-2 flex justify-end gap-2">
-            <button type="button" onClick={() => setShowForm(false)} className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
-            <button type="submit" disabled={saving} className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg disabled:opacity-50">
+          <div className="col-span-2 flex items-center gap-3">
+            <button type="submit" disabled={saving}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
+            <button type="button" onClick={() => setShowForm(false)}
+              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
       )}
 
       {loading ? (
-        <div className="text-center py-8 text-gray-400">Cargando...</div>
+        <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>
       ) : mantenimientos.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Sin registros de mantenimiento</div>
+        <div className="text-center py-12 text-gray-600 text-sm">Sin registros de mantenimiento</div>
       ) : (
         <div className="space-y-2">
           {mantenimientos.map((m) => (
-            <div key={m.id} className="border border-gray-200 rounded-lg p-3 flex items-start gap-4">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${TIPO_COLOR[m.tipo]}`}>
+            <div key={m.id} className="flex items-start gap-4 px-4 py-3 bg-[#111] border border-[#1e1e1e] rounded-xl">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 mt-0.5 ${TIPO_COLORS[m.tipo]}`}>
                 {m.tipo}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{m.descripcion}</p>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="text-white text-sm font-medium">{m.descripcion}</p>
+                <p className="text-[#555] text-xs mt-0.5">
                   {m.activo.codigoInventario} — {m.activo.nombre}
                   {m.realizadoPor && ` · ${m.realizadoPor}`}
                   {m.fechaEjecucion && ` · ${new Date(m.fechaEjecucion).toLocaleDateString("es-MX")}`}
                 </p>
               </div>
               {m.costoTotal > 0 && (
-                <div className="text-right text-sm flex-shrink-0">
-                  <p className="font-semibold text-gray-900">{fmt(m.costoTotal)}</p>
-                  <p className="text-xs text-gray-500">
+                <div className="text-right shrink-0">
+                  <p className="text-white text-sm font-semibold">{fmt(m.costoTotal)}</p>
+                  <p className="text-[#555] text-[10px]">
                     Mainstage: {fmt(m.costoMainstage)} · Socio: {fmt(m.costoSocio)}
                   </p>
                 </div>
@@ -901,12 +841,11 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
-
-const TABS = ["perfil", "activos", "rentas", "reportes", "mantenimiento", "contrato"] as const;
+const TABS = ["perfil", "activos", "rentas", "reportes", "mantenimiento"] as const;
 type Tab = (typeof TABS)[number];
 const TAB_LABEL: Record<Tab, string> = {
   perfil: "Perfil", activos: "Activos", rentas: "Rentas",
-  reportes: "Reportes", mantenimiento: "Mantenimiento", contrato: "Contrato",
+  reportes: "Reportes", mantenimiento: "Mantenimiento",
 };
 
 export default function SocioDetallePage() {
@@ -926,61 +865,65 @@ export default function SocioDetallePage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  if (loading) return <div className="p-8 text-center text-gray-400">Cargando socio...</div>;
-  if (!socio) return <div className="p-8 text-center text-red-500">Socio no encontrado</div>;
+  if (loading) return <div className="p-8 text-center text-gray-600 text-sm">Cargando...</div>;
+  if (!socio) return <div className="p-8 text-center text-red-400 text-sm">Socio no encontrado</div>;
 
   const completados = socio.checklist.filter((r) => r.completado).length;
-  const totalReq = socio.checklist.length;
+  const pendientesReporte = socio.reportes.filter((r) => r.estado !== "PAGADO").length;
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-3 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
-        <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-2xl flex-shrink-0">
-          {socio.nombre.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
+        <div className="w-12 h-12 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
+          <span className="text-[#B3985B] text-base font-bold">
+            {socio.nombre.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+          </span>
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{socio.nombre}</h1>
-            <span className={`text-sm px-3 py-0.5 rounded-full font-medium ${STATUS_COLOR[socio.status]}`}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl font-semibold text-white">{socio.nombre}</h1>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_COLORS[socio.status]}`}>
               {STATUS_LABEL[socio.status]}
             </span>
           </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+          <p className="text-[#6b7280] text-sm mt-0.5">
             {socio.tipo === "FISICA" ? "Persona Física" : "Persona Moral"}
-            {socio.ciudad && <span>· {socio.ciudad}</span>}
-            {socio.email && <span>· {socio.email}</span>}
-            {socio.telefono && <span>· {socio.telefono}</span>}
-          </div>
-          <div className="flex items-center gap-4 mt-1 text-xs text-gray-400">
-            <span>Split: {socio.pctSocio}% socio / {socio.pctMainstage}% Mainstage</span>
-            <span>{socio.activos.length} equipos registrados</span>
-            <span>Requisitos: {completados}/{totalReq}</span>
-          </div>
+            {socio.ciudad && ` · ${socio.ciudad}`}
+            {socio.telefono && ` · ${socio.telefono}`}
+            {socio.email && ` · ${socio.email}`}
+          </p>
+          <p className="text-[#555] text-xs mt-1">
+            Split: {socio.pctSocio}% socio / {socio.pctMainstage}% Mainstage
+            {" · "}{socio.activos.length} equipos
+            {" · "}Requisitos: {completados}/{socio.checklist.length}
+          </p>
         </div>
         <Link href={`/socios/${socio.id}/contrato`} target="_blank"
-          className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 flex items-center gap-2">
-          Ver contrato
+          className="shrink-0 text-xs border border-[#2a2a2a] text-[#6b7280] hover:text-white hover:border-[#B3985B] px-3 py-2 rounded-lg transition-colors">
+          Ver contrato ↗
         </Link>
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-[#1e1e1e] mb-6">
         <div className="flex gap-1">
           {TABS.map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 tab === t
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-[#B3985B] text-[#B3985B]"
+                  : "border-transparent text-[#555] hover:text-white"
               }`}>
               {TAB_LABEL[t]}
               {t === "activos" && socio.activos.length > 0 && (
-                <span className="ml-1.5 text-xs bg-gray-100 text-gray-600 rounded-full px-1.5">{socio.activos.length}</span>
+                <span className="ml-1.5 text-[10px] bg-[#1e1e1e] text-[#6b7280] rounded-full px-1.5 py-0.5">
+                  {socio.activos.length}
+                </span>
               )}
-              {t === "reportes" && socio.reportes.filter((r) => r.estado !== "PAGADO").length > 0 && (
-                <span className="ml-1.5 text-xs bg-yellow-100 text-yellow-700 rounded-full px-1.5">
-                  {socio.reportes.filter((r) => r.estado !== "PAGADO").length}
+              {t === "reportes" && pendientesReporte > 0 && (
+                <span className="ml-1.5 text-[10px] bg-yellow-900/20 text-yellow-400 border border-yellow-700/40 rounded-full px-1.5 py-0.5">
+                  {pendientesReporte}
                 </span>
               )}
             </button>
@@ -988,22 +931,13 @@ export default function SocioDetallePage() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
+      {/* Contenido */}
+      <div>
         {tab === "perfil" && <TabPerfil socio={socio} reload={cargar} />}
         {tab === "activos" && <TabActivos socio={socio} activos={socio.activos} reload={cargar} />}
         {tab === "rentas" && <TabRentas socio={socio} activos={socio.activos} reload={cargar} />}
         {tab === "reportes" && <TabReportes socio={socio} reload={cargar} />}
         {tab === "mantenimiento" && <TabMantenimiento socio={socio} activos={socio.activos} />}
-        {tab === "contrato" && (
-          <div className="text-center py-10">
-            <p className="text-gray-600 mb-4">El contrato se abre en una página dedicada para impresión.</p>
-            <Link href={`/socios/${socio.id}/contrato`} target="_blank"
-              className="inline-block bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700">
-              Abrir contrato para imprimir
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

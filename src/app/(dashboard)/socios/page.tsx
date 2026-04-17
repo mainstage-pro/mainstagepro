@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-
 type Socio = {
   id: string;
   nombre: string;
@@ -23,32 +21,25 @@ type Socio = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  EN_REVISION: "En revisión",
-  ACTIVO: "Activo",
-  SUSPENDIDO: "Suspendido",
-  INACTIVO: "Inactivo",
+  EN_REVISION: "En revisión", ACTIVO: "Activo", SUSPENDIDO: "Suspendido", INACTIVO: "Inactivo",
+};
+const STATUS_COLORS: Record<string, string> = {
+  EN_REVISION: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
+  ACTIVO: "text-green-400 bg-green-900/20 border-green-700/40",
+  SUSPENDIDO: "text-orange-400 bg-orange-900/20 border-orange-700/40",
+  INACTIVO: "text-gray-500 bg-gray-800/20 border-gray-700/40",
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  EN_REVISION: "bg-yellow-100 text-yellow-800",
-  ACTIVO: "bg-green-100 text-green-800",
-  SUSPENDIDO: "bg-orange-100 text-orange-800",
-  INACTIVO: "bg-gray-100 text-gray-500",
-};
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+const EMPTY = { nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "", pctSocio: "70", pctMainstage: "30" };
 
 export default function SociosPage() {
   const [socios, setSocios] = useState<Socio[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("TODOS");
+  const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "",
-    pctSocio: "70", pctMainstage: "30",
-  });
+  const [form, setForm] = useState(EMPTY);
 
   const cargar = async () => {
     setLoading(true);
@@ -60,210 +51,227 @@ export default function SociosPage() {
 
   useEffect(() => { cargar(); }, []);
 
-  const sociosFiltrados = filtro === "TODOS"
-    ? socios
-    : socios.filter((s) => s.status === filtro);
-
-  // Stats
-  const activos = socios.filter((s) => s.status === "ACTIVO");
-  const totalActivos = socios.reduce((s, x) => s + x._count.activos, 0);
-  const enRevision = socios.filter((s) => s.status === "EN_REVISION").length;
-
-  const handleForm = (k: string, v: string) => {
-    const next: Record<string, string> = { ...form, [k]: v };
-    if (k === "pctSocio") next.pctMainstage = String(100 - parseFloat(v || "0"));
-    if (k === "pctMainstage") next.pctSocio = String(100 - parseFloat(v || "0"));
-    setForm(next as typeof form);
+  const set = (k: string, v: string) => {
+    setForm((p) => {
+      const n: Record<string, string> = { ...p, [k]: v };
+      if (k === "pctSocio") n.pctMainstage = String(100 - parseFloat(v || "0"));
+      if (k === "pctMainstage") n.pctSocio = String(100 - parseFloat(v || "0"));
+      return n as typeof EMPTY;
+    });
   };
 
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/socios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    setForm({ nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "", pctSocio: "70", pctMainstage: "30" });
+    await fetch("/api/socios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    setForm(EMPTY);
     setShowForm(false);
     setSaving(false);
     cargar();
   };
 
+  const filtrados = socios.filter((s) => {
+    if (filtro !== "TODOS" && s.status !== filtro) return false;
+    if (search && !s.nombre.toLowerCase().includes(search.toLowerCase()) &&
+        !(s.ciudad ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const totalActivos = socios.reduce((s, x) => s + x._count.activos, 0);
+
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-3 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Socios de Activos</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Personas que aportan equipos a la operación de Mainstage Pro</p>
+          <h1 className="text-xl font-semibold text-white">Socios de Activos</h1>
+          <p className="text-[#6b7280] text-sm">
+            {socios.filter((s) => s.status === "ACTIVO").length} activos
+            {socios.filter((s) => s.status === "EN_REVISION").length > 0 &&
+              ` · ${socios.filter((s) => s.status === "EN_REVISION").length} en revisión`}
+          </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-        >
-          + Nuevo Socio
-        </button>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            + Nuevo socio
+          </button>
+        )}
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-3 mb-6">
         {[
-          { label: "Socios activos", value: activos.length, sub: `${socios.length} total` },
-          { label: "Equipos registrados", value: totalActivos, sub: "activos en inventario" },
-          { label: "En revisión", value: enRevision, sub: "pendientes de activar" },
+          { label: "Socios activos", value: socios.filter((s) => s.status === "ACTIVO").length, sub: `${socios.length} registrados` },
+          { label: "Equipos en inventario", value: totalActivos, sub: "activos operando" },
+          { label: "En revisión", value: socios.filter((s) => s.status === "EN_REVISION").length, sub: "pendientes de activar" },
         ].map((s) => (
-          <div key={s.label} className="bg-white border border-gray-200 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-gray-900">{s.value}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{s.sub}</p>
+          <div key={s.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{s.label}</p>
+            <p className="text-2xl font-bold text-white">{s.value}</p>
+            <p className="text-[11px] text-[#6b7280] mt-0.5">{s.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Formulario nuevo socio */}
       {showForm && (
-        <form onSubmit={crear} className="bg-indigo-50 border border-indigo-200 rounded-xl p-5 mb-6 grid grid-cols-2 gap-4">
-          <div className="col-span-2">
-            <h3 className="font-semibold text-indigo-900 mb-3">Registrar nuevo socio</h3>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Nombre completo *</label>
-            <input value={form.nombre} onChange={(e) => handleForm("nombre", e.target.value)}
-              required className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ej. Juan García López" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Tipo de persona</label>
-            <select value={form.tipo} onChange={(e) => handleForm("tipo", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm bg-white">
-              <option value="FISICA">Persona Física</option>
-              <option value="MORAL">Persona Moral</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Teléfono</label>
-            <input value={form.telefono} onChange={(e) => handleForm("telefono", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="55 1234 5678" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Email</label>
-            <input value={form.email} onChange={(e) => handleForm("email", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm" type="email" placeholder="correo@ejemplo.com" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Ciudad</label>
-            <input value={form.ciudad} onChange={(e) => handleForm("ciudad", e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 text-sm" placeholder="Ciudad de México" />
-          </div>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs font-medium text-gray-700 block mb-1">% Socio</label>
-              <input value={form.pctSocio} onChange={(e) => handleForm("pctSocio", e.target.value)}
-                type="number" min="0" max="100" className="w-full border rounded-lg px-3 py-2 text-sm" />
+        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-6 mb-6 space-y-4">
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo socio</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
+              <input value={form.nombre} required onChange={(e) => set("nombre", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="Nombre del socio" />
             </div>
-            <div className="flex-1">
-              <label className="text-xs font-medium text-gray-700 block mb-1">% Mainstage (fee)</label>
-              <input value={form.pctMainstage} onChange={(e) => handleForm("pctMainstage", e.target.value)}
-                type="number" min="0" max="100" className="w-full border rounded-lg px-3 py-2 text-sm" />
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Tipo de persona</label>
+              <select value={form.tipo} onChange={(e) => set("tipo", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                <option value="FISICA">Persona Física</option>
+                <option value="MORAL">Persona Moral</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
+              <input value={form.telefono} onChange={(e) => set("telefono", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="55 1234 5678" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Email</label>
+              <input value={form.email} onChange={(e) => set("email", e.target.value)} type="email"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="correo@ejemplo.com" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Ciudad</label>
+              <input value={form.ciudad} onChange={(e) => set("ciudad", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="Ciudad de México" />
+            </div>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 mb-1 block">% Socio</label>
+                <input type="number" min="0" max="100" value={form.pctSocio} onChange={(e) => set("pctSocio", e.target.value)}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-gray-500 mb-1 block">% Mainstage</label>
+                <input type="number" min="0" max="100" value={form.pctMainstage} onChange={(e) => set("pctMainstage", e.target.value)}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
             </div>
           </div>
-          <div className="col-span-2 flex gap-3 justify-end">
-            <button type="button" onClick={() => setShowForm(false)}
-              className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Cancelar</button>
-            <button type="submit" disabled={saving}
-              className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-              {saving ? "Guardando..." : "Crear Socio"}
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={saving || !form.nombre.trim()}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+              {saving ? "Guardando..." : "Crear socio"}
             </button>
+            <button type="button" onClick={() => { setShowForm(false); setForm(EMPTY); }}
+              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
       )}
 
-      {/* Filtros */}
-      <div className="flex gap-2 mb-4">
-        {["TODOS", "EN_REVISION", "ACTIVO", "SUSPENDIDO", "INACTIVO"].map((f) => (
-          <button key={f} onClick={() => setFiltro(f)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filtro === f ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}>
-            {f === "TODOS" ? "Todos" : STATUS_LABEL[f]}
-          </button>
-        ))}
-      </div>
+      {/* Filtros y búsqueda */}
+      {!showForm && (
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <input value={search} onChange={(e) => setSearch(e.target.value)}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
+            placeholder="Buscar socio..." />
+          {["TODOS", "EN_REVISION", "ACTIVO", "SUSPENDIDO", "INACTIVO"].map((f) => (
+            <button key={f} onClick={() => setFiltro(f)}
+              className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
+                filtro === f ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"
+              }`}>
+              {f === "TODOS" ? "Todos" : STATUS_LABEL[f]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Lista */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400">Cargando socios...</div>
-      ) : sociosFiltrados.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg mb-2">No hay socios registrados</p>
-          <p className="text-sm">Crea el primer socio con el botón &quot;+ Nuevo Socio&quot;</p>
+        <div className="text-center py-16 text-gray-600 text-sm">Cargando socios...</div>
+      ) : filtrados.length === 0 ? (
+        <div className="text-center py-16 text-gray-600">
+          <p className="text-sm">{search || filtro !== "TODOS" ? "Sin resultados." : "No hay socios registrados."}</p>
+          {!search && filtro === "TODOS" && (
+            <button onClick={() => setShowForm(true)} className="mt-2 text-[#B3985B] text-sm hover:underline">
+              Registrar el primero
+            </button>
+          )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {sociosFiltrados.map((s) => {
-            const completados = s.checklist.filter((c) => c.completado).length;
-            const total = s.checklist.length;
-            const pctChecklist = total > 0 ? Math.round((completados / total) * 100) : 0;
-            const venceProximo = s.contratoFin
-              ? (new Date(s.contratoFin).getTime() - Date.now()) / (1000 * 60 * 60 * 24) < 30
-              : false;
-
-            return (
-              <Link key={s.id} href={`/socios/${s.id}`}
-                className="block bg-white border border-gray-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-sm transition-all">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg flex-shrink-0">
-                      {s.nombre.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-gray-900">{s.nombre}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[s.status]}`}>
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Socio", "Status", "Equipos", "Split", "Requisitos", ""].map((h) => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]">
+              {filtrados.map((s) => {
+                const completados = s.checklist.filter((c) => c.completado).length;
+                const total = s.checklist.length;
+                const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
+                const vence = s.contratoFin
+                  ? (new Date(s.contratoFin).getTime() - Date.now()) / 86400000 < 30
+                  : false;
+                return (
+                  <tr key={s.id} className="hover:bg-[#1a1a1a] transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
+                          <span className="text-[#B3985B] text-[10px] font-bold">
+                            {s.nombre.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-white text-sm font-medium">{s.nombre}</p>
+                          <p className="text-[#555] text-xs">
+                            {s.tipo === "FISICA" ? "Persona Física" : "Persona Moral"}
+                            {s.ciudad && ` · ${s.ciudad}`}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-1">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit ${STATUS_COLORS[s.status]}`}>
                           {STATUS_LABEL[s.status]}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                          {s.tipo === "FISICA" ? "Persona Física" : "Persona Moral"}
-                        </span>
-                        {venceProximo && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                            Contrato por vencer
-                          </span>
+                        {vence && (
+                          <span className="text-[10px] text-red-400">Contrato por vencer</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        {s.ciudad && <span>{s.ciudad}</span>}
-                        {s.email && <span>{s.email}</span>}
-                        {s.telefono && <span>{s.telefono}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-white text-sm font-semibold">{s._count.activos}</td>
+                    <td className="px-4 py-3">
+                      <p className="text-white text-sm">{s.pctSocio}% / {s.pctMainstage}%</p>
+                      <p className="text-[#555] text-[10px]">Socio / Mainstage</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-[#6b7280] text-xs mb-1">{completados}/{total}</p>
+                      <div className="w-20 h-1 bg-[#1e1e1e] rounded-full">
+                        <div className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-[#B3985B]"}`}
+                          style={{ width: `${pct}%` }} />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Métricas */}
-                  <div className="flex items-center gap-6 text-right">
-                    <div>
-                      <p className="text-xs text-gray-400">Equipos</p>
-                      <p className="text-lg font-bold text-gray-900">{s._count.activos}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Split</p>
-                      <p className="text-sm font-semibold text-gray-900">{s.pctSocio}% / {s.pctMainstage}%</p>
-                      <p className="text-xs text-gray-400">Socio / Mainstage</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400">Requisitos</p>
-                      <p className="text-sm font-semibold text-gray-900">{completados}/{total}</p>
-                      <div className="w-16 h-1.5 bg-gray-200 rounded-full mt-1">
-                        <div className={`h-full rounded-full ${pctChecklist === 100 ? "bg-green-500" : "bg-yellow-500"}`}
-                          style={{ width: `${pctChecklist}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link href={`/socios/${s.id}`} className="text-[#B3985B] text-xs hover:underline">
+                        Ver detalle →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
