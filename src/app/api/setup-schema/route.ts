@@ -604,8 +604,8 @@ export async function POST(req: NextRequest) {
 
     // 30. Vehiculos category in categoria_equipos (seed if not exists)
     await prisma.$executeRawUnsafe(`
-      INSERT INTO "categoria_equipos" ("id", "nombre", "descripcion", "orden")
-      SELECT gen_random_uuid()::text, 'Vehículos', 'Vehículos de carga y transporte de equipo', 99
+      INSERT INTO "categoria_equipos" ("id", "nombre", "orden")
+      SELECT gen_random_uuid()::text, 'Vehículos', 99
       WHERE NOT EXISTS (SELECT 1 FROM "categoria_equipos" WHERE "nombre" = 'Vehículos')
     `);
     results.push("✅ categoria_equipos — Vehículos");
