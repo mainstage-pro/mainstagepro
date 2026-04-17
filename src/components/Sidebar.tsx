@@ -144,6 +144,15 @@ const NAV: NavSection[] = [
     ],
   },
 
+  // ── SOCIOS DE ACTIVOS ──────────────────────────────────────────────────────
+  {
+    key: "seccion-socios",
+    section: "SOCIOS DE ACTIVOS",
+    items: [
+      { key: "socios-lista", label: "Socios", href: "/socios" },
+    ],
+  },
+
   // ── MARKETING ──────────────────────────────────────────────────────────────
   {
     key: "seccion-marketing",

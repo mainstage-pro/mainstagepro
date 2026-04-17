@@ -1866,3 +1866,137 @@ model HervamPago {
   @@unique([mes, anio])
   @@map("hervam_pagos")
 }
+
+// ─── SOCIOS DE ACTIVOS ────────────────────────────────────────────────────────
+
+model Socio {
+  id             String    @id @default(cuid())
+  nombre         String
+  tipo           String    @default("FISICA") // FISICA | MORAL
+  rfc            String?
+  curp           String?
+  telefono       String?
+  email          String?
+  domicilio      String?
+  colonia        String?
+  ciudad         String?
+  estado         String?
+  cp             String?
+  status         String    @default("EN_REVISION") // EN_REVISION | ACTIVO | SUSPENDIDO | INACTIVO
+  notas          String?
+  contratoInicio DateTime?
+  contratoFin    DateTime?
+  pctSocio       Float     @default(70)
+  pctMainstage   Float     @default(30)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  activos    SocioActivo[]
+  reportes   SocioReporte[]
+  checklist  SocioRequisitoItem[]
+
+  @@map("socios")
+}
+
+model SocioRequisitoItem {
+  id         String   @id @default(cuid())
+  socioId    String
+  socio      Socio    @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  requisito  String
+  completado Boolean  @default(false)
+  notas      String?
+  orden      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@map("socios_requisitos")
+}
+
+model SocioActivo {
+  id                   String    @id @default(cuid())
+  socioId              String
+  socio                Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  codigoInventario     String    @unique
+  nombre               String
+  marca                String?
+  modelo               String?
+  serial               String?
+  categoria            String    @default("AUDIO") // AUDIO | ILUMINACION | VIDEO | ESTRUCTURAS | ACCESORIOS | OTRO
+  condicion            String    @default("BUENO")  // NUEVO | EXCELENTE | BUENO | REGULAR | REQUIERE_MANTENIMIENTO
+  valorDeclarado       Float     @default(0)
+  precioDia            Float     @default(0)
+  pctSocioOverride     Float?
+  pctMainstageOverride Float?
+  fotosUrls            String    @default("[]")
+  activo               Boolean   @default(true)
+  notas                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  rentas         SocioRenta[]
+  mantenimientos SocioMantenimiento[]
+
+  @@map("socios_activos")
+}
+
+model SocioMantenimiento {
+  id             String      @id @default(cuid())
+  activoId       String
+  activo         SocioActivo @relation(fields: [activoId], references: [id], onDelete: Cascade)
+  tipo           String      // PREVENTIVO | CORRECTIVO | INSPECCION
+  descripcion    String
+  fechaEjecucion DateTime?
+  costoTotal     Float       @default(0)
+  costoSocio     Float       @default(0)
+  costoMainstage Float       @default(0)
+  realizadoPor   String?
+  notas          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("socios_mantenimientos")
+}
+
+model SocioRenta {
+  id             String      @id @default(cuid())
+  activoId       String
+  activo         SocioActivo @relation(fields: [activoId], references: [id], onDelete: Cascade)
+  descripcion    String
+  proyectoId     String?
+  mes            Int
+  anio           Int
+  fechaInicio    DateTime?
+  fechaFin       DateTime?
+  dias           Int         @default(1)
+  precioDia      Float
+  subtotal       Float
+  pctSocio       Float
+  pctMainstage   Float
+  montoSocio     Float
+  montoMainstage Float
+  notas          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@map("socios_rentas")
+}
+
+model SocioReporte {
+  id             String    @id @default(cuid())
+  socioId        String
+  socio          Socio     @relation(fields: [socioId], references: [id], onDelete: Cascade)
+  mes            Int
+  anio           Int
+  totalEventos   Int       @default(0)
+  totalDias      Int       @default(0)
+  totalFacturado Float     @default(0)
+  totalSocio     Float     @default(0)
+  totalMainstage Float     @default(0)
+  estado         String    @default("BORRADOR") // BORRADOR | ENVIADO | PAGADO
+  pagadoEn       DateTime?
+  notas          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([socioId, mes, anio])
+  @@map("socios_reportes")
+}

@@ -408,6 +408,155 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ hervam_pagos");
 
+    // 18. socios
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "tipo" TEXT NOT NULL DEFAULT 'FISICA',
+        "rfc" TEXT,
+        "curp" TEXT,
+        "telefono" TEXT,
+        "email" TEXT,
+        "domicilio" TEXT,
+        "colonia" TEXT,
+        "ciudad" TEXT,
+        "estado" TEXT,
+        "cp" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'EN_REVISION',
+        "notas" TEXT,
+        "contratoInicio" TIMESTAMP(3),
+        "contratoFin" TIMESTAMP(3),
+        "pctSocio" DOUBLE PRECISION NOT NULL DEFAULT 70,
+        "pctMainstage" DOUBLE PRECISION NOT NULL DEFAULT 30,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    results.push("✅ socios");
+
+    // 19. socios_requisitos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios_requisitos" (
+        "id" TEXT NOT NULL,
+        "socioId" TEXT NOT NULL,
+        "requisito" TEXT NOT NULL,
+        "completado" BOOLEAN NOT NULL DEFAULT false,
+        "notas" TEXT,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_requisitos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "socios_requisitos_socioId_fkey"
+          FOREIGN KEY ("socioId") REFERENCES "socios"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ socios_requisitos");
+
+    // 20. socios_activos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios_activos" (
+        "id" TEXT NOT NULL,
+        "socioId" TEXT NOT NULL,
+        "codigoInventario" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "marca" TEXT,
+        "modelo" TEXT,
+        "serial" TEXT,
+        "categoria" TEXT NOT NULL DEFAULT 'AUDIO',
+        "condicion" TEXT NOT NULL DEFAULT 'BUENO',
+        "valorDeclarado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "precioDia" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "pctSocioOverride" DOUBLE PRECISION,
+        "pctMainstageOverride" DOUBLE PRECISION,
+        "fotosUrls" TEXT NOT NULL DEFAULT '[]',
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_activos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "socios_activos_codigoInventario_key" UNIQUE ("codigoInventario"),
+        CONSTRAINT "socios_activos_socioId_fkey"
+          FOREIGN KEY ("socioId") REFERENCES "socios"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ socios_activos");
+
+    // 21. socios_mantenimientos
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios_mantenimientos" (
+        "id" TEXT NOT NULL,
+        "activoId" TEXT NOT NULL,
+        "tipo" TEXT NOT NULL,
+        "descripcion" TEXT NOT NULL,
+        "fechaEjecucion" TIMESTAMP(3),
+        "costoTotal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "costoSocio" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "costoMainstage" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "realizadoPor" TEXT,
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_mantenimientos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "socios_mantenimientos_activoId_fkey"
+          FOREIGN KEY ("activoId") REFERENCES "socios_activos"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ socios_mantenimientos");
+
+    // 22. socios_rentas
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios_rentas" (
+        "id" TEXT NOT NULL,
+        "activoId" TEXT NOT NULL,
+        "descripcion" TEXT NOT NULL,
+        "proyectoId" TEXT,
+        "mes" INTEGER NOT NULL,
+        "anio" INTEGER NOT NULL,
+        "fechaInicio" TIMESTAMP(3),
+        "fechaFin" TIMESTAMP(3),
+        "dias" INTEGER NOT NULL DEFAULT 1,
+        "precioDia" DOUBLE PRECISION NOT NULL,
+        "subtotal" DOUBLE PRECISION NOT NULL,
+        "pctSocio" DOUBLE PRECISION NOT NULL,
+        "pctMainstage" DOUBLE PRECISION NOT NULL,
+        "montoSocio" DOUBLE PRECISION NOT NULL,
+        "montoMainstage" DOUBLE PRECISION NOT NULL,
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_rentas_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "socios_rentas_activoId_fkey"
+          FOREIGN KEY ("activoId") REFERENCES "socios_activos"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ socios_rentas");
+
+    // 23. socios_reportes
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "socios_reportes" (
+        "id" TEXT NOT NULL,
+        "socioId" TEXT NOT NULL,
+        "mes" INTEGER NOT NULL,
+        "anio" INTEGER NOT NULL,
+        "totalEventos" INTEGER NOT NULL DEFAULT 0,
+        "totalDias" INTEGER NOT NULL DEFAULT 0,
+        "totalFacturado" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalSocio" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalMainstage" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "estado" TEXT NOT NULL DEFAULT 'BORRADOR',
+        "pagadoEn" TIMESTAMP(3),
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "socios_reportes_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "socios_reportes_socioId_mes_anio_key" UNIQUE ("socioId", "mes", "anio"),
+        CONSTRAINT "socios_reportes_socioId_fkey"
+          FOREIGN KEY ("socioId") REFERENCES "socios"("id") ON DELETE CASCADE
+      );
+    `);
+    results.push("✅ socios_reportes");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
