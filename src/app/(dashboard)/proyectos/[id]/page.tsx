@@ -26,8 +26,9 @@ interface CatFinanciera { id: string; nombre: string; tipo: string }
 interface Proveedor { id: string; nombre: string; telefono: string | null; giro: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
-interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string }
-interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string }
+interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
+interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
+interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
@@ -470,6 +471,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [pagando, setPagando] = useState<string | null>(null);
   const [montoPago, setMontoPago] = useState("");
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0]);
+
+  // Estados para ajuste de monto en CxC/CxP
+  const [ajustando, setAjustando] = useState<string | null>(null);    // id de la cuenta en edición
+  const [ajusteMonto, setAjusteMonto] = useState("");
+  const [ajusteMotivo, setAjusteMotivo] = useState("");
+  const [ajusteHistorial, setAjusteHistorial] = useState<string | null>(null); // id cuyo historial está expandido
 
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
@@ -1309,6 +1316,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function eliminarCxC(cxcId: string) {
     if (!await confirm({ message: "¿Eliminar esta cuenta por cobrar?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/cuentas-cobrar/${cxcId}`, { method: "DELETE" });
+    await load();
+  }
+
+  // ── Ajustar monto CxC ──
+  async function ajustarMontoCxC(cxcId: string) {
+    const monto = parseFloat(ajusteMonto);
+    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
+    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const res = await fetch(`/api/cuentas-cobrar/${cxcId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
+    toast.success("Monto ajustado correctamente");
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
+    await load();
+  }
+
+  // ── Ajustar monto CxP ──
+  async function ajustarMontoCxP(cxpId: string) {
+    const monto = parseFloat(ajusteMonto);
+    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
+    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
+    toast.success("Monto ajustado correctamente");
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
     await load();
   }
 
@@ -3820,124 +3859,156 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-500 text-sm text-center py-6">Sin esquema de cobro. Presiona &ldquo;Configurar pagos&rdquo; para crear anticipo + liquidación.</p>
                 )}
 
-                {/* ── Filas del esquema (ANTICIPO + LIQUIDACION) ── */}
-                {[cxcAnticipo, cxcLiq].filter(Boolean).map(c => c && (
-                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <p className="text-white text-sm font-medium">
-                            {c.tipoPago === "ANTICIPO" ? "Anticipo" : "Liquidación"}
-                          </p>
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            c.tipoPago === "ANTICIPO" ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-green-900/30 text-green-400"
-                          }`}>
-                            {c.tipoPago === "ANTICIPO" ? "ANTICIPO" : "LIQUIDACIÓN"}
-                          </span>
-                          {granTotal > 0 && (
-                            <span className="text-gray-600 text-[10px]">{Math.round(c.monto / granTotal * 100)}%</span>
+                {/* ── Filas CxC (anticipo, liquidación y otras) ── */}
+                {[...([cxcAnticipo, cxcLiq].filter(Boolean) as CxC[]), ...cxcOtras].map(c => {
+                  const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
+                  const tieneAjustes = ajustesEntradas.length > 0;
+                  const esEsquema = c.tipoPago === "ANTICIPO" || c.tipoPago === "LIQUIDACION";
+                  return (
+                    <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                      {/* Fila principal */}
+                      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <p className="text-white text-sm font-medium">
+                              {esEsquema ? (c.tipoPago === "ANTICIPO" ? "Anticipo" : "Liquidación") : c.concepto}
+                            </p>
+                            {esEsquema && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                c.tipoPago === "ANTICIPO" ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-green-900/30 text-green-400"
+                              }`}>
+                                {c.tipoPago === "ANTICIPO" ? "ANTICIPO" : "LIQUIDACIÓN"}
+                              </span>
+                            )}
+                            {granTotal > 0 && esEsquema && (
+                              <span className="text-gray-600 text-[10px]">{Math.round(c.monto / granTotal * 100)}%</span>
+                            )}
+                            {tieneAjustes && (
+                              <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
+                                className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
+                                {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-gray-500 text-xs">Fecha: {fmtDate(c.fechaCompromiso)}</p>
+                          {c.montoOriginal && c.montoOriginal !== c.monto && (
+                            <p className="text-gray-600 text-[10px] mt-0.5">
+                              Original: <span className="line-through">{fmt(c.montoOriginal)}</span>
+                            </p>
                           )}
                         </div>
-                        <p className="text-gray-500 text-xs">Fecha: {fmtDate(c.fechaCompromiso)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
-                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                          Recibo
-                        </a>
-                        {c.estado !== "LIQUIDADO" && (
-                          <button onClick={() => eliminarCxC(c.id)}
-                            className="text-red-500/60 hover:text-red-400 text-[10px] border border-red-900/30 hover:border-red-700 px-2 py-1 rounded-lg transition-colors">
-                            ✕
-                          </button>
-                        )}
-                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                          c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
-                          "bg-yellow-900/30 text-yellow-400"
-                        }`}>{c.estado}</span>
-                      </div>
-                    </div>
-                    {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                      <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
-                    )}
-                    {c.estado !== "LIQUIDADO" && (
-                      pagando === c.id ? (
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                          <button onClick={() => registrarPagoCxC(c.id)}
-                            className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
-                            Confirmar
-                          </button>
-                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                        <div className="flex items-center gap-2">
+                          {esEsquema && (
+                            <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
+                              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              Recibo
+                            </a>
+                          )}
+                          {c.estado !== "LIQUIDADO" && (
+                            <>
+                              <button
+                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
+                                title="Ajustar monto"
+                                className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
+                                ✏ Ajustar
+                              </button>
+                              {esEsquema && (
+                                <button onClick={() => eliminarCxC(c.id)}
+                                  className="text-red-500/60 hover:text-red-400 text-[10px] border border-red-900/30 hover:border-red-700 px-2 py-1 rounded-lg transition-colors">
+                                  ✕
+                                </button>
+                              )}
+                            </>
+                          )}
+                          <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
+                            c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
+                            c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
+                            "bg-yellow-900/30 text-yellow-400"
+                          }`}>{c.estado}</span>
                         </div>
-                      ) : (
-                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
-                          className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
-                          + Registrar cobro
-                        </button>
-                      )
-                    )}
-                  </div>
-                ))}
+                      </div>
 
-                {/* Otras CxC (que no son anticipo/liquidación) */}
-                {cxcOtras.map(c => (
-                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-white text-sm font-medium">{c.concepto}</p>
-                        <p className="text-gray-500 text-xs">Fecha: {fmtDate(c.fechaCompromiso)}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <a href={`/api/cuentas-cobrar/${c.id}/recibo`} download
-                          className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-1 rounded-lg transition-colors">
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                          Recibo
-                        </a>
-                        {c.estado !== "LIQUIDADO" && (
-                          <button onClick={() => eliminarCxC(c.id)}
-                            className="text-red-500/60 hover:text-red-400 text-[10px] border border-red-900/30 hover:border-red-700 px-2 py-1 rounded-lg transition-colors">
-                            ✕
-                          </button>
-                        )}
-                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                          c.estado === "PARCIAL" ? "bg-blue-900/50 text-blue-300" :
-                          "bg-yellow-900/30 text-yellow-400"
-                        }`}>{c.estado}</span>
-                      </div>
-                    </div>
-                    {c.estado !== "LIQUIDADO" && (
-                      pagando === c.id ? (
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                          <button onClick={() => registrarPagoCxC(c.id)}
-                            className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
-                            Confirmar
-                          </button>
-                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                      {/* Cobrado parcial */}
+                      {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
+                        <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
+                      )}
+
+                      {/* Inline: ajustar monto */}
+                      {ajustando === c.id && (
+                        <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
+                          <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
+                          <div className="flex gap-2 flex-wrap items-start">
+                            <div>
+                              <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
+                              <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
+                                placeholder="0.00" min="0" step="0.01"
+                                className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
+                            </div>
+                            <div className="flex-1 min-w-[200px]">
+                              <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                              <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                                placeholder="Explica brevemente por qué se ajusta este monto..."
+                                rows={2}
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => ajustarMontoCxC(c.id)}
+                              disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
+                              className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                              Confirmar ajuste
+                            </button>
+                            <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                          </div>
                         </div>
-                      ) : (
-                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
-                          className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
-                          + Registrar cobro
-                        </button>
-                      )
-                    )}
-                  </div>
-                ))}
+                      )}
+
+                      {/* Historial de ajustes */}
+                      {ajusteHistorial === c.id && tieneAjustes && (
+                        <div className="mt-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-3">
+                          <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Historial de ajustes</p>
+                          <div className="space-y-1.5">
+                            {ajustesEntradas.map((a, i) => (
+                              <div key={i} className="flex items-start gap-2 text-xs">
+                                <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                <div className="flex-1">
+                                  <span className="text-red-400 line-through">{fmt(a.de)}</span>
+                                  <span className="text-gray-600 mx-1">→</span>
+                                  <span className="text-white font-semibold">{fmt(a.a)}</span>
+                                  <p className="text-gray-500 text-[10px] mt-0.5">{a.motivo}</p>
+                                  <p className="text-gray-700 text-[10px]">por {a.usuario}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Registrar cobro */}
+                      {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
+                        pagando === c.id ? (
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                              placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                            <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                            <button onClick={() => registrarPagoCxC(c.id)}
+                              className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar</button>
+                            <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); }}
+                            className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
+                            + Registrar cobro
+                          </button>
+                        )
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             );
           })()}
@@ -4005,44 +4076,118 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por pagar</p>
             ) : proyecto.cuentasPagar.length > 0 ? (
               <>
-              {proyecto.cuentasPagar.map(c => (
-                <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="text-white text-sm font-medium">{c.concepto}</p>
-                      <p className="text-gray-500 text-xs">{c.tipoAcreedor} · Vence: {fmtDate(c.fechaCompromiso)}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                        c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                        "bg-yellow-900/30 text-yellow-400"
-                      }`}>{c.estado}</span>
-                    </div>
-                  </div>
-                  {c.estado !== "LIQUIDADO" && (
-                    pagando === c.id ? (
-                      <div className="flex gap-2 mt-2">
-                        <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                          placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                        <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                          className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                        <button onClick={() => registrarPagoCxP(c.id)}
-                          className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
-                          Confirmar pago
-                        </button>
-                        <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+              {proyecto.cuentasPagar.map(c => {
+                const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
+                const tieneAjustes = ajustesEntradas.length > 0;
+                return (
+                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-white text-sm font-medium">{c.concepto}</p>
+                          {tieneAjustes && (
+                            <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
+                              className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
+                              {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-gray-500 text-xs">{c.tipoAcreedor} · Vence: {fmtDate(c.fechaCompromiso)}</p>
+                        {c.montoOriginal && c.montoOriginal !== c.monto && (
+                          <p className="text-gray-600 text-[10px] mt-0.5">
+                            Original: <span className="line-through">{fmt(c.montoOriginal)}</span>
+                          </p>
+                        )}
                       </div>
-                    ) : (
-                      <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); }}
-                        className="text-xs text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-3 py-1 rounded-lg transition-colors">
-                        + Registrar pago
-                      </button>
-                    )
-                  )}
-                </div>
-              ))}
+                      <div className="flex items-center gap-2">
+                        {c.estado !== "LIQUIDADO" && (
+                          <button
+                            onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
+                            className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
+                            ✏ Ajustar
+                          </button>
+                        )}
+                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
+                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
+                          "bg-yellow-900/30 text-yellow-400"
+                        }`}>{c.estado}</span>
+                      </div>
+                    </div>
+
+                    {/* Inline: ajustar monto */}
+                    {ajustando === c.id && (
+                      <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
+                        <div className="flex gap-2 flex-wrap items-start">
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
+                            <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
+                              placeholder="0.00" min="0" step="0.01"
+                              className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
+                          </div>
+                          <div className="flex-1 min-w-[200px]">
+                            <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                            <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                              placeholder="Explica brevemente por qué se ajusta este monto..."
+                              rows={2}
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => ajustarMontoCxP(c.id)}
+                            disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
+                            className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                            Confirmar ajuste
+                          </button>
+                          <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Historial de ajustes */}
+                    {ajusteHistorial === c.id && tieneAjustes && (
+                      <div className="mt-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Historial de ajustes</p>
+                        <div className="space-y-1.5">
+                          {ajustesEntradas.map((a, i) => (
+                            <div key={i} className="flex items-start gap-2 text-xs">
+                              <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                              <div className="flex-1">
+                                <span className="text-red-400 line-through">{fmt(a.de)}</span>
+                                <span className="text-gray-600 mx-1">→</span>
+                                <span className="text-white font-semibold">{fmt(a.a)}</span>
+                                <p className="text-gray-500 text-[10px] mt-0.5">{a.motivo}</p>
+                                <p className="text-gray-700 text-[10px]">por {a.usuario}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
+                      pagando === c.id ? (
+                        <div className="flex gap-2 mt-2">
+                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                          <button onClick={() => registrarPagoCxP(c.id)}
+                            className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
+                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); }}
+                          className="text-xs text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-3 py-1 rounded-lg transition-colors">
+                          + Registrar pago
+                        </button>
+                      )
+                    )}
+                  </div>
+                );
+              })}
               </>
             ) : null}
           </div>

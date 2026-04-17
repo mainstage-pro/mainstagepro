@@ -724,6 +724,8 @@ model CuentaCobrar {
   movimientoId    String?  @unique
   movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?
+  montoOriginal   Float?   // monto al momento de la creación, antes de ajustes
+  ajustesLog      String?  // JSON: [{fecha, de, a, motivo, usuario}]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -749,6 +751,8 @@ model CuentaPagar {
   movimientoId    String?  @unique
   movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?
+  montoOriginal   Float?   // monto al momento de la creación, antes de ajustes
+  ajustesLog      String?  // JSON: [{fecha, de, a, motivo, usuario}]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

@@ -582,6 +582,13 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "camposCliente" TEXT`);
     results.push("✅ tratos — nuevos campos venue/desmontaje");
 
+    // 26. Campos de ajuste en CxC y CxP
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cuentas_cobrar" ADD COLUMN IF NOT EXISTS "montoOriginal" DOUBLE PRECISION`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cuentas_cobrar" ADD COLUMN IF NOT EXISTS "ajustesLog" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cuentas_pagar" ADD COLUMN IF NOT EXISTS "montoOriginal" DOUBLE PRECISION`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "cuentas_pagar" ADD COLUMN IF NOT EXISTS "ajustesLog" TEXT`);
+    results.push("✅ cxc/cxp — campos de ajuste de monto");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
