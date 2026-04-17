@@ -14,7 +14,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cliente: true,
       trato: { select: { id: true, tipoEvento: true, etapa: true } },
       creadaPor: { select: { name: true } },
-      lineas: { orderBy: { orden: "asc" } },
+      lineas: {
+        orderBy: { orden: "asc" },
+        include: { equipo: { select: { imagenUrl: true } } },
+      },
       proyecto: { select: { id: true, numeroProyecto: true, estado: true } },
     },
   });

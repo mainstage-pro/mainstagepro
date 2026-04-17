@@ -21,6 +21,7 @@ interface Linea {
   subtotal: number;
   esIncluido: boolean;
   notas: string | null;
+  equipo?: { imagenUrl: string | null } | null;
 }
 
 interface OpcionHermana {
@@ -643,9 +644,17 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                     )}
                     {lins.map((l) => (
                       <div key={l.id} className={`flex justify-between items-center px-4 py-2 border-b border-[#111] last:border-0 text-sm ${l.esIncluido ? "opacity-50" : ""}`}>
-                        <div>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {l.equipo?.imagenUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={l.equipo.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-75" />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
+                          )}
+                          <div>
                           <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.descripcion}</span>
                           {l.marca && <span className="text-gray-500 text-xs ml-2">{l.marca}</span>}
+                          </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400 text-xs">
                           {!l.esIncluido && <span>{l.cantidad} × {l.dias}d · {formatCurrency(l.precioUnitario)}</span>}

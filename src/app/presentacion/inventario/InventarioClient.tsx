@@ -8,6 +8,7 @@ const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20con
 interface EquipoData {
   id: string; descripcion: string; marca: string | null;
   modelo: string | null; cantidadTotal: number; estado: string; notas: string | null;
+  imagenUrl?: string | null;
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
 interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number } }
@@ -92,6 +93,9 @@ const CAT_HERO_IMGS: Record<string, string> = {
 };
 
 function getEqImg(eq: EquipoData): string | null {
+  // DB image takes absolute priority
+  if (eq.imagenUrl) return eq.imagenUrl;
+  // Fallback to hardcoded map (covers equipment without DB image yet)
   if (eq.modelo) {
     for (const [k, v] of Object.entries(MODELO_IMGS)) {
       if (eq.modelo.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(eq.modelo.toLowerCase())) return v;
@@ -199,9 +203,15 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
         </div>
         {/* Info */}
         <div className="p-5 flex-1 flex flex-col">
-          <p className="text-white font-medium text-sm leading-snug mb-1.5 line-clamp-2">{eq.descripcion}</p>
-          {eq.marca && <p className="text-white/35 text-xs">{eq.marca}{eq.modelo ? ` · ${eq.modelo}` : ""}</p>}
-          {eq.notas && <p className="text-white/25 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
+          {/* Primary name: Marca + Modelo, or fall back to descripcion */}
+          <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">
+            {[eq.marca, eq.modelo].filter(Boolean).join(" ") || eq.descripcion}
+          </p>
+          {/* Secondary: descripcion (only when we have a marca/modelo to show as primary) */}
+          {(eq.marca || eq.modelo) && (
+            <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>
+          )}
+          {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
         </div>
       </div>
     </R>
