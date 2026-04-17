@@ -28,12 +28,20 @@ interface NavSection {
 }
 
 const NAV: NavSection[] = [
+  // ── CEO DASHBOARD (standalone, sin encabezado de sección) ─────────────────
+  {
+    key: "seccion-top",
+    section: "",
+    items: [
+      { key: "dashboard", label: "CEO Dashboard", href: "/dashboard" },
+    ],
+  },
+
   // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
   {
     key: "seccion-direccion",
     section: "DIRECCIÓN",
     items: [
-      { key: "dashboard", label: "Dashboard", href: "/dashboard" },
       { key: "agenda", label: "Mi agenda", href: "/agenda" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
@@ -46,6 +54,83 @@ const NAV: NavSection[] = [
       },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
+    ],
+  },
+
+  // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
+  {
+    key: "seccion-administracion",
+    section: "ADMINISTRACIÓN",
+    items: [
+      {
+        key: "finanzas",
+        label: "Finanzas",
+        children: [
+          { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
+          { key: "finanzas-cobros-pagos", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
+          { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
+          { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
+          { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
+          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
+          { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad" },
+          { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
+          { key: "finanzas-hervam", label: "Estructura de Capital", href: "/finanzas/hervam" },
+        ],
+      },
+      {
+        key: "rrhh",
+        label: "Recursos Humanos",
+        children: [
+          { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
+          { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
+          { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
+          { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
+          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
+        ],
+      },
+      {
+        key: "ats",
+        label: "Reclutamiento",
+        children: [
+          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
+          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
+        ],
+      },
+      {
+        key: "socios",
+        label: "Socios de Activos",
+        children: [
+          { key: "socios-lista", label: "Socios", href: "/socios" },
+        ],
+      },
+    ],
+  },
+
+  // ── MARKETING ──────────────────────────────────────────────────────────────
+  {
+    key: "seccion-marketing",
+    section: "MARKETING",
+    items: [
+      {
+        key: "contenido-organico",
+        label: "Contenido orgánico",
+        children: [
+          { key: "mkt-calendario", label: "Calendario", href: "/marketing/calendario" },
+          { key: "mkt-contenidos", label: "Tipos de contenido", href: "/marketing/contenidos" },
+          { key: "mkt-reporte", label: "Reporte", href: "/marketing/reporte" },
+        ],
+      },
+      {
+        key: "publicidad",
+        label: "Publicidad",
+        children: [
+          { key: "mkt-campanas-cal", label: "Calendario", href: "/marketing/campanas/calendario" },
+          { key: "mkt-campanas", label: "Tipos de campaña", href: "/marketing/campanas" },
+          { key: "mkt-meta-ads", label: "Meta Ads", href: "/marketing/meta-ads" },
+        ],
+      },
     ],
   },
 
@@ -93,87 +178,14 @@ const NAV: NavSection[] = [
           { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
         ],
       },
-      { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
-      { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
-      { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
-      { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
-    ],
-  },
-
-  // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
-  {
-    key: "seccion-administracion",
-    section: "ADMINISTRACIÓN",
-    items: [
       {
-        key: "finanzas",
-        label: "Finanzas",
+        key: "catalogo",
+        label: "Catálogo",
         children: [
-          { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
-          { key: "finanzas-cobros-pagos", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
-          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
-          { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
-          { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
-          { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
-          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
-          { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad" },
-          { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
-          { key: "finanzas-hervam", label: "Estructura de Capital", href: "/finanzas/hervam" },
-        ],
-      },
-      {
-        key: "rrhh",
-        label: "Recursos Humanos",
-        children: [
-          { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
-          { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
-          { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
-          { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
-          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
-          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
-        ],
-      },
-      {
-        key: "ats",
-        label: "Reclutamiento",
-        children: [
-          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
-        ],
-      },
-    ],
-  },
-
-  // ── SOCIOS DE ACTIVOS ──────────────────────────────────────────────────────
-  {
-    key: "seccion-socios",
-    section: "SOCIOS DE ACTIVOS",
-    items: [
-      { key: "socios-lista", label: "Socios", href: "/socios" },
-    ],
-  },
-
-  // ── MARKETING ──────────────────────────────────────────────────────────────
-  {
-    key: "seccion-marketing",
-    section: "MARKETING",
-    items: [
-      {
-        key: "contenido-organico",
-        label: "Contenido orgánico",
-        children: [
-          { key: "mkt-calendario", label: "Calendario", href: "/marketing/calendario" },
-          { key: "mkt-contenidos", label: "Tipos de contenido", href: "/marketing/contenidos" },
-          { key: "mkt-reporte", label: "Reporte", href: "/marketing/reporte" },
-        ],
-      },
-      {
-        key: "publicidad",
-        label: "Publicidad",
-        children: [
-          { key: "mkt-campanas-cal", label: "Calendario", href: "/marketing/campanas/calendario" },
-          { key: "mkt-campanas", label: "Tipos de campaña", href: "/marketing/campanas" },
-          { key: "mkt-meta-ads", label: "Meta Ads", href: "/marketing/meta-ads" },
+          { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
+          { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
+          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
+          { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
         ],
       },
     ],
@@ -211,10 +223,12 @@ function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
   if (pathname.startsWith("/ventas")) open.add("comisiones");
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
-  if (pathname.startsWith("/rrhh")) { open.add("rrhh"); }
+  if (pathname.startsWith("/rrhh")) open.add("rrhh");
   if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos")) open.add("ats");
+  if (pathname.startsWith("/socios")) open.add("socios");
   if (pathname.startsWith("/calendario")) open.add("calendario");
-  if (pathname.startsWith("/inventario") || pathname.startsWith("/inventario/bodega/templates")) open.add("inventario");
+  if (pathname.startsWith("/inventario")) open.add("inventario");
+  if (pathname.startsWith("/catalogo")) open.add("catalogo");
   if (pathname.startsWith("/marketing/campanas") || pathname.startsWith("/marketing/meta-ads")) open.add("publicidad");
   if (pathname.startsWith("/marketing")) open.add("contenido-organico");
   return open;
@@ -265,10 +279,12 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={section.key} className="mb-4">
-              <p className="text-[#3a3a3a] text-[11px] font-bold uppercase tracking-widest px-3 mb-1.5">
-                {sectionLabel}
-              </p>
+            <div key={section.key} className={section.section ? "mb-4" : "mb-2 pb-2 border-b border-[#1a1a1a]"}>
+              {section.section && (
+                <p className="text-[#3a3a3a] text-[11px] font-bold uppercase tracking-widest px-3 mb-1.5">
+                  {sectionLabel}
+                </p>
+              )}
               <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const itemLabel = resolveLabel(item.key, item.label, labels);
