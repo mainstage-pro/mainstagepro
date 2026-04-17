@@ -413,191 +413,169 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <span className="text-gray-400 text-sm font-mono">{cot.numeroCotizacion}</span>
-              <CopyButton value={cot.numeroCotizacion} size="xs" />
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+
+        {/* Fila 1: metadata */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex items-center gap-1.5">
+            <span className="text-gray-500 text-xs font-mono">{cot.numeroCotizacion}</span>
+            <CopyButton value={cot.numeroCotizacion} size="xs" />
+          </span>
+          {cot.grupoId && (
+            <span className="text-[11px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 px-2 py-0.5 rounded-full">
+              Opción {cot.opcionLetra}
             </span>
-            {cot.grupoId && (
-              <span className="text-xs font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 px-2 py-0.5 rounded-full">
-                Opción {cot.opcionLetra}
-              </span>
-            )}
-            <span className="text-gray-500 text-sm">v{cot.version}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[cot.estado] || "bg-gray-700 text-gray-300"}`}>
-              {cot.estado}
-            </span>
-          </div>
-          <h1 className="text-2xl font-bold text-white">{cot.nombreEvento || "Sin nombre"}</h1>
-          <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
-            {cot.cliente.nombre}{cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}
-          </Link>
+          )}
+          <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${ESTADO_COLORS[cot.estado] || "bg-gray-700 text-gray-300"}`}>
+            {cot.estado}
+          </span>
+          {cot.creadaPor && (
+            <span className="text-gray-600 text-xs">· {cot.creadaPor.name}</span>
+          )}
         </div>
-        <div className="sm:text-right space-y-2 shrink-0">
-          <p className="text-2xl font-bold text-white">{formatCurrency(cot.granTotal)}</p>
-          {cot.aplicaIva && <p className="text-gray-400 text-xs">IVA incluido</p>}
-          <p className={`text-sm font-medium ${semaforoColor}`}>
-            {semaforo} · {formatPct(pctVivo)} margen
-          </p>
-          <div className="flex gap-2 flex-wrap">
-            {cot.estado === "BORRADOR" && (
-              <Link
-                href={`/cotizaciones/${cot.id}/editar`}
-                className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                Editar
-              </Link>
-            )}
-            {siguienteLetra && opciones.length < 5 && (
-              <button
-                onClick={crearNuevaOpcion}
-                disabled={creandoOpcion}
-                className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B] text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {creandoOpcion ? "Creando..." : `+ Opción ${siguienteLetra}`}
-              </button>
-            )}
-            <button
-              onClick={duplicar}
-              disabled={duplicando}
-              className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {duplicando ? "Duplicando..." : "Duplicar"}
-            </button>
-            <button
-              onClick={guardarComoPlantilla}
-              disabled={guardandoPlantilla}
-              title="Guardar esta cotización como plantilla reutilizable"
-              className="inline-block bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {guardandoPlantilla ? "Guardando..." : "💾 Plantilla"}
-            </button>
-            {cot.estado === "APROBADA" && !cot.proyecto && (
-              <button
-                onClick={aprobar}
-                disabled={aprobando}
-                className="bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
-                {aprobando ? "Creando proyecto..." : "✓ Crear proyecto"}
-              </button>
-            )}
-            <a
-              href={`/presentacion/${cot.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/40 text-[#B3985B] text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+
+        {/* Fila 2: título + total */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
+            <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
+              {cot.cliente.nombre}{cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}
+            </Link>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="text-2xl font-bold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
+            {cot.aplicaIva && <p className="text-gray-500 text-[11px]">IVA incluido</p>}
+            <p className={`text-sm font-medium ${semaforoColor}`}>{semaforo} · {formatPct(pctVivo)} margen</p>
+          </div>
+        </div>
+
+        {/* Fila 3: acciones principales */}
+        <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-[#1a1a1a]">
+          {cot.estado === "BORRADOR" && (
+            <Link href={`/cotizaciones/${cot.id}/editar`}
+              className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+            </Link>
+          )}
+          <a href={`/presentacion/${cot.id}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+            Presentación
+          </a>
+          <button onClick={sharePdf} disabled={sharingPdf}
+            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            {sharingPdf ? (
+              <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
               </svg>
-              Ver presentación
-            </a>
-            <button
-              onClick={sharePdf}
-              disabled={sharingPdf}
-              className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              {sharingPdf ? (
-                <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              ) : (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8M16 6l-4-4-4 4M12 2v13"/>
+            )}
+            {sharingPdf ? "Descargando..." : "Descargar PDF"}
+          </button>
+          {cot.cliente.telefono && (() => {
+            const tel = cot.cliente.telefono.replace(/\D/g, "");
+            const pdfLink = `${typeof window !== "undefined" ? window.location.origin : ""}/api/cotizaciones/${cot.id}/pdf`;
+            const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}: ${pdfLink}`;
+            return (
+              <a href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
                 </svg>
-              )}
-              {sharingPdf ? "Preparando..." : "Descargar / Compartir PDF"}
+                WhatsApp
+              </a>
+            );
+          })()}
+          {cot.estado === "APROBADA" && !cot.proyecto && (
+            <button onClick={aprobar} disabled={aprobando}
+              className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              {aprobando ? "Creando..." : "✓ Crear proyecto"}
             </button>
-            {/* WhatsApp: compartir PDF */}
-            {cot.cliente.telefono && (() => {
-              const tel = cot.cliente.telefono.replace(/\D/g, "");
-              const pdfLink = `${typeof window !== "undefined" ? window.location.origin : ""}/api/cotizaciones/${cot.id}/pdf`;
-              const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}: ${pdfLink}`;
-              return (
-                <a
-                  href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                  title="Enviar PDF por WhatsApp al cliente"
-                >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                  </svg>
-                  WhatsApp
-                </a>
-              );
-            })()}
-          </div>
-
-          {/* Link de aprobación */}
-          {cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (
-            <div className="mt-2">
-              {!linkAprobacion && !cot.aprobacionToken ? (
-                <button
-                  onClick={generarLinkAprobacion}
-                  disabled={generandoLink}
-                  className="w-full flex items-center justify-center gap-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-sm px-4 py-2 rounded-lg transition-colors"
-                >
-                  {generandoLink ? (
-                    <span className="w-3.5 h-3.5 border-2 border-gray-500/30 border-t-gray-400 rounded-full animate-spin" />
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-                      <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-                    </svg>
-                  )}
-                  {generandoLink ? "Generando..." : "Generar link de aprobación"}
-                </button>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {(linkAprobacion || cot.aprobacionToken) && (
-                    <div className="flex gap-2">
-                      <input
-                        readOnly
-                        value={linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`}
-                        className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-gray-400 text-xs font-mono truncate"
-                      />
-                      <button
-                        onClick={copiarLink}
-                        className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-2 rounded-lg transition-colors"
-                      >
-                        {linkCopiado ? "✓ Copiado" : "Copiar"}
-                      </button>
-                    </div>
-                  )}
-                  {/* WhatsApp con link de aprobación */}
-                  {cot.cliente.telefono && (linkAprobacion || cot.aprobacionToken) && (() => {
-                    const tel = cot.cliente.telefono!.replace(/\D/g, "");
-                    const url = linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`;
-                    const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}.\n\nPuedes revisarla y aprobarla desde este link: ${url}`;
-                    return (
-                      <a
-                        href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
-                        target="_blank" rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                        </svg>
-                        Enviar link por WhatsApp
-                      </a>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Badge cuando ya está aprobada por el cliente */}
-          {cot.estado === "APROBADA" && cot.aprobacionNombre && (
-            <div className="mt-2 flex items-center gap-2 bg-green-900/20 border border-green-700/30 rounded-lg px-3 py-2">
-              <span className="text-green-400 text-sm">✓</span>
-              <span className="text-green-300 text-xs">Aprobada por {cot.aprobacionNombre}</span>
-            </div>
           )}
         </div>
+
+        {/* Fila 4: acciones secundarias */}
+        <div className="flex items-center gap-4 flex-wrap">
+          {siguienteLetra && opciones.length < 5 && (
+            <button onClick={crearNuevaOpcion} disabled={creandoOpcion}
+              className="flex items-center gap-1 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+              <span className="text-sm leading-none">+</span>
+              {creandoOpcion ? "Creando..." : `Opción ${siguienteLetra}`}
+            </button>
+          )}
+          <button onClick={duplicar} disabled={duplicando}
+            className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-40">
+            {duplicando ? "Duplicando..." : "Duplicar"}
+          </button>
+          <button onClick={guardarComoPlantilla} disabled={guardandoPlantilla}
+            className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors disabled:opacity-40">
+            {guardandoPlantilla ? "Guardando..." : "Guardar como plantilla"}
+          </button>
+        </div>
+
+        {/* Link de aprobación */}
+        {cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (
+          <div className="border-t border-[#1a1a1a] pt-3">
+            {!linkAprobacion && !cot.aprobacionToken ? (
+              <button onClick={generarLinkAprobacion} disabled={generandoLink}
+                className="flex items-center gap-2 text-gray-400 hover:text-white text-xs transition-colors">
+                {generandoLink ? (
+                  <span className="w-3 h-3 border border-gray-500/30 border-t-gray-400 rounded-full animate-spin" />
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                  </svg>
+                )}
+                {generandoLink ? "Generando..." : "Generar link de aprobación para el cliente"}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                {(linkAprobacion || cot.aprobacionToken) && (
+                  <div className="flex gap-2">
+                    <input readOnly
+                      value={linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`}
+                      className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-gray-400 text-xs font-mono truncate" />
+                    <button onClick={copiarLink}
+                      className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-2 rounded-lg transition-colors">
+                      {linkCopiado ? "✓ Copiado" : "Copiar"}
+                    </button>
+                  </div>
+                )}
+                {cot.cliente.telefono && (linkAprobacion || cot.aprobacionToken) && (() => {
+                  const tel = cot.cliente.telefono!.replace(/\D/g, "");
+                  const url = linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`;
+                  const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}.\n\nPuedes revisarla y aprobarla desde este link: ${url}`;
+                  return (
+                    <a href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-green-400 hover:text-green-300 text-xs transition-colors">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                      </svg>
+                      Enviar link por WhatsApp al cliente
+                    </a>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Badge aprobada */}
+        {cot.estado === "APROBADA" && cot.aprobacionNombre && (
+          <div className="flex items-center gap-2 bg-green-900/20 border border-green-700/30 rounded-lg px-3 py-2">
+            <span className="text-green-400 text-sm">✓</span>
+            <span className="text-green-300 text-xs">Aprobada por {cot.aprobacionNombre}</span>
+          </div>
+        )}
       </div>
 
       {/* Banner proyecto creado */}
@@ -634,11 +612,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         {/* Columna principal */}
         <div className="md:col-span-2 space-y-4">
           {/* Info evento */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 grid grid-cols-2 gap-3 text-sm">
-            <div><p className="text-gray-500 text-xs mb-0.5">Fecha del evento</p><p className="text-white">{fmtDate(cot.fechaEvento)}</p></div>
-            <div><p className="text-gray-500 text-xs mb-0.5">Lugar</p><p className="text-white">{cot.lugarEvento || "—"}</p></div>
-            <div><p className="text-gray-500 text-xs mb-0.5">Tipo de evento</p><p className="text-white">{cot.tipoEvento || "—"}</p></div>
-            <div><p className="text-gray-500 text-xs mb-0.5">Creado por</p><p className="text-white">{cot.creadaPor?.name || "—"}</p></div>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+            <div><p className="text-gray-500 text-xs mb-0.5">Fecha</p><p className="text-white">{fmtDate(cot.fechaEvento)}</p></div>
+            <div><p className="text-gray-500 text-xs mb-0.5">Tipo</p><p className="text-white">{cot.tipoEvento || "—"}</p></div>
+            <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Lugar</p><p className="text-white">{cot.lugarEvento || "—"}</p></div>
           </div>
 
           {/* Equipos propios — subsecciones por categoría */}
@@ -905,7 +882,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">🤝</span>
-                    <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                    <p className="text-white text-sm font-semibold whitespace-nowrap">Mainstage Trade</p>
                     {trade.activo && <span className="text-[10px] bg-[#B3985B]/20 text-[#B3985B] px-2 py-0.5 rounded-full font-medium">Activo — {trade.pct}% desc.</span>}
                   </div>
                   <button
