@@ -42,6 +42,7 @@ const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "DIRECCIÓN",
     items: [
+      { key: "reportes", label: "Reportes semanales", href: "/reportes" },
       { key: "agenda", label: "Mi agenda", href: "/agenda" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
@@ -235,7 +236,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/agenda") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
+  if (pathname.startsWith("/reportes") || pathname.startsWith("/agenda") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/operaciones") || pathname.startsWith("/socios")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas")) return "seccion-ventas";

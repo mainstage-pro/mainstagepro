@@ -557,6 +557,24 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ socios_reportes");
 
+    // 24. reportes_semanales
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "reportes_semanales" (
+        "id"          TEXT NOT NULL,
+        "semana"      TIMESTAMP(3) NOT NULL,
+        "fechaInicio" TIMESTAMP(3) NOT NULL,
+        "fechaFin"    TIMESTAMP(3) NOT NULL,
+        "datos"       TEXT NOT NULL,
+        "score"       INTEGER NOT NULL DEFAULT 0,
+        "notas"       TEXT,
+        "generadoEn"  TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt"   TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "reportes_semanales_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "reportes_semanales_semana_key" UNIQUE ("semana")
+      );
+    `);
+    results.push("✅ reportes_semanales");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

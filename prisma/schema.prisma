@@ -2000,3 +2000,20 @@ model SocioReporte {
   @@unique([socioId, mes, anio])
   @@map("socios_reportes")
 }
+
+// ─── REPORTES SEMANALES ───────────────────────────────────────────────────────
+
+model ReporteSemanal {
+  id          String   @id @default(cuid())
+  semana      DateTime // Lunes de la semana (date only, UTC midnight)
+  fechaInicio DateTime
+  fechaFin    DateTime
+  datos       String   // JSON con todas las métricas
+  score       Int      @default(0) // 0-100
+  notas       String?  // Anotaciones del CEO
+  generadoEn  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([semana])
+  @@map("reportes_semanales")
+}
