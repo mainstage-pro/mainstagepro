@@ -227,6 +227,25 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ equipos_proveedor.precio_mainstage");
 
+    // 12. columnas faltantes en tecnicos
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "habilidades" TEXT;`);
+    results.push("✅ tecnicos.habilidades");
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "comentarios" TEXT;`);
+    results.push("✅ tecnicos.comentarios");
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "zona_habitual" TEXT;`);
+    results.push("✅ tecnicos.zona_habitual");
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "evaluacion_promedio" DOUBLE PRECISION;`);
+    results.push("✅ tecnicos.evaluacion_promedio");
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "datos_fiscales" TEXT;`);
+    results.push("✅ tecnicos.datos_fiscales");
+
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tecnicos" ADD COLUMN IF NOT EXISTS "rol_id" TEXT;`);
+    results.push("✅ tecnicos.rol_id");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
