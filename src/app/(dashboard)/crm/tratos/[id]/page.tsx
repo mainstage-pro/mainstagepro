@@ -60,6 +60,10 @@ interface Trato {
   tipoProspecto: string;
   nurturingData: string | null;
   ventanaMontajeFin: string | null;
+  horaTerminoMontaje: string | null;
+  contactoVenueNombre: string | null;
+  contactoVenueTelefono: string | null;
+  camposCliente: string | null;
   cliente: {
     id: string; nombre: string; empresa: string | null;
     tipoCliente: string; clasificacion: string;
@@ -608,6 +612,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     duracionMontajeHrs: "",
     ventanaMontajeInicio: "",
     ventanaMontajeFin: "",
+    horaTerminoMontaje: "",
+    contactoVenueNombre: "",
+    contactoVenueTelefono: "",
   });
 
   // Track whether initial load is done to avoid auto-saving on first render
@@ -731,6 +738,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             duracionMontajeHrs:     t.duracionMontajeHrs?.toString() ?? "",
             ventanaMontajeInicio:   t.ventanaMontajeInicio ?? "",
             ventanaMontajeFin:      t.ventanaMontajeFin ?? "",
+            horaTerminoMontaje:     t.horaTerminoMontaje ?? "",
+            contactoVenueNombre:    t.contactoVenueNombre ?? "",
+            contactoVenueTelefono:  t.contactoVenueTelefono ?? "",
           }));
         }
         setLoading(false);
@@ -796,11 +806,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       continuarPor: discForm.continuarPor || null,
       notas: discForm.notas || null,
       proximaAccion: discForm.proximaAccion || null,
-      horaInicioEvento: discForm.horaInicioEvento || null,
-      horaFinEvento: discForm.horaFinEvento || null,
-      duracionMontajeHrs: discForm.duracionMontajeHrs ? parseFloat(discForm.duracionMontajeHrs) : null,
+      horaInicioEvento:     discForm.horaInicioEvento || null,
+      horaFinEvento:        discForm.horaFinEvento || null,
+      duracionMontajeHrs:   discForm.duracionMontajeHrs ? parseFloat(discForm.duracionMontajeHrs) : null,
       ventanaMontajeInicio: discForm.ventanaMontajeInicio || null,
-      ventanaMontajeFin: discForm.ventanaMontajeFin || null,
+      ventanaMontajeFin:    discForm.ventanaMontajeFin || null,
+      horaTerminoMontaje:   discForm.horaTerminoMontaje || null,
+      contactoVenueNombre:  discForm.contactoVenueNombre || null,
+      contactoVenueTelefono:discForm.contactoVenueTelefono || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
       ideasReferencias: isRenta
         ? JSON.stringify({
@@ -856,6 +869,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         duracionMontajeHrs: form.duracionMontajeHrs ? parseFloat(form.duracionMontajeHrs) : null,
         ventanaMontajeInicio: form.ventanaMontajeInicio || null,
         ventanaMontajeFin: form.ventanaMontajeFin || null,
+        horaTerminoMontaje: form.horaTerminoMontaje || null,
+        contactoVenueNombre: form.contactoVenueNombre || null,
+        contactoVenueTelefono: form.contactoVenueTelefono || null,
         serviciosInteres: JSON.stringify(form.serviciosInteres),
         ideasReferencias: isRenta
           ? JSON.stringify({
@@ -1700,19 +1716,84 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               {/* Horarios del evento */}
-              <div className="col-span-2">
-                <label className="text-xs text-gray-400 block mb-2">Horarios del evento</label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500 block mb-1">Inicio del evento</label>
-                    <TimePicker value={discForm.horaInicioEvento} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Hora inicio" />
-                  </div>
-                  <span className="text-gray-600 text-sm pt-4">→</span>
-                  <div className="flex-1">
-                    <label className="text-[10px] text-gray-500 block mb-1">Fin del evento</label>
-                    <TimePicker value={discForm.horaFinEvento} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Hora fin" />
-                  </div>
-                </div>
+              <div className="col-span-2 space-y-3">
+                {(() => {
+                  const camposCliente: string[] = trato?.camposCliente ? JSON.parse(trato.camposCliente) : [];
+                  const Badge = ({ campo }: { campo: string }) =>
+                    camposCliente.includes(campo)
+                      ? <span className="ml-1.5 text-[9px] bg-blue-900/30 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded font-semibold">cliente</span>
+                      : null;
+                  return (
+                    <>
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-2">
+                          Horarios del evento
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Inicio del evento <Badge campo="horaInicioEvento" />
+                            </label>
+                            <TimePicker value={discForm.horaInicioEvento} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Hora inicio" />
+                          </div>
+                          <span className="text-gray-600 text-sm pt-4">→</span>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Fin del evento <Badge campo="horaFinEvento" />
+                            </label>
+                            <TimePicker value={discForm.horaFinEvento} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Hora fin" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs text-gray-400 block mb-2">Ventana de montaje</label>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Primer acceso <Badge campo="ventanaMontajeInicio" />
+                            </label>
+                            <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
+                          </div>
+                          <span className="text-gray-600 text-sm pt-4">→</span>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Límite montaje <Badge campo="ventanaMontajeFin" />
+                            </label>
+                            <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Salida desmontaje <Badge campo="horaTerminoMontaje" />
+                            </label>
+                            <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                            Coordinador del venue <Badge campo="contactoVenueNombre" />
+                          </label>
+                          <input value={discForm.contactoVenueNombre}
+                            onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
+                            placeholder="Nombre del contacto"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                            Teléfono coordinador <Badge campo="contactoVenueTelefono" />
+                          </label>
+                          <input value={discForm.contactoVenueTelefono}
+                            onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}
+                            placeholder="55 1234 5678"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
 

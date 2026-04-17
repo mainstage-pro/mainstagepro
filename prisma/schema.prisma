@@ -125,6 +125,12 @@ model Trato {
   // ── Logística del venue ──────────────────────────────────────────────────
   ventanaMontajeInicio  String?  // ej: "08:00" — hora más temprana de acceso al venue
   ventanaMontajeFin     String?  // ej: "14:00" — hora límite para terminar montaje
+  horaTerminoMontaje    String?  // hora en que debe concluir el desmontaje / salida del venue
+  // ── Contacto del venue ───────────────────────────────────────────────────
+  contactoVenueNombre   String?  // nombre del coordinador / encargado del venue
+  contactoVenueTelefono String?  // teléfono del coordinador del venue
+  // ── Origen de campos (para saber quién capturó qué) ──────────────────────
+  camposCliente         String?  // JSON array de IDs de campos llenados por el cliente
   // ─────────────────────────────────────────────────────────────────────────
 
   scoutingData        String?  // JSON: venue scouting form data

@@ -295,16 +295,77 @@ const FORM_RIDER_DIRECTO: Seccion[] = [
   },
 ];
 
+// ─── Sección compartida de horarios y contacto del venue ─────────────────────
+const SECCION_HORARIOS_VENUE: Seccion = {
+  titulo: "Horarios y acceso al venue",
+  preguntas: [
+    {
+      id: "horaInicioEvento",
+      label: "Hora de inicio del evento",
+      tipo: "text",
+      placeholder: "Ej: 20:00",
+      hint: "Hora en que comienza oficialmente el evento para los invitados",
+    },
+    {
+      id: "horaFinEvento",
+      label: "Hora de fin del evento",
+      tipo: "text",
+      placeholder: "Ej: 01:00 (del día siguiente)",
+    },
+    {
+      id: "ventanaMontajeInicio",
+      label: "Primera hora de acceso al venue para montaje",
+      tipo: "text",
+      placeholder: "Ej: 08:00",
+      hint: "¿Desde qué hora nos permiten entrar a instalar?",
+    },
+    {
+      id: "ventanaMontajeFin",
+      label: "Hora límite para terminar el montaje",
+      tipo: "text",
+      placeholder: "Ej: 17:00",
+      hint: "Hora máxima en que debemos tener todo listo antes de que lleguen los invitados",
+    },
+    {
+      id: "horaTerminoMontaje",
+      label: "¿A qué hora deben salir del venue? (desmontaje)",
+      tipo: "text",
+      placeholder: "Ej: 03:00 hrs",
+      hint: "Hora límite para tener el equipo fuera del venue",
+    },
+    {
+      id: "contactoVenueNombre",
+      label: "Nombre del coordinador del venue",
+      tipo: "text",
+      placeholder: "Ej: Ana García",
+      hint: "Persona a quien contactar el día del evento para acceso y logística",
+    },
+    {
+      id: "contactoVenueTelefono",
+      label: "Teléfono del coordinador del venue",
+      tipo: "text",
+      placeholder: "Ej: 55 1234 5678",
+    },
+  ],
+};
+
 function getForm(tipoServicio: string | null, tipoEvento: string | null, rutaEntrada?: string | null): Seccion[] {
   if (rutaEntrada === "RIDER_DIRECTO") return FORM_RIDER_DIRECTO;
   if (tipoServicio === "RENTA") return FORM_RENTA;
+
+  // Para producción: insertar sección de horarios/venue antes de la última sección
+  const addHorarios = (base: Seccion[]): Seccion[] => {
+    const last = base[base.length - 1];
+    return [...base.slice(0, -1), SECCION_HORARIOS_VENUE, last];
+  };
+
   if (tipoServicio === "PRODUCCION_TECNICA" || tipoServicio === "DIRECCION_TECNICA") {
-    if (tipoEvento === "MUSICAL") return FORM_PRODUCCION_MUSICAL;
-    if (tipoEvento === "SOCIAL") return FORM_PRODUCCION_SOCIAL;
-    if (tipoEvento === "EMPRESARIAL") return FORM_PRODUCCION_EMPRESARIAL;
-    return FORM_PRODUCCION_OTRO;
+    if (tipoEvento === "MUSICAL")    return addHorarios(FORM_PRODUCCION_MUSICAL);
+    if (tipoEvento === "SOCIAL")     return addHorarios(FORM_PRODUCCION_SOCIAL);
+    if (tipoEvento === "EMPRESARIAL") return addHorarios(FORM_PRODUCCION_EMPRESARIAL);
+    return addHorarios(FORM_PRODUCCION_OTRO);
   }
-  return FORM_PRODUCCION_OTRO;
+  return addHorarios(FORM_PRODUCCION_OTRO);
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -317,6 +378,14 @@ interface TratoInfo {
   fechaEventoEstimada: string | null;
   lugarEstimado: string | null;
   asistentesEstimados: number | null;
+  presupuestoEstimado: number | null;
+  horaInicioEvento: string | null;
+  horaFinEvento: string | null;
+  ventanaMontajeInicio: string | null;
+  ventanaMontajeFin: string | null;
+  horaTerminoMontaje: string | null;
+  contactoVenueNombre: string | null;
+  contactoVenueTelefono: string | null;
   formEstado: string;
   cliente: { nombre: string };
 }
@@ -346,12 +415,20 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
         if (d.completado) { setCompletado(true); }
         else if (d.trato) {
           setTrato(d.trato);
-          // Pre-fill known fields
+          // Pre-fill con todo lo que ya tenemos para que el cliente solo llene lo que falta
           const pre: Record<string, string | string[]> = {};
-          if (d.trato.nombreEvento) pre.nombreEvento = d.trato.nombreEvento;
-          if (d.trato.lugarEstimado) pre.lugar = d.trato.lugarEstimado;
-          if (d.trato.asistentesEstimados) pre.asistentes = String(d.trato.asistentesEstimados);
-          if (d.trato.fechaEventoEstimada) pre.fechaEvento = d.trato.fechaEventoEstimada.slice(0, 10);
+          if (d.trato.nombreEvento)          pre.nombreEvento          = d.trato.nombreEvento;
+          if (d.trato.lugarEstimado)         pre.lugar                 = d.trato.lugarEstimado;
+          if (d.trato.asistentesEstimados)   pre.asistentes            = String(d.trato.asistentesEstimados);
+          if (d.trato.fechaEventoEstimada)   pre.fechaEvento           = d.trato.fechaEventoEstimada.slice(0, 10);
+          if (d.trato.presupuestoEstimado)   pre.presupuesto           = String(d.trato.presupuestoEstimado);
+          if (d.trato.horaInicioEvento)      pre.horaInicioEvento      = d.trato.horaInicioEvento;
+          if (d.trato.horaFinEvento)         pre.horaFinEvento         = d.trato.horaFinEvento;
+          if (d.trato.ventanaMontajeInicio)  pre.ventanaMontajeInicio  = d.trato.ventanaMontajeInicio;
+          if (d.trato.ventanaMontajeFin)     pre.ventanaMontajeFin     = d.trato.ventanaMontajeFin;
+          if (d.trato.horaTerminoMontaje)    pre.horaTerminoMontaje    = d.trato.horaTerminoMontaje;
+          if (d.trato.contactoVenueNombre)   pre.contactoVenueNombre   = d.trato.contactoVenueNombre;
+          if (d.trato.contactoVenueTelefono) pre.contactoVenueTelefono = d.trato.contactoVenueTelefono;
           setRespuestas(pre);
         }
         setLoading(false);

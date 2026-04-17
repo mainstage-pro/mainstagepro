@@ -575,6 +575,13 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ reportes_semanales");
 
+    // 25. Nuevos campos Trato: contacto venue + horario desmontaje + camposCliente
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "horaTerminoMontaje" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "contactoVenueNombre" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "contactoVenueTelefono" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "camposCliente" TEXT`);
+    results.push("✅ tratos — nuevos campos venue/desmontaje");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

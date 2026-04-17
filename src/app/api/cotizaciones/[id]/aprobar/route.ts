@@ -137,6 +137,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         horaFinEvento: cot.trato.horaFinEvento ?? null,
         horaInicioMontaje: cot.trato.ventanaMontajeInicio ?? null,
         duracionMontajeHrs: cot.trato.duracionMontajeHrs ?? null,
+        encargadoLugar: cot.trato.contactoVenueNombre ?? null,
+        encargadoLugarContacto: cot.trato.contactoVenueTelefono ?? null,
       },
     });
 
