@@ -93,6 +93,14 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
 
 const ALL_MODULE_KEYS = MODULOS_POR_SECCION.flatMap(s => s.items.map(i => i.key));
 
+// Permission presets by area
+const AREA_MODULE_PRESETS: Record<string, string[]> = {
+  ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario"],
+  MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones"],
+  VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario"],
+  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "bd-roles", "calendario"],
+};
+
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };
 
 export default function UsuariosPage() {
@@ -195,6 +203,26 @@ export default function UsuariosPage() {
       await fetch(`/api/admin/modulos/${key}/accesos/${userId}`, { method: "DELETE" });
     }
     setUsers(prev => prev.map(u => u.id !== userId ? u : { ...u, moduloAccesos: [] }));
+  }
+
+  async function applyAreaPreset(userId: string, area: string) {
+    const presetKeys = AREA_MODULE_PRESETS[area];
+    if (!presetKeys) return;
+    // First revoke all
+    for (const key of ALL_MODULE_KEYS) {
+      await fetch(`/api/admin/modulos/${key}/accesos/${userId}`, { method: "DELETE" });
+    }
+    // Then grant area preset
+    for (const key of presetKeys) {
+      await fetch(`/api/admin/modulos/${key}/accesos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+    }
+    setUsers(prev =>
+      prev.map(u => u.id !== userId ? u : { ...u, moduloAccesos: presetKeys.map(k => ({ moduloKey: k })) })
+    );
   }
 
   function startCreate() {
@@ -424,7 +452,13 @@ export default function UsuariosPage() {
                     <p className="text-xs text-gray-400">
                       Secciones accesibles para <span className="text-white font-medium">{u.name}</span>
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {u.area && AREA_MODULE_PRESETS[u.area] && (
+                        <button onClick={() => applyAreaPreset(u.id, u.area!)}
+                          className="text-xs text-[#B3985B] hover:text-[#c9a96e] border border-[#B3985B]/40 px-2 py-1 rounded transition-colors">
+                          Aplicar accesos de {AREA_LABELS[u.area] ?? u.area}
+                        </button>
+                      )}
                       <button onClick={() => grantAll(u.id)}
                         className="text-xs text-green-400 hover:text-green-300 border border-green-900/40 px-2 py-1 rounded transition-colors">
                         Dar acceso total

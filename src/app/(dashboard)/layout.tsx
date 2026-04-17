@@ -34,6 +34,21 @@ export default async function DashboardLayout({
     userModuleKeys = session.role === "ADMIN" ? null : [];
   }
 
+  // Area-based module filtering — if access control is off but user has area, apply area preset
+  const AREA_MODULES: Record<string, string[]> = {
+    ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario"],
+    MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones"],
+    VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario"],
+    PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "bd-roles", "calendario"],
+  };
+  if (session.role !== "ADMIN" && session.area && AREA_MODULES[session.area]) {
+    // If no explicit accesos set (userModuleKeys is empty array when privateModules is enabled),
+    // or if privateModules is not enabled, restrict to area modules
+    if (!userModuleKeys || userModuleKeys.length === 0) {
+      userModuleKeys = AREA_MODULES[session.area];
+    }
+  }
+
   return (
     <Providers>
       <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">

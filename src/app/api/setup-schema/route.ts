@@ -610,6 +610,42 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ categoria_equipos — Vehículos");
 
+    // 31. Activity log table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "actividad_usuario" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "accion" TEXT NOT NULL,
+        "entidad" TEXT NOT NULL,
+        "entidadId" TEXT,
+        "descripcion" TEXT NOT NULL,
+        "datos" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "actividad_usuario_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "actividad_usuario_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "actividad_usuario_userId_idx" ON "actividad_usuario"("userId")`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "actividad_usuario_createdAt_idx" ON "actividad_usuario"("createdAt")`);
+    results.push("✅ actividad_usuario");
+
+    // 32. Version history table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "version_historial" (
+        "id" TEXT NOT NULL,
+        "entidad" TEXT NOT NULL,
+        "entidadId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "snapshot" TEXT NOT NULL,
+        "nota" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "version_historial_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "version_historial_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "version_historial_entidad_idx" ON "version_historial"("entidad", "entidadId")`);
+    results.push("✅ version_historial");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

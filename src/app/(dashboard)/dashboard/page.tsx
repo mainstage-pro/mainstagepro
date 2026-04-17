@@ -4,9 +4,24 @@ import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
+import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const session = await getSession();
+
+  // Redirect non-admin/non-CEO users to their area dashboard
+  if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL" && session.area !== "DIRECCION") {
+    const areaRoutes: Record<string, string> = {
+      ADMINISTRACION: "/dashboard/administracion",
+      MARKETING: "/dashboard/marketing",
+      VENTAS: "/dashboard/ventas",
+      PRODUCCION: "/dashboard/produccion",
+    };
+    const target = areaRoutes[session.area];
+    if (target) {
+      redirect(target);
+    }
+  }
 
   const ahora = new Date();
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);

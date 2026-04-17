@@ -35,8 +35,38 @@ model User {
   proyectosTareaCreados TareaProyecto[]   @relation("ProyectosTareaCreados")
   comentariosTarea      TareaComentario[] @relation("ComentariosTarea")
   archivosTarea         TareaArchivo[]    @relation("ArchivosTarea")
+  actividades           ActividadUsuario[] @relation("actividades")
+  versiones             VersionHistorial[] @relation("versiones")
 
   @@map("users")
+}
+
+model ActividadUsuario {
+  id          String   @id @default(cuid())
+  userId      String
+  usuario     User     @relation("actividades", fields: [userId], references: [id])
+  accion      String   // CREAR | EDITAR | ELIMINAR | APROBAR | ENVIAR | VER
+  entidad     String   // cotizacion | proyecto | cliente | trato | etc.
+  entidadId   String?
+  descripcion String
+  datos       String?  // JSON metadata
+  createdAt   DateTime @default(now())
+  @@map("actividad_usuario")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model VersionHistorial {
+  id         String   @id @default(cuid())
+  entidad    String   // "proyecto" | "cotizacion"
+  entidadId  String
+  userId     String
+  usuario    User     @relation("versiones", fields: [userId], references: [id])
+  snapshot   String   // JSON snapshot
+  nota       String?
+  createdAt  DateTime @default(now())
+  @@map("version_historial")
+  @@index([entidad, entidadId])
 }
 
 // ─── CLIENTE ─────────────────────────────────────────────────────────────────
