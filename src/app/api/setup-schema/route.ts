@@ -650,6 +650,80 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "proyectos" ADD COLUMN IF NOT EXISTS "responsables" TEXT`);
     results.push("✅ proyectos.responsables");
 
+    // 34. tipos_contenido
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "tipos_contenido" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "formato" TEXT NOT NULL DEFAULT 'POST',
+        "objetivo" TEXT,
+        "diaSemana" TEXT,
+        "semanaDelMes" INTEGER,
+        "recurrencia" TEXT,
+        "cantMes" INTEGER,
+        "descripcion" TEXT,
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "enFacebook" BOOLEAN NOT NULL DEFAULT false,
+        "enInstagram" BOOLEAN NOT NULL DEFAULT false,
+        "enTiktok" BOOLEAN NOT NULL DEFAULT false,
+        "enYoutube" BOOLEAN NOT NULL DEFAULT false,
+        CONSTRAINT "tipos_contenido_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    results.push("✅ tipos_contenido");
+
+    // 35. publicaciones
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "publicaciones" (
+        "id" TEXT NOT NULL,
+        "fecha" TIMESTAMP(3) NOT NULL,
+        "tipoId" TEXT,
+        "formato" TEXT,
+        "objetivo" TEXT,
+        "descripcion" TEXT,
+        "copy" TEXT,
+        "enFacebook" BOOLEAN NOT NULL DEFAULT false,
+        "enInstagram" BOOLEAN NOT NULL DEFAULT false,
+        "enTiktok" BOOLEAN NOT NULL DEFAULT false,
+        "enYoutube" BOOLEAN NOT NULL DEFAULT false,
+        "materialLink" TEXT,
+        "portadaUrl" TEXT,
+        "colaboradores" TEXT,
+        "estado" TEXT NOT NULL DEFAULT 'PENDIENTE',
+        "comentarios" TEXT,
+        "alcance" INTEGER,
+        "impresiones" INTEGER,
+        "interacciones" INTEGER,
+        "seguidoresGanados" INTEGER,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "publicaciones_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    results.push("✅ publicaciones");
+
+    // 36. pagos_nomina
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "pagos_nomina" (
+        "id" TEXT NOT NULL,
+        "personalId" TEXT NOT NULL,
+        "periodo" TEXT NOT NULL,
+        "tipoPeriodo" TEXT NOT NULL DEFAULT 'MENSUAL',
+        "monto" DOUBLE PRECISION NOT NULL,
+        "concepto" TEXT,
+        "estado" TEXT NOT NULL DEFAULT 'PENDIENTE',
+        "fechaPago" TIMESTAMP(3),
+        "metodoPago" TEXT NOT NULL DEFAULT 'TRANSFERENCIA',
+        "cuentaOrigenId" TEXT,
+        "movimientoId" TEXT,
+        "notas" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "pagos_nomina_pkey" PRIMARY KEY ("id")
+      )
+    `);
+    results.push("✅ pagos_nomina");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
