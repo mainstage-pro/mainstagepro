@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { CopyButton } from "@/components/CopyButton";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -240,7 +241,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     router.push("/crm/clientes");
   }
 
-  if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={5} cols={4} />;
   if (!cliente) return <div className="text-red-400 text-sm">Cliente no encontrado</div>;
 
   const clasificacionColor: Record<string, string> = {

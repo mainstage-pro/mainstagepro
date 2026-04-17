@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
@@ -77,7 +78,7 @@ export default function EvaluacionDetailPage() {
     router.push("/rrhh/evaluaciones");
   }
 
-  if (loading) return <div className="p-6 text-gray-600 text-sm">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={4} cols={3} />;
   if (!evaluacion) return <div className="p-6 text-gray-600 text-sm">Evaluación no encontrada.</div>;
 
   const e = evaluacion;

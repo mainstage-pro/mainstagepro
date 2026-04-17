@@ -865,17 +865,51 @@ function CotizadorForm() {
                     const d = await res.json();
                     const plantilla = d.plantillas?.find((pl: { id: string }) => pl.id === p.id);
                     if (plantilla) {
-                      // Cargar líneas de equipos de la plantilla
-                      const newLineasEquipo: LineaEquipo[] = (plantilla.lineas as { tipo: string; equipoId: string | null; descripcion: string; marca: string | null; cantidad: number; dias: number; precioUnitario: number; categoria: string | null }[])
-                        .filter((l) => l.tipo === "EQUIPO_PROPIO")
-                        .map(l => ({
-                          id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
-                          marca: l.marca ?? "", categoria: l.categoria ?? "",
-                          cantidad: l.cantidad, dias: l.dias,
-                          precioUnitario: l.precioUnitario,
-                          subtotal: l.precioUnitario * l.cantidad * l.dias,
-                        }));
-                      if (newLineasEquipo.length > 0) setLineasEquipo(newLineasEquipo);
+                      type PL = { tipo: string; equipoId: string | null; rolTecnicoId: string | null; descripcion: string; marca: string | null; nivel: string | null; jornada: string | null; cantidad: number; dias: number; precioUnitario: number; costoUnitario: number; subtotal: number; proveedorId: string | null; notas: string | null };
+                      const lineas = plantilla.lineas as PL[];
+
+                      const propios = lineas.filter(l => l.tipo === "EQUIPO_PROPIO");
+                      if (propios.length > 0) setLineasEquipo(propios.map(l => ({
+                        id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
+                        marca: l.marca ?? "", categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "",
+                        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+                        subtotal: l.precioUnitario * l.cantidad * l.dias,
+                      })));
+
+                      const externos = lineas.filter(l => l.tipo === "EQUIPO_EXTERNO");
+                      if (externos.length > 0) setLineasExterno(externos.map(l => ({
+                        id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
+                        marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
+                        precioUnitario: l.precioUnitario, costoProveedor: l.costoUnitario ?? 0,
+                        subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
+                        proveedorId: l.proveedorId ?? null,
+                      })));
+
+                      const ops = lineas.filter(l => l.tipo === "OPERACION_TECNICA");
+                      if (ops.length > 0) setLineasOp(ops.map(l => ({
+                        id: uid(), rolTecnicoId: l.rolTecnicoId ?? "", descripcion: l.descripcion,
+                        nivel: l.nivel ?? "AA", jornada: l.jornada ?? "MEDIA",
+                        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
+                      })));
+
+                      const djs = lineas.filter(l => l.tipo === "DJ");
+                      if (djs.length > 0) setLineasDJ(djs.map(l => ({
+                        id: uid(), nivel: l.nivel ?? "AA", horas: l.cantidad,
+                        tarifa: l.precioUnitario, subtotal: l.subtotal,
+                      })));
+
+                      const logs = lineas.filter(l => ["TRANSPORTE","COMIDA","HOSPEDAJE"].includes(l.tipo));
+                      if (logs.length > 0) setLineasLog(logs.map(l => ({
+                        id: uid(), tipo: l.tipo as "COMIDA"|"TRANSPORTE"|"HOSPEDAJE",
+                        concepto: l.descripcion, precioUnitario: l.precioUnitario,
+                        cantidad: l.cantidad, dias: l.dias, subtotal: l.subtotal,
+                      })));
+
+                      const ocasionales = lineas.filter(l => l.tipo === "OTRO");
+                      if (ocasionales.length > 0) setLineasOcasional(ocasionales.map(l => ({
+                        id: uid(), descripcion: l.descripcion,
+                        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
+                      })));
                     }
                     setCargandoPlantilla(false);
                     setShowPlantillas(false);

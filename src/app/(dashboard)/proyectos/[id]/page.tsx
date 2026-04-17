@@ -8,6 +8,7 @@ import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { CopyButton } from "@/components/CopyButton";
+import { SkeletonPage } from "@/components/Skeleton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -434,6 +435,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selEquipoProveedor, setSelEquipoProveedor] = useState("");
   const [addingEquipo, setAddingEquipo] = useState(false);
   const [agregarACot, setAgregarACot] = useState(false);
+  const [dispEquipo, setDispEquipo] = useState<{ disponible: boolean; cantidadTotal: number; cantidadComprometida: number; cantidadDisponible: number; conflictos: { id: string; nombre: string; numeroProyecto: string; cantidadUsada: number }[] } | null>(null);
 
   // Estados para agregar personal
   const [showAddPersonal, setShowAddPersonal] = useState(false);
@@ -694,6 +696,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       .catch(() => setDisponibilidad(null));
   }, [selTecnico, proyecto?.fechaEvento, id]);
 
+  // Check disponibilidad de equipo físico
+  useEffect(() => {
+    if (!selEquipoId || selEquipoTipo !== "PROPIO" || !proyecto?.fechaEvento) { setDispEquipo(null); return; }
+    const fecha = proyecto.fechaEvento.slice(0, 10);
+    const cantidad = parseInt(selEquipoCantidad) || 1;
+    fetch(`/api/equipos/${selEquipoId}/disponibilidad?fecha=${fecha}&proyectoId=${id}&cantidad=${cantidad}`)
+      .then(r => r.json())
+      .then(d => setDispEquipo(d))
+      .catch(() => setDispEquipo(null));
+  }, [selEquipoId, selEquipoTipo, selEquipoCantidad, proyecto?.fechaEvento, id]);
+
   // Pre-fill esquema form when opening editor
   useEffect(() => {
     if (!editandoEsquema || !proyecto) return;
@@ -769,14 +782,45 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
-    // Bloquear COMPLETADO si no hay cierre financiero
+    // Al marcar como COMPLETADO sin cierre financiero → generar cierre automáticamente
     if (estado === "COMPLETADO" && !proyecto?.cierreFinanciero) {
       const ok = await confirm({
-        message: "Este proyecto no tiene cierre financiero registrado. Se recomienda completar el cierre antes de marcar como COMPLETADO. ¿Continuar de todas formas?",
-        confirmText: "Continuar sin cierre",
-        danger: true,
+        message: "Este proyecto no tiene cierre financiero. ¿Generar el cierre automáticamente con los datos actuales (cobros, gastos y cotización)?",
+        confirmText: "Generar cierre y completar",
+        danger: false,
       });
-      if (!ok) return;
+      if (!ok) {
+        // Permitir continuar sin cierre si el usuario cancela el confirm
+        const skip = await confirm({
+          message: "¿Marcar como Completado sin generar el cierre financiero?",
+          confirmText: "Continuar sin cierre",
+          danger: true,
+        });
+        if (!skip) return;
+      } else {
+        // Generar cierre automáticamente
+        setSaving(true);
+        try {
+          const resCalc = await fetch(`/api/proyectos/${id}/cierre`);
+          const dataCalc = await resCalc.json();
+          if (dataCalc) {
+            await fetch(`/api/proyectos/${id}/cierre`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                ...dataCalc.real,
+                ...dataCalc.estimado,
+                desgloseCostos: dataCalc.desgloseCostos,
+                notas: "Cierre generado automáticamente al completar el proyecto.",
+              }),
+            });
+            toast.success("Cierre financiero generado automáticamente");
+          }
+        } catch {
+          toast.warning("No se pudo generar el cierre — continuando sin él");
+        }
+        setSaving(false);
+      }
     }
     setSaving(true);
     await fetch(`/api/proyectos/${id}`, {
@@ -793,6 +837,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         setEvalClienteLoaded(true);
         setTab("evaluacion");
       }
+      await load(); // recargar para mostrar el cierre generado
     }
     setSaving(false);
   }
@@ -1281,7 +1326,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setMontoPago("");
   }
 
-  if (loading) return <div className="text-gray-400 text-sm p-6">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={6} cols={4} />;
   if (!proyecto) return <div className="text-red-400 text-sm p-6">Proyecto no encontrado</div>;
 
   const checkOp = proyecto.checklist.filter(c => c.tipo !== "RIDER");
@@ -2707,12 +2752,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
                     <select value={selEquipoId} onChange={e => setSelEquipoId(e.target.value)}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}>
                       <option value="">Seleccionar equipo...</option>
                       {equipoCatalogo.map(eq => (
                         <option key={eq.id} value={eq.id}>{eq.categoria.nombre} — {eq.descripcion}{eq.marca ? ` (${eq.marca})` : ""}</option>
                       ))}
                     </select>
+                    {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
+                      dispEquipo.disponible ? (
+                        <p className="text-green-500 text-xs mt-1">✓ Disponible: {dispEquipo.cantidadDisponible} de {dispEquipo.cantidadTotal} unidades libres</p>
+                      ) : (
+                        <p className="text-red-400 text-xs mt-1">
+                          ⚠ Solo {dispEquipo.cantidadDisponible} disponibles de {dispEquipo.cantidadTotal} · comprometido en: {dispEquipo.conflictos.map(c => c.nombre).join(", ")}
+                        </p>
+                      )
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Tipo</label>

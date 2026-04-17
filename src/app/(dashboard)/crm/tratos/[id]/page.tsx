@@ -8,6 +8,7 @@ import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -970,7 +971,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }));
   }
 
-  if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={5} cols={4} />;
   if (!trato) return <div className="text-red-400 text-sm">Trato no encontrado</div>;
 
   const profundidad = getProfundidad(trato.canalAtencion);

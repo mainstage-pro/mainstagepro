@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
 interface PagoNomina { id: string; periodo: string; tipoPeriodo: string; monto: number; concepto: string | null; estado: string; fechaPago: string | null; metodoPago: string; notas: string | null; cuentaOrigen: { nombre: string } | null }
@@ -119,7 +120,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     router.push("/rrhh/personal");
   }
 
-  if (loading || !persona) return <div className="p-3 md:p-6 text-gray-600 text-sm">Cargando...</div>;
+  if (loading || !persona) return <SkeletonPage rows={5} cols={3} />;
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">

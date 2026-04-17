@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from "recharts";
+import { SkeletonKPIs, SkeletonTable } from "@/components/Skeleton";
 
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -70,7 +71,7 @@ export default function FinanzasReportePage() {
         </div>
       </div>
 
-      {loading ? <div className="py-16 text-center text-gray-600 text-sm">Cargando...</div> : !data ? null : (<>
+      {loading ? (<div className="space-y-4"><SkeletonKPIs count={4} /><SkeletonTable rows={6} cols={4} /></div>) : !data ? null : (<>
 
       {/* KPIs principales */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

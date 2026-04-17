@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SkeletonCards } from "@/components/Skeleton";
 
 interface Vendedor {
   id: string;
@@ -127,7 +128,7 @@ export default function VendedoresPage() {
 
       {/* Lista */}
       {loading ? (
-        <div className="text-gray-500 text-sm text-center py-10">Cargando...</div>
+        <SkeletonCards count={4} />
       ) : vendedores.length === 0 ? (
         <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center">
           <p className="text-gray-500 text-sm">No hay vendedores registrados</p>

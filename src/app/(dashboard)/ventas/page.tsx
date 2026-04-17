@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SkeletonCards } from "@/components/Skeleton";
 
 interface Vendedor {
   id: string;
@@ -180,7 +181,7 @@ export default function VentasPage() {
 
       {/* Pipeline por etapas */}
       {loading ? (
-        <div className="text-gray-500 text-sm text-center py-10">Cargando...</div>
+        <SkeletonCards count={4} />
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {ETAPAS.map(etapa => (

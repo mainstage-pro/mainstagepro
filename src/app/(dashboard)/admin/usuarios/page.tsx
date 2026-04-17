@@ -79,6 +79,7 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
       { key: "finanzas", label: "Finanzas", desc: "Cobros, pagos, movimientos, cuentas, reportes" },
       { key: "rrhh", label: "Recursos Humanos", desc: "Personal interno, nómina, asistencia, evaluaciones" },
       { key: "ats", label: "Reclutamiento", desc: "Candidatos y puestos" },
+      { key: "rrhh-onboarding", label: "Onboarding", desc: "Planes de integración y capacitación" },
     ],
   },
   {

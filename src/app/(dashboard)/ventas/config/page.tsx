@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { SkeletonPage } from "@/components/Skeleton";
 
 interface Config {
   id: string;
@@ -62,7 +63,7 @@ export default function ConfigComisionesPage() {
 
   async function handleSubmit(e: React.FormEvent) { e.preventDefault(); }
 
-  if (!config) return <div className="p-3 md:p-6 text-gray-500 text-sm">Cargando...</div>;
+  if (!config) return <SkeletonPage rows={4} cols={3} />;
 
   return (
     <div className="p-3 md:p-6 max-w-2xl">

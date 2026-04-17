@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SkeletonCards } from "@/components/Skeleton";
 
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
@@ -118,7 +119,7 @@ export default function CandidatosPage() {
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-gray-600">Cargando...</div>
+        <SkeletonCards count={6} />
       ) : view === "kanban" ? (
         /* ── Kanban ── */
         <div className="flex gap-4 overflow-x-auto pb-4">

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { SkeletonPage } from "@/components/Skeleton";
 
 const fmt = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0 })}`;
 function fmtDate(s: string | null) {
@@ -107,7 +108,7 @@ export default function EquipoDetailPage() {
     else toast.error("No se puede eliminar — puede tener registros asociados");
   }
 
-  if (loading) return <div className="p-6 text-gray-600 text-sm">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={5} cols={4} />;
   if (!equipo || !form) return <div className="p-6 text-red-400 text-sm">Equipo no encontrado</div>;
 
   // Estadísticas de uso

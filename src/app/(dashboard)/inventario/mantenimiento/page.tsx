@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { SkeletonPage } from "@/components/Skeleton";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -262,7 +263,7 @@ function MantenimientoContent() {
     if (selectedUnidadId === unidadId) setSelectedUnidadId(null);
   }
 
-  if (loading) return <div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>;
+  if (loading) return <SkeletonPage rows={6} cols={5} />;
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
@@ -654,7 +655,7 @@ function MantenimientoContent() {
 
 export default function MantenimientoPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-center text-gray-500 text-sm">Cargando...</div>}>
+    <Suspense fallback={<SkeletonPage rows={6} cols={5} />}>
       <MantenimientoContent />
     </Suspense>
   );

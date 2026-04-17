@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SkeletonTable } from "@/components/Skeleton";
 
 interface GastoRow {
   id: string;
@@ -128,7 +129,7 @@ export default function GastosOperativosPage() {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-gray-600 text-sm">Cargando...</div>
+        <SkeletonTable rows={6} cols={5} />
       ) : pendientes.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
           <p className="text-gray-500 text-sm">Sin gastos operativos pendientes</p>

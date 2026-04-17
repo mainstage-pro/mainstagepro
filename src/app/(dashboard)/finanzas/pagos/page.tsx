@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { SkeletonTable } from "@/components/Skeleton";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CxC {
@@ -1038,7 +1039,7 @@ export default function PagosSemanaPage() {
       )}
 
       {loading ? (
-        <div className="py-10 text-center text-gray-600 text-sm">Cargando...</div>
+        <SkeletonTable rows={6} cols={5} />
       ) : vista === "operativa" ? (
         /* ── VISTA SEMANA OPERATIVA ── */
         <div className="space-y-6">
