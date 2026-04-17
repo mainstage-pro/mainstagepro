@@ -98,6 +98,7 @@ const NAV: NavSection[] = [
           { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
         ],
       },
+      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
       {
         key: "socios",
         label: "Socios de Activos",
@@ -163,7 +164,6 @@ const NAV: NavSection[] = [
     section: "PRODUCCIÓN",
     items: [
       { key: "proyectos", label: "Proyectos", href: "/proyectos" },
-      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
       { key: "ordenes-compra", label: "Órdenes de compra", href: "/operaciones/ordenes-compra" },
       {
         key: "inventario",
@@ -234,11 +234,23 @@ function getInitialOpen(pathname: string): Set<string> {
   return open;
 }
 
+function getActiveSectionKey(pathname: string): string | null {
+  if (pathname.startsWith("/agenda") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/operaciones") || pathname.startsWith("/socios")) return "seccion-administracion";
+  if (pathname.startsWith("/marketing")) return "seccion-marketing";
+  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas")) return "seccion-ventas";
+  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
+  return null;
+}
+
+const ALL_SECTION_KEYS = NAV.filter(s => s.section).map(s => s.key);
+
 export default function Sidebar({ user, labels, privateModules, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set(ALL_SECTION_KEYS));
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
@@ -249,6 +261,15 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
 
   function toggleGroup(key: string) {
     setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleSection(key: string) {
+    setOpenSections(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -278,14 +299,25 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           });
           if (visibleItems.length === 0) return null;
 
+          const isSectionOpen = !section.section || openSections.has(section.key);
+          const isSectionActive = section.section ? getActiveSectionKey(pathname) === section.key : false;
+
           return (
-            <div key={section.key} className={section.section ? "mb-4" : "mb-2 pb-2 border-b border-[#1a1a1a]"}>
+            <div key={section.key} className={section.section ? "mb-1" : "mb-2 pb-2 border-b border-[#1a1a1a]"}>
               {section.section && (
-                <p className="text-[#3a3a3a] text-[11px] font-bold uppercase tracking-widest px-3 mb-1.5">
-                  {sectionLabel}
-                </p>
+                <button
+                  onClick={() => toggleSection(section.key)}
+                  className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
+                >
+                  <span className={`text-[11px] font-bold uppercase tracking-widest transition-colors ${
+                    isSectionActive && !isSectionOpen ? "text-[#B3985B]/70" : "text-[#3a3a3a] group-hover:text-[#555]"
+                  }`}>
+                    {sectionLabel}
+                  </span>
+                  <span className={`text-[9px] text-[#2a2a2a] group-hover:text-[#444] transition-transform ${isSectionOpen ? "" : "-rotate-90"}`}>▾</span>
+                </button>
               )}
-              <div className="space-y-0.5">
+              {isSectionOpen && <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const itemLabel = resolveLabel(item.key, item.label, labels);
                   if (item.children) {
@@ -342,7 +374,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                     </Link>
                   );
                 })}
-              </div>
+              </div>}
             </div>
           );
         })}
