@@ -19,6 +19,8 @@ const EQUIPO_SELECT = {
   activo: true,
   amperajeRequerido: true,
   voltajeRequerido: true,
+  imagenUrl: true,
+  imagenesUrls: true,
 };
 
 export async function GET(req: NextRequest) {

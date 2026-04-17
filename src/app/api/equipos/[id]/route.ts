@@ -38,7 +38,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const allowed = [
     "descripcion", "marca", "modelo", "tipo", "precioRenta", "costoProveedor",
     "cantidadTotal", "proveedorDefaultId", "notas", "activo", "estado",
-    "categoriaId", "subcategoria",
+    "categoriaId", "subcategoria", "imagenUrl", "imagenesUrls",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {

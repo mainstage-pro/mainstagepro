@@ -22,6 +22,7 @@ type Equipo = {
   activo: boolean;
   amperajeRequerido: number | null;
   voltajeRequerido: number | null;
+  imagenUrl: string | null;
 };
 
 const ESTADO_BADGE: Record<string, string> = {
@@ -498,6 +499,12 @@ export default function InventarioEquiposPage() {
                         className={`hover:bg-[#1a1a1a] transition-colors cursor-pointer group ${!e.activo ? "opacity-50" : ""}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
+                            {e.imagenUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-80 group-hover:opacity-100" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-[#1a1a1a] border border-[#2a2a2a] shrink-0 flex items-center justify-center text-[#333] text-[10px]">IMG</div>
+                            )}
                             <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${e.activo ? "text-white" : "text-[#555] line-through"}`}>{e.descripcion}</p>
                             {!e.activo && <span className="text-[9px] bg-orange-900/40 text-orange-400 border border-orange-800 px-1.5 py-0.5 rounded font-medium">INACTIVO</span>}
                           </div>

@@ -458,6 +458,8 @@ model Equipo {
   amperajeRequerido    Float?          // Consumo eléctrico en amperes
   voltajeRequerido     Int?            // Voltaje requerido (110 | 220 | etc.)
   notas                String?
+  imagenUrl            String?         // URL principal del equipo (ruta /inventario/equipos/... o base64)
+  imagenesUrls         String?         // JSON array de URLs adicionales
   activo               Boolean         @default(true)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt

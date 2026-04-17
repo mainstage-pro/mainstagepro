@@ -589,6 +589,11 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "cuentas_pagar" ADD COLUMN IF NOT EXISTS "ajustesLog" TEXT`);
     results.push("✅ cxc/cxp — campos de ajuste de monto");
 
+    // 27. Imágenes de equipos propios
+    await prisma.$executeRawUnsafe(`ALTER TABLE "equipos" ADD COLUMN IF NOT EXISTS "imagenUrl" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "equipos" ADD COLUMN IF NOT EXISTS "imagenesUrls" TEXT`);
+    results.push("✅ equipos — campos de imágenes");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });
