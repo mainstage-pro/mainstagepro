@@ -23,6 +23,7 @@ export default async function DashboardPage() {
     cotizacionesAprobadas,
     valorCotizacionesMes,
     tratosSeguimientoVencido,
+    pipelinePresupuesto,
     // ── PRODUCCIÓN ──────────────────────────────
     proyectosPorEstado,
     proyectosProximos,
@@ -44,6 +45,11 @@ export default async function DashboardPage() {
     pubsProximas,
     // ── COTIZACIONES SIN RESPUESTA ───────────────
     cotizacionesSinRespuesta,
+    // ── CAPITAL ─────────────────────────────────
+    hervamPagoMes,
+    hervamConfig,
+    sociosReporteMes,
+    sociosReportesPendientes,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -60,6 +66,10 @@ export default async function DashboardPage() {
     }),
     prisma.trato.count({
       where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, fechaProximaAccion: { lt: ahora } },
+    }),
+    prisma.trato.aggregate({
+      _sum: { presupuestoEstimado: true },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] } },
     }),
 
     // ── PRODUCCIÓN ──────────────────────────────
@@ -168,6 +178,19 @@ export default async function DashboardPage() {
       orderBy: { updatedAt: "asc" },
       take: 8,
     }),
+
+    // ── CAPITAL ─────────────────────────────────
+    prisma.hervamPago.findFirst({
+      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
+    }),
+    prisma.hervamConfig.findFirst(),
+    prisma.socioReporte.aggregate({
+      _sum: { totalFacturado: true, totalSocio: true, totalMainstage: true },
+      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
+    }),
+    prisma.socioReporte.count({
+      where: { estado: { not: "PAGADO" } },
+    }),
   ]);
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
@@ -178,6 +201,7 @@ export default async function DashboardPage() {
   const totalPerdidos    = etapasMap.VENTA_PERDIDA ?? 0;
   const tasaConversion   = (totalCerrados + totalPerdidos) > 0
     ? Math.round((totalCerrados / (totalCerrados + totalPerdidos)) * 100) : 0;
+  const valorPipeline    = pipelinePresupuesto._sum.presupuestoEstimado ?? 0;
 
   const estadosMap: Record<string, number> = {};
   proyectosPorEstado.forEach(p => { estadosMap[p.estado] = p._count._all; });
@@ -228,6 +252,72 @@ export default async function DashboardPage() {
           + Nuevo trato
         </Link>
       </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          CAPITAL
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="CAPITAL" href="/socios">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* HERVAM */}
+          <Link href="/hervam" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Pulso HERVAM</p>
+              {hervamPagoMes ? (
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  hervamPagoMes.estado === "PAGADO"   ? "text-green-400 bg-green-900/20 border-green-700/40" :
+                  hervamPagoMes.estado === "PARCIAL"  ? "text-yellow-400 bg-yellow-900/20 border-yellow-700/40" :
+                  hervamPagoMes.estado === "DIFERIDO" ? "text-orange-400 bg-orange-900/20 border-orange-700/40" :
+                                                        "text-red-400 bg-red-900/20 border-red-700/40"
+                }`}>{hervamPagoMes.estado}</span>
+              ) : (
+                <span className="text-[10px] text-gray-600">Sin registro</span>
+              )}
+            </div>
+            <div className="px-5 py-4 flex items-center justify-between">
+              <div>
+                <p className="text-gray-500 text-xs mb-0.5">Pago acordado {mes}</p>
+                <p className="text-2xl font-semibold text-white group-hover:text-[#B3985B] transition-colors">
+                  {hervamPagoMes ? formatCurrency(hervamPagoMes.montoAcordado) : hervamConfig ? formatCurrency(hervamConfig.pisoMinimoFijo) : "—"}
+                </p>
+              </div>
+              {hervamPagoMes && hervamPagoMes.montoPagado > 0 && hervamPagoMes.estado !== "PAGADO" && (
+                <div className="text-right">
+                  <p className="text-gray-600 text-[10px]">Pagado</p>
+                  <p className="text-green-400 text-sm font-semibold">{formatCurrency(hervamPagoMes.montoPagado)}</p>
+                </div>
+              )}
+            </div>
+          </Link>
+
+          {/* Socios de Activos */}
+          <Link href="/socios" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Socios de Activos</p>
+              {sociosReportesPendientes > 0 && (
+                <span className="text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-700/40 px-2 py-0.5 rounded font-bold">
+                  {sociosReportesPendientes} pendiente{sociosReportesPendientes !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+            <div className="px-5 py-4 grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Facturado</p>
+                <p className="text-white font-semibold text-lg group-hover:text-[#B3985B] transition-colors">
+                  {formatCurrency(sociosReporteMes._sum.totalFacturado ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">A socios</p>
+                <p className="text-white font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalSocio ?? 0)}</p>
+              </div>
+              <div>
+                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Mainstage</p>
+                <p className="text-[#B3985B] font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalMainstage ?? 0)}</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
@@ -490,16 +580,19 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="VENTAS" href="/crm/pipeline">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/pipeline" />
-          <KpiCard label="Cerrados" value={totalCerrados}
-            sub={`${tasaConversion}% tasa de cierre`}
-            subColor={tasaConversion >= 40 ? "text-green-400" : "text-yellow-400"} href="/crm/tratos" />
+          <KpiCard label="Valor del pipeline" value={valorPipeline > 0 ? formatCurrency(valorPipeline) : "Sin datos"}
+            sub="presupuesto estimado" subColor="text-[#B3985B]"
+            animate={valorPipeline > 0 ? { amount: valorPipeline, prefix: "$", decimals: 0 } : undefined} href="/crm/pipeline" />
+          <KpiCard label="Tasa de conversión" value={`${tasaConversion}%`}
+            sub={`${totalCerrados} cerrados · ${totalPerdidos} perdidos`}
+            subColor={tasaConversion >= 50 ? "text-green-400" : tasaConversion >= 30 ? "text-yellow-400" : "text-red-400"} href="/crm/tratos" />
           <KpiCard label="Cotizaciones mes" value={cotizacionesMesCount}
             sub={`${cotizacionesAprobadas} aprobadas`}
             subColor={cotizacionesAprobadas > 0 ? "text-green-400" : "text-gray-500"} href="/cotizaciones" />
           <KpiCard label="Valor aprobado" value={formatCurrency(valorCotizacionesMes._sum.granTotal ?? 0)}
-            sub="cotizaciones aprobadas / enviadas" href="/cotizaciones" />
+            sub="aprobadas / enviadas" href="/cotizaciones" />
         </div>
 
         {/* Cotizaciones sin respuesta */}
