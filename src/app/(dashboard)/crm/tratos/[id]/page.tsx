@@ -110,6 +110,16 @@ const CANALES = [
   { id: "INFORMACION", icon: "ℹ️", label: "Solo info",    desc: "Nutrir al lead",             profundidad: "INFO",     border: "border-gray-600",   badge: "bg-gray-700 text-gray-400" },
 ] as const;
 
+// Pasos del wizard de descubrimiento
+const PASOS_DISCOVERY = [
+  { id: 1, icon: "📋", label: "Básico" },
+  { id: 2, icon: "✨", label: "Servicios" },
+  { id: 3, icon: "📊", label: "Detalles" },
+  { id: 4, icon: "📝", label: "Briefing" },
+  { id: 5, icon: "🗺️", label: "Scouting" },
+  { id: 6, icon: "📸", label: "Contenido" },
+];
+
 // Servicios por tipo de evento — base = categorías del inventario, extra = servicios específicos
 interface ServicioItem { id: string; label: string; grupo: "base" | "extra" }
 const SERVICIOS: Record<string, ServicioItem[]> = {
@@ -582,9 +592,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [savingScouting, setSavingScouting] = useState(false);
   const [scoutingTab, setScoutingTab] = useState<"form" | "resumen">("form");
   const [scoutingVisible, setScoutingVisible] = useState(false);
+  const [scoutingAplica, setScoutingAplica] = useState<boolean | null>(null);
+  const [briefAplica, setBriefAplica] = useState<boolean | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveBriefTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Paso activo del wizard de descubrimiento (persisted in localStorage)
+  const [pasoActivo, setPasoActivo] = useState(1);
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -635,6 +651,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     if (!scoutLoaded.current) { scoutLoaded.current = true; return; }
     autoSaveScouting(scoutingForm);
   }, [scoutingForm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist active step in localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem(`trato-paso-${id}`);
+    if (saved) setPasoActivo(parseInt(saved) || 1);
+  }, [id]);
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem(`trato-paso-${id}`, String(pasoActivo));
+  }, [pasoActivo, id]);
 
   useEffect(() => {
     Promise.all([
@@ -904,6 +930,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       await patch({ scoutingData: JSON.stringify(form) });
       setTrato(prev => prev ? { ...prev, scoutingData: JSON.stringify(form) } : prev);
     }, 1200);
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const autoSaveBriefing = useCallback((text: string) => {
+    if (autoSaveBriefTimer.current) clearTimeout(autoSaveBriefTimer.current);
+    autoSaveBriefTimer.current = setTimeout(async () => {
+      await patch({ notas: text || null });
+      setTrato(prev => prev ? { ...prev, notas: text || null } : prev);
+    }, 1500);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveBrief() {
@@ -1536,31 +1570,39 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         );
       })()}
 
-      {/* ── Estado 2: Formulario de descubrimiento ── */}
-      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && !trato.descubrimientoCompleto && profundidad !== "INFO" && (
-        <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-5">
+      {/* ── WIZARD DE DESCUBRIMIENTO ── */}
+      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (
+        <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl overflow-hidden">
+          {/* Wizard header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] font-bold text-sm">2</div>
+              <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] font-bold text-sm">
+                {trato.descubrimientoCompleto ? "✓" : "2"}
+              </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-white font-semibold">Descubrimiento</p>
                   {canalInfo && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${canalInfo.badge}`}>
-                      {canalInfo.icon} {canalInfo.label} · {canalInfo.desc}
+                      {canalInfo.icon} {canalInfo.label}
                     </span>
                   )}
+                  {trato.descubrimientoCompleto && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#B3985B]/20 text-[#B3985B]">✓ Completo</span>
+                  )}
                 </div>
-                <p className="text-gray-500 text-xs">Completa la información del evento para continuar al proceso de cotización</p>
+                <p className="text-gray-500 text-xs">Todo se guarda automáticamente</p>
               </div>
             </div>
-            <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-              Cambiar canal
-            </button>
+            <div className="flex items-center gap-3">
+              {autoSaveStatus === "saving" && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
+              {autoSaveStatus === "saved" && <span className="text-xs text-green-500">✓ Guardado</span>}
+              <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cambiar canal</button>
+            </div>
           </div>
 
           {/* Modo de descubrimiento */}
-          <div className="flex gap-2 mb-5">
+          <div className="flex gap-2 px-5 pt-4">
             <button onClick={() => setModoDescubrimiento("VENDEDOR")}
               className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium border transition-colors ${
                 modoDescubrimiento === "VENDEDOR"
@@ -1654,13 +1696,32 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {modoDescubrimiento === "VENDEDOR" && <div className="space-y-5">
-            {/* Tipo de evento */}
-            <div>
-              <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Tipo de evento *</label>
-              <div className="flex gap-2">
-                {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
-                  <button key={te} onClick={() => setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] }))}
+          {modoDescubrimiento === "VENDEDOR" && (<>
+            {/* Step tabs */}
+            <div className="px-5 pt-4 pb-2 overflow-x-auto border-b border-[#1a1a1a]">
+              <div className="flex gap-1 min-w-max pb-1">
+                {PASOS_DISCOVERY.map(paso => (
+                  <button key={paso.id} onClick={() => setPasoActivo(paso.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                      pasoActivo === paso.id
+                        ? "bg-[#B3985B] text-black"
+                        : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
+                    }`}>
+                    {paso.icon} {paso.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5">
+
+            {/* PASO 1: Información básica */}
+            {pasoActivo === 1 && (<div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Tipo de evento</label>
+                <div className="flex flex-wrap gap-2">
+                  {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
+                    <button key={te} onClick={() => setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] }))}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
                       discForm.tipoEvento === te
                         ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
@@ -1672,8 +1733,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* Campos base - aparecen en todos los niveles */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Step 1 continuation: base fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>
                 <input value={discForm.nombreEvento} onChange={e => setDiscForm(p => ({ ...p, nombreEvento: e.target.value }))}
@@ -1811,8 +1872,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {/* Servicios de interés (producción) o campos de renta */}
-            {discForm.tipoServicio === "RENTA" ? (
+            </div>)} {/* /paso1 */}
+
+            {/* PASO 2: Servicios de interés */}
+            {pasoActivo === 2 && (<div className="space-y-4">
+              {discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
@@ -1958,9 +2022,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* Campos medios — formulario y arriba */}
-            {(profundidad === "MEDIO" || profundidad === "PROFUNDO") && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-[#1a1a1a]">
+            </div>)} {/* /paso2 */}
+
+            {/* PASO 3: Detalles operativos */}
+            {pasoActivo === 3 && (<div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
                   <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
@@ -2005,306 +2071,232 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
-            )}
 
-            {/* Campos profundos — llamada, reunión, scouting */}
-            {profundidad === "PROFUNDO" && (
-              <div className="space-y-3 pt-2 border-t border-[#1a1a1a]">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Notas detalladas del descubrimiento</label>
-                  <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
-                    rows={4} placeholder="Detalles específicos, necesidades especiales, contexto del evento, expectativas del cliente..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Próxima acción concreta</label>
-                    <input value={discForm.proximaAccion} onChange={e => setDiscForm(p => ({ ...p, proximaAccion: e.target.value }))}
-                      placeholder="Ej: Enviar cotización el lunes"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Acciones */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#1a1a1a]">
-              <div className="flex items-center gap-3">
-                {/* Auto-save indicator */}
-                {autoSaveStatus === "saving" && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
-                {autoSaveStatus === "saved"  && <span className="text-xs text-green-500">✓ Guardado</span>}
-                {/* Scouting button — solo en Oportunidad (cuando el venue ya importa para cotizar) */}
-                {trato.etapa === "OPORTUNIDAD" && !scoutingVisible && !trato.scoutingData && trato.canalAtencion !== "SCOUTING" && (
-                  <button onClick={() => setScoutingVisible(true)}
-                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/70 px-3 py-1.5 rounded-lg transition-colors">
-                    🗺️ Scouting del venue
-                  </button>
-                )}
-              </div>
-              <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
-              </button>
-            </div>
-          </div>}
-        </div>
-      )}
-
-      {/* ── Scouting de venue — disponible desde Oportunidad ── */}
-      {(trato.etapa === "OPORTUNIDAD" || trato.etapa === "VENTA_CERRADA") && (trato.canalAtencion === "SCOUTING" || trato.scoutingData || scoutingVisible) && (
-        <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/40 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🗺️</span>
               <div>
-                <p className="text-white font-semibold">Scouting del venue</p>
-                <p className="text-gray-500 text-xs">Ficha técnica del lugar capturada en visita presencial</p>
+                <label className="text-xs text-gray-400 block mb-1">Notas del descubrimiento</label>
+                <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
+                  rows={4} placeholder="Detalles específicos, necesidades especiales, contexto del evento, expectativas del cliente..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
               </div>
-            </div>
-            <div className="flex gap-1">
-              {(["form", "resumen"] as const).map(t => (
-                <button key={t} onClick={() => setScoutingTab(t)}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                  {t === "form" ? "Editar" : "Resumen"}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Próxima acción concreta</label>
+                <input value={discForm.proximaAccion} onChange={e => setDiscForm(p => ({ ...p, proximaAccion: e.target.value }))}
+                  placeholder="Ej: Enviar cotización el lunes"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              {!trato.descubrimientoCompleto && (
+                <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
+                  className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                  {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
                 </button>
-              ))}
-            </div>
-          </div>
+              )}
+            </div>)} {/* /paso3 */}
 
-          {scoutingTab === "resumen" && trato.scoutingData ? (() => {
-            const s = scoutingForm;
-            const row = (label: string, val: string) => val ? (
-              <div key={label} className="flex gap-2 text-sm">
-                <span className="text-gray-500 min-w-[160px]">{label}</span>
-                <span className="text-white">{val}</span>
-              </div>
-            ) : null;
-            return (
+            {/* PASO 4: Briefing del cliente */}
+            {pasoActivo === 4 && (<div className="space-y-4">
+              <p className="text-xs text-gray-400">Escribe, pega o adjunta todo lo que el cliente comparta — libre, sin estructura</p>
+              <textarea value={briefingText}
+                onChange={(e) => { setBriefingText(e.target.value); autoSaveBriefing(e.target.value); }}
+                rows={8}
+                placeholder={`• Descripción del evento\n• Requerimientos técnicos\n• Expectativas y referencias\n• Mensajes de WhatsApp, correos, notas de llamada...\n• Cualquier detalle relevante`}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 text-gray-200 text-sm focus:outline-none focus:border-[#B3985B] resize-y leading-relaxed placeholder:text-gray-700" />
               <div className="space-y-4">
-                {s.nombreVenue && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Venue</p>
-                  <div className="space-y-1 pl-2">
-                    {row("Nombre", s.nombreVenue)}
-                    {row("Dirección", s.direccion)}
-                    {row("Contacto", s.contactoVenue + (s.telefonoVenue ? ` · ${s.telefonoVenue}` : ""))}
-                  </div>
-                </div>}
-                {(s.largo || s.ancho || s.alturaMaxima || s.capacidadPersonas) && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Espacio</p>
-                  <div className="space-y-1 pl-2">
-                    {(s.largo || s.ancho) && row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}
-                    {row("Altura máx.", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}
-                    {row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}
-                  </div>
-                </div>}
-                {(s.accesoVehicular || s.puntoDescarga) && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Accesos y logística</p>
-                  <div className="space-y-1 pl-2">
-                    {row("Acceso vehicular", s.accesoVehicular)}
-                    {row("Punto de descarga", s.puntoDescarga)}
-                  </div>
-                </div>}
-                {(s.voltajeDisponible || s.amperajeTotalDisponible || s.fases || s.ubicacionTablero) && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Instalación eléctrica</p>
-                  <div className="space-y-1 pl-2">
-                    {row("Voltaje disponible", s.voltajeDisponible ? `${s.voltajeDisponible}V` : "")}
-                    {row("Amperaje total", s.amperajeTotalDisponible ? `${s.amperajeTotalDisponible}A` : "")}
-                    {row("Fases", s.fases)}
-                    {row("Ubicación del tablero", s.ubicacionTablero)}
-                  </div>
-                </div>}
-                {(s.restriccionDecibeles || s.restriccionHorarioAcceso || s.restriccionInstalacion) && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Restricciones</p>
-                  <div className="space-y-1 pl-2">
-                    {row("Límite de decibeles", s.restriccionDecibeles)}
-                    {row("Horario de acceso", s.restriccionHorarioAcceso)}
-                    {row("Instalación", s.restriccionInstalacion)}
-                  </div>
-                </div>}
-                {(s.estadoGeneral || s.notasScouting) && <div>
-                  <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-2">Observaciones</p>
-                  <div className="space-y-1 pl-2">
-                    {row("Estado del lugar", s.estadoGeneral)}
-                    {s.notasScouting && <p className="text-sm text-gray-300 whitespace-pre-wrap">{s.notasScouting}</p>}
-                  </div>
-                </div>}
+                {(["SCOUTING", "REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
+                  const catMeta = {
+                    SCOUTING:   { label: "Fotos de scouting",               icon: "🗺️", accept: "image/*", hint: "Fotos del venue, accesos, instalaciones" },
+                    REFERENCIA: { label: "Referencias del cliente",          icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+                    DOCUMENTO:  { label: "Archivos adicionales del cliente", icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                  }[cat];
+                  const catArchivos = archivos.filter(a => a.tipo === cat);
+                  const uploading = uploadingTipo === cat;
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
+                          <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
+                        </div>
+                        <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                          {uploading ? "Subiendo..." : "+ Agregar"}
+                          <input type="file" className="hidden" accept={catMeta.accept} multiple={cat === "SCOUTING"} onChange={e => subirArchivo(e, cat)} />
+                        </label>
+                      </div>
+                      {catArchivos.length === 0 ? (
+                        <p className="text-gray-700 text-[11px] italic">Sin archivos aún</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                          {catArchivos.map((a) => {
+                            const esImagen = /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
+                            return (
+                              <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                                {esImagen ? (
+                                  <a href={a.url} target="_blank" rel="noreferrer">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                                  </a>
+                                ) : (
+                                  <a href={a.url} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
+                                    <span className="text-xl">{/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}</span>
+                                    <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
+                                  </a>
+                                )}
+                                <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
+                                <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })() : null}
+            </div>)} {/* /paso4 */}
 
-          {scoutingTab === "form" && (
-            <div className="space-y-5">
-              {/* Venue */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Venue / Recinto</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Nombre del venue</label>
-                    <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))}
-                      placeholder="Ej: Teatro de la Ciudad, Hacienda El Rosario..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Dirección</label>
-                    <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))}
-                      placeholder="Calle, número, colonia, ciudad"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Contacto en el venue</label>
-                    <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))}
-                      placeholder="Nombre del encargado / administrador"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Teléfono del contacto</label>
-                    <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))}
-                      placeholder="+52 442 000 0000"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
+            {/* PASO 5: Scouting del venue */}
+            {pasoActivo === 5 && (<div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-300">¿Aplica scouting?</p>
+                <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
+                <button onClick={() => setScoutingAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
+              </div>
+              {scoutingAplica === false && <p className="text-gray-600 text-xs italic">No se requiere scouting presencial para este proyecto.</p>}
+              {(scoutingAplica === true || trato.scoutingData) && (<div className="space-y-5">
+                <div className="flex gap-1">
+                  {(["form", "resumen"] as const).map(t => (
+                    <button key={t} onClick={() => setScoutingTab(t)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                      {t === "form" ? "Editar ficha" : "Ver resumen"}
+                    </button>
+                  ))}
                 </div>
-              </div>
+                {scoutingTab === "resumen" && trato.scoutingData && (() => {
+                  const s = scoutingForm;
+                  const row = (label: string, val: string) => val ? <div key={label} className="flex gap-2 text-sm"><span className="text-gray-500 min-w-[150px]">{label}</span><span className="text-white">{val}</span></div> : null;
+                  return <div className="space-y-4">
+                    {s.nombreVenue && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Venue</p><div className="space-y-1 pl-2">{row("Nombre", s.nombreVenue)}{row("Dirección", s.direccion)}{row("Contacto", s.contactoVenue)}</div></div>}
+                    {(s.largo || s.ancho) && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Espacio</p><div className="space-y-1 pl-2">{row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}{row("Altura", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}{row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}</div></div>}
+                    {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
+                  </div>;
+                })()}
+                {scoutingTab === "form" && <div className="space-y-5">
+                  <div>
+                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Venue / Recinto</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Contacto en el venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del contacto" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Dimensiones del espacio</p>
+                    <div className="grid grid-cols-4 gap-3">
+                      <div><label className="text-[10px] text-gray-500 mb-1 block">Largo (m)</label><input type="number" value={scoutingForm.largo} onChange={e => setScoutingForm(p => ({ ...p, largo: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                      <div><label className="text-[10px] text-gray-500 mb-1 block">Ancho (m)</label><input type="number" value={scoutingForm.ancho} onChange={e => setScoutingForm(p => ({ ...p, ancho: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                      <div><label className="text-[10px] text-gray-500 mb-1 block">Altura máx.</label><input type="number" value={scoutingForm.alturaMaxima} onChange={e => setScoutingForm(p => ({ ...p, alturaMaxima: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                      <div><label className="text-[10px] text-gray-500 mb-1 block">Capacidad</label><input type="number" value={scoutingForm.capacidadPersonas} onChange={e => setScoutingForm(p => ({ ...p, capacidadPersonas: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Eléctrico y accesos</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input type="number" value={scoutingForm.voltajeDisponible} onChange={e => setScoutingForm(p => ({ ...p, voltajeDisponible: e.target.value }))} placeholder="Voltaje (V)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input type="number" value={scoutingForm.amperajeTotalDisponible} onChange={e => setScoutingForm(p => ({ ...p, amperajeTotalDisponible: e.target.value }))} placeholder="Amperaje total (A)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <select value={scoutingForm.fases} onChange={e => setScoutingForm(p => ({ ...p, fases: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                        <option value="">Fases...</option>
+                        <option value="Monofásico 127V">Monofásico 127V</option>
+                        <option value="Bifásico 220V">Bifásico 220V</option>
+                        <option value="Trifásico 220V">Trifásico 220V</option>
+                        <option value="Trifásico 440V">Trifásico 440V</option>
+                      </select>
+                      <input value={scoutingForm.accesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, accesoVehicular: e.target.value }))} placeholder="Acceso vehicular" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Restricciones</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input value={scoutingForm.restriccionDecibeles} onChange={e => setScoutingForm(p => ({ ...p, restriccionDecibeles: e.target.value }))} placeholder="Límite de decibeles" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.restriccionHorarioAcceso} onChange={e => setScoutingForm(p => ({ ...p, restriccionHorarioAcceso: e.target.value }))} placeholder="Horario de acceso/montaje" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.restriccionInstalacion} onChange={e => setScoutingForm(p => ({ ...p, restriccionInstalacion: e.target.value }))} placeholder="Restricciones de instalación" className="sm:col-span-2 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+                  <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>}
+              </div>)}
+            </div>)} {/* /paso5 */}
 
-              {/* Espacio */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Dimensiones del espacio</p>
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Largo (m)</label>
-                    <input type="number" value={scoutingForm.largo} onChange={e => setScoutingForm(p => ({ ...p, largo: e.target.value }))}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Ancho (m)</label>
-                    <input type="number" value={scoutingForm.ancho} onChange={e => setScoutingForm(p => ({ ...p, ancho: e.target.value }))}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Altura máx. (m)</label>
-                    <input type="number" value={scoutingForm.alturaMaxima} onChange={e => setScoutingForm(p => ({ ...p, alturaMaxima: e.target.value }))}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Capacidad (personas)</label>
-                    <input type="number" value={scoutingForm.capacidadPersonas} onChange={e => setScoutingForm(p => ({ ...p, capacidadPersonas: e.target.value }))}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                </div>
+            {/* PASO 6: Brief de contenido */}
+            {pasoActivo === 6 && (<div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
+                <button onClick={() => setBriefAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
+                <button onClick={() => setBriefAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
+                {briefGuardado && <span className="px-2 py-0.5 rounded-full text-xs bg-green-900/40 text-green-300">Guardado</span>}
               </div>
-
-              {/* Accesos */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Accesos y logística</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Acceso vehicular</label>
-                    <input value={scoutingForm.accesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, accesoVehicular: e.target.value }))}
-                      placeholder="Ej: Sí, por calle lateral / No, solo peatonal"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Punto de descarga</label>
-                    <input value={scoutingForm.puntoDescarga} onChange={e => setScoutingForm(p => ({ ...p, puntoDescarga: e.target.value }))}
-                      placeholder="Ej: Entrada trasera, rampa norte..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Eléctrico */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Instalación eléctrica</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Voltaje disponible (V)</label>
-                    <input type="number" value={scoutingForm.voltajeDisponible} onChange={e => setScoutingForm(p => ({ ...p, voltajeDisponible: e.target.value }))}
-                      placeholder="Ej: 127 / 220"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Amperaje total disponible (A)</label>
-                    <input type="number" value={scoutingForm.amperajeTotalDisponible} onChange={e => setScoutingForm(p => ({ ...p, amperajeTotalDisponible: e.target.value }))}
-                      placeholder="Ej: 200"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Fases</label>
-                    <select value={scoutingForm.fases} onChange={e => setScoutingForm(p => ({ ...p, fases: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="">Seleccionar...</option>
-                      <option value="Monofásico 127V">Monofásico 127V</option>
-                      <option value="Bifásico 220V">Bifásico 220V</option>
-                      <option value="Trifásico 220V">Trifásico 220V</option>
-                      <option value="Trifásico 440V">Trifásico 440V</option>
+              {briefAplica === false && <p className="text-gray-600 text-xs italic">No se requiere levantamiento de contenido para este proyecto.</p>}
+              {(briefAplica === true || briefGuardado) && (<div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div><label className="text-xs text-gray-400 block mb-1">Nombre del evento</label><input value={briefForm.nombreEvento} onChange={e => setBriefForm(p => ({ ...p, nombreEvento: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Tipo de evento</label>
+                    <select value={briefForm.tipoEvento} onChange={e => setBriefForm(p => ({ ...p, tipoEvento: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="">Seleccionar</option><option value="EMPRESARIAL">Empresarial</option><option value="SOCIAL">Social</option><option value="MUSICAL">Musical</option><option value="OTRO">Otro</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Ubicación del tablero</label>
-                    <input value={scoutingForm.ubicacionTablero} onChange={e => setScoutingForm(p => ({ ...p, ubicacionTablero: e.target.value }))}
-                      placeholder="Ej: Cuarto de máquinas, entrada lateral..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <div><label className="text-xs text-gray-400 block mb-1">Fecha</label><input type="date" value={briefForm.fecha} onChange={e => setBriefForm(p => ({ ...p, fecha: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Horario del evento</label><input value={briefForm.horarioEvento} onChange={e => setBriefForm(p => ({ ...p, horarioEvento: e.target.value }))} placeholder="ej. 18:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Horario de cobertura</label><input value={briefForm.horarioCobertura} onChange={e => setBriefForm(p => ({ ...p, horarioCobertura: e.target.value }))} placeholder="ej. 17:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Lugar / Venue</label><input value={briefForm.lugar} onChange={e => setBriefForm(p => ({ ...p, lugar: e.target.value }))} placeholder="Nombre y dirección" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Objetivos del contenido</label>
+                  {["Contenido para redes sociales","Material para portafolio","Mostrar antes/después","Documentar operación técnica","Todas las anteriores (Cobertura General)","Otro"].map(obj => (
+                    <label key={obj} className="flex items-center gap-2 py-1 cursor-pointer group">
+                      <input type="checkbox" checked={briefForm.objetivosContenido.includes(obj)} onChange={e => setBriefForm(p => ({ ...p, objetivosContenido: e.target.checked ? [...p.objetivosContenido, obj] : p.objetivosContenido.filter(x => x !== obj) }))} className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a] accent-[#B3985B]" />
+                      <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{obj}</span>
+                    </label>
+                  ))}
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">Plan de cobertura</label>
+                  <div className="space-y-2">
+                    {[{id:"BASICO",label:"Básico",desc:"Fotografía + 1 Reel · $1,600"},{id:"ESTANDAR",label:"Estándar",desc:"Fotografía + 2 Reels · $2,000"},{id:"PLUS",label:"Plus",desc:"Estándar + Video con presentador · $2,500"},{id:"INTEGRAL",label:"Integral",desc:"Plus + Contenido de experiencia"},{id:"OTRO",label:"Otro",desc:""}].map(plan => (
+                      <button key={plan.id} onClick={() => setBriefForm(p => ({ ...p, planCobertura: plan.id }))} className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${briefForm.planCobertura === plan.id ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#444]"}`}>
+                        <span className="text-sm font-medium text-white">{plan.label}</span>
+                        {plan.desc && <span className="text-xs text-gray-400 ml-2">— {plan.desc}</span>}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
+                <div><label className="text-xs text-gray-400 block mb-1">Notas adicionales</label><textarea value={briefForm.notasAdicionales} onChange={e => setBriefForm(p => ({ ...p, notasAdicionales: e.target.value }))} rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
+                <button onClick={saveBrief} disabled={savingBrief} className="w-full py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-60">{savingBrief ? "Guardando..." : briefGuardado ? "Actualizar brief" : "Guardar brief"}</button>
+              </div>)}
+            </div>)} {/* /paso6 */}
 
-              {/* Restricciones */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Restricciones del venue</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Límite de decibeles</label>
-                    <input value={scoutingForm.restriccionDecibeles} onChange={e => setScoutingForm(p => ({ ...p, restriccionDecibeles: e.target.value }))}
-                      placeholder="Ej: Máx. 95 dB, no aplica..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Horario de acceso / montaje</label>
-                    <input value={scoutingForm.restriccionHorarioAcceso} onChange={e => setScoutingForm(p => ({ ...p, restriccionHorarioAcceso: e.target.value }))}
-                      placeholder="Ej: Entrada 08:00, salida máx. 02:00"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-400 block mb-1">Restricciones de instalación</label>
-                    <input value={scoutingForm.restriccionInstalacion} onChange={e => setScoutingForm(p => ({ ...p, restriccionInstalacion: e.target.value }))}
-                      placeholder="Ej: No se permite anclar en techo, no se puede instalar rigging..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                </div>
-              </div>
+            </div> {/* /p-5 space-y-5 */}
 
-              {/* Observaciones */}
-              <div>
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Observaciones generales</p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Estado general del venue</label>
-                    <input value={scoutingForm.estadoGeneral} onChange={e => setScoutingForm(p => ({ ...p, estadoGeneral: e.target.value }))}
-                      placeholder="Ej: Buenas condiciones, humedad en muros, piso de madera..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Notas adicionales del scouting</label>
-                    <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))}
-                      rows={3} placeholder="Cualquier detalle relevante para la producción: acústica, reflejos, obstáculos, condiciones especiales..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2 border-t border-[#1a1a1a]">
-                <button onClick={saveScouting} disabled={savingScouting}
-                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                  {savingScouting ? "Guardando..." : "Guardar ficha de scouting"}
+            {/* Wizard footer navigation */}
+            <div className="px-5 py-4 border-t border-[#1a1a1a] flex items-center justify-between">
+              <button onClick={() => setPasoActivo(p => Math.max(1, p - 1))} disabled={pasoActivo === 1}
+                className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-30 px-3 py-2 rounded-lg border border-[#222] hover:border-[#444]">
+                ← Anterior
+              </button>
+              <span className="text-[10px] text-gray-600">{pasoActivo} / {PASOS_DISCOVERY.length}</span>
+              {pasoActivo < PASOS_DISCOVERY.length ? (
+                <button onClick={() => setPasoActivo(p => p + 1)} className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
+                  Siguiente →
                 </button>
-              </div>
+              ) : (
+                !trato.descubrimientoCompleto ? (
+                  <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")} className="text-xs px-4 py-2 bg-[#B3985B] disabled:opacity-40 text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
+                    {saving ? "Guardando..." : "Completar descubrimiento →"}
+                  </button>
+                ) : <span className="text-xs text-[#B3985B] font-medium">✓ Descubrimiento completo</span>
+              )}
             </div>
-          )}
+          </>)}
         </div>
       )}
+
 
       {/* ── Estado 2b: Canal INFO ── */}
       {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion === "INFORMACION" && !trato.descubrimientoCompleto && (
@@ -2465,126 +2457,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Briefing del cliente ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Briefing del cliente</h2>
-            <p className="text-gray-500 text-xs mt-0.5">Escribe, pega o adjunta todo lo que el cliente comparta — libre, sin estructura</p>
-          </div>
-          <button
-            onClick={guardarBriefing}
-            disabled={savingBriefing}
-            className="px-4 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-400 hover:text-white text-xs transition-colors disabled:opacity-40"
-          >
-            {savingBriefing ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
-        <textarea
-          value={briefingText}
-          onChange={(e) => setBriefingText(e.target.value)}
-          onBlur={guardarBriefing}
-          rows={8}
-          placeholder={`Escribe o pega aquí todo lo que el cliente comparta:\n\n• Descripción del evento\n• Requerimientos técnicos\n• Expectativas y referencias\n• Mensajes de WhatsApp, correos, notas de llamada...\n• Cualquier detalle relevante`}
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 text-gray-200 text-sm focus:outline-none focus:border-[#B3985B] resize-y leading-relaxed placeholder:text-gray-700"
-        />
-
-        {/* Archivos por categoría */}
-        <div className="mt-4 border-t border-[#1a1a1a] pt-4 space-y-5">
-
-          {/* Helper: renders a file grid for a given category */}
-          {(["SCOUTING", "REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
-            const catMeta = {
-              SCOUTING:   { label: "Fotos de scouting",           icon: "🗺️", accept: "image/*", hint: "Fotos del venue, accesos, instalaciones" },
-              REFERENCIA: { label: "Referencias del cliente",      icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
-              DOCUMENTO:  { label: "Archivos adicionales del cliente", icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo adicional" },
-            }[cat];
-            const catArchivos = archivos.filter(a => a.tipo === cat);
-            const uploading = uploadingTipo === cat;
-            return (
-              <div key={cat}>
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
-                    <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
-                  </div>
-                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                    {uploading ? "Subiendo..." : "+ Agregar"}
-                    <input type="file" className="hidden" accept={catMeta.accept} multiple={cat === "SCOUTING"} onChange={e => subirArchivo(e, cat)} />
-                  </label>
-                </div>
-                {catArchivos.length === 0 ? (
-                  <p className="text-gray-700 text-[11px] italic">Sin archivos aún</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {catArchivos.map((a) => {
-                      const esImagen = /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
-                      return (
-                        <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
-                          {esImagen ? (
-                            <a href={a.url} target="_blank" rel="noreferrer">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
-                            </a>
-                          ) : (
-                            <a href={a.url} target="_blank" rel="noreferrer"
-                              className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
-                              <span className="text-xl">
-                                {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}
-                              </span>
-                              <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
-                            </a>
-                          )}
-                          <button
-                            onClick={() => eliminarArchivo(a.id)}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors"
-                          >×</button>
-                          <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Legacy: show any files with other types (IMAGEN/OTRO) not caught above */}
-          {archivos.filter(a => !["SCOUTING","REFERENCIA","DOCUMENTO"].includes(a.tipo)).length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 mb-2">Otros archivos</p>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {archivos.filter(a => !["SCOUTING","REFERENCIA","DOCUMENTO"].includes(a.tipo)).map((a) => {
-                  const esImagen = a.tipo === "IMAGEN" || /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
-                  return (
-                    <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
-                      {esImagen ? (
-                        <a href={a.url} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
-                        </a>
-                      ) : (
-                        <a href={a.url} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-2 px-3 py-4 hover:bg-[#1a1a1a] transition-colors">
-                          <span className="text-xl">
-                            {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : "📎"}
-                          </span>
-                          <span className="text-gray-300 text-[10px] truncate">{a.nombre}</span>
-                        </a>
-                      )}
-                      <button
-                        onClick={() => eliminarArchivo(a.id)}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors"
-                      >×</button>
-                      <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ── Grid: Detalles + Sidebar ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2753,199 +2625,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-white text-sm">{fmtDate(trato.createdAt)}</p>
           </div>
         </div>
-      </div>
-
-      {/* ── Brief Levantamiento de Contenido ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-        <button
-          onClick={() => setBriefExpanded(p => !p)}
-          className="w-full flex items-center justify-between p-5 text-left hover:bg-[#161616] transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">📸</span>
-            <div>
-              <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Brief Levantamiento de Contenido</h2>
-              <p className="text-gray-500 text-xs mt-0.5">
-                {briefGuardado ? "Brief completado — click para editar" : "Formulario para cobertura fotográfica/video del evento"}
-              </p>
-            </div>
-            {briefGuardado && <span className="px-2 py-0.5 rounded-full text-xs bg-green-900/40 text-green-300">Guardado</span>}
-          </div>
-          <span className="text-gray-500 text-lg">{briefExpanded ? "▲" : "▼"}</span>
-        </button>
-
-        {briefExpanded && (
-          <div className="px-5 pb-6 border-t border-[#222] space-y-5 pt-5">
-            {/* Datos del evento */}
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Datos del evento</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Nombre del evento</label>
-                  <input value={briefForm.nombreEvento} onChange={e => setBriefForm(p => ({ ...p, nombreEvento: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Tipo de evento</label>
-                  <select value={briefForm.tipoEvento} onChange={e => setBriefForm(p => ({ ...p, tipoEvento: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">Seleccionar</option>
-                    <option value="EMPRESARIAL">Empresarial</option>
-                    <option value="SOCIAL">Social</option>
-                    <option value="MUSICAL">Musical</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Fecha</label>
-                  <input type="date" value={briefForm.fecha} onChange={e => setBriefForm(p => ({ ...p, fecha: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Horario del evento</label>
-                  <input value={briefForm.horarioEvento} onChange={e => setBriefForm(p => ({ ...p, horarioEvento: e.target.value }))}
-                    placeholder="ej. 18:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Horario de cobertura</label>
-                  <input value={briefForm.horarioCobertura} onChange={e => setBriefForm(p => ({ ...p, horarioCobertura: e.target.value }))}
-                    placeholder="ej. 17:00 (llegada del fotógrafo)" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Lugar / Venue</label>
-                  <input value={briefForm.lugar} onChange={e => setBriefForm(p => ({ ...p, lugar: e.target.value }))}
-                    placeholder="Nombre del venue y dirección" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-              </div>
-            </div>
-
-            {/* Cliente */}
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Cliente y proveedores</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Nombre del cliente</label>
-                  <input value={briefForm.nombreCliente} onChange={e => setBriefForm(p => ({ ...p, nombreCliente: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Redes sociales del cliente/proveedores</label>
-                  <input value={briefForm.redesSocialesCliente} onChange={e => setBriefForm(p => ({ ...p, redesSocialesCliente: e.target.value }))}
-                    placeholder="@usuario, @usuario2..." className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <label className="text-xs text-gray-400 block mb-2">¿El evento cuenta con proveedores adicionales?</label>
-                <div className="flex gap-3">
-                  {["SI", "NO", "SIN_INFO"].map(v => (
-                    <button key={v} onClick={() => setBriefForm(p => ({ ...p, tieneProveedoresAdicionales: v }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border ${briefForm.tieneProveedoresAdicionales === v ? "bg-[#B3985B] text-black border-[#B3985B]" : "bg-[#1a1a1a] text-gray-400 border-[#2a2a2a] hover:border-[#B3985B]"}`}>
-                      {v === "SIN_INFO" ? "Sin información" : v === "SI" ? "Sí" : "No"}
-                    </button>
-                  ))}
-                </div>
-                {briefForm.tieneProveedoresAdicionales === "SI" && (
-                  <textarea value={briefForm.proveedoresDetalle} onChange={e => setBriefForm(p => ({ ...p, proveedoresDetalle: e.target.value }))}
-                    placeholder="¿Quién es el proveedor y qué servicios ofrecerán?" rows={2}
-                    className="w-full mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                )}
-              </div>
-            </div>
-
-            {/* Objetivos de contenido */}
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Objetivos del contenido</p>
-              {[
-                "Contenido para redes sociales",
-                "Material para portafolio",
-                "Mostrar antes/después",
-                "Documentar operación técnica",
-                "Mostrar funcionamiento/operación de equipo específico",
-                "Todas las anteriores (Cobertura General)",
-                "Otro",
-              ].map(obj => (
-                <label key={obj} className="flex items-center gap-2 py-1 cursor-pointer group">
-                  <input type="checkbox"
-                    checked={briefForm.objetivosContenido.includes(obj)}
-                    onChange={e => setBriefForm(p => ({
-                      ...p,
-                      objetivosContenido: e.target.checked
-                        ? [...p.objetivosContenido, obj]
-                        : p.objetivosContenido.filter(x => x !== obj),
-                    }))}
-                    className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a] accent-[#B3985B]" />
-                  <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{obj}</span>
-                </label>
-              ))}
-              {briefForm.objetivosContenido.length > 0 && (
-                <textarea value={briefForm.detalleObjetivo} onChange={e => setBriefForm(p => ({ ...p, detalleObjetivo: e.target.value }))}
-                  placeholder="Detalla el objetivo seleccionado..." rows={2}
-                  className="w-full mt-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-              )}
-            </div>
-
-            {/* Plan de cobertura */}
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Plan de cobertura</p>
-              <div className="space-y-2">
-                {[
-                  { id: "BASICO", label: "Básico", desc: "Fotografía + 1 Reel · $1,600" },
-                  { id: "ESTANDAR", label: "Estándar", desc: "Fotografía + 2 Reels · $2,000" },
-                  { id: "PLUS", label: "Plus", desc: "Estándar + Video con presentador · $2,500" },
-                  { id: "INTEGRAL", label: "Integral", desc: "Plus + Contenido de experiencia influencer · Costo variable" },
-                  { id: "OTRO", label: "Otro", desc: "" },
-                ].map(plan => (
-                  <button key={plan.id} onClick={() => setBriefForm(p => ({ ...p, planCobertura: plan.id }))}
-                    className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${briefForm.planCobertura === plan.id ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#444]"}`}>
-                    <span className="text-sm font-medium text-white">{plan.label}</span>
-                    {plan.desc && <span className="text-xs text-gray-400 ml-2">— {plan.desc}</span>}
-                  </button>
-                ))}
-              </div>
-              {briefForm.planCobertura === "OTRO" && (
-                <input value={briefForm.planCoberturaOtro} onChange={e => setBriefForm(p => ({ ...p, planCoberturaOtro: e.target.value }))}
-                  placeholder="Describe el plan de cobertura" className="w-full mt-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              )}
-            </div>
-
-            {/* Temas y colaboradores */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">¿Qué temas te interesa desarrollar en el contenido?</label>
-                <textarea value={briefForm.temasSugeridos} onChange={e => setBriefForm(p => ({ ...p, temasSugeridos: e.target.value }))}
-                  rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-2">¿Hay colaboradores de Mainstage Pro disponibles frente a cámara?</label>
-                <div className="flex gap-3 mb-2">
-                  {["SI", "NO"].map(v => (
-                    <button key={v} onClick={() => setBriefForm(p => ({ ...p, colaboradoresCamara: v }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-colors border ${briefForm.colaboradoresCamara === v ? "bg-[#B3985B] text-black border-[#B3985B]" : "bg-[#1a1a1a] text-gray-400 border-[#2a2a2a] hover:border-[#B3985B]"}`}>
-                      {v === "SI" ? "Sí" : "No"}
-                    </button>
-                  ))}
-                </div>
-                {briefForm.colaboradoresCamara === "SI" && (
-                  <textarea value={briefForm.colaboradoresNombres} onChange={e => setBriefForm(p => ({ ...p, colaboradoresNombres: e.target.value }))}
-                    placeholder="Nombre(s) de los participantes" rows={2}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                )}
-              </div>
-            </div>
-
-            {/* Notas adicionales */}
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Notas adicionales y consideraciones del evento</label>
-              <textarea value={briefForm.notasAdicionales} onChange={e => setBriefForm(p => ({ ...p, notasAdicionales: e.target.value }))}
-                rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-            </div>
-
-            <button onClick={saveBrief} disabled={savingBrief}
-              className="w-full py-3 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-60">
-              {savingBrief ? "Guardando..." : briefGuardado ? "Actualizar brief" : "Guardar brief"}
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Cotizaciones */}
