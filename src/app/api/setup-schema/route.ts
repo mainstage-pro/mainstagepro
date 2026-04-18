@@ -728,6 +728,10 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "vendedorId" TEXT`);
     results.push("✅ clientes.vendedorId");
 
+    // 38. migrar BASIC → REGULAR (clasificación legacy)
+    await prisma.$executeRawUnsafe(`UPDATE "clientes" SET "clasificacion" = 'REGULAR' WHERE "clasificacion" = 'BASIC'`);
+    results.push("✅ clientes BASIC→REGULAR migración");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

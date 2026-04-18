@@ -83,10 +83,11 @@ export const TIPO_SERVICIO_LABELS: Record<string, string> = {
 
 // Clasificación cliente
 export const CLASIFICACION_LABELS: Record<string, string> = {
+  PROSPECTO: "Prospecto",
   NUEVO: "Nuevo",
-  BASIC: "Basic",
   REGULAR: "Regular",
   PRIORITY: "Priority",
+  BASIC: "Basic", // legacy — migrado a REGULAR
 };
 
 // Tipo cliente

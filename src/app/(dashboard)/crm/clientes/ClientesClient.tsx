@@ -26,10 +26,11 @@ const TIPO_COLORS: Record<string, string> = {
   POR_DESCUBRIR: "bg-gray-800 text-gray-400",
 };
 const CLAS_COLORS: Record<string, string> = {
+  PROSPECTO: "text-purple-400",
   NUEVO: "text-[#6b7280]",
-  BASIC: "text-blue-400",
   REGULAR: "text-yellow-400",
   PRIORITY: "text-[#B3985B]",
+  BASIC: "text-blue-400", // legacy
 };
 
 function TipoBadge({ tipo }: { tipo: string }) {

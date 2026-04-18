@@ -136,8 +136,8 @@ export default function NuevoClientePage() {
                 onChange={handleChange}
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
               >
+                <option value="PROSPECTO">Prospecto</option>
                 <option value="NUEVO">Nuevo</option>
-                <option value="BASIC">Basic</option>
                 <option value="REGULAR">Regular</option>
                 <option value="PRIORITY">Priority</option>
               </select>

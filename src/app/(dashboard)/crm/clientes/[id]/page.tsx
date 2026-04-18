@@ -252,10 +252,11 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   if (!cliente) return <div className="text-red-400 text-sm">Cliente no encontrado</div>;
 
   const clasificacionColor: Record<string, string> = {
+    PROSPECTO: "bg-purple-900/50 text-purple-300",
     NUEVO: "bg-gray-700 text-gray-300",
-    BASIC: "bg-blue-900/50 text-blue-300",
     REGULAR: "bg-yellow-900/50 text-yellow-300",
     PRIORITY: "bg-[#B3985B]/20 text-[#B3985B]",
+    BASIC: "bg-blue-900/50 text-blue-300", // legacy
   };
 
   return (
@@ -353,8 +354,8 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                   onChange={(e) => setForm((p) => ({ ...p, clasificacion: e.target.value }))}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 >
+                  <option value="PROSPECTO">Prospecto</option>
                   <option value="NUEVO">Nuevo</option>
-                  <option value="BASIC">Basic</option>
                   <option value="REGULAR">Regular</option>
                   <option value="PRIORITY">Priority</option>
                 </select>
