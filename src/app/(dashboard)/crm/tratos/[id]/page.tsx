@@ -603,6 +603,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [tradeNivel, setTradeNivel] = useState<number | null>(null);
   const [savingTrade, setSavingTrade] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const [skipGate, setSkipGate] = useState(false);
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
@@ -1101,7 +1102,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ══ GATE PRIMARIO ══ */}
-      {!trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
+      {!skipGate && !trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
         <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
           {!showCanales ? (
             <>
@@ -1153,6 +1154,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </>
           )}
+          <div className="text-center mt-6 pt-4 border-t border-[#1a1a1a]">
+            <button onClick={() => setSkipGate(true)} className="text-gray-600 hover:text-gray-400 text-xs transition-colors underline underline-offset-2">
+              Saltar este paso y cotizar directamente →
+            </button>
+          </div>
         </div>
       )}
 

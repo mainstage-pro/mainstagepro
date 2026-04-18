@@ -243,7 +243,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"info" | "personal" | "equipos" | "rider" | "docs" | "checklist" | "finanzas" | "bitacora" | "evaluacion" | "protocolo">("info");
+  const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
+  const [extrasTab, setExtrasTab] = useState<"rider" | "docs" | "checklist" | "protocolo" | "bitacora" | "evaluacion">("rider");
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
@@ -717,8 +718,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Lazy-load evaluación cliente when evaluacion tab opens
   useEffect(() => {
-    if (tab === "evaluacion") loadEvalCliente();
-  }, [tab]);
+    if (tab === "extras" && extrasTab === "evaluacion") loadEvalCliente();
+  }, [tab, extrasTab]);
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -869,7 +870,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       if (d.evaluacion) {
         setEvalCliente(d.evaluacion);
         setEvalClienteLoaded(true);
-        setTab("evaluacion");
+        setTab("extras");
+        setExtrasTab("evaluacion");
       }
       await load(); // recargar para mostrar el cierre generado
     }
@@ -1591,18 +1593,118 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
-        {(["info", "equipos", "rider", "docs", "checklist", "protocolo", "finanzas", "bitacora", "evaluacion"] as const).map(t => (
+        {(["resumen", "operacion", "finanzas", "extras"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
               tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
             }`}>
-            {t === "info" ? "Info" : t === "equipos" ? "Equipos" : t === "rider" ? "Rider" : t === "docs" ? "Docs" : t === "checklist" ? "Checklist" : t === "protocolo" ? "Protocolo" : t === "finanzas" ? "Finanzas" : t === "bitacora" ? "Bitácora" : "Eval."}
+            {t === "resumen" ? "Resumen" : t === "operacion" ? "Operación" : t === "finanzas" ? "Finanzas" : "···  Más"}
           </button>
         ))}
       </div>
 
-      {/* ────── TAB: INFO ────── */}
-      {tab === "info" && (() => {
+      {/* ────── TAB: RESUMEN ────── */}
+      {tab === "resumen" && (() => {
+        const fichaCamposFaltantes: string[] = [];
+        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
+        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
+        if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
+        const fichaCompleta = fichaCamposFaltantes.length === 0;
+        return (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
+            {!fichaCompleta && (
+              <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-xl px-4 py-3 flex items-center gap-3">
+                <span className="text-yellow-400">⚠</span>
+                <p className="text-yellow-400/80 text-xs">
+                  <span className="font-semibold text-yellow-400">Ficha incompleta — </span>
+                  falta: <span className="font-medium">{fichaCamposFaltantes.join(", ")}</span>.
+                </p>
+              </div>
+            )}
+            {/* Cliente */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Cliente</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Nombre</p>
+                  <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-white hover:text-[#B3985B] font-medium">
+                    {proyecto.cliente.nombre}
+                  </Link>
+                  {proyecto.cliente.empresa && <p className="text-gray-400 text-xs">{proyecto.cliente.empresa}</p>}
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Contacto</p>
+                  <p className="text-white">{proyecto.cliente.telefono ?? "—"}</p>
+                  {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
+                </div>
+                <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
+                  <p className="text-white text-sm">{proyecto.encargado?.name ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            {/* Evento */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
+                <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
+                <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
+                <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
+                <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+              </div>
+            </div>
+            {/* Notas */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas</p>
+              <Campo label="Descripción general" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
+              <div className="mt-3">
+                <Campo label="Comentarios finales / instrucciones" value={proyecto.comentariosFinales} field="comentariosFinales" multiline onSave={guardarCampo} />
+              </div>
+            </div>
+            {/* Accesos rápidos */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
+              <div className="flex flex-wrap gap-3">
+                {proyecto.cotizacion && (
+                  <Link href={`/cotizaciones/${proyecto.cotizacion.id}`}
+                    className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-[#B3985B] hover:border-[#B3985B]/50 transition-colors">
+                    📄 Cotización
+                  </Link>
+                )}
+                {proyecto.cliente.telefono && (
+                  <a href={`https://wa.me/52${proyecto.cliente.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
+                    className="text-xs px-3 py-2 border border-green-800/40 rounded-lg text-green-400 hover:bg-green-900/20 transition-colors">
+                    💬 WhatsApp cliente
+                  </a>
+                )}
+                <button onClick={() => setTab("operacion")}
+                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
+                  👥 Personal y equipo →
+                </button>
+                <button onClick={() => setTab("finanzas")}
+                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
+                  💰 Finanzas →
+                </button>
+                {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+                  <button onClick={() => { setTab("extras"); setExtrasTab("protocolo"); }}
+                    className="text-xs px-3 py-2 border border-[#B3985B]/40 rounded-lg text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                    📦 Protocolo salida/entrada →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ────── TAB: OPERACIÓN (Info) ────── */}
+      {tab === "operacion" && (() => {
         // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
         const fichaCamposFaltantes: string[] = [];
         if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
@@ -2755,8 +2857,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── TAB: EQUIPOS ────── */}
-      {tab === "equipos" && (() => {
+      {/* ────── TAB: EQUIPOS (dentro de OPERACIÓN) ────── */}
+      {tab === "operacion" && (() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
         const camposFaltantesEq: string[] = [];
@@ -2973,7 +3075,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
       {/* ────── TAB: DOCS ────── */}
-      {tab === "docs" && (() => {
+      {tab === "extras" && extrasTab === "docs" && (() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
@@ -3352,9 +3454,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── TAB: PERSONAL ────── */}
+      {/* ────── SUB-NAVEGADOR: EXTRAS ────── */}
+      {tab === "extras" && (
+        <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1 flex-wrap mb-2">
+          {([
+            { key: "rider", label: "Rider" },
+            { key: "docs", label: "Docs" },
+            { key: "checklist", label: "Checklist" },
+            { key: "protocolo", label: "Protocolo" },
+            { key: "bitacora", label: "Bitácora" },
+            { key: "evaluacion", label: "Evaluación" },
+          ] as const).map(st => (
+            <button key={st.key} onClick={() => setExtrasTab(st.key)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                extrasTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
+              }`}>
+              {st.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ────── TAB: CHECKLIST ────── */}
-      {tab === "checklist" && (
+      {tab === "extras" && extrasTab === "checklist" && (
         <div className="space-y-4">
 
           {/* ── Sección OPERACIÓN ── */}
@@ -3418,7 +3540,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between">
             <p className="text-gray-500 text-sm">El rider técnico con accesorios está en la pestaña <span className="text-blue-400 font-medium">Rider</span>.</p>
-            <button onClick={() => setTab("rider")} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 px-3 py-1.5 rounded-lg transition-colors">
+            <button onClick={() => { setTab("extras"); setExtrasTab("rider"); }} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 px-3 py-1.5 rounded-lg transition-colors">
               Ir al Rider →
             </button>
           </div>
@@ -3426,7 +3548,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {/* ────── TAB: RIDER ────── */}
-      {tab === "rider" && (
+      {tab === "extras" && extrasTab === "rider" && (
         <div className="space-y-4">
           {/* Header + acciones */}
           <div className="flex items-center justify-between">
@@ -3554,7 +3676,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {/* ────── TAB: PROTOCOLO ────── */}
-      {tab === "protocolo" && (() => {
+      {tab === "extras" && extrasTab === "protocolo" && (() => {
         type ProtocoloData = {
           estado: string; // PENDIENTE | EN_REVISION | OK
           responsable: string;
@@ -4572,7 +4694,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {/* ────── TAB: BITÁCORA ────── */}
-      {tab === "bitacora" && (
+      {tab === "extras" && extrasTab === "bitacora" && (
         <div className="space-y-3">
           {/* Agregar nota */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
@@ -4614,7 +4736,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {/* ────── TAB: EVALUACIÓN ────── */}
-      {tab === "evaluacion" && (() => {
+      {tab === "extras" && extrasTab === "evaluacion" && (() => {
         const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
         const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
           { key: "planeacionPrevia",    label: "Preparación de la renta",   desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
