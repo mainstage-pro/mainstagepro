@@ -5,6 +5,7 @@ import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskPanel, { type TareaDetalle } from "./components/TaskPanel";
 import QuickAdd from "./components/QuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
+import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export default function OperacionesPage() {
   const [showCompleted, setShowCompleted]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
+  const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(showCompleted);
   useEffect(() => { showCompletedRef.current = showCompleted; }, [showCompleted]);
@@ -205,6 +207,9 @@ export default function OperacionesPage() {
         secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
       } : null);
     }
+
+    // Micro-celebración
+    celebrate("tarea");
 
     // Show undo toast with 4s timer
     clearTimeout(undoTimer.current);
@@ -766,6 +771,7 @@ export default function OperacionesPage() {
 
       {/* ── UNDO TOAST ────────────────────────────────────────────────────── */}
       <UndoToast undo={undoState} onUndo={handleUndo} onDismiss={handleDismissUndo} />
+      {CelebrationToastEl}
 
       {/* ── MODAL: Nuevo proyecto ──────────────────────────────────────────── */}
       {showNuevoProyecto && (

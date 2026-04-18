@@ -6,6 +6,7 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
+import ImpactStats from "@/components/ImpactStats";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -66,6 +67,11 @@ export default async function DashboardPage() {
     hervamConfig,
     sociosReporteMes,
     sociosReportesPendientes,
+    // ── IMPACTO ──────────────────────────────────
+    eventosEsteAno,
+    eventosEnCurso,
+    eventosHoy,
+    totalClientesCount,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -207,6 +213,29 @@ export default async function DashboardPage() {
     prisma.socioReporte.count({
       where: { estado: { not: "PAGADO" } },
     }),
+
+    // ── IMPACTO ──────────────────────────────────
+    prisma.proyecto.count({
+      where: {
+        estado: { in: ["COMPLETADO", "CONFIRMADO", "EN_CURSO", "PLANEACION"] },
+        fechaEvento: {
+          gte: new Date(ahora.getFullYear(), 0, 1),
+          lte: new Date(ahora.getFullYear(), 11, 31),
+        },
+      },
+    }),
+    prisma.proyecto.count({
+      where: { estado: "EN_CURSO" },
+    }),
+    prisma.proyecto.count({
+      where: {
+        fechaEvento: {
+          gte: new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()),
+          lt:  new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1),
+        },
+      },
+    }),
+    prisma.cliente.count(),
   ]);
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
@@ -242,6 +271,8 @@ export default async function DashboardPage() {
   const pubsPublicadas  = pubsMap.PUBLICADO ?? 0;
   const pubsPendientes  = (pubsMap.PENDIENTE ?? 0) + (pubsMap.EN_PROCESO ?? 0);
 
+  const anosOperando = ahora.getFullYear() - 2018; // Mainstage fundado en 2018
+
   const ESTADO_PUB_COLORS: Record<string, string> = {
     PENDIENTE:  "bg-gray-800 text-gray-400",
     EN_PROCESO: "bg-blue-900/40 text-blue-300",
@@ -263,6 +294,15 @@ export default async function DashboardPage() {
           + Nuevo trato
         </Link>
       </div>
+
+      {/* ── Impacto ──────────────────────────────────────────────────────── */}
+      <ImpactStats
+        eventosHoy={eventosHoy}
+        eventosEnCurso={eventosEnCurso}
+        eventosEsteAno={eventosEsteAno}
+        totalClientes={totalClientesCount}
+        anosOperando={anosOperando}
+      />
 
       {/* ══════════════════════════════════════════════════════════════════════
           CAPITAL

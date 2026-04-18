@@ -1430,6 +1430,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
             {proyecto.cliente.nombre}{proyecto.cliente.empresa ? ` · ${proyecto.cliente.empresa}` : ""}
           </Link>
+          <p className="text-[#444] text-xs mt-1 italic">
+            Estamos creando una experiencia memorable para {proyecto.cliente.nombre.split(" ")[0]}.
+          </p>
         </div>
         <div className="text-right shrink-0 flex flex-col items-end gap-2">
           <div>
@@ -4574,7 +4577,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* Agregar nota */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <textarea value={notaBitacora} onChange={e => setNotaBitacora(e.target.value)}
-              rows={3} placeholder="Escribe una nota, cambio o acción importante..."
+              rows={3} placeholder="¿Qué pasó hoy? ¿Qué aprendimos? Cada detalle que documentes hoy le ahorra horas al equipo mañana..."
               className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-2" />
             <div className="flex justify-end">
               <button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()}

@@ -9,6 +9,7 @@ import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { useCelebration } from "@/components/CelebrationToast";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -492,6 +493,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
+  const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const [trato, setTrato] = useState<Trato | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -919,6 +921,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(true);
     const d = await patch({ etapa });
     setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa } : prev);
+    if (etapa === "VENTA_CERRADA") celebrate("venta");
     setSaving(false);
   }
 
@@ -2960,6 +2963,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </div>
+      {CelebrationToastEl}
     </div>
   );
 }
