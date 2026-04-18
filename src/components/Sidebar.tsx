@@ -448,7 +448,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
       </aside>
 
       {/* MOBILE: barra superior */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-2 gap-1.5 max-w-full overflow-hidden">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-[60] h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-2 gap-1.5 max-w-full">
         {/* Botón regresar — solo cuando no estamos en /dashboard */}
         {pathname !== "/dashboard" && (
           <button

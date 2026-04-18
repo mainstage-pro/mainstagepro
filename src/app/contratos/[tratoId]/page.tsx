@@ -291,86 +291,160 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
         </SeccionCard>
 
         {/* Sección 2: Precio y pagos */}
-        <SeccionCard num="2" titulo="Precio, Anticipo, Saldo y Cancelaciones">
-          <div className="grid grid-cols-3 gap-3 mb-5">
-            <PagoCard label="Total del servicio" monto={fmt(granTotal)} />
-            <PagoCard
-              label="Anticipo"
-              monto={montoAnticipo > 0 ? fmt(montoAnticipo) : "A definir"}
-              fecha={anticipo?.fechaCompromiso ? `Fecha límite: ${fmtDateShort(anticipo.fechaCompromiso)}` : undefined}
-            />
-            <PagoCard
-              label="Saldo restante"
-              monto={montoSaldo > 0 ? fmt(montoSaldo) : "—"}
-              fecha={fechaLimiteSaldo ? `Fecha límite: ${fmtDateShort(fechaLimiteSaldo)}` : "1 día antes del evento"}
-            />
-          </div>
-          <ClausulasList items={[
-            "Sin pago de anticipo, la fecha no se considera reservada ni el equipo apartado.",
-            "Si el saldo no se cubre en la fecha límite, EL PROVEEDOR no estará obligado a montar ni prestar el servicio, considerándose cancelado sin devolución.",
-            "En caso de cancelación por parte de EL CLIENTE, el anticipo no es reembolsable.",
-            "Para posponer la fecha se requiere aviso con mínimo 14 días naturales. La nueva fecha debe realizarse en los 12 meses siguientes; de lo contrario se considera cancelación.",
-            "Cambios de domicilio o horario están sujetos a aprobación y pueden generar cargos adicionales.",
-          ]} />
-        </SeccionCard>
+        {trato.tipoServicio === "RENTA" ? (
+          <SeccionCard num="2" titulo="Reserva, Pagos y Facturación">
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <PagoCard label="Total del servicio" monto={fmt(granTotal)} />
+              <PagoCard
+                label="Anticipo (50%)"
+                monto={montoAnticipo > 0 ? fmt(montoAnticipo) : fmt(granTotal * 0.5)}
+                fecha="Requerido para reservar equipo y fecha"
+              />
+              <PagoCard
+                label="Saldo (50%)"
+                monto={montoSaldo > 0 ? fmt(montoSaldo) : fmt(granTotal * 0.5)}
+                fecha="A la entrega o retiro del equipo"
+              />
+            </div>
+            <ClausulasList items={[
+              "Para reservar EL EQUIPO se requiere anticipo del 50% del total indicado en LA COTIZACIÓN.",
+              "El 50% restante se paga a la entrega o al retiro del equipo, salvo que LA COTIZACIÓN disponga otro calendario.",
+              "Si el anticipo no se paga, EL ARRENDADOR no está obligado a reservar disponibilidad de equipo ni fecha.",
+              "Si el saldo no se paga en el momento pactado, EL ARRENDADOR podrá no entregar EL EQUIPO sin penalización.",
+            ]} />
+          </SeccionCard>
+        ) : (
+          <SeccionCard num="2" titulo="Precio, Anticipo, Saldo y Cancelaciones">
+            <div className="grid grid-cols-3 gap-3 mb-5">
+              <PagoCard label="Total del servicio" monto={fmt(granTotal)} />
+              <PagoCard
+                label="Anticipo"
+                monto={montoAnticipo > 0 ? fmt(montoAnticipo) : "A definir"}
+                fecha={anticipo?.fechaCompromiso ? `Fecha límite: ${fmtDateShort(anticipo.fechaCompromiso)}` : undefined}
+              />
+              <PagoCard
+                label="Saldo restante"
+                monto={montoSaldo > 0 ? fmt(montoSaldo) : "—"}
+                fecha={fechaLimiteSaldo ? `Fecha límite: ${fmtDateShort(fechaLimiteSaldo)}` : "1 día antes del evento"}
+              />
+            </div>
+            <ClausulasList items={[
+              "Sin pago de anticipo, la fecha no se considera reservada ni el equipo apartado.",
+              "Si el saldo no se cubre en la fecha límite, EL PROVEEDOR no estará obligado a montar ni prestar el servicio, considerándose cancelado sin devolución.",
+              "En caso de cancelación por parte de EL CLIENTE, el anticipo no es reembolsable.",
+              "Para posponer la fecha se requiere aviso con mínimo 14 días naturales. La nueva fecha debe realizarse en los 12 meses siguientes; de lo contrario se considera cancelación.",
+              "Cambios de domicilio o horario están sujetos a aprobación y pueden generar cargos adicionales.",
+            ]} />
+          </SeccionCard>
+        )}
 
-        {/* Secciones 3-10 */}
-        <SeccionCard num="3" titulo="Alcance del Servicio y Cambios">
-          <ClausulasList items={[
-            "EL PROVEEDOR prestará el servicio con el equipo, personal y horarios de la cotización aprobada.",
-            "Servicios adicionales, modificaciones u horas extra deben solicitarse por escrito con mínimo 3 días naturales de anticipación.",
-            "Ajustes de horario deben comunicarse con al menos 5 días naturales de anticipación.",
-            "En caso de indisponibilidad por fuerza mayor, EL PROVEEDOR podrá sustituir equipo por uno de características iguales o superiores.",
-            "Modificaciones sustanciales al alcance requieren adenda escrita firmada por ambas partes.",
-          ]} />
-        </SeccionCard>
+        {/* Secciones 3-6: varían según tipo de servicio */}
+        {trato.tipoServicio === "RENTA" ? (
+          <>
+            <SeccionCard num="3" titulo="Entrega, Devolución y Revisión">
+              <ClausulasList items={[
+                "La entrega/devolución se realizará conforme a lo indicado en LA COTIZACIÓN (retiro en bodega o entrega/recolección a domicilio).",
+                "EL EQUIPO se entrega probado y en correcto funcionamiento, salvo constancia escrita en la Hoja de Entrega.",
+                "A la devolución se realiza revisión inmediata contra la Hoja de Entrega (Check-in & Check-out).",
+                "EL ARRENDADOR tendrá hasta 5 días naturales posteriores a la devolución para notificar daños no aparentes o fallas derivadas de la operación durante la renta.",
+              ]} />
+            </SeccionCard>
 
-        <SeccionCard num="4" titulo="Seguridad, Operación Técnica, Energía y Clima">
-          <ClausulasList items={[
-            "EL PROVEEDOR tiene la decisión técnica final sobre ubicación, montaje, estructuras y cableado.",
-            "Nadie ajeno al personal de EL PROVEEDOR podrá manipular o mover el equipo sin autorización escrita.",
-            "EL CLIENTE garantiza suministro eléctrico suficiente. Fallas del venue o terceros son responsabilidad de estos.",
-            "Ante condiciones climáticas adversas, EL PROVEEDOR puede suspender el servicio privilegiando la seguridad, sin bonificación.",
-            "EL CLIENTE es responsable de obtener los permisos y licencias que el evento requiera.",
-          ]} />
-        </SeccionCard>
+            <SeccionCard num="4" titulo="Uso, Custodia y Responsabilidad">
+              <ClausulasList items={[
+                "Desde la salida del equipo de bodega y hasta su recepción y revisión de devolución, todo riesgo corre por cuenta de EL CLIENTE (transporte, montaje, operación y desmontaje).",
+                "EL CLIENTE se obliga a operar el equipo con personal capacitado y a evitar exposición a lluvia, humedad, alimentos/bebidas, polvo excesivo o golpes.",
+                "Queda prohibida la modificación, apertura o reparación del equipo sin autorización expresa de MAINSTAGE.",
+              ]} />
+            </SeccionCard>
 
-        <SeccionCard num="5" titulo="Daños al Equipo y No Bonificaciones">
-          <ClausulasList items={[
-            "EL CLIENTE responde por daños al equipo: descargas eléctricas ajenas a EL PROVEEDOR, golpes, manipulación no autorizada, exposición a líquidos o alimentos, extravío o robo.",
-            "No habrá bonificación por cortes eléctricos ajenos a EL PROVEEDOR, terminación anticipada por EL CLIENTE, o condiciones del venue que impidan el servicio.",
-            "La responsabilidad total de EL PROVEEDOR no excederá el monto total del servicio contratado.",
-          ]} />
-        </SeccionCard>
+            <SeccionCard num="5" titulo="Daños, Pérdida o Robo">
+              <ClausulasList items={[
+                "EL CLIENTE responde por cualquier daño, golpe o falla por mal uso, así como por pérdida, extravío o robo del equipo y/o accesorios, por parte de su personal o terceros bajo su control.",
+                "En caso de daño, EL CLIENTE cubrirá el costo de reparación con base en cotización de servicio técnico especializado o el valor de reposición.",
+                "En caso de pérdida/extravío/robo, EL CLIENTE tendrá hasta 7 días naturales para localizar o recuperar el equipo. Si no se recupera, procederá el cobro total de reposición o reposición en especie (según acuerden las partes).",
+              ]} />
+            </SeccionCard>
 
-        <SeccionCard num="6" titulo="Retrasos Imputables a Mainstage Producciones">
+            <SeccionCard num="6" titulo="Fallas Durante la Renta y Soporte">
+              <ClausulasList items={[
+                "Cualquier falla debe reportarse de inmediato a MAINSTAGE, adjuntando evidencia (foto/video).",
+                "MAINSTAGE podrá brindar soporte remoto y/o, si existe disponibilidad, reemplazo de equipo.",
+                "MAINSTAGE no será responsable por pérdidas económicas, cancelaciones o daños indirectos derivados de fallas o imposibilidad de reemplazo.",
+              ]} />
+            </SeccionCard>
+          </>
+        ) : (
+          <>
+            <SeccionCard num="3" titulo="Alcance del Servicio y Cambios">
+              <ClausulasList items={[
+                "EL PROVEEDOR prestará el servicio con el equipo, personal y horarios de la cotización aprobada.",
+                "Servicios adicionales, modificaciones u horas extra deben solicitarse por escrito con mínimo 3 días naturales de anticipación.",
+                "Ajustes de horario deben comunicarse con al menos 5 días naturales de anticipación.",
+                "En caso de indisponibilidad por fuerza mayor, EL PROVEEDOR podrá sustituir equipo por uno de características iguales o superiores.",
+                "Modificaciones sustanciales al alcance requieren adenda escrita firmada por ambas partes.",
+              ]} />
+            </SeccionCard>
+
+            <SeccionCard num="4" titulo="Seguridad, Operación Técnica, Energía y Clima">
+              <ClausulasList items={[
+                "EL PROVEEDOR tiene la decisión técnica final sobre ubicación, montaje, estructuras y cableado.",
+                "Nadie ajeno al personal de EL PROVEEDOR podrá manipular o mover el equipo sin autorización escrita.",
+                "EL CLIENTE garantiza suministro eléctrico suficiente. Fallas del venue o terceros son responsabilidad de estos.",
+                "Ante condiciones climáticas adversas, EL PROVEEDOR puede suspender el servicio privilegiando la seguridad, sin bonificación.",
+                "EL CLIENTE es responsable de obtener los permisos y licencias que el evento requiera.",
+              ]} />
+            </SeccionCard>
+
+            <SeccionCard num="5" titulo="Daños al Equipo y No Bonificaciones">
+              <ClausulasList items={[
+                "EL CLIENTE responde por daños al equipo: descargas eléctricas ajenas a EL PROVEEDOR, golpes, manipulación no autorizada, exposición a líquidos o alimentos, extravío o robo.",
+                "No habrá bonificación por cortes eléctricos ajenos a EL PROVEEDOR, terminación anticipada por EL CLIENTE, o condiciones del venue que impidan el servicio.",
+                "La responsabilidad total de EL PROVEEDOR no excederá el monto total del servicio contratado.",
+              ]} />
+            </SeccionCard>
+
+            <SeccionCard num="6" titulo="Retrasos Imputables a Mainstage Producciones">
+              <p className="text-gray-400 text-sm leading-relaxed">
+                En caso de retraso imputable únicamente a EL PROVEEDOR, este compensará cumpliendo las horas pactadas siempre que las condiciones del venue y la seguridad lo permitan, sin otro tipo de penalización económica.
+              </p>
+            </SeccionCard>
+          </>
+        )}
+
+        <SeccionCard num="7" titulo="Limitación de Responsabilidad">
           <p className="text-gray-400 text-sm leading-relaxed">
-            En caso de retraso imputable únicamente a EL PROVEEDOR, este compensará cumpliendo las horas pactadas siempre que las condiciones del venue y la seguridad lo permitan, sin otro tipo de penalización económica.
+            En la máxima medida permitida por la ley, la responsabilidad total de MAINSTAGE relacionada con {trato.tipoServicio === "RENTA" ? "la renta" : "el servicio"} quedará limitada al monto efectivamente pagado por EL CLIENTE en LA COTIZACIÓN correspondiente, excluyendo daños indirectos, lucro cesante o pérdida de oportunidad.
           </p>
         </SeccionCard>
 
-        <SeccionCard num="7-10" titulo="Disposiciones Generales">
+        <SeccionCard num="8-10" titulo="Disposiciones Generales">
           <div className="space-y-3">
-            <SubSeccion titulo="7. Comunicación Oficial">
+            <SubSeccion titulo="8. Comunicación Oficial">
               Las comunicaciones serán por escrito vía correo electrónico o WhatsApp. Los acuerdos verbales deben confirmarse por escrito. EL CLIENTE autoriza conservar sus datos conforme a la LFPDPPP.
             </SubSeccion>
-            <SubSeccion titulo="8. Fotografía y Medios">
-              EL PROVEEDOR se reserva el derecho de documentar el evento para portafolio y promoción. Si EL CLIENTE desea restringirlo, debe notificarlo por escrito antes de firmar.
-            </SubSeccion>
+            {trato.tipoServicio !== "RENTA" && (
+              <SubSeccion titulo="8b. Fotografía y Medios">
+                EL PROVEEDOR se reserva el derecho de documentar el evento para portafolio y promoción. Si EL CLIENTE desea restringirlo, debe notificarlo por escrito antes de firmar.
+              </SubSeccion>
+            )}
             <SubSeccion titulo="9. Caso Fortuito y Fuerza Mayor">
               Ninguna parte será responsable por desastres naturales, actos de autoridad, pandemia u otros eventos fuera de su control razonable.
             </SubSeccion>
-            <SubSeccion titulo="10. Jurisdicción">
-              Las partes se someten a los tribunales de la ciudad del evento o, en su defecto, a los de la Ciudad de Querétaro, renunciando a cualquier otro fuero.
+            <SubSeccion titulo="10. Vigencia y Actualizaciones">
+              MAINSTAGE podrá actualizar los Términos y Condiciones aplicables. Los cambios no aplicarán retroactivamente a cotizaciones ya aceptadas, salvo que ambas partes lo acuerden por escrito.
+            </SubSeccion>
+            <SubSeccion titulo="10b. Jurisdicción">
+              Las partes se someten a los tribunales competentes de la ciudad de Querétaro, Qro., renunciando a cualquier otro fuero.
             </SubSeccion>
           </div>
         </SeccionCard>
 
-        {/* Sección 11: Firmas */}
+        {/* Sección: Firmas */}
         <div className="bg-[#111] border border-[#222] rounded-b-xl px-8 py-6">
           <div className="flex items-center gap-3 mb-5 pb-3 border-b border-[#1a1a1a]">
             <div className="w-4 h-0.5 bg-[#B3985B]"></div>
-            <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest">11. Aceptación</p>
+            <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest">11. Aceptación y Firma</p>
           </div>
 
           <p className="text-gray-400 text-sm mb-8">
@@ -394,10 +468,13 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
 
           {/* Nota */}
           <div className="mt-8 bg-[#0d0d0d] border border-[#B3985B]/30 rounded-lg px-4 py-3">
-            <p className="text-[#B3985B] text-xs font-bold mb-1">NOTA IMPORTANTE</p>
+            <p className="text-[#B3985B] text-xs font-bold mb-1">ACEPTACIÓN POR MEDIOS ELECTRÓNICOS</p>
             <p className="text-gray-500 text-xs leading-relaxed">
-              Este contrato es válido únicamente con la firma autógrafa de ambas partes y el pago del anticipo correspondiente.
+              {trato.tipoServicio === "RENTA"
+                ? "Estos Términos y Condiciones se consideran aceptados cuando EL CLIENTE (i) aprueba/acepta LA COTIZACIÓN por medios digitales (firma, botón de aprobación, respuesta confirmatoria por correo o mensaje) y (ii) realiza el pago del anticipo o del total, según aplique."
+                : "Este contrato es válido con la aprobación digital de la cotización, el pago del anticipo correspondiente, o la firma autógrafa de ambas partes. La evidencia digital y los comprobantes de pago forman parte del acuerdo."}
               {cotizacion && ` La cotización de referencia (${cotizacion.numeroCotizacion}) forma parte integral del mismo.`}
+              {" "}Contacto: mainstageqro@gmail.com | Tel/WhatsApp: 446 143 2565
             </p>
           </div>
 
