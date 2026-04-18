@@ -78,7 +78,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const pctMap: Record<number, number> = { 1: 5, 2: 10, 3: 12 };
   const updated: TradeData = {
     ...trade,
+    activo: true,
     nivelSeleccionado: nivel,
+    nivelAplicado: nivel, // auto-apply so vendor doesn't need to manually confirm
     pct: pctMap[nivel],
     bonoVariable: nivel === 3 ? (bonoVariable ?? null) : null,
     clienteSeleccionoEn: new Date().toISOString(),

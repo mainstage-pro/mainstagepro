@@ -290,9 +290,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     const d = await res.json();
     if (d.url) {
       setLinkAprobacion(d.url);
-      // Inicializar con token existente si ya tenía
       if (cot && !cot.aprobacionToken) {
         setCot(prev => prev ? { ...prev, estado: "ENVIADA", aprobacionToken: d.token } : prev);
+      }
+      // Auto-generar trade token si el trato califica y aún no tiene token
+      if (cot?.trato.tradeCalificado && !cot.tradeToken) {
+        const tradeToken = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
+        const trResp = await fetch(`/api/cotizaciones/${id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tradeToken }),
+        });
+        if (trResp.ok) {
+          setCot(prev => prev ? { ...prev, tradeToken } : prev);
+        }
       }
     }
     setGenerandoLink(false);

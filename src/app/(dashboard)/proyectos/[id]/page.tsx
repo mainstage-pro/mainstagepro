@@ -314,6 +314,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingCierre, setSavingCierre] = useState(false);
   const [cierreNotas, setCierreNotas] = useState("");
   const [showCierreModal, setShowCierreModal] = useState(false);
+  // Checklist de cierre de evento (local, solo UI)
+  const [cierreChecklist, setCierreChecklist] = useState({ desmontaje: false, bodega: false, evalCliente: false });
+  const [showCierreFlow, setShowCierreFlow] = useState(false);
 
   async function loadCierre() {
     setLoadingCierre(true);
@@ -426,9 +429,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado catering
   type CateringData = {
     proveedorId: string; contactoNombre: string; contactoTelefono: string;
-    personasCrew: string; comidasPorDia: string; notas: string;
+    personasCrew: string; comidasPorDia: string; notas: string; confirmado: boolean;
   };
-  const CATERING_EMPTY: CateringData = { proveedorId: "", contactoNombre: "", contactoTelefono: "", personasCrew: "", comidasPorDia: "", notas: "" };
+  const CATERING_EMPTY: CateringData = { proveedorId: "", contactoNombre: "", contactoTelefono: "", personasCrew: "", comidasPorDia: "", notas: "", confirmado: false };
   const [catering, setCatering] = useState<CateringData>(CATERING_EMPTY);
   const [savingCatering, setSavingCatering] = useState(false);
   const cateringLoaded = useRef(false);
@@ -1692,6 +1695,57 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <Campo label="Comentarios finales / instrucciones" value={proyecto.comentariosFinales} field="comentariosFinales" multiline onSave={guardarCampo} />
               </div>
             </div>
+            {/* ── Cierre del evento ── */}
+            {!["COMPLETADO", "CANCELADO"].includes(proyecto.estado) && (
+              <div className="bg-[#0d0d0d] border border-[#222] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cierre del evento</p>
+                  {!showCierreFlow && (
+                    <button onClick={() => setShowCierreFlow(true)}
+                      className="text-xs px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] rounded-lg hover:bg-[#B3985B]/20 transition-colors">
+                      Iniciar cierre →
+                    </button>
+                  )}
+                </div>
+                {!showCierreFlow ? (
+                  <p className="text-xs text-gray-600">Cuando el evento termine, usa el flujo de cierre para confirmar desmontaje, equipo en bodega y enviar evaluaciones.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Checklist */}
+                    {([
+                      { key: "desmontaje", label: "Desmontaje completado en el venue" },
+                      { key: "bodega", label: "Equipo regresó a bodega y fue revisado" },
+                      { key: "evalCliente", label: "Evaluación enviada al cliente" },
+                    ] as { key: keyof typeof cierreChecklist; label: string }[]).map(item => (
+                      <button key={item.key} onClick={() => setCierreChecklist(p => ({ ...p, [item.key]: !p[item.key] }))}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left text-xs transition-colors ${cierreChecklist[item.key] ? "border-green-700/40 bg-green-900/10 text-green-300" : "border-[#2a2a2a] text-gray-500 hover:border-[#333] hover:text-gray-400"}`}>
+                        <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${cierreChecklist[item.key] ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
+                          {cierreChecklist[item.key] ? "✓" : ""}
+                        </span>
+                        {item.label}
+                      </button>
+                    ))}
+                    {/* Eval interna shortcut */}
+                    <button onClick={() => { setTab("extras"); setExtrasTab("evaluacion"); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">
+                      <span className="w-5 h-5 rounded border border-[#444] flex items-center justify-center text-[10px]">→</span>
+                      Llenar evaluación interna del evento
+                    </button>
+                    {/* Botón cerrar */}
+                    <button
+                      disabled={!Object.values(cierreChecklist).every(Boolean) || saving}
+                      onClick={() => cambiarEstado("COMPLETADO")}
+                      className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-green-700 text-white hover:bg-green-600">
+                      {saving ? "Cerrando…" : "Marcar evento como COMPLETADO"}
+                    </button>
+                    {!Object.values(cierreChecklist).every(Boolean) && (
+                      <p className="text-[11px] text-gray-600 text-center">Marca los 3 pasos para habilitar el cierre</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Accesos rápidos */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
@@ -2563,6 +2617,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     onChange={e => setCatering(p => ({ ...p, notas: e.target.value }))}
                     placeholder="Ej: 2 vegetarianos, sin gluten para técnico de iluminación"
                     className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                {/* Confirmación con proveedor */}
+                <div className="col-span-2">
+                  <button onClick={() => { const next = { ...catering, confirmado: !catering.confirmado }; setCatering(next); guardarCatering(next); }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-colors ${catering.confirmado ? "border-green-700/40 bg-green-900/10 text-green-300" : "border-[#2a2a2a] text-gray-500 hover:border-[#333] hover:text-gray-400"}`}>
+                    <span>{catering.confirmado ? "✓ Pedido confirmado con el proveedor" : "Marcar como confirmado con el proveedor"}</span>
+                    <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold flex-shrink-0 ${catering.confirmado ? "bg-green-600 border-green-600 text-white" : "border-[#555]"}`}>
+                      {catering.confirmado ? "✓" : ""}
+                    </span>
+                  </button>
                 </div>
               </div>
             </div>
