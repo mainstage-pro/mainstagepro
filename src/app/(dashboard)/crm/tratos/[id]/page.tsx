@@ -1006,14 +1006,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const waUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${trato.cliente.nombre.split(" ")[0]}, para prepararte una propuesta personalizada necesito que completes este breve formulario: ${formUrl}`)}` : null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-5 pb-12">
+    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5 pb-12">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1 flex-wrap">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] || "#555" }} />
-            <span className="text-gray-400 text-sm">{trato.tipoEvento}</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] || "#555" }} />
+            <span className="text-gray-400 text-xs">{trato.tipoEvento}</span>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ETAPA_COLORS[trato.etapa]}`}>
               {ETAPA_LABELS[trato.etapa]}
             </span>
@@ -1024,38 +1024,38 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             )}
             {trato.descubrimientoCompleto && (
               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#B3985B]/20 text-[#B3985B]">
-                ✓ Descubrimiento completo
+                ✓ Descubrimiento
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-white">{trato.cliente.nombre}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white truncate">{trato.cliente.nombre}</h1>
           {trato.cliente.empresa && <p className="text-gray-400 text-sm">{trato.cliente.empresa}</p>}
-          {trato.nombreEvento && <p className="text-gray-300 text-sm italic">"{trato.nombreEvento}"</p>}
+          {trato.nombreEvento && <p className="text-gray-300 text-sm italic truncate">"{trato.nombreEvento}"</p>}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors">
-            + Nueva cotización
+            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-xs hover:bg-[#c9a96a] transition-colors whitespace-nowrap">
+            + Cotización
           </Link>
           {(trato.etapa === "VENTA_CERRADA" || trato.cotizaciones.length > 0) && (
             <Link
               href={`/contratos/${trato.id}`}
               target="_blank"
-              className="px-4 py-2 rounded-lg border border-[#B3985B] text-[#B3985B] hover:bg-[#B3985B]/10 text-sm transition-colors font-medium"
+              className="px-3 py-2 rounded-lg border border-[#B3985B] text-[#B3985B] hover:bg-[#B3985B]/10 text-xs transition-colors font-medium whitespace-nowrap"
             >
               Contrato
             </Link>
           )}
           <button onClick={() => setEditando(!editando)}
-            className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">
-            {editando ? "Cancelar" : "Editar info"}
+            className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-xs transition-colors whitespace-nowrap">
+            {editando ? "Cancelar" : "Editar"}
           </button>
           {(() => {
             const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
             if (tieneProyecto) {
               return (
                 <span title="Elimina primero el proyecto desde el módulo de Proyectos"
-                  className="px-4 py-2 rounded-lg border border-[#333] text-gray-600 text-sm cursor-not-allowed select-none">
+                  className="px-3 py-2 rounded-lg border border-[#222] text-gray-700 text-xs cursor-not-allowed select-none whitespace-nowrap">
                   Eliminar
                 </span>
               );
@@ -1066,7 +1066,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
                 toast.success("Trato eliminado");
                 router.push("/crm/tratos");
-              }} className="px-4 py-2 rounded-lg border border-red-800 text-red-400 hover:bg-red-900/20 text-sm transition-colors">
+              }} className="px-3 py-2 rounded-lg border border-red-800/60 text-red-400 hover:bg-red-900/20 text-xs transition-colors whitespace-nowrap">
                 Eliminar
               </button>
             );
@@ -1157,10 +1157,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ── Etapa pipeline ── */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-4">
         <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Etapa del pipeline</p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {ETAPAS.map((e) => (
             <button key={e} disabled={saving || e === trato.etapa} onClick={() => cambiarEtapa(e)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex-1 min-w-[100px] py-2 rounded-lg text-xs font-medium transition-colors ${
                 e === trato.etapa ? ETAPA_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
               }`}>
               {ETAPA_LABELS[e]}

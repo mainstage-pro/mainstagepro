@@ -125,7 +125,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="text-gray-500 hover:text-white text-sm transition-colors">← Volver</button>
           <div className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center">
@@ -156,7 +156,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
       {editando && (
         <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Editar información</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { key: "nombre", label: "Nombre" }, { key: "puesto", label: "Puesto" },
               { key: "telefono", label: "Teléfono" }, { key: "correo", label: "Correo" },
@@ -219,7 +219,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
       {/* TAB INFO */}
       {tab === "info" && (
         <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             {[
               { label: "Nombre", val: persona.nombre },
               { label: "Puesto", val: persona.puesto },

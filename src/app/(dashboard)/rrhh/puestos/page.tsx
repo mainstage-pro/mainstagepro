@@ -162,7 +162,7 @@ export default function PuestosPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Puestos Ideales</h1>
           <p className="text-gray-500 text-sm">Perfiles de roles que la organización busca desarrollar</p>

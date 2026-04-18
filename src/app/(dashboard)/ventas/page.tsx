@@ -109,7 +109,7 @@ export default function VentasPage() {
   return (
     <div className="p-3 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Ventas</h1>
           <p className="text-gray-400 text-sm mt-1">Pipeline, rendimiento y comisiones</p>

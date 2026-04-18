@@ -54,7 +54,7 @@ export default function PipelinePage() {
   return (
     <div className="p-3 md:p-6 h-full flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Pipeline Comercial</h1>
           <div className="flex items-center gap-3 mt-0.5">

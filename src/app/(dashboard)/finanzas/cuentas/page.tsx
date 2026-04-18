@@ -78,7 +78,7 @@ export default function CuentasPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Cuentas Bancarias</h1>
           <p className="text-[#6b7280] text-sm">{cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registrada{cuentas.length !== 1 ? "s" : ""}</p>

@@ -134,7 +134,7 @@ export default function NuevoMovimientoPage() {
   }[form.tipo];
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="p-3 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Registrar Movimiento</h1>
         <p className="text-gray-400 text-sm mt-1">Ingreso, gasto o transferencia entre cuentas</p>
@@ -170,7 +170,7 @@ export default function NuevoMovimientoPage() {
         <div className="bg-[#111] border border-[#222] rounded-xl p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Datos del movimiento</h2>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Fecha</label>
                 <input
@@ -209,7 +209,7 @@ export default function NuevoMovimientoPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">
                   {form.tipo === "TRANSFERENCIA" ? "Cuenta origen" : "Cuenta"}
@@ -264,7 +264,7 @@ export default function NuevoMovimientoPage() {
         <div className="bg-[#111] border border-[#222] rounded-xl p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Proveedor (opcional)</label>
                 <select

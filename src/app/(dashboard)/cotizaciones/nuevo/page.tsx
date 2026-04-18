@@ -828,7 +828,7 @@ function CotizadorForm() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="p-3 md:p-6 max-w-6xl mx-auto">
       <div className="mb-5 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>

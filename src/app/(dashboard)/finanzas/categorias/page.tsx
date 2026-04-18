@@ -80,7 +80,7 @@ export default function CategoriasPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Categorías Financieras</h1>
           <p className="text-[#6b7280] text-sm">{categorias.length} categoría{categorias.length !== 1 ? "s" : ""}</p>

@@ -260,20 +260,20 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{cliente.nombre}</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold text-white truncate">{cliente.nombre}</h1>
           {cliente.empresa && <p className="text-gray-400 text-sm mt-0.5">{cliente.empresa}</p>}
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-2 flex-wrap">
             <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{cliente.tipoCliente}</span>
             <span className={`px-2 py-0.5 rounded text-xs ${clasificacionColor[cliente.clasificacion] || "bg-gray-700 text-gray-300"}`}>
               {cliente.clasificacion}
             </span>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 shrink-0">
           <Link
             href={`/crm/tratos/nuevo`}
             className="px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors"
@@ -301,7 +301,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información de contacto</h2>
         {editando ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Nombre</label>
                 <input

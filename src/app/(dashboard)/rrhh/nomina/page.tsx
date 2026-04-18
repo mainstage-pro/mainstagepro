@@ -158,7 +158,7 @@ export default function NominaPage() {
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Nómina</h1>
           <p className="text-[#6b7280] text-sm">

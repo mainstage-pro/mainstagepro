@@ -56,7 +56,7 @@ export default function PersonalPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Personal Interno</h1>
           <p className="text-[#6b7280] text-sm">{activos.length} activos · {pagosPendientes.length > 0 ? <span className="text-yellow-400">{pagosPendientes.length} pagos pendientes ({fmt(totalPendiente)})</span> : "sin pagos pendientes"}</p>

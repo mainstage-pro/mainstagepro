@@ -1407,12 +1407,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-    <div className="max-w-5xl mx-auto space-y-5 pb-12">
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5 pb-12">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1 flex-wrap">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="flex items-center gap-1.5">
               <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
               <CopyButton value={proyecto.numeroProyecto} size="xs" />
@@ -1426,7 +1426,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-white">{proyecto.nombre}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-white">{proyecto.nombre}</h1>
           <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
             {proyecto.cliente.nombre}{proyecto.cliente.empresa ? ` · ${proyecto.cliente.empresa}` : ""}
           </Link>
@@ -1434,7 +1434,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             Estamos creando una experiencia memorable para {proyecto.cliente.nombre.split(" ")[0]}.
           </p>
         </div>
-        <div className="text-right shrink-0 flex flex-col items-end gap-2">
+        <div className="sm:text-right shrink-0 flex flex-col sm:items-end gap-2">
           <div>
             <p className="text-white font-semibold">{fmtDate(proyecto.fechaEvento)}</p>
             {proyecto.horaInicioEvento && (
