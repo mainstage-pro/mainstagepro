@@ -292,7 +292,7 @@ export default async function DashboardPage() {
               <div>
                 <p className="text-gray-500 text-xs mb-0.5">Pago acordado {mes}</p>
                 <p className="text-2xl font-semibold text-white group-hover:text-[#B3985B] transition-colors">
-                  {hervamPagoMes ? formatCurrency(hervamPagoMes.montoAcordado) : hervamConfig ? formatCurrency(hervamConfig.pisoMinimoFijo) : "—"}
+                  {hervamPagoMes ? formatCurrency(hervamPagoMes.montoAcordado) : "—"}
                 </p>
               </div>
               {hervamPagoMes && hervamPagoMes.montoPagado > 0 && hervamPagoMes.estado !== "PAGADO" && (
