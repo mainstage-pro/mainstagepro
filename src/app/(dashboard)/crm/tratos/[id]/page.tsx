@@ -2201,37 +2201,37 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                 </div>}
-
-                {/* Fotos de scouting */}
-                <div className="border-t border-[#1a1a1a] pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium">Fotos del venue / scouting</p>
-                      <p className="text-[11px] text-gray-600 mt-0.5">Fotos del lugar, accesos, instalaciones eléctricas, etc.</p>
-                    </div>
-                    <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "SCOUTING" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                      {uploadingTipo === "SCOUTING" ? "Subiendo..." : "+ Agregar fotos"}
-                      <input type="file" className="hidden" accept="image/*" multiple onChange={e => subirArchivo(e, "SCOUTING")} />
-                    </label>
-                  </div>
-                  {archivos.filter(a => a.tipo === "SCOUTING").length === 0 ? (
-                    <p className="text-gray-700 text-[11px] italic">Sin fotos aún</p>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {archivos.filter(a => a.tipo === "SCOUTING").map((a) => (
-                        <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
-                          <a href={a.url} target="_blank" rel="noreferrer">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
-                          </a>
-                          <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
-                          <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>)}
+
+              {/* Fotos del venue — siempre visible */}
+              <div className="border-t border-[#1a1a1a] pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Fotos del venue / scouting</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Fotos del lugar, accesos, instalaciones eléctricas, etc.</p>
+                  </div>
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "SCOUTING" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                    {uploadingTipo === "SCOUTING" ? "Subiendo..." : "+ Agregar fotos"}
+                    <input type="file" className="hidden" accept="image/*" multiple onChange={e => subirArchivo(e, "SCOUTING")} />
+                  </label>
+                </div>
+                {archivos.filter(a => a.tipo === "SCOUTING").length === 0 ? (
+                  <p className="text-gray-700 text-[11px] italic">Sin fotos aún</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {archivos.filter(a => a.tipo === "SCOUTING").map((a) => (
+                      <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                        <a href={a.url} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                        </a>
+                        <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
+                        <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>)} {/* /paso4 */}
 
             {/* PASO 5: Brief de contenido */}
