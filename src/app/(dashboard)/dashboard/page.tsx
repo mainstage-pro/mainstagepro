@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
 import { redirect } from "next/navigation";
+import DailyGreeting from "@/components/DailyGreeting";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -253,16 +254,11 @@ export default async function DashboardPage() {
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-white">
-            Hola, {session?.name?.split(" ")[0]}
-          </h1>
-          <p className="text-gray-500 text-sm capitalize">{mes}</p>
-        </div>
+      <div className="flex items-start justify-between">
+        <DailyGreeting nombre={session?.name ?? ""} />
         <Link
           href="/crm/tratos/nuevo"
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
+          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors shrink-0 mt-1"
         >
           + Nuevo trato
         </Link>

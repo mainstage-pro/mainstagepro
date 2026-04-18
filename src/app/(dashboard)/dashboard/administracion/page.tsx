@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import DailyGreeting from "@/components/DailyGreeting";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
@@ -108,9 +109,8 @@ export default async function DashboardAdminPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold">Dashboard · Administración</p>
-          <h1 className="text-2xl font-bold text-white mt-0.5">Hola, {session?.name?.split(" ")[0] ?? "Equipo"}</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5 capitalize">{mes} · {ahora.toLocaleDateString("es-MX", { weekday: "long", day: "numeric" })}</p>
+          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">Dashboard · Administración</p>
+          <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
         <div className="flex items-center gap-2 text-[10px]">
           {cxcVencidas > 0 && (

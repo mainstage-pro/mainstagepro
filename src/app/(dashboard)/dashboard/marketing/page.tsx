@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import DailyGreeting from "@/components/DailyGreeting";
 
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string; sub?: string; color?: string; href?: string }) {
   const content = (
@@ -76,9 +77,8 @@ export default async function DashboardMarketingPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold">Dashboard · Marketing</p>
-          <h1 className="text-2xl font-bold text-white mt-0.5">Hola, {session?.name?.split(" ")[0] ?? "Equipo"}</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5 capitalize">{mes} · {ahora.toLocaleDateString("es-MX", { weekday: "long", day: "numeric" })}</p>
+          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">Dashboard · Marketing</p>
+          <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
         {pubsProximas7.length > 0 && (
           <Link href="/marketing/calendario" className="bg-orange-900/20 border border-orange-800/40 text-orange-400 text-[10px] px-3 py-1.5 rounded-lg font-semibold">
