@@ -425,7 +425,17 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           </div>
         </div>
         {navContent}
-        <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0">
+        <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0 space-y-1">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black font-semibold text-sm transition-all"
+            title="Nueva tarea (⌘K)"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nueva tarea
+          </button>
           <button
             onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "?" }))}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-[#444] hover:text-gray-400 hover:bg-[#1a1a1a] transition-colors text-xs"
@@ -455,6 +465,16 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
         <Link href="/dashboard" className={`flex-1 flex ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
           <Image src="/logo-white.png" alt="Mainstage Pro" width={100} height={26} className="object-contain hover:opacity-80 transition-opacity" />
         </Link>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black transition-all shrink-0"
+          aria-label="Nueva tarea"
+          title="Nueva tarea (⌘K)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
         <AlertasPanelV2 />
         <button
           onClick={() => setMobileOpen(true)}

@@ -7,7 +7,7 @@ export default function GlobalQuickTask() {
   const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Cmd/Ctrl + K
+  // Keyboard shortcut: Cmd/Ctrl + K + custom event from sidebar button
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -16,8 +16,13 @@ export default function GlobalQuickTask() {
       }
       if (e.key === "Escape") setOpen(false);
     }
+    function onOpen() { setOpen(true); }
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    window.addEventListener("open-quick-task", onOpen);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("open-quick-task", onOpen);
+    };
   }, []);
 
   useEffect(() => {
@@ -41,17 +46,6 @@ export default function GlobalQuickTask() {
 
   return (
     <>
-      {/* Botón flotante — círculo pequeño lado izquierdo */}
-      <button
-        onClick={() => setOpen(true)}
-        title="Crear tarea (⌘K)"
-        className="fixed bottom-6 left-[72px] md:left-[220px] z-[90] w-9 h-9 flex items-center justify-center bg-[#1a1a1a] border border-[#2a2a2a] text-[#B3985B] rounded-full shadow-lg hover:bg-[#222] hover:border-[#B3985B]/40 active:scale-95 transition-all"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
-
       {/* Modal overlay */}
       {open && (
         <div
