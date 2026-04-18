@@ -115,59 +115,65 @@ const PASOS_DISCOVERY = [
   { id: 1, icon: "📋", label: "Básico" },
   { id: 2, icon: "✨", label: "Servicios" },
   { id: 3, icon: "📊", label: "Detalles" },
-  { id: 4, icon: "📝", label: "Briefing" },
-  { id: 5, icon: "🗺️", label: "Scouting" },
-  { id: 6, icon: "📸", label: "Contenido" },
+  { id: 4, icon: "🗺️", label: "Scouting" },
+  { id: 5, icon: "📸", label: "Contenido" },
 ];
 
-// Servicios por tipo de evento — base = categorías del inventario, extra = servicios específicos
+// Servicios por tipo de evento
 interface ServicioItem { id: string; label: string; grupo: "base" | "extra" }
-const SERVICIOS: Record<string, ServicioItem[]> = {
+
+// Categorías base — siempre se muestran para todos los tipos de evento
+const CATEGORIAS_BASE: ServicioItem[] = [
+  { id: "AUDIO_PA",      label: "Audio PA / Subwoofers",    grupo: "base" },
+  { id: "CONSOLAS",      label: "Consola de audio",         grupo: "base" },
+  { id: "MICROFONOS",    label: "Micrófonos inalámbricos",  grupo: "base" },
+  { id: "IEM",           label: "IEMs / In-ear monitors",   grupo: "base" },
+  { id: "MONITORES",     label: "Monitores de escenario",   grupo: "base" },
+  { id: "ILUMINACION",   label: "Iluminación",              grupo: "base" },
+  { id: "PANTALLAS_LED", label: "Pantallas LED / Video",    grupo: "base" },
+  { id: "RIGGING",       label: "Rigging / Estructuras",    grupo: "base" },
+  { id: "PROYECCION",    label: "Proyección",               grupo: "base" },
+  { id: "DJ_EQUIPO",     label: "Equipo DJ",                grupo: "base" },
+  { id: "BACKLINE",      label: "Backline (amps, batería)",  grupo: "base" },
+];
+
+// Extras específicos por tipo de evento
+const EXTRAS_EVENTO: Record<string, ServicioItem[]> = {
   SOCIAL: [
-    // Categorías de inventario
-    { id: "AUDIO_PA",       label: "Audio / Sonido",              grupo: "base" },
-    { id: "ILUM_AMBIENTAL", label: "Iluminación",                 grupo: "base" },
-    { id: "VIDEO_LED",      label: "Pantallas LED / Proyección",  grupo: "base" },
-    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
-    // Extras específicos de eventos sociales
-    { id: "PISTA_BAILE",    label: "Pista de baile iluminada",    grupo: "extra" },
-    { id: "ILUM_ARQ",       label: "Iluminación arquitectónica",  grupo: "extra" },
-    { id: "CHISPEROS",      label: "Chisperos",                   grupo: "extra" },
-    { id: "HUMO_FRIO",      label: "Humo frío",                   grupo: "extra" },
-    { id: "CONFETI",        label: "Cañones de confeti",          grupo: "extra" },
-    { id: "KARAOKE",        label: "Karaoke",                     grupo: "extra" },
+    { id: "PISTA_BAILE",  label: "Pista de baile iluminada",  grupo: "extra" },
+    { id: "ILUM_ARQ",     label: "Iluminación arquitectónica", grupo: "extra" },
+    { id: "CHISPEROS",    label: "Chisperos",                  grupo: "extra" },
+    { id: "HUMO_FRIO",    label: "Humo frío",                  grupo: "extra" },
+    { id: "CONFETI",      label: "Cañones de confeti",         grupo: "extra" },
+    { id: "KARAOKE",      label: "Karaoke",                    grupo: "extra" },
   ],
   EMPRESARIAL: [
-    { id: "AUDIO_PA",       label: "Audio / PA system",           grupo: "base" },
-    { id: "ILUM_ESCENARIO", label: "Iluminación de escenario",    grupo: "base" },
-    { id: "VIDEO_LED",      label: "Videowall / LED",             grupo: "base" },
-    { id: "PROYECCION",     label: "Proyección / Pantalla",       grupo: "base" },
-    // Extras específicos empresariales
-    { id: "AUDIO_CONF",     label: "Sistema para conferencia",    grupo: "extra" },
-    { id: "STREAMING",      label: "Streaming en vivo",           grupo: "extra" },
-    { id: "GRABACION",      label: "Grabación del evento",        grupo: "extra" },
-    { id: "BRANDING",       label: "Branding en pantallas",       grupo: "extra" },
-    { id: "ESCENOGRAFIA",   label: "Escenografía / Backdrop",     grupo: "extra" },
+    { id: "AUDIO_CONF",   label: "Sistema para conferencia",  grupo: "extra" },
+    { id: "STREAMING",    label: "Streaming en vivo",         grupo: "extra" },
+    { id: "GRABACION",    label: "Grabación del evento",      grupo: "extra" },
+    { id: "BRANDING",     label: "Branding en pantallas",     grupo: "extra" },
+    { id: "ESCENOGRAFIA", label: "Escenografía / Backdrop",   grupo: "extra" },
   ],
   MUSICAL: [
-    { id: "AUDIO_PA",       label: "PA principal / Subwoofers",   grupo: "base" },
-    { id: "AUDIO_MONITOR",  label: "Monitores / IEM",             grupo: "base" },
-    { id: "ILUM_ARTISTICA", label: "Iluminación artística",       grupo: "base" },
-    { id: "VIDEO_LED",      label: "Pantalla LED",                grupo: "base" },
-    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
-    // Extras específicos musicales
-    { id: "BACKLINE",       label: "Backline (amps, batería)",     grupo: "extra" },
-    { id: "ESTRUCTURAS",    label: "Torres y truss",              grupo: "extra" },
-    { id: "EFECTOS",        label: "Efectos especiales",          grupo: "extra" },
+    { id: "EFECTOS",      label: "Efectos especiales",        grupo: "extra" },
+    { id: "CHISPEROS",    label: "Chisperos",                 grupo: "extra" },
+    { id: "HUMO_FRIO",    label: "Humo frío",                 grupo: "extra" },
+    { id: "CONFETI",      label: "Confeti",                   grupo: "extra" },
+    { id: "STREAMING",    label: "Streaming en vivo",         grupo: "extra" },
   ],
   OTRO: [
-    { id: "AUDIO_PA",       label: "Audio / Sonido",              grupo: "base" },
-    { id: "ILUM_AMBIENTAL", label: "Iluminación",                 grupo: "base" },
-    { id: "VIDEO_LED",      label: "Video / Pantallas",           grupo: "base" },
-    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
-    { id: "EFECTOS",        label: "Efectos especiales",          grupo: "extra" },
-    { id: "PRODUCCION_GENERAL", label: "Producción completa",     grupo: "extra" },
+    { id: "EFECTOS",            label: "Efectos especiales",  grupo: "extra" },
+    { id: "PRODUCCION_GENERAL", label: "Producción completa", grupo: "extra" },
   ],
+};
+
+// Lista unificada para lookups en el resumen de Estado 3
+// Alias para el resumen (Estado 3 usa SERVICIOS para chips de servicios solicitados)
+const SERVICIOS: Record<string, ServicioItem[]> = {
+  SOCIAL:      [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.SOCIAL],
+  EMPRESARIAL: [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.EMPRESARIAL],
+  MUSICAL:     [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.MUSICAL],
+  OTRO:        [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.OTRO],
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -513,10 +519,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<Partial<Trato>>({});
 
-  // Briefing libre
-  const [briefingText, setBriefingText] = useState("");
-  const [savingBriefing, setSavingBriefing] = useState(false);
-
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -597,8 +599,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoSaveBriefTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
 
@@ -692,7 +692,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           if (t.nurturingData) {
             try { setNurturing({ ...NURTURING_EMPTY, ...JSON.parse(t.nurturingData) }); } catch { /* defaults */ }
           }
-          setBriefingText(t.notas ?? "");
           setArchivos(t.archivos ?? []);
           // Pre-fill brief from trato data (user can override)
           setBriefForm(prev => ({
@@ -932,14 +931,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }, 1200);
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const autoSaveBriefing = useCallback((text: string) => {
-    if (autoSaveBriefTimer.current) clearTimeout(autoSaveBriefTimer.current);
-    autoSaveBriefTimer.current = setTimeout(async () => {
-      await patch({ notas: text || null });
-      setTrato(prev => prev ? { ...prev, notas: text || null } : prev);
-    }, 1500);
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
-
   async function saveBrief() {
     setSavingBrief(true);
     await fetch(`/api/levantamiento-contenido/${id}`, {
@@ -968,13 +959,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
     setEditando(false);
     setSaving(false);
-  }
-
-  async function guardarBriefing() {
-    setSavingBriefing(true);
-    const d = await patch({ notas: briefingText || null });
-    setTrato(prev => prev ? { ...prev, notas: d.trato.notas } : prev);
-    setSavingBriefing(false);
   }
 
   async function generarFormToken() {
@@ -1031,7 +1015,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   if (!trato) return <div className="text-red-400 text-sm">Trato no encontrado</div>;
 
   const profundidad = getProfundidad(trato.canalAtencion);
-  const serviciosDisponibles = SERVICIOS[discForm.tipoEvento] ?? SERVICIOS.OTRO;
   const serviciosSel: string[] = trato.serviciosInteres ? JSON.parse(trato.serviciosInteres) : [];
   const canalInfo = getCanal(trato.canalAtencion ?? "");
 
@@ -1989,35 +1972,44 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             ) : (
-              <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-3">Servicios de interés *</label>
-                {/* Categorías del inventario */}
-                <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Categorías de inventario</p>
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {serviciosDisponibles.filter(s => s.grupo === "base").map(srv => (
-                    <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                        discForm.serviciosInteres.includes(srv.id)
-                          ? "border-[#B3985B] text-black bg-[#B3985B]"
-                          : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
-                      }`}>
-                      {srv.label}
-                    </button>
-                  ))}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Categorías de equipo / inventario</label>
+                  <div className="flex flex-wrap gap-2">
+                    {CATEGORIAS_BASE.map(srv => (
+                      <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                          discForm.serviciosInteres.includes(srv.id)
+                            ? "border-[#B3985B] text-black bg-[#B3985B]"
+                            : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
+                        }`}>
+                        {srv.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                {/* Extras específicos del tipo de evento */}
-                <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Extras / Add-ons</p>
-                <div className="flex flex-wrap gap-2">
-                  {serviciosDisponibles.filter(s => s.grupo === "extra").map(srv => (
-                    <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                        discForm.serviciosInteres.includes(srv.id)
-                          ? "border-[#B3985B] text-black bg-[#B3985B]"
-                          : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
-                      }`}>
-                      {srv.label}
-                    </button>
-                  ))}
+                {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).length > 0 && (
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Add-ons específicos del evento</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).map(srv => (
+                        <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                            discForm.serviciosInteres.includes(srv.id)
+                              ? "border-[#B3985B] text-black bg-[#B3985B]"
+                              : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
+                          }`}>
+                          {srv.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">¿Algo adicional o específico?</label>
+                  <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
+                    rows={2} placeholder="Ej: necesitan 3 micrófonos de solapa, consola digital Allen & Heath, rigging certificado..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                 </div>
               </div>
             )}
@@ -2031,12 +2023,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
                   <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
                     placeholder="300"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Presupuesto estimado ($)</label>
-                  <input type="number" value={discForm.presupuestoEstimado} onChange={e => setDiscForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
-                    placeholder="50000"
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div>
@@ -2084,28 +2070,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   placeholder="Ej: Enviar cotización el lunes"
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
-              {!trato.descubrimientoCompleto && (
-                <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
-                  className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                  {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
-                </button>
-              )}
-            </div>)} {/* /paso3 */}
-
-            {/* PASO 4: Briefing del cliente */}
-            {pasoActivo === 4 && (<div className="space-y-4">
-              <p className="text-xs text-gray-400">Escribe, pega o adjunta todo lo que el cliente comparta — libre, sin estructura</p>
-              <textarea value={briefingText}
-                onChange={(e) => { setBriefingText(e.target.value); autoSaveBriefing(e.target.value); }}
-                rows={8}
-                placeholder={`• Descripción del evento\n• Requerimientos técnicos\n• Expectativas y referencias\n• Mensajes de WhatsApp, correos, notas de llamada...\n• Cualquier detalle relevante`}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 text-gray-200 text-sm focus:outline-none focus:border-[#B3985B] resize-y leading-relaxed placeholder:text-gray-700" />
-              <div className="space-y-4">
-                {(["SCOUTING", "REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
+              {/* Referencias y archivos del cliente */}
+              <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
+                {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
                   const catMeta = {
-                    SCOUTING:   { label: "Fotos de scouting",               icon: "🗺️", accept: "image/*", hint: "Fotos del venue, accesos, instalaciones" },
-                    REFERENCIA: { label: "Referencias del cliente",          icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
-                    DOCUMENTO:  { label: "Archivos adicionales del cliente", icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                    REFERENCIA: { label: "Referencias del cliente", icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+                    DOCUMENTO:  { label: "Documentos adicionales",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
                   }[cat];
                   const catArchivos = archivos.filter(a => a.tipo === cat);
                   const uploading = uploadingTipo === cat;
@@ -2118,7 +2089,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         </div>
                         <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
                           {uploading ? "Subiendo..." : "+ Agregar"}
-                          <input type="file" className="hidden" accept={catMeta.accept} multiple={cat === "SCOUTING"} onChange={e => subirArchivo(e, cat)} />
+                          <input type="file" className="hidden" accept={catMeta.accept} multiple onChange={e => subirArchivo(e, cat)} />
                         </label>
                       </div>
                       {catArchivos.length === 0 ? (
@@ -2151,10 +2122,18 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   );
                 })}
               </div>
-            </div>)} {/* /paso4 */}
 
-            {/* PASO 5: Scouting del venue */}
-            {pasoActivo === 5 && (<div className="space-y-4">
+              {!trato.descubrimientoCompleto && (
+                <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
+                  className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                  {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
+                </button>
+              )}
+            </div>)} {/* /paso3 */}
+
+
+            {/* PASO 4: Scouting del venue */}
+            {pasoActivo === 4 && (<div className="space-y-4">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-300">¿Aplica scouting?</p>
                 <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
@@ -2222,11 +2201,41 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                 </div>}
-              </div>)}
-            </div>)} {/* /paso5 */}
 
-            {/* PASO 6: Brief de contenido */}
-            {pasoActivo === 6 && (<div className="space-y-4">
+                {/* Fotos de scouting */}
+                <div className="border-t border-[#1a1a1a] pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium">Fotos del venue / scouting</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5">Fotos del lugar, accesos, instalaciones eléctricas, etc.</p>
+                    </div>
+                    <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "SCOUTING" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                      {uploadingTipo === "SCOUTING" ? "Subiendo..." : "+ Agregar fotos"}
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={e => subirArchivo(e, "SCOUTING")} />
+                    </label>
+                  </div>
+                  {archivos.filter(a => a.tipo === "SCOUTING").length === 0 ? (
+                    <p className="text-gray-700 text-[11px] italic">Sin fotos aún</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {archivos.filter(a => a.tipo === "SCOUTING").map((a) => (
+                        <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                          <a href={a.url} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                          </a>
+                          <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
+                          <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>)}
+            </div>)} {/* /paso4 */}
+
+            {/* PASO 5: Brief de contenido */}
+            {pasoActivo === 5 && (<div className="space-y-4">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
                 <button onClick={() => setBriefAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
@@ -2270,7 +2279,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <div><label className="text-xs text-gray-400 block mb-1">Notas adicionales</label><textarea value={briefForm.notasAdicionales} onChange={e => setBriefForm(p => ({ ...p, notasAdicionales: e.target.value }))} rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
                 <button onClick={saveBrief} disabled={savingBrief} className="w-full py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-60">{savingBrief ? "Guardando..." : briefGuardado ? "Actualizar brief" : "Guardar brief"}</button>
               </div>)}
-            </div>)} {/* /paso6 */}
+            </div>)} {/* /paso5 */}
 
             </div> {/* /p-5 space-y-5 */}
 
