@@ -3042,7 +3042,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-500 text-xs mt-0.5">Cronograma maestro del día</p>
                 </div>
               </div>
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-2 overflow-x-auto">
                 <TableHeader cols={["Hora", "Actividad", "Responsable"]} />
                 {docs.horarioGeneral.map((row, i) => {
                   const update = (field: string, val: string) => {
@@ -3078,7 +3078,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Input List</p>
                     <p className="text-gray-500 text-xs mt-0.5">Canal por canal · micrófono, instrumento, artista</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
                     {docs.inputList.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3113,7 +3113,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Orden de Soundcheck</p>
                     <p className="text-gray-500 text-xs mt-0.5">Secuencia y horario de pruebas de sonido</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
                     {docs.soundcheck.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3146,7 +3146,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Show Schedule / Running Order</p>
                     <p className="text-gray-500 text-xs mt-0.5">Secuencia y tiempos del show</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
                     {docs.runningOrder.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3184,7 +3184,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Programa del evento</p>
                     <p className="text-gray-500 text-xs mt-0.5">Secuencia completa de actividades</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
                     {docs.programaEvento.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3231,7 +3231,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Coordinación de proveedores</p>
                     <p className="text-gray-500 text-xs mt-0.5">Catering, decoración, fotografía, etc.</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
                     {docs.coordinacionProveedores.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3269,7 +3269,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">AV Rundown</p>
                     <p className="text-gray-500 text-xs mt-0.5">Agenda técnica audiovisual por sesión</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
                     {docs.avRundown.map((row, i) => {
                       const update = (field: string, val: string) => {
@@ -3304,7 +3304,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-white text-sm font-semibold">Requerimientos AV por ponente</p>
                     <p className="text-gray-500 text-xs mt-0.5">Necesidades técnicas individuales</p>
                   </div>
-                  <div className="p-4 space-y-2">
+                  <div className="p-4 space-y-2 overflow-x-auto">
                     <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
                     {docs.requerimientosAV.map((row, i) => {
                       const update = (field: string, val: string) => {
