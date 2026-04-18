@@ -52,13 +52,13 @@ export default async function MovimientosPage() {
         </div>
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {movimientos.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-[#6b7280] text-sm">Sin movimientos registrados</p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Fecha", "Concepto", "Categoría", "Cuenta", "Tipo", "Monto"].map((h) => (

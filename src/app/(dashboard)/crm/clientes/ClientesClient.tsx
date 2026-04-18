@@ -154,8 +154,8 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
         </div>
       ) : view === "list" ? (
         /* ── LISTA (tabla) ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Cliente", "Tipo", "Clasificación", "Servicio usual", "Responsable", "Tratos", "Proyectos", ""].map(h => (

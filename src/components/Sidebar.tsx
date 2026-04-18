@@ -448,7 +448,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
       </aside>
 
       {/* MOBILE: barra superior */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-3 gap-2">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-2 gap-1.5 max-w-full overflow-hidden">
         {/* Botón regresar — solo cuando no estamos en /dashboard */}
         {pathname !== "/dashboard" && (
           <button
@@ -462,8 +462,8 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           </button>
         )}
         {/* Logo — centrado cuando hay botón de regreso, a la izquierda cuando no */}
-        <Link href="/dashboard" className={`flex-1 flex ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
-          <Image src="/logo-white.png" alt="Mainstage Pro" width={100} height={26} className="object-contain hover:opacity-80 transition-opacity" />
+        <Link href="/dashboard" className={`flex-1 flex min-w-0 ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
+          <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
         </Link>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
@@ -497,7 +497,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
 
       {/* MOBILE: drawer */}
       <aside
-        className={`md:hidden fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col transition-transform duration-300 ${
+        className={`md:hidden fixed top-0 left-0 bottom-0 z-50 w-[min(288px,90vw)] bg-[#0d0d0d] border-r border-[#1a1a1a] flex flex-col transition-transform duration-300 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >

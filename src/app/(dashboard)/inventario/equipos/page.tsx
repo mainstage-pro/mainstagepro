@@ -401,7 +401,7 @@ export default function InventarioEquiposPage() {
               <span className="text-[#6b7280] text-xs">{eqs.length} equipos</span>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="border-b border-[#0d0d0d]">
                     {["Descripción", "Marca/Modelo", "Cant", "Estado", "Precio cliente", "Costo proveedor", "Proveedor", ""].map(h => (

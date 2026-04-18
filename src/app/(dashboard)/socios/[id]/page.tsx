@@ -371,7 +371,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
         <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
       ) : (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Código","Equipo","Cat.","Condición","Valor declarado","Precio/día","Split","Rentas",""].map((h) => (
@@ -561,7 +561,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
         <div className="text-center py-12 text-gray-600 text-sm">Sin rentas en {MESES[filMes]} {filAnio}</div>
       ) : (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Evento","Equipo","Días","Precio/día","Subtotal","Socio","Fee Mainstage",""].map((h) => (

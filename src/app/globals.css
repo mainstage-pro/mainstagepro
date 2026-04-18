@@ -51,27 +51,77 @@
 }
 
 html {
-  font-size: 106.25%; /* 17px base — scales text-xs/sm/base/lg etc. +1px across the board */
-  overflow-y: scroll; /* Siempre reservar espacio del scrollbar — evita el salto de layout */
+  font-size: 100%; /* 16px base — estándar para todos los dispositivos */
+  overflow-y: scroll; /* Reservar espacio del scrollbar — evita salto de layout */
+  /* Evitar scroll horizontal en toda la app */
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  /* Evitar bounce scroll lateral en iOS */
+  overscroll-behavior-x: none;
 }
 
-/* Tablas scrollables en mobile */
+/* ─── iOS: evitar zoom automático al enfocar inputs (<16px) ─────────────── */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    /* Mantener altura visual consistente aunque el font-size suba */
+    line-height: 1.4;
+  }
+  /* Solo aplica en inputs de formulario, no en badges o chips */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="password"],
+  input[type="search"],
+  input[type="date"],
+  input[type="time"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ─── Tablas scrollables en mobile ──────────────────────────────────────── */
 @media (max-width: 767px) {
   table {
     display: block;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     white-space: nowrap;
+    max-width: 100%;
   }
-  /* Evitar que overflow-hidden en el wrapper corte el scroll horizontal */
+  /* Desbloquear el wrapper para que table pueda hacer scroll */
   .overflow-hidden:has(table) {
     overflow-x: auto;
+  }
+  /* Evitar que contenedores de tabla corten el scroll horizontal */
+  .rounded-xl:has(table),
+  .rounded-2xl:has(table) {
+    overflow-x: auto;
+  }
+}
+
+/* ─── Prevenir overflow global en contenedores comunes ──────────────────── */
+.max-w-7xl,
+.max-w-6xl,
+.max-w-5xl,
+.max-w-4xl {
+  max-width: min(var(--tw-max-w, 100%), 100vw);
+}
+
+/* ─── Grids en pantallas muy pequeñas (< 360px) ─────────────────────────── */
+@media (max-width: 359px) {
+  .grid-cols-2 {
+    grid-template-columns: 1fr !important;
   }
 }
 

@@ -51,14 +51,14 @@ export default async function DashboardLayout({
 
   return (
     <Providers>
-      <div className="flex h-screen bg-[#0a0a0a] overflow-hidden">
+      <div className="flex h-screen bg-[#0a0a0a] overflow-hidden w-screen max-w-[100vw]">
         <Sidebar
           user={session}
           labels={labels}
           privateModules={privateModules}
           userModuleKeys={userModuleKeys}
         />
-        <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 md:pt-0 min-w-0">
           {children}
         </main>
         <GlobalQuickTask />

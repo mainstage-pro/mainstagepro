@@ -215,7 +215,7 @@ export default function SociosPage() {
         </div>
       ) : (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Socio", "Status", "Equipos", "Split", "Requisitos", ""].map((h) => (

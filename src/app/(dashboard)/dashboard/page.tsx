@@ -451,7 +451,7 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="ADMINISTRACIÓN" href="/finanzas/movimientos">
         {/* KPIs del mes */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard label="Ingresos del mes"  value={formatCurrency(ingresosDelMes)} subColor="text-green-400" sub="registrados" animate={{ amount: ingresosDelMes, prefix: "$", decimals: 0 }} href="/finanzas/movimientos" />
           <KpiCard label="Gastos del mes"    value={formatCurrency(gastosDelMes)}   subColor="text-red-400"   sub="registrados" animate={{ amount: gastosDelMes, prefix: "$", decimals: 0 }} href="/finanzas/movimientos" />
           <KpiCard label="Flujo neto"        value={formatCurrency(flujoNeto)}
@@ -551,7 +551,7 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="MARKETING" href="/marketing/calendario">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard label="Publicaciones mes" value={totalPubsMes} sub="programadas" />
           <KpiCard label="Publicadas" value={pubsPublicadas}
             sub={totalPubsMes > 0 ? `${Math.round((pubsPublicadas / totalPubsMes) * 100)}% completado` : "—"}
@@ -631,7 +631,7 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="VENTAS" href="/crm/pipeline">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/pipeline" />
           <KpiCard label="Valor del pipeline" value={valorPipeline > 0 ? formatCurrency(valorPipeline) : "Sin datos"}
             sub="presupuesto estimado" subColor="text-[#B3985B]"
@@ -736,7 +736,7 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="PRODUCCIÓN" href="/proyectos">
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <KpiCard label="Proyectos activos" value={proyectosActivos} sub="en operación" animate={{ amount: proyectosActivos }} href="/proyectos" />
           <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} href="/proyectos" />
           <KpiCard label="Equipos en mant." value={equiposMantenimiento}

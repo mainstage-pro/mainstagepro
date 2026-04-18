@@ -119,7 +119,7 @@ export default async function DashboardProduccionPage() {
         {proyectosProximos.length === 0 ? (
           <div className="px-4 py-8 text-center text-gray-600 text-sm">Sin proyectos en los próximos 30 días</div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1a1a1a]">
                 {["Evento", "Cliente", "Fecha", "Personal", "Checklist", "Estado"].map(h => (

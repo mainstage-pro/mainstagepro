@@ -377,7 +377,7 @@ export default function NominaPage() {
           <div className="px-5 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos</p>
           </div>
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Persona", "Período", "Concepto", "Monto", "Fecha", "Método"].map(h => (

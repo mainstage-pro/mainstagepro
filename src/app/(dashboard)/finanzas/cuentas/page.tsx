@@ -154,7 +154,7 @@ export default function CuentasPage() {
         ) : cuentas.length === 0 ? (
           <div className="py-12 text-center text-gray-600 text-sm">Sin cuentas bancarias registradas</div>
         ) : (
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Nombre / Banco", "Número de cuenta", "CLABE", "Titular", "Estado", ""].map(h => (

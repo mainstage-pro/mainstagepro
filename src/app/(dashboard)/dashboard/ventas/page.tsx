@@ -207,7 +207,7 @@ export default async function DashboardVentasPage() {
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Tratos activos recientes</p>
           <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
         </div>
-        <table className="w-full">
+        <table className="w-full min-w-[600px]">
           <tbody className="divide-y divide-[#1a1a1a]">
             {tratosRecientes.map(t => (
               <Link key={t.id} href={`/crm/tratos/${t.id}`} className="contents">

@@ -1273,7 +1273,7 @@ export default function PagosSemanaPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full">
+                  <table className="w-full min-w-[600px]">
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
                         {["Persona", "Proyecto", "Concepto", "Monto", "Estado", "Acciones"].map(h => (

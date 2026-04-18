@@ -536,7 +536,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
           </div>
         ) : (
           <>
-            <table className="w-full">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
                   {["Activo", "Categoría", "V. Adquisición", "V. Actual", "Depreciación", ""].map(h => (
@@ -784,7 +784,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
         </div>
       ) : (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full">
+          <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Mes","Modo","Monto fijo","Utilidad real","Variable calc.","Acordado","Pagado","Estado",""].map(h => (
