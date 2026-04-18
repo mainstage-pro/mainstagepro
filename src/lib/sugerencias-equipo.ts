@@ -10,31 +10,65 @@ export interface SugGroup {
   items: SugItem[];
 }
 
+// IDs de servicios que corresponden a cada grupo de sugerencias
+const GRUPO_SERVICIOS: Record<string, string[]> = {
+  "Audio":           ["AUDIO_PA", "AUDIO_MONITOR", "AUDIO_CONF"],
+  "Iluminación":     ["ILUM_AMBIENTAL", "ILUM_ARTISTICA", "ILUM_ESCENARIO", "ILUM_PISTA", "ILUM_ARQ", "PISTA_BAILE"],
+  "DJ / Consola":    ["DJ"],
+  "Video":           ["VIDEO_LED", "PROYECCION", "VIDEO_PRODUCCION"],
+  "Backline":        ["BACKLINE"],
+  "Efectos":         ["EFECTOS", "CHISPEROS", "HUMO_FRIO", "CONFETI"],
+  "Streaming":       ["STREAMING", "GRABACION"],
+};
+
 /** Devuelve grupos de equipo sugerido según tipo de evento y número de asistentes.
+ *  Pasa `servicios` (IDs de serviciosInteres del trato) para filtrar grupos relevantes.
  *  Guía comercial de arranque — no reemplaza revisión técnica en eventos grandes. */
-export function getSugerencias(tipoEvento: string, asistentes: number): SugGroup[] {
+export function getSugerencias(tipoEvento: string, asistentes: number, servicios?: string[]): SugGroup[] {
   if (asistentes <= 0) return [];
   const tipo = tipoEvento.toUpperCase();
 
+  let grupos: SugGroup[] = [];
+
   if (tipo === "SOCIAL") {
-    if (asistentes <= 100) return socialPequeno();
-    if (asistentes <= 200) return socialMediano();
-    if (asistentes <= 350) return socialGrande();
-    return aviso("350");
+    if (asistentes <= 100) grupos = socialPequeno();
+    else if (asistentes <= 200) grupos = socialMediano();
+    else if (asistentes <= 350) grupos = socialGrande();
+    else return aviso("350");
+    // Extras específicos de social
+    if (servicios?.includes("CHISPEROS")) grupos.push(extraChisperos());
+    if (servicios?.includes("HUMO_FRIO")) grupos.push(extraHumoFrio());
+    if (servicios?.includes("CONFETI")) grupos.push(extraConfeti());
+    if (servicios?.includes("ILUM_ARQ")) grupos.push(extraIlumArq());
+    if (servicios?.includes("KARAOKE")) grupos.push(extraKaraoke());
+  } else if (tipo === "EMPRESARIAL") {
+    if (asistentes <= 100) grupos = empresarialPequeno();
+    else if (asistentes <= 250) grupos = empresarialMediano();
+    else if (asistentes <= 500) grupos = empresarialGrande();
+    else return aviso("500");
+    if (servicios?.includes("STREAMING")) grupos.push(extraStreaming());
+    if (servicios?.includes("GRABACION")) grupos.push(extraGrabacion());
+    if (servicios?.includes("ESCENOGRAFIA")) grupos.push(extraEscenografia());
+  } else if (tipo === "MUSICAL") {
+    if (asistentes <= 150) grupos = musicalPequeno();
+    else if (asistentes <= 300) grupos = musicalMediano();
+    else if (asistentes <= 600) grupos = musicalGrande();
+    else return aviso("600");
+    if (servicios?.includes("ESTRUCTURAS")) grupos.push(extraEstructuras());
+  } else {
+    return [];
   }
-  if (tipo === "EMPRESARIAL") {
-    if (asistentes <= 100) return empresarialPequeno();
-    if (asistentes <= 250) return empresarialMediano();
-    if (asistentes <= 500) return empresarialGrande();
-    return aviso("500");
+
+  // Si se pasaron servicios, filtrar grupos que no tienen relación
+  if (servicios && servicios.length > 0) {
+    return grupos.filter(g => {
+      const relacionados = GRUPO_SERVICIOS[g.cat];
+      if (!relacionados) return true; // Grupos sin mapeo siempre se muestran
+      return relacionados.some(id => servicios.includes(id));
+    });
   }
-  if (tipo === "MUSICAL") {
-    if (asistentes <= 150) return musicalPequeno();
-    if (asistentes <= 300) return musicalMediano();
-    if (asistentes <= 600) return musicalGrande();
-    return aviso("600");
-  }
-  return [];
+
+  return grupos;
 }
 
 function aviso(limite: string): SugGroup[] {
@@ -275,4 +309,64 @@ function musicalGrande(): SugGroup[] {
       { desc: "Novastar", cant: 1, esOpcional: false },
     ]},
   ];
+}
+
+// ── EXTRAS ESPECÍFICOS ────────────────────────────────────────────────────────
+function extraChisperos(): SugGroup {
+  return { cat: "Efectos", items: [
+    { desc: "chispero / cold spark", cant: 2, esOpcional: false, nota: "2-4 según coreografía" },
+    { desc: "técnico de efectos", cant: 1, esOpcional: false },
+  ]};
+}
+function extraHumoFrio(): SugGroup {
+  return { cat: "Efectos", items: [
+    { desc: "máquina humo frío / dry ice", cant: 1, esOpcional: false, nota: "ideal para primera pieza" },
+    { desc: "CO2 jets", cant: 2, esOpcional: true },
+  ]};
+}
+function extraConfeti(): SugGroup {
+  return { cat: "Efectos", items: [
+    { desc: "cañón de confeti", cant: 2, esOpcional: false, nota: "sincronizar con DJ" },
+  ]};
+}
+function extraIlumArq(): SugGroup {
+  return { cat: "Iluminación", items: [
+    { desc: "par led inalámbrico", cant: 12, esOpcional: false, nota: "baño de paredes, columnas o árboles" },
+    { desc: "par led IP exterior", cant: 6, esOpcional: true, nota: "si hay jardín o fachada" },
+    { desc: "barra led", cant: 4, esOpcional: true, nota: "detalles decorativos" },
+  ]};
+}
+function extraKaraoke(): SugGroup {
+  return { cat: "Karaoke", items: [
+    { desc: "micrófono inalámbrico", cant: 2, esOpcional: false },
+    { desc: "pantalla / proyección para letras", cant: 1, esOpcional: false },
+  ]};
+}
+function extraStreaming(): SugGroup {
+  return { cat: "Streaming", items: [
+    { desc: "Atem Mini Pro / switcher", cant: 1, esOpcional: false },
+    { desc: "cámara PTZ o cámara fija", cant: 1, esOpcional: false, nota: "mínimo 1; 2-3 para cobertura completa" },
+    { desc: "encoder / stream deck", cant: 1, esOpcional: false },
+    { desc: "técnico de streaming", cant: 1, esOpcional: false },
+  ]};
+}
+function extraGrabacion(): SugGroup {
+  return { cat: "Grabación", items: [
+    { desc: "cámara profesional", cant: 1, esOpcional: false, nota: "2 si se quiere multi-ángulo" },
+    { desc: "tarjeta captura / grabadora", cant: 1, esOpcional: false },
+    { desc: "técnico de video", cant: 1, esOpcional: false },
+  ]};
+}
+function extraEscenografia(): SugGroup {
+  return { cat: "Escenografía", items: [
+    { desc: "backdrop / pantalla de tela", cant: 1, esOpcional: false, nota: "medir espacio con anticipación" },
+    { desc: "podio / atril", cant: 1, esOpcional: true },
+  ]};
+}
+function extraEstructuras(): SugGroup {
+  return { cat: "Estructuras", items: [
+    { desc: "torre truss", cant: 2, esOpcional: false, nota: "altura y tipo según venue" },
+    { desc: "nodo DMX / consola", cant: 1, esOpcional: false },
+    { desc: "rigging / sling", cant: 4, esOpcional: true, nota: "si hay suspensión en techo" },
+  ]};
 }

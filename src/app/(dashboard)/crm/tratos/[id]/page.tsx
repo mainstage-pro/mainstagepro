@@ -110,50 +110,53 @@ const CANALES = [
   { id: "INFORMACION", icon: "ℹ️", label: "Solo info",    desc: "Nutrir al lead",             profundidad: "INFO",     border: "border-gray-600",   badge: "bg-gray-700 text-gray-400" },
 ] as const;
 
-// Servicios por tipo de evento
-const SERVICIOS: Record<string, Array<{ id: string; label: string }>> = {
-  MUSICAL: [
-    { id: "AUDIO_PA", label: "PA / Sistema principal" },
-    { id: "AUDIO_MONITOR", label: "Monitores / IEM" },
-    { id: "ILUM_ARTISTICA", label: "Iluminación artística" },
-    { id: "ILUM_ESCENARIO", label: "Iluminación escenario" },
-    { id: "VIDEO_LED", label: "Pantallas LED / Video" },
-    { id: "VIDEO_PRODUCCION", label: "Producción de video" },
-    { id: "BACKLINE", label: "Backline (amps, batería)" },
-    { id: "EFECTOS", label: "Efectos especiales" },
-    { id: "DJ", label: "Soporte DJ" },
-    { id: "PRODUCCION_GENERAL", label: "Producción general" },
-  ],
+// Servicios por tipo de evento — base = categorías del inventario, extra = servicios específicos
+interface ServicioItem { id: string; label: string; grupo: "base" | "extra" }
+const SERVICIOS: Record<string, ServicioItem[]> = {
   SOCIAL: [
-    { id: "DJ", label: "DJ" },
-    { id: "AUDIO_PA", label: "Sistema de audio" },
-    { id: "ILUM_PISTA", label: "Iluminación de pista" },
-    { id: "ILUM_AMBIENTAL", label: "Iluminación ambiental" },
-    { id: "VIDEO_LED", label: "Pantalla LED / Proyección" },
-    { id: "PISTA_BAILE", label: "Pista de baile iluminada" },
-    { id: "EFECTOS", label: "Efectos (confeti, humo frío)" },
-    { id: "KARAOKE", label: "Karaoke" },
-    { id: "PRODUCCION_GENERAL", label: "Producción completa" },
+    // Categorías de inventario
+    { id: "AUDIO_PA",       label: "Audio / Sonido",              grupo: "base" },
+    { id: "ILUM_AMBIENTAL", label: "Iluminación",                 grupo: "base" },
+    { id: "VIDEO_LED",      label: "Pantallas LED / Proyección",  grupo: "base" },
+    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
+    // Extras específicos de eventos sociales
+    { id: "PISTA_BAILE",    label: "Pista de baile iluminada",    grupo: "extra" },
+    { id: "ILUM_ARQ",       label: "Iluminación arquitectónica",  grupo: "extra" },
+    { id: "CHISPEROS",      label: "Chisperos",                   grupo: "extra" },
+    { id: "HUMO_FRIO",      label: "Humo frío",                   grupo: "extra" },
+    { id: "CONFETI",        label: "Cañones de confeti",          grupo: "extra" },
+    { id: "KARAOKE",        label: "Karaoke",                     grupo: "extra" },
   ],
   EMPRESARIAL: [
-    { id: "AUDIO_PA", label: "Audio / PA system" },
-    { id: "AUDIO_CONF", label: "Audio para conferencia" },
-    { id: "PROYECCION", label: "Proyección / pantalla" },
-    { id: "VIDEO_LED", label: "Videowall / LED" },
-    { id: "ILUM_ESCENARIO", label: "Iluminación escenario" },
-    { id: "STREAMING", label: "Transmisión en vivo" },
-    { id: "GRABACION", label: "Grabación del evento" },
-    { id: "BRANDING", label: "Branding / pantallas custom" },
-    { id: "TRADUCCION", label: "Traducción simultánea" },
-    { id: "PRODUCCION_GENERAL", label: "Producción ejecutiva" },
+    { id: "AUDIO_PA",       label: "Audio / PA system",           grupo: "base" },
+    { id: "ILUM_ESCENARIO", label: "Iluminación de escenario",    grupo: "base" },
+    { id: "VIDEO_LED",      label: "Videowall / LED",             grupo: "base" },
+    { id: "PROYECCION",     label: "Proyección / Pantalla",       grupo: "base" },
+    // Extras específicos empresariales
+    { id: "AUDIO_CONF",     label: "Sistema para conferencia",    grupo: "extra" },
+    { id: "STREAMING",      label: "Streaming en vivo",           grupo: "extra" },
+    { id: "GRABACION",      label: "Grabación del evento",        grupo: "extra" },
+    { id: "BRANDING",       label: "Branding en pantallas",       grupo: "extra" },
+    { id: "ESCENOGRAFIA",   label: "Escenografía / Backdrop",     grupo: "extra" },
+  ],
+  MUSICAL: [
+    { id: "AUDIO_PA",       label: "PA principal / Subwoofers",   grupo: "base" },
+    { id: "AUDIO_MONITOR",  label: "Monitores / IEM",             grupo: "base" },
+    { id: "ILUM_ARTISTICA", label: "Iluminación artística",       grupo: "base" },
+    { id: "VIDEO_LED",      label: "Pantalla LED",                grupo: "base" },
+    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
+    // Extras específicos musicales
+    { id: "BACKLINE",       label: "Backline (amps, batería)",     grupo: "extra" },
+    { id: "ESTRUCTURAS",    label: "Torres y truss",              grupo: "extra" },
+    { id: "EFECTOS",        label: "Efectos especiales",          grupo: "extra" },
   ],
   OTRO: [
-    { id: "AUDIO_PA", label: "Sistema de audio" },
-    { id: "ILUM_ARTISTICA", label: "Iluminación" },
-    { id: "VIDEO_LED", label: "Video / Pantallas" },
-    { id: "EFECTOS", label: "Efectos especiales" },
-    { id: "DJ", label: "DJ" },
-    { id: "PRODUCCION_GENERAL", label: "Producción general" },
+    { id: "AUDIO_PA",       label: "Audio / Sonido",              grupo: "base" },
+    { id: "ILUM_AMBIENTAL", label: "Iluminación",                 grupo: "base" },
+    { id: "VIDEO_LED",      label: "Video / Pantallas",           grupo: "base" },
+    { id: "DJ",             label: "Setup DJ",                    grupo: "base" },
+    { id: "EFECTOS",        label: "Efectos especiales",          grupo: "extra" },
+    { id: "PRODUCCION_GENERAL", label: "Producción completa",     grupo: "extra" },
   ],
 };
 
@@ -1923,14 +1926,30 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             ) : (
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Servicios de interés *</label>
-                <div className="flex flex-wrap gap-2">
-                  {serviciosDisponibles.map(srv => (
+                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-3">Servicios de interés *</label>
+                {/* Categorías del inventario */}
+                <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Categorías de inventario</p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {serviciosDisponibles.filter(s => s.grupo === "base").map(srv => (
                     <button key={srv.id} onClick={() => toggleServicio(srv.id)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                         discForm.serviciosInteres.includes(srv.id)
                           ? "border-[#B3985B] text-black bg-[#B3985B]"
-                          : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
+                          : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
+                      }`}>
+                      {srv.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Extras específicos del tipo de evento */}
+                <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Extras / Add-ons</p>
+                <div className="flex flex-wrap gap-2">
+                  {serviciosDisponibles.filter(s => s.grupo === "extra").map(srv => (
+                    <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                        discForm.serviciosInteres.includes(srv.id)
+                          ? "border-[#B3985B] text-black bg-[#B3985B]"
+                          : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
                       }`}>
                       {srv.label}
                     </button>
@@ -2396,21 +2415,27 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           {/* Recomendaciones de categorías de equipo */}
           {serviciosSel.length > 0 && (
             <div className="bg-[#111] border border-[#222] rounded-lg p-4 mb-4">
-              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Categorías recomendadas para la cotización</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Categorías para cotización</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {serviciosSel.includes("AUDIO_PA") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🔊 Audio principal (PA)</div>}
+                {(serviciosSel.includes("AUDIO_PA") || serviciosSel.includes("AUDIO_CONF")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🔊 Audio</div>}
                 {serviciosSel.includes("AUDIO_MONITOR") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎧 Monitores / IEM</div>}
-                {serviciosSel.includes("AUDIO_CONF") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎙️ Audio conferencia</div>}
-                {(serviciosSel.includes("ILUM_ARTISTICA") || serviciosSel.includes("ILUM_ESCENARIO") || serviciosSel.includes("ILUM_PISTA") || serviciosSel.includes("ILUM_AMBIENTAL")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">💡 Iluminación</div>}
-                {(serviciosSel.includes("VIDEO_LED") || serviciosSel.includes("PROYECCION")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">📺 Video / LED / Proyección</div>}
-                {serviciosSel.includes("VIDEO_PRODUCCION") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎥 Producción de video</div>}
+                {(serviciosSel.includes("ILUM_ARTISTICA") || serviciosSel.includes("ILUM_ESCENARIO") || serviciosSel.includes("ILUM_AMBIENTAL") || serviciosSel.includes("ILUM_ARQ")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">💡 Iluminación</div>}
+                {serviciosSel.includes("PISTA_BAILE") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">💃 Pista de baile iluminada</div>}
+                {serviciosSel.includes("ILUM_ARQ") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🏛️ Iluminación arquitectónica</div>}
+                {(serviciosSel.includes("VIDEO_LED") || serviciosSel.includes("PROYECCION")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">📺 Video / LED</div>}
+                {serviciosSel.includes("DJ") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎚️ Setup DJ</div>}
                 {serviciosSel.includes("BACKLINE") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎸 Backline</div>}
-                {serviciosSel.includes("EFECTOS") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">✨ Efectos especiales</div>}
-                {serviciosSel.includes("DJ") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎚️ DJ / Soporte DJ</div>}
-                {serviciosSel.includes("PISTA_BAILE") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">💃 Pista de baile</div>}
+                {serviciosSel.includes("ESTRUCTURAS") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🏗️ Torres y truss</div>}
+                {(serviciosSel.includes("CHISPEROS") || serviciosSel.includes("HUMO_FRIO") || serviciosSel.includes("CONFETI") || serviciosSel.includes("EFECTOS")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">✨ Efectos especiales</div>}
+                {serviciosSel.includes("CHISPEROS") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎆 Chisperos</div>}
+                {serviciosSel.includes("HUMO_FRIO") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🌫️ Humo frío</div>}
+                {serviciosSel.includes("CONFETI") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎊 Confeti</div>}
+                {serviciosSel.includes("KARAOKE") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎤 Karaoke</div>}
                 {serviciosSel.includes("STREAMING") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">📡 Streaming en vivo</div>}
                 {serviciosSel.includes("GRABACION") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎬 Grabación</div>}
-                {(serviciosSel.includes("PRODUCCION_GENERAL")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">⚙️ Producción general</div>}
+                {serviciosSel.includes("BRANDING") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🖥️ Branding en pantallas</div>}
+                {serviciosSel.includes("ESCENOGRAFIA") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🎭 Escenografía / Backdrop</div>}
+                {serviciosSel.includes("PRODUCCION_GENERAL") && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">⚙️ Producción completa</div>}
               </div>
             </div>
           )}

@@ -175,6 +175,7 @@ function CotizadorForm() {
   const [tratoNotas, setTratoNotas] = useState<string | null>(null);
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
   const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
+  const [tratoServicios, setTratoServicios] = useState<string[]>([]);
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -373,6 +374,7 @@ function CotizadorForm() {
         if (t.archivos?.length) setTratoArchivos(t.archivos);
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
+        if (t.serviciosInteres) { try { setTratoServicios(JSON.parse(t.serviciosInteres)); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -1033,7 +1035,7 @@ function CotizadorForm() {
               </summary>
               <div className="px-5 pb-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {getSugerencias(evento.tipoEvento, asistentesEstimados).map((grupo) => (
+                  {getSugerencias(evento.tipoEvento, asistentesEstimados, tratoServicios.length > 0 ? tratoServicios : undefined).map((grupo) => (
                     <div key={grupo.cat} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
                       <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.cat}</p>
                       <div className="space-y-1.5">
