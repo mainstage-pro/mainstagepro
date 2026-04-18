@@ -234,7 +234,7 @@ export default function DisponibilidadPage() {
                   <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
                     <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{categoria}</p>
                   </div>
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[600px] text-sm">
                     <thead>
                       <tr className="text-gray-600 text-xs uppercase tracking-wider border-b border-[#1a1a1a]">
                         <th className="text-left px-5 py-2 font-medium">Equipo</th>

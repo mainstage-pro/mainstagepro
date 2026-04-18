@@ -59,7 +59,7 @@ export default function FlujoCajaPage() {
       </div>
 
       {/* KPIs resumen */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         {[
           { label: "Entradas esperadas", value: totalEntradas, color: "text-green-400" },
           { label: "Salidas comprometidas", value: totalSalidas, color: "text-red-400" },

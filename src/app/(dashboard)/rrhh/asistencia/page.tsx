@@ -381,7 +381,8 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
         </div>
 
         {loading ? <div className="py-8 text-center text-gray-600 text-sm">Cargando...</div> : (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+            <div className="min-w-[420px]">
             <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
               {DIAS_ES.map(d => (
                 <div key={d} className="py-2 text-center text-[10px] text-gray-600 font-medium">{d}</div>
@@ -411,6 +412,7 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         )}
@@ -483,7 +485,8 @@ function TabReporte({ personal }: { personal: Personal[] }) {
           No hay empleados activos.
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+          <div className="min-w-[560px]">
           {/* Header tabla */}
           <div className="grid grid-cols-8 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
             <div className="col-span-2 px-4 py-3">Empleado</div>
@@ -561,6 +564,7 @@ function TabReporte({ personal }: { personal: Personal[] }) {
                 }
               </span>
             </div>
+          </div>
           </div>
         </div>
       )}

@@ -855,7 +855,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                     </div>
                     <div className="space-y-2">
                       {activePagos.map((p, i) => (
-                        <div key={i} className="grid gap-2" style={{ gridTemplateColumns: "1fr 80px 120px" }}>
+                        <div key={i} className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_80px_120px]">
                           <input
                             defaultValue={p.concepto.replace(" — ", "")}
                             onBlur={e => {

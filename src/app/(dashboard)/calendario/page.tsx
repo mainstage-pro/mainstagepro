@@ -152,7 +152,8 @@ export default function CalendarioPage() {
       <div className="flex gap-4">
         {/* Grilla */}
         <div className="flex-1 min-w-0">
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+            <div className="min-w-[320px]">
             <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
               {DIAS_SEMANA.map(d => (
                 <div key={d} className="py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">{d}</div>
@@ -212,6 +213,7 @@ export default function CalendarioPage() {
                   </div>
                 );
               })}
+            </div>
             </div>
           </div>
         </div>

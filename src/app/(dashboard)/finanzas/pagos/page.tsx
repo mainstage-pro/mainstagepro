@@ -361,7 +361,7 @@ function CardElemento({
 
       {/* Tabla de pagos */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[600px] text-sm">
           <thead>
             <tr className="border-b border-[#1a1a1a]">
               <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider px-4 py-2">Proyecto</th>
@@ -545,7 +545,7 @@ function CardProyecto({ grupo, tab, onDone }: { grupo: GrupoProyecto; tab: Tab; 
       {/* Tabla de pagos del proyecto */}
       {open && (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b border-[#1a1a1a]">
                 <th className="text-left text-[10px] font-semibold text-[#555] uppercase tracking-wider px-4 py-2">

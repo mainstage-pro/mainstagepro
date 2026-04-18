@@ -109,7 +109,7 @@ export default function SociosPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         {[
           { label: "Socios activos", value: socios.filter((s) => s.status === "ACTIVO").length, sub: `${socios.length} registrados` },
           { label: "Equipos en inventario", value: totalActivos, sub: "activos operando" },

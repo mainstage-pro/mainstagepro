@@ -230,7 +230,7 @@ export default function ReporteComisionesPage() {
               <p className="text-gray-500 text-sm text-center py-8">Sin tratos cerrados en este mes</p>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b border-[#1a1a1a]">
                       {["Evento / Cliente", "Cierre", "Origen", "Cotización", "Gran Total", "Base Equipos", "%", "Comisión", "Estado"].map(h => (

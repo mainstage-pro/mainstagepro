@@ -2465,7 +2465,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs">
+                <table className="w-full min-w-[600px] text-xs">
                   <thead>
                     <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
                       <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
@@ -3754,7 +3754,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Margen: {margen.toFixed(1)}%
               </span>
             </div>
-            <div className="p-5 grid grid-cols-3 gap-4">
+            <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Ingresos */}
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Ingresos</p>
@@ -4372,7 +4372,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {(() => {
             const totalGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-4 gap-4 text-center">
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 {proyecto.cotizacion && (
                   <div>
                     <p className="text-gray-500 text-xs mb-1">Total cotizado</p>

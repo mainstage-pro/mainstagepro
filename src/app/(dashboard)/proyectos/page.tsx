@@ -101,7 +101,8 @@ export default function ProyectosPage() {
         }
 
         return (
-          <div>
+          <div className="overflow-x-auto">
+            <div className="min-w-[320px]">
             {/* Nav mes */}
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setTimelineMes(new Date(year, month - 1, 1))} className="text-gray-400 hover:text-white px-3 py-1.5 rounded-lg border border-[#222] hover:border-[#333] text-sm transition-colors">← Anterior</button>
@@ -161,6 +162,7 @@ export default function ProyectosPage() {
                 ))}
               </div>
             )}
+            </div>
           </div>
         );
       })()}

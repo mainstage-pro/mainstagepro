@@ -335,7 +335,7 @@ export default function NuevoTratoPage() {
           {/* Tipo de evento */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Tipo de evento</h2>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {EVENTOS_CARDS.map(e=>(
                 <button key={e.value} type="button" onClick={()=>setS2(p=>({...p,tipoEvento:e.value}))} className={`py-3 rounded-xl border text-xs font-medium transition-all text-center ${s2.tipoEvento===e.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
                   <div className="text-lg mb-1">{e.icon}</div>{e.label}

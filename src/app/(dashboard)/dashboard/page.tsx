@@ -350,7 +350,7 @@ export default async function DashboardPage() {
                 </span>
               )}
             </div>
-            <div className="px-5 py-4 grid grid-cols-3 gap-4">
+            <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Facturado</p>
                 <p className="text-white font-semibold text-lg group-hover:text-[#B3985B] transition-colors">

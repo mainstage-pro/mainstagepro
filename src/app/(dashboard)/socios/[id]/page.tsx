@@ -323,7 +323,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
       </div>
 
       {showForm && (
-        <form onSubmit={guardar} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-3 gap-4">
+        <form onSubmit={guardar} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
             {editId ? "Editar equipo" : "Nuevo equipo"}
           </p>
@@ -507,7 +507,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       )}
 
       {showForm && activos.length > 0 && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-3 gap-4">
+        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva renta</p>
           <div className="col-span-2">
             <FieldLabel>Evento / descripción *</FieldLabel>
@@ -680,7 +680,7 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {[
                   { label: "Eventos", value: r.totalEventos, fmt: false },
                   { label: "Días", value: r.totalDias, fmt: false },

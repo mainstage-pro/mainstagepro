@@ -335,7 +335,7 @@ export default function MetasPage() {
               <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Scoreboard del equipo</p>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[600px] text-sm">
                     <thead>
                       <tr className="text-xs text-gray-500 border-b border-[#1a1a1a]">
                         <th className="text-left pb-2">Vendedor</th>
@@ -376,7 +376,7 @@ export default function MetasPage() {
         {tab === "nurturing" && (
           <div className="space-y-4">
             {/* Stats rápidos */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
                 { label: "Total en nurturing", val: nurturing.total, color: "text-[#B3985B]" },
                 { label: "Pendientes hoy", val: nurturing.pendienteHoy, color: nurturing.pendienteHoy > 0 ? "text-red-400" : "text-green-400" },

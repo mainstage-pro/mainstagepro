@@ -748,7 +748,7 @@ export default function OperacionesPage() {
       {/* ── TASK PANEL ────────────────────────────────────────────────────── */}
       {selectedId && (
         loadingPanel ? (
-          <aside className="w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-center">
+          <aside className="w-full md:w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-center absolute inset-0 z-30 md:relative md:inset-auto md:z-auto">
             <div className="w-5 h-5 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
           </aside>
         ) : selectedTask ? (

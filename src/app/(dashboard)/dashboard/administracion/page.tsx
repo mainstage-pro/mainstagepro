@@ -190,7 +190,7 @@ export default async function DashboardAdminPage() {
             <Link href="/finanzas/hervam" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
           </div>
           {hervamPagoMes ? (
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <p className="text-[10px] text-gray-500 uppercase">Acordado</p>
                 <p className="text-white font-bold text-lg">{fmt(hervamPagoMes.montoAcordado)}</p>
@@ -224,7 +224,7 @@ export default async function DashboardAdminPage() {
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Recursos Humanos</p>
             <Link href="/rrhh/personal" className="text-xs text-[#B3985B] hover:underline">Ver equipo →</Link>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <p className="text-[10px] text-gray-500 uppercase">Colaboradores</p>
               <p className="text-white font-bold text-xl">{personalCount}</p>

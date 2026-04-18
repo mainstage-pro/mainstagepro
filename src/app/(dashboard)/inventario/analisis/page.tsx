@@ -245,7 +245,7 @@ export default function AnalisisInventarioPage() {
 
           {/* Table */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
                   <th className="text-left p-3 pl-4 w-[30%]"><SortBtn field="descripcion" label="Equipo" /></th>
@@ -332,7 +332,7 @@ export default function AnalisisInventarioPage() {
               </div>
 
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b border-[#1e1e1e]">
                       <th className="text-left p-3 pl-4">
@@ -403,7 +403,7 @@ export default function AnalisisInventarioPage() {
             <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center text-gray-500">Sin items personalizados este mes</div>
           ) : (
             <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-[#1e1e1e]">
                     <th className="text-left p-3 pl-4"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Descripción</span></th>

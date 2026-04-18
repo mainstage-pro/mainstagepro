@@ -174,7 +174,7 @@ export default function CandidatosPage() {
       ) : (
         /* ── Lista ── */
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b border-[#1a1a1a]">
                 {["Candidato","Puesto","Ciudad","Salario esperado","Etapa",""].map(h => (

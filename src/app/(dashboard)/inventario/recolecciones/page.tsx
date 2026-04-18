@@ -179,7 +179,7 @@ export default function RecoleccionesPage() {
       </div>
 
       {/* Métricas */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { val: vencidas.length,    label: "Vencidas",       cls: "text-red-400",    bg: "bg-red-900/20 border-red-800/30" },
           { val: hoy.length,         label: "Hoy",            cls: "text-yellow-400", bg: "bg-yellow-900/20 border-yellow-800/30" },

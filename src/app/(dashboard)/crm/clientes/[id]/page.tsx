@@ -562,7 +562,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             {/* Tabla de precios guardados */}
             {preciosEspeciales.length > 0 ? (
               <div className="overflow-x-auto mb-5">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="text-xs text-gray-500 border-b border-[#222]">
                       <th className="text-left pb-2 pr-4">Equipo</th>

@@ -133,7 +133,7 @@ export default function PlantillasPage() {
                       <p className="text-gray-600 text-sm text-center py-4">Sin líneas en esta plantilla</p>
                     ) : (
                       <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
+                        <table className="w-full min-w-[600px] text-xs">
                           <thead>
                             <tr className="text-gray-600 border-b border-[#1a1a1a]">
                               <th className="text-left pb-2 font-semibold">Descripción</th>

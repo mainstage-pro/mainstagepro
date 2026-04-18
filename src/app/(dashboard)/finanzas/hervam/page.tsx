@@ -130,7 +130,7 @@ export default function HervamPage() {
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="h-6 w-48 bg-[#1a1a1a] rounded animate-pulse mb-4" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[1,2,3].map(i => <div key={i} className="h-24 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
         </div>
       </div>
@@ -832,7 +832,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
                   {editId === p.id && (
                     <tr key={`edit-${p.id}`} className="bg-[#0d0d0d]">
                       <td colSpan={9} className="px-4 py-3">
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <Inp label="Monto acordado" value={editForm.montoAcordado} onChange={v => setEditForm(f => ({...f, montoAcordado: v}))} type="number" prefix="$" />
                           <Inp label="Monto pagado" value={editForm.montoPagado} onChange={v => setEditForm(f => ({...f, montoPagado: v}))} type="number" prefix="$" />
                           <div>

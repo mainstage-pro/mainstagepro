@@ -156,7 +156,7 @@ export default function RentabilidadPage() {
                 <p className="text-gray-600 text-sm text-center py-8">Sin datos</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full min-w-[600px] text-sm">
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
                         {["Cliente", "Eventos", "Ingresos", "Costos", "Utilidad", "Margen"].map(h => (
@@ -229,7 +229,7 @@ export default function RentabilidadPage() {
                 <h2 className="text-white font-semibold text-sm">Proyectos completados (últimos 30)</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b border-[#1a1a1a]">
                       {["Proyecto", "Tipo", "Cliente", "Cobrado", "Costo", "Utilidad", "Margen"].map(h => (

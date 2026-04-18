@@ -222,7 +222,7 @@ export default function TaskPanel({
   const isCompleted = tarea.estado === "COMPLETADA";
 
   return (
-    <aside className="w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex flex-col h-full overflow-hidden">
+    <aside className="w-full md:w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex flex-col h-full overflow-hidden md:relative absolute inset-0 z-30 md:inset-auto md:z-auto">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1a1a1a] shrink-0">
         {/* Complete button */}
