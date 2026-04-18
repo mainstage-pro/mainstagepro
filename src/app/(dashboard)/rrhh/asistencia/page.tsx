@@ -91,7 +91,7 @@ function TabHoy({ personal }: { personal: Personal[] }) {
   const [notas, setNotas] = useState<Record<string, string>>({});
 
   const cargar = useCallback(async (f: string) => {
-    const r = await fetch(`/api/rrhh/asistencia?mes=${f.slice(0, 7)}`);
+    const r = await fetch(`/api/rrhh/asistencia?mes=${f.slice(0, 7)}`, { cache: "no-store" });
     const d = await r.json();
     const map: Record<string, Asistencia> = {};
     (d.asistencias ?? []).forEach((a: Asistencia) => {
@@ -334,7 +334,7 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ personalId: selId, fecha, estado }),
     });
-    const r = await fetch(`/api/rrhh/asistencia?personalId=${selId}&mes=${mes}`);
+    const r = await fetch(`/api/rrhh/asistencia?personalId=${selId}&mes=${mes}`, { cache: "no-store" });
     const d = await r.json();
     setAsistencias(d.asistencias ?? []);
     setSaving(null);

@@ -17,7 +17,7 @@ export default function TemplatesPage() {
   const [editId, setEditId] = useState<string | null>(null);
 
   async function load() {
-    const r = await fetch("/api/bodega/templates");
+    const r = await fetch("/api/bodega/templates", { cache: "no-store" });
     const d = await r.json();
     setTemplates(d.templates ?? []);
     setLoading(false);

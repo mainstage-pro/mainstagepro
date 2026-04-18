@@ -47,7 +47,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   const [fechaPagoReal, setFechaPagoReal] = useState(new Date().toISOString().split("T")[0]);
 
   async function load() {
-    const r = await fetch(`/api/rrhh/personal/${id}`);
+    const r = await fetch(`/api/rrhh/personal/${id}`, { cache: "no-store" });
     const d = await r.json();
     setPersona(d.persona);
     setLoading(false);

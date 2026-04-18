@@ -191,7 +191,7 @@ export default function MetasPage() {
       etapaResultante: nextEtapa,
     };
     // Leer nurturingData actual del trato para agregar al log
-    const tratoRes = await fetch(`/api/tratos/${tratoId}`);
+    const tratoRes = await fetch(`/api/tratos/${tratoId}`, { cache: "no-store" });
     const tratoData = await tratoRes.json();
     let nData: Record<string, unknown> = {};
     try { if (tratoData.trato?.nurturingData) nData = JSON.parse(tratoData.trato.nurturingData); } catch { /* */ }

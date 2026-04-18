@@ -316,7 +316,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function loadCierre() {
     setLoadingCierre(true);
-    const res = await fetch(`/api/proyectos/${id}/cierre`);
+    const res = await fetch(`/api/proyectos/${id}/cierre`, { cache: "no-store" });
     const d = await res.json();
     setCierreData(d);
     setCierreNotas(d.cierreExistente?.notas ?? "");
@@ -543,7 +543,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   };
 
   async function load() {
-    const res = await fetch(`/api/proyectos/${id}`);
+    const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
     const d = await res.json();
     setProyecto(d.proyecto);
     setNotasPortal(d.proyecto?.notasPortal ?? "");
@@ -555,7 +555,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function loadEval() {
-    const res = await fetch(`/api/proyectos/${id}/evaluacion`);
+    const res = await fetch(`/api/proyectos/${id}/evaluacion`, { cache: "no-store" });
     const d = await res.json();
     if (d.evaluacion) {
       let comentariosCriterios: Record<string, string> = {};
@@ -673,7 +673,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function loadEvalCliente() {
     if (evalClienteLoaded) return;
     setLoadingEvalCliente(true);
-    const res = await fetch(`/api/evaluacion-cliente?proyectoId=${id}`).catch(() => null);
+    const res = await fetch(`/api/evaluacion-cliente?proyectoId=${id}`, { cache: "no-store" }).catch(() => null);
     if (res?.ok) {
       const d = await res.json();
       setEvalCliente(d.evaluacion ?? null);
@@ -835,7 +835,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // Generar cierre automáticamente
         setSaving(true);
         try {
-          const resCalc = await fetch(`/api/proyectos/${id}/cierre`);
+          const resCalc = await fetch(`/api/proyectos/${id}/cierre`, { cache: "no-store" });
           const dataCalc = await resCalc.json();
           if (dataCalc) {
             await fetch(`/api/proyectos/${id}/cierre`, {
@@ -864,7 +864,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(prev => prev ? { ...prev, estado } : prev);
     // Si se marca como COMPLETADO → cargar encuesta auto-generada y cambiar a esa tab
     if (estado === "COMPLETADO") {
-      const r = await fetch(`/api/evaluacion-cliente?proyectoId=${id}`);
+      const r = await fetch(`/api/evaluacion-cliente?proyectoId=${id}`, { cache: "no-store" });
       const d = await r.json().catch(() => ({}));
       if (d.evaluacion) {
         setEvalCliente(d.evaluacion);
@@ -4098,7 +4098,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     if (res.ok) {
                       toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
                       // Recargar proyecto
-                      const r2 = await fetch(`/api/proyectos/${id}`);
+                      const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
                       const d2 = await r2.json();
                       if (d2.proyecto) setProyecto(d2.proyecto);
                     } else {
@@ -4832,7 +4832,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <button
                       onClick={async () => {
                         try {
-                          const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`);
+                          const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`, { cache: "no-store" });
                           const blob = await res.blob();
                           const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" });
                           if (navigator.canShare && navigator.canShare({ files: [file] })) {

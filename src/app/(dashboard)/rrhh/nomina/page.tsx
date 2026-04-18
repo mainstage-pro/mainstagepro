@@ -87,7 +87,7 @@ export default function NominaPage() {
   const [pagoData, setPagoData] = useState<Record<string, { cuentaId: string; metodo: string; fecha: string }>>({});
 
   async function load() {
-    const r = await fetch("/api/rrhh/nomina");
+    const r = await fetch("/api/rrhh/nomina", { cache: "no-store" });
     const d = await r.json();
     setPendientes(d.pendientes ?? []);
     setHistorial(d.historial ?? []);

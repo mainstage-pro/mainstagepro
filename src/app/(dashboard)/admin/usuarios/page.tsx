@@ -118,7 +118,7 @@ export default function UsuariosPage() {
     setExpandedPermisos(userId);
     if (userId && proyectosList.length === 0) {
       setLoadingProyectos(true);
-      const r = await fetch("/api/proyectos");
+      const r = await fetch("/api/proyectos", { cache: "no-store" });
       const d = await r.json();
       setProyectosList((d.proyectos ?? []).map((p: { id: string; nombre: string; numeroProyecto: string }) => ({
         id: p.id, nombre: p.nombre, numeroProyecto: p.numeroProyecto,

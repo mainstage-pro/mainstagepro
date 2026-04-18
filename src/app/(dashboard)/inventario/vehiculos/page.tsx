@@ -104,7 +104,7 @@ export default function VehiculosPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/vehiculos");
+    const res = await fetch("/api/vehiculos", { cache: "no-store" });
     const data = await res.json();
     setVehiculos(data.vehiculos ?? []);
     setLoading(false);

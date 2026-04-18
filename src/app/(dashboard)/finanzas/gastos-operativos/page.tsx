@@ -70,7 +70,7 @@ export default function GastosOperativosPage() {
   const [showEntregados, setShowEntregados] = useState(false);
 
   async function load() {
-    const r = await fetch("/api/proyectos/gastos-operativos");
+    const r = await fetch("/api/proyectos/gastos-operativos", { cache: "no-store" });
     const d = await r.json();
     setGastos(d.gastos ?? []);
     setLoading(false);

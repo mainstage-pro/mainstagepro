@@ -43,7 +43,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const [notasVal, setNotasVal] = useState("");
 
   async function load() {
-    const r = await fetch(`/api/bodega/checklist/${id}`);
+    const r = await fetch(`/api/bodega/checklist/${id}`, { cache: "no-store" });
     const d = await r.json();
     setChecklist(d.checklist);
     setLoading(false);

@@ -82,7 +82,7 @@ export default function TecnicosPage() {
 
   async function loadRanking() {
     setLoadingRanking(true);
-    const res = await fetch("/api/tecnicos/ranking");
+    const res = await fetch("/api/tecnicos/ranking", { cache: "no-store" });
     const d = await res.json();
     setRanking(d.ranking ?? []);
     setLoadingRanking(false);
@@ -91,7 +91,7 @@ export default function TecnicosPage() {
   async function loadDetalle(id: string) {
     setDetalleId(id);
     setLoadingDetalle(true);
-    const res = await fetch(`/api/tecnicos/${id}`);
+    const res = await fetch(`/api/tecnicos/${id}`, { cache: "no-store" });
     const d = await res.json();
     setDetalle(d.tecnico ?? null);
     setLoadingDetalle(false);

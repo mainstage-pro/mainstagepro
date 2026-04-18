@@ -58,7 +58,7 @@ export default function PuestosPage() {
   const [selected, setSelected] = useState<Puesto | null>(null);
 
   async function load() {
-    const r = await fetch("/api/rrhh/puestos");
+    const r = await fetch("/api/rrhh/puestos", { cache: "no-store" });
     const d = await r.json();
     setPuestos(d.puestos ?? []);
     setLoading(false);

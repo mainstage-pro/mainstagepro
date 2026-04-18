@@ -47,7 +47,7 @@ export default function ContenidosPage() {
   const [saving, setSaving] = useState(false);
 
   async function load() {
-    const r = await fetch("/api/marketing/contenidos");
+    const r = await fetch("/api/marketing/contenidos", { cache: "no-store" });
     const d = await r.json();
     setTipos(d.tipos ?? []);
     setLoading(false);

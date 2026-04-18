@@ -83,7 +83,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   });
 
   async function load() {
-    const r = await fetch(`/api/rrhh/candidatos/${id}`);
+    const r = await fetch(`/api/rrhh/candidatos/${id}`, { cache: "no-store" });
     const d = await r.json();
     if (d.candidato) {
       setCandidato(d.candidato);

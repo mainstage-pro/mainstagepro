@@ -446,7 +446,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(`/api/socios/${socio.id}/rentas?mes=${filMes}&anio=${filAnio}`);
+    const r = await fetch(`/api/socios/${socio.id}/rentas?mes=${filMes}&anio=${filAnio}`, { cache: "no-store" });
     const d = await r.json();
     setRentas(d.rentas || []);
     setLoading(false);
@@ -719,7 +719,7 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(`/api/socios/${socio.id}/mantenimientos`);
+    const r = await fetch(`/api/socios/${socio.id}/mantenimientos`, { cache: "no-store" });
     const d = await r.json();
     setMantenimientos(d.mantenimientos || []);
     setLoading(false);
@@ -860,7 +860,7 @@ export default function SocioDetallePage() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(`/api/socios/${id}`);
+    const r = await fetch(`/api/socios/${id}`, { cache: "no-store" });
     const d = await r.json();
     setSocio(d.socio || null);
     setLoading(false);

@@ -40,7 +40,7 @@ export default function BodegaPage() {
   const [creando, setCreando] = useState(false);
 
   async function load() {
-    const r = await fetch("/api/bodega/checklist");
+    const r = await fetch("/api/bodega/checklist", { cache: "no-store" });
     const d = await r.json();
     setChecklists(d.checklists ?? []);
     setLoading(false);

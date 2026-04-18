@@ -235,7 +235,7 @@ export default function TiposCampanaPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function load() {
-    const r = await fetch("/api/marketing/tipos-campana");
+    const r = await fetch("/api/marketing/tipos-campana", { cache: "no-store" });
     const d = await r.json();
     setTipos(d.tipos ?? []);
     setLoading(false);

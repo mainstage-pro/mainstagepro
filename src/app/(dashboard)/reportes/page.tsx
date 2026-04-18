@@ -32,7 +32,7 @@ export default function ReportesPage() {
 
   const cargar = async () => {
     setLoading(true);
-    const r = await fetch("/api/reportes");
+    const r = await fetch("/api/reportes", { cache: "no-store" });
     const d = await r.json();
     setReportes(d.reportes || []);
     setLoading(false);

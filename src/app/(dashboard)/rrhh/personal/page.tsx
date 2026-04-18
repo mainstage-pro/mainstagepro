@@ -31,7 +31,7 @@ export default function PersonalPage() {
   const [form, setForm] = useState({ nombre: "", puesto: "", departamento: "GENERAL", tipo: "EMPLEADO", telefono: "", correo: "", salario: "", periodoPago: "MENSUAL", fechaIngreso: "", cuentaBancaria: "", datosFiscales: "", notas: "" });
 
   async function load() {
-    const r = await fetch("/api/rrhh/personal");
+    const r = await fetch("/api/rrhh/personal", { cache: "no-store" });
     const d = await r.json();
     setPersonal(d.personal ?? []);
     setLoading(false);

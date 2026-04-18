@@ -28,7 +28,7 @@ export default function PipelinePage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/tratos");
+    const res = await fetch("/api/tratos", { cache: "no-store" });
     const d = await res.json();
     setTratos((d.tratos ?? []).filter((t: Trato) => ["DESCUBRIMIENTO","OPORTUNIDAD","VENTA_CERRADA"].includes(t.etapa)));
     setLoading(false);

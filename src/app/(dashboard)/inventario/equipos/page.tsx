@@ -69,7 +69,7 @@ export default function InventarioEquiposPage() {
   async function descargarPDF() {
     setDescargandoPDF(true);
     try {
-      const res = await fetch("/api/inventario/pdf");
+      const res = await fetch("/api/inventario/pdf", { cache: "no-store" });
       if (!res.ok) throw new Error("Error al generar PDF");
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

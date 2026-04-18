@@ -72,7 +72,7 @@ export default function EquipoFichaPage() {
   const fileExtraRef = useRef<HTMLInputElement>(null);
 
   async function load() {
-    const res = await fetch(`/api/equipos/${id}`);
+    const res = await fetch(`/api/equipos/${id}`, { cache: "no-store" });
     const data = await res.json();
     setEquipo(data.equipo ?? null);
     setLoading(false);

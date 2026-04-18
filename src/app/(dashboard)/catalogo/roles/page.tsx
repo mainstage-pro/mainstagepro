@@ -48,7 +48,7 @@ export default function RolesPage() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function load() {
-    const res = await fetch("/api/roles-tecnicos");
+    const res = await fetch("/api/roles-tecnicos", { cache: "no-store" });
     const data = await res.json();
     setRoles(data.roles ?? []);
   }

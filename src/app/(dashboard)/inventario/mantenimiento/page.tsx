@@ -203,7 +203,7 @@ function MantenimientoContent() {
       await loadData();
       // Refresh units
       if (selectedEquipoId) {
-        const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`);
+        const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`, { cache: "no-store" });
         const ud = await ur.json();
         setUnidades(ud.unidades ?? []);
       }
@@ -222,7 +222,7 @@ function MantenimientoContent() {
         body: JSON.stringify({ codigo: `Unidad ${i}` }),
       });
     }
-    const ur = await fetch(`/api/equipos/${selectedEquipo.id}/unidades`);
+    const ur = await fetch(`/api/equipos/${selectedEquipo.id}/unidades`, { cache: "no-store" });
     const ud = await ur.json();
     setUnidades(ud.unidades ?? []);
   }
@@ -241,7 +241,7 @@ function MantenimientoContent() {
         body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, notas: unidadForm.notas || null }),
       });
     }
-    const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`);
+    const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`, { cache: "no-store" });
     const ud = await ur.json();
     setUnidades(ud.unidades ?? []);
     setShowAddUnidad(false);
@@ -259,7 +259,7 @@ function MantenimientoContent() {
   async function deleteUnidad(unidadId: string) {
     if (!await confirm({ message: "¿Eliminar esta unidad? Se perderá su historial de mantenimiento.", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/equipos/${selectedEquipoId}/unidades/${unidadId}`, { method: "DELETE" });
-    const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`);
+    const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`, { cache: "no-store" });
     const ud = await ur.json();
     setUnidades(ud.unidades ?? []);
     if (selectedUnidadId === unidadId) setSelectedUnidadId(null);

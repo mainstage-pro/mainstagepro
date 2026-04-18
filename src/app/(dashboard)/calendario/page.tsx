@@ -50,7 +50,7 @@ export default function CalendarioPage() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(`/api/calendario?mes=${mesStr}`);
+    const r = await fetch(`/api/calendario?mes=${mesStr}`, { cache: "no-store" });
     const d = await r.json();
     setEventos(d.eventos ?? []);
     setLoading(false);

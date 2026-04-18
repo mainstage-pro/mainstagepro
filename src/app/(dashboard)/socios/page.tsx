@@ -46,7 +46,7 @@ export default function SociosPage() {
 
   const cargar = async () => {
     setLoading(true);
-    const r = await fetch("/api/socios");
+    const r = await fetch("/api/socios", { cache: "no-store" });
     const d = await r.json();
     setSocios(d.socios || []);
     setLoading(false);

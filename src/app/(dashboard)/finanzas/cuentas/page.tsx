@@ -35,7 +35,7 @@ export default function CuentasPage() {
   const [guardandoSaldo, setGuardandoSaldo] = useState(false);
 
   async function load() {
-    const r = await fetch("/api/cuentas");
+    const r = await fetch("/api/cuentas", { cache: "no-store" });
     const d = await r.json();
     setCuentas(d.cuentas);
     setLoading(false);

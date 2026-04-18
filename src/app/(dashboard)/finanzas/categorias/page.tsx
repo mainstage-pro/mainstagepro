@@ -33,7 +33,7 @@ export default function CategoriasPage() {
   const [showForm, setShowForm] = useState(false);
 
   async function load() {
-    const r = await fetch("/api/categorias-financieras");
+    const r = await fetch("/api/categorias-financieras", { cache: "no-store" });
     const d = await r.json();
     setCategorias(d.categorias);
     setLoading(false);

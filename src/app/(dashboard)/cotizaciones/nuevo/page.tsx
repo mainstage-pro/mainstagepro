@@ -876,7 +876,7 @@ function CotizadorForm() {
                   disabled={cargandoPlantilla}
                   onClick={async () => {
                     setCargandoPlantilla(true);
-                    const res = await fetch(`/api/plantillas-cotizacion`);
+                    const res = await fetch(`/api/plantillas-cotizacion`, { cache: "no-store" });
                     const d = await res.json();
                     const plantilla = d.plantillas?.find((pl: { id: string }) => pl.id === p.id);
                     if (plantilla) {

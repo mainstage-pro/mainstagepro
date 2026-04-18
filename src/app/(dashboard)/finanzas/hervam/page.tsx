@@ -203,7 +203,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
     setCreando(true);
     setLoadingUtilidad(true);
     try {
-      const r = await fetch("/api/finanzas/reporte?meses=1");
+      const r = await fetch("/api/finanzas/reporte?meses=1", { cache: "no-store" });
       const d = await r.json();
       const mesKey = new Date().toISOString().slice(0, 7);
       const mesData = (d.porMes as { mes: string; utilidadMes: number }[])?.find(m => m.mes === mesKey);

@@ -74,7 +74,7 @@ export default function ProveedoresPage() {
   const [aprobando, setAprobando] = useState<string | null>(null);
 
   async function load() {
-    const res = await fetch("/api/proveedores");
+    const res = await fetch("/api/proveedores", { cache: "no-store" });
     const data = await res.json();
     setProveedores(data.proveedores ?? []);
   }
@@ -103,7 +103,7 @@ export default function ProveedoresPage() {
   async function verEquipos(p: Proveedor) {
     if (equiposPanel?.proveedorId === p.id) { setEquiposPanel(null); return; }
     setLoadingEquipos(true);
-    const res = await fetch(`/api/proveedores/${p.id}/equipos-portal`);
+    const res = await fetch(`/api/proveedores/${p.id}/equipos-portal`, { cache: "no-store" });
     const d = await res.json();
     setEquiposPanel({ proveedorId: p.id, equipos: d.equipos ?? [] });
     setLoadingEquipos(false);

@@ -95,7 +95,7 @@ export default function AnalisisInventarioPage() {
   const cargar = useCallback(async (m: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/inventario/analisis?mes=${m}`);
+      const res = await fetch(`/api/inventario/analisis?mes=${m}`, { cache: "no-store" });
       const json = await res.json();
       setData(json);
     } finally {

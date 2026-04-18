@@ -66,7 +66,7 @@ export default function ReporteDetallePage() {
   const [notasSaved, setNotasSaved] = useState(false);
 
   const cargar = useCallback(async () => {
-    const r = await fetch(`/api/reportes/${id}`);
+    const r = await fetch(`/api/reportes/${id}`, { cache: "no-store" });
     const d = await r.json();
     setReporte(d.reporte);
     setNotas(d.reporte?.notas || "");

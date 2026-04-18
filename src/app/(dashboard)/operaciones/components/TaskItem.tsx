@@ -71,7 +71,7 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
     e.stopPropagation();
     if (!expanded && subtareasExp.length === 0) {
       setLoadingExp(true);
-      const res  = await fetch(`/api/tareas?parentId=${tarea.id}`);
+      const res  = await fetch(`/api/tareas?parentId=${tarea.id}`, { cache: "no-store" });
       const data = await res.json();
       setSubtareasExp(data.tareas ?? []);
       setLoadingExp(false);

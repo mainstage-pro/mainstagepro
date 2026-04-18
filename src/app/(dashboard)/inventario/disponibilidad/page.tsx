@@ -84,7 +84,7 @@ export default function DisponibilidadPage() {
     setExpandidoId(null);
     try {
       const qs = new URLSearchParams({ fechas: fechas.join(",") });
-      const res = await fetch(`/api/inventario/disponibilidad?${qs}`);
+      const res = await fetch(`/api/inventario/disponibilidad?${qs}`, { cache: "no-store" });
       const d = await res.json();
       setResultado(d);
     } finally {
