@@ -167,6 +167,10 @@ model Trato {
   // ─────────────────────────────────────────────────────────────────────────
 
   scoutingData        String?  // JSON: venue scouting form data
+  // ── Mainstage Trade ──────────────────────────────────────────────────────────
+  tradeCalificado     Boolean  @default(false)
+  tradeNivel          Int?     // 1 = Base | 2 = Estratégico | 3 = Premium
+  // ─────────────────────────────────────────────────────────────────────────────
   tipoProspecto       String   @default("ACTIVO")  // ACTIVO | NURTURING
   nurturingData       String?  // JSON: { etapa, temperatura, nextFollowup, nextMotivo, log[] }
   motivoPerdida       String?

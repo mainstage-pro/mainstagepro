@@ -51,6 +51,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
     // Logística del venue
     "ventanaMontajeInicio", "ventanaMontajeFin",
+    // Mainstage Trade
+    "tradeCalificado", "tradeNivel",
   ];
 
   const data: Record<string, unknown> = {};
@@ -62,8 +64,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseFloat(body[key]);
       } else if (key === "asistentesEstimados" && body[key] !== null && body[key] !== "") {
         data[key] = parseInt(body[key]);
-      } else if (key === "descubrimientoCompleto") {
+      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado") {
         data[key] = Boolean(body[key]);
+      } else if (key === "tradeNivel") {
+        data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : null;
       } else {
         data[key] = body[key] || null;
       }

@@ -93,12 +93,6 @@ const NIVELES = [
   },
 ];
 
-const BONO_OPTIONS = [
-  { value: "boletaje", label: "Acceso adicional a entradas del evento", desc: "Mínimo 6 entradas al evento para el equipo de Mainstage Pro." },
-  { value: "utilidad", label: "Porcentaje sobre utilidad del evento", desc: "Un porcentaje acordado de la utilidad final del evento." },
-  { value: "escalonado", label: "Bono por referidos", desc: "Bono escalonado por contactos que contraten a Mainstage Pro como referencia." },
-];
-
 export default function TradePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [cot, setCot] = useState<Cotizacion | null>(null);
@@ -108,7 +102,6 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
   const [error, setError] = useState<string | null>(null);
   const [seleccionando, setSeleccionando] = useState(false);
   const [nivelElegido, setNivelElegido] = useState<number | null>(null);
-  const [bonoElegido, setBonoElegido] = useState<string>("boletaje");
   const [confirmando, setConfirmando] = useState<number | null>(null);
   const [confirmado, setConfirmado] = useState(false);
 
@@ -143,7 +136,7 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
       const res = await fetch(`/api/trade/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nivel: confirmando, bonoVariable: confirmando === 3 ? bonoElegido : null }),
+        body: JSON.stringify({ nivel: confirmando, bonoVariable: null }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -213,12 +206,37 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
 
         {/* Already selected confirmation */}
         {confirmado && nivelElegido && (
-          <div className="bg-green-900/20 border border-green-700/40 rounded-xl p-5 text-center">
-            <p className="text-green-400 text-sm font-semibold mb-1">✓ Selección registrada</p>
-            <p className="text-gray-400 text-sm">
-              Elegiste el <span className="text-white font-medium">Nivel {nivelElegido} — {NIVELES[nivelElegido - 1].nombre} ({NIVELES[nivelElegido - 1].pct}% descuento)</span>.
-              El equipo de Mainstage Pro ha sido notificado y aplicará el descuento a tu cotización.
-            </p>
+          <div className="bg-green-900/20 border border-green-700/40 rounded-xl p-5 space-y-4">
+            <div className="text-center">
+              <p className="text-green-400 text-sm font-semibold mb-1">✓ Selección registrada</p>
+              <p className="text-gray-400 text-sm">
+                Elegiste el <span className="text-white font-medium">Nivel {nivelElegido} — {NIVELES[nivelElegido - 1].nombre} ({NIVELES[nivelElegido - 1].pct}% descuento)</span>.
+                El equipo de Mainstage Pro ha sido notificado y aplicará el descuento a tu cotización.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const n = NIVELES[nivelElegido - 1];
+                const texto = `TÉRMINOS Y CONDICIONES — MAINSTAGE TRADE\nNivel ${nivelElegido}: ${n.nombre} (${n.pct}% descuento en equipos)\n\n` +
+                  `EVENTO: ${cot.nombreEvento ?? cot.numeroCotizacion}\nCLIENTE: ${cot.cliente.nombre}${cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}\n\n` +
+                  `COMPROMISOS DEL CLIENTE:\n${n.beneficios.map(b => `• ${b}`).join("\n")}\n\n` +
+                  `DESCUENTO APLICADO: ${n.pct}% sobre subtotal de renta de equipos Mainstage Pro.\n` +
+                  `El descuento NO aplica sobre operación técnica, transporte, hospedaje ni alimentación.\n\n` +
+                  `Al confirmar este nivel, el cliente acepta cumplir con todos los entregables listados arriba en las fechas acordadas con el equipo de Mainstage Pro.\n\n` +
+                  `Fecha de aceptación: ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}\n` +
+                  `Referencia de cotización: ${cot.numeroCotizacion}\n\nMainstage Pro · mainstage.pro\n`;
+                const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `TyC_Trade_Nivel${nivelElegido}_${cot.numeroCotizacion}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="w-full py-2.5 rounded-xl border border-green-700/40 text-green-400 text-sm font-medium hover:bg-green-900/20 transition-colors"
+            >
+              Descargar Términos y Condiciones
+            </button>
           </div>
         )}
 
@@ -230,21 +248,6 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
               <p className="text-gray-400 text-sm text-center">
                 Vas a elegir el <span className="text-[#B3985B] font-medium">Nivel {confirmando} — {NIVELES[confirmando - 1].nombre}</span> con un descuento del {NIVELES[confirmando - 1].pct}% sobre equipos.
               </p>
-              {confirmando === 3 && (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-500 text-center">Elige el tipo de bono variable que prefieres:</p>
-                  {BONO_OPTIONS.map(b => (
-                    <button
-                      key={b.value}
-                      onClick={() => setBonoElegido(b.value)}
-                      className={`w-full text-left p-3 rounded-lg border text-xs transition-colors ${bonoElegido === b.value ? "border-[#B3985B]/60 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] text-gray-400 hover:border-[#3a3a3a]"}`}
-                    >
-                      <span className="font-medium block">{b.label}</span>
-                      <span className="text-gray-500">{b.desc}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
               <p className="text-gray-500 text-xs text-center">Esta selección quedará registrada y no podrá modificarse.</p>
               <div className="flex gap-3">
                 <button

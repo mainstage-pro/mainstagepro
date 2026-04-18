@@ -480,6 +480,7 @@ interface CotizacionData {
   descuentoB2bPct: number;
   descuentoMultidiaPct: number;
   descuentoPatrocinioPct: number;
+  descuentoPatrocinioNota: string | null;
   descuentoEspecialPct: number;
   montoDescuento: number;
   montoBeneficio: number;
@@ -668,6 +669,8 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   const anticipo = c.granTotal * 0.5;
   const liquidacion = c.granTotal * 0.5;
   const tieneDescuento = c.montoDescuento > 0;
+  const esTrade = c.descuentoPatrocinioPct > 0 && c.descuentoPatrocinioNota?.toLowerCase().includes("trade");
+  const tradeLabel = c.descuentoPatrocinioNota ?? "Mainstage Trade";
   const vigenciaDate = new Date(c.createdAt);
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
 
@@ -758,7 +761,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
             )}
             {tieneDescuento && (
               <View style={s.totalFila}>
-                <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>Precio preferencial</Text>
+                <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>{esTrade ? tradeLabel : "Precio preferencial"}</Text>
                 <Text style={[s.totalFilaMonto, s.totalFilaDescuento]}>-{fmtMXN(c.montoDescuento)}</Text>
               </View>
             )}
@@ -806,15 +809,30 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── BENEFICIO / DESCUENTO ── */}
         {tieneDescuento && (
           <View style={s.beneficioBloque}>
-            <Text style={s.beneficioTitulo}>BENEFICIO / DESCUENTO: {fmtMXN(c.montoDescuento)}</Text>
-            <Text style={s.beneficioTexto}>
-              El beneficio podrá utilizarse como descuento automático en esta cotización o como saldo a favor para ampliar
-              tu producción con más equipos o servicios en esta misma cotización.
-            </Text>
-            <Text style={s.beneficioNota}>
-              La utilización del saldo como ampliación de servicios está sujeta a disponibilidad de equipo al momento de la confirmación.
-              Favor de notificar al vendedor si se aplica el descuento o se utiliza el saldo a favor, a la brevedad.
-            </Text>
+            <Text style={s.beneficioTitulo}>{esTrade ? `MAINSTAGE TRADE — AHORRO: ${fmtMXN(c.montoDescuento)}` : `BENEFICIO / DESCUENTO: ${fmtMXN(c.montoDescuento)}`}</Text>
+            {esTrade ? (
+              <>
+                <Text style={s.beneficioTexto}>
+                  Este descuento forma parte del programa Mainstage Trade ({tradeLabel}). A cambio de visibilidad de marca
+                  y contenido en tu evento, Mainstage Pro aplica un descuento del {c.descuentoPatrocinioPct}% sobre la renta de equipos.
+                </Text>
+                <Text style={s.beneficioNota}>
+                  El descuento aplica exclusivamente sobre la renta de equipos propios de Mainstage Pro. Los entregables de
+                  visibilidad acordados deberán cumplirse en las fechas pactadas con el equipo.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.beneficioTexto}>
+                  El beneficio podrá utilizarse como descuento automático en esta cotización o como saldo a favor para ampliar
+                  tu producción con más equipos o servicios en esta misma cotización.
+                </Text>
+                <Text style={s.beneficioNota}>
+                  La utilización del saldo como ampliación de servicios está sujeta a disponibilidad de equipo al momento de la confirmación.
+                  Favor de notificar al vendedor si se aplica el descuento o se utiliza el saldo a favor, a la brevedad.
+                </Text>
+              </>
+            )}
           </View>
         )}
 

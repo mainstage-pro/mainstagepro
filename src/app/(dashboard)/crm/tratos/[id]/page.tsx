@@ -58,6 +58,8 @@ interface Trato {
   duracionMontajeHrs: number | null;
   ventanaMontajeInicio: string | null;
   scoutingData: string | null;
+  tradeCalificado: boolean;
+  tradeNivel: number | null;
   tipoProspecto: string;
   nurturingData: string | null;
   ventanaMontajeFin: string | null;
@@ -596,6 +598,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [scoutingVisible, setScoutingVisible] = useState(false);
   const [scoutingAplica, setScoutingAplica] = useState<boolean | null>(null);
   const [briefAplica, setBriefAplica] = useState<boolean | null>(null);
+  // Trade state
+  const [tradeCalificado, setTradeCalificado] = useState(false);
+  const [tradeNivel, setTradeNivel] = useState<number | null>(null);
+  const [savingTrade, setSavingTrade] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -693,6 +699,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             try { setNurturing({ ...NURTURING_EMPTY, ...JSON.parse(t.nurturingData) }); } catch { /* defaults */ }
           }
           setArchivos(t.archivos ?? []);
+          // Pre-fill Trade state
+          setTradeCalificado(t.tradeCalificado ?? false);
+          setTradeNivel(t.tradeNivel ?? null);
           // Pre-fill brief from trato data (user can override)
           setBriefForm(prev => ({
             ...prev,
@@ -2634,6 +2643,123 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-white text-sm">{fmtDate(trato.createdAt)}</p>
           </div>
         </div>
+      </div>
+
+      {/* Mainstage Trade */}
+      <div className={`bg-[#111] border rounded-xl p-5 ${tradeCalificado ? "border-[#B3985B]/40" : "border-[#222]"}`}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Mainstage Trade</h2>
+            {tradeCalificado && tradeNivel && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-[#B3985B]/20 text-[#B3985B] font-medium">
+                Nivel {tradeNivel} · {[5,10,12][tradeNivel-1]}% desc.
+              </span>
+            )}
+          </div>
+          {tradeCalificado && (
+            <button
+              onClick={async () => {
+                if (!confirm("¿Quitar calificación Trade de este trato?")) return;
+                setSavingTrade(true);
+                try {
+                  await fetch(`/api/tratos/${trato.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tradeCalificado: false, tradeNivel: null }) });
+                  setTradeCalificado(false);
+                  setTradeNivel(null);
+                  setTrato(prev => prev ? { ...prev, tradeCalificado: false, tradeNivel: null } : prev);
+                } finally { setSavingTrade(false); }
+              }}
+              className="text-xs text-red-400 hover:text-red-300 transition-colors"
+            >Quitar</button>
+          )}
+        </div>
+
+        {!tradeCalificado ? (
+          <div className="space-y-4">
+            <p className="text-gray-500 text-xs">Evalúa si este cliente califica para el programa Mainstage Trade antes de crear la cotización. Si califica, el descuento se aplicará automáticamente.</p>
+            <div className="space-y-2">
+              {[
+                "El evento tiene alta visibilidad o afluencia de público",
+                "El cliente puede ofrecer presencia de marca (logo, mención, redes)",
+                "El evento está alineado con el posicionamiento de Mainstage Pro",
+                "El cliente es recurrente o tiene potencial estratégico",
+                "El evento genera contenido de valor (foto/video aprovechable)",
+              ].map((c, i) => (
+                <div key={i} className="flex items-start gap-2 text-xs text-gray-400">
+                  <span className="text-[#B3985B] mt-0.5">✓</span>
+                  <span>{c}</span>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-[#1a1a1a] pt-4">
+              <p className="text-xs text-gray-400 mb-3">Selecciona el nivel si califica:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { nivel: 1, nombre: "Base", pct: 5 },
+                  { nivel: 2, nombre: "Estratégico", pct: 10 },
+                  { nivel: 3, nombre: "Premium", pct: 12 },
+                ].map(n => (
+                  <button
+                    key={n.nivel}
+                    onClick={() => setTradeNivel(prev => prev === n.nivel ? null : n.nivel)}
+                    className={`p-3 rounded-lg border text-left transition-colors ${tradeNivel === n.nivel ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#444]"}`}
+                  >
+                    <p className={`text-xs font-bold ${tradeNivel === n.nivel ? "text-[#B3985B]" : "text-gray-300"}`}>Nivel {n.nivel}</p>
+                    <p className={`text-[10px] ${tradeNivel === n.nivel ? "text-[#B3985B]" : "text-gray-500"}`}>{n.nombre} · {n.pct}%</p>
+                  </button>
+                ))}
+              </div>
+              <button
+                disabled={!tradeNivel || savingTrade}
+                onClick={async () => {
+                  if (!tradeNivel) return;
+                  setSavingTrade(true);
+                  try {
+                    await fetch(`/api/tratos/${trato.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tradeCalificado: true, tradeNivel }) });
+                    setTradeCalificado(true);
+                    setTrato(prev => prev ? { ...prev, tradeCalificado: true, tradeNivel } : prev);
+                  } finally { setSavingTrade(false); }
+                }}
+                className="mt-3 w-full py-2 rounded-lg bg-[#B3985B] text-black text-xs font-semibold disabled:opacity-40 hover:bg-[#c4aa6b] transition-colors"
+              >
+                {savingTrade ? "Guardando…" : `Calificar como Trade Nivel ${tradeNivel ?? "—"}`}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="bg-[#0a0a0a] rounded-lg p-4 space-y-2">
+              <p className="text-xs text-gray-500">Nivel seleccionado</p>
+              <p className="text-white font-semibold">
+                Nivel {tradeNivel} — {["Base (5%)", "Estratégico (10%)", "Premium (12%)"][(tradeNivel ?? 1) - 1]}
+              </p>
+              <p className="text-[11px] text-gray-500">El descuento se aplicará automáticamente al crear una nueva cotización desde este trato.</p>
+            </div>
+            <button
+              onClick={() => {
+                const nivel = tradeNivel ?? 1;
+                const pct = [5,10,12][nivel-1];
+                const texto = `Términos y Condiciones — Mainstage Trade Nivel ${nivel} (${["Base","Estratégico","Premium"][nivel-1]})\n\n` +
+                  `Descuento aplicado: ${pct}% sobre subtotal de equipos\n\n` +
+                  `Compromisos del cliente:\n` +
+                  (nivel >= 1 ? `• Logo de Mainstage Pro en flyer y/o backdrop del evento\n• 1 mención del animador durante el evento\n• Material básico de foto/video para uso en redes de Mainstage Pro\n• 2 a 4 cortesías de acceso al evento\n` : "") +
+                  (nivel >= 2 ? `• Mayor presencia del logo (cartel principal, mesa de control visible)\n• 1 publicación o reel etiquetando @MainstagePro\n• Material de mayor calidad para portafolio\n• 4 a 8 cortesías de acceso al evento\n` : "") +
+                  (nivel >= 3 ? `• Mainstage Pro como partner técnico visible\n• Pieza de contenido de producción técnica (reel o video)\n• Material premium sin restricciones\n• 6 a 12 cortesías de acceso al evento\n` : "") +
+                  `\nEste acuerdo es válido para el evento "${trato.nombreEvento ?? "—"}" del cliente ${trato.cliente.nombre}.\n` +
+                  `Generado el ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })} por Mainstage Pro.\n`;
+                const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `TyC_Trade_Nivel${nivel}_${trato.cliente.nombre.replace(/\s+/g, "_")}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              className="w-full py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/10 transition-colors"
+            >
+              Descargar Términos y Condiciones
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Cotizaciones */}

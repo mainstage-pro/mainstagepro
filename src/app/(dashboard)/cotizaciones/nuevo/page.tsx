@@ -372,6 +372,13 @@ function CotizadorForm() {
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
+        // Auto-apply Trade discount if qualified
+        if (t.tradeCalificado && t.tradeNivel) {
+          const pcts: Record<number, string> = { 1: "5", 2: "10", 3: "12" };
+          const nombres: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+          setDPatrocinio(pcts[t.tradeNivel] ?? "");
+          setDPatrocinioNota(`Mainstage Trade Nivel ${t.tradeNivel} (${nombres[t.tradeNivel] ?? ""})`);
+        }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
         if (t.serviciosInteres) { try { setTratoServicios(JSON.parse(t.serviciosInteres)); } catch { /* noop */ } }

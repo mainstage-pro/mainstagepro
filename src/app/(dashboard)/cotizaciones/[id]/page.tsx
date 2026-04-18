@@ -152,7 +152,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   }
 
   useEffect(() => {
-    fetch(`/api/cotizaciones/${id}`)
+    fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => { setCot(d.cotizacion); setOpciones(d.opciones ?? []); setLoading(false); });
   }, [id]);

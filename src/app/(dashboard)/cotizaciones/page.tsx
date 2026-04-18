@@ -30,7 +30,7 @@ export default function CotizacionesPage() {
   const confirm = useConfirm();
 
   useEffect(() => {
-    fetch("/api/cotizaciones")
+    fetch("/api/cotizaciones", { cache: "no-store" })
       .then(r => r.json())
       .then(data => setCotizaciones(data.cotizaciones ?? []))
       .finally(() => setLoading(false));

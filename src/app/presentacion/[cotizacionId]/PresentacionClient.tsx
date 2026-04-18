@@ -28,6 +28,9 @@ interface Cotizacion {
   total: number;
   aplicaIva: boolean;
   montoIva: number;
+  montoDescuento: number;
+  descuentoPatrocinioPct: number;
+  descuentoPatrocinioNota: string | null;
   observaciones: string | null;
   terminosComerciales: string | null;
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
@@ -1001,6 +1004,31 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         </div>
       </section>
 
+      {/* ── MAINSTAGE TRADE ─────────────────────────────────────────────────── */}
+      {cotizacion.descuentoPatrocinioPct > 0 && cotizacion.descuentoPatrocinioNota?.toLowerCase().includes("trade") && (
+        <section className="bg-[#080808] border-y border-[#B3985B]/20 py-24 px-6">
+          <div className="max-w-3xl mx-auto text-center space-y-8">
+            <R>
+              <GoldLabel>Mainstage Trade</GoldLabel>
+              <h2 className="text-white font-bold text-3xl md:text-4xl mt-4">Colaboramos contigo.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></h2>
+            </R>
+            <R delay={80}>
+              <p className="text-white/40 text-base leading-relaxed max-w-xl mx-auto">
+                Esta propuesta incluye el programa <span className="text-[#B3985B] font-semibold">Mainstage Trade</span> — un esquema de colaboración donde ofrecemos un descuento sobre la renta de equipos a cambio de visibilidad de marca y contenido en tu evento.
+              </p>
+            </R>
+            <R delay={140}>
+              <div className="inline-flex flex-col items-center gap-2 bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-2xl px-10 py-7">
+                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-widest">{cotizacion.descuentoPatrocinioNota}</p>
+                <p className="text-white font-black text-5xl">{cotizacion.descuentoPatrocinioPct}%</p>
+                <p className="text-white/40 text-sm">descuento en renta de equipos</p>
+                <p className="text-[#B3985B] font-bold text-xl mt-1">Ahorro: {fmt(cotizacion.montoDescuento)}</p>
+              </div>
+            </R>
+          </div>
+        </section>
+      )}
+
       {/* ── TU INVERSIÓN ────────────────────────────────────────────────────── */}
       <section className="relative bg-[#040404] py-32 px-6 text-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
@@ -1009,10 +1037,18 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           <R>
             <div className="w-16 h-px bg-[#B3985B]/30 mx-auto mb-12" />
             <GoldLabel>Tu inversión</GoldLabel>
+            {cotizacion.montoDescuento > 0 && (
+              <p className="text-white/30 text-xl line-through mb-1" style={{ letterSpacing: "-0.02em" }}>
+                {fmt(cotizacion.granTotal + cotizacion.montoDescuento)}
+              </p>
+            )}
             <p className="text-white font-bold leading-none mb-4"
                style={{ fontSize: "clamp(3.5rem,13vw,8rem)", letterSpacing: "-0.035em" }}>
               {fmt(cotizacion.granTotal)}
             </p>
+            {cotizacion.montoDescuento > 0 && (
+              <p className="text-[#B3985B] text-base font-semibold mb-2">Incluye {cotizacion.descuentoPatrocinioPct}% Trade — ahorras {fmt(cotizacion.montoDescuento)}</p>
+            )}
           </R>
           <R delay={100}>
             {cotizacion.aplicaIva && (
