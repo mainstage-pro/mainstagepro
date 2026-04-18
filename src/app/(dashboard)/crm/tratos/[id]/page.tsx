@@ -1747,50 +1747,58 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       </div>
 
                       <div>
-                        <label className="text-xs text-gray-400 block mb-2">Ventana de montaje</label>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Primer acceso <Badge campo="ventanaMontajeInicio" />
-                            </label>
-                            <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
-                          </div>
-                          <span className="text-gray-600 text-sm pt-4">→</span>
-                          <div className="flex-1">
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Límite montaje <Badge campo="ventanaMontajeFin" />
-                            </label>
-                            <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
-                          </div>
-                          <div className="flex-1">
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Salida desmontaje <Badge campo="horaTerminoMontaje" />
-                            </label>
-                            <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
-                          </div>
-                        </div>
+                        {/* Ventana montaje/desmontaje — solo en Oportunidad+ (cuando cotización está siendo preparada) */}
+                        {trato.etapa === "OPORTUNIDAD" && (
+                          <>
+                            <label className="text-xs text-gray-400 block mb-2">Ventana de montaje</label>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                                  Primer acceso <Badge campo="ventanaMontajeInicio" />
+                                </label>
+                                <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
+                              </div>
+                              <span className="text-gray-600 text-sm pt-4">→</span>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                                  Límite montaje <Badge campo="ventanaMontajeFin" />
+                                </label>
+                                <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
+                              </div>
+                              <div className="flex-1">
+                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                                  Salida desmontaje <Badge campo="horaTerminoMontaje" />
+                                </label>
+                                <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                            Coordinador del venue <Badge campo="contactoVenueNombre" />
-                          </label>
-                          <input value={discForm.contactoVenueNombre}
-                            onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
-                            placeholder="Nombre del contacto"
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      {/* Coordinador del venue — solo en Oportunidad+ */}
+                      {trato.etapa === "OPORTUNIDAD" && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Coordinador del venue <Badge campo="contactoVenueNombre" />
+                            </label>
+                            <input value={discForm.contactoVenueNombre}
+                              onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
+                              placeholder="Nombre del contacto"
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
+                              Teléfono coordinador <Badge campo="contactoVenueTelefono" />
+                            </label>
+                            <input value={discForm.contactoVenueTelefono}
+                              onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}
+                              placeholder="55 1234 5678"
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          </div>
                         </div>
-                        <div>
-                          <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                            Teléfono coordinador <Badge campo="contactoVenueTelefono" />
-                          </label>
-                          <input value={discForm.contactoVenueTelefono}
-                            onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}
-                            placeholder="55 1234 5678"
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                        </div>
-                      </div>
+                      )}
                     </>
                   );
                 })()}
@@ -2003,11 +2011,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {/* Auto-save indicator */}
                 {autoSaveStatus === "saving" && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
                 {autoSaveStatus === "saved"  && <span className="text-xs text-green-500">✓ Guardado</span>}
-                {/* Scouting button — only show if not already visible */}
-                {!scoutingVisible && !trato.scoutingData && trato.canalAtencion !== "SCOUTING" && (
+                {/* Scouting button — solo en Oportunidad (cuando el venue ya importa para cotizar) */}
+                {trato.etapa === "OPORTUNIDAD" && !scoutingVisible && !trato.scoutingData && trato.canalAtencion !== "SCOUTING" && (
                   <button onClick={() => setScoutingVisible(true)}
                     className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/70 px-3 py-1.5 rounded-lg transition-colors">
-                    🗺️ Iniciar scouting de venue
+                    🗺️ Scouting del venue
                   </button>
                 )}
               </div>
@@ -2020,8 +2028,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Scouting de venue ── */}
-      {(trato.canalAtencion === "SCOUTING" || trato.scoutingData || scoutingVisible) && (
+      {/* ── Scouting de venue — disponible desde Oportunidad ── */}
+      {(trato.etapa === "OPORTUNIDAD" || trato.etapa === "VENTA_CERRADA") && (trato.canalAtencion === "SCOUTING" || trato.scoutingData || scoutingVisible) && (
         <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/40 rounded-xl p-6">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
