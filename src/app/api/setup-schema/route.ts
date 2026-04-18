@@ -724,6 +724,10 @@ export async function POST(req: NextRequest) {
     `);
     results.push("✅ pagos_nomina");
 
+    // 37. vendedorId on clientes
+    await prisma.$executeRawUnsafe(`ALTER TABLE "clientes" ADD COLUMN IF NOT EXISTS "vendedorId" TEXT`);
+    results.push("✅ clientes.vendedorId");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

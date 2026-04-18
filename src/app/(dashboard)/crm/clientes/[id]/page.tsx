@@ -32,6 +32,8 @@ interface EquipoCatalogo {
   categoria: { nombre: string };
 }
 
+interface Vendedor { id: string; name: string }
+
 interface Cliente {
   id: string;
   nombre: string;
@@ -42,6 +44,8 @@ interface Cliente {
   telefono: string | null;
   correo: string | null;
   notas: string | null;
+  vendedorId: string | null;
+  vendedor: Vendedor | null;
   createdAt: string;
   tratos: Array<{ id: string; etapa: string; tipoEvento: string; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string }>;
   cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string }>;
@@ -97,6 +101,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   // Precios especiales
   const [preciosEspeciales, setPreciosEspeciales] = useState<PrecioEspecial[]>([]);
   const [equiposCatalogo, setEquiposCatalogo] = useState<EquipoCatalogo[]>([]);
+  const [usuarios, setUsuarios] = useState<Vendedor[]>([]);
   const [loadingPrecios, setLoadingPrecios] = useState(false);
   const [selEqId, setSelEqId] = useState("");
   const [nuevoPrecio, setNuevoPrecio] = useState("");
@@ -106,13 +111,15 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [editValor, setEditValor] = useState("");
 
   useEffect(() => {
-    fetch(`/api/clientes/${id}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setCliente(d.cliente);
-        setForm(d.cliente);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch(`/api/clientes/${id}`).then(r => r.json()),
+      fetch(`/api/usuarios-activos`).then(r => r.json()),
+    ]).then(([d, u]) => {
+      setCliente(d.cliente);
+      setForm(d.cliente);
+      setUsuarios(u.usuarios ?? []);
+      setLoading(false);
+    });
 
     // Cargar precios especiales y catálogo en paralelo
     setLoadingPrecios(true);
@@ -366,6 +373,19 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                   <option value="MULTISERVICIO">Multiservicio</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Responsable / Vendedor</label>
+                <select
+                  value={form.vendedorId || ""}
+                  onChange={(e) => setForm((p) => ({ ...p, vendedorId: e.target.value || null }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                >
+                  <option value="">— Sin asignar —</option>
+                  {usuarios.map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Notas</label>
@@ -409,6 +429,10 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             <div>
               <p className="text-gray-500 text-xs mb-1">Servicio usual</p>
               <p className="text-white">{cliente.servicioUsual?.replace(/_/g, " ") || "—"}</p>
+            </div>
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Responsable</p>
+              <p className="text-white">{cliente.vendedor?.name || "—"}</p>
             </div>
             <div>
               <p className="text-gray-500 text-xs mb-1">Cliente desde</p>

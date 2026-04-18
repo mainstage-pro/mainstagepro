@@ -12,6 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const cliente = await prisma.cliente.findUnique({
     where: { id },
     include: {
+      vendedor: { select: { id: true, name: true } },
       tratos: {
         select: { id: true, etapa: true, tipoEvento: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -60,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "empresa", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas"];
+  const allowed = ["nombre", "empresa", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas", "vendedorId"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] || null;

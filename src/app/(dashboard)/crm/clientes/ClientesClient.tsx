@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 
+interface Vendedor { id: string; name: string }
+
 interface Cliente {
   id: string;
   nombre: string;
@@ -14,6 +16,7 @@ interface Cliente {
   tipoCliente: string;
   clasificacion: string;
   servicioUsual: string | null;
+  vendedor: Vendedor | null;
   _count: { tratos: number; proyectos: number };
 }
 
@@ -45,11 +48,51 @@ function ClasificacionBadge({ clasificacion }: { clasificacion: string }) {
   );
 }
 
-export default function ClientesClient({ clientes: initial }: { clientes: Cliente[] }) {
+function VendedorSelect({ clienteId, vendedor, usuarios, onChange }: {
+  clienteId: string;
+  vendedor: Vendedor | null;
+  usuarios: Vendedor[];
+  onChange: (v: Vendedor | null) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function asignar(vendedorId: string) {
+    setSaving(true);
+    await fetch(`/api/clientes/${clienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vendedorId: vendedorId || null }),
+    });
+    const found = usuarios.find(u => u.id === vendedorId) ?? null;
+    onChange(found);
+    setSaving(false);
+  }
+
+  return (
+    <select
+      value={vendedor?.id ?? ""}
+      onChange={e => asignar(e.target.value)}
+      disabled={saving}
+      onClick={e => e.stopPropagation()}
+      className="bg-transparent border-0 text-xs text-[#9ca3af] focus:outline-none focus:ring-0 cursor-pointer hover:text-white disabled:opacity-50 max-w-[130px] truncate"
+    >
+      <option value="">Sin asignar</option>
+      {usuarios.map(u => (
+        <option key={u.id} value={u.id}>{u.name.split(" ")[0]} {u.name.split(" ")[1] ?? ""}</option>
+      ))}
+    </select>
+  );
+}
+
+export default function ClientesClient({ clientes: initial, usuarios }: { clientes: Cliente[]; usuarios: Vendedor[] }) {
   const [view, setView] = useState<"list" | "card">("list");
   const [clientes, setClientes] = useState<Cliente[]>(initial);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
+
+  function actualizarVendedor(clienteId: string, vendedor: Vendedor | null) {
+    setClientes(prev => prev.map(c => c.id === clienteId ? { ...c, vendedor } : c));
+  }
 
   async function eliminar(c: Cliente) {
     if (!confirm(`¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`)) return;
@@ -114,7 +157,7 @@ export default function ClientesClient({ clientes: initial }: { clientes: Client
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Cliente", "Tipo", "Clasificación", "Servicio usual", "Tratos", "Proyectos", ""].map(h => (
+                {["Cliente", "Tipo", "Clasificación", "Servicio usual", "Responsable", "Tratos", "Proyectos", ""].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
                 ))}
               </tr>
@@ -131,6 +174,14 @@ export default function ClientesClient({ clientes: initial }: { clientes: Client
                   <td className="px-4 py-3"><ClasificacionBadge clasificacion={c.clasificacion} /></td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {c.servicioUsual ? TIPO_SERVICIO_LABELS[c.servicioUsual] ?? c.servicioUsual : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <VendedorSelect
+                      clienteId={c.id}
+                      vendedor={c.vendedor}
+                      usuarios={usuarios}
+                      onChange={v => actualizarVendedor(c.id, v)}
+                    />
                   </td>
                   <td className="px-4 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
                   <td className="px-4 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
@@ -152,25 +203,36 @@ export default function ClientesClient({ clientes: initial }: { clientes: Client
         /* ── TARJETAS ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {clientes.map(c => (
-            <Link key={c.id} href={`/crm/clientes/${c.id}`}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
-              {/* Avatar */}
-              <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mb-4">
-                <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>
+            <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
+              <Link href={`/crm/clientes/${c.id}`} className="block">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mb-4">
+                  <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>
+                </div>
+                {/* Nombre */}
+                <p className="text-white text-sm font-semibold leading-tight">{c.nombre}</p>
+                {c.empresa && <p className="text-[#6b7280] text-xs mt-0.5">{c.empresa}</p>}
+                {c.correo && <p className="text-[#444] text-xs mt-0.5 truncate">{c.correo}</p>}
+                {/* Badges */}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <TipoBadge tipo={c.tipoCliente} />
+                  <ClasificacionBadge clasificacion={c.clasificacion} />
+                </div>
+                {/* Servicio */}
+                {c.servicioUsual && (
+                  <p className="text-[#555] text-xs mt-2">{TIPO_SERVICIO_LABELS[c.servicioUsual] ?? c.servicioUsual}</p>
+                )}
+              </Link>
+              {/* Responsable — fuera del Link para que el click no navegue */}
+              <div className="mt-3 flex items-center gap-1.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <VendedorSelect
+                  clienteId={c.id}
+                  vendedor={c.vendedor}
+                  usuarios={usuarios}
+                  onChange={v => actualizarVendedor(c.id, v)}
+                />
               </div>
-              {/* Nombre */}
-              <p className="text-white text-sm font-semibold leading-tight">{c.nombre}</p>
-              {c.empresa && <p className="text-[#6b7280] text-xs mt-0.5">{c.empresa}</p>}
-              {c.correo && <p className="text-[#444] text-xs mt-0.5 truncate">{c.correo}</p>}
-              {/* Badges */}
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <TipoBadge tipo={c.tipoCliente} />
-                <ClasificacionBadge clasificacion={c.clasificacion} />
-              </div>
-              {/* Servicio */}
-              {c.servicioUsual && (
-                <p className="text-[#555] text-xs mt-2">{TIPO_SERVICIO_LABELS[c.servicioUsual] ?? c.servicioUsual}</p>
-              )}
               {/* Conteos */}
               <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
                 <div className="text-center">
@@ -182,7 +244,7 @@ export default function ClientesClient({ clientes: initial }: { clientes: Client
                   <p className="text-[#555] text-[10px]">proyectos</p>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
