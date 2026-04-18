@@ -53,6 +53,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "ventanaMontajeInicio", "ventanaMontajeFin",
     // Mainstage Trade
     "tradeCalificado", "tradeNivel",
+    // Family & Friends
+    "familyAndFriends",
   ];
 
   const data: Record<string, unknown> = {};
@@ -64,7 +66,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseFloat(body[key]);
       } else if (key === "asistentesEstimados" && body[key] !== null && body[key] !== "") {
         data[key] = parseInt(body[key]);
-      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado") {
+      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends") {
         data[key] = Boolean(body[key]);
       } else if (key === "tradeNivel") {
         data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : null;

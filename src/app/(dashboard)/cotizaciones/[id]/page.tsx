@@ -73,7 +73,7 @@ interface Cotizacion {
   aprobacionFecha: string | null;
   aprobacionNombre: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
-  trato: { id: string; tipoEvento: string; etapa: string };
+  trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean };
   creadaPor: { name: string } | null;
   lineas: Linea[];
   proyecto: { id: string; numeroProyecto: string; estado: string } | null;
@@ -900,7 +900,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           })()}
 
           {/* ── Mainstage Trade ── */}
-          {!["APROBADA", "RECHAZADA"].includes(cot.estado) && (() => {
+          {!["APROBADA", "RECHAZADA"].includes(cot.estado) && cot.trato.tradeCalificado && (() => {
             type TradeData = {
               activo: boolean; pct: number; entregables: string[];
               checklist: Record<string, boolean>; checklistCompleto: boolean;

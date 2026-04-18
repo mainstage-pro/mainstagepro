@@ -502,6 +502,7 @@ interface CotizacionData {
   };
   creadaPor: { name: string } | null;
   lineas: Linea[];
+  tradeCalificado?: boolean;
 }
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
@@ -841,6 +842,37 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
           <View style={[s.beneficioBloque, { borderColor: "#ddd", backgroundColor: BG_SECTION }]}>
             <Text style={[s.beneficioTitulo, { color: GRAY }]}>OBSERVACIONES</Text>
             <Text style={s.beneficioTexto}>{c.observaciones}</Text>
+          </View>
+        )}
+
+        {/* ── MAINSTAGE TRADE ── */}
+        {c.tradeCalificado && (
+          <View style={[s.beneficioBloque, { borderColor: "#B3985B", backgroundColor: "#0d0c08" }]}>
+            <Text style={[s.beneficioTitulo, { color: "#B3985B" }]}>MAINSTAGE TRADE — PROGRAMA DE COLABORACIÓN</Text>
+            <Text style={[s.beneficioTexto, { marginBottom: 8 }]}>
+              Este evento califica para el programa Mainstage Trade. Elige tu nivel de colaboración y obtén un descuento sobre el subtotal de equipos propios de Mainstage Pro:
+            </Text>
+            {/* Level cards */}
+            <View style={{ flexDirection: "row", gap: 6 }}>
+              {/* Base */}
+              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>BASE — 5%</Text>
+                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Mención en redes sociales (1 post + 3 stories){"\n"}• Crédito en material impreso o pantallas{"\n"}• Logo en comunicaciones del evento</Text>
+              </View>
+              {/* Estratégico */}
+              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>ESTRATÉGICO — 10%</Text>
+                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Todo lo de Base{"\n"}• Sesión de fotos/video para portafolio{"\n"}• Testimonio en video o carta</Text>
+              </View>
+              {/* Premium */}
+              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
+                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>PREMIUM — 12%</Text>
+                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Todo lo de Estratégico{"\n"}• Exclusividad como proveedor AV en tus eventos{"\n"}• Presencia de marca activa el día del evento</Text>
+              </View>
+            </View>
+            <Text style={[s.beneficioNota, { marginTop: 6, color: "#999" }]}>
+              El descuento aplica sobre equipos propios de Mainstage. Los entregables deberán cumplirse en fechas acordadas con nuestro equipo.
+            </Text>
           </View>
         )}
 

@@ -17,6 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true, tipoCliente: true } },
+      trato: { select: { tradeCalificado: true } },
       creadaPor: { select: { name: true } },
       lineas: {
         orderBy: { orden: "asc" },
@@ -54,6 +55,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const cotizacionWithImgs = {
     ...cotizacion,
+    tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
     lineas: cotizacion.lineas.map(l => ({
       ...l,
       imagenUrl: resolveImg(l.equipo?.imagenUrl),

@@ -1,8 +1,7 @@
 // Mainstage Pro — Service Worker
-// Estrategia: Network-first con cache fallback + cola offline para mutaciones
+// Estrategia: Network-first para todo (datos siempre frescos) + cola offline para mutaciones
 
-const CACHE_SHELL = "msp-shell-v1";
-const CACHE_API   = "msp-api-v1";
+const CACHE_SHELL = "msp-shell-v3";
 const DB_NAME     = "msp-offline-queue";
 const DB_VERSION  = 1;
 const SYNC_TAG    = "msp-sync";
@@ -65,25 +64,25 @@ async function queueSize() {
 
 // ── Install ───────────────────────────────────────────────────────────────────
 self.addEventListener("install", (event) => {
+  // Activar inmediatamente sin esperar a que cierren las pestañas anteriores
   event.waitUntil(
     caches.open(CACHE_SHELL).then((cache) =>
       cache.addAll([
-        "/login",
         "/offline",
         "/logo-icon.png",
         "/manifest.json",
-      ]).catch(() => {}) // Silently ignore if some fail
+      ]).catch(() => {})
     ).then(() => self.skipWaiting())
   );
 });
 
-// ── Activate ──────────────────────────────────────────────────────────────────
+// ── Activate — limpiar TODOS los caches viejos ─────────────────────────────────
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== CACHE_SHELL && k !== CACHE_API)
+          .filter((k) => k !== CACHE_SHELL)
           .map((k) => caches.delete(k))
       )
     ).then(() => self.clients.claim())
@@ -98,15 +97,21 @@ self.addEventListener("fetch", (event) => {
   // Solo interceptar mismo origen
   if (url.origin !== self.location.origin) return;
 
-  // Activos estáticos de Next.js → cache-first
+  // Activos estáticos de Next.js → cache-first (son inmutables por hash)
   if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(cacheFirst(req, CACHE_SHELL));
+    event.respondWith(cacheFirst(req));
     return;
   }
 
-  // API GET → stale-while-revalidate (sirve cache, actualiza en fondo)
+  // Archivos estáticos (imágenes, íconos, manifest) → cache-first
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|json|woff2?)$/)) {
+    event.respondWith(cacheFirst(req));
+    return;
+  }
+
+  // API GET → network-first, sin cachear (datos siempre frescos)
   if (url.pathname.startsWith("/api/") && req.method === "GET") {
-    event.respondWith(staleWhileRevalidate(req, CACHE_API));
+    event.respondWith(networkFirstNoCache(req));
     return;
   }
 
@@ -116,7 +121,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Páginas → network-first con cache fallback
+  // Páginas → network-first, cache solo para offline
   if (req.mode === "navigate") {
     event.respondWith(networkFirstNavigate(req));
     return;
@@ -124,13 +129,15 @@ self.addEventListener("fetch", (event) => {
 });
 
 // ── Estrategias de cache ──────────────────────────────────────────────────────
-async function cacheFirst(req, cacheName) {
+
+// Para activos estáticos inmutables
+async function cacheFirst(req) {
   const cached = await caches.match(req);
   if (cached) return cached;
   try {
     const res = await fetch(req);
     if (res.ok) {
-      const cache = await caches.open(cacheName);
+      const cache = await caches.open(CACHE_SHELL);
       cache.put(req, res.clone());
     }
     return res;
@@ -139,58 +146,19 @@ async function cacheFirst(req, cacheName) {
   }
 }
 
-async function staleWhileRevalidate(req, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cached = await cache.match(req);
-
-  const fetchPromise = fetch(req).then((res) => {
-    if (res.ok) cache.put(req, res.clone());
-    return res;
-  }).catch(() => null);
-
-  return cached || fetchPromise || new Response(
-    JSON.stringify({ error: "Sin conexión", offline: true }),
-    { status: 503, headers: { "Content-Type": "application/json" } }
-  );
-}
-
-async function mutationWithQueue(req) {
+// Para APIs: siempre va a la red, nunca sirve caché
+async function networkFirstNoCache(req) {
   try {
-    const res = await fetch(req.clone());
-    // Si hay cola pendiente y tenemos red, sincronizar
-    const size = await queueSize();
-    if (size > 0) {
-      self.registration.sync.register(SYNC_TAG).catch(() => {
-        // Background sync no disponible → sincronizar inmediatamente
-        syncQueue();
-      });
-    }
-    return res;
-  } catch (err) {
-    // Sin red → encolar la petición
-    try {
-      const body = await req.clone().text();
-      await enqueue({
-        url: req.url,
-        method: req.method,
-        body,
-        headers: Object.fromEntries(req.headers.entries()),
-        ts: Date.now(),
-      });
-      // Notificar a todos los clientes
-      const clients = await self.clients.matchAll();
-      clients.forEach((c) => c.postMessage({ type: "QUEUED", url: req.url }));
-    } catch (qErr) {
-      console.error("[SW] Error al encolar:", qErr);
-    }
-    // Respuesta optimista: el cliente ya actualizó su estado local
+    return await fetch(req);
+  } catch {
     return new Response(
-      JSON.stringify({ offline: true, queued: true }),
-      { status: 202, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Sin conexión", offline: true }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
     );
   }
 }
 
+// Para páginas: va a la red, solo usa caché si no hay red
 async function networkFirstNavigate(req) {
   try {
     const res = await fetch(req);
@@ -211,6 +179,38 @@ async function networkFirstNavigate(req) {
   }
 }
 
+async function mutationWithQueue(req) {
+  try {
+    const res = await fetch(req.clone());
+    const size = await queueSize();
+    if (size > 0) {
+      self.registration.sync.register(SYNC_TAG).catch(() => {
+        syncQueue();
+      });
+    }
+    return res;
+  } catch {
+    try {
+      const body = await req.clone().text();
+      await enqueue({
+        url: req.url,
+        method: req.method,
+        body,
+        headers: Object.fromEntries(req.headers.entries()),
+        ts: Date.now(),
+      });
+      const clients = await self.clients.matchAll();
+      clients.forEach((c) => c.postMessage({ type: "QUEUED", url: req.url }));
+    } catch (qErr) {
+      console.error("[SW] Error al encolar:", qErr);
+    }
+    return new Response(
+      JSON.stringify({ offline: true, queued: true }),
+      { status: 202, headers: { "Content-Type": "application/json" } }
+    );
+  }
+}
+
 // ── Background Sync ───────────────────────────────────────────────────────────
 self.addEventListener("sync", (event) => {
   if (event.tag === SYNC_TAG) {
@@ -218,7 +218,6 @@ self.addEventListener("sync", (event) => {
   }
 });
 
-// También sincronizar al volver online (mensaje desde el cliente)
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SYNC_NOW") {
     syncQueue().then(() => {
@@ -236,12 +235,9 @@ async function syncQueue() {
   const items = await dequeueAll();
   if (items.length === 0) return;
 
-  console.log(`[SW] Sincronizando ${items.length} peticiones en cola`);
-
   for (const item of items) {
     try {
       const headers = { ...item.headers };
-      // Quitar headers problemáticos
       delete headers["content-length"];
 
       const res = await fetch(item.url, {
@@ -252,15 +248,12 @@ async function syncQueue() {
 
       if (res.ok || res.status < 500) {
         await removeFromQueue(item.id);
-        console.log(`[SW] Sincronizado: ${item.method} ${item.url}`);
       }
-    } catch (err) {
-      console.warn(`[SW] No se pudo sincronizar ${item.url}:`, err);
+    } catch {
       // Dejar en cola para el próximo intento
     }
   }
 
-  // Notificar a clientes que se sincronizó
   const clients = await self.clients.matchAll();
   const remaining = await queueSize();
   clients.forEach((c) => c.postMessage({ type: "SYNC_DONE", remaining }));

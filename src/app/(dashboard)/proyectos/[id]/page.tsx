@@ -35,7 +35,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } }; proveedor: { nombre: string; telefono: string | null } | null }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
-interface TransporteSlot { proveedor: string; marcaModelo: string; comentarios: string }
+interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
   tipoEvento: string; tipoServicio: string | null;
@@ -51,7 +51,7 @@ interface Proyecto {
   marketingData: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { name: string } | null;
-  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
+  trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
@@ -419,9 +419,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
-    { proveedor: "", marcaModelo: "", comentarios: "" },
-    { proveedor: "", marcaModelo: "", comentarios: "" },
-    { proveedor: "", marcaModelo: "", comentarios: "" },
+    { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" },
   ]);
   const [savingTransporte, setSavingTransporte] = useState(false);
 
@@ -485,6 +483,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [pagando, setPagando] = useState<string | null>(null);
   const [montoPago, setMontoPago] = useState("");
   const [fechaPago, setFechaPago] = useState(new Date().toISOString().split("T")[0]);
+  const [cuentaPagoId, setCuentaPagoId] = useState("");
+  const [metodoPagoFinanzas, setMetodoPagoFinanzas] = useState("TRANSFERENCIA");
+  const [cuentasBancarias, setCuentasBancarias] = useState<Array<{ id: string; nombre: string; banco: string | null }>>([]);
+  const [anulando, setAnulando] = useState<string | null>(null);
 
   // Estados para ajuste de monto en CxC/CxP
   const [ajustando, setAjustando] = useState<string | null>(null);    // id de la cuenta en edición
@@ -705,7 +707,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       fetch("/api/equipos?todos=true").then(r => r.json()),
       fetch("/api/vehiculos").then(r => r.json()),
       fetch("/api/usuarios-activos").then(r => r.json()),
-    ]).then(([t, r, c, p, eq, v, u]) => {
+      fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
+    ]).then(([t, r, c, p, eq, v, u, cu]) => {
       setTecnicos(t.tecnicos ?? []);
       setRoles(r.roles ?? []);
       setCategorias((c.categorias ?? []).filter((x: CatFinanciera) => x.tipo === "GASTO"));
@@ -713,6 +716,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setEquipoCatalogo(eq.equipos ?? []);
       setVehiculos((v.vehiculos ?? []).filter((x: { activo: boolean }) => x.activo));
       setUsuariosActivos(u.usuarios ?? []);
+      setCuentasBancarias(cu.cuentas ?? []);
     });
   }, [id]);
 
@@ -784,18 +788,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } catch { setCronoRows([]); }
     try {
       const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
-      const slots: TransporteSlot[] = [0, 1, 2].map(i => parsed[i] ?? { proveedor: "", marcaModelo: "", comentarios: "" });
-      setTransporteSlots(slots);
+      const normalized: TransporteSlot[] = (Array.isArray(parsed) && parsed.length > 0)
+        ? parsed.map((s: Partial<TransporteSlot>) => ({ vehiculoId: s.vehiculoId ?? "", choferId: s.choferId ?? "", horaSalida: s.horaSalida ?? "", comentarios: s.comentarios ?? "" }))
+        : [{ vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }];
+      setTransporteSlots(normalized);
     } catch {
-      setTransporteSlots([
-        { proveedor: "", marcaModelo: "", comentarios: "" },
-        { proveedor: "", marcaModelo: "", comentarios: "" },
-        { proveedor: "", marcaModelo: "", comentarios: "" },
-      ]);
+      setTransporteSlots([{ vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]);
     }
     try {
       const c = proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {};
-      setCatering({ ...CATERING_EMPTY, ...c });
+      const autoPersonas = (!c.personasCrew || c.personasCrew === "0") && proyecto.personal.length > 0
+        ? String(proyecto.personal.length) : (c.personasCrew ?? "");
+      const autoDias = (!c.comidasPorDia || c.comidasPorDia === "0") && (proyecto.cotizacion?.diasComidas ?? 0) > 0
+        ? String(proyecto.cotizacion!.diasComidas) : (c.comidasPorDia ?? "");
+      setCatering({ ...CATERING_EMPTY, ...c, personasCrew: autoPersonas, comidasPorDia: autoDias });
     } catch { setCatering(CATERING_EMPTY); }
     // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
     setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
@@ -1303,13 +1309,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setPagando(cxcId);
     const res = await fetch(`/api/cuentas-cobrar/${cxcId}/pagar`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto: montoPago || undefined, fecha: fechaPago }),
+      body: JSON.stringify({ monto: montoPago || undefined, fecha: fechaPago, cuentaId: cuentaPagoId || undefined, metodoPago: metodoPagoFinanzas }),
     });
     if (res.ok) {
       await load();
     }
     setPagando(null);
     setMontoPago("");
+    setCuentaPagoId("");
+    setMetodoPagoFinanzas("TRANSFERENCIA");
   }
 
   // ── Guardar esquema de cobro (anticipo + liquidación) ──
@@ -1385,13 +1393,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setPagando(cxpId);
     const res = await fetch(`/api/cuentas-pagar/${cxpId}/pagar`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto: montoPago || undefined, fecha: fechaPago }),
+      body: JSON.stringify({ monto: montoPago || undefined, fecha: fechaPago, cuentaId: cuentaPagoId || undefined, metodoPago: metodoPagoFinanzas }),
     });
     if (res.ok) {
       await load();
     }
     setPagando(null);
     setMontoPago("");
+    setCuentaPagoId("");
+    setMetodoPagoFinanzas("TRANSFERENCIA");
+  }
+
+  async function anularMovimiento(id: string, tipo: "cobro" | "pago") {
+    const label = tipo === "cobro" ? "cobro" : "pago";
+    if (!await confirm({ message: `¿Anular este ${label}? El movimiento financiero asociado será eliminado y el registro volverá a estado Pendiente.`, danger: true, confirmText: "Anular" })) return;
+    setAnulando(id);
+    const endpoint = tipo === "cobro" ? `/api/cuentas-cobrar/${id}/anular` : `/api/cuentas-pagar/${id}/anular`;
+    const res = await fetch(endpoint, { method: "POST" });
+    if (res.ok) {
+      toast.success("Registro anulado — vuelve a estado Pendiente");
+      await load();
+    } else {
+      toast.error("Error al anular");
+    }
+    setAnulando(null);
   }
 
   if (loading) return <SkeletonPage rows={6} cols={4} />;
@@ -2120,19 +2145,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/10 px-2 py-0.5 rounded-full">Handoff ventas → producción</span>
             </div>
             <div className="space-y-4">
+              {proyecto.trato?.notas && (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas del descubrimiento (ventas)</p>
+                  <p className="text-gray-300 text-sm whitespace-pre-wrap">{proyecto.trato.notas}</p>
+                </div>
+              )}
               <Campo label="Descripción general del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" onSave={guardarCampo} multiline />
-              <Campo label="Detalles específicos del proyecto" value={proyecto.detallesEspecificos} field="detallesEspecificos" onSave={guardarCampo} multiline />
-              {proyecto.trato?.ideasReferencias && (() => {
-                let ideas: Record<string, string> = {};
-                try { ideas = JSON.parse(proyecto.trato.ideasReferencias); } catch { return null; }
-                if (!ideas.ideasReferencias) return null;
-                return (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Ideas / referencias del cliente (del descubrimiento)</p>
-                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{ideas.ideasReferencias}</p>
-                  </div>
-                );
-              })()}
+              <Campo label="Detalles específicos" value={proyecto.detallesEspecificos} field="detallesEspecificos" onSave={guardarCampo} multiline />
             </div>
           </div>
 
@@ -2402,37 +2422,57 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
-            {/* Transportes: 3 fichas */}
+            {/* Transportes del evento */}
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Transportes del evento</p>
-            <div className="grid grid-cols-1 gap-3 mb-5">
+            <div className="space-y-3 mb-5">
               {transporteSlots.map((slot, i) => (
                 <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-                  <p className="text-xs text-gray-600 font-semibold mb-3">Transporte {i + 1}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-600 font-semibold">Vehículo {i + 1}</p>
+                    {transporteSlots.length > 1 && (
+                      <button onClick={() => { const n = transporteSlots.filter((_, idx) => idx !== i); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">Quitar</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
-                      <input value={slot.proveedor} onChange={e => updateTransporte(i, "proveedor", e.target.value)}
-                        onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Nombre del proveedor"
+                      <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
+                      <select value={slot.vehiculoId} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                        <option value="">— Seleccionar vehículo —</option>
+                        {vehiculos.map(v => (
+                          <option key={v.id} value={v.id}>{v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Chofer</label>
+                      <select value={slot.choferId} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                        <option value="">— Seleccionar chofer —</option>
+                        {tecnicos.map(t => (
+                          <option key={t.id} value={t.id}>{t.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
+                      <input type="time" value={slot.horaSalida} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, horaSalida: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
                         className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1">Marca y modelo</label>
-                      <input value={slot.marcaModelo} onChange={e => updateTransporte(i, "marcaModelo", e.target.value)}
-                        onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Ej: Mercedes Sprinter"
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Comentarios</label>
-                      <input value={slot.comentarios} onChange={e => updateTransporte(i, "comentarios", e.target.value)}
-                        onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Notas adicionales"
+                      <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                      <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Instrucciones, destino, etc."
                         className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                     </div>
                   </div>
                 </div>
               ))}
+              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
+                className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                + Agregar vehículo
+              </button>
               {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
 
@@ -2478,16 +2518,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     ))}
                   </select>
                 </div>
-                {/* Contacto (se auto-llena al seleccionar proveedor, editable) */}
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Nombre de contacto</label>
-                  <input value={catering.contactoNombre}
-                    onChange={e => setCatering(p => ({ ...p, contactoNombre: e.target.value }))}
-                    placeholder="Nombre del contacto"
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Teléfono / WhatsApp</label>
+                  <label className="text-xs text-gray-500 block mb-1">Teléfono / WhatsApp del proveedor</label>
                   <input value={catering.contactoTelefono}
                     onChange={e => setCatering(p => ({ ...p, contactoTelefono: e.target.value }))}
                     placeholder="Ej: 4421234567"
@@ -3074,6 +3106,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
+      {/* ────── Extras sub-tab nav ────── */}
+      {tab === "extras" && (
+        <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1 flex-wrap mb-2">
+          {([
+            { key: "rider", label: "Rider" },
+            { key: "docs", label: "Docs" },
+            { key: "checklist", label: "Checklist" },
+            { key: "protocolo", label: "Protocolo" },
+            { key: "bitacora", label: "Bitácora" },
+            { key: "evaluacion", label: "Evaluación" },
+          ] as const).map(st => (
+            <button key={st.key} onClick={() => setExtrasTab(st.key)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                extrasTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
+              }`}>
+              {st.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ────── TAB: DOCS ────── */}
       {tab === "extras" && extrasTab === "docs" && (() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
@@ -3455,26 +3508,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
       {/* ────── SUB-NAVEGADOR: EXTRAS ────── */}
-      {tab === "extras" && (
-        <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1 flex-wrap mb-2">
-          {([
-            { key: "rider", label: "Rider" },
-            { key: "docs", label: "Docs" },
-            { key: "checklist", label: "Checklist" },
-            { key: "protocolo", label: "Protocolo" },
-            { key: "bitacora", label: "Bitácora" },
-            { key: "evaluacion", label: "Evaluación" },
-          ] as const).map(st => (
-            <button key={st.key} onClick={() => setExtrasTab(st.key)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                extrasTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
-              }`}>
-              {st.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* ────── TAB: CHECKLIST ────── */}
       {tab === "extras" && extrasTab === "checklist" && (
         <div className="space-y-4">
@@ -4187,19 +4220,37 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         pagando === c.id ? (
                           <div className="flex gap-2 mt-2 flex-wrap">
                             <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                              placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                             <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                               className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                            <select value={cuentaPagoId} onChange={e => setCuentaPagoId(e.target.value)}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                              <option value="">— Cuenta —</option>
+                              {cuentasBancarias.map(cu => <option key={cu.id} value={cu.id}>{cu.nombre}{cu.banco ? ` · ${cu.banco}` : ""}</option>)}
+                            </select>
+                            <select value={metodoPagoFinanzas} onChange={e => setMetodoPagoFinanzas(e.target.value)}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                              <option value="TRANSFERENCIA">Transferencia</option>
+                              <option value="EFECTIVO">Efectivo</option>
+                              <option value="TARJETA">Tarjeta</option>
+                              <option value="CHEQUE">Cheque</option>
+                            </select>
                             <button onClick={() => registrarPagoCxC(c.id)}
                               className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar</button>
                             <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         ) : (
-                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); }}
+                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
                             className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
                             + Registrar cobro
                           </button>
                         )
+                      )}
+                      {c.estado === "LIQUIDADO" && (
+                        <button onClick={() => anularMovimiento(c.id, "cobro")} disabled={anulando === c.id}
+                          className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
+                          {anulando === c.id ? "Anulando..." : "Anular cobro"}
+                        </button>
                       )}
                     </div>
                   );
@@ -4364,21 +4415,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                     {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
                       pagando === c.id ? (
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-2 mt-2 flex-wrap">
                           <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                            placeholder={String(c.monto)} className="w-32 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                            placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                           <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                             className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                          <select value={cuentaPagoId} onChange={e => setCuentaPagoId(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                            <option value="">— Cuenta —</option>
+                            {cuentasBancarias.map(cu => <option key={cu.id} value={cu.id}>{cu.nombre}{cu.banco ? ` · ${cu.banco}` : ""}</option>)}
+                          </select>
+                          <select value={metodoPagoFinanzas} onChange={e => setMetodoPagoFinanzas(e.target.value)}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                            <option value="TRANSFERENCIA">Transferencia</option>
+                            <option value="EFECTIVO">Efectivo</option>
+                            <option value="TARJETA">Tarjeta</option>
+                            <option value="CHEQUE">Cheque</option>
+                          </select>
                           <button onClick={() => registrarPagoCxP(c.id)}
                             className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
                           <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                         </div>
                       ) : (
-                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); }}
+                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
                           className="text-xs text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-3 py-1 rounded-lg transition-colors">
                           + Registrar pago
                         </button>
                       )
+                    )}
+                    {c.estado === "LIQUIDADO" && (
+                      <button onClick={() => anularMovimiento(c.id, "pago")} disabled={anulando === c.id}
+                        className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
+                        {anulando === c.id ? "Anulando..." : "Anular pago"}
+                      </button>
                     )}
                   </div>
                 );

@@ -7,7 +7,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { monto, fecha, notas } = await req.json();
+  const { monto, fecha, notas, cuentaId, metodoPago, categoriaId } = await req.json();
 
   const cxc = await prisma.cuentaCobrar.findUnique({
     where: { id },
@@ -18,7 +18,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const montoCobrado = parseFloat(monto) || cxc.monto;
   const liquidado = montoCobrado >= cxc.monto;
 
-  // Crear movimiento financiero
   const movimiento = await prisma.movimientoFinanciero.create({
     data: {
       tipo: "INGRESO",
@@ -27,18 +26,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       monto: montoCobrado,
       clienteId: cxc.clienteId,
       proyectoId: cxc.proyectoId,
+      cuentaDestinoId: cuentaId || null,
+      metodoPago: metodoPago || "TRANSFERENCIA",
+      categoriaId: categoriaId || null,
       notas: notas || null,
       creadoPor: session.id,
     },
   });
 
-  // Actualizar CxC
   const updated = await prisma.cuentaCobrar.update({
     where: { id },
     data: {
       estado: liquidado ? "LIQUIDADO" : "PARCIAL",
       montoCobrado: { increment: montoCobrado },
       fechaCobroReal: liquidado ? new Date() : undefined,
+      cuentaDestinoId: cuentaId || undefined,
       movimientoId: liquidado ? movimiento.id : undefined,
     },
   });

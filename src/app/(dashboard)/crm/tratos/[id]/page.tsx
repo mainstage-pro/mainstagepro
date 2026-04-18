@@ -60,6 +60,7 @@ interface Trato {
   scoutingData: string | null;
   tradeCalificado: boolean;
   tradeNivel: number | null;
+  familyAndFriends: boolean;
   tipoProspecto: string;
   nurturingData: string | null;
   ventanaMontajeFin: string | null;
@@ -615,16 +616,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     nombreEvento: "",
     fechaEventoEstimada: "",
     lugarEstimado: "",
-    duracionEvento: "",
     asistentesEstimados: "",
     presupuestoEstimado: "",
     tipoServicio: "",
-    etapaContratacion: "EXPLORANDO",
-    continuarPor: "WHATSAPP",
     ideasReferencias: "",
     notas: "",
-    proximaAccion: "",
     serviciosInteres: [] as string[],
+    familyAndFriends: false,
+    tradeAplica: false,
     // Campos específicos de Renta
     rentaModalidadServicio: "",
     rentaModalidadEntrega: "",
@@ -753,16 +752,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             nombreEvento: t.nombreEvento ?? "",
             fechaEventoEstimada: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : "",
             lugarEstimado: t.lugarEstimado ?? "",
-            duracionEvento: t.duracionEvento ?? "",
             asistentesEstimados: t.asistentesEstimados?.toString() ?? "",
             presupuestoEstimado: t.presupuestoEstimado?.toString() ?? "",
             tipoServicio: t.tipoServicio ?? "",
-            etapaContratacion: t.etapaContratacion ?? "EXPLORANDO",
-            continuarPor: t.continuarPor ?? "WHATSAPP",
             ideasReferencias: t.tipoServicio !== "RENTA" ? (t.ideasReferencias ?? "") : "",
             notas: t.notas ?? "",
-            proximaAccion: t.proximaAccion ?? "",
             serviciosInteres: t.serviciosInteres ? JSON.parse(t.serviciosInteres) : [],
+            familyAndFriends: t.familyAndFriends ?? false,
+            tradeAplica: t.tradeCalificado ?? false,
             // Rental fields
             rentaModalidadServicio: rentaData.modalidadServicio ?? "",
             rentaModalidadEntrega:  rentaData.modalidadEntrega ?? "",
@@ -838,14 +835,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       nombreEvento: discForm.nombreEvento || null,
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
-      duracionEvento: discForm.duracionEvento || null,
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
       tipoServicio: discForm.tipoServicio || null,
-      etapaContratacion: discForm.etapaContratacion || null,
-      continuarPor: discForm.continuarPor || null,
       notas: discForm.notas || null,
-      proximaAccion: discForm.proximaAccion || null,
+      familyAndFriends: discForm.familyAndFriends,
+      tradeCalificado: discForm.tradeAplica,
       horaInicioEvento:     discForm.horaInicioEvento || null,
       horaFinEvento:        discForm.horaFinEvento || null,
       duracionMontajeHrs:   discForm.duracionMontajeHrs ? parseFloat(discForm.duracionMontajeHrs) : null,
@@ -896,14 +891,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         nombreEvento: form.nombreEvento || null,
         fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
         lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
-        duracionEvento: form.duracionEvento || null,
         asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
         presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
         tipoServicio: form.tipoServicio || null,
-        etapaContratacion: form.etapaContratacion || null,
-        continuarPor: form.continuarPor || null,
         notas: form.notas || null,
-        proximaAccion: form.proximaAccion || null,
+        familyAndFriends: form.familyAndFriends,
+        tradeCalificado: form.tradeAplica,
         horaInicioEvento: form.horaInicioEvento || null,
         horaFinEvento: form.horaFinEvento || null,
         duracionMontajeHrs: form.duracionMontajeHrs ? parseFloat(form.duracionMontajeHrs) : null,
@@ -1079,17 +1072,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </button>
           {(() => {
             const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
-            if (tieneProyecto) {
-              return (
-                <span title="Elimina primero el proyecto desde el módulo de Proyectos"
-                  className="px-3 py-2 rounded-lg border border-[#222] text-gray-700 text-xs cursor-not-allowed select-none whitespace-nowrap">
-                  Eliminar
-                </span>
-              );
-            }
+            const tieneCotizaciones = trato.cotizaciones.length > 0;
+            const resumen = tieneProyecto
+              ? `Se eliminarán: el trato, ${trato.cotizaciones.length} cotización(es) y el proyecto asociado con todas sus cuentas y datos. Esta acción no se puede deshacer.`
+              : tieneCotizaciones
+              ? `Se eliminarán: el trato y ${trato.cotizaciones.length} cotización(es) asociada(s). Esta acción no se puede deshacer.`
+              : "Se eliminará este trato. Esta acción no se puede deshacer.";
             return (
               <button onClick={async () => {
-                if (!await confirm({ message: "¿Eliminar este trato? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
+                if (!await confirm({ message: resumen, danger: true, confirmText: "Eliminar todo" })) return;
                 await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
                 toast.success("Trato eliminado");
                 router.push("/crm/tratos");
@@ -2033,37 +2024,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* PASO 3: Detalles operativos */}
             {pasoActivo === 3 && (<div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
                   <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
                     placeholder="300"
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Duración del evento</label>
-                  <input value={discForm.duracionEvento} onChange={e => setDiscForm(p => ({ ...p, duracionEvento: e.target.value }))}
-                    placeholder="Ej: 6 horas, 2 días"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Etapa de contratación</label>
-                  <select value={discForm.etapaContratacion} onChange={e => setDiscForm(p => ({ ...p, etapaContratacion: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="EXPLORANDO">Explorando opciones</option>
-                    <option value="COMPARANDO">Comparando proveedores</option>
-                    <option value="LISTO_CONTRATAR">Listo para contratar</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Continuar el proceso por</label>
-                  <select value={discForm.continuarPor} onChange={e => setDiscForm(p => ({ ...p, continuarPor: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="WHATSAPP">WhatsApp</option>
-                    <option value="LLAMADA">Llamada</option>
-                    <option value="REUNION">Reunión presencial</option>
-                    <option value="COTIZACION">Cotización directa</option>
-                  </select>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Ideas / Referencias (links)</label>
@@ -2079,11 +2045,35 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   rows={4} placeholder="Detalles específicos, necesidades especiales, contexto del evento, expectativas del cliente..."
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
               </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Próxima acción concreta</label>
-                <input value={discForm.proximaAccion} onChange={e => setDiscForm(p => ({ ...p, proximaAccion: e.target.value }))}
-                  placeholder="Ej: Enviar cotización el lunes"
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+
+              {/* Toggles: Family & Friends + Mainstage Trade */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-sm text-white font-medium">Descuento Family &amp; Friends</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Se aplicará en la cotización automáticamente</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, familyAndFriends: !p.familyAndFriends }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div>
+                      <p className="text-sm text-white font-medium">Aplica Mainstage Trade</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">El cliente elegirá su nivel de colaboración</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                  </div>
+                </div>
               </div>
               {/* Referencias y archivos del cliente */}
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
@@ -2652,37 +2642,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Mainstage Trade */}
-      <div className={`bg-[#111] border rounded-xl p-5 ${tradeCalificado ? "border-[#B3985B]/40" : "border-[#222]"}`}>
+      <div className={`bg-[#111] border rounded-xl p-5 ${discForm.tradeAplica ? "border-[#B3985B]/40" : "border-[#222]"}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Mainstage Trade</h2>
-            {tradeCalificado && tradeNivel && (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-[#B3985B]/20 text-[#B3985B] font-medium">
-                Nivel {tradeNivel} · {[5,10,12][tradeNivel-1]}% desc.
-              </span>
+            {discForm.tradeAplica && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-[#B3985B]/20 text-[#B3985B] font-medium">Calificado</span>
             )}
           </div>
-          {tradeCalificado && (
+          {discForm.tradeAplica && (
             <button
-              onClick={async () => {
-                if (!await confirm({ message: "¿Quitar calificación Trade de este trato?", danger: true, confirmText: "Quitar" })) return;
-                setSavingTrade(true);
-                try {
-                  await fetch(`/api/tratos/${trato.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tradeCalificado: false, tradeNivel: null }) });
-                  setTradeCalificado(false);
-                  setTradeNivel(null);
-                  setTrato(prev => prev ? { ...prev, tradeCalificado: false, tradeNivel: null } : prev);
-                } finally { setSavingTrade(false); }
-              }}
+              onClick={() => setDiscForm(p => ({ ...p, tradeAplica: false }))}
               className="text-xs text-red-400 hover:text-red-300 transition-colors"
             >Quitar</button>
           )}
         </div>
 
-        {!tradeCalificado ? (
-          <div className="space-y-4">
-            <p className="text-gray-500 text-xs">Evalúa si este cliente califica para el programa Mainstage Trade antes de crear la cotización. Si califica, el descuento se aplicará automáticamente.</p>
-            <div className="space-y-2">
+        {!discForm.tradeAplica ? (
+          <div className="space-y-3">
+            <p className="text-gray-500 text-xs">Este trato está marcado para Mainstage Trade. El cliente elegirá su nivel de colaboración desde la cotización.</p>
+            <p className="text-[11px] text-gray-600">Para activarlo, ve al descubrimiento de este trato y activa el toggle "Aplica Mainstage Trade".</p>
+            <div className="space-y-2 pt-1">
+              <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Criterios de calificación</p>
               {[
                 "El evento tiene alta visibilidad o afluencia de público",
                 "El cliente puede ofrecer presencia de marca (logo, mención, redes)",
@@ -2690,55 +2671,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 "El cliente es recurrente o tiene potencial estratégico",
                 "El evento genera contenido de valor (foto/video aprovechable)",
               ].map((c, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-gray-400">
-                  <span className="text-[#B3985B] mt-0.5">✓</span>
+                <div key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                  <span className="text-[#B3985B]/60 mt-0.5">✓</span>
                   <span>{c}</span>
                 </div>
               ))}
-            </div>
-            <div className="border-t border-[#1a1a1a] pt-4">
-              <p className="text-xs text-gray-400 mb-3">Selecciona el nivel si califica:</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { nivel: 1, nombre: "Base", pct: 5 },
-                  { nivel: 2, nombre: "Estratégico", pct: 10 },
-                  { nivel: 3, nombre: "Premium", pct: 12 },
-                ].map(n => (
-                  <button
-                    key={n.nivel}
-                    onClick={() => setTradeNivel(prev => prev === n.nivel ? null : n.nivel)}
-                    className={`p-3 rounded-lg border text-left transition-colors ${tradeNivel === n.nivel ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#444]"}`}
-                  >
-                    <p className={`text-xs font-bold ${tradeNivel === n.nivel ? "text-[#B3985B]" : "text-gray-300"}`}>Nivel {n.nivel}</p>
-                    <p className={`text-[10px] ${tradeNivel === n.nivel ? "text-[#B3985B]" : "text-gray-500"}`}>{n.nombre} · {n.pct}%</p>
-                  </button>
-                ))}
-              </div>
-              <button
-                disabled={!tradeNivel || savingTrade}
-                onClick={async () => {
-                  if (!tradeNivel) return;
-                  setSavingTrade(true);
-                  try {
-                    await fetch(`/api/tratos/${trato.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tradeCalificado: true, tradeNivel }) });
-                    setTradeCalificado(true);
-                    setTrato(prev => prev ? { ...prev, tradeCalificado: true, tradeNivel } : prev);
-                  } finally { setSavingTrade(false); }
-                }}
-                className="mt-3 w-full py-2 rounded-lg bg-[#B3985B] text-black text-xs font-semibold disabled:opacity-40 hover:bg-[#c4aa6b] transition-colors"
-              >
-                {savingTrade ? "Guardando…" : `Calificar como Trade Nivel ${tradeNivel ?? "—"}`}
-              </button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="bg-[#0a0a0a] rounded-lg p-4 space-y-2">
-              <p className="text-xs text-gray-500">Nivel seleccionado</p>
-              <p className="text-white font-semibold">
-                Nivel {tradeNivel} — {["Base (5%)", "Estratégico (10%)", "Premium (12%)"][(tradeNivel ?? 1) - 1]}
-              </p>
-              <p className="text-[11px] text-gray-500">El descuento se aplicará automáticamente al crear una nueva cotización desde este trato.</p>
+              <p className="text-xs text-gray-500">Trato calificado para Mainstage Trade</p>
+              <p className="text-white text-sm">El cliente elegirá su nivel de colaboración (Base 5%, Estratégico 10% o Premium 12%) desde la cotización.</p>
+              <p className="text-[11px] text-gray-500">Una vez que el cliente seleccione su nivel, el descuento se aplicará automáticamente en la cotización.</p>
             </div>
             <button
               onClick={() => {

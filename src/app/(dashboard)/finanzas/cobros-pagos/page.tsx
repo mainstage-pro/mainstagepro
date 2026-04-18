@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -102,6 +103,7 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
 
 export default function CobrosPagosPage() {
   const toast = useToast();
+  const confirm = useConfirm();
   const [tab, setTab] = useState<"cobrar" | "pagar">("cobrar");
   const [cxc, setCxc] = useState<CxCItem[]>([]);
   const [cxp, setCxp] = useState<CxPItem[]>([]);
@@ -110,8 +112,12 @@ export default function CobrosPagosPage() {
   const [modalMonto, setModalMonto] = useState("");
   const [modalNotas, setModalNotas] = useState("");
   const [modalFecha, setModalFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [modalCuentaId, setModalCuentaId] = useState("");
+  const [modalMetodoPago, setModalMetodoPago] = useState("TRANSFERENCIA");
   const [confirmando, setConfirmando] = useState(false);
+  const [anulando, setAnulando] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
+  const [cuentas, setCuentas] = useState<Array<{ id: string; nombre: string; banco: string | null }>>([]);
   // Nuevo registro
   const [showNuevo, setShowNuevo] = useState(false);
   const [nuevoForm, setNuevoForm] = useState<NuevoRegistroForm>({ ...NUEVO_REGISTRO_EMPTY });
@@ -122,8 +128,8 @@ export default function CobrosPagosPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const [rc, rp] = await Promise.all([
-      fetch("/api/cuentas-cobrar").then(r => r.json()),
-      fetch("/api/cuentas-pagar").then(r => r.json()),
+      fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()),
+      fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()),
     ]);
     setCxc(Array.isArray(rc) ? rc : []);
     setCxp(Array.isArray(rp) ? rp : []);
@@ -132,7 +138,8 @@ export default function CobrosPagosPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
+    fetch("/api/clientes", { cache: "no-store" }).then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
+    fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
   }, []);
 
   async function guardarNuevo() {
@@ -215,6 +222,8 @@ export default function CobrosPagosPage() {
     setModalMonto(String(item.monto));
     setModalNotas("");
     setModalFecha(new Date().toISOString().split("T")[0]);
+    setModalCuentaId("");
+    setModalMetodoPago("TRANSFERENCIA");
   }
 
   async function confirmar() {
@@ -226,11 +235,35 @@ export default function CobrosPagosPage() {
     await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto: parseFloat(modalMonto) || modal.monto, fecha: modalFecha, notas: modalNotas }),
+      body: JSON.stringify({
+        monto: parseFloat(modalMonto) || modal.monto,
+        fecha: modalFecha,
+        notas: modalNotas,
+        cuentaId: modalCuentaId || undefined,
+        metodoPago: modalMetodoPago,
+      }),
     });
     await load();
     setModal(null);
     setConfirmando(false);
+    toast.success(modal.tipo === "cobro" ? "Cobro registrado" : "Pago registrado");
+  }
+
+  async function anular(id: string, tipo: "cobro" | "pago") {
+    const label = tipo === "cobro" ? "cobro" : "pago";
+    if (!await confirm({ message: `¿Anular este ${label}? El movimiento financiero asociado será eliminado y el registro volverá a estado Pendiente.`, danger: true, confirmText: "Anular" })) return;
+    setAnulando(id);
+    const endpoint = tipo === "cobro"
+      ? `/api/cuentas-cobrar/${id}/anular`
+      : `/api/cuentas-pagar/${id}/anular`;
+    const res = await fetch(endpoint, { method: "POST" });
+    if (res.ok) {
+      toast.success("Registro anulado — vuelve a estado Pendiente");
+      await load();
+    } else {
+      toast.error("Error al anular");
+    }
+    setAnulando(null);
   }
 
   return (
@@ -392,13 +425,19 @@ export default function CobrosPagosPage() {
                   </a>
                 )}
                 {c.estado === "LIQUIDADO" && (
-                  <a href={`/api/cuentas-cobrar/${c.id}/recibo`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Recibo PDF
-                  </a>
+                  <>
+                    <a href={`/api/cuentas-cobrar/${c.id}/recibo`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Recibo PDF
+                    </a>
+                    <button onClick={() => anular(c.id, "cobro")} disabled={anulando === c.id}
+                      className="text-xs text-red-400/70 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                      {anulando === c.id ? "Anulando..." : "Anular cobro"}
+                    </button>
+                  </>
                 )}
                 {c.estado === "LIQUIDADO" && c.cliente.telefono && (
                   <a
@@ -483,12 +522,18 @@ export default function CobrosPagosPage() {
                     </a>
                   )}
                   {c.estado === "LIQUIDADO" && (
-                    <span className="text-xs text-green-400/60 flex items-center gap-1">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Pagado
-                    </span>
+                    <>
+                      <span className="text-xs text-green-400/60 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Pagado
+                      </span>
+                      <button onClick={() => anular(c.id, "pago")} disabled={anulando === c.id}
+                        className="text-xs text-red-400/70 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                        {anulando === c.id ? "Anulando..." : "Anular pago"}
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
@@ -509,31 +554,42 @@ export default function CobrosPagosPage() {
             <div className="space-y-3 mb-5">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Monto recibido / pagado</label>
-                <input
-                  type="number"
-                  value={modalMonto}
-                  onChange={e => setModalMonto(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
-                />
+                <input type="number" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
                 <p className="text-[10px] text-gray-600 mt-1">Total: {formatCurrency(modal.monto)}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
-                <input
-                  type="date"
-                  value={modalFecha}
-                  onChange={e => setModalFecha(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
-                />
+                <input type="date" value={modalFecha} onChange={e => setModalFecha(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Notas (opcional)</label>
-                <input
-                  value={modalNotas}
-                  onChange={e => setModalNotas(e.target.value)}
-                  placeholder="Método de pago, referencia..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
-                />
+                <label className="text-xs text-gray-500 mb-1 block">
+                  {modal.tipo === "cobro" ? "Cuenta de destino (banco donde entra)" : "Cuenta de origen (banco de donde sale)"}
+                </label>
+                <select value={modalCuentaId} onChange={e => setModalCuentaId(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Sin especificar —</option>
+                  {cuentas.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}{c.banco ? ` · ${c.banco}` : ""}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Método de pago</label>
+                <select value={modalMetodoPago} onChange={e => setModalMetodoPago(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]">
+                  <option value="TRANSFERENCIA">Transferencia</option>
+                  <option value="EFECTIVO">Efectivo</option>
+                  <option value="TARJETA">Tarjeta</option>
+                  <option value="CHEQUE">Cheque</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Notas / referencia (opcional)</label>
+                <input value={modalNotas} onChange={e => setModalNotas(e.target.value)}
+                  placeholder="Número de transferencia, folio..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
               </div>
             </div>
 
