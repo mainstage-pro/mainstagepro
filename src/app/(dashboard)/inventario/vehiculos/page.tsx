@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 interface Mantenimiento {
   id: string;
@@ -89,6 +90,7 @@ function fmtKm(n: number | null) {
 }
 
 export default function VehiculosPage() {
+  const confirm = useConfirm();
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -162,7 +164,7 @@ export default function VehiculosPage() {
   }
 
   async function deleteMantenimiento(mantId: string) {
-    if (!selectedId || !confirm("¿Eliminar este registro?")) return;
+    if (!selectedId || !await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
     setDeletingMant(mantId);
     await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, { method: "DELETE" });
     setDeletingMant(null);

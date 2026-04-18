@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 interface Venue {
   id: string;
@@ -86,6 +87,7 @@ async function comprimirImagen(file: File, maxW = 1200, quality = 0.75): Promise
 }
 
 export default function VenuesPage() {
+  const confirm = useConfirm();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -207,7 +209,7 @@ export default function VenuesPage() {
   }
 
   async function eliminar(id: string) {
-    if (!confirm("¿Eliminar este venue?")) return;
+    if (!await confirm({ message: "¿Eliminar este venue?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/venues/${id}`, { method: "DELETE" });
     setVenues(prev => prev.filter(v => v.id !== id));
   }

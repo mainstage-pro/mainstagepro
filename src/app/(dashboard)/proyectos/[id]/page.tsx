@@ -352,7 +352,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function revocarPortalToken() {
-    const ok = await confirm("¿Revocar el enlace del portal? El cliente ya no podrá acceder con el enlace anterior.");
+    const ok = await confirm({ message: "¿Revocar el enlace del portal? El cliente ya no podrá acceder con el enlace anterior.", danger: true, confirmText: "Revocar" });
     if (!ok) return;
     setRevocandoToken(true);
     await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
@@ -975,8 +975,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSavingCrono(false);
   }
 
-  function cargarPlantillaCrono() {
-    if (cronoRows.length > 0 && !confirm("¿Reemplazar el cronograma actual con la plantilla base?")) return;
+  async function cargarPlantillaCrono() {
+    if (cronoRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma actual con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
     setCronoRows(CRONO_BASE.map(r => ({ ...r })));
   }
 

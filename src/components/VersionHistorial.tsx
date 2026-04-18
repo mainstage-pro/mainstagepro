@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 interface Version {
   id: string;
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function VersionHistorial({ entidad, entidadId, onRestaurar }: Props) {
+  const confirm = useConfirm();
   const [abierto, setAbierto] = useState(false);
   const [versiones, setVersiones] = useState<Version[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -37,9 +39,9 @@ export default function VersionHistorial({ entidad, entidadId, onRestaurar }: Pr
     setAbierto(v => !v);
   };
 
-  const restaurar = (v: Version) => {
+  const restaurar = async (v: Version) => {
     if (!onRestaurar) return;
-    if (!confirm(`¿Restaurar al estado guardado el ${new Date(v.createdAt).toLocaleString("es-MX")}?`)) return;
+    if (!await confirm({ message: `¿Restaurar al estado guardado el ${new Date(v.createdAt).toLocaleString("es-MX")}?`, danger: true, confirmText: "Restaurar" })) return;
     try {
       const datos = JSON.parse(v.snapshot) as Record<string, unknown>;
       onRestaurar(datos);

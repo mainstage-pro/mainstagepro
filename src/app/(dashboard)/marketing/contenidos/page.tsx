@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
 
 interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
@@ -35,6 +37,8 @@ const EMPTY = {
 };
 
 export default function ContenidosPage() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [tipos, setTipos] = useState<TipoContenido[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -86,7 +90,7 @@ export default function ContenidosPage() {
       const res = await fetch("/api/marketing/contenidos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const d = await res.json();
       if (d.generadas > 0) {
-        alert(`✓ Tipo creado. Se generaron ${d.generadas} publicaciones automáticamente en el calendario del mes actual.`);
+        toast.success(`✓ Tipo creado. Se generaron ${d.generadas} publicaciones automáticamente en el calendario del mes actual.`);
       }
     }
     await load();
@@ -100,10 +104,10 @@ export default function ContenidosPage() {
   }
 
   async function deleteContenido(id: string, nombre: string) {
-    if (!confirm(`¿Eliminar "${nombre}"?\n\nSe eliminarán también todas las publicaciones pendientes de este tipo en el calendario.`)) return;
+    if (!await confirm({ message: `¿Eliminar "${nombre}"?\n\nSe eliminarán también todas las publicaciones pendientes de este tipo en el calendario.`, danger: true, confirmText: "Eliminar" })) return;
     const res = await fetch(`/api/marketing/contenidos/${id}`, { method: "DELETE" });
     const d = await res.json();
-    if (d.eliminadas > 0) alert(`Se eliminaron ${d.eliminadas} publicaciones del calendario.`);
+    if (d.eliminadas > 0) toast.info(`Se eliminaron ${d.eliminadas} publicaciones del calendario.`);
     await load();
   }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -274,6 +275,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
 // ─── Tab: Activos ─────────────────────────────────────────────────────────────
 function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -290,7 +292,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
   };
 
   const eliminar = async (id: string) => {
-    if (!confirm("¿Dar de baja este activo?")) return;
+    if (!await confirm({ message: "¿Dar de baja este activo?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/socios/${socio.id}/activos/${id}`, { method: "DELETE" });
     reload();
   };
@@ -432,6 +434,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
 
 // ─── Tab: Rentas ──────────────────────────────────────────────────────────────
 function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const confirm = useConfirm();
   const [rentas, setRentas] = useState<Renta[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -468,7 +471,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
   };
 
   const eliminar = async (id: string) => {
-    if (!confirm("¿Eliminar este registro?")) return;
+    if (!await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
     cargar();
   };

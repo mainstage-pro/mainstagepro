@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 interface MetaResultado {
   id: string;
@@ -59,6 +60,7 @@ const EMPTY_RESULTADO = {
 };
 
 export default function MetaAdsPage() {
+  const confirm = useConfirm();
   const [campanas, setCampanas] = useState<MetaCampana[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<MetaCampana | null>(null);
@@ -106,7 +108,7 @@ export default function MetaAdsPage() {
   }
 
   async function eliminarCampana(campanaId: string) {
-    if (!confirm("¿Eliminar esta campaña y todos sus resultados?")) return;
+    if (!await confirm({ message: "¿Eliminar esta campaña y todos sus resultados?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/meta-ads/campanas/${campanaId}`, { method: "DELETE" });
     setCampanas(p => p.filter(c => c.id !== campanaId));
     if (selected?.id === campanaId) setSelected(null);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
 
 interface EquipoInfo {
   id: string; descripcion: string; cantidadTotal: number; estado: string;
@@ -34,6 +35,7 @@ const ESTADO_CURRENT: Record<string, string> = {
 
 export default function ChecklistDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const confirm = useConfirm();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   async function updateEstado(itemId: string, estado: EstadoItem, estadoActual: string) {
     // Clic en el estado activo → deseleccionar (volver a PENDIENTE)
     const nuevoEstado = estadoActual === estado ? "PENDIENTE" : estado;
-    if (nuevoEstado === "PERDIDO" && !confirm("¿Marcar como PERDIDO?\n\nEsto actualizará el equipo en el inventario como perdido y lo quitará de disponibilidad.")) return;
+    if (nuevoEstado === "PERDIDO" && !await confirm({ message: "¿Marcar como PERDIDO?\n\nEsto actualizará el equipo en el inventario como perdido y lo quitará de disponibilidad.", danger: true, confirmText: "Marcar perdido" })) return;
     setUpdating(itemId);
     await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -63,7 +65,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   }
 
   async function eliminarChecklist() {
-    if (!confirm("¿Eliminar este checklist? Esta acción no se puede deshacer.")) return;
+    if (!await confirm({ message: "¿Eliminar este checklist? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/bodega/checklist/${id}`, { method: "DELETE" });
     window.location.href = "/inventario/checklist";
   }

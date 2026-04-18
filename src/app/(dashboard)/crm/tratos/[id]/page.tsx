@@ -2659,7 +2659,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           {tradeCalificado && (
             <button
               onClick={async () => {
-                if (!confirm("¿Quitar calificación Trade de este trato?")) return;
+                if (!await confirm({ message: "¿Quitar calificación Trade de este trato?", danger: true, confirmText: "Quitar" })) return;
                 setSavingTrade(true);
                 try {
                   await fetch(`/api/tratos/${trato.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tradeCalificado: false, tradeNivel: null }) });

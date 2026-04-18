@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
+import { useToast } from "@/components/Toast";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -70,7 +71,37 @@ interface ConfirmarModal {
   nombre: string;
 }
 
+// ── Tipos para el modal de nuevo registro ────────────────────────────────────
+interface NuevoRegistroForm {
+  tipo: "cxc" | "cxp";
+  concepto: string;
+  monto: string;
+  fechaCompromiso: string;
+  tipoPago: string;
+  // CxC
+  clienteNombre: string;
+  clienteId: string;
+  // CxP
+  tipoAcreedor: string;
+  acreedorNombre: string;
+  notas: string;
+}
+
+const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
+  tipo: "cxc",
+  concepto: "",
+  monto: "",
+  fechaCompromiso: new Date().toISOString().split("T")[0],
+  tipoPago: "OTRO",
+  clienteNombre: "",
+  clienteId: "",
+  tipoAcreedor: "OTRO",
+  acreedorNombre: "",
+  notas: "",
+};
+
 export default function CobrosPagosPage() {
+  const toast = useToast();
   const [tab, setTab] = useState<"cobrar" | "pagar">("cobrar");
   const [cxc, setCxc] = useState<CxCItem[]>([]);
   const [cxp, setCxp] = useState<CxPItem[]>([]);
@@ -81,6 +112,12 @@ export default function CobrosPagosPage() {
   const [modalFecha, setModalFecha] = useState(new Date().toISOString().split("T")[0]);
   const [confirmando, setConfirmando] = useState(false);
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
+  // Nuevo registro
+  const [showNuevo, setShowNuevo] = useState(false);
+  const [nuevoForm, setNuevoForm] = useState<NuevoRegistroForm>({ ...NUEVO_REGISTRO_EMPTY });
+  const [guardandoNuevo, setGuardandoNuevo] = useState(false);
+  const [clientes, setClientes] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
+  const [clienteQuery, setClienteQuery] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +131,50 @@ export default function CobrosPagosPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
+  }, []);
+
+  async function guardarNuevo() {
+    if (!nuevoForm.concepto || !nuevoForm.monto || !nuevoForm.fechaCompromiso) return;
+    setGuardandoNuevo(true);
+    try {
+      if (nuevoForm.tipo === "cxc") {
+        if (!nuevoForm.clienteId) { toast.error("Selecciona un cliente"); setGuardandoNuevo(false); return; }
+        await fetch("/api/cuentas-cobrar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clienteId: nuevoForm.clienteId,
+            concepto: nuevoForm.concepto,
+            monto: nuevoForm.monto,
+            fechaCompromiso: nuevoForm.fechaCompromiso,
+            tipoPago: nuevoForm.tipoPago,
+          }),
+        });
+      } else {
+        await fetch("/api/cuentas-pagar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipoAcreedor: nuevoForm.tipoAcreedor,
+            concepto: nuevoForm.acreedorNombre
+              ? `${nuevoForm.acreedorNombre} — ${nuevoForm.concepto}`
+              : nuevoForm.concepto,
+            monto: nuevoForm.monto,
+            fechaCompromiso: nuevoForm.fechaCompromiso,
+            notas: nuevoForm.notas || null,
+          }),
+        });
+      }
+      setShowNuevo(false);
+      setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
+      setClienteQuery("");
+      await load();
+    } finally {
+      setGuardandoNuevo(false);
+    }
+  }
 
   const hoy = new Date();
 
@@ -156,9 +237,16 @@ export default function CobrosPagosPage() {
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
 
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
-        <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
+          <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
+        </div>
+        <button
+          onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setClienteQuery(""); setShowNuevo(true); }}
+          className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+          + Nuevo registro
+        </button>
       </div>
 
       {/* Summary cards */}
@@ -457,6 +545,113 @@ export default function CobrosPagosPage() {
               <button onClick={() => setModal(null)}
                 className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
                 Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal nuevo registro manual ── */}
+      {showNuevo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowNuevo(false); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md space-y-5 p-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-semibold text-base">Nuevo registro</h3>
+              <button onClick={() => setShowNuevo(false)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+
+            {/* Tipo */}
+            <div className="flex gap-2">
+              {([["cxc", "Cuenta por cobrar"], ["cxp", "Cuenta por pagar"]] as const).map(([v, l]) => (
+                <button key={v} onClick={() => setNuevoForm(p => ({ ...p, tipo: v }))}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${nuevoForm.tipo === v ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-[#222] text-gray-500 hover:border-[#333] hover:text-white"}`}>
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            {/* Campos comunes */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                <input value={nuevoForm.concepto} onChange={e => setNuevoForm(p => ({ ...p, concepto: e.target.value }))}
+                  placeholder="Ej: Anticipo evento bodas, Renta equipo…"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto *</label>
+                  <input type="number" value={nuevoForm.monto} onChange={e => setNuevoForm(p => ({ ...p, monto: e.target.value }))}
+                    placeholder="0.00"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Fecha compromiso *</label>
+                  <input type="date" value={nuevoForm.fechaCompromiso} onChange={e => setNuevoForm(p => ({ ...p, fechaCompromiso: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+
+              {/* CxC — cliente */}
+              {nuevoForm.tipo === "cxc" && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Cliente *</label>
+                    <input value={clienteQuery} onChange={e => { setClienteQuery(e.target.value); setNuevoForm(p => ({ ...p, clienteId: "" })); }}
+                      placeholder="Buscar cliente…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    {clienteQuery.length >= 2 && !nuevoForm.clienteId && (
+                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-40 overflow-y-auto">
+                        {clientes.filter(c => (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase())).slice(0, 8).map(c => (
+                          <button key={c.id} onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : "")); }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors">
+                            {c.nombre}{c.empresa ? <span className="text-gray-600"> · {c.empresa}</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {nuevoForm.clienteId && <p className="text-[11px] text-[#B3985B] mt-1">✓ {clienteQuery}</p>}
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Tipo</label>
+                    <select value={nuevoForm.tipoPago} onChange={e => setNuevoForm(p => ({ ...p, tipoPago: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="ANTICIPO">Anticipo</option>
+                      <option value="LIQUIDACION">Liquidación</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* CxP — acreedor */}
+              {nuevoForm.tipo === "cxp" && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">A quién se le paga</label>
+                    <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}
+                      placeholder="Nombre del proveedor, persona o empresa…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                    <input value={nuevoForm.notas} onChange={e => setNuevoForm(p => ({ ...p, notas: e.target.value }))}
+                      placeholder="Opcional…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setShowNuevo(false)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarNuevo} disabled={guardandoNuevo || !nuevoForm.concepto || !nuevoForm.monto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {guardandoNuevo ? "Guardando…" : "Guardar"}
               </button>
             </div>
           </div>

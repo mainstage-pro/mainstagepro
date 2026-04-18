@@ -53,7 +53,7 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
   }, [token]);
 
   async function aprobar() {
-    if (!nombre.trim()) { alert("Por favor ingresa tu nombre para confirmar la aprobación."); return; }
+    if (!nombre.trim()) { setError("Por favor ingresa tu nombre para confirmar la aprobación."); return; }
     setAprobando(true);
     const res = await fetch(`/api/aprobacion/cotizacion/${token}`, {
       method: "POST",
@@ -62,7 +62,7 @@ export default function AprobacionCotizacionPage({ params }: { params: Promise<{
     });
     const d = await res.json();
     if (d.ok) { setAprobada(true); if (cot) setCot({ ...cot, estado: "APROBADA" }); }
-    else { alert(d.error ?? "Error al aprobar"); }
+    else { setError(d.error ?? "Error al aprobar"); }
     setAprobando(false);
   }
 

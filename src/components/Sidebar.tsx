@@ -312,11 +312,11 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                   className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
                 >
                   <span className={`text-[13px] font-bold uppercase tracking-widest transition-colors ${
-                    isSectionActive && !isSectionOpen ? "text-[#B3985B]" : "text-[#B3985B]/50 group-hover:text-[#B3985B]/80"
+                    isSectionActive && !isSectionOpen ? "text-white" : "text-white/50 group-hover:text-white/80"
                   }`}>
                     {sectionLabel}
                   </span>
-                  <span className={`text-[9px] text-[#B3985B]/30 group-hover:text-[#B3985B]/60 transition-transform ${isSectionOpen ? "" : "-rotate-90"}`}>▾</span>
+                  <span className={`text-[9px] text-white/30 group-hover:text-white/60 transition-transform ${isSectionOpen ? "" : "-rotate-90"}`}>▾</span>
                 </button>
               )}
               {isSectionOpen && <div className="space-y-0.5">

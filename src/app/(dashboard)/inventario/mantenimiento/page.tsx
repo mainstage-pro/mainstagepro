@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SkeletonPage } from "@/components/Skeleton";
+import { useConfirm } from "@/components/Confirm";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -98,6 +99,7 @@ async function comprimirImagen(file: File, maxW = 1200, quality = 0.75): Promise
 }
 
 function MantenimientoContent() {
+  const confirm = useConfirm();
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlEquipoId = searchParams.get("equipoId");
@@ -255,7 +257,7 @@ function MantenimientoContent() {
   }
 
   async function deleteUnidad(unidadId: string) {
-    if (!confirm("¿Eliminar esta unidad? Se perderá su historial de mantenimiento.")) return;
+    if (!await confirm({ message: "¿Eliminar esta unidad? Se perderá su historial de mantenimiento.", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/equipos/${selectedEquipoId}/unidades/${unidadId}`, { method: "DELETE" });
     const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`);
     const ud = await ur.json();

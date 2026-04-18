@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
+import { useConfirm } from "@/components/Confirm";
 
 type Proveedor = {
   id: string;
@@ -51,6 +52,7 @@ const EMPTY = {
 type SortKey = "nombre" | "giro" | "empresa";
 
 export default function ProveedoresPage() {
+  const confirm = useConfirm();
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [editing, setEditing] = useState<Proveedor | null>(null);
   const [creating, setCreating] = useState(false);
@@ -81,7 +83,7 @@ export default function ProveedoresPage() {
 
   async function generarPortalToken(p: Proveedor) {
     if (p.portalToken) {
-      const ok = window.confirm("¿Revocar el link actual y generar uno nuevo? El proveedor ya no podrá acceder con el link anterior.");
+      const ok = await confirm({ message: "¿Revocar el link actual y generar uno nuevo? El proveedor ya no podrá acceder con el link anterior.", danger: true, confirmText: "Revocar y generar" });
       if (!ok) return;
     }
     setGenerandoToken(p.id);
@@ -92,7 +94,7 @@ export default function ProveedoresPage() {
   }
 
   async function revocarPortalToken(p: Proveedor) {
-    const ok = window.confirm("¿Revocar el link del portal? El proveedor perderá acceso.");
+    const ok = await confirm({ message: "¿Revocar el link del portal? El proveedor perderá acceso.", danger: true, confirmText: "Revocar" });
     if (!ok) return;
     await fetch(`/api/proveedores/${p.id}/portal-token`, { method: "DELETE" });
     setProveedores(prev => prev.map(x => x.id === p.id ? { ...x, portalToken: null } : x));

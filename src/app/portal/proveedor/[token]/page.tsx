@@ -259,6 +259,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function toForm(): FormData {
     return {
@@ -296,7 +297,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
   }
 
   async function handleDelete() {
-    if (!confirm("¿Eliminar este equipo del registro?")) return;
+    if (!confirmingDelete) { setConfirmingDelete(true); return; }
     setDeleting(true);
     await fetch(`/api/portal/proveedor/${token}/equipos/${equipo.id}`, { method: "DELETE" });
     onDeleted(equipo.id);
@@ -401,10 +402,24 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
           className="text-xs border border-[#333] text-gray-400 hover:text-white hover:border-[#444] px-3 py-1.5 rounded-lg transition-colors">
           Editar
         </button>
-        <button onClick={handleDelete} disabled={deleting}
-          className="text-xs border border-red-800/40 text-red-500 hover:bg-red-900/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-          {deleting ? "Eliminando..." : "Eliminar"}
-        </button>
+        {confirmingDelete ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-red-400">¿Eliminar este equipo?</span>
+            <button onClick={handleDelete} disabled={deleting}
+              className="text-xs border border-red-600 text-red-400 hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+              {deleting ? "Eliminando..." : "Confirmar"}
+            </button>
+            <button onClick={() => setConfirmingDelete(false)}
+              className="text-xs text-gray-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors">
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <button onClick={handleDelete}
+            className="text-xs border border-red-800/40 text-red-500 hover:bg-red-900/10 px-3 py-1.5 rounded-lg transition-colors">
+            Eliminar
+          </button>
+        )}
       </div>
     </div>
   );

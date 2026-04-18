@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -65,6 +66,7 @@ const FORM_EMPTY = {
 };
 
 export default function CalendarioCampanasPage() {
+  const confirm = useConfirm();
   const [mes, setMes]               = useState(toMes(new Date()));
   const [ejecuciones, setEjecuciones] = useState<EjecucionCampana[]>([]);
   const [tipos, setTipos]           = useState<TipoCampana[]>([]);
@@ -177,7 +179,7 @@ export default function CalendarioCampanasPage() {
   }
 
   async function del(e: EjecucionCampana) {
-    if (!confirm(`¿Eliminar "${e.nombre}"?`)) return;
+    if (!await confirm({ message: `¿Eliminar "${e.nombre}"?`, danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/marketing/ejecuciones/${e.id}`, { method: "DELETE" });
     setEjecuciones(prev => prev.filter(x => x.id !== e.id));
   }

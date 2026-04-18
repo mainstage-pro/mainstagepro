@@ -29,6 +29,10 @@ export default function CuentasPage() {
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [saldoModal, setSaldoModal] = useState<{ id: string; nombre: string } | null>(null);
+  const [saldoMonto, setSaldoMonto] = useState("");
+  const [saldoFecha, setSaldoFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [guardandoSaldo, setGuardandoSaldo] = useState(false);
 
   async function load() {
     const r = await fetch("/api/cuentas");
@@ -67,6 +71,28 @@ export default function CuentasPage() {
   async function toggleActiva(c: CuentaBancaria) {
     await fetch(`/api/cuentas/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activa: !c.activa }) });
     await load();
+  }
+
+  async function guardarSaldoInicial() {
+    if (!saldoModal || !saldoMonto) return;
+    setGuardandoSaldo(true);
+    await fetch("/api/movimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fecha: saldoFecha,
+        tipo: "INGRESO",
+        cuentaId: saldoModal.id,
+        concepto: `Saldo inicial — ${saldoModal.nombre}`,
+        monto: saldoMonto,
+        metodoPago: "TRANSFERENCIA",
+        notas: "Registro de saldo inicial",
+      }),
+    });
+    setSaldoModal(null);
+    setSaldoMonto("");
+    setGuardandoSaldo(false);
+    toast.success("Saldo inicial registrado");
   }
 
   async function deleteCuenta(id: string) {
@@ -183,6 +209,7 @@ export default function CuentasPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3 justify-end">
+                      <button onClick={() => { setSaldoModal({ id: c.id, nombre: c.nombre }); setSaldoMonto(""); setSaldoFecha(new Date().toISOString().split("T")[0]); }} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Saldo inicial</button>
                       <button onClick={() => startEdit(c)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>
                       <button onClick={() => deleteCuenta(c.id)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
                     </div>
@@ -193,6 +220,41 @@ export default function CuentasPage() {
           </table>
         )}
       </div>
+      {/* Modal saldo inicial */}
+      {saldoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setSaldoModal(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-semibold text-base">Saldo inicial</h3>
+              <button onClick={() => setSaldoModal(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            <p className="text-gray-500 text-sm">Registra el saldo inicial de <span className="text-white">{saldoModal.nombre}</span>. Esto crea un movimiento de ingreso en tus registros financieros.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Monto *</label>
+                <input type="number" value={saldoMonto} onChange={e => setSaldoMonto(e.target.value)} placeholder="0.00"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Fecha</label>
+                <input type="date" value={saldoFecha} onChange={e => setSaldoFecha(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setSaldoModal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarSaldoInicial} disabled={guardandoSaldo || !saldoMonto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {guardandoSaldo ? "Guardando…" : "Registrar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

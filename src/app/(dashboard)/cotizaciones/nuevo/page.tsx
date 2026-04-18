@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, Suspense } from "react";
+import { useConfirm } from "@/components/Confirm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
@@ -156,6 +157,7 @@ function Select({ label, children, ...props }: { label: string } & React.SelectH
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function CotizadorForm() {
+  const confirm = useConfirm();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tratoId = searchParams.get("tratoId") ?? "";
@@ -436,7 +438,7 @@ function CotizadorForm() {
   }, [equipos]);
 
   // ── Agregar equipo ──
-  function agregarEquipo() {
+  async function agregarEquipo() {
     const eq = equipos.find(e => e.id === selEq);
     if (!eq) return;
     const cant = parseFloat(selEqCant) || 1;
@@ -450,13 +452,13 @@ function CotizadorForm() {
       const yaEnCot = lineasEquipo.filter(l => l.equipoId === eq.id).reduce((s, l) => s + l.cantidad, 0);
       const totalPedido = yaEnCot + cant;
       if (totalPedido > disp.total) {
-        const confirmar = window.confirm(
-          `⚠ Stock insuficiente para "${eq.descripcion}"\n\n` +
-          `Disponible para ${evento.fechaEvento}: ${disp.disponible} de ${disp.total} unidad(es)\n` +
-          (disp.comprometido > 0 ? `Comprometido en ${disp.eventos.length} evento(s): ${disp.eventos.map(e => e.ref).join(", ")}\n\n` : "\n") +
-          `Estás intentando agregar ${cant} unidad(es) (total en esta cotización: ${totalPedido}).\n\n` +
-          `¿Deseas agregarlo de todas formas?`
-        );
+        const confirmar = await confirm({
+          message: `⚠ Stock insuficiente para "${eq.descripcion}"\n\nDisponible para ${evento.fechaEvento}: ${disp.disponible} de ${disp.total} unidad(es)\n` +
+            (disp.comprometido > 0 ? `Comprometido en ${disp.eventos.length} evento(s): ${disp.eventos.map(e => e.ref).join(", ")}\n\n` : "\n") +
+            `Estás intentando agregar ${cant} unidad(es) (total en esta cotización: ${totalPedido}).\n\n¿Deseas agregarlo de todas formas?`,
+          danger: false,
+          confirmText: "Agregar de todas formas",
+        });
         if (!confirmar) return;
       }
     }

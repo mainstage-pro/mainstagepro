@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
 
 type Socio = {
   id: string;
@@ -33,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 const EMPTY = { nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "", pctSocio: "70", pctMainstage: "30" };
 
 export default function SociosPage() {
+  const confirm = useConfirm();
   const [socios, setSocios] = useState<Socio[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("TODOS");
@@ -62,7 +64,7 @@ export default function SociosPage() {
   };
 
   const eliminarSocio = async (s: Socio) => {
-    if (!confirm(`¿Eliminar el socio "${s.nombre}"? Esta acción eliminará también sus activos y registros asociados.`)) return;
+    if (!await confirm({ message: `¿Eliminar el socio "${s.nombre}"? Esta acción eliminará también sus activos y registros asociados.`, danger: true, confirmText: "Eliminar" })) return;
     setDeletingId(s.id);
     await fetch(`/api/socios/${s.id}`, { method: "DELETE" });
     setSocios(prev => prev.filter(x => x.id !== s.id));

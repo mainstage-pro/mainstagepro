@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 interface Template { id: string; descripcion: string; categoria: string; orden: number; activo: boolean }
 
 const CATEGORIAS = ["AUDIO", "ILUMINACION", "VIDEO", "CABLES", "HERRAMIENTAS", "TRANSPORTES", "GENERAL"];
 
 export default function TemplatesPage() {
+  const confirm = useConfirm();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -54,7 +56,7 @@ export default function TemplatesPage() {
   }
 
   async function deleteTemplate(id: string) {
-    if (!confirm("¿Eliminar este item del catálogo?")) return;
+    if (!await confirm({ message: "¿Eliminar este item del catálogo?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/bodega/templates/${id}`, { method: "DELETE" });
     await load();
   }

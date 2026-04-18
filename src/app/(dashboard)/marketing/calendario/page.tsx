@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
 
 interface Tipo {
   id: string; nombre: string; formato: string;
@@ -58,6 +60,8 @@ const FORM_EMPTY = {
 };
 
 export default function MarketingCalendarioPage() {
+  const confirm = useConfirm();
+  const toast = useToast();
   const [mes, setMes] = useState(toMes(new Date()));
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
@@ -144,7 +148,7 @@ export default function MarketingCalendarioPage() {
   }
 
   async function deletePub(id: string) {
-    if (!confirm("¿Eliminar esta publicación?")) return;
+    if (!await confirm({ message: "¿Eliminar esta publicación?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/marketing/publicaciones/${id}`, { method: "DELETE" });
     setExpandedId(null);
     setEditId(null);
@@ -152,7 +156,7 @@ export default function MarketingCalendarioPage() {
   }
 
   async function eliminarMes() {
-    if (!confirm(`¿Eliminar las ${publicaciones.length} publicaciones de ${mesLabel(mes)}?\n\nEsta acción no se puede deshacer.`)) return;
+    if (!await confirm({ message: `¿Eliminar las ${publicaciones.length} publicaciones de ${mesLabel(mes)}?\n\nEsta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar todo" })) return;
     setGenerating(true);
     await Promise.all(publicaciones.map(p =>
       fetch(`/api/marketing/publicaciones/${p.id}`, { method: "DELETE" })
@@ -163,9 +167,9 @@ export default function MarketingCalendarioPage() {
 
   async function generarMes() {
     if (publicaciones.length > 0) {
-      if (!confirm(`Ya hay ${publicaciones.length} publicaciones en ${mesLabel(mes)}.\n\n¿Generar más publicaciones adicionales de todos modos?`)) return;
+      if (!await confirm({ message: `Ya hay ${publicaciones.length} publicaciones en ${mesLabel(mes)}.\n\n¿Generar más publicaciones adicionales de todos modos?`, danger: false, confirmText: "Generar" })) return;
     } else {
-      if (!confirm(`¿Generar publicaciones automáticamente para ${mesLabel(mes)}?`)) return;
+      if (!await confirm({ message: `¿Generar publicaciones automáticamente para ${mesLabel(mes)}?`, danger: false, confirmText: "Generar" })) return;
     }
     setGenerating(true);
     const res = await fetch("/api/marketing/publicaciones/generar", {
@@ -175,7 +179,7 @@ export default function MarketingCalendarioPage() {
     const d = await res.json();
     await load();
     setGenerating(false);
-    if (d.creadas) alert(`✓ Se generaron ${d.creadas} publicaciones para ${mesLabel(mes)}`);
+    if (d.creadas) toast.success(`✓ Se generaron ${d.creadas} publicaciones para ${mesLabel(mes)}`);
   }
 
   const publicadas = publicaciones.filter(p => p.estado === "PUBLICADO").length;

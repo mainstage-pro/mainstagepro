@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useConfirm } from "@/components/Confirm";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -223,6 +224,7 @@ function UbicTag({ k }: { k: string }) {
 }
 
 export default function TiposCampanaPage() {
+  const confirm = useConfirm();
   const [tipos, setTipos] = useState<TipoCampana[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -316,13 +318,13 @@ export default function TiposCampanaPage() {
   }
 
   async function del(t: TipoCampana) {
-    if (!confirm(`¿Eliminar "${t.nombre}"?`)) return;
+    if (!await confirm({ message: `¿Eliminar "${t.nombre}"?`, danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/marketing/tipos-campana/${t.id}`, { method: "DELETE" });
     await load();
   }
 
   async function cargarSugeridos() {
-    if (!confirm(`¿Cargar las ${SUGERIDOS.length} campañas del documento? Los duplicados se omitirán.`)) return;
+    if (!await confirm({ message: `¿Cargar las ${SUGERIDOS.length} campañas del documento? Los duplicados se omitirán.`, danger: false, confirmText: "Cargar" })) return;
     setSeeding(true);
     const existing = tipos.map(t => t.nombre.toLowerCase());
     for (const s of SUGERIDOS) {

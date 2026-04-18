@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
+import { useConfirm } from "@/components/Confirm";
 
 interface Vendedor { id: string; name: string }
 
@@ -86,6 +87,7 @@ function VendedorSelect({ clienteId, vendedor, usuarios, onChange }: {
 }
 
 export default function ClientesClient({ clientes: initial, usuarios }: { clientes: Cliente[]; usuarios: Vendedor[] }) {
+  const confirm = useConfirm();
   const [view, setView] = useState<"list" | "card">("list");
   const [clientes, setClientes] = useState<Cliente[]>(initial);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -96,7 +98,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
   }
 
   async function eliminar(c: Cliente) {
-    if (!confirm(`¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`)) return;
+    if (!await confirm({ message: `¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
     setDeletingId(c.id);
     await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
     setClientes(prev => prev.filter(x => x.id !== c.id));

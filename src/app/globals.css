@@ -125,6 +125,56 @@ body {
   }
 }
 
+/* ─── Selects personalizados ─────────────────────────────────────────────── */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23B3985B' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 2rem !important;
+  cursor: pointer;
+}
+
+select option {
+  background-color: #1a1a1a;
+  color: #f0f0f0;
+}
+
+select:focus {
+  outline: none;
+}
+
+/* ─── Date / Time inputs ─────────────────────────────────────────────────── */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: brightness(0) saturate(100%) invert(70%) sepia(30%) saturate(400%) hue-rotate(10deg) brightness(95%);
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+/* ─── Number input — ocultar flechas en Firefox ──────────────────────────── */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Scrollbar minimalista */
 ::-webkit-scrollbar {
   width: 4px;

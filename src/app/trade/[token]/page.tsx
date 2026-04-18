@@ -104,6 +104,7 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
   const [nivelElegido, setNivelElegido] = useState<number | null>(null);
   const [confirmando, setConfirmando] = useState<number | null>(null);
   const [confirmado, setConfirmado] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/trade/${token}`)
@@ -145,7 +146,7 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
         setConfirmado(true);
         setConfirmando(null);
       } else {
-        alert(d.error ?? "Error al registrar selección");
+        setActionError(d.error ?? "Error al registrar selección");
       }
     } finally {
       setSeleccionando(false);
@@ -262,6 +263,9 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
                   {seleccionando ? "Registrando…" : "Confirmar"}
                 </button>
               </div>
+              {actionError && (
+                <p className="text-red-400 text-sm text-center mt-2">{actionError}</p>
+              )}
             </div>
           </div>
         )}

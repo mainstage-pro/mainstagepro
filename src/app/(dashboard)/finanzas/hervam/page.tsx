@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useConfirm } from "@/components/Confirm";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
@@ -439,6 +440,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 
 // ─── ACTIVOS TAB ─────────────────────────────────────────────────────────────
 function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () => void }) {
+  const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -472,7 +474,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
   }
 
   async function eliminar(id: string) {
-    if (!confirm("¿Eliminar este activo del inventario?")) return;
+    if (!await confirm({ message: "¿Eliminar este activo del inventario?", danger: true, confirmText: "Eliminar" })) return;
     await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
     await onRefresh();
   }

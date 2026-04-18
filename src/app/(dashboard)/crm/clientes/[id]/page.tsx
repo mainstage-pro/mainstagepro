@@ -234,7 +234,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function eliminarCliente() {
-    const ok = await confirm(`¿Eliminar a "${cliente?.nombre}"? Esta acción no se puede deshacer.`);
+    const ok = await confirm({ message: `¿Eliminar a "${cliente?.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/clientes/${id}`, { method: "DELETE" });
