@@ -529,6 +529,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   // Formulario para prospecto
   const [generandoToken, setGenerandoToken] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [tipoEventoUnlocked, setTipoEventoUnlocked] = useState(false);
   // Modo de descubrimiento: "VENDEDOR" | "CLIENTE" (inferido del formToken, editable)
   const [modoDescubrimiento, setModoDescubrimiento] = useState<"VENDEDOR" | "CLIENTE">("VENDEDOR");
   // Gate primario: muestra selector de canal dentro del gate
@@ -1066,9 +1067,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               Contrato
             </Link>
           )}
-          <button onClick={() => setEditando(!editando)}
+          <button onClick={() => { setForm(trato); setEditando(true); }}
             className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-xs transition-colors whitespace-nowrap">
-            {editando ? "Cancelar" : "Editar"}
+            Editar
           </button>
           {(() => {
             const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
@@ -1706,19 +1707,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
-                    <button key={te} onClick={() => setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] }))}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                      discForm.tipoEvento === te
-                        ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
-                        : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"
-                    }`}>
-                    {te === "MUSICAL" ? "🎵 Musical" : te === "SOCIAL" ? "🥂 Social" : te === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
-                  </button>
-                ))}
+                {discForm.tipoEvento && !tipoEventoUnlocked ? (
+                  <div className="flex items-center gap-3 px-3 py-2 bg-[#111] border border-[#1e1e1e] rounded-lg w-fit">
+                    <span className="text-sm text-white font-medium">
+                      {discForm.tipoEvento === "MUSICAL" ? "🎵 Musical" : discForm.tipoEvento === "SOCIAL" ? "🥂 Social" : discForm.tipoEvento === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
+                    </span>
+                    <button onClick={() => setTipoEventoUnlocked(true)} className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">cambiar</button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
+                      <button key={te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+                        discForm.tipoEvento === te
+                          ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
+                          : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"
+                      }`}>
+                      {te === "MUSICAL" ? "🎵 Musical" : te === "SOCIAL" ? "🥂 Social" : te === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
+                    </button>
+                  ))}
+                  </div>
+                )}
               </div>
-            </div>
 
             {/* Step 1 continuation: base fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2009,12 +2019,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   </div>
                 )}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">¿Algo adicional o específico?</label>
-                  <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
-                    rows={2} placeholder="Ej: necesitan 3 micrófonos de solapa, consola digital Allen & Heath, rigging certificado..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                </div>
               </div>
             )}
 
@@ -2044,35 +2048,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
               </div>
 
-              {/* Toggles: Family & Friends + Mainstage Trade */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="text-sm text-white font-medium">Descuento Family &amp; Friends</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Se aplicará en la cotización automáticamente</p>
-                    </div>
-                    <button
-                      onClick={() => setDiscForm(p => ({ ...p, familyAndFriends: !p.familyAndFriends }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-5" : "translate-x-0"}`} />
-                    </button>
-                  </div>
-                </div>
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <div>
-                      <p className="text-sm text-white font-medium">Aplica Mainstage Trade</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">El cliente elegirá su nivel de colaboración</p>
-                    </div>
-                    <button
-                      onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-5" : "translate-x-0"}`} />
-                    </button>
-                  </div>
-                </div>
-              </div>
               {/* Referencias y archivos del cliente */}
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
@@ -2126,30 +2101,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 })}
               </div>
 
-              {!trato.descubrimientoCompleto && (
-                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => guardarDescubrimiento(true)}
-                      disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
-                      className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 transition-colors"
-                    >
-                      {saving ? "Guardando..." : "Marcar completo"}
-                    </button>
-                    <Link
-                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
-                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
-                    >
-                      Hacer propuesta →
-                    </Link>
-                  </div>
-                </div>
-              )}
             </div>)} {/* /paso3 */}
 
 
@@ -2300,6 +2251,62 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <div><label className="text-xs text-gray-400 block mb-1">Notas adicionales</label><textarea value={briefForm.notasAdicionales} onChange={e => setBriefForm(p => ({ ...p, notasAdicionales: e.target.value }))} rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
                 <button onClick={saveBrief} disabled={savingBrief} className="w-full py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-60">{savingBrief ? "Guardando..." : briefGuardado ? "Actualizar brief" : "Guardar brief"}</button>
               </div>)}
+
+              {/* Toggles: Family & Friends + Mainstage Trade */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#1a1a1a]">
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-white font-medium">Descuento Family &amp; Friends</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Se aplicará en la cotización automáticamente</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, familyAndFriends: !p.familyAndFriends }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-white font-medium">Aplica Mainstage Trade</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">El cliente elegirá su nivel de colaboración</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* CTA Hacer propuesta — solo en el último paso */}
+              {!trato.descubrimientoCompleto && (
+                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => guardarDescubrimiento(true)}
+                      disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
+                      className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 transition-colors"
+                    >
+                      {saving ? "Guardando..." : "Marcar completo"}
+                    </button>
+                    <Link
+                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+                    >
+                      Hacer propuesta →
+                    </Link>
+                  </div>
+                </div>
+              )}
             </div>)} {/* /paso5 */}
 
             </div> {/* /p-5 space-y-5 */}
@@ -2488,15 +2495,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
 
-      {/* ── Grid: Detalles + Sidebar ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Datos del evento (editable) */}
-        <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Detalles del trato</h2>
-          </div>
-          {editando ? (
-            <div className="space-y-3">
+      {/* ── Modal: Editar trato ── */}
+      {editando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar trato</h3>
+              <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
@@ -2562,14 +2570,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setEditando(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                  Cancelar
+                </button>
                 <button onClick={guardar} disabled={saving}
                   className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
                   {saving ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
             </div>
-          ) : (
+          </div>
+        </div>
+      )}
+
+      {/* ── Grid: Detalles + Sidebar ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Datos del evento (editable) */}
+        <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Detalles del trato</h2>
+          </div>
+          {(
             <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
               <div>
                 <p className="text-gray-500 text-xs mb-1">Lugar estimado</p>
