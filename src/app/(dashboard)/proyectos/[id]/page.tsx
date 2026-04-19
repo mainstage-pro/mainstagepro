@@ -1725,6 +1725,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {item.label}
                       </button>
                     ))}
+                    {/* Cierre financiero shortcut */}
+                    <button onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
+                      disabled={loadingCierre}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors disabled:opacity-40">
+                      <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${proyecto.cierreFinanciero ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
+                        {proyecto.cierreFinanciero ? "✓" : "→"}
+                      </span>
+                      {loadingCierre ? "Calculando cierre…" : proyecto.cierreFinanciero ? "Cierre financiero registrado — ver detalle" : "Generar cierre financiero (real vs estimado)"}
+                    </button>
                     {/* Eval interna shortcut */}
                     <button onClick={() => { setTab("extras"); setExtrasTab("evaluacion"); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">

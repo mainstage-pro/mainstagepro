@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logActividad } from "@/lib/actividad";
 
 // Public endpoint — no session required (accessed by client via shared URL)
 
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const cot = await prisma.cotizacion.findUnique({
     where: { tradeToken: token },
-    select: { id: true, mainstageTradeData: true },
+    select: { id: true, numeroCotizacion: true, nombreEvento: true, mainstageTradeData: true, creadaPorId: true },
   });
 
   if (!cot) return NextResponse.json({ error: "Propuesta no encontrada" }, { status: 404 });
@@ -90,6 +91,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     where: { id: cot.id },
     data: { mainstageTradeData: JSON.stringify(updated) },
   });
+
+  // Log para que el equipo de ventas vea la notificación en el historial
+  const nivelLabels: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+  await logActividad(
+    cot.creadaPorId ?? "sistema",
+    "TRADE",
+    "cotizacion",
+    cot.id,
+    `Cliente eligió Mainstage Trade Nivel ${nivel} (${nivelLabels[nivel]} · ${pctMap[nivel]}%) en ${cot.nombreEvento ?? cot.numeroCotizacion}`
+  ).catch(() => { /* no bloquear si falla el log */ });
 
   return NextResponse.json({ ok: true, nivel, pct: pctMap[nivel] });
 }

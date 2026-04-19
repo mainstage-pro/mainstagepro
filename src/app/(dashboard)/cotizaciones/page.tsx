@@ -18,6 +18,7 @@ type Cotizacion = {
   nombreEvento: string | null;
   tipoEvento: string | null;
   createdAt: string;
+  mainstageTradeData: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string };
   trato: { tipoEvento: string };
 };
@@ -104,9 +105,24 @@ export default function CotizacionesPage() {
                     {formatCurrency(cot.granTotal)}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_COTIZACION_COLORS[cot.estado] ?? "bg-gray-800 text-gray-400"}`}>
-                      {ESTADO_COTIZACION_LABELS[cot.estado] ?? cot.estado}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium w-fit ${ESTADO_COTIZACION_COLORS[cot.estado] ?? "bg-gray-800 text-gray-400"}`}>
+                        {ESTADO_COTIZACION_LABELS[cot.estado] ?? cot.estado}
+                      </span>
+                      {(() => {
+                        if (!cot.mainstageTradeData) return null;
+                        try {
+                          const t = JSON.parse(cot.mainstageTradeData);
+                          if (!t.nivelSeleccionado) return null;
+                          const labels: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+                          return (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium w-fit bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30">
+                              ✦ Trade Nv.{t.nivelSeleccionado} {labels[t.nivelSeleccionado]} · {t.pct}%
+                            </span>
+                          );
+                        } catch { return null; }
+                      })()}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {new Date(cot.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}

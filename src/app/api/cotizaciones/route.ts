@@ -8,8 +8,10 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const cotizaciones = await prisma.cotizacion.findMany({
-    include: {
-      cliente: { select: { nombre: true, empresa: true, tipoCliente: true } },
+    select: {
+      id: true, numeroCotizacion: true, estado: true, opcionLetra: true, grupoId: true,
+      granTotal: true, nombreEvento: true, tipoEvento: true, createdAt: true, mainstageTradeData: true,
+      cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true } },
       trato: { select: { tipoEvento: true } },
     },
     orderBy: { createdAt: "desc" },
