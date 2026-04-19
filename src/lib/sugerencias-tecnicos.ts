@@ -61,7 +61,7 @@ export function getSugerenciasTecnicos(
     {
       categoria: "Coordinación",
       items: [{
-        rolKeyword: "coordinador",
+        rolKeyword: "coord",
         cantidad: 1,
         esOpcional: false,
         motivo: "Coordinación técnica del evento",
