@@ -16,8 +16,11 @@ export async function GET(request: NextRequest) {
 
   const tratos = await prisma.trato.findMany({
     where,
-    include: {
-      cliente: { select: { id: true, nombre: true, empresa: true } },
+    select: {
+      id: true, etapa: true, tipoEvento: true, nombreEvento: true,
+      fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
+      origenLead: true, fechaProximaAccion: true, createdAt: true,
+      cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
