@@ -2426,13 +2426,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Wizard footer navigation */}
             <div className="px-5 py-4 border-t border-[#1a1a1a] flex items-center justify-between">
-              <button onClick={() => setPasoActivo(p => Math.max(1, p - 1))} disabled={pasoActivo === 1}
+              <button onClick={() => { setPasoActivo(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }} disabled={pasoActivo === 1}
                 className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-30 px-3 py-2 rounded-lg border border-[#222] hover:border-[#444]">
                 ← Anterior
               </button>
               <span className="text-[10px] text-gray-600">{pasoActivo} / {PASOS_DISCOVERY.length}</span>
               {pasoActivo < PASOS_DISCOVERY.length ? (
-                <button onClick={() => setPasoActivo(p => p + 1)} className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
+                <button onClick={() => { setPasoActivo(p => p + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
                   Siguiente →
                 </button>
               ) : (
