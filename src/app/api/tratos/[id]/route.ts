@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const allowed = [
     "etapa", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
-    "proximaAccion", "fechaProximaAccion", "motivoPerdida", "origenLead", "tipoLead",
+    "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId",
     // Scouting
     "scoutingData",
@@ -76,11 +76,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  // Auto-set fechaCierre cuando etapa cambia a VENTA_CERRADA
-  if (body.etapa === "VENTA_CERRADA" && !data.fechaCierre) {
+  // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia
+  if (body.etapa) {
     const current = await prisma.trato.findUnique({ where: { id }, select: { etapa: true, fechaCierre: true } });
-    if (current && current.etapa !== "VENTA_CERRADA" && !current.fechaCierre) {
-      data.fechaCierre = new Date();
+    if (current && current.etapa !== body.etapa) {
+      data.etapaCambiadaEn = new Date();
+      if (body.etapa === "VENTA_CERRADA" && !current.fechaCierre) {
+        data.fechaCierre = new Date();
+      }
     }
   }
 

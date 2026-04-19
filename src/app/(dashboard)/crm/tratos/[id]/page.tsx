@@ -38,6 +38,7 @@ interface Trato {
   proximaAccion: string | null;
   fechaProximaAccion: string | null;
   motivoPerdida: string | null;
+  etapaCambiadaEn: string | null;
   createdAt: string;
   formToken: string | null;
   formEstado: string;
@@ -521,6 +522,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false);
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState<Partial<Trato>>({});
+  // Modal razón de pérdida
+  const [modalPerdida, setModalPerdida] = useState(false);
+  const [razonPerdida, setRazonPerdida] = useState("");
+  const [notasPerdida, setNotasPerdida] = useState("");
 
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
@@ -594,6 +599,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     voltajeDisponible: "", amperajeTotalDisponible: "", fases: "", ubicacionTablero: "",
     restriccionDecibeles: "", restriccionHorarioAcceso: "", restriccionInstalacion: "",
     estadoGeneral: "", notasScouting: "",
+    // Renta logistics
+    rentaPiso: "", rentaHayElevador: "", rentaHorarioEntrega: "", rentaHorarioRecoleccion: "",
+    rentaZonaCarga: "", rentaAccesoVehicular: "", rentaNotasEntrega: "",
   });
   const [savingScouting, setSavingScouting] = useState(false);
   const [scoutingTab, setScoutingTab] = useState<"form" | "resumen">("form");
@@ -643,6 +651,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     horaTerminoMontaje: "",
     contactoVenueNombre: "",
     contactoVenueTelefono: "",
+    rentaNotas: "",
   });
 
   // Track whether initial load is done to avoid auto-saving on first render
@@ -653,6 +662,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     if (!discLoaded.current) { discLoaded.current = true; return; }
     autoSaveDisc(discForm);
   }, [discForm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (discForm.tipoServicio === "RENTA") setBriefAplica(false);
+  }, [discForm.tipoServicio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!scoutLoaded.current) { scoutLoaded.current = true; return; }
@@ -779,6 +792,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             horaTerminoMontaje:     t.horaTerminoMontaje ?? "",
             contactoVenueNombre:    t.contactoVenueNombre ?? "",
             contactoVenueTelefono:  t.contactoVenueTelefono ?? "",
+            rentaNotas:             rentaData.notas ?? "",
           }));
         }
         setLoading(false);
@@ -862,6 +876,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             horaDevolucion:     discForm.rentaHoraDevolucion || null,
             descripcionEquipos: discForm.rentaDescripcionEquipos || null,
             tecnicoPropio:      discForm.rentaTecnicoPropio || null,
+            notas:              discForm.rentaNotas || null,
           })
         : (discForm.ideasReferencias || null),
     };
@@ -918,6 +933,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               horaDevolucion: form.rentaHoraDevolucion || null,
               descripcionEquipos: form.rentaDescripcionEquipos || null,
               tecnicoPropio: form.rentaTecnicoPropio || null,
+              notas: form.rentaNotas || null,
             })
           : (form.ideasReferencias || null),
       });
@@ -950,10 +966,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function cambiarEtapa(etapa: string) {
+    if (etapa === "VENTA_PERDIDA") { setModalPerdida(true); return; }
     setSaving(true);
     const d = await patch({ etapa });
-    setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa } : prev);
+    setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
     if (etapa === "VENTA_CERRADA") celebrate("venta");
+    setSaving(false);
+  }
+
+  async function confirmarPerdida() {
+    setSaving(true);
+    const motivoPerdida = [razonPerdida, notasPerdida].filter(Boolean).join(" — ");
+    const d = await patch({ etapa: "VENTA_PERDIDA", motivoPerdida: motivoPerdida || null });
+    setTrato(prev => prev ? { ...prev, etapa: "VENTA_PERDIDA", motivoPerdida: d.trato.motivoPerdida, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+    setModalPerdida(false);
+    setRazonPerdida("");
+    setNotasPerdida("");
     setSaving(false);
   }
 
@@ -1038,6 +1066,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ETAPA_COLORS[trato.etapa]}`}>
               {ETAPA_LABELS[trato.etapa]}
             </span>
+            {trato.etapaCambiadaEn && (() => {
+              const dias = Math.floor((Date.now() - new Date(trato.etapaCambiadaEn).getTime()) / 86400000);
+              if (dias === 0) return null;
+              const color = dias > 14 ? "text-red-400" : dias > 7 ? "text-yellow-400" : "text-gray-500";
+              return <span className={`text-[10px] ${color}`}>hace {dias}d en etapa</span>;
+            })()}
             {trato.canalAtencion && canalInfo && (
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${canalInfo.badge}`}>
                 {canalInfo.icon} {canalInfo.label}
@@ -1193,6 +1227,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </button>
           ))}
         </div>
+        {trato.etapa === "VENTA_PERDIDA" && trato.motivoPerdida && (
+          <p className="mt-3 text-xs text-red-400/80 border-t border-[#1a1a1a] pt-2">
+            Motivo: {trato.motivoPerdida}
+          </p>
+        )}
       </div>
 
       {/* ── Siguiente acción recomendada ── */}
@@ -1732,10 +1771,27 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* Step 1 continuation: base fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
+                <select value={discForm.tipoServicio} onChange={e => setDiscForm(p => ({ ...p, tipoServicio: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Seleccionar —</option>
+                  <option value="POR_DESCUBRIR">Por descubrir</option>
+                  <option value="RENTA">Renta de equipo</option>
+                  <option value="PRODUCCION_TECNICA">Producción técnica</option>
+                  <option value="DIRECCION_TECNICA">Dirección técnica</option>
+                </select>
+              </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>
                 <input value={discForm.nombreEvento} onChange={e => setDiscForm(p => ({ ...p, nombreEvento: e.target.value }))}
                   placeholder="Ej: Boda García-López, Concierto Verano..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Presupuesto estimado del cliente</label>
+                <input type="number" value={discForm.presupuestoEstimado} onChange={e => setDiscForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
+                  placeholder="0"
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div>
@@ -1766,17 +1822,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 ) : (
                   <VenuePicker value={discForm.lugarEstimado} onChange={(v) => setDiscForm(p => ({ ...p, lugarEstimado: v }))} placeholder="Ej: CDMX · Salón Versalles" />
                 )}
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
-                <select value={discForm.tipoServicio} onChange={e => setDiscForm(p => ({ ...p, tipoServicio: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Seleccionar —</option>
-                  <option value="POR_DESCUBRIR">Por descubrir</option>
-                  <option value="RENTA">Renta de equipo</option>
-                  <option value="PRODUCCION_TECNICA">Producción técnica</option>
-                  <option value="DIRECCION_TECNICA">Dirección técnica</option>
-                </select>
               </div>
 
               {/* Horarios del evento */}
@@ -1984,6 +2029,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     ))}
                   </div>
                 </div>
+
+                {/* Notas de la renta */}
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Notas adicionales de la renta</label>
+                  <textarea value={discForm.rentaNotas}
+                    onChange={e => setDiscForm(p => ({ ...p, rentaNotas: e.target.value }))}
+                    rows={3} placeholder="Cualquier información adicional sobre la renta, condiciones especiales, preferencias del cliente..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -2104,76 +2158,135 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>)} {/* /paso3 */}
 
 
-            {/* PASO 4: Scouting del venue */}
+            {/* PASO 4: Scouting del venue / Logística de entrega */}
             {pasoActivo === 4 && (<div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-300">¿Aplica scouting?</p>
-                <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
-                <button onClick={() => setScoutingAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
-              </div>
-              {scoutingAplica === false && <p className="text-gray-600 text-xs italic">No se requiere scouting presencial para este proyecto.</p>}
-              {(scoutingAplica === true || trato.scoutingData) && (<div className="space-y-5">
-                <div className="flex gap-1">
-                  {(["form", "resumen"] as const).map(t => (
-                    <button key={t} onClick={() => setScoutingTab(t)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                      {t === "form" ? "Editar ficha" : "Ver resumen"}
-                    </button>
-                  ))}
+              {discForm.tipoServicio === "RENTA" ? (
+                /* RENTA: logistics / delivery form */
+                <div className="space-y-5">
+                  <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Logística de entrega y recolección</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Piso del lugar</label>
+                      <input value={scoutingForm.rentaPiso} onChange={e => setScoutingForm(p => ({ ...p, rentaPiso: e.target.value }))}
+                        placeholder="Ej: PB, 3er piso, sótano..."
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-2">¿Hay elevador de carga?</label>
+                      <div className="flex gap-2">
+                        {["Sí", "No", "Solo escaleras"].map(op => (
+                          <button key={op} onClick={() => setScoutingForm(p => ({ ...p, rentaHayElevador: op }))}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${scoutingForm.rentaHayElevador === op ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"}`}>
+                            {op}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Horario de acceso para entrega</label>
+                      <input value={scoutingForm.rentaHorarioEntrega} onChange={e => setScoutingForm(p => ({ ...p, rentaHorarioEntrega: e.target.value }))}
+                        placeholder="Ej: 10:00 – 14:00"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Horario de acceso para recolección</label>
+                      <input value={scoutingForm.rentaHorarioRecoleccion} onChange={e => setScoutingForm(p => ({ ...p, rentaHorarioRecoleccion: e.target.value }))}
+                        placeholder="Ej: 22:00 – 00:00"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Zona de carga/descarga</label>
+                      <input value={scoutingForm.rentaZonaCarga} onChange={e => setScoutingForm(p => ({ ...p, rentaZonaCarga: e.target.value }))}
+                        placeholder="Ej: estacionamiento, calle lateral..."
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Acceso vehicular</label>
+                      <input value={scoutingForm.rentaAccesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, rentaAccesoVehicular: e.target.value }))}
+                        placeholder="Ej: camioneta, máximo 3.5t..."
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-gray-400 block mb-1">Notas de entrega / condiciones especiales</label>
+                      <textarea value={scoutingForm.rentaNotasEntrega} onChange={e => setScoutingForm(p => ({ ...p, rentaNotasEntrega: e.target.value }))}
+                        rows={3} placeholder="Restricciones de horario, personal requerido, accesos especiales..."
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                    </div>
+                  </div>
                 </div>
-                {scoutingTab === "resumen" && trato.scoutingData && (() => {
-                  const s = scoutingForm;
-                  const row = (label: string, val: string) => val ? <div key={label} className="flex gap-2 text-sm"><span className="text-gray-500 min-w-[150px]">{label}</span><span className="text-white">{val}</span></div> : null;
-                  return <div className="space-y-4">
-                    {s.nombreVenue && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Venue</p><div className="space-y-1 pl-2">{row("Nombre", s.nombreVenue)}{row("Dirección", s.direccion)}{row("Contacto", s.contactoVenue)}</div></div>}
-                    {(s.largo || s.ancho) && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Espacio</p><div className="space-y-1 pl-2">{row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}{row("Altura", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}{row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}</div></div>}
-                    {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
-                  </div>;
-                })()}
-                {scoutingTab === "form" && <div className="space-y-5">
-                  <div>
-                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Venue / Recinto</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Contacto en el venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del contacto" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    </div>
+              ) : (
+                /* Non-RENTA: venue scouting */
+                <>
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm text-gray-300">¿Aplica scouting?</p>
+                    <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
+                    <button onClick={() => setScoutingAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
                   </div>
-                  <div>
-                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Dimensiones del espacio</p>
-                    <div className="grid grid-cols-4 gap-3">
-                      <div><label className="text-[10px] text-gray-500 mb-1 block">Largo (m)</label><input type="number" value={scoutingForm.largo} onChange={e => setScoutingForm(p => ({ ...p, largo: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                      <div><label className="text-[10px] text-gray-500 mb-1 block">Ancho (m)</label><input type="number" value={scoutingForm.ancho} onChange={e => setScoutingForm(p => ({ ...p, ancho: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                      <div><label className="text-[10px] text-gray-500 mb-1 block">Altura máx.</label><input type="number" value={scoutingForm.alturaMaxima} onChange={e => setScoutingForm(p => ({ ...p, alturaMaxima: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                      <div><label className="text-[10px] text-gray-500 mb-1 block">Capacidad</label><input type="number" value={scoutingForm.capacidadPersonas} onChange={e => setScoutingForm(p => ({ ...p, capacidadPersonas: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  {scoutingAplica === false && <p className="text-gray-600 text-xs italic">No se requiere scouting presencial para este proyecto.</p>}
+                  {(scoutingAplica === true || trato.scoutingData) && (<div className="space-y-5">
+                    <div className="flex gap-1">
+                      {(["form", "resumen"] as const).map(t => (
+                        <button key={t} onClick={() => setScoutingTab(t)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                          {t === "form" ? "Editar ficha" : "Ver resumen"}
+                        </button>
+                      ))}
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Eléctrico y accesos</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input type="number" value={scoutingForm.voltajeDisponible} onChange={e => setScoutingForm(p => ({ ...p, voltajeDisponible: e.target.value }))} placeholder="Voltaje (V)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input type="number" value={scoutingForm.amperajeTotalDisponible} onChange={e => setScoutingForm(p => ({ ...p, amperajeTotalDisponible: e.target.value }))} placeholder="Amperaje total (A)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <select value={scoutingForm.fases} onChange={e => setScoutingForm(p => ({ ...p, fases: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                        <option value="">Fases...</option>
-                        <option value="Monofásico 127V">Monofásico 127V</option>
-                        <option value="Bifásico 220V">Bifásico 220V</option>
-                        <option value="Trifásico 220V">Trifásico 220V</option>
-                        <option value="Trifásico 440V">Trifásico 440V</option>
-                      </select>
-                      <input value={scoutingForm.accesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, accesoVehicular: e.target.value }))} placeholder="Acceso vehicular" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Restricciones</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input value={scoutingForm.restriccionDecibeles} onChange={e => setScoutingForm(p => ({ ...p, restriccionDecibeles: e.target.value }))} placeholder="Límite de decibeles" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.restriccionHorarioAcceso} onChange={e => setScoutingForm(p => ({ ...p, restriccionHorarioAcceso: e.target.value }))} placeholder="Horario de acceso/montaje" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.restriccionInstalacion} onChange={e => setScoutingForm(p => ({ ...p, restriccionInstalacion: e.target.value }))} placeholder="Restricciones de instalación" className="sm:col-span-2 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                  </div>
-                  <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                </div>}
-              </div>)}
+                    {scoutingTab === "resumen" && trato.scoutingData && (() => {
+                      const s = scoutingForm;
+                      const row = (label: string, val: string) => val ? <div key={label} className="flex gap-2 text-sm"><span className="text-gray-500 min-w-[150px]">{label}</span><span className="text-white">{val}</span></div> : null;
+                      return <div className="space-y-4">
+                        {s.nombreVenue && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Venue</p><div className="space-y-1 pl-2">{row("Nombre", s.nombreVenue)}{row("Dirección", s.direccion)}{row("Contacto", s.contactoVenue)}</div></div>}
+                        {(s.largo || s.ancho) && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Espacio</p><div className="space-y-1 pl-2">{row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}{row("Altura", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}{row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}</div></div>}
+                        {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
+                      </div>;
+                    })()}
+                    {scoutingTab === "form" && <div className="space-y-5">
+                      <div>
+                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Venue / Recinto</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Contacto en el venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del contacto" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Dimensiones del espacio</p>
+                        <div className="grid grid-cols-4 gap-3">
+                          <div><label className="text-[10px] text-gray-500 mb-1 block">Largo (m)</label><input type="number" value={scoutingForm.largo} onChange={e => setScoutingForm(p => ({ ...p, largo: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                          <div><label className="text-[10px] text-gray-500 mb-1 block">Ancho (m)</label><input type="number" value={scoutingForm.ancho} onChange={e => setScoutingForm(p => ({ ...p, ancho: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                          <div><label className="text-[10px] text-gray-500 mb-1 block">Altura máx.</label><input type="number" value={scoutingForm.alturaMaxima} onChange={e => setScoutingForm(p => ({ ...p, alturaMaxima: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                          <div><label className="text-[10px] text-gray-500 mb-1 block">Capacidad</label><input type="number" value={scoutingForm.capacidadPersonas} onChange={e => setScoutingForm(p => ({ ...p, capacidadPersonas: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Eléctrico y accesos</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input type="number" value={scoutingForm.voltajeDisponible} onChange={e => setScoutingForm(p => ({ ...p, voltajeDisponible: e.target.value }))} placeholder="Voltaje (V)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input type="number" value={scoutingForm.amperajeTotalDisponible} onChange={e => setScoutingForm(p => ({ ...p, amperajeTotalDisponible: e.target.value }))} placeholder="Amperaje total (A)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <select value={scoutingForm.fases} onChange={e => setScoutingForm(p => ({ ...p, fases: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                            <option value="">Fases...</option>
+                            <option value="Monofásico 127V">Monofásico 127V</option>
+                            <option value="Bifásico 220V">Bifásico 220V</option>
+                            <option value="Trifásico 220V">Trifásico 220V</option>
+                            <option value="Trifásico 440V">Trifásico 440V</option>
+                          </select>
+                          <input value={scoutingForm.accesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, accesoVehicular: e.target.value }))} placeholder="Acceso vehicular" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Restricciones</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input value={scoutingForm.restriccionDecibeles} onChange={e => setScoutingForm(p => ({ ...p, restriccionDecibeles: e.target.value }))} placeholder="Límite de decibeles" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input value={scoutingForm.restriccionHorarioAcceso} onChange={e => setScoutingForm(p => ({ ...p, restriccionHorarioAcceso: e.target.value }))} placeholder="Horario de acceso/montaje" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                          <input value={scoutingForm.restriccionInstalacion} onChange={e => setScoutingForm(p => ({ ...p, restriccionInstalacion: e.target.value }))} placeholder="Restricciones de instalación" className="sm:col-span-2 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      </div>
+                      <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                    </div>}
+                  </div>)}
+                </>
+              )}
 
               {/* Fotos del venue — siempre visible */}
               <div className="border-t border-[#1a1a1a] pt-4">
@@ -2494,6 +2607,48 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+
+      {/* ── Modal: Razón de pérdida ── */}
+      {modalPerdida && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setModalPerdida(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Marcar como perdido</h3>
+              <button onClick={() => setModalPerdida(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Razón principal</label>
+                <select value={razonPerdida} onChange={e => setRazonPerdida(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Seleccionar —</option>
+                  <option value="Precio">Precio fuera de presupuesto</option>
+                  <option value="Fechas">Fechas no coinciden</option>
+                  <option value="Eligió a otro proveedor">Eligió a otro proveedor</option>
+                  <option value="No respondió">No respondió / se enfrió</option>
+                  <option value="Evento cancelado">Evento cancelado</option>
+                  <option value="Fuera de cobertura">Fuera de cobertura geográfica</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notas adicionales (opcional)</label>
+                <textarea value={notasPerdida} onChange={e => setNotasPerdida(e.target.value)}
+                  rows={2} placeholder="Contexto o detalles que ayuden a entender la pérdida..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setModalPerdida(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">Cancelar</button>
+                <button onClick={confirmarPerdida} disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-red-900/60 border border-red-700/40 text-red-300 hover:bg-red-900 text-sm font-medium transition-colors disabled:opacity-50">
+                  {saving ? "Guardando..." : "Confirmar pérdida"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal: Editar trato ── */}
       {editando && (

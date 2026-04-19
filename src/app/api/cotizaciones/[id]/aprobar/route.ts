@@ -139,6 +139,55 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         duracionMontajeHrs: cot.trato.duracionMontajeHrs ?? null,
         encargadoLugar: cot.trato.contactoVenueNombre ?? null,
         encargadoLugarContacto: cot.trato.contactoVenueTelefono ?? null,
+        detallesEspecificos: (() => {
+          const partes: string[] = [];
+          if (cot.trato.notas) partes.push(cot.trato.notas);
+          const tipoSrv = cot.tipoServicio || cot.trato.tipoServicio;
+          if (tipoSrv !== "RENTA") {
+            // Categorías de equipo seleccionadas
+            try {
+              const cats = cot.trato.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
+              if (cats.length > 0) partes.push(`Categorías: ${cats.join(", ")}`);
+            } catch { /* ignore */ }
+            // Referencias / ideas
+            if (cot.trato.ideasReferencias) partes.push(`Referencias: ${cot.trato.ideasReferencias}`);
+            // Ventana de desmontaje
+            if (cot.trato.ventanaMontajeFin) partes.push(`Límite montaje: ${cot.trato.ventanaMontajeFin}`);
+            if (cot.trato.horaTerminoMontaje) partes.push(`Salida desmontaje: ${cot.trato.horaTerminoMontaje}`);
+            // Venue scouting
+            try {
+              const s = cot.trato.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
+              const venue: string[] = [];
+              if (s.nombreVenue) venue.push(`Venue: ${s.nombreVenue}`);
+              if (s.direccion) venue.push(`Dir: ${s.direccion}`);
+              if (s.largo && s.ancho) venue.push(`Dimensiones: ${s.largo}m × ${s.ancho}m${s.alturaMaxima ? ` × ${s.alturaMaxima}m alt` : ""}`);
+              if (s.voltajeDisponible || s.amperajeTotalDisponible) venue.push(`Eléctrico: ${[s.fases, s.voltajeDisponible && `${s.voltajeDisponible}V`, s.amperajeTotalDisponible && `${s.amperajeTotalDisponible}A`].filter(Boolean).join(", ")}`);
+              if (s.restriccionDecibeles) venue.push(`Límite dB: ${s.restriccionDecibeles}`);
+              if (s.restriccionHorarioAcceso) venue.push(`Horario acceso: ${s.restriccionHorarioAcceso}`);
+              if (s.restriccionInstalacion) venue.push(`Restricciones: ${s.restriccionInstalacion}`);
+              if (s.accesoVehicular) venue.push(`Acceso vehicular: ${s.accesoVehicular}`);
+              if (s.notasScouting) venue.push(`Notas venue: ${s.notasScouting}`);
+              if (venue.length > 0) partes.push(venue.join(" | "));
+            } catch { /* ignore */ }
+          }
+          return partes.length > 0 ? partes.join("\n") : null;
+        })(),
+        logisticaRenta: (() => {
+          if ((cot.tipoServicio || cot.trato.tipoServicio) !== "RENTA") return null;
+          try {
+            const s = cot.trato.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
+            if (!s.rentaPiso && !s.rentaHorarioEntrega && !s.rentaHorarioRecoleccion) return null;
+            return JSON.stringify({
+              piso: s.rentaPiso || null,
+              hayElevador: s.rentaHayElevador || null,
+              horarioEntrega: s.rentaHorarioEntrega || null,
+              horarioRecoleccion: s.rentaHorarioRecoleccion || null,
+              zonaCarga: s.rentaZonaCarga || null,
+              accesoVehicular: s.rentaAccesoVehicular || null,
+              notas: s.rentaNotasEntrega || null,
+            });
+          } catch { return null; }
+        })(),
       },
     });
 
