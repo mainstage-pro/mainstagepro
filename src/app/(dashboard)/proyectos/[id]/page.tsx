@@ -245,6 +245,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
   const [extrasTab, setExtrasTab] = useState<"rider" | "docs" | "checklist" | "protocolo" | "bitacora" | "evaluacion">("rider");
+  const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
@@ -377,15 +378,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  async function guardarResponsables() {
+  async function guardarResponsables(data?: typeof responsables) {
+    const toSave = data ?? responsables;
     setSavingResp(true);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ responsables: JSON.stringify(responsables) }),
+      body: JSON.stringify({ responsables: JSON.stringify(toSave) }),
     });
     setSavingResp(false);
-    toast.success("Responsables guardados");
   }
 
   // Catálogos
@@ -1533,19 +1534,44 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* ── Estado pipeline ── */}
+      {/* ── Estado pipeline (stepper lineal) ── */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-4">
         <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Estado del proyecto</p>
-        <div className="flex gap-2">
-          {ESTADOS.map(e => (
-            <button key={e} disabled={saving || e === proyecto.estado} onClick={() => cambiarEstado(e)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                e === proyecto.estado ? ESTADO_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
-              }`}>
-              {ESTADO_LABELS[e] ?? e.replace("_", " ")}
-            </button>
-          ))}
-        </div>
+        {proyecto.estado === "CANCELADO" ? (
+          <div className="flex items-center gap-3">
+            <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-900/50 text-red-300">Cancelado</span>
+            <button onClick={() => cambiarEstado("PLANEACION")} disabled={saving} className="text-xs text-gray-500 hover:text-white transition-colors">Reactivar</button>
+          </div>
+        ) : (() => {
+          const STEPPER = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "COMPLETADO"] as const;
+          const STEPPER_LABELS: Record<string, string> = { PLANEACION: "Preparación", CONFIRMADO: "Confirmado", EN_CURSO: "En evento", COMPLETADO: "Finalizado" };
+          const idx = STEPPER.indexOf(proyecto.estado as typeof STEPPER[number]);
+          return (
+            <div className="flex items-center gap-1">
+              {STEPPER.map((e, i) => (
+                <div key={e} className="flex items-center flex-1 min-w-0">
+                  <button
+                    onClick={() => !saving && e !== proyecto.estado && cambiarEstado(e)}
+                    disabled={saving || e === proyecto.estado}
+                    title={ESTADO_LABELS[e]}
+                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-medium text-center transition-colors truncate ${
+                      e === proyecto.estado ? ESTADO_COLORS[e] :
+                      i < idx ? "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#2a2a2a]" :
+                      "bg-[#0d0d0d] text-gray-600 hover:text-gray-400 border border-[#1a1a1a]"
+                    }`}>
+                    {i < idx ? "✓ " : ""}{STEPPER_LABELS[e]}
+                  </button>
+                  {i < STEPPER.length - 1 && <span className="text-gray-700 text-xs mx-0.5 shrink-0">›</span>}
+                </div>
+              ))}
+              <button onClick={() => cambiarEstado("CANCELADO")} disabled={saving}
+                className="ml-2 text-xs text-red-800 hover:text-red-500 px-2 py-1.5 border border-red-900/30 hover:border-red-700/50 rounded-lg transition-colors shrink-0"
+                title="Cancelar proyecto">
+                ✕
+              </button>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── KPIs rápidos ── */}
@@ -1766,6 +1792,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
+            {/* ── Nota rápida (bitácora) ── */}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Nota rápida</p>
+              <div className="flex gap-2">
+                <input
+                  value={notaBitacora}
+                  onChange={e => setNotaBitacora(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); agregarNota(); } }}
+                  placeholder="Escribe una nota de seguimiento... (Enter para guardar)"
+                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-gray-600"
+                />
+                <button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors shrink-0">
+                  {addingNota ? "..." : "Guardar"}
+                </button>
+              </div>
+              {proyecto.bitacora.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {proyecto.bitacora.slice(0, 3).map(b => (
+                    <div key={b.id} className="flex items-start gap-2 text-xs">
+                      <span className="text-gray-600 shrink-0">{new Date(b.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
+                      <span className="text-gray-400 truncate">{b.contenido}</span>
+                    </div>
+                  ))}
+                  {proyecto.bitacora.length > 3 && (
+                    <button onClick={() => { setTab("extras"); setExtrasTab("bitacora"); }} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                      Ver {proyecto.bitacora.length - 3} entradas más →
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Accesos rápidos */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
@@ -1826,16 +1885,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
+          {/* ── Sub-tabs Operación ── */}
+          <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1">
+            {([
+              { key: "personal", label: "Equipo & Personal" },
+              { key: "logistica", label: "Logística" },
+              { key: "cronograma", label: "Cronograma" },
+            ] as const).map(st => (
+              <button key={st.key} onClick={() => setOperTab(st.key)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  operTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
+                }`}>
+                {st.label}
+              </button>
+            ))}
+          </div>
+
           {/* ── Responsables por área ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Responsables por área</p>
+          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Responsables por área</p>
+              {savingResp && <span className="text-xs text-gray-600">Guardando...</span>}
+            </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               {(["produccion", "logistica", "finanzas", "marketing"] as const).map(area => (
                 <div key={area}>
                   <label className="text-gray-500 text-xs mb-1 block capitalize">{area}</label>
                   <select
                     value={responsables[area]}
-                    onChange={e => setResponsables(prev => ({ ...prev, [area]: e.target.value }))}
+                    onChange={e => {
+                      const next = { ...responsables, [area]: e.target.value };
+                      setResponsables(next);
+                      guardarResponsables(next);
+                    }}
                     className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   >
                     <option value="">— Sin asignar —</option>
@@ -1846,17 +1928,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               ))}
             </div>
-            <button
-              onClick={guardarResponsables}
-              disabled={savingResp}
-              className="mt-4 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors"
-            >
-              {savingResp ? "Guardando..." : "Guardar responsables"}
-            </button>
           </div>
 
           {/* ── Chofer ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
               {proyecto.choferNombre && (
@@ -1918,7 +1993,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
-          {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
+          {operTab === "logistica" && (proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
             // Leer datos de renta: primero de logisticaRenta del proyecto, luego del trato
             let rentaData: Record<string, string> = {};
             try {
@@ -2002,7 +2077,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Recolección de equipo (solo RENTA) ── */}
-          {proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
+          {operTab === "logistica" && proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
             let rentaData: Record<string, string> = {};
             try {
               const src = proyecto.logisticaRenta || proyecto.trato?.ideasReferencias;
@@ -2082,7 +2157,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Personal del evento (gestión completa) ── */}
-          <div className="space-y-3">
+          <div className={`space-y-3${operTab !== "personal" ? " hidden" : ""}`}>
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -2229,10 +2304,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
                     <div className="px-4 py-3 bg-[#1a1a1a] flex items-center justify-between">
                       <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{labels[tipo]} ({grupo.length})</p>
-                      {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-green-500">{grupo.filter(p => p.confirmado).length} conf.</span>
+                        {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                      </div>
                     </div>
                     {grupo.map(p => (
-                      <div key={p.id} className="p-4 border-b border-[#0d0d0d] last:border-0">
+                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700" : "border-l-yellow-800/60"}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
                             {!p.tecnico ? (
@@ -2343,7 +2421,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
-          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {operTab === "logistica" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
@@ -2505,7 +2583,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
-          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {operTab === "cronograma" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
@@ -2585,7 +2663,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Documentos operativos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "logistica" ? " hidden" : ""}`}>
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
             {(() => {
               const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
@@ -2640,7 +2718,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Contactos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "cronograma" ? " hidden" : ""}`}>
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
             <div className="grid grid-cols-1 gap-y-4 text-sm">
               <Campo label="Contactos de dirección y coordinación" value={proyecto.contactosDireccion} field="contactosDireccion" onSave={guardarCampo} multiline />
@@ -2654,7 +2732,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
       {/* ────── TAB: EQUIPOS (dentro de OPERACIÓN) ────── */}
-      {tab === "operacion" && (() => {
+      {tab === "operacion" && operTab === "personal" && (() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
         const camposFaltantesEq: string[] = [];
