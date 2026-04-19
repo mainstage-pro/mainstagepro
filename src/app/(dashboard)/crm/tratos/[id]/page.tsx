@@ -1626,102 +1626,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* Modo de descubrimiento */}
-          <div className="flex gap-2 px-5 pt-4">
-            <button onClick={() => setModoDescubrimiento("VENDEDOR")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                modoDescubrimiento === "VENDEDOR"
-                  ? "bg-[#B3985B] text-black border-[#B3985B]"
-                  : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-              }`}>
-              🧑‍💼 Yo descubro ahora
-            </button>
-            <button onClick={() => setModoDescubrimiento("CLIENTE")}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                modoDescubrimiento === "CLIENTE"
-                  ? "bg-blue-800 text-white border-blue-700"
-                  : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-              }`}>
-              📱 El cliente llena formulario
-            </button>
-          </div>
-
-          {modoDescubrimiento === "CLIENTE" && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4 mb-5">
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Formulario para el cliente</p>
-                {trato.formEstado === "COMPLETADO" && <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded">Completado ✓</span>}
-                {trato.formEstado === "ENVIADO" && <span className="text-[10px] bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded">Enviado · En espera</span>}
-                {trato.formEstado === "NO_ENVIADO" && trato.formToken && <span className="text-[10px] bg-gray-800 text-gray-500 px-2 py-0.5 rounded">Link generado</span>}
-              </div>
-
-              {!trato.formToken ? (
-                <div className="flex items-center gap-3">
-                  <p className="text-gray-600 text-xs flex-1">Genera un link personalizado para que el prospecto llene los detalles de su evento.</p>
-                  <button onClick={generarFormToken} disabled={generandoToken}
-                    className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
-                    {generandoToken ? "Generando..." : "Generar link"}
-                  </button>
-                </div>
-              ) : trato.formEstado === "COMPLETADO" ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-green-400 text-xs">✓ El prospecto completó el formulario. La información se sincronizó al trato.</p>
-                    <a href={`/api/tratos/${trato.id}/form-pdf`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-                      ↓ PDF
-                    </a>
-                  </div>
-                  {trato.formRespuestas && (() => {
-                    let resp: Record<string, unknown> = {};
-                    try { resp = JSON.parse(trato.formRespuestas!); } catch { /* empty */ }
-                    const entries = Object.entries(resp).filter(([, v]) => v !== "" && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0));
-                    return entries.length > 0 ? (
-                      <div className="bg-[#0d0d0d] rounded-lg p-3 space-y-1.5">
-                        {entries.map(([key, val]) => (
-                          <div key={key} className="flex gap-2 text-xs">
-                            <span className="text-gray-500 w-36 shrink-0">{FORM_KEY_LABELS[key] ?? key}</span>
-                            <span className="text-gray-200">{Array.isArray(val) ? val.join(", ") : String(val)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : null;
-                  })()}
-                  <button onClick={() => guardarDescubrimiento(true)} disabled={saving}
-                    className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                    {saving ? "Guardando..." : "Marcar descubrimiento completo → Oportunidad"}
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 bg-[#0d0d0d] rounded-lg px-3 py-2">
-                    <span className="text-gray-600 text-xs flex-1 truncate">{formUrl}</span>
-                    <button onClick={() => copiarLink(formUrl)} className="shrink-0 text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">
-                      {linkCopiado ? "¡Copiado!" : "Copiar"}
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {waUrl ? (
-                      <a href={waUrl} target="_blank" rel="noopener noreferrer"
-                        onClick={marcarFormEnviado}
-                        className="flex items-center gap-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                        💬 Enviar por WhatsApp
-                      </a>
-                    ) : (
-                      <p className="text-gray-600 text-xs">Agrega el teléfono del cliente para enviar por WhatsApp.</p>
-                    )}
-                    {trato.formEstado === "NO_ENVIADO" && (
-                      <button onClick={marcarFormEnviado} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-                        Marcar como enviado (manualmente)
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {modoDescubrimiento === "VENDEDOR" && (<>
+          <>
             {/* Step tabs */}
             <div className="px-5 pt-4 pb-2 overflow-x-auto border-b border-[#1a1a1a]">
               <div className="flex gap-1 min-w-max pb-1">
@@ -2443,7 +2348,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 ) : <span className="text-xs text-[#B3985B] font-medium">✓ Descubrimiento completo</span>
               )}
             </div>
-          </>)}
+          </>
         </div>
       )}
 
