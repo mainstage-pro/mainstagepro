@@ -265,94 +265,101 @@ export default function MarketingCalendarioPage() {
         ))}
       </div>
 
-      {/* Edit form inline */}
+      {/* Modal: Editar publicación */}
       {editId && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Editando publicación</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
-              <input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={cancelEdit} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar publicación</h3>
+              <button onClick={cancelEdit} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-              <select value={form.tipoId} onChange={e => onTipoChange(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Sin tipo</option>
-                {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Estado</label>
-              <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {ESTADOS.map(s => <option key={s} value={s}>{ESTADO_LABEL[s]}</option>)}
-              </select>
-            </div>
-            <div className="md:col-span-3">
-              <label className="text-xs text-gray-500 mb-1 block">Descripción</label>
-              <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                placeholder="De qué trata esta publicación..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div className="md:col-span-3">
-              <label className="text-xs text-gray-500 mb-1 block">Copy / Texto</label>
-              <textarea value={form.copy} onChange={e => setForm(p => ({ ...p, copy: e.target.value }))} rows={3}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                placeholder="Texto que irá en la publicación..." />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">URL portada</label>
-              <input value={form.portadaUrl} onChange={e => setForm(p => ({ ...p, portadaUrl: e.target.value }))}
-                placeholder="https://... (imagen de portada)"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Link de material</label>
-              <input value={form.materialLink} onChange={e => setForm(p => ({ ...p, materialLink: e.target.value }))}
-                placeholder="Drive, Dropbox..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Colaboradores</label>
-              <input value={form.colaboradores} onChange={e => setForm(p => ({ ...p, colaboradores: e.target.value }))}
-                placeholder="@usuario1, @usuario2..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Notas</label>
-              <input value={form.comentarios} onChange={e => setForm(p => ({ ...p, comentarios: e.target.value }))}
-                placeholder="Observaciones..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            {/* Preview portada si hay URL */}
-            {form.portadaUrl && (
-              <div className="flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={form.portadaUrl} alt="Portada" className="w-16 h-16 object-cover rounded-lg border border-[#2a2a2a]" />
-                <span className="text-gray-600 text-xs">Vista previa portada</span>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
+                  <input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
+                  <select value={form.tipoId} onChange={e => onTipoChange(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">Sin tipo</option>
+                    {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Estado</label>
+                  <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    {ESTADOS.map(s => <option key={s} value={s}>{ESTADO_LABEL[s]}</option>)}
+                  </select>
+                </div>
+                <div className="md:col-span-3">
+                  <label className="text-xs text-gray-500 mb-1 block">Descripción</label>
+                  <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
+                    placeholder="De qué trata esta publicación..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="md:col-span-3">
+                  <label className="text-xs text-gray-500 mb-1 block">Copy / Texto</label>
+                  <textarea value={form.copy} onChange={e => setForm(p => ({ ...p, copy: e.target.value }))} rows={3}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                    placeholder="Texto que irá en la publicación..." />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">URL portada</label>
+                  <input value={form.portadaUrl} onChange={e => setForm(p => ({ ...p, portadaUrl: e.target.value }))}
+                    placeholder="https://... (imagen de portada)"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Link de material</label>
+                  <input value={form.materialLink} onChange={e => setForm(p => ({ ...p, materialLink: e.target.value }))}
+                    placeholder="Drive, Dropbox..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Colaboradores</label>
+                  <input value={form.colaboradores} onChange={e => setForm(p => ({ ...p, colaboradores: e.target.value }))}
+                    placeholder="@usuario1, @usuario2..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+                  <input value={form.comentarios} onChange={e => setForm(p => ({ ...p, comentarios: e.target.value }))}
+                    placeholder="Observaciones..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                {form.portadaUrl && (
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={form.portadaUrl} alt="Portada" className="w-16 h-16 object-cover rounded-lg border border-[#2a2a2a]" />
+                    <span className="text-gray-600 text-xs">Vista previa portada</span>
+                  </div>
+                )}
+                <div className="md:col-span-3">
+                  <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
+                  <div className="flex gap-4">
+                    {PLATAFORMAS.map(plt => (
+                      <label key={plt.key} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={form[plt.key]} onChange={e => setForm(p => ({ ...p, [plt.key]: e.target.checked }))}
+                          className="accent-[#B3985B]" />
+                        <span className="text-gray-400 text-sm">{plt.short}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
-            <div className="md:col-span-3">
-              <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
-              <div className="flex gap-4">
-                {PLATAFORMAS.map(plt => (
-                  <label key={plt.key} className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={form[plt.key]} onChange={e => setForm(p => ({ ...p, [plt.key]: e.target.checked }))}
-                      className="accent-[#B3985B]" />
-                    <span className="text-gray-400 text-sm">{plt.short}</span>
-                  </label>
-                ))}
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={cancelEdit} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+                <button onClick={saveEdit} disabled={saving}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+                  {saving ? "Guardando..." : "Guardar cambios"}
+                </button>
               </div>
             </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={saveEdit} disabled={saving}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </button>
-            <button onClick={cancelEdit} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </div>
       )}

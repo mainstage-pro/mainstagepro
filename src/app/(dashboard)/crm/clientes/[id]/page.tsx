@@ -281,10 +281,10 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             + Nuevo trato
           </Link>
           <button
-            onClick={() => { formLoaded.current = false; setEditando(v => { if (!v) setTimeout(() => { formLoaded.current = true; }, 100); return !v; }); }}
+            onClick={() => { formLoaded.current = false; setTimeout(() => { formLoaded.current = true; }, 100); setEditando(true); }}
             className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
           >
-            {editando ? "Cancelar" : "Editar"}
+            Editar
           </button>
           <button
             onClick={eliminarCliente}
@@ -296,117 +296,99 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         </div>
       </div>
 
-      {/* Info + Edit */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información de contacto</h2>
-        {editando ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Nombre</label>
-                <input
-                  value={form.nombre || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                <input
-                  value={form.empresa || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, empresa: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Teléfono</label>
-                <input
-                  value={form.telefono || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, telefono: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Correo</label>
-                <input
-                  type="email"
-                  value={form.correo || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Tipo cliente</label>
-                <select
-                  value={form.tipoCliente || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, tipoCliente: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="POR_DESCUBRIR">Por Descubrir</option>
-                  <option value="B2B">B2B</option>
-                  <option value="B2C">B2C</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-                <select
-                  value={form.clasificacion || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, clasificacion: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="PROSPECTO">Prospecto</option>
-                  <option value="NUEVO">Nuevo</option>
-                  <option value="REGULAR">Regular</option>
-                  <option value="PRIORITY">Priority</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Servicio usual</label>
-                <select
-                  value={form.servicioUsual || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, servicioUsual: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Sin especificar —</option>
-                  <option value="RENTA">Renta de Equipo</option>
-                  <option value="PRODUCCION_TECNICA">Producción Técnica</option>
-                  <option value="DIRECCION_TECNICA">Dirección Técnica</option>
-                  <option value="MULTISERVICIO">Multiservicio</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Responsable / Vendedor</label>
-                <select
-                  value={form.vendedorId || ""}
-                  onChange={(e) => setForm((p) => ({ ...p, vendedorId: e.target.value || null }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Sin asignar —</option>
-                  {usuarios.map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
-              </div>
+      {/* Modal: Editar cliente */}
+      {editando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar cliente</h3>
+              <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Notas</label>
-              <textarea
-                value={form.notas || ""}
-                onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))}
-                rows={2}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-              />
-            </div>
-            <div className="flex justify-end items-center gap-3">
-              {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
-              {autoSaved && !saving && <span className="text-xs text-green-500">✓ Guardado</span>}
-              <button onClick={guardar} disabled={saving}
-                className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
-                Guardar y cerrar
-              </button>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Nombre</label>
+                  <input value={form.nombre || ""} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Empresa</label>
+                  <input value={form.empresa || ""} onChange={(e) => setForm((p) => ({ ...p, empresa: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Teléfono</label>
+                  <input value={form.telefono || ""} onChange={(e) => setForm((p) => ({ ...p, telefono: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Correo</label>
+                  <input type="email" value={form.correo || ""} onChange={(e) => setForm((p) => ({ ...p, correo: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tipo cliente</label>
+                  <select value={form.tipoCliente || ""} onChange={(e) => setForm((p) => ({ ...p, tipoCliente: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="POR_DESCUBRIR">Por Descubrir</option>
+                    <option value="B2B">B2B</option>
+                    <option value="B2C">B2C</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
+                  <select value={form.clasificacion || ""} onChange={(e) => setForm((p) => ({ ...p, clasificacion: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="PROSPECTO">Prospecto</option>
+                    <option value="NUEVO">Nuevo</option>
+                    <option value="REGULAR">Regular</option>
+                    <option value="PRIORITY">Priority</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Servicio usual</label>
+                  <select value={form.servicioUsual || ""} onChange={(e) => setForm((p) => ({ ...p, servicioUsual: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Sin especificar —</option>
+                    <option value="RENTA">Renta de Equipo</option>
+                    <option value="PRODUCCION_TECNICA">Producción Técnica</option>
+                    <option value="DIRECCION_TECNICA">Dirección Técnica</option>
+                    <option value="MULTISERVICIO">Multiservicio</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Responsable / Vendedor</label>
+                  <select value={form.vendedorId || ""} onChange={(e) => setForm((p) => ({ ...p, vendedorId: e.target.value || null }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Sin asignar —</option>
+                    {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Notas</label>
+                <textarea value={form.notas || ""} onChange={(e) => setForm((p) => ({ ...p, notas: e.target.value }))} rows={2}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div className="flex justify-end items-center gap-3 pt-2">
+                {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
+                {autoSaved && !saving && <span className="text-xs text-green-500">✓ Guardado</span>}
+                <button onClick={() => setEditando(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+                <button onClick={guardar} disabled={saving}
+                  className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
+                  Guardar cambios
+                </button>
+              </div>
             </div>
           </div>
-        ) : (
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información de contacto</h2>
+        {(
           <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
             <div>
               <p className="text-gray-500 text-xs mb-1">Teléfono</p>

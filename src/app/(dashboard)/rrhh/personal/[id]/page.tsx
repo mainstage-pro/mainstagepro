@@ -152,56 +152,64 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* Formulario edición */}
+      {/* Modal: Editar personal */}
       {editando && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Editar información</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { key: "nombre", label: "Nombre" }, { key: "puesto", label: "Puesto" },
-              { key: "telefono", label: "Teléfono" }, { key: "correo", label: "Correo" },
-              { key: "cuentaBancaria", label: "Cuenta bancaria" }, { key: "datosFiscales", label: "RFC / Datos fiscales" },
-            ].map(({ key, label }) => (
-              <div key={key}>
-                <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-                <input value={(editForm as Record<string, unknown>)[key] as string ?? ""}
-                  onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => { setEditando(false); editFormLoaded.current = false; }} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar empleado</h3>
+              <button onClick={() => { setEditando(false); editFormLoaded.current = false; }} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { key: "nombre", label: "Nombre" }, { key: "puesto", label: "Puesto" },
+                  { key: "telefono", label: "Teléfono" }, { key: "correo", label: "Correo" },
+                  { key: "cuentaBancaria", label: "Cuenta bancaria" }, { key: "datosFiscales", label: "RFC / Datos fiscales" },
+                ].map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                    <input value={(editForm as Record<string, unknown>)[key] as string ?? ""}
+                      onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                ))}
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
+                  <select value={editForm.departamento ?? ""} onChange={e => setEditForm(p => ({ ...p, departamento: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Salario</label>
+                  <input type="number" value={editForm.salario?.toString() ?? ""} onChange={e => setEditForm(p => ({ ...p, salario: parseFloat(e.target.value) || null }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Periodo pago</label>
+                  <select value={editForm.periodoPago ?? "MENSUAL"} onChange={e => setEditForm(p => ({ ...p, periodoPago: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    {TIPOS_PERIODO.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+                  <textarea value={editForm.notas ?? ""} onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))} rows={2}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                </div>
               </div>
-            ))}
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
-              <select value={editForm.departamento ?? ""} onChange={e => setEditForm(p => ({ ...p, departamento: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+              <div className="flex justify-end items-center gap-3 pt-2">
+                {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
+                {autoSaved && !saving && <span className="text-xs text-green-500">✓ Guardado</span>}
+                <button onClick={() => { setEditando(false); editFormLoaded.current = false; }} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+                <button onClick={guardar} disabled={saving}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+                  Guardar cambios
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Salario</label>
-              <input type="number" value={editForm.salario?.toString() ?? ""} onChange={e => setEditForm(p => ({ ...p, salario: parseFloat(e.target.value) || null }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Periodo pago</label>
-              <select value={editForm.periodoPago ?? "MENSUAL"} onChange={e => setEditForm(p => ({ ...p, periodoPago: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {TIPOS_PERIODO.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Notas</label>
-              <textarea value={editForm.notas ?? ""} onChange={e => setEditForm(p => ({ ...p, notas: e.target.value }))} rows={2}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {saving && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
-            {autoSaved && !saving && <span className="text-xs text-green-500">✓ Guardado</span>}
-            <button onClick={guardar} disabled={saving}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              Guardar y cerrar
-            </button>
-            <button onClick={() => { setEditando(false); editFormLoaded.current = false; }} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cerrar</button>
           </div>
         </div>
       )}
