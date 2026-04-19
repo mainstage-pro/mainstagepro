@@ -5,14 +5,22 @@ export async function DELETE(req: NextRequest) {
   if (req.headers.get("x-seed-secret") !== "mainstage-piloto-2025")
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  // Todos los clientes Rodrigo Villanueva / Nexo Eventos
   const clientes = await prisma.cliente.findMany({
-    where: { correo: "rodrigo@nexoeventos.mx" },
+    where: {
+      OR: [
+        { correo: "rodrigo@nexoeventos.mx" },
+        { nombre: "Rodrigo Villanueva" },
+        { empresa: "Nexo Eventos" },
+        { correo: "daniela.reyes@grupoarenas.mx" },
+        { nombre: "Daniela Reyes" },
+      ],
+    },
+    select: { id: true, nombre: true, empresa: true },
   });
-  const clienteIds = clientes.map(c => c.id);
 
+  const clienteIds = clientes.map(c => c.id);
   if (clienteIds.length === 0)
-    return NextResponse.json({ ok: true, eliminados: 0, mensaje: "Nada que limpiar." });
+    return NextResponse.json({ ok: true, msg: "No hay registros piloto.", clientes: [] });
 
   const tratos = await prisma.trato.findMany({ where: { clienteId: { in: clienteIds } }, select: { id: true } });
   const tratoIds = tratos.map(t => t.id);
@@ -44,6 +52,36 @@ export async function DELETE(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    eliminados: { clientes: clienteIds.length, tratos: tratoIds.length, cotizaciones: cotIds.length },
+    eliminados: {
+      clientes: clienteIds.length,
+      tratos: tratoIds.length,
+      cotizaciones: cotIds.length,
+      proyectos: proyIds.length,
+    },
+    detalle: clientes.map(c => `${c.nombre} · ${c.empresa}`),
   });
+}
+
+// GET: solo reporta cuántos hay sin borrar nada
+export async function GET(req: NextRequest) {
+  if (req.headers.get("x-seed-secret") !== "mainstage-piloto-2025")
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const clientes = await prisma.cliente.findMany({
+    where: {
+      OR: [
+        { correo: "rodrigo@nexoeventos.mx" },
+        { nombre: "Rodrigo Villanueva" },
+        { empresa: "Nexo Eventos" },
+        { correo: "daniela.reyes@grupoarenas.mx" },
+        { nombre: "Daniela Reyes" },
+      ],
+    },
+    select: { id: true, nombre: true, empresa: true },
+  });
+
+  const clienteIds = clientes.map(c => c.id);
+  const tratoCount = await prisma.trato.count({ where: { clienteId: { in: clienteIds } } });
+
+  return NextResponse.json({ clientes: clientes.length, tratos: tratoCount, detalle: clientes });
 }
