@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
-      encargado: { select: { name: true } },
+      encargado: { select: { id: true, name: true } },
       trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
       cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
       personal: {
@@ -73,6 +73,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
     "notasPortal", "responsables",
   ];
+  const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
   const booleanFields = ["choferExterno"];
   const numberFields = ["choferCosto"];
@@ -101,6 +102,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // recoleccionFechaReal es DateTime
   if ("recoleccionFechaReal" in body) {
     data["recoleccionFechaReal"] = body["recoleccionFechaReal"] ? new Date(body["recoleccionFechaReal"]) : null;
+  }
+  // encargadoId — relation field
+  for (const key of relationFields) {
+    if (key in body) data[key] = body[key] || null;
   }
 
   const proyectoAntes = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true, choferExterno: true, choferNombre: true, choferCosto: true } });

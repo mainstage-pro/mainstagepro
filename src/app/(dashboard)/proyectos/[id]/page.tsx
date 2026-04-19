@@ -50,7 +50,7 @@ interface Proyecto {
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
   marketingData: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
-  encargado: { name: string } | null;
+  encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
   logisticaRenta: string | null;
@@ -895,6 +895,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
     setProyecto(prev => {
       if (!prev) return prev;
+      // encargadoId: also update the encargado object for display
+      if (field === "encargadoId") {
+        const u = value ? usuariosActivos.find(u => u.id === value) : null;
+        return { ...prev, encargado: u ? { id: u.id, name: u.name } : null };
+      }
       const updated = { ...prev, [field]: value || null };
 
       // Si el campo es clave (fecha/hora/lugar), construir panel de notificaciones
@@ -1669,7 +1674,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
-                  <p className="text-white text-sm">{proyecto.encargado?.name ?? "—"}</p>
+                  <select
+                    value={proyecto.encargado?.id ?? ""}
+                    onChange={e => guardarCampo("encargadoId", e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
+                  >
+                    <option value="">— Sin asignar —</option>
+                    {usuariosActivos.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}{u.area ? ` (${u.area})` : ""}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -1689,11 +1703,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
             {/* Notas */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas</p>
-              <Campo label="Descripción general" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
-              <div className="mt-3">
-                <Campo label="Comentarios finales / instrucciones" value={proyecto.comentariosFinales} field="comentariosFinales" multiline onSave={guardarCampo} />
-              </div>
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas del proyecto</p>
+              <Campo label="Descripción" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
             </div>
             {/* ── Cierre del evento ── */}
             {!["COMPLETADO", "CANCELADO"].includes(proyecto.estado) && (
@@ -1815,36 +1826,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
-          {/* ── Cliente ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Cliente</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Nombre del cliente</p>
-                <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-white hover:text-[#B3985B] font-medium">
-                  {proyecto.cliente.nombre}
-                </Link>
-                {proyecto.cliente.empresa && <p className="text-gray-400 text-xs">{proyecto.cliente.empresa}</p>}
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Contacto del cliente</p>
-                <p className="text-white text-sm">{proyecto.cliente.telefono ?? "—"}</p>
-                {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
-              </div>
-              <Campo label="Encargado de parte del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Encargado interno (Mainstage)</p>
-                <p className="text-white text-sm">{proyecto.encargado?.name ?? "—"}</p>
-              </div>
-              {proyecto.trato?.responsable && (
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Vendedor responsable</p>
-                  <p className="text-[#B3985B] text-sm font-medium">{proyecto.trato.responsable.name}</p>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* ── Responsables por área ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Responsables por área</p>
@@ -1878,114 +1859,61 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
-              {!choferEditando && (
-                <button onClick={() => {
-                  setChoferTipo(proyecto.choferExterno ? "EXTERNO" : "INTERNO");
-                  setChoferNombreInput(proyecto.choferNombre ?? "");
-                  setChoferPersonalId("");
-                  setChoferCostoInput(proyecto.choferCosto?.toString() ?? "");
-                  setChoferEditando(true);
-                }} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">
-                  {proyecto.choferNombre ? "Cambiar" : "Asignar chofer"}
-                </button>
+              {proyecto.choferNombre && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${proyecto.choferExterno ? "bg-orange-900/30 text-orange-400" : "bg-green-900/30 text-green-400"}`}>
+                  {proyecto.choferExterno ? "Externo" : "Interno"} · {proyecto.choferNombre}
+                </span>
               )}
             </div>
-            {!choferEditando ? (
-              proyecto.choferNombre ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#B3985B]/20 flex items-center justify-center text-[#B3985B] text-sm font-bold">
-                    {proyecto.choferNombre[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-white font-medium text-sm">{proyecto.choferNombre}</p>
-                    <p className="text-xs text-gray-500">
-                      {proyecto.choferExterno ? `Chofer externo${proyecto.choferCosto ? ` · $${proyecto.choferCosto.toLocaleString("es-MX")}` : ""}` : "Del personal del proyecto"}
-                    </p>
-                  </div>
-                  <div className="ml-auto">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${proyecto.choferExterno ? "bg-orange-900/30 text-orange-400" : "bg-green-900/30 text-green-400"}`}>
-                      {proyecto.choferExterno ? "Externo" : "Interno"}
-                    </span>
-                  </div>
-                </div>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button onClick={() => setChoferTipo("INTERNO")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "INTERNO" ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
+                  Del personal del proyecto
+                </button>
+                <button onClick={() => setChoferTipo("EXTERNO")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "EXTERNO" ? "bg-orange-900/20 border-orange-700 text-orange-400" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
+                  Chofer externo
+                </button>
+              </div>
+              {choferTipo === "INTERNO" ? (
+                <select value={choferPersonalId} onChange={e => setChoferPersonalId(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Seleccionar del personal —</option>
+                  {proyecto.personal.filter(p => p.tecnico).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.tecnico!.nombre} · {p.rolTecnico?.nombre ?? p.participacion ?? "Personal"}
+                    </option>
+                  ))}
+                </select>
               ) : (
-                <p className="text-gray-600 text-sm italic">Sin chofer asignado</p>
-              )
-            ) : (
-              <div className="space-y-3">
-                <div className="flex gap-3">
-                  <button onClick={() => setChoferTipo("INTERNO")}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "INTERNO" ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                    Del personal del proyecto
-                  </button>
-                  <button onClick={() => setChoferTipo("EXTERNO")}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "EXTERNO" ? "bg-orange-900/20 border-orange-700 text-orange-400" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                    Chofer externo
-                  </button>
+                <div className="space-y-2">
+                  <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
+                    placeholder="Nombre del chofer externo"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
+                    placeholder="Costo ($) — genera CxP automáticamente"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
-                {choferTipo === "INTERNO" ? (
-                  <select value={choferPersonalId} onChange={e => setChoferPersonalId(e.target.value)}
+              )}
+              {vehiculos.length > 0 && (
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
+                  <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Seleccionar del personal —</option>
-                    {proyecto.personal.filter(p => p.tecnico).map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.tecnico!.nombre} · {p.rolTecnico?.nombre ?? p.participacion ?? "Personal"}
+                    <option value="">— Sin vehículo específico —</option>
+                    {vehiculos.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}
                       </option>
                     ))}
                   </select>
-                ) : (
-                  <div className="space-y-2">
-                    <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
-                      placeholder="Nombre del chofer externo"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
-                      placeholder="Costo ($) — genera CxP automáticamente"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                )}
-                {vehiculos.length > 0 && (
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
-                    <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="">— Sin vehículo específico —</option>
-                      {vehiculos.map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-lg px-3 py-2 text-xs text-yellow-500">
-                  El chofer <strong>debe descansar durante el desmontaje</strong>. No asignarle carga física en esa etapa.
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={guardarChofer} disabled={guardandoChofer || (choferTipo === "INTERNO" && !choferPersonalId) || (choferTipo === "EXTERNO" && !choferNombreInput)}
-                    className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                    {guardandoChofer ? "Guardando..." : "Guardar"}
-                  </button>
-                  <button onClick={() => setChoferEditando(false)}
-                    className="px-4 py-2 border border-[#333] text-gray-400 hover:text-white text-sm rounded-lg transition-colors">
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Evento ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Evento</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Nombre del proyecto</p>
-                <p className="text-white font-medium">{proyecto.nombre}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Tipo de evento</p>
-                <p className="text-white">{proyecto.tipoEvento}{proyecto.tipoServicio ? ` · ${proyecto.tipoServicio}` : ""}</p>
-              </div>
+              )}
+              <button onClick={guardarChofer} disabled={guardandoChofer || (choferTipo === "INTERNO" && !choferPersonalId) || (choferTipo === "EXTERNO" && !choferNombreInput)}
+                className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                {guardandoChofer ? "Guardando..." : "Guardar chofer"}
+              </button>
             </div>
           </div>
 
@@ -2152,72 +2080,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             );
           })()}
-
-          {/* ── Horarios ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Fechas y horarios</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Fecha del evento</p>
-                <p className="text-white font-medium">{fmtDate(proyecto.fechaEvento)}</p>
-              </div>
-              <Campo label="Horario del evento (inicio)" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
-              <Campo label="Horario del evento (fin)" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
-              <Campo label="Día de montaje" value={proyecto.fechaMontaje ? proyecto.fechaMontaje.split("T")[0] : ""} field="fechaMontaje" onSave={guardarCampo} type="date" />
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Hora inicio montaje</p>
-                <TimePicker
-                  value={proyecto.horaInicioMontaje ?? ""}
-                  onChange={v => guardarCampo("horaInicioMontaje", v)}
-                />
-              </div>
-              <Campo label="Duración del montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? ""} field="duracionMontajeHrs" onSave={guardarCampo} type="number" />
-              {/* Ventana de montaje — dato del venue proporcionado por el cliente */}
-              {(proyecto.trato?.ventanaMontajeInicio || proyecto.trato?.ventanaMontajeFin) && (
-                <div className="col-span-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
-                  <span className="text-[#B3985B] text-sm">🏟</span>
-                  <div>
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Ventana permitida por el venue</p>
-                    <p className="text-white text-sm font-medium">
-                      {proyecto.trato.ventanaMontajeInicio ?? "—"}
-                      {" → "}
-                      {proyecto.trato.ventanaMontajeFin ?? "—"}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Lugar ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Lugar del evento</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-              <div className="col-span-2">
-                <CampoVenue label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
-              </div>
-              <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
-              <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
-            </div>
-          </div>
-
-          {/* ── Briefing del proyecto (handoff ventas → producción) ── */}
-          <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Briefing del proyecto</p>
-              <span className="text-[10px] text-[#B3985B]/50 bg-[#B3985B]/10 px-2 py-0.5 rounded-full">Handoff ventas → producción</span>
-            </div>
-            <div className="space-y-4">
-              {proyecto.trato?.notas && (
-                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-3">
-                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Notas del descubrimiento (ventas)</p>
-                  <p className="text-gray-300 text-sm whitespace-pre-wrap">{proyecto.trato.notas}</p>
-                </div>
-              )}
-              <Campo label="Descripción general del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" onSave={guardarCampo} multiline />
-              <Campo label="Detalles específicos" value={proyecto.detallesEspecificos} field="detallesEspecificos" onSave={guardarCampo} multiline />
-            </div>
-          </div>
 
           {/* ── Personal del evento (gestión completa) ── */}
           <div className="space-y-3">
@@ -2786,178 +2648,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* ── Captura de contenido / Marketing ── */}
-          {(() => {
-            type MktData = {
-              activo: boolean; nombre: string; telefono: string;
-              tiposContenido: string[];
-              capturista: string; capturistaExterno: boolean;
-              autorizacion: string;
-              entregaFecha: string;
-              usoRedes: boolean; usoPortfolio: boolean; usoWeb: boolean;
-              publicadoEn: string[];
-              notas: string;
-            };
-            const TIPOS = [
-              { id: "fotos_evento", label: "Fotos del evento" },
-              { id: "video_highlights", label: "Video highlights" },
-              { id: "reels_sociales", label: "Reels / TikTok" },
-              { id: "detras_camara", label: "Detrás de cámaras / making of" },
-              { id: "setup_equipo", label: "Fotos del setup / equipo" },
-              { id: "testimonio_video", label: "Testimonio en video" },
-              { id: "testimonio_escrito", label: "Testimonio escrito" },
-            ];
-            const PLATAFORMAS = ["Instagram", "Facebook", "TikTok", "YouTube", "Web", "Portfolio"];
-            let mkt: MktData = {
-              activo: false, nombre: "", telefono: "",
-              tiposContenido: [], capturista: "", capturistaExterno: false,
-              autorizacion: "PENDIENTE", entregaFecha: "",
-              usoRedes: true, usoPortfolio: true, usoWeb: false,
-              publicadoEn: [], notas: "",
-            };
-            try { if (proyecto.marketingData) mkt = { ...mkt, ...JSON.parse(proyecto.marketingData) }; } catch { /* defaults */ }
 
-            async function saveMkt(patch: Partial<MktData>) {
-              const nuevo = { ...mkt, ...patch };
-              await guardarCampo("marketingData", JSON.stringify(nuevo));
-            }
-
-            const tel = mkt.telefono.replace(/\D/g, "");
-            const waLink = tel ? `https://wa.me/52${tel}?text=${encodeURIComponent(`Hola ${mkt.nombre || ""}! Para el evento "${proyecto.nombre}" del ${new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long" })} — queremos coordinar el levantamiento de contenido. ¿Tienes disponibilidad? ¿Qué necesitamos confirmar?`)}` : null;
-
-            return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-base">📸</span>
-                    <div>
-                      <p className="text-white text-sm font-medium">Captura de contenido</p>
-                      <p className="text-gray-600 text-xs">¿Se levanta contenido para marketing en este evento?</p>
-                    </div>
-                  </div>
-                  <button onClick={() => saveMkt({ activo: !mkt.activo })}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${mkt.activo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${mkt.activo ? "translate-x-4" : "translate-x-0"}`} />
-                  </button>
-                </div>
-
-                {mkt.activo && (<>
-                  {/* Tipo de contenido */}
-                  <div className="pt-3 border-t border-[#1a1a1a]">
-                    <p className="text-xs text-gray-400 mb-2">Tipo de contenido a capturar</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {TIPOS.map(t => {
-                        const sel = mkt.tiposContenido.includes(t.id);
-                        return (
-                          <button key={t.id}
-                            onClick={() => saveMkt({ tiposContenido: sel ? mkt.tiposContenido.filter(x => x !== t.id) : [...mkt.tiposContenido, t.id] })}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${sel ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#333] text-gray-500 hover:text-gray-300"}`}>
-                            {sel ? "✓ " : ""}{t.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Capturista */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Capturista / fotógrafo asignado</p>
-                      <input defaultValue={mkt.capturista} onBlur={e => saveMkt({ capturista: e.target.value })}
-                        placeholder="Nombre del capturista"
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Fecha límite de entrega de contenido</p>
-                      <input type="date" defaultValue={mkt.entregaFecha} onBlur={e => saveMkt({ entregaFecha: e.target.value })}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                  </div>
-
-                  {/* Contacto de coordinación */}
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Contacto para coordinación de contenido</p>
-                    <div className="flex gap-2">
-                      <input defaultValue={mkt.nombre} onBlur={e => saveMkt({ nombre: e.target.value })}
-                        placeholder="Nombre"
-                        className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                      <input defaultValue={mkt.telefono} onBlur={e => saveMkt({ telefono: e.target.value })}
-                        placeholder="Teléfono"
-                        className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                      {waLink && (
-                        <a href={waLink} target="_blank" rel="noopener noreferrer"
-                          className="shrink-0 flex items-center gap-1 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
-                          💬
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Autorización y uso */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-400 mb-1">Autorización del cliente</p>
-                      <select value={mkt.autorizacion} onChange={e => saveMkt({ autorizacion: e.target.value })}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                        <option value="PENDIENTE">Pendiente de confirmar</option>
-                        <option value="AUTORIZADO">Autorizado por el cliente</option>
-                        <option value="RECHAZADO">No autorizado — uso interno</option>
-                      </select>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 mb-2">Usos autorizados</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {[{ k: "usoRedes" as const, l: "Redes" }, { k: "usoPortfolio" as const, l: "Portfolio" }, { k: "usoWeb" as const, l: "Web" }].map(u => (
-                          <button key={u.k} onClick={() => saveMkt({ [u.k]: !mkt[u.k] })}
-                            className={`text-xs px-2 py-1 rounded border transition-colors ${mkt[u.k] ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#333] text-gray-500"}`}>
-                            {mkt[u.k] ? "✓ " : ""}{u.l}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Publicado en */}
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Publicado en</p>
-                    <div className="flex gap-1.5 flex-wrap">
-                      {PLATAFORMAS.map(p => {
-                        const pub = mkt.publicadoEn.includes(p);
-                        return (
-                          <button key={p} onClick={() => saveMkt({ publicadoEn: pub ? mkt.publicadoEn.filter(x => x !== p) : [...mkt.publicadoEn, p] })}
-                            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${pub ? "border-green-600/50 bg-green-900/20 text-green-400" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
-                            {pub ? "✓ " : ""}{p}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Notas */}
-                  <div>
-                    <textarea defaultValue={mkt.notas} onBlur={e => saveMkt({ notas: e.target.value })}
-                      rows={2} placeholder="Notas sobre el contenido: ángulos clave, momentos específicos, restricciones del venue..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
-                  </div>
-
-                  {/* Status badge */}
-                  {mkt.autorizacion === "AUTORIZADO" && mkt.tiposContenido.length > 0 && (
-                    <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3 text-xs text-green-400">
-                      Contenido autorizado: {mkt.tiposContenido.map(id => TIPOS.find(t => t.id === id)?.label).filter(Boolean).join(", ")}
-                      {mkt.publicadoEn.length > 0 && ` · Publicado en: ${mkt.publicadoEn.join(", ")}`}
-                    </div>
-                  )}
-                </>)}
-              </div>
-            );
-          })()}
-
-          {/* ── Comentarios ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Comentarios finales / adicionales</p>
-            <Campo label="" value={proyecto.comentariosFinales} field="comentariosFinales" onSave={guardarCampo} multiline />
-          </div>
         </div>
         );
       })()}
