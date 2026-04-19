@@ -22,8 +22,9 @@ export async function POST(req: NextRequest) {
   const rolIlum       = rolById("iluminaci");
   const rolStage      = rolById("stagehand") ?? rolById("técnico /");
 
-  const tradeToken = "trade-piloto-evento-nexo-2025";
+  const tradeToken = "trade-piloto-nexo-2025";
 
+  try {
   const cliente = await prisma.cliente.create({
     data: {
       nombre: "Rodrigo Villanueva",
@@ -160,6 +161,9 @@ export async function POST(req: NextRequest) {
     tradeUrl: `/trade/${tradeToken}`,
     mensaje: "✅ Trato Trade creado. Cotización en estado ENVIADA con tradeToken activo.",
   });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
+  }
 }
 
 export async function DELETE(req: NextRequest) {
