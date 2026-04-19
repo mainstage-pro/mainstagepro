@@ -1158,26 +1158,23 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Toggle pequeño (solo cuando ya están en un flujo) ── */}
+      {/* ── Tipo de prospecto (read-only badge) ── */}
       {(trato.canalAtencion || trato.tipoProspecto === "NURTURING") && (
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 px-3 py-2 bg-[#111] border border-[#1e1e1e] rounded-lg">
+          {trato.tipoProspecto === "NURTURING" ? (
+            <span className="text-xs text-emerald-400">🌱 Prospecto en frío</span>
+          ) : (
+            <span className="text-xs text-[#B3985B]">🎯 Tiene necesidad concreta</span>
+          )}
           <button
-            onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium border transition-colors ${
-              trato.tipoProspecto !== "NURTURING"
-                ? "bg-[#B3985B] text-black border-[#B3985B]"
-                : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-            }`}>
-            🎯 Tiene necesidad concreta
-          </button>
-          <button
-            onClick={async () => { const d = await patch({ tipoProspecto: "NURTURING" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-medium border transition-colors ${
-              trato.tipoProspecto === "NURTURING"
-                ? "bg-emerald-800 text-white border-emerald-700"
-                : "bg-[#111] text-gray-400 border-[#333] hover:text-white"
-            }`}>
-            🌱 Prospecto en frío
+            onClick={async () => {
+              const next = trato.tipoProspecto === "NURTURING" ? "ACTIVO" : "NURTURING";
+              const d = await patch({ tipoProspecto: next });
+              setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
+            }}
+            className="ml-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            cambiar
           </button>
         </div>
       )}
@@ -1217,12 +1214,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-white text-sm font-semibold">{accion.titulo}</p>
               <p className="text-gray-400 text-xs mt-0.5">{accion.desc}</p>
             </div>
-            {(trato.etapa !== "VENTA_CERRADA" && trato.etapa !== "VENTA_PERDIDA") && (
-              <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                className="shrink-0 text-xs text-[#B3985B] hover:text-[#c9a96a] border border-[#B3985B]/30 px-3 py-1.5 rounded-lg transition-colors">
-                + Cotización
-              </Link>
-            )}
           </div>
         );
       })()}
@@ -1695,7 +1686,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="px-5 pt-4 pb-2 overflow-x-auto border-b border-[#1a1a1a]">
               <div className="flex gap-1 min-w-max pb-1">
                 {PASOS_DISCOVERY.map(paso => (
-                  <button key={paso.id} onClick={() => setPasoActivo(paso.id)}
+                  <button key={paso.id} onClick={() => { setPasoActivo(paso.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                       pasoActivo === paso.id
                         ? "bg-[#B3985B] text-black"
@@ -1712,7 +1703,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             {/* PASO 1: Información básica */}
             {pasoActivo === 1 && (<div className="space-y-4">
               <div>
-                <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Tipo de evento</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
                     <button key={te} onClick={() => setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] }))}
@@ -2061,8 +2054,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <button
                       onClick={() => setDiscForm(p => ({ ...p, familyAndFriends: !p.familyAndFriends }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-6" : "translate-x-1"}`} />
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-5" : "translate-x-0"}`} />
                     </button>
                   </div>
                 </div>
@@ -2074,8 +2067,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <button
                       onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-6" : "translate-x-1"}`} />
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-5" : "translate-x-0"}`} />
                     </button>
                   </div>
                 </div>
@@ -2134,10 +2127,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               {!trato.descubrimientoCompleto && (
-                <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
-                  className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                  {saving ? "Guardando..." : "Descubrimiento completo → Oportunidad"}
-                </button>
+                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => guardarDescubrimiento(true)}
+                      disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
+                      className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 transition-colors"
+                    >
+                      {saving ? "Guardando..." : "Marcar completo"}
+                    </button>
+                    <Link
+                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+                    >
+                      Hacer propuesta →
+                    </Link>
+                  </div>
+                </div>
               )}
             </div>)} {/* /paso3 */}
 

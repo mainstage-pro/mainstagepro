@@ -215,15 +215,10 @@ function CotizadorForm() {
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
   const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
+  const [selLogTipo, setSelLogTipo] = useState<"COMIDA" | "TRANSPORTE" | "HOSPEDAJE">("COMIDA");
   const [selLogConcepto, setSelLogConcepto] = useState(CONCEPTOS_COMIDA[0].label);
   const [selLogPrecio, setSelLogPrecio] = useState(String(CONCEPTOS_COMIDA[0].precio));
   const [selLogCant, setSelLogCant] = useState("1"); const [selLogDias, setSelLogDias] = useState("1");
-  const [selLogConceptoTransporte, setSelLogConceptoTransporte] = useState(CONCEPTOS_TRANSPORTE[0].label);
-  const [selLogPrecioTransporte, setSelLogPrecioTransporte] = useState(String(CONCEPTOS_TRANSPORTE[0].precio));
-  const [selLogCantTransporte, setSelLogCantTransporte] = useState("1"); const [selLogDiasTransporte, setSelLogDiasTransporte] = useState("1");
-  const [selLogConceptoHospedaje, setSelLogConceptoHospedaje] = useState(CONCEPTOS_HOSPEDAJE[0].label);
-  const [selLogPrecioHospedaje, setSelLogPrecioHospedaje] = useState(String(CONCEPTOS_HOSPEDAJE[0].precio));
-  const [selLogCantHospedaje, setSelLogCantHospedaje] = useState("1"); const [selLogDiasHospedaje, setSelLogDiasHospedaje] = useState("1");
 
   // Proveedores para selector en modal nuevo equipo
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; telefono: string | null }>>([]);
@@ -1467,15 +1462,14 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Sugerencias de técnicos ── */}
-          {evento.tipoEvento && (asistentesEstimados ?? 0) > 0 && (() => {
+          {evento.tipoEvento && (() => {
             const cats = [...new Set(lineasEquipo.map(l => l.categoria))];
             const sugs = getSugerenciasTecnicos(evento.tipoEvento, asistentesEstimados ?? 0, cats);
-            if (sugs.length === 0) return null;
             return (
               <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
                 <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
                   <span className="text-[#B3985B] text-sm font-semibold">Sugerencias de personal técnico</span>
-                  <span className="text-gray-500 text-xs">basado en equipos agregados y tamaño del evento</span>
+                  <span className="text-gray-500 text-xs">basado en equipos y tamaño del evento</span>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-[#555] group-open:rotate-180 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
                 </summary>
                 <div className="px-5 pb-5">
@@ -1483,7 +1477,7 @@ function CotizadorForm() {
                     {sugs.map(grupo => (
                       <div key={grupo.categoria} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
                         <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.categoria}</p>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {grupo.items.map(item => {
                             const kw = item.rolKeyword.toLowerCase();
                             const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
@@ -1493,23 +1487,44 @@ function CotizadorForm() {
                                 <div className="flex-1 min-w-0">
                                   <p className={`text-sm ${item.esOpcional ? "text-gray-500" : "text-white"}`}>
                                     {rol ? rol.nombre : <span className="text-gray-600 italic">{item.rolKeyword} (sin rol)</span>}
-                                    {item.cantidad > 1 && <span className="text-gray-500 text-xs ml-1">×{item.cantidad}</span>}
                                     {item.esOpcional && <span className="text-[#555] text-[10px] ml-1">opcional</span>}
                                   </p>
                                   <p className="text-gray-600 text-[10px]">{item.motivo}</p>
                                 </div>
                                 {rol && (
-                                  <button
-                                    onClick={() => agregarSugerenciaTecnico(item.rolKeyword, item.cantidad)}
-                                    disabled={yaAgregado}
-                                    className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-                                      yaAgregado
-                                        ? "text-green-500 bg-green-900/20 cursor-default"
-                                        : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
-                                    }`}
-                                  >
-                                    {yaAgregado ? "✓" : "+ Agregar"}
-                                  </button>
+                                  item.isStagehands ? (
+                                    <div className="flex gap-1 shrink-0">
+                                      {[2, 4, 6, 8].map(n => {
+                                        const yaEsteN = lineasOp.some(l => l.rolTecnicoId === rol.id && l.cantidad === n);
+                                        return (
+                                          <button
+                                            key={n}
+                                            onClick={() => agregarSugerenciaTecnico(item.rolKeyword, n)}
+                                            disabled={yaEsteN}
+                                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+                                              yaEsteN
+                                                ? "text-green-500 bg-green-900/20 cursor-default"
+                                                : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
+                                            }`}
+                                          >
+                                            {yaEsteN ? `✓${n}` : `×${n}`}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => agregarSugerenciaTecnico(item.rolKeyword, item.cantidad)}
+                                      disabled={yaAgregado}
+                                      className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                                        yaAgregado
+                                          ? "text-green-500 bg-green-900/20 cursor-default"
+                                          : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
+                                      }`}
+                                    >
+                                      {yaAgregado ? "✓ Agregado" : "+ Agregar"}
+                                    </button>
+                                  )
                                 )}
                               </div>
                             );
@@ -1580,106 +1595,78 @@ function CotizadorForm() {
 
           {/* ── Logística ── */}
           <Seccion titulo="Logística" hint="sin descuento">
-            <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
-              {/* Header */}
-              <div className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 bg-[#0d0d0d] px-3 py-1.5 border-b border-[#1e1e1e] text-[10px] text-gray-600 uppercase tracking-wider">
-                <span>Tipo</span><span>Concepto</span><span className="text-right">Precio</span><span className="text-center">Cant</span><span className="text-center">Días</span><span className="text-right">Subtotal</span><span />
-              </div>
-              {/* Líneas existentes */}
-              {lineasLog.map(l => {
+            {/* Formulario de agregar */}
+            <div className="flex gap-2 mb-3 flex-wrap">
+              <select value={selLogTipo} onChange={e => {
+                const t = e.target.value as "COMIDA" | "TRANSPORTE" | "HOSPEDAJE";
+                setSelLogTipo(t);
+                const conceptos = t === "COMIDA" ? CONCEPTOS_COMIDA : t === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
+                const primer = conceptos[0];
+                setSelLogConcepto(primer.label);
+                setSelLogPrecio(String(primer.precio));
+              }} className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                <option value="COMIDA">Comidas</option>
+                <option value="TRANSPORTE">Transporte</option>
+                <option value="HOSPEDAJE">Hospedaje</option>
+              </select>
+              <select value={selLogConcepto} onChange={e => {
+                const conceptos = selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
+                const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? 0;
+                setSelLogConcepto(e.target.value);
+                setSelLogPrecio(String(precio));
+              }} className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                {(selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE).map(c => (
+                  <option key={c.label} value={c.label}>{c.label}</option>
+                ))}
+              </select>
+              <input type="number" value={selLogPrecio} onChange={e => setSelLogPrecio(e.target.value)} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              <input type="number" min="1" value={selLogCant} onChange={e => setSelLogCant(e.target.value)} title="Cantidad" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" />
+              <input type="number" min="1" value={selLogDias} onChange={e => setSelLogDias(e.target.value)} title="Días" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" />
+              <button onClick={() => {
+                const precio = parseFloat(selLogPrecio) || 0;
+                const cant = parseFloat(selLogCant) || 1;
+                const dias = parseInt(selLogDias) || 1;
+                setLineasLog(prev => [...prev, { id: uid(), tipo: selLogTipo, concepto: selLogConcepto, precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
+                setSelLogCant("1"); setSelLogDias("1");
+              }} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm">+ Agregar</button>
+            </div>
+            {/* Lista de líneas */}
+            {lineasLog.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-2">Sin logística agregada</p>
+            ) : (
+              lineasLog.map(l => {
                 const conceptos = l.tipo === "COMIDA" ? CONCEPTOS_COMIDA : l.tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
                 const label = l.tipo === "COMIDA" ? "Comidas" : l.tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
                 return (
-                  <div key={l.id} className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 items-center px-3 py-2 border-b border-[#111]">
-                    <span className="text-[10px] font-semibold text-[#B3985B]">{label}</span>
+                  <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
+                    <div className="flex-1">
+                      <p className="text-white text-sm">{label} — {l.concepto}</p>
+                      <p className="text-gray-500 text-xs">×{l.cantidad} · {l.dias} día(s) · {formatCurrency(l.precioUnitario)}/u</p>
+                    </div>
                     <select value={l.concepto} onChange={e => {
                       const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? l.precioUnitario;
                       setLineasLog(p => p.map(x => x.id === l.id ? { ...x, concepto: e.target.value, precioUnitario: precio, subtotal: precio * x.cantidad * x.dias } : x));
-                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+                    }} className="w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
                       {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
                     </select>
                     <input type="number" value={l.precioUnitario} onChange={e => {
                       const p = parseFloat(e.target.value) || 0;
                       setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
-                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-right focus:outline-none w-full" />
+                    }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
                     <input type="number" min="1" value={l.cantidad} onChange={e => {
                       const c = parseFloat(e.target.value) || 1;
                       setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x));
-                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none w-full" />
+                    }} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-center focus:outline-none" />
                     <input type="number" min="1" value={l.dias} onChange={e => {
                       const d = parseInt(e.target.value) || 1;
                       setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x));
-                    }} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1.5 py-1 text-white text-xs text-center focus:outline-none w-full" />
-                    <span className="text-white text-xs font-medium text-right">{formatCurrency(l.subtotal)}</span>
-                    <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-base leading-none text-center">×</button>
+                    }} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-center focus:outline-none" />
+                    <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
                   </div>
                 );
-              })}
-              {/* Agregar fila */}
-              {(["COMIDA", "TRANSPORTE", "HOSPEDAJE"] as const).map(tipo => {
-                const conceptos = tipo === "COMIDA" ? CONCEPTOS_COMIDA : tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-                const selConcepto = tipo === "COMIDA" ? selLogConcepto : tipo === "TRANSPORTE" ? selLogConceptoTransporte : selLogConceptoHospedaje;
-                const selPrecio = tipo === "COMIDA" ? selLogPrecio : tipo === "TRANSPORTE" ? selLogPrecioTransporte : selLogPrecioHospedaje;
-                const selCant = tipo === "COMIDA" ? selLogCant : tipo === "TRANSPORTE" ? selLogCantTransporte : selLogCantHospedaje;
-                const selDias = tipo === "COMIDA" ? selLogDias : tipo === "TRANSPORTE" ? selLogDiasTransporte : selLogDiasHospedaje;
-                const label = tipo === "COMIDA" ? "Comidas" : tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
-                function setConcepto(v: string) {
-                  const precio = conceptos.find(c => c.label === v)?.precio ?? 0;
-                  if (tipo === "COMIDA") { setSelLogConcepto(v); setSelLogPrecio(String(precio)); }
-                  else if (tipo === "TRANSPORTE") { setSelLogConceptoTransporte(v); setSelLogPrecioTransporte(String(precio)); }
-                  else { setSelLogConceptoHospedaje(v); setSelLogPrecioHospedaje(String(precio)); }
-                }
-                function setPrecio(v: string) {
-                  if (tipo === "COMIDA") setSelLogPrecio(v);
-                  else if (tipo === "TRANSPORTE") setSelLogPrecioTransporte(v);
-                  else setSelLogPrecioHospedaje(v);
-                }
-                function setCant(v: string) {
-                  if (tipo === "COMIDA") setSelLogCant(v);
-                  else if (tipo === "TRANSPORTE") setSelLogCantTransporte(v);
-                  else setSelLogCantHospedaje(v);
-                }
-                function setDias(v: string) {
-                  if (tipo === "COMIDA") setSelLogDias(v);
-                  else if (tipo === "TRANSPORTE") setSelLogDiasTransporte(v);
-                  else setSelLogDiasHospedaje(v);
-                }
-                function agregar() {
-                  const precio = parseFloat(selPrecio) || 0;
-                  const cant = parseFloat(selCant) || 1;
-                  const dias = parseInt(selDias) || 1;
-                  setLineasLog(prev => [...prev, { id: uid(), tipo, concepto: selConcepto, precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
-                  setCant("1"); setDias("1");
-                }
-                return (
-                  <div key={tipo} className="grid grid-cols-[120px_1fr_72px_52px_52px_80px_24px] gap-1 items-center px-3 py-1.5 border-b border-[#0a0a0a] bg-[#080808]">
-                    <span className="text-[10px] text-gray-600">{label}</span>
-                    <select value={selConcepto} onChange={e => setConcepto(e.target.value)}
-                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs focus:outline-none focus:border-[#B3985B]">
-                      {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
-                    </select>
-                    <input type="number" value={selPrecio} onChange={e => setPrecio(e.target.value)}
-                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-right focus:outline-none w-full" placeholder="$" />
-                    <input type="number" min="1" value={selCant} onChange={e => setCant(e.target.value)}
-                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-center focus:outline-none w-full" />
-                    <input type="number" min="1" value={selDias} onChange={e => setDias(e.target.value)}
-                      className="bg-[#111] border border-[#222] rounded px-1.5 py-1 text-gray-400 text-xs text-center focus:outline-none w-full" />
-                    <span className="text-gray-600 text-xs text-right">{formatCurrency((parseFloat(selPrecio)||0)*(parseFloat(selCant)||1)*(parseInt(selDias)||1))}</span>
-                    <button onClick={agregar} className="text-[#B3985B] hover:text-white text-base leading-none text-center font-bold" title="Agregar">+</button>
-                  </div>
-                );
-              })}
-              {/* Totales */}
-              {lineasLog.length > 0 && (
-                <div className="flex justify-end px-4 py-2 bg-[#0d0d0d] gap-6 text-xs">
-                  {(["COMIDA", "TRANSPORTE", "HOSPEDAJE"] as const).map(tipo => {
-                    const s = lineasLog.filter(l => l.tipo === tipo).reduce((a, b) => a + b.subtotal, 0);
-                    const label = tipo === "COMIDA" ? "Comidas" : tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
-                    return s > 0 ? <span key={tipo} className="text-gray-500">{label}: <span className="text-white">{formatCurrency(s)}</span></span> : null;
-                  })}
-                </div>
-              )}
-            </div>
+              })
+            )}
           </Seccion>
 
           {/* ── Descuentos ── */}
