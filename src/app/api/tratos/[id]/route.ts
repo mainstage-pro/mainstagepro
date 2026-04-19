@@ -101,51 +101,52 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   // 4. Proyecto asociado (si no tiene estado COMPLETADO)
   // 5. El trato
 
-  await prisma.$transaction(async (tx) => {
-    // Obtener cotizaciones y proyecto del trato
-    const cotizaciones = await tx.cotizacion.findMany({
-      where: { tratoId: id },
-      select: { id: true },
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 1. Borrar proyecto PRIMERO (tiene FK → cotizacion)
+      const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
+      if (proyecto) {
+        // Romper FK CxC/CxP → MovimientoFinanciero antes de borrar movimientos
+        await tx.cuentaCobrar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
+        await tx.cuentaPagar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
+        await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.cuentaCobrar.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.cuentaPagar.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.evaluacionInterna.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.evaluacionCliente.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyectoEquipo.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyectoPersonal.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyectoChecklist.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyectoBitacora.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.cierreFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.gastoOperativo.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.ordenCompra.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyectoArchivo.deleteMany({ where: { proyectoId: proyecto.id } });
+        await tx.proyecto.delete({ where: { id: proyecto.id } });
+      }
+
+      // 2. Borrar líneas y cuentas de las cotizaciones
+      const cotizaciones = await tx.cotizacion.findMany({ where: { tratoId: id }, select: { id: true } });
+      const cotIds = cotizaciones.map((c) => c.id);
+      if (cotIds.length > 0) {
+        await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: { in: cotIds } } });
+        await tx.cuentaCobrar.deleteMany({ where: { cotizacionId: { in: cotIds } } });
+      }
+
+      // 3. Borrar cotizaciones
+      await tx.cotizacion.deleteMany({ where: { tratoId: id } });
+
+      // 4. Borrar levantamientos del trato
+      await tx.levantamientoContenido.deleteMany({ where: { tratoId: id } });
+
+      // 5. Borrar el trato (archivos tienen Cascade en DB)
+      await tx.trato.delete({ where: { id } });
     });
-    const cotIds = cotizaciones.map((c) => c.id);
-
-    // Borrar líneas y cuentas por cobrar de esas cotizaciones
-    if (cotIds.length > 0) {
-      await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: { in: cotIds } } });
-      await tx.cuentaCobrar.deleteMany({ where: { cotizacionId: { in: cotIds } } });
-    }
-
-    // Borrar cotizaciones
-    await tx.cotizacion.deleteMany({ where: { tratoId: id } });
-
-    // Borrar proyecto si existe (y sus dependencias)
-    const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
-    if (proyecto) {
-      // Romper FK CxC/CxP → MovimientoFinanciero antes de borrar movimientos
-      await tx.cuentaCobrar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
-      await tx.cuentaPagar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
-      await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.cuentaCobrar.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.cuentaPagar.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.evaluacionInterna.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.evaluacionCliente.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyectoEquipo.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyectoPersonal.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyectoChecklist.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyectoBitacora.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.cierreFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.gastoOperativo.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.ordenCompra.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyectoArchivo.deleteMany({ where: { proyectoId: proyecto.id } });
-      await tx.proyecto.delete({ where: { id: proyecto.id } });
-    }
-
-    // Borrar levantamientos del trato
-    await tx.levantamientoContenido.deleteMany({ where: { tratoId: id } });
-
-    // Borrar el trato (archivos tienen Cascade)
-    await tx.trato.delete({ where: { id } });
-  });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("[DELETE /api/tratos]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }
