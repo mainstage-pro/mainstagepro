@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
 
   const year = new Date().getFullYear();
   const cotCount = await prisma.cotizacion.count({ where: { numeroCotizacion: { startsWith: `COT-${year}-` } } });
-  const numeroCotizacion = `COT-${year}-${String(cotCount + 1).padStart(3, "0")}`;
+  const numeroCotizacion = `COT-${year}-${String(cotCount + 1).padStart(3, "0")}-T`;
 
   const cot = await prisma.cotizacion.create({
     data: {
