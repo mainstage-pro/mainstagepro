@@ -2307,22 +2307,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
                     <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => guardarDescubrimiento(true)}
-                      disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")}
-                      className="text-xs text-gray-500 hover:text-gray-300 disabled:opacity-40 transition-colors"
-                    >
-                      {saving ? "Guardando..." : "Marcar completo"}
-                    </button>
-                    <Link
-                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
-                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
-                    >
-                      Hacer propuesta →
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                    onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                    className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
+                  >
+                    Hacer propuesta →
+                  </Link>
                 </div>
               )}
             </div>)} {/* /paso5 */}
@@ -2341,11 +2332,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   Siguiente →
                 </button>
               ) : (
-                !trato.descubrimientoCompleto ? (
-                  <button onClick={() => guardarDescubrimiento(true)} disabled={saving || (!discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir") || (!discForm.lugarEstimado && discForm.lugarEstimado !== "por-definir")} className="text-xs px-4 py-2 bg-[#B3985B] disabled:opacity-40 text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
-                    {saving ? "Guardando..." : "Completar descubrimiento →"}
-                  </button>
-                ) : <span className="text-xs text-[#B3985B] font-medium">✓ Descubrimiento completo</span>
+                trato.descubrimientoCompleto
+                  ? <span className="text-xs text-[#B3985B] font-medium">✓ Descubrimiento completo</span>
+                  : <span />
               )}
             </div>
           </>
@@ -2737,78 +2726,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <p className="text-white text-sm">{fmtDate(trato.createdAt)}</p>
           </div>
         </div>
-      </div>
-
-      {/* Mainstage Trade */}
-      <div className={`bg-[#111] border rounded-xl p-5 ${discForm.tradeAplica ? "border-[#B3985B]/40" : "border-[#222]"}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Mainstage Trade</h2>
-            {discForm.tradeAplica && (
-              <span className="px-2 py-0.5 rounded-full text-xs bg-[#B3985B]/20 text-[#B3985B] font-medium">Calificado</span>
-            )}
-          </div>
-          {discForm.tradeAplica && (
-            <button
-              onClick={() => setDiscForm(p => ({ ...p, tradeAplica: false }))}
-              className="text-xs text-red-400 hover:text-red-300 transition-colors"
-            >Quitar</button>
-          )}
-        </div>
-
-        {!discForm.tradeAplica ? (
-          <div className="space-y-3">
-            <p className="text-gray-500 text-xs">Este trato está marcado para Mainstage Trade. El cliente elegirá su nivel de colaboración desde la cotización.</p>
-            <p className="text-[11px] text-gray-600">Para activarlo, ve al descubrimiento de este trato y activa el toggle "Aplica Mainstage Trade".</p>
-            <div className="space-y-2 pt-1">
-              <p className="text-[11px] text-gray-500 uppercase tracking-wider font-semibold">Criterios de calificación</p>
-              {[
-                "El evento tiene alta visibilidad o afluencia de público",
-                "El cliente puede ofrecer presencia de marca (logo, mención, redes)",
-                "El evento está alineado con el posicionamiento de Mainstage Pro",
-                "El cliente es recurrente o tiene potencial estratégico",
-                "El evento genera contenido de valor (foto/video aprovechable)",
-              ].map((c, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-gray-500">
-                  <span className="text-[#B3985B]/60 mt-0.5">✓</span>
-                  <span>{c}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="bg-[#0a0a0a] rounded-lg p-4 space-y-2">
-              <p className="text-xs text-gray-500">Trato calificado para Mainstage Trade</p>
-              <p className="text-white text-sm">El cliente elegirá su nivel de colaboración (Base 5%, Estratégico 10% o Premium 12%) desde la cotización.</p>
-              <p className="text-[11px] text-gray-500">Una vez que el cliente seleccione su nivel, el descuento se aplicará automáticamente en la cotización.</p>
-            </div>
-            <button
-              onClick={() => {
-                const nivel = tradeNivel ?? 1;
-                const pct = [5,10,12][nivel-1];
-                const texto = `Términos y Condiciones — Mainstage Trade Nivel ${nivel} (${["Base","Estratégico","Premium"][nivel-1]})\n\n` +
-                  `Descuento aplicado: ${pct}% sobre subtotal de equipos\n\n` +
-                  `Compromisos del cliente:\n` +
-                  (nivel >= 1 ? `• Logo de Mainstage Pro en flyer y/o backdrop del evento\n• 1 mención del animador durante el evento\n• Material básico de foto/video para uso en redes de Mainstage Pro\n• 2 a 4 cortesías de acceso al evento\n` : "") +
-                  (nivel >= 2 ? `• Mayor presencia del logo (cartel principal, mesa de control visible)\n• 1 publicación o reel etiquetando @MainstagePro\n• Material de mayor calidad para portafolio\n• 4 a 8 cortesías de acceso al evento\n` : "") +
-                  (nivel >= 3 ? `• Mainstage Pro como partner técnico visible\n• Pieza de contenido de producción técnica (reel o video)\n• Material premium sin restricciones\n• 6 a 12 cortesías de acceso al evento\n` : "") +
-                  `\nEste acuerdo es válido para el evento "${trato.nombreEvento ?? "—"}" del cliente ${trato.cliente.nombre}.\n` +
-                  `Generado el ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })} por Mainstage Pro.\n`;
-                const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `TyC_Trade_Nivel${nivel}_${trato.cliente.nombre.replace(/\s+/g, "_")}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="w-full py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/10 transition-colors"
-            >
-              Descargar Términos y Condiciones
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Cotizaciones */}
