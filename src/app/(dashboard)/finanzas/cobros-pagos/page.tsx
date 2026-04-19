@@ -313,7 +313,7 @@ export default function CobrosPagosPage() {
       {/* Tabs + filtro */}
       <div className="flex items-center justify-between mb-4 border-b border-[#1a1a1a] pb-0">
         <div className="flex gap-1">
-          {([["cobrar", "Por Cobrar", cxc.length], ["pagar", "Por Pagar", cxp.length]] as const).map(([key, label, count]) => (
+          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length]] as const).map(([key, label, count]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
                 tab === key
