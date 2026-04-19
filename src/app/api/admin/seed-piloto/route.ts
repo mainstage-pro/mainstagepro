@@ -4,9 +4,11 @@ import { getSession } from "@/lib/auth";
 
 // Endpoint temporal para crear datos piloto de prueba — eliminar después de usar
 export async function POST(req: NextRequest) {
-  const session = await getSession();
   const secret = req.headers.get("x-seed-secret");
-  if (!session && secret !== "mainstage-piloto-2025") return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (secret !== "mainstage-piloto-2025") {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const [primerUsuario, roles, equipos] = await Promise.all([
     prisma.user.findFirst({ orderBy: { createdAt: "asc" } }),
@@ -270,9 +272,11 @@ export async function POST(req: NextRequest) {
 
 // DELETE: elimina todos los datos piloto de Daniela Reyes / Grupo Arenas
 export async function DELETE(req: NextRequest) {
-  const session = await getSession();
   const secret = req.headers.get("x-seed-secret");
-  if (!session && secret !== "mainstage-piloto-2025") return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (secret !== "mainstage-piloto-2025") {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const cliente = await prisma.cliente.findFirst({ where: { correo: "daniela.reyes@grupoarenas.mx" } });
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
