@@ -437,6 +437,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingCatering, setSavingCatering] = useState(false);
   const cateringLoaded = useRef(false);
   const cateringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const choferLoaded = useRef(false);
+  const choferTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estado para documentos
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -808,7 +810,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCatering({ ...CATERING_EMPTY, ...c, personasCrew: autoPersonas, comidasPorDia: autoDias });
     } catch { setCatering(CATERING_EMPTY); }
     // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
-    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
+    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; choferLoaded.current = true; }, 300);
   }, [proyecto?.id]);
 
   // Auto-save cronograma
@@ -824,6 +826,34 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (cateringTimer.current) clearTimeout(cateringTimer.current);
     cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
   }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-save chofer
+  useEffect(() => {
+    if (!choferLoaded.current || !proyecto) return;
+    if (choferTimer.current) clearTimeout(choferTimer.current);
+    choferTimer.current = setTimeout(async () => {
+      let nombre = "";
+      let externo = false;
+      let costo: number | null = null;
+      if (choferTipo === "INTERNO") {
+        const p = proyecto.personal.find(p => p.id === choferPersonalId);
+        nombre = p?.tecnico?.nombre ?? "";
+        externo = false;
+      } else {
+        nombre = choferNombreInput;
+        externo = true;
+        costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
+      }
+      if (!nombre) return;
+      setGuardandoChofer(true);
+      const res = await fetch(`/api/proyectos/${id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ choferNombre: nombre, choferExterno: externo, choferCosto: costo }),
+      });
+      if (res.ok) setProyecto(prev => prev ? { ...prev, choferNombre: nombre, choferExterno: externo, choferCosto: costo } : prev);
+      setGuardandoChofer(false);
+    }, 1000);
+  }, [choferTipo, choferPersonalId, choferNombreInput, choferCostoInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -994,7 +1024,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function cargarPlantillaCrono() {
     if (cronoRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma actual con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
-    setCronoRows(CRONO_BASE.map(r => ({ ...r })));
+    const horaInicio = proyecto?.horaInicioEvento ?? "";
+    const horaFin = proyecto?.horaFinEvento ?? "";
+    const rows = CRONO_BASE.map(r => {
+      if (r.actividad === "Inicio de evento" && horaInicio) return { ...r, horaInicio };
+      if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) return { ...r, horaInicio: horaFin };
+      return { ...r };
+    });
+    setCronoRows(rows);
   }
 
   function addCronoRow() {
@@ -1237,6 +1274,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(prev => prev ? {
       ...prev,
       personal: prev.personal.map(p => p.id === pId ? { ...p, confirmado: !confirmado } : p),
+    } : prev);
+  }
+
+  // ── Confirmar todos los de un grupo ──
+  async function confirmarGrupo(grupo: NonNullable<typeof proyecto>["personal"]) {
+    const pendientes = grupo.filter(p => !p.confirmado && p.tecnico);
+    await Promise.all(pendientes.map(p =>
+      fetch(`/api/proyectos/${id}/personal/${p.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmado: true }),
+      })
+    ));
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => pendientes.some(pp => pp.id === p.id) ? { ...p, confirmado: true } : p),
     } : prev);
   }
 
@@ -1606,7 +1658,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const anticipoCobrado = anticipo ? anticipo.montoCobrado >= anticipo.monto : false;
         const equiposTotal = proyecto.equipos?.length ?? 0;
         const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
+        const fichaOk = !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
         const items = [
+          {
+            label: "Ficha",
+            ok: fichaOk,
+            warn: !fichaOk,
+            txt: fichaOk ? "Completa" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante",
+          },
           {
             label: "Personal",
             ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
@@ -1622,7 +1681,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {
             label: "Anticipo",
             ok: anticipoCobrado,
-            warn: anticipo && !anticipoCobrado,
+            warn: !!(anticipo && !anticipoCobrado),
             txt: anticipo ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
           },
           {
@@ -1985,10 +2044,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </select>
                 </div>
               )}
-              <button onClick={guardarChofer} disabled={guardandoChofer || (choferTipo === "INTERNO" && !choferPersonalId) || (choferTipo === "EXTERNO" && !choferNombreInput)}
-                className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                {guardandoChofer ? "Guardando..." : "Guardar chofer"}
-              </button>
+              {guardandoChofer && <p className="text-xs text-gray-600 text-center">Guardando...</p>}
             </div>
           </div>
 
@@ -2307,6 +2363,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-green-500">{grupo.filter(p => p.confirmado).length} conf.</span>
                         {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                        {grupo.some(p => !p.confirmado && p.tecnico) && (
+                          <button onClick={() => confirmarGrupo(grupo)}
+                            className="text-xs text-gray-500 hover:text-green-400 border border-[#333] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
+                            Confirmar todos
+                          </button>
+                        )}
                       </div>
                     </div>
                     {grupo.map(p => (
@@ -2491,10 +2553,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       📲 Solicitar a proveedor
                     </button>
                   )}
-                  <button onClick={() => guardarCatering(catering)} disabled={savingCatering}
-                    className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                    Guardar
-                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
