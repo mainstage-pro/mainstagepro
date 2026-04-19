@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   const rolIlum       = rolById("iluminaci");
   const rolStage      = rolById("stagehand") ?? rolById("técnico /");
 
-  const tradeToken = "trade-piloto-nexo-2025";
+  const tradeToken = `trade-nexo-${Date.now()}`;
 
   try {
   const cliente = await prisma.cliente.create({
