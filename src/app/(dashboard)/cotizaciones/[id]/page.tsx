@@ -909,6 +909,61 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             );
           })()}
 
+          {/* ── Mainstage Trade — link para compartir ── */}
+          {cot.trato.tradeCalificado && !["APROBADA", "RECHAZADA"].includes(cot.estado) && (() => {
+            let tradeNivel: number | null = null;
+            let tradePct: number | null = null;
+            try {
+              const td = cot.mainstageTradeData ? JSON.parse(cot.mainstageTradeData) : {};
+              tradeNivel = td.nivelSeleccionado ?? null;
+              tradePct = td.pct ?? null;
+            } catch { /* noop */ }
+            const tradeUrl = cot.tradeToken
+              ? `${typeof window !== "undefined" ? window.location.origin : ""}/trade/${cot.tradeToken}`
+              : null;
+            const NIVEL_LABEL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+            return (
+              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">🤝</span>
+                    <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                  </div>
+                  {tradeNivel && (
+                    <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full font-medium">
+                      ✓ Nivel {tradeNivel} · {NIVEL_LABEL[tradeNivel]} · {tradePct}% aplicado
+                    </span>
+                  )}
+                  {!tradeNivel && cot.tradeToken && (
+                    <span className="text-[10px] bg-blue-900/20 text-blue-400 px-2 py-0.5 rounded-full">Esperando selección</span>
+                  )}
+                </div>
+
+                {!tradeNivel && tradeUrl && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500">Comparte este enlace con el cliente para que elija su nivel de colaboración:</p>
+                    <div className="flex items-center gap-2 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                      <span className="text-xs text-gray-400 flex-1 truncate">{tradeUrl}</span>
+                      <CopyButton value={tradeUrl} />
+                    </div>
+                    {cot.cliente.telefono && (
+                      <a
+                        href={`https://wa.me/${cot.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${cot.cliente.nombre}, te comparto la propuesta de colaboración Mainstage Trade para tu evento. Elige tu nivel y obtén un descuento adicional:\n\n${tradeUrl}`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition-colors">
+                        <span>📱</span> Enviar por WhatsApp
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {tradeNivel && (
+                  <p className="text-xs text-gray-500">El cliente seleccionó Nivel {tradeNivel} ({NIVEL_LABEL[tradeNivel]}). El descuento del {tradePct}% ya está aplicado en la cotización.</p>
+                )}
+              </div>
+            );
+          })()}
+
           {cot.observaciones && (
             <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
               <p className="text-gray-500 text-xs mb-1">Observaciones</p>

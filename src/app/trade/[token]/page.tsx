@@ -6,9 +6,6 @@ import Image from "next/image";
 interface TradeData {
   activo: boolean;
   pct: number;
-  entregables: string[];
-  checklist: Record<string, boolean>;
-  checklistCompleto: boolean;
   nivelSeleccionado: number | null;
   nivelAplicado: number | null;
   bonoVariable: string | null;
@@ -41,7 +38,7 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  return new Date(s).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 const NIVELES = [
@@ -49,14 +46,13 @@ const NIVELES = [
     nivel: 1,
     nombre: "Base",
     pct: 5,
-    color: "border-[#2a2a2a] hover:border-[#3a3a3a]",
-    colorActive: "border-[#B3985B]/60 bg-[#B3985B]/5",
-    badge: "bg-[#2a2a2a] text-gray-300",
+    tagline: "Presencia de marca esencial",
+    color: { border: "#2a2a2a", borderHover: "#3a3a3a", bg: "rgba(255,255,255,0.02)", accent: "#aaa", badge: "rgba(255,255,255,0.06)" },
     beneficios: [
       "Logo de Mainstage Pro en flyer y/o backdrop del evento",
-      "1 mención del animador o maestro de ceremonias durante el evento",
-      "Material básico de foto/video del evento para uso en redes",
-      "2 a 4 cortesías de acceso al evento",
+      "1 mención del animador o MC durante el evento",
+      "Material básico de foto y video para nuestras redes sociales",
+      "2 a 4 accesos al evento para el equipo Mainstage",
     ],
   },
   {
@@ -64,31 +60,29 @@ const NIVELES = [
     nombre: "Estratégico",
     pct: 10,
     destacado: true,
-    color: "border-[#B3985B]/30 hover:border-[#B3985B]/60",
-    colorActive: "border-[#B3985B] bg-[#B3985B]/8",
-    badge: "bg-[#B3985B]/20 text-[#B3985B]",
+    tagline: "Alianza visible con contenido",
+    color: { border: "#B3985B", borderHover: "#c4aa6b", bg: "rgba(179,152,91,0.06)", accent: "#B3985B", badge: "rgba(179,152,91,0.15)" },
     beneficios: [
-      "Todo lo del Nivel Base",
-      "Mayor presencia del logo (cartel principal, mesa de control visible)",
-      "1 publicación o reel en Instagram y/o Facebook etiquetando Mainstage Pro",
-      "Material de mayor calidad — foto y video para portafolio",
-      "4 a 8 cortesías de acceso al evento",
+      "Todo lo incluido en Nivel Base",
+      "Logo en cartel principal y mesa de control visible del evento",
+      "1 publicación o reel en Instagram/Facebook etiquetando @mainstage.pro",
+      "Material de calidad profesional para nuestro portafolio",
+      "4 a 8 accesos al evento para el equipo Mainstage",
     ],
   },
   {
     nivel: 3,
     nombre: "Premium",
     pct: 12,
-    color: "border-[#8B6914]/40 hover:border-[#8B6914]/70",
-    colorActive: "border-[#C4A96B] bg-[#C4A96B]/8",
-    badge: "bg-[#8B6914]/20 text-[#C4A96B]",
+    tagline: "Partner técnico oficial del evento",
+    color: { border: "#6b5a2e", borderHover: "#8b7a4e", bg: "rgba(179,152,91,0.04)", accent: "#C4A96B", badge: "rgba(100,80,30,0.3)" },
     beneficios: [
-      "Todo lo del Nivel Estratégico",
-      "Mainstage Pro como partner técnico visible del evento",
-      "Pieza de contenido enfocada en la producción técnica (reel o video corto)",
+      "Todo lo incluido en Nivel Estratégico",
+      "Mainstage Pro como partner técnico oficial del evento",
+      "Pieza de contenido enfocada en producción técnica (reel o video corto)",
       "Material premium de foto y video — uso sin restricciones",
-      "6 a 12 cortesías de acceso al evento",
-      "Bono variable adicional (acordado con el equipo)",
+      "6 a 12 accesos al evento para el equipo Mainstage",
+      "Bono variable adicional acordado directamente con nuestro equipo",
     ],
   },
 ];
@@ -125,19 +119,15 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
       .catch(() => { setError("Error de conexión"); setLoading(false); });
   }, [token]);
 
-  async function seleccionar(nivel: number) {
-    if (yaSelecciono || seleccionando) return;
-    setConfirmando(nivel);
-  }
-
   async function confirmarSeleccion() {
     if (!confirmando || seleccionando) return;
     setSeleccionando(true);
+    setActionError(null);
     try {
       const res = await fetch(`/api/trade/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nivel: confirmando, bonoVariable: null }),
+        body: JSON.stringify({ nivel: confirmando }),
       });
       const d = await res.json();
       if (res.ok) {
@@ -145,6 +135,7 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
         setYaSelecciono(true);
         setConfirmado(true);
         setConfirmando(null);
+        if (cot && d.granTotal) setCot(prev => prev ? { ...prev, granTotal: d.granTotal } : prev);
       } else {
         setActionError(d.error ?? "Error al registrar selección");
       }
@@ -155,17 +146,20 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-gray-500 text-sm">Cargando propuesta…</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="space-y-3 text-center">
+          <div className="w-8 h-8 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin mx-auto" />
+          <p className="text-gray-600 text-sm">Cargando propuesta…</p>
+        </div>
       </div>
     );
   }
 
   if (error || !cot || !trade) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-400 text-sm">{error ?? "Propuesta no encontrada"}</p>
+      <div className="min-h-screen bg-black flex items-center justify-center px-4">
+        <div className="text-center space-y-2">
+          <p className="text-gray-500 text-sm">{error ?? "Esta propuesta no existe o ya no está disponible."}</p>
         </div>
       </div>
     );
@@ -174,187 +168,236 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
   const ivaFactor = cot.aplicaIva ? 1.16 : 1;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Header */}
-      <div className="border-b border-[#1a1a1a] px-6 py-4 flex items-center gap-3">
-        <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="opacity-80" />
-        <span className="text-[#B3985B] font-semibold text-sm tracking-wide">Mainstage Pro</span>
-        <span className="text-gray-700 text-sm ml-2">· Propuesta de Colaboración Trade</span>
+    <div className="min-h-screen bg-black text-white">
+      {/* Fondo con gradiente sutil */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(179,152,91,0.08)_0%,transparent_60%)]" />
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
-        {/* Event info */}
-        <div className="text-center space-y-2">
-          <p className="text-gray-500 text-xs uppercase tracking-widest">Propuesta de colaboración</p>
-          <h1 className="text-2xl font-bold text-white">{cot.nombreEvento ?? cot.numeroCotizacion}</h1>
-          {cot.tipoEvento && <p className="text-gray-400 text-sm">{cot.tipoEvento}</p>}
-          <div className="flex items-center justify-center gap-4 text-gray-500 text-xs mt-2">
-            {cot.fechaEvento && <span>{fmtDate(cot.fechaEvento)}</span>}
-            {cot.lugarEvento && <span>· {cot.lugarEvento}</span>}
+      {/* Header */}
+      <header className="relative border-b border-white/5 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Image src="/logo-icon.png" alt="Mainstage Pro" width={26} height={26} className="opacity-90" />
+          <span className="text-[#B3985B] font-bold text-sm tracking-wide">Mainstage Pro</span>
+        </div>
+        <span className="text-[10px] text-gray-700 tracking-widest uppercase">Propuesta de Colaboración</span>
+      </header>
+
+      <div className="relative max-w-5xl mx-auto px-4 py-12 space-y-14">
+
+        {/* ── HERO ── */}
+        <div className="text-center space-y-4 max-w-2xl mx-auto">
+          <div className="inline-block px-3 py-1 rounded-full border border-[#B3985B]/30 bg-[#B3985B]/5 text-[#B3985B] text-[11px] font-semibold tracking-widest uppercase mb-2">
+            Mainstage Trade
           </div>
-          <p className="text-gray-500 text-sm mt-1">Para: <span className="text-gray-300">{cot.cliente.nombre}{cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}</span></p>
-        </div>
-
-        {/* Intro */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 text-sm text-gray-400 leading-relaxed">
-          <p className="text-white font-medium mb-2">¿Qué es Mainstage Trade?</p>
-          <p>
-            Es un esquema de colaboración donde <span className="text-[#B3985B]">Mainstage Pro ofrece un descuento sobre la renta de equipos</span> a cambio de visibilidad de marca y contenido en tu evento.
-            Ambas partes ganan: tú pagas menos, nosotros crecemos juntos.
+          <h1 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+            {cot.nombreEvento ?? "Tu evento"}
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Para <span className="text-gray-300 font-medium">{cot.cliente.nombre}{cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}</span>
+            {cot.fechaEvento && <> &nbsp;·&nbsp; <span>{fmtDate(cot.fechaEvento)}</span></>}
+            {cot.lugarEvento && <> &nbsp;·&nbsp; <span>{cot.lugarEvento}</span></>}
           </p>
-          <p className="mt-2">A continuación encontrarás tres opciones con sus beneficios y el impacto real en tu cotización. <strong className="text-white">Elige la que mejor se adapte a tu evento.</strong></p>
         </div>
 
-        {/* Already selected confirmation */}
+        {/* ── QUÉ ES TRADE ── */}
+        <div className="max-w-2xl mx-auto bg-white/[0.03] border border-white/[0.07] rounded-2xl p-6 space-y-3">
+          <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-widest">¿Qué es Mainstage Trade?</p>
+          <p className="text-gray-300 text-sm leading-relaxed">
+            Es un programa de colaboración donde <strong className="text-white">Mainstage Pro te ofrece un descuento adicional sobre tu cotización</strong> a cambio de visibilidad de marca en tu evento.
+          </p>
+          <p className="text-gray-500 text-sm leading-relaxed">
+            Tú obtienes un menor costo. Nosotros obtenemos presencia de marca, contenido y conexión con tus invitados.
+            <strong className="text-white"> Los dos ganamos.</strong>
+          </p>
+          <div className="pt-2 grid grid-cols-3 gap-3 text-center">
+            {[
+              { label: "Total original", value: fmt(cot.granTotal), sub: "sin Trade" },
+              { label: "Descuento máximo", value: fmt(cot.subtotalEquiposBruto * 0.12 * ivaFactor), sub: "hasta 12%" },
+              { label: "Total mínimo posible", value: fmt(cot.granTotal - cot.subtotalEquiposBruto * 0.12 * ivaFactor), sub: "con Trade Premium" },
+            ].map(item => (
+              <div key={item.label} className="bg-black/40 rounded-xl p-3 space-y-0.5">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wide">{item.label}</p>
+                <p className="text-white font-bold text-base">{item.value}</p>
+                <p className="text-[10px] text-gray-700">{item.sub}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── CONFIRMACIÓN POST-SELECCIÓN ── */}
         {confirmado && nivelElegido && (
-          <div className="bg-green-900/20 border border-green-700/40 rounded-xl p-5 space-y-4">
-            <div className="text-center">
-              <p className="text-green-400 text-sm font-semibold mb-1">✓ Selección registrada</p>
-              <p className="text-gray-400 text-sm">
-                Elegiste el <span className="text-white font-medium">Nivel {nivelElegido} — {NIVELES[nivelElegido - 1].nombre} ({NIVELES[nivelElegido - 1].pct}% descuento)</span>.
-                El equipo de Mainstage Pro ha sido notificado y aplicará el descuento a tu cotización.
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const n = NIVELES[nivelElegido - 1];
-                const texto = `TÉRMINOS Y CONDICIONES — MAINSTAGE TRADE\nNivel ${nivelElegido}: ${n.nombre} (${n.pct}% descuento en equipos)\n\n` +
-                  `EVENTO: ${cot.nombreEvento ?? cot.numeroCotizacion}\nCLIENTE: ${cot.cliente.nombre}${cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}\n\n` +
-                  `COMPROMISOS DEL CLIENTE:\n${n.beneficios.map(b => `• ${b}`).join("\n")}\n\n` +
-                  `DESCUENTO APLICADO: ${n.pct}% sobre subtotal de renta de equipos Mainstage Pro.\n` +
-                  `El descuento NO aplica sobre operación técnica, transporte, hospedaje ni alimentación.\n\n` +
-                  `Al confirmar este nivel, el cliente acepta cumplir con todos los entregables listados arriba en las fechas acordadas con el equipo de Mainstage Pro.\n\n` +
-                  `Fecha de aceptación: ${new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}\n` +
-                  `Referencia de cotización: ${cot.numeroCotizacion}\n\nMainstage Pro · mainstage.pro\n`;
-                const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = `TyC_Trade_Nivel${nivelElegido}_${cot.numeroCotizacion}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              className="w-full py-2.5 rounded-xl border border-green-700/40 text-green-400 text-sm font-medium hover:bg-green-900/20 transition-colors"
-            >
-              Descargar Términos y Condiciones
-            </button>
+          <div className="max-w-2xl mx-auto bg-green-950/40 border border-green-700/30 rounded-2xl p-6 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-green-900/40 border border-green-700/40 flex items-center justify-center mx-auto text-green-400 text-xl">✓</div>
+            <p className="text-green-400 font-semibold">¡Selección confirmada!</p>
+            <p className="text-gray-400 text-sm">
+              Elegiste <span className="text-white font-medium">Nivel {nivelElegido} — {NIVELES[nivelElegido - 1].nombre} ({NIVELES[nivelElegido - 1].pct}% descuento)</span>.
+              Tu cotización ha sido actualizada automáticamente con el nuevo total.
+            </p>
+            <p className="text-gray-600 text-xs">El equipo de Mainstage Pro ha sido notificado y se pondrá en contacto contigo para coordinar los detalles de la colaboración.</p>
           </div>
         )}
 
-        {/* Confirmation modal overlay */}
-        {confirmando && !confirmado && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
-            <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 max-w-sm w-full space-y-4">
-              <p className="text-white font-semibold text-center">Confirmar selección</p>
-              <p className="text-gray-400 text-sm text-center">
-                Vas a elegir el <span className="text-[#B3985B] font-medium">Nivel {confirmando} — {NIVELES[confirmando - 1].nombre}</span> con un descuento del {NIVELES[confirmando - 1].pct}% sobre equipos.
-              </p>
-              <p className="text-gray-500 text-xs text-center">Esta selección quedará registrada y no podrá modificarse.</p>
-              <div className="flex gap-3">
+        {/* ── CARDS DE NIVELES ── */}
+        <div>
+          <p className="text-center text-xs text-gray-600 uppercase tracking-widest mb-6">Elige tu nivel de colaboración</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {NIVELES.map(n => {
+              const descuentoBase = cot.subtotalEquiposBruto * (n.pct / 100);
+              const ahorro = Math.round(descuentoBase * ivaFactor * 100) / 100;
+              const totalConTrade = cot.granTotal - ahorro;
+              const isElegido = confirmado && nivelElegido === n.nivel;
+              const isOpacado = confirmado && nivelElegido !== n.nivel;
+
+              return (
+                <div
+                  key={n.nivel}
+                  style={{
+                    borderColor: isElegido ? "#22c55e" : n.color.border,
+                    backgroundColor: isElegido ? "rgba(34,197,94,0.05)" : n.color.bg,
+                  }}
+                  className={`relative border rounded-2xl p-5 flex flex-col gap-5 transition-all duration-300 ${isOpacado ? "opacity-30" : ""}`}
+                >
+                  {/* Badge */}
+                  {n.destacado && !confirmado && (
+                    <div className="absolute -top-3.5 inset-x-0 flex justify-center">
+                      <span className="bg-[#B3985B] text-black text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest shadow-lg">
+                        Más popular
+                      </span>
+                    </div>
+                  )}
+                  {isElegido && (
+                    <div className="absolute -top-3.5 inset-x-0 flex justify-center">
+                      <span className="bg-green-500 text-black text-[10px] font-black px-4 py-1 rounded-full uppercase tracking-widest">
+                        Tu elección ✓
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Encabezado del nivel */}
+                  <div className="space-y-1 pt-1">
+                    <div style={{ backgroundColor: n.color.badge }} className="inline-block px-2 py-0.5 rounded-full">
+                      <span style={{ color: n.color.accent }} className="text-[10px] font-bold uppercase tracking-widest">
+                        Nivel {n.nivel}
+                      </span>
+                    </div>
+                    <p className="text-white font-black text-xl">{n.nombre}</p>
+                    <p className="text-gray-600 text-xs">{n.tagline}</p>
+                  </div>
+
+                  {/* Descuento prominente */}
+                  <div className="text-center py-3 border-y" style={{ borderColor: n.color.border }}>
+                    <span style={{ color: n.color.accent }} className="text-5xl font-black">{n.pct}%</span>
+                    <p className="text-gray-500 text-xs mt-1">de descuento sobre renta de equipos</p>
+                  </div>
+
+                  {/* Desglose financiero */}
+                  <div className="bg-black/40 rounded-xl p-4 space-y-2">
+                    <div className="flex justify-between text-xs text-gray-600">
+                      <span>Total sin colaboración</span>
+                      <span className="line-through">{fmt(cot.granTotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs" style={{ color: n.color.accent }}>
+                      <span>Tu ahorro con Trade</span>
+                      <span className="font-semibold">− {fmt(ahorro)}</span>
+                    </div>
+                    <div className="border-t pt-2" style={{ borderColor: n.color.border }}>
+                      <div className="flex justify-between text-white font-black text-base">
+                        <span>Total con Trade</span>
+                        <span>{fmt(totalConTrade)}</span>
+                      </div>
+                      {cot.aplicaIva && (
+                        <p className="text-[10px] text-gray-700 text-right mt-0.5">IVA incluido</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Lo que recibiremos */}
+                  <div className="flex-1 space-y-2">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">Mainstage Pro recibe</p>
+                    <ul className="space-y-2">
+                      {n.beneficios.map((b, i) => (
+                        <li key={i} className="flex gap-2 text-xs text-gray-400 leading-relaxed">
+                          <span style={{ color: n.color.accent }} className="shrink-0 mt-0.5 font-bold">·</span>
+                          <span>{b}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* CTA */}
+                  {!confirmado && (
+                    <button
+                      onClick={() => setConfirmando(n.nivel)}
+                      style={n.destacado ? { backgroundColor: n.color.accent, color: "#000" } : { borderColor: n.color.border, color: n.color.accent }}
+                      className={`w-full py-3 rounded-xl text-sm font-bold transition-all ${n.destacado ? "hover:opacity-90" : "border hover:opacity-80"}`}
+                    >
+                      Elegir Nivel {n.nivel} — {n.nombre}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── FINE PRINT ── */}
+        <div className="text-center space-y-1.5 text-[11px] text-gray-700 pb-8 max-w-xl mx-auto">
+          <p>El descuento aplica únicamente sobre la renta de equipos Mainstage Pro — no sobre operación técnica, transporte, hospedaje ni alimentación.</p>
+          <p>Al confirmar tu nivel, aceptas los compromisos de visibilidad descritos. Los entregables deben cumplirse en fechas acordadas con el equipo.</p>
+          <p className="text-gray-800 pt-2">{cot.numeroCotizacion} · Mainstage Pro</p>
+        </div>
+      </div>
+
+      {/* ── MODAL DE CONFIRMACIÓN ── */}
+      {confirmando && !confirmado && (() => {
+        const n = NIVELES[confirmando - 1];
+        const ahorro = Math.round(cot.subtotalEquiposBruto * (n.pct / 100) * ivaFactor * 100) / 100;
+        const totalFinal = cot.granTotal - ahorro;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0">
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => !seleccionando && setConfirmando(null)} />
+            <div className="relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+              <div className="text-center space-y-1">
+                <p className="text-white font-bold text-lg">Confirmar elección</p>
+                <p className="text-gray-500 text-sm">Nivel {n.nivel} — <span style={{ color: n.color.accent }} className="font-semibold">{n.nombre}</span></p>
+              </div>
+
+              <div className="bg-black/40 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Total original</span><span>{fmt(cot.granTotal)}</span>
+                </div>
+                <div className="flex justify-between text-xs" style={{ color: n.color.accent }}>
+                  <span>Tu ahorro ({n.pct}%)</span><span>− {fmt(ahorro)}</span>
+                </div>
+                <div className="flex justify-between text-white font-bold border-t border-[#2a2a2a] pt-2">
+                  <span>Tu total final</span><span className="text-xl">{fmt(totalFinal)}</span>
+                </div>
+              </div>
+
+              <p className="text-gray-600 text-xs text-center">Esta selección quedará registrada como acuerdo formal. No podrá modificarse una vez confirmada.</p>
+
+              {actionError && <p className="text-red-400 text-xs text-center">{actionError}</p>}
+
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setConfirmando(null)}
-                  className="flex-1 py-2 rounded-lg border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors">
+                  disabled={seleccionando}
+                  className="py-3 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-50">
                   Cancelar
                 </button>
                 <button
                   onClick={confirmarSeleccion}
                   disabled={seleccionando}
-                  className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c4aa6b] transition-colors disabled:opacity-50">
-                  {seleccionando ? "Registrando…" : "Confirmar"}
+                  style={{ backgroundColor: n.color.accent }}
+                  className="py-3 rounded-xl text-black font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {seleccionando ? "Confirmando…" : "Confirmar"}
                 </button>
               </div>
-              {actionError && (
-                <p className="text-red-400 text-sm text-center mt-2">{actionError}</p>
-              )}
             </div>
           </div>
-        )}
-
-        {/* Nivel cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {NIVELES.map(n => {
-            const descuento = cot.subtotalEquiposBruto * (n.pct / 100);
-            const ahorro = descuento * ivaFactor;
-            const totalConTrade = cot.granTotal - ahorro;
-            const isElegido = confirmado && nivelElegido === n.nivel;
-            const isDestacado = n.destacado && !confirmado;
-
-            return (
-              <div
-                key={n.nivel}
-                className={`relative border rounded-2xl p-5 flex flex-col gap-4 transition-all ${isElegido ? n.colorActive + " shadow-lg" : confirmado ? "border-[#1e1e1e] opacity-50" : n.colorActive && !confirmado ? n.color : n.color}`}
-              >
-                {isDestacado && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#B3985B] text-black text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wide">Más popular</span>
-                  </div>
-                )}
-                {isElegido && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-green-600 text-white text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wide">Tu elección</span>
-                  </div>
-                )}
-
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${n.badge}`}>Nivel {n.nivel}</span>
-                  </div>
-                  <p className="text-white font-bold text-lg">{n.nombre}</p>
-                  <p className="text-[#B3985B] text-2xl font-black mt-1">{n.pct}% <span className="text-sm font-normal text-gray-400">descuento en equipos</span></p>
-                </div>
-
-                {/* Pricing */}
-                <div className="bg-black/30 rounded-xl p-4 space-y-1.5">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Total original</span>
-                    <span>{fmt(cot.granTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-green-400">
-                    <span>Ahorro con Trade</span>
-                    <span>- {fmt(ahorro)}</span>
-                  </div>
-                  <div className="border-t border-[#2a2a2a] pt-2 mt-1 flex justify-between text-white font-bold">
-                    <span>Total con Trade</span>
-                    <span>{fmt(totalConTrade)}</span>
-                  </div>
-                  {cot.aplicaIva && (
-                    <p className="text-[10px] text-gray-600 text-right">IVA incluido en ahorro</p>
-                  )}
-                </div>
-
-                {/* Beneficios */}
-                <div className="flex-1">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Mainstage Pro recibe</p>
-                  <ul className="space-y-1.5">
-                    {n.beneficios.map((b, i) => (
-                      <li key={i} className="flex gap-2 text-xs text-gray-300 leading-relaxed">
-                        <span className="text-[#B3985B] mt-0.5 shrink-0">·</span>
-                        <span>{b}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* CTA */}
-                {!confirmado && (
-                  <button
-                    onClick={() => seleccionar(n.nivel)}
-                    className={`w-full py-2.5 rounded-xl text-sm font-semibold transition-all ${n.destacado ? "bg-[#B3985B] text-black hover:bg-[#c4aa6b]" : "bg-[#1a1a1a] text-gray-300 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B]"}`}>
-                    Elegir este nivel
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Fine print */}
-        <div className="text-center text-xs text-gray-700 space-y-1 pb-8">
-          <p>El descuento aplica únicamente sobre la renta de equipos Mainstage Pro, no sobre servicios de operación, transporte, hospedaje o alimentación.</p>
-          <p>La selección queda registrada como acuerdo formal entre las partes. Los entregables deben cumplirse en las fechas acordadas.</p>
-          <p className="text-gray-800 mt-2">{cot.numeroCotizacion} · Mainstage Pro</p>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }

@@ -64,7 +64,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const cot = await prisma.cotizacion.findUnique({
     where: { tradeToken: token },
-    select: { id: true, numeroCotizacion: true, nombreEvento: true, mainstageTradeData: true, creadaPorId: true },
+    select: {
+      id: true, numeroCotizacion: true, nombreEvento: true,
+      mainstageTradeData: true, creadaPorId: true,
+      subtotalEquiposBruto: true, montoDescuento: true,
+      subtotalEquiposNeto: true, subtotalPaquetes: true, subtotalTerceros: true,
+      subtotalOperacion: true, subtotalTransporte: true, subtotalComidas: true,
+      subtotalHospedaje: true, aplicaIva: true,
+    },
   });
 
   if (!cot) return NextResponse.json({ error: "Propuesta no encontrada" }, { status: 404 });
@@ -77,30 +84,55 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   }
 
   const pctMap: Record<number, number> = { 1: 5, 2: 10, 3: 12 };
+  const pct = pctMap[nivel];
+
   const updated: TradeData = {
     ...trade,
     activo: true,
     nivelSeleccionado: nivel,
-    nivelAplicado: nivel, // auto-apply so vendor doesn't need to manually confirm
-    pct: pctMap[nivel],
+    nivelAplicado: nivel,
+    pct,
     bonoVariable: nivel === 3 ? (bonoVariable ?? null) : null,
     clienteSeleccionoEn: new Date().toISOString(),
   };
 
+  // Aplicar descuento Trade directamente en la cotización para que
+  // la presentación y el PDF reflejen automáticamente el nuevo total
+  const tradeDescuento = Math.round(cot.subtotalEquiposBruto * (pct / 100) * 100) / 100;
+  const nuevoMontoDescuento = Math.round((cot.montoDescuento + tradeDescuento) * 100) / 100;
+  const nuevoSubtotalNeto = Math.round((cot.subtotalEquiposBruto - nuevoMontoDescuento) * 100) / 100;
+  const nuevoTotal = Math.round((
+    nuevoSubtotalNeto +
+    (cot.subtotalPaquetes ?? 0) +
+    (cot.subtotalTerceros ?? 0) +
+    (cot.subtotalOperacion ?? 0) +
+    (cot.subtotalTransporte ?? 0) +
+    (cot.subtotalComidas ?? 0) +
+    (cot.subtotalHospedaje ?? 0)
+  ) * 100) / 100;
+  const nuevoIva = cot.aplicaIva ? Math.round(nuevoTotal * 0.16 * 100) / 100 : 0;
+  const nuevoGranTotal = Math.round((nuevoTotal + nuevoIva) * 100) / 100;
+
   await prisma.cotizacion.update({
     where: { id: cot.id },
-    data: { mainstageTradeData: JSON.stringify(updated) },
+    data: {
+      mainstageTradeData: JSON.stringify(updated),
+      montoDescuento: nuevoMontoDescuento,
+      subtotalEquiposNeto: nuevoSubtotalNeto,
+      total: nuevoTotal,
+      montoIva: nuevoIva,
+      granTotal: nuevoGranTotal,
+    },
   });
 
-  // Log para que el equipo de ventas vea la notificación en el historial
   const nivelLabels: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
   await logActividad(
     cot.creadaPorId ?? "sistema",
     "TRADE",
     "cotizacion",
     cot.id,
-    `Cliente eligió Mainstage Trade Nivel ${nivel} (${nivelLabels[nivel]} · ${pctMap[nivel]}%) en ${cot.nombreEvento ?? cot.numeroCotizacion}`
+    `Cliente eligió Mainstage Trade Nivel ${nivel} (${nivelLabels[nivel]} · ${pct}%) en ${cot.nombreEvento ?? cot.numeroCotizacion}. Descuento aplicado: $${tradeDescuento.toLocaleString("es-MX")}`
   ).catch(() => { /* no bloquear si falla el log */ });
 
-  return NextResponse.json({ ok: true, nivel, pct: pctMap[nivel] });
+  return NextResponse.json({ ok: true, nivel, pct, tradeDescuento, granTotal: nuevoGranTotal });
 }
