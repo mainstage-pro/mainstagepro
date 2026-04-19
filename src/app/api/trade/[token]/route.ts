@@ -14,6 +14,7 @@ type TradeData = {
   nivelAplicado: number | null;
   bonoVariable: string | null;
   clienteSeleccionoEn: string | null;
+  granTotalOriginal?: number; // preservado para mostrar correctamente en la página Trade
 };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -49,10 +50,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   let trade: TradeData = { activo: false, pct: 5, entregables: [], checklist: {}, checklistCompleto: false, nivelSeleccionado: null, nivelAplicado: null, bonoVariable: null, clienteSeleccionoEn: null };
   try { if (cot.mainstageTradeData) trade = { ...trade, ...JSON.parse(cot.mainstageTradeData) }; } catch { /* noop */ }
 
-  // If client already selected, don't allow change
   const yaSelecciono = trade.nivelSeleccionado !== null;
 
-  return NextResponse.json({ cot: { ...cot, mainstageTradeData: undefined }, trade, yaSelecciono });
+  // Si ya se aplicó Trade, usar el granTotal original guardado para que la página
+  // muestre los montos correctos (el granTotal en DB ya está reducido)
+  const granTotalParaMostrar = (yaSelecciono && trade.granTotalOriginal)
+    ? trade.granTotalOriginal
+    : cot.granTotal;
+
+  return NextResponse.json({
+    cot: { ...cot, mainstageTradeData: undefined, granTotal: granTotalParaMostrar },
+    trade,
+    yaSelecciono,
+  });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -67,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     select: {
       id: true, numeroCotizacion: true, nombreEvento: true,
       mainstageTradeData: true, creadaPorId: true,
-      subtotalEquiposBruto: true, montoDescuento: true,
+      subtotalEquiposBruto: true, montoDescuento: true, granTotal: true,
       subtotalEquiposNeto: true, subtotalPaquetes: true, subtotalTerceros: true,
       subtotalOperacion: true, subtotalTransporte: true, subtotalComidas: true,
       subtotalHospedaje: true, aplicaIva: true,
@@ -94,6 +104,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     pct,
     bonoVariable: nivel === 3 ? (bonoVariable ?? null) : null,
     clienteSeleccionoEn: new Date().toISOString(),
+    granTotalOriginal: trade.granTotalOriginal ?? cot.granTotal, // preservar el original pre-descuento
   };
 
   // Aplicar descuento Trade directamente en la cotización para que

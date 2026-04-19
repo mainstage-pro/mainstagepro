@@ -939,6 +939,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   )}
                 </div>
 
+                {!tradeNivel && !cot.tradeToken && (
+                  <button
+                    onClick={generarTradeToken}
+                    disabled={savingTrade}
+                    className="text-xs bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-[#B3985B] hover:border-[#B3985B]/40 px-3 py-2 rounded-lg transition-colors disabled:opacity-50">
+                    {savingTrade ? "Generando…" : "Generar link de propuesta Trade"}
+                  </button>
+                )}
+
                 {!tradeNivel && tradeUrl && (
                   <div className="space-y-2">
                     <p className="text-xs text-gray-500">Comparte este enlace con el cliente para que elija su nivel de colaboración:</p>
