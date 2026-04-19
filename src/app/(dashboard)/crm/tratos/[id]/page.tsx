@@ -1081,7 +1081,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             return (
               <button onClick={async () => {
                 if (!await confirm({ message: resumen, danger: true, confirmText: "Eliminar todo" })) return;
-                await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
+                const res = await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
+                if (!res.ok) {
+                  const d = await res.json().catch(() => ({}));
+                  toast.error(d.error ?? "Error al eliminar el trato");
+                  return;
+                }
                 toast.success("Trato eliminado");
                 router.push("/crm/tratos");
               }} className="px-3 py-2 rounded-lg border border-red-800/60 text-red-400 hover:bg-red-900/20 text-xs transition-colors whitespace-nowrap">

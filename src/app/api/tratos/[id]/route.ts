@@ -133,8 +133,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       await tx.proyectoPersonal.deleteMany({ where: { proyectoId: proyecto.id } });
       await tx.proyectoChecklist.deleteMany({ where: { proyectoId: proyecto.id } });
       await tx.proyectoBitacora.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.cierreFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.gastoOperativo.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.ordenCompra.deleteMany({ where: { proyectoId: proyecto.id } });
+      await tx.proyectoArchivo.deleteMany({ where: { proyectoId: proyecto.id } });
       await tx.proyecto.delete({ where: { id: proyecto.id } });
     }
+
+    // Borrar levantamientos del trato
+    await tx.levantamientoContenido.deleteMany({ where: { tratoId: id } });
 
     // Borrar el trato (archivos tienen Cascade)
     await tx.trato.delete({ where: { id } });
