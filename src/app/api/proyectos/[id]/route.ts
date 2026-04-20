@@ -11,6 +11,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
+  // Non-admins: verify access to this specific project if project-level restrictions are set
+  if (session.role !== "ADMIN") {
+    const projectAccesos = await prisma.moduloAcceso.findMany({
+      where: { userId: session.id, moduloKey: { startsWith: "proyecto:" } },
+      select: { moduloKey: true },
+    });
+    if (projectAccesos.length > 0) {
+      const allowed = projectAccesos.map(a => a.moduloKey.replace("proyecto:", ""));
+      if (!allowed.includes(id)) {
+        return NextResponse.json({ error: "Sin acceso a este proyecto" }, { status: 403 });
+      }
+    }
+  }
+
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
     include: {
