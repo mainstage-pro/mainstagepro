@@ -106,10 +106,35 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   proyectoId: "",
 };
 
+// ── Helpers programación semanal ─────────────────────────────────────────────
+function lunesDeSemanaLocal(isoDate: string): string {
+  const d = new Date(isoDate + "T12:00:00");
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+function fmtSemana(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+}
+interface SemanaOpLocal {
+  lunesIso: string;
+  miercolesIso: string;
+  totalCobros: number;
+  totalPagos: number;
+  cobros: { id: string; concepto: string; monto: number; montoCobrado: number; estado: string; tipoPago: string; cliente: { nombre: string; telefono: string | null }; proyecto: { nombre: string; numeroProyecto: string } | null }[];
+  pagos: { id: string; concepto: string; monto: number; estado: string; tipoAcreedor: string; tecnico: { nombre: string; celular: string | null } | null; proveedor: { nombre: string; telefono: string | null } | null; proyecto: { nombre: string; numeroProyecto: string } | null }[];
+}
+
 export default function CobrosPagosPage() {
   const toast = useToast();
   const confirm = useConfirm();
+  const [pageTab, setPageTab] = useState<"cobros" | "programacion">("cobros");
   const [tab, setTab] = useState<"cobrar" | "pagar">("cobrar");
+  // Programación semanal
+  const [semanasOp, setSemanasOp] = useState<SemanaOpLocal[]>([]);
+  const [semanaIdx, setSemanaIdx] = useState(0);
+  const [loadingSemana, setLoadingSemana] = useState(false);
   const [cxc, setCxc] = useState<CxCItem[]>([]);
   const [cxp, setCxp] = useState<CxPItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,6 +156,20 @@ export default function CobrosPagosPage() {
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
   const [clienteQuery, setClienteQuery] = useState("");
+
+  async function cargarProgramacion() {
+    if (semanasOp.length > 0) return;
+    setLoadingSemana(true);
+    const r = await fetch("/api/finanzas/semana");
+    const d = await r.json();
+    const semanas: SemanaOpLocal[] = d.semanas ?? [];
+    setSemanasOp(semanas);
+    const hoy = new Date().toISOString().slice(0, 10);
+    const lunesHoy = lunesDeSemanaLocal(hoy);
+    const idx = semanas.findIndex(s => s.lunesIso === lunesHoy);
+    setSemanaIdx(idx >= 0 ? idx : 0);
+    setLoadingSemana(false);
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -278,8 +317,115 @@ export default function CobrosPagosPage() {
     setAnulando(null);
   }
 
+  const semanaActual = semanasOp[semanaIdx];
+  const ESTADO_SEM: Record<string, string> = { PENDIENTE: "text-yellow-400", LIQUIDADO: "text-green-400", VENCIDO: "text-red-400", PARCIAL: "text-blue-400" };
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
+
+      {/* Page-level tabs */}
+      <div className="flex gap-1 mb-6 border-b border-[#1a1a1a] pb-0">
+        {([["cobros", "Cobros y Pagos"], ["programacion", "Programación Semanal"]] as const).map(([key, label]) => (
+          <button key={key}
+            onClick={() => { setPageTab(key); if (key === "programacion") cargarProgramacion(); }}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === key ? "border-[#B3985B] text-white" : "border-transparent text-[#6b7280] hover:text-white"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TAB: Programación Semanal ── */}
+      {pageTab === "programacion" && (
+        <div className="space-y-5">
+          {loadingSemana ? (
+            <div className="text-sm text-gray-600 py-8 text-center">Cargando programación...</div>
+          ) : semanasOp.length === 0 ? (
+            <div className="text-sm text-gray-600 py-8 text-center">Sin datos de programación</div>
+          ) : (
+            <>
+              {/* Navegación semanas */}
+              <div className="flex items-center justify-between">
+                <button onClick={() => setSemanaIdx(i => Math.max(0, i - 1))} disabled={semanaIdx === 0}
+                  className="px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white disabled:opacity-30 text-sm transition-colors">← Anterior</button>
+                <div className="text-center">
+                  <p className="text-white font-medium text-sm">Semana del {semanaActual && fmtSemana(semanaActual.lunesIso)}</p>
+                  <p className="text-gray-600 text-xs">al {semanaActual && fmtSemana(semanaActual.miercolesIso)}</p>
+                </div>
+                <button onClick={() => setSemanaIdx(i => Math.min(semanasOp.length - 1, i + 1))} disabled={semanaIdx === semanasOp.length - 1}
+                  className="px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white disabled:opacity-30 text-sm transition-colors">Siguiente →</button>
+              </div>
+
+              {/* KPIs semana */}
+              {semanaActual && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobros programados</p>
+                    <p className="text-green-400 text-xl font-semibold">{formatCurrency(semanaActual.totalCobros)}</p>
+                    <p className="text-gray-600 text-xs mt-1">{semanaActual.cobros.length} registros · Lunes y Miércoles</p>
+                  </div>
+                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Pagos programados</p>
+                    <p className="text-yellow-400 text-xl font-semibold">{formatCurrency(semanaActual.totalPagos)}</p>
+                    <p className="text-gray-600 text-xs mt-1">{semanaActual.pagos.length} registros · Miércoles</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Cobros */}
+              {semanaActual && semanaActual.cobros.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Por cobrar esta semana</p>
+                  <div className="space-y-1.5">
+                    {semanaActual.cobros.map(c => (
+                      <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{c.cliente.nombre}</p>
+                          <p className="text-gray-500 text-xs truncate">{c.concepto}{c.proyecto ? ` · ${c.proyecto.numeroProyecto}` : ""}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-green-400 font-semibold text-sm">{formatCurrency(c.monto)}</p>
+                          <p className={`text-xs ${ESTADO_SEM[c.estado] ?? "text-gray-400"}`}>{c.estado}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pagos */}
+              {semanaActual && semanaActual.pagos.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Por pagar esta semana (miércoles)</p>
+                  <div className="space-y-1.5">
+                    {semanaActual.pagos.map(p => {
+                      const nombre = p.tecnico?.nombre ?? p.proveedor?.nombre ?? "Sin nombre";
+                      return (
+                        <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium truncate">{nombre}</p>
+                            <p className="text-gray-500 text-xs truncate">{p.concepto}{p.proyecto ? ` · ${p.proyecto.numeroProyecto}` : ""}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-yellow-400 font-semibold text-sm">{formatCurrency(p.monto)}</p>
+                            <p className={`text-xs ${ESTADO_SEM[p.estado] ?? "text-gray-400"}`}>{p.estado}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {semanaActual && semanaActual.cobros.length === 0 && semanaActual.pagos.length === 0 && (
+                <p className="text-gray-600 text-sm text-center py-6">Sin cobros ni pagos programados esta semana</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB: Cobros y Pagos ── */}
+      {pageTab === "cobros" && <>
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -749,6 +895,7 @@ export default function CobrosPagosPage() {
           </div>
         </div>
       )}
+      </>}
     </div>
   );
 }

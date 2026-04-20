@@ -59,7 +59,7 @@ export default function ProveedoresPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
-  const [view, setView] = useState<"card" | "list">("card");
+  const [view, setView] = useState<"card" | "list">("list");
   const [search, setSearch] = useState("");
   const [filterGiro, setFilterGiro] = useState<string>("TODOS");
   const [sortBy, setSortBy] = useState<SortKey>("nombre");

@@ -47,9 +47,10 @@ const AREA_COLORS: Record<string, string> = {
 // Módulos controlables — refleja el NAV de Sidebar.tsx (level de ítems raíz)
 const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: string; desc: string }[] }[] = [
   {
-    seccion: "DIRECCIÓN",
+    seccion: "GLOBAL",
     items: [
-      { key: "dashboard", label: "Dashboard", desc: "Panel principal y métricas" },
+      { key: "dashboard", label: "Dashboard CEO", desc: "Panel principal y métricas" },
+      { key: "operaciones", label: "Gestión operativa", desc: "Visible globalmente para todos" },
       { key: "presentaciones", label: "Presentaciones", desc: "Presentaciones de ventas" },
       { key: "calendario", label: "Calendario de eventos", desc: "Vista y reportes de eventos" },
     ],
@@ -67,17 +68,18 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     seccion: "PRODUCCIÓN",
     items: [
       { key: "proyectos", label: "Proyectos", desc: "Gestión de eventos y proyectos" },
-      { key: "operaciones", label: "Gestión operativa", desc: "Carpetas y secciones operativas" },
       { key: "inventario", label: "Inventario", desc: "Equipos, disponibilidad, recolecciones, mantenimiento" },
+      { key: "catalogo", label: "Catálogo (proveedores y técnicos)", desc: "Proveedores, técnicos freelance, venues" },
       { key: "bd-proveedores", label: "Proveedores", desc: "Catálogo de proveedores de equipo" },
       { key: "bd-tecnicos", label: "Técnicos freelance", desc: "Catálogo de técnicos" },
-      { key: "bd-roles", label: "Roles técnicos", desc: "Catálogo de roles" },
     ],
   },
   {
     seccion: "ADMINISTRACIÓN",
     items: [
-      { key: "finanzas", label: "Finanzas", desc: "Cobros, pagos, movimientos, cuentas, reportes" },
+      { key: "finanzas", label: "Finanzas", desc: "Cobros, pagos, movimientos, reporte, rentabilidad" },
+      { key: "inversiones", label: "Inversiones y Socios", desc: "Estructura de capital y socios de activos" },
+      { key: "tabulador", label: "Tabulador Freelancers", desc: "Roles técnicos y tarifas (antes: Roles técnicos)" },
       { key: "rrhh", label: "Recursos Humanos", desc: "Personal interno, nómina, asistencia, evaluaciones" },
       { key: "ats", label: "Reclutamiento", desc: "Candidatos y puestos" },
       { key: "rrhh-onboarding", label: "Onboarding", desc: "Planes de integración y capacitación" },

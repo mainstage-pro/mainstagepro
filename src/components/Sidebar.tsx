@@ -28,12 +28,13 @@ interface NavSection {
 }
 
 const NAV: NavSection[] = [
-  // ── CEO DASHBOARD (standalone, sin encabezado de sección) ─────────────────
+  // ── ACCESO GLOBAL (siempre visible, sin encabezado) ────────────────────────
   {
     key: "seccion-top",
     section: "",
     items: [
       { key: "dashboard", label: "CEO Dashboard", href: "/dashboard" },
+      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
     ],
   },
 
@@ -43,7 +44,6 @@ const NAV: NavSection[] = [
     section: "DIRECCIÓN",
     items: [
       { key: "reportes", label: "Reportes semanales", href: "/reportes" },
-      { key: "agenda", label: "Mi agenda", href: "/agenda" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
         key: "calendario",
@@ -67,16 +67,11 @@ const NAV: NavSection[] = [
         key: "finanzas",
         label: "Finanzas",
         children: [
-          { key: "finanzas-pagos", label: "Pagos de la semana", href: "/finanzas/pagos" },
-          { key: "finanzas-cobros-pagos", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
-          { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas" },
-          { key: "finanzas-categorias", label: "Categorías", href: "/finanzas/categorias" },
-          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte" },
-          { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad" },
+          { key: "finanzas-reporte", label: "Reporte y rentabilidad", href: "/finanzas/reporte" },
           { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
-          { key: "finanzas-hervam", label: "Estructura de Capital", href: "/finanzas/hervam" },
         ],
       },
       {
@@ -99,14 +94,15 @@ const NAV: NavSection[] = [
           { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
         ],
       },
-      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
       {
-        key: "socios",
-        label: "Socios de Activos",
+        key: "inversiones",
+        label: "Inversiones y Socios",
         children: [
-          { key: "socios-lista", label: "Socios", href: "/socios" },
+          { key: "inversiones-capital", label: "Estructura de Capital", href: "/finanzas/hervam" },
+          { key: "inversiones-socios", label: "Socios de Activos", href: "/socios" },
         ],
       },
+      { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
     ],
   },
 
@@ -175,7 +171,6 @@ const NAV: NavSection[] = [
           { key: "inv-recolecciones", label: "Recolecciones", href: "/inventario/recolecciones" },
           { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
-          { key: "inv-plantillas", label: "Plantillas de equipo", href: "/inventario/bodega/templates" },
           { key: "inv-vehiculos", label: "Vehículos", href: "/catalogo/vehiculos" },
           { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
         ],
@@ -186,9 +181,7 @@ const NAV: NavSection[] = [
         children: [
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
-          { key: "bd-roles", label: "Roles técnicos", href: "/catalogo/roles" },
           { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
-          { key: "bd-vehiculos", label: "Vehículos", href: "/catalogo/vehiculos" },
         ],
       },
     ],
@@ -236,11 +229,11 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/reportes") || pathname.startsWith("/agenda") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/operaciones") || pathname.startsWith("/socios")) return "seccion-administracion";
+  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas")) return "seccion-ventas";
-  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
+  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
 

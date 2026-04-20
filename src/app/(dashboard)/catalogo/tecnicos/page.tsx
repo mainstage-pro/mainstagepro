@@ -56,7 +56,7 @@ export default function TecnicosPage() {
   const [autoSaved, setAutoSaved] = useState(false);
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [view, setView] = useState<"card" | "list" | "ranking" | "disponibilidad">("card");
+  const [view, setView] = useState<"card" | "list" | "ranking" | "disponibilidad">("list");
   const [search, setSearch] = useState("");
   const [filterNivel, setFilterNivel] = useState<string>("TODOS");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
@@ -167,13 +167,19 @@ export default function TecnicosPage() {
     setSaving(false);
   }
 
-  async function toggleActivo(t: Tecnico) {
-    await fetch(`/api/tecnicos/${t.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activo: !t.activo }),
-    });
-    await load();
+  async function eliminarTecnico(t: Tecnico) {
+    if (!confirm(`¿Eliminar a ${t.nombre}? Esta acción no se puede deshacer.`)) return;
+    try {
+      const res = await fetch(`/api/tecnicos/${t.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        alert(d.error ?? "No se pudo eliminar. El técnico puede tener registros asociados.");
+        return;
+      }
+      setTecnicos(prev => prev.filter(x => x.id !== t.id));
+    } catch {
+      alert("Error al eliminar.");
+    }
   }
 
   const showForm = editing !== null || creating;
@@ -358,13 +364,13 @@ export default function TecnicosPage() {
       ) : view === "card" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />)}
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
           </div>
           {showInactivos && inactivos.length > 0 && (
             <div className="mt-6">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Inactivos ({inactivos.length})</p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 opacity-50">
-                {inactivos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={toggleActivo} />)}
+                {inactivos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
               </div>
             </div>
           )}
@@ -414,7 +420,7 @@ export default function TecnicosPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
-                      <button onClick={() => toggleActivo(t)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
+                      <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                     </div>
                   </td>
                 </tr>
@@ -431,7 +437,7 @@ export default function TecnicosPage() {
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => toggleActivo(t)} className="text-gray-600 text-xs hover:text-[#B3985B] transition-colors">Activar</button>
+                    <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                   </td>
                 </tr>
               ))}
@@ -704,8 +710,8 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
           Editar
         </button>
         <button onClick={() => onToggle(t)}
-          className="flex-1 text-xs text-gray-500 hover:text-white py-1.5 rounded-lg border border-[#222] hover:border-[#333] transition-colors text-center">
-          {t.activo ? "Desactivar" : "Activar"}
+          className="flex-1 text-xs text-red-500/70 hover:text-red-400 py-1.5 rounded-lg border border-red-900/30 hover:border-red-900/60 transition-colors text-center">
+          Eliminar
         </button>
       </div>
     </div>
