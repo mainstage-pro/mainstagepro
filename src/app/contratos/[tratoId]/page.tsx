@@ -96,7 +96,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-        <p className="text-gray-400 text-sm">Generando contrato...</p>
+        <p className="text-white/40 text-sm">Generando contrato...</p>
       </div>
     </div>
   );
@@ -130,15 +130,15 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
   const hoy = new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0a0a0a]" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {/* Barra superior */}
-      <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-white/5 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => window.history.back()} className="text-gray-500 hover:text-white text-sm transition-colors">
+          <button onClick={() => window.history.back()} className="text-white/30 hover:text-white text-sm transition-colors">
             ← Volver
           </button>
-          <span className="text-[#333]">|</span>
-          <span className="text-gray-400 text-sm">
+          <span className="text-white/10">|</span>
+          <span className="text-white/40 text-sm">
             Contrato — {trato.nombreEvento || trato.cliente.nombre}
           </span>
         </div>
@@ -154,44 +154,44 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
       <div className="max-w-4xl mx-auto py-8 px-4 space-y-0">
 
         {/* Header negro / dorado */}
-        <div className="bg-[#0a0a0a] border border-[#222] rounded-t-xl overflow-hidden">
+        <div className="bg-[#0a0a0a] border border-white/8 rounded-t-xl overflow-hidden">
           <div className="bg-[#0a0a0a] px-8 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
             <div>
               <p className="text-[#B3985B] text-xl font-bold tracking-widest">MAINSTAGE PRODUCCIONES</p>
-              <p className="text-gray-500 text-xs tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
+              <p className="text-white/30 text-xs tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
             </div>
             <div className="text-right">
               <p className="text-white font-bold tracking-wider">CONTRATO DE SERVICIOS</p>
-              {cotizacion && <p className="text-gray-500 text-xs mt-1">Ref. cotización {cotizacion.numeroCotizacion}</p>}
-              <p className="text-gray-500 text-xs">{hoy}</p>
+              {cotizacion && <p className="text-white/30 text-xs mt-1">Ref. cotización {cotizacion.numeroCotizacion}</p>}
+              <p className="text-white/30 text-xs">{hoy}</p>
             </div>
           </div>
 
           {/* Subtítulo */}
           <div className="bg-[#111] px-8 py-3 text-center">
-            <p className="text-gray-400 text-xs tracking-widest italic">Contrato de Servicios de Producción Técnica</p>
+            <p className="text-white/40 text-xs tracking-widest italic">Contrato de Servicios de Producción Técnica</p>
           </div>
 
           {/* Partes */}
-          <div className="px-8 py-5 grid grid-cols-2 gap-6 border-b border-[#1a1a1a]">
+          <div className="px-8 py-5 grid grid-cols-2 gap-6 border-b border-white/5">
             <div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">El Proveedor</p>
+              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">El Proveedor</p>
               <p className="text-white font-bold">MAINSTAGE PRODUCCIONES</p>
-              <p className="text-gray-500 text-xs mt-1">Producción técnica y renta de equipo</p>
+              <p className="text-white/30 text-xs mt-1">Producción técnica y renta de equipo</p>
             </div>
-            <div className="border-l border-[#222] pl-6">
-              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">El Cliente</p>
+            <div className="border-l border-white/8 pl-6">
+              <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">El Cliente</p>
               <p className="text-white font-bold">{trato.cliente.nombre.toUpperCase()}</p>
-              {trato.cliente.empresa && <p className="text-gray-400 text-sm">{trato.cliente.empresa}</p>}
-              {trato.cliente.telefono && <p className="text-gray-500 text-xs mt-1">{trato.cliente.telefono}</p>}
-              {trato.cliente.correo && <p className="text-gray-500 text-xs">{trato.cliente.correo}</p>}
+              {trato.cliente.empresa && <p className="text-white/40 text-sm">{trato.cliente.empresa}</p>}
+              {trato.cliente.telefono && <p className="text-white/30 text-xs mt-1">{trato.cliente.telefono}</p>}
+              {trato.cliente.correo && <p className="text-white/30 text-xs">{trato.cliente.correo}</p>}
             </div>
           </div>
         </div>
 
         {/* Sección 1: Datos del evento */}
         <SeccionCard num="1" titulo="Objeto y Datos del Evento">
-          <p className="text-sm text-gray-400 mb-4">
+          <p className="text-sm text-white/40 mb-4">
             EL PROVEEDOR prestará servicios de{" "}
             <span className="text-white font-medium">
               {TIPO_SERVICIO[trato.tipoServicio ?? ""] || "producción técnica y/o renta de equipo"}
@@ -210,8 +210,8 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
               trato.duracionEvento ? { label: "Duración del servicio", value: trato.duracionEvento } : null,
               cotizacion ? { label: "Ref. cotización", value: cotizacion.numeroCotizacion } : null,
             ].filter(Boolean).map((row, i) => (
-              <div key={i} className="flex items-center border-b border-[#1a1a1a] last:border-0">
-                <span className="text-gray-500 text-xs px-4 py-2.5 w-44 shrink-0">{row!.label}</span>
+              <div key={i} className="flex items-center border-b border-white/5 last:border-0">
+                <span className="text-white/30 text-xs px-4 py-2.5 w-44 shrink-0">{row!.label}</span>
                 <span className="text-white text-sm font-medium px-4 py-2.5">{row!.value}</span>
               </div>
             ))}
@@ -220,33 +220,33 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
           {/* Tabla de servicios */}
           {Object.keys(grupos).length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs text-gray-500 uppercase tracking-widest">Alcance de servicios contratados</p>
+              <p className="text-xs text-white/30 uppercase tracking-widest">Alcance de servicios contratados</p>
               {Object.entries(grupos).map(([grupo, lineas]) => (
                 <div key={grupo} className="bg-[#0d0d0d] rounded-lg overflow-hidden">
                   <div className="bg-[#0a0a0a] px-4 py-2 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{grupo}</span>
+                    <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{grupo}</span>
                   </div>
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
-                        <th className="text-left text-gray-600 px-4 py-2 font-normal">Descripción</th>
-                        <th className="text-center text-gray-600 px-3 py-2 font-normal w-16">Cant.</th>
-                        <th className="text-center text-gray-600 px-3 py-2 font-normal w-16">Días</th>
-                        <th className="text-right text-gray-600 px-4 py-2 font-normal w-28">Subtotal</th>
+                        <th className="text-left text-white/20 px-4 py-2 font-normal">Descripción</th>
+                        <th className="text-center text-white/20 px-3 py-2 font-normal w-16">Cant.</th>
+                        <th className="text-center text-white/20 px-3 py-2 font-normal w-16">Días</th>
+                        <th className="text-right text-white/20 px-4 py-2 font-normal w-28">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody>
                       {lineas.map((l, i) => (
-                        <tr key={l.id} className={`border-b border-[#111] last:border-0 ${i % 2 === 1 ? "bg-[#0f0f0f]" : ""}`}>
+                        <tr key={l.id} className={`border-b border-white/5 last:border-0 ${i % 2 === 1 ? "bg-[#0f0f0f]" : ""}`}>
                           <td className="px-4 py-2.5">
                             <span className="text-white">{l.descripcion}</span>
                             {(l.marca || l.modelo) && (
-                              <span className="text-gray-500 ml-2">{[l.marca, l.modelo].filter(Boolean).join(" ")}</span>
+                              <span className="text-white/30 ml-2">{[l.marca, l.modelo].filter(Boolean).join(" ")}</span>
                             )}
-                            {l.notas && <p className="text-gray-600 italic text-[10px] mt-0.5">{l.notas}</p>}
+                            {l.notas && <p className="text-white/20 italic text-[10px] mt-0.5">{l.notas}</p>}
                           </td>
-                          <td className="text-center text-gray-400 px-3 py-2.5">{l.cantidad}</td>
-                          <td className="text-center text-gray-400 px-3 py-2.5">{l.dias}</td>
+                          <td className="text-center text-white/40 px-3 py-2.5">{l.cantidad}</td>
+                          <td className="text-center text-white/40 px-3 py-2.5">{l.dias}</td>
                           <td className="text-right text-white font-medium px-4 py-2.5">{fmt(l.subtotal)}</td>
                         </tr>
                       ))}
@@ -257,10 +257,10 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
 
               {incluidos.length > 0 && (
                 <div className="bg-[#0d0d0d] rounded-lg px-4 py-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-2">Incluido sin costo adicional</p>
+                  <p className="text-[10px] text-white/30 uppercase tracking-widest mb-2">Incluido sin costo adicional</p>
                   <ul className="space-y-1">
                     {incluidos.map(l => (
-                      <li key={l.id} className="text-gray-400 text-xs flex items-center gap-2">
+                      <li key={l.id} className="text-white/40 text-xs flex items-center gap-2">
                         <span className="text-[#B3985B]">·</span> {l.descripcion}
                       </li>
                     ))}
@@ -279,7 +279,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
                     {cotizacion.subtotalHospedaje > 0 && <ResumenFila label="Hospedaje" value={fmt(cotizacion.subtotalHospedaje)} />}
                     {cotizacion.subtotalComidas > 0 && <ResumenFila label="Alimentación" value={fmt(cotizacion.subtotalComidas)} />}
                     {cotizacion.aplicaIva && <ResumenFila label="IVA (16%)" value={fmt(cotizacion.montoIva)} />}
-                    <div className="bg-[#0a0a0a] border border-[#222] rounded-lg px-4 py-3 flex justify-between items-center mt-1">
+                    <div className="bg-black/40 border border-white/8 rounded-lg px-4 py-3 flex justify-between items-center mt-1">
                       <span className="text-white font-bold text-sm">TOTAL</span>
                       <span className="text-[#B3985B] font-bold text-lg">{fmt(granTotal)}</span>
                     </div>
@@ -405,7 +405,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
             </SeccionCard>
 
             <SeccionCard num="6" titulo="Retrasos Imputables a Mainstage Producciones">
-              <p className="text-gray-400 text-sm leading-relaxed">
+              <p className="text-white/40 text-sm leading-relaxed">
                 En caso de retraso imputable únicamente a EL PROVEEDOR, este compensará cumpliendo las horas pactadas siempre que las condiciones del venue y la seguridad lo permitan, sin otro tipo de penalización económica.
               </p>
             </SeccionCard>
@@ -413,7 +413,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
         )}
 
         <SeccionCard num="7" titulo="Limitación de Responsabilidad">
-          <p className="text-gray-400 text-sm leading-relaxed">
+          <p className="text-white/40 text-sm leading-relaxed">
             En la máxima medida permitida por la ley, la responsabilidad total de MAINSTAGE relacionada con {trato.tipoServicio === "RENTA" ? "la renta" : "el servicio"} quedará limitada al monto efectivamente pagado por EL CLIENTE en LA COTIZACIÓN correspondiente, excluyendo daños indirectos, lucro cesante o pérdida de oportunidad.
           </p>
         </SeccionCard>
@@ -441,13 +441,13 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
         </SeccionCard>
 
         {/* Sección: Firmas */}
-        <div className="bg-[#111] border border-[#222] rounded-b-xl px-8 py-6">
-          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-[#1a1a1a]">
+        <div className="bg-white/[0.025] border border-white/8 rounded-b-xl px-8 py-6">
+          <div className="flex items-center gap-3 mb-5 pb-3 border-b border-white/5">
             <div className="w-4 h-0.5 bg-[#B3985B]"></div>
             <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest">11. Aceptación y Firma</p>
           </div>
 
-          <p className="text-gray-400 text-sm mb-8">
+          <p className="text-white/40 text-sm mb-8">
             Leído el presente contrato, las partes manifiestan su conformidad y lo aceptan como documento legalmente vinculante, firmándolo en{" "}
             <span className="text-white">{trato.lugarEstimado || "_______________"}</span>, el día{" "}
             <span className="text-white">{hoy}</span>.
@@ -469,7 +469,7 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
           {/* Nota */}
           <div className="mt-8 bg-[#0d0d0d] border border-[#B3985B]/30 rounded-lg px-4 py-3">
             <p className="text-[#B3985B] text-xs font-bold mb-1">ACEPTACIÓN POR MEDIOS ELECTRÓNICOS</p>
-            <p className="text-gray-500 text-xs leading-relaxed">
+            <p className="text-white/30 text-xs leading-relaxed">
               {trato.tipoServicio === "RENTA"
                 ? "Estos Términos y Condiciones se consideran aceptados cuando EL CLIENTE (i) aprueba/acepta LA COTIZACIÓN por medios digitales (firma, botón de aprobación, respuesta confirmatoria por correo o mensaje) y (ii) realiza el pago del anticipo o del total, según aplique."
                 : "Este contrato es válido con la aprobación digital de la cotización, el pago del anticipo correspondiente, o la firma autógrafa de ambas partes. La evidencia digital y los comprobantes de pago forman parte del acuerdo."}
@@ -479,9 +479,9 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
           </div>
 
           {/* Footer */}
-          <div className="mt-6 pt-4 border-t border-[#1a1a1a] flex items-center justify-between">
+          <div className="mt-6 pt-4 border-t border-white/5 flex items-center justify-between">
             <p className="text-[#B3985B] text-xs font-bold tracking-wider">MAINSTAGE PRODUCCIONES</p>
-            <p className="text-gray-600 text-xs">Producción técnica profesional</p>
+            <p className="text-white/20 text-xs">Producción técnica profesional</p>
             <a
               href={`/api/contratos/${tratoId}/pdf`}
               className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors"
@@ -498,8 +498,8 @@ export default function ContratoPage({ params }: { params: Promise<{ tratoId: st
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
 function SeccionCard({ num, titulo, children }: { num: string; titulo: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#111] border-x border-b border-[#222] px-8 py-5">
-      <div className="flex items-center gap-3 mb-4 pb-2 border-b border-[#1a1a1a]">
+    <div className="bg-white/[0.025] border-x border-b border-white/8 px-8 py-5">
+      <div className="flex items-center gap-3 mb-4 pb-2 border-b border-white/5">
         <div className="w-4 h-0.5 bg-[#B3985B]"></div>
         <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest">{num}. {titulo}</p>
       </div>
@@ -511,9 +511,9 @@ function SeccionCard({ num, titulo, children }: { num: string; titulo: string; c
 function PagoCard({ label, monto, fecha }: { label: string; monto: string; fecha?: string }) {
   return (
     <div className="bg-[#0d0d0d] border-l-2 border-[#B3985B] px-4 py-3 rounded-r-lg">
-      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">{label}</p>
+      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">{label}</p>
       <p className="text-white font-bold text-base">{monto}</p>
-      {fecha && <p className="text-gray-500 text-xs mt-1">{fecha}</p>}
+      {fecha && <p className="text-white/30 text-xs mt-1">{fecha}</p>}
     </div>
   );
 }
@@ -522,7 +522,7 @@ function ClausulasList({ items }: { items: string[] }) {
   return (
     <ul className="space-y-2">
       {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-3 text-sm text-gray-400 leading-relaxed">
+        <li key={i} className="flex items-start gap-3 text-sm text-white/40 leading-relaxed">
           <span className="text-[#B3985B] font-bold shrink-0 mt-0.5">{i + 1}.</span>
           {item}
         </li>
@@ -535,15 +535,15 @@ function SubSeccion({ titulo, children }: { titulo: string; children: React.Reac
   return (
     <div>
       <p className="text-white text-xs font-semibold mb-1">{titulo}</p>
-      <p className="text-gray-400 text-sm leading-relaxed">{children}</p>
+      <p className="text-white/40 text-sm leading-relaxed">{children}</p>
     </div>
   );
 }
 
 function ResumenFila({ label, value, rojo }: { label: string; value: string; rojo?: boolean }) {
   return (
-    <div className="flex justify-between px-2 py-1.5 border-b border-[#1a1a1a] text-sm">
-      <span className="text-gray-400">{label}</span>
+    <div className="flex justify-between px-2 py-1.5 border-b border-white/5 text-sm">
+      <span className="text-white/40">{label}</span>
       <span className={rojo ? "text-red-400" : "text-white"}>{value}</span>
     </div>
   );
@@ -552,12 +552,12 @@ function ResumenFila({ label, value, rojo }: { label: string; value: string; roj
 function FirmaBloque({ rol, nombre, detalle }: { rol: string; nombre: string; detalle?: string }) {
   return (
     <div>
-      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-8 text-center">{rol}</p>
-      <div className="border-b border-gray-600 mb-2 h-10"></div>
+      <p className="text-[10px] text-white/30 uppercase tracking-widest mb-8 text-center">{rol}</p>
+      <div className="border-b border-white/20 mb-2 h-10"></div>
       <p className="text-white text-sm font-semibold">{nombre}</p>
-      {detalle && <p className="text-gray-500 text-xs mt-0.5">{detalle}</p>}
-      <div className="mt-5 border-b border-[#333] mb-1 h-6"></div>
-      <p className="text-gray-600 text-xs">Lugar y fecha</p>
+      {detalle && <p className="text-white/30 text-xs mt-0.5">{detalle}</p>}
+      <div className="mt-5 border-b border-white/10 mb-1 h-6"></div>
+      <p className="text-white/20 text-xs">Lugar y fecha</p>
     </div>
   );
 }

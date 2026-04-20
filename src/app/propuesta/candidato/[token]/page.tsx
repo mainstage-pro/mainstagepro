@@ -80,8 +80,8 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
   if (error && !data) return (
     <div className="min-h-screen bg-black flex items-center justify-center">
       <div className="text-center">
-        <p className="text-gray-400 text-lg mb-2">Propuesta no encontrada</p>
-        <p className="text-gray-600 text-sm">{error}</p>
+        <p className="text-white/40 text-lg mb-2">Propuesta no encontrada</p>
+        <p className="text-white/20 text-sm">{error}</p>
       </div>
     </div>
   );
@@ -101,7 +101,7 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
         </div>
         <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-6 text-left space-y-3">
           <p className="text-white font-semibold text-sm">¿Qué sigue?</p>
-          <div className="space-y-2 text-sm text-gray-400">
+          <div className="space-y-2 text-sm text-white/40">
             <div className="flex gap-3">
               <span className="text-[#B3985B] font-bold shrink-0">1.</span>
               <span>En los próximos días recibirás un <strong className="text-white">borrador de contrato</strong> para tu revisión. Tómate el tiempo necesario para leerlo con calma.</span>
@@ -116,7 +116,7 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
             </div>
           </div>
         </div>
-        <p className="text-gray-600 text-xs">Mainstage Producciones · mainstagepro.mx</p>
+        <p className="text-white/20 text-xs">Mainstage Producciones · mainstagepro.mx</p>
       </div>
     </div>
   );
@@ -130,50 +130,56 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
         </div>
         <div>
           <h1 className="text-xl font-semibold text-white mb-2">Gracias, {data.candidatoNombre.split(" ")[0]}</h1>
-          <p className="text-gray-400">Entendemos tu decisión y la respetamos. Fue un placer conocerte y apreciar tu talento.</p>
+          <p className="text-white/40">Entendemos tu decisión y la respetamos. Fue un placer conocerte y apreciar tu talento.</p>
         </div>
-        <p className="text-gray-600 text-sm">Si en el futuro tu situación cambia, con gusto retomamos la conversación.</p>
-        <p className="text-gray-700 text-xs">Mainstage Producciones</p>
+        <p className="text-white/20 text-sm">Si en el futuro tu situación cambia, con gusto retomamos la conversación.</p>
+        <p className="text-white/15 text-xs">Mainstage Producciones</p>
       </div>
     </div>
   );
 
   // Show proposal
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-2xl mx-auto px-4 py-10 space-y-8">
+    <div className="min-h-screen bg-black text-white"
+         style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
+      <style>{`
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
+      `}</style>
+      <div className="max-w-2xl mx-auto px-4 py-12 space-y-8">
 
         {/* Header */}
         <div className="text-center space-y-2">
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold">Mainstage Producciones</p>
           <h1 className="text-2xl font-bold">Propuesta de colaboración</h1>
-          <p className="text-gray-400">Hola <strong className="text-white">{data.candidatoNombre.split(" ")[0]}</strong>, preparamos esta propuesta especialmente para ti.</p>
+          <p className="text-white/40">Hola <strong className="text-white">{data.candidatoNombre.split(" ")[0]}</strong>, preparamos esta propuesta especialmente para ti.</p>
         </div>
 
         {/* Puesto */}
-        <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-4">
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-6 space-y-4">
           <div className="flex items-start gap-4">
             <div className="flex-1">
               <p className="text-xs text-[#B3985B] uppercase tracking-wider mb-1">{data.puestoArea}</p>
               <h2 className="text-xl font-bold text-white">{data.puestoTitulo}</h2>
-              <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-gray-500">
-                {data.modalidad && <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">{data.modalidad}</span>}
-                {data.tipoContrato && <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">{data.tipoContrato}</span>}
-                {data.horario && <span className="bg-[#1a1a1a] px-2 py-0.5 rounded">{data.horario}</span>}
+              <div className="flex items-center gap-3 mt-2 flex-wrap text-xs text-white/30">
+                {data.modalidad && <span className="bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded">{data.modalidad}</span>}
+                {data.tipoContrato && <span className="bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded">{data.tipoContrato}</span>}
+                {data.horario && <span className="bg-white/[0.04] border border-white/8 px-2 py-0.5 rounded">{data.horario}</span>}
               </div>
             </div>
             {data.salarioPropuesto && (
               <div className="text-right shrink-0">
-                <p className="text-xs text-gray-500 mb-0.5">Oferta salarial</p>
+                <p className="text-xs text-white/30 mb-0.5">Oferta salarial</p>
                 <p className="text-xl font-bold text-[#B3985B]">{fmt(data.salarioPropuesto)}</p>
-                <p className="text-xs text-gray-600">mensual</p>
+                <p className="text-xs text-white/20">mensual</p>
               </div>
             )}
           </div>
 
           {data.puestoDescripcion && (
-            <div className="border-t border-[#1a1a1a] pt-4">
-              <p className="text-sm text-gray-400 leading-relaxed">{data.puestoDescripcion}</p>
+            <div className="border-t border-white/5 pt-4">
+              <p className="text-sm text-white/40 leading-relaxed">{data.puestoDescripcion}</p>
             </div>
           )}
         </div>
@@ -181,15 +187,15 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
         {/* Condiciones */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.fechaIngresoEstimada && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Fecha de inicio estimada</p>
+            <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4">
+              <p className="text-xs text-white/30 mb-1">Fecha de inicio estimada</p>
               <p className="text-white font-semibold">{fmtDate(data.fechaIngresoEstimada)}</p>
             </div>
           )}
 
           {data.beneficios.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-2">Beneficios adicionales</p>
+            <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4">
+              <p className="text-xs text-white/30 mb-2">Beneficios adicionales</p>
               <ul className="space-y-1">
                 {data.beneficios.map((b, i) => (
                   <li key={i} className="text-sm text-white flex items-center gap-2">
@@ -211,10 +217,10 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
         )}
 
         {/* Decisión */}
-        <div className="bg-[#111] border border-[#222] rounded-2xl p-6 space-y-4">
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-6 space-y-4">
           <div className="text-center">
             <p className="text-white font-semibold mb-1">¿Qué decides?</p>
-            <p className="text-gray-500 text-sm">Tu respuesta quedará registrada en nuestra plataforma.</p>
+            <p className="text-white/30 text-sm">Tu respuesta quedará registrada en nuestra plataforma.</p>
           </div>
 
           {error && <p className="text-red-400 text-sm text-center">{error}</p>}
@@ -229,17 +235,17 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
             <button
               onClick={() => responder(false)}
               disabled={enviando}
-              className="flex-1 bg-[#1a1a1a] hover:bg-[#222] disabled:opacity-50 border border-[#333] text-gray-400 hover:text-white font-medium py-3 rounded-xl transition-colors text-sm">
+              className="flex-1 bg-white/[0.04] hover:bg-white/8 disabled:opacity-50 border border-white/10 text-white/40 hover:text-white/70 font-medium py-3 rounded-xl transition-colors text-sm">
               Declinar
             </button>
           </div>
 
-          <p className="text-gray-700 text-xs text-center">
+          <p className="text-white/15 text-xs text-center">
             Si tienes dudas antes de decidir, escríbenos primero. Queremos que estés seguro/a.
           </p>
         </div>
 
-        <p className="text-center text-gray-700 text-xs">Mainstage Producciones · mainstagepro.mx</p>
+        <p className="text-center text-white/15 text-xs">Mainstage Producciones · mainstagepro.mx</p>
       </div>
     </div>
   );

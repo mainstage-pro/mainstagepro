@@ -90,19 +90,19 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
   const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
   const fechaCarta = ciudad ? `${ciudad}, ${hoy}` : hoy;
 
-  const inputCls = "w-full bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] placeholder-gray-600";
-  const labelCls = "block text-xs text-gray-500 mb-1";
+  const inputCls = "w-full bg-black/50 border border-white/10 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20";
+  const labelCls = "block text-xs text-white/30 mb-1";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0a0a0a]" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {/* Barra superior */}
-      <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-[#1a1a1a] px-6 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-50 bg-[#0d0d0d] border-b border-white/5 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={() => window.history.back()} className="text-gray-500 hover:text-white text-sm transition-colors">
+          <button onClick={() => window.history.back()} className="text-white/30 hover:text-white text-sm transition-colors">
             ← Volver
           </button>
-          <span className="text-[#333]">|</span>
-          <span className="text-gray-400 text-sm">Carta Responsiva — {proyecto.nombre}</span>
+          <span className="text-white/10">|</span>
+          <span className="text-white/40 text-sm">Carta Responsiva — {proyecto.nombre}</span>
         </div>
         <a
           href={buildDownloadUrl()}
@@ -117,8 +117,8 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
       <div className="max-w-6xl mx-auto py-8 px-4 flex gap-6">
         {/* Panel de datos */}
         <div className="w-80 shrink-0 space-y-4">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Datos del documento</p>
+          <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4 space-y-4">
+            <p className="text-xs text-white/30 uppercase tracking-wider">Datos del documento</p>
 
             <div>
               <label className={labelCls}>Destinatario (institución / dependencia)</label>
@@ -189,18 +189,18 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
                 value={descripcionEquipo}
                 onChange={e => setDescripcionEquipo(e.target.value)}
               />
-              <p className="text-[10px] text-gray-600 mt-1">Deja en blanco para usar texto genérico</p>
+              <p className="text-[10px] text-white/20 mt-1">Deja en blanco para usar texto genérico</p>
             </div>
           </div>
 
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Auto-completado</p>
+          <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4 space-y-2">
+            <p className="text-xs text-white/30 uppercase tracking-wider">Auto-completado</p>
             <div className="space-y-1 text-xs text-gray-400">
-              <p><span className="text-gray-600">Proyecto</span> · {proyecto.numeroProyecto}</p>
-              <p><span className="text-gray-600">Evento</span> · {proyecto.nombre}</p>
-              <p><span className="text-gray-600">Fecha evento</span> · {fechaEventoStr}</p>
-              {proyecto.lugarEvento && <p><span className="text-gray-600">Lugar</span> · {proyecto.lugarEvento}</p>}
-              <p><span className="text-gray-600">Servicio</span> · {descripcionServicio}</p>
+              <p><span className="text-white/20">Proyecto</span> · {proyecto.numeroProyecto}</p>
+              <p><span className="text-white/20">Evento</span> · {proyecto.nombre}</p>
+              <p><span className="text-white/20">Fecha evento</span> · {fechaEventoStr}</p>
+              {proyecto.lugarEvento && <p><span className="text-white/20">Lugar</span> · {proyecto.lugarEvento}</p>}
+              <p><span className="text-white/20">Servicio</span> · {descripcionServicio}</p>
             </div>
           </div>
         </div>
@@ -212,11 +212,11 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
             <div className="bg-[#0a0a0a] px-10 py-6 flex items-end justify-between border-b-2 border-[#B3985B]">
               <div>
                 <p className="text-[#B3985B] font-bold tracking-widest text-base">MAINSTAGE PRODUCCIONES</p>
-                <p className="text-gray-500 text-[10px] tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
+                <p className="text-white/30 text-[10px] tracking-widest mt-1">PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</p>
               </div>
               <div className="text-right">
                 <p className="text-white font-bold tracking-wider text-sm">CARTA RESPONSIVA</p>
-                <p className="text-gray-500 text-xs mt-1">Proyecto {proyecto.numeroProyecto}</p>
+                <p className="text-white/30 text-xs mt-1">Proyecto {proyecto.numeroProyecto}</p>
               </div>
             </div>
 
@@ -227,7 +227,7 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <p className="font-bold mb-0.5">
                 {destinatario || <span className="text-gray-300 italic">Nombre de la institución / dependencia</span>}
               </p>
-              <p className="mb-6 text-gray-600">Presente</p>
+              <p className="mb-6 text-white/20">Presente</p>
 
               <p className="mb-4 text-justify text-gray-800">
                 Por medio de la presente, quien suscribe{" "}
@@ -268,15 +268,15 @@ export default function CartaResponsivaPage({ params }: { params: Promise<{ proy
               <div className="mt-12 border-t border-gray-300 pt-3 w-64">
                 <p className="font-bold text-sm">Mainstage Producciones</p>
                 <p className="font-bold text-sm">{responsable || <span className="text-gray-400 italic">Nombre del responsable</span>}</p>
-                <p className="text-gray-600 text-xs mt-1">{cargo}</p>
+                <p className="text-white/20 text-xs mt-1">{cargo}</p>
                 {telefono && <p className="text-[#B3985B] text-xs mt-1">{telefono}</p>}
-                {correo   && <p className="text-gray-500 text-xs">{correo}</p>}
+                {correo   && <p className="text-white/30 text-xs">{correo}</p>}
               </div>
             </div>
 
             {/* Footer */}
             <div className="bg-[#f7f5f0] border-t border-gray-200 px-10 py-3 flex justify-between items-center">
-              <p className="text-[10px] text-gray-500 tracking-wider">MAINSTAGE PRODUCCIONES</p>
+              <p className="text-[10px] text-white/30 tracking-wider">MAINSTAGE PRODUCCIONES</p>
               <p className="text-[10px] text-gray-400">Documento confidencial · Uso exclusivo de las partes</p>
             </div>
           </div>

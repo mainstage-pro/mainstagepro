@@ -81,9 +81,9 @@ function catLabel(v: string) { return CATEGORIAS.find(c => c.value === v)?.label
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs text-gray-400 block mb-1">{label}</label>
+      <label className="text-xs text-white/40 block mb-1">{label}</label>
       {children}
-      {hint && <p className="text-gray-600 text-[10px] mt-1">{hint}</p>}
+      {hint && <p className="text-white/20 text-[10px] mt-1">{hint}</p>}
     </div>
   );
 }
@@ -93,7 +93,7 @@ function TextInput({ value, onChange, placeholder, type = "text" }: {
 }) {
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder:text-gray-700" />
+      className="w-full bg-[#0d0d0d] border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder:text-white/15" />
   );
 }
 
@@ -118,7 +118,7 @@ function EquipoForm({ initial, onSave, onCancel, saving }: {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Categoría *">
             <select value={form.categoria} onChange={e => set("categoria", e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+              className="w-full bg-[#0d0d0d] border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]">
               {CATEGORIAS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </Field>
@@ -149,14 +149,14 @@ function EquipoForm({ initial, onSave, onCancel, saving }: {
         <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
           <span>2</span><span className="w-px h-3 bg-[#B3985B]/40 inline-block"/><span>Especificaciones técnicas</span>
         </p>
-        <p className="text-gray-600 text-xs mb-4">Opcional — entre más completa la info, más fácil es incluirlo en producciones</p>
+        <p className="text-white/20 text-xs mb-4">Opcional — entre más completa la info, más fácil es incluirlo en producciones</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Field label="Potencia (W)">
             <TextInput type="number" value={form.potenciaW} onChange={v => set("potenciaW", v)} placeholder="0" />
           </Field>
           <Field label="Voltaje">
             <select value={form.voltaje} onChange={e => set("voltaje", e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+              className="w-full bg-[#0d0d0d] border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]">
               <option value="">— Sin especificar —</option>
               {VOLTAJES.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
@@ -180,7 +180,7 @@ function EquipoForm({ initial, onSave, onCancel, saving }: {
               className={`w-10 h-5 rounded-full transition-colors relative ${form.incluyeCase ? "bg-[#B3985B]" : "bg-[#2a2a2a]"}`}>
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${form.incluyeCase ? "translate-x-5" : "translate-x-0.5"}`} />
             </div>
-            <span className="text-sm text-gray-300">Incluye case / flight case</span>
+            <span className="text-sm text-white/70">Incluye case / flight case</span>
           </label>
         </div>
       </div>
@@ -190,14 +190,14 @@ function EquipoForm({ initial, onSave, onCancel, saving }: {
         <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2">
           <span>3</span><span className="w-px h-3 bg-[#B3985B]/40 inline-block"/><span>Precios de referencia (MXN / evento)</span>
         </p>
-        <p className="text-gray-600 text-xs mb-4">Precios por unidad para un evento completo. Nos ayudan a cotizar correctamente.</p>
+        <p className="text-white/20 text-xs mb-4">Precios por unidad para un evento completo. Nos ayudan a cotizar correctamente.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="Precio sugerido al público" hint="Lo que tú cobras normalmente a tus clientes finales">
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
               <input type="number" min="0" value={form.precioPublico} onChange={e => set("precioPublico", e.target.value)}
                 placeholder="0"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg pl-6 pr-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="w-full bg-[#0d0d0d] border border-white/8 rounded-lg pl-6 pr-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
           </Field>
           <Field label="Precio a Mainstage" hint="El precio especial que nos ofreces a nosotros como cliente frecuente">
@@ -230,18 +230,18 @@ function EquipoForm({ initial, onSave, onCancel, saving }: {
           <Field label="Notas adicionales" hint="Condiciones, accesorios incluidos, operador requerido, restricciones...">
             <textarea value={form.notas} onChange={e => set("notas", e.target.value)} rows={3}
               placeholder="Ej: Incluye cables XLR, requiere tierra física, operador incluido, no disponible en días festivos..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none placeholder:text-gray-700" />
+              className="w-full bg-[#0d0d0d] border border-white/8 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none placeholder:text-white/15" />
           </Field>
         </div>
       </div>
 
       {/* ── Botones ── */}
-      <div className="flex gap-3 pt-2 border-t border-[#1a1a1a]">
+      <div className="flex gap-3 pt-2 border-t border-white/5">
         <button onClick={() => onSave(form)} disabled={saving || !form.descripcion.trim()}
           className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-bold px-6 py-2.5 rounded-lg text-sm transition-colors">
           {saving ? "Guardando..." : "Guardar equipo"}
         </button>
-        <button onClick={onCancel} className="border border-[#333] text-gray-400 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors">
+        <button onClick={onCancel} className="border border-white/10 text-white/40 hover:text-white px-4 py-2.5 rounded-lg text-sm transition-colors">
           Cancelar
         </button>
       </div>
@@ -305,10 +305,10 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
 
   if (editing) {
     return (
-      <div className="bg-[#111] border border-[#B3985B]/40 rounded-2xl p-5">
+      <div className="bg-white/[0.025] border border-[#B3985B]/40 rounded-2xl p-5">
         <div className="flex items-center justify-between mb-5">
           <p className="text-white font-semibold text-sm">Editando — {equipo.descripcion}</p>
-          <button onClick={() => setEditing(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+          <button onClick={() => setEditing(false)} className="text-white/30 hover:text-white text-xl">×</button>
         </div>
         <EquipoForm initial={toForm()} onSave={handleSave} onCancel={() => setEditing(false)} saving={saving} />
       </div>
@@ -318,7 +318,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
   const hasSpecs = equipo.potenciaW || equipo.voltaje || equipo.pesoKg || equipo.tiempoSetupMin;
 
   return (
-    <div className={`bg-[#111] border rounded-2xl p-5 ${equipo.aprobado ? "border-green-700/30" : "border-[#1e1e1e]"}`}>
+    <div className={`bg-white/[0.025] border rounded-2xl p-5 ${equipo.aprobado ? "border-green-700/30" : "border-white/8"}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
@@ -334,33 +334,33 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
           </div>
           <p className="text-white font-semibold text-base leading-tight">{equipo.descripcion}</p>
           {(equipo.marca || equipo.modelo) && (
-            <p className="text-gray-400 text-sm mt-0.5">
+            <p className="text-white/40 text-sm mt-0.5">
               {[equipo.marca, equipo.modelo].filter(Boolean).join(" · ")}
             </p>
           )}
         </div>
         <div className="text-right shrink-0">
           <p className="text-2xl font-bold text-white tabular-nums">{equipo.cantidad}</p>
-          <p className="text-gray-600 text-[10px]">unidad{equipo.cantidad !== 1 ? "es" : ""}</p>
+          <p className="text-white/20 text-[10px]">unidad{equipo.cantidad !== 1 ? "es" : ""}</p>
           {equipo.anioFabricacion && (
-            <p className="text-gray-600 text-[10px] mt-0.5">{equipo.anioFabricacion}</p>
+            <p className="text-white/20 text-[10px] mt-0.5">{equipo.anioFabricacion}</p>
           )}
         </div>
       </div>
 
       {/* Precios */}
       {(equipo.precioPublico || equipo.precioMainstage) && (
-        <div className="flex gap-6 mb-3 pb-3 border-b border-[#1a1a1a]">
+        <div className="flex gap-6 mb-3 pb-3 border-b border-white/5">
           {equipo.precioPublico && (
             <div>
-              <p className="text-gray-300 text-sm font-semibold">{fmt(equipo.precioPublico)}</p>
-              <p className="text-gray-600 text-[10px]">precio público</p>
+              <p className="text-white/70 text-sm font-semibold">{fmt(equipo.precioPublico)}</p>
+              <p className="text-white/20 text-[10px]">precio público</p>
             </div>
           )}
           {equipo.precioMainstage && (
             <div>
               <p className="text-[#B3985B] text-sm font-bold">{fmt(equipo.precioMainstage)}</p>
-              <p className="text-gray-600 text-[10px]">precio a Mainstage</p>
+              <p className="text-white/20 text-[10px]">precio a Mainstage</p>
             </div>
           )}
         </div>
@@ -369,18 +369,18 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
       {/* Specs */}
       {hasSpecs && (
         <div className="flex flex-wrap gap-2 mb-3">
-          {equipo.potenciaW && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">{equipo.potenciaW}W</span>}
-          {equipo.voltaje && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">{equipo.voltaje}</span>}
-          {equipo.amperaje && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">{equipo.amperaje}A</span>}
-          {equipo.pesoKg && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">{equipo.pesoKg}kg</span>}
-          {equipo.dimensiones && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">{equipo.dimensiones}</span>}
-          {equipo.tiempoSetupMin && <span className="text-[11px] bg-[#0d0d0d] text-gray-400 px-2.5 py-1 rounded-lg">Setup {equipo.tiempoSetupMin}min</span>}
-          {equipo.incluyeCase && <span className="text-[11px] bg-[#0d0d0d] text-gray-300 px-2.5 py-1 rounded-lg">🧳 Case incluido</span>}
+          {equipo.potenciaW && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.potenciaW}W</span>}
+          {equipo.voltaje && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.voltaje}</span>}
+          {equipo.amperaje && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.amperaje}A</span>}
+          {equipo.pesoKg && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.pesoKg}kg</span>}
+          {equipo.dimensiones && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.dimensiones}</span>}
+          {equipo.tiempoSetupMin && <span className="text-[11px] bg-[#0d0d0d] text-white/40 px-2.5 py-1 rounded-lg">Setup {equipo.tiempoSetupMin}min</span>}
+          {equipo.incluyeCase && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">🧳 Case incluido</span>}
         </div>
       )}
 
       {equipo.notas && (
-        <p className="text-gray-500 text-xs mb-3 italic">"{equipo.notas}"</p>
+        <p className="text-white/30 text-xs mb-3 italic">"{equipo.notas}"</p>
       )}
 
       {(equipo.fotosUrls || equipo.fichaTecnicaUrl) && (
@@ -397,9 +397,9 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
       )}
 
       {/* Acciones */}
-      <div className="flex gap-2 pt-2 border-t border-[#1a1a1a]">
+      <div className="flex gap-2 pt-2 border-t border-white/5">
         <button onClick={() => setEditing(true)}
-          className="text-xs border border-[#333] text-gray-400 hover:text-white hover:border-[#444] px-3 py-1.5 rounded-lg transition-colors">
+          className="text-xs border border-white/10 text-white/40 hover:text-white hover:border-[#444] px-3 py-1.5 rounded-lg transition-colors">
           Editar
         </button>
         {confirmingDelete ? (
@@ -410,7 +410,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
               {deleting ? "Eliminando..." : "Confirmar"}
             </button>
             <button onClick={() => setConfirmingDelete(false)}
-              className="text-xs text-gray-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors">
+              className="text-xs text-white/30 hover:text-white px-2 py-1.5 rounded-lg transition-colors">
               Cancelar
             </button>
           </div>
@@ -490,40 +490,43 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
     <div className="min-h-screen bg-[#080808] flex items-center justify-center">
       <div className="text-center space-y-3">
         <div className="w-8 h-8 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin mx-auto" />
-        <p className="text-gray-500 text-sm">Cargando portal...</p>
+        <p className="text-white/30 text-sm">Cargando portal...</p>
       </div>
     </div>
   );
 
   if (error || !proveedor) return (
     <div className="min-h-screen bg-[#080808] flex items-center justify-center p-6">
-      <div className="bg-[#111] border border-red-800/40 rounded-2xl p-8 max-w-md text-center">
+      <div className="bg-white/[0.025] border border-red-800/40 rounded-2xl p-8 max-w-md text-center">
         <p className="text-4xl mb-4">🔗</p>
         <p className="text-white font-semibold text-lg mb-2">Link inválido o expirado</p>
-        <p className="text-gray-500 text-sm">Este enlace de registro no es válido. Solicita uno nuevo a Mainstage Pro.</p>
+        <p className="text-white/30 text-sm">Este enlace de registro no es válido. Solicita uno nuevo a Mainstage Pro.</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#080808]">
+    <div className="min-h-screen bg-[#080808]" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-[#1a1a1a] border border-[#B3985B]/40 text-[#B3985B] text-sm px-4 py-3 rounded-xl shadow-2xl">
+        <div className="fixed top-4 right-4 z-50 bg-white/[0.04] border border-[#B3985B]/40 text-[#B3985B] text-sm px-4 py-3 rounded-xl shadow-2xl">
           ✓ {toast}
         </div>
       )}
 
       {/* Header */}
-      <div className="bg-[#0a0a0a] border-b border-[#1a1a1a]">
+      <div className="bg-[#0a0a0a] border-b border-white/5">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div>
-            <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest mb-0.5">Portal de inventario · Mainstage Pro</p>
+            <div className="flex items-center gap-3 mb-1">
+              <img src="/logo.png" alt="Mainstage" className="h-5 w-auto opacity-90" />
+              <p className="text-[#B3985B] text-xs font-bold uppercase tracking-widest">Portal de inventario</p>
+            </div>
             <h1 className="text-white text-lg font-bold">{proveedor.empresa ?? proveedor.nombre}</h1>
-            {proveedor.empresa && <p className="text-gray-500 text-sm">{proveedor.nombre}</p>}
+            {proveedor.empresa && <p className="text-white/30 text-sm">{proveedor.nombre}</p>}
           </div>
           <div className="text-right space-y-0.5">
             <p className="text-2xl font-bold text-white">{proveedor.equiposPortal.length}</p>
-            <p className="text-gray-600 text-[10px]">equipo{proveedor.equiposPortal.length !== 1 ? "s" : ""} registrado{proveedor.equiposPortal.length !== 1 ? "s" : ""}</p>
+            <p className="text-white/20 text-[10px]">equipo{proveedor.equiposPortal.length !== 1 ? "s" : ""} registrado{proveedor.equiposPortal.length !== 1 ? "s" : ""}</p>
             {proveedor.equiposPortal.filter(e => e.aprobado).length > 0 && (
               <p className="text-green-500 text-[10px]">{proveedor.equiposPortal.filter(e => e.aprobado).length} verificado{proveedor.equiposPortal.filter(e => e.aprobado).length !== 1 ? "s" : ""}</p>
             )}
@@ -534,9 +537,9 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
         {/* Intro */}
-        <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-5">
           <p className="text-white font-semibold mb-1">Registro de inventario de equipos</p>
-          <p className="text-gray-500 text-sm leading-relaxed">
+          <p className="text-white/30 text-sm leading-relaxed">
             Registra los equipos que tienes disponibles para renta. Mientras más completa sea la información,
             más fácil es incluirlos en nuestras cotizaciones y producciones. Puedes agregar, editar o eliminar
             equipos en cualquier momento desde este link.
@@ -545,10 +548,10 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
 
         {/* Formulario nuevo equipo */}
         {showForm ? (
-          <div className="bg-[#111] border border-[#B3985B]/30 rounded-2xl p-6">
+          <div className="bg-white/[0.025] border border-[#B3985B]/30 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-white font-bold text-base">Agregar nuevo equipo</h2>
-              <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setShowForm(false)} className="text-white/30 hover:text-white text-2xl leading-none">×</button>
             </div>
             <EquipoForm initial={EMPTY_FORM} onSave={handleSave} onCancel={() => setShowForm(false)} saving={saving} />
           </div>
@@ -568,12 +571,12 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
               {categoriasUsadas.length > 1 && (
                 <div className="flex gap-1.5 flex-wrap">
                   <button onClick={() => setFiltro("TODAS")}
-                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-colors ${filtro === "TODAS" ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                    className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-colors ${filtro === "TODAS" ? "bg-[#B3985B] text-black" : "bg-white/[0.04] text-white/40 hover:text-white"}`}>
                     Todas
                   </button>
                   {categoriasUsadas.map(c => (
                     <button key={c} onClick={() => setFiltro(c)}
-                      className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-colors ${filtro === c ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                      className={`text-[10px] px-2.5 py-1 rounded-full font-semibold transition-colors ${filtro === c ? "bg-[#B3985B] text-black" : "bg-white/[0.04] text-white/40 hover:text-white"}`}>
                       {catLabel(c)}
                     </button>
                   ))}
@@ -581,7 +584,7 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
               )}
             </div>
             {equiposFiltrados.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin equipos en esta categoría</p>
+              <p className="text-white/30 text-sm text-center py-6">Sin equipos en esta categoría</p>
             ) : (
               <div className="space-y-3">
                 {equiposFiltrados.map(equipo => (
@@ -593,7 +596,7 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
         )}
 
         <div className="text-center pt-4 pb-8">
-          <p className="text-gray-700 text-xs">Mainstage Pro · Portal de proveedores</p>
+          <p className="text-white/15 text-xs">Mainstage Pro · Portal de proveedores</p>
         </div>
       </div>
     </div>

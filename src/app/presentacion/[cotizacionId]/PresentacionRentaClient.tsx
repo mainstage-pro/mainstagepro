@@ -36,36 +36,44 @@ interface Cotizacion {
   lineas: Linea[];
 }
 
-// ─── Equipment images (same as PresentacionClient) ───────────────────────────
-const MARCA_IMAGES: Record<string, string> = {
-  "rcf": "/images/presentacion/rcf-hdl30a.png",
-  "electro voice": "/images/presentacion/ev-ekx12p.png",
-  "electro-voice": "/images/presentacion/ev-ekx12p.png",
-  "ev": "/images/presentacion/ev-ekx12p.png",
-  "allen & heath": "/images/presentacion/allen-heath-dlive.png",
-  "allen&heath": "/images/presentacion/allen-heath-dlive.png",
-  "midas": "/images/presentacion/midas-m32.png",
-  "shure": "/images/presentacion/shure-axient.png",
-  "sennheiser": "/images/presentacion/sennheiser-iem.png",
-  "rode": "/images/presentacion/rode-m5.png",
-  "pioneer": "/images/presentacion/pioneer-cdj3000.png",
-  "pioneer dj": "/images/presentacion/pioneer-cdj3000.png",
-  "grand ma": "/images/presentacion/grandma-ma3.png",
-  "grandma": "/images/presentacion/grandma-ma3.png",
-  "ma": "/images/presentacion/grandma-ma3.png",
-  "ma lighting": "/images/presentacion/grandma-ma3.png",
-  "astera": "/images/presentacion/astera-ax1.png",
-  "chauvet": "/images/presentacion/chauvet-spot260.png",
-  "lite tek": "/images/presentacion/lite-tek-beam280.png",
-  "litetek": "/images/presentacion/lite-tek-beam280.png",
-  "lumos": "/images/presentacion/lumos-l7.png",
-  "sun star": "/images/presentacion/sunstar-kaleidos.png",
-  "sunstar": "/images/presentacion/sunstar-soul-rgbw.png",
-  "steel pro": "/images/presentacion/steel-pro-razor.png",
-  "blackmagic": "/images/presentacion/blackmagic-atem.png",
-  "predator": "/images/presentacion/predator-9500.png",
-  "wacker": "/images/presentacion/wacker-g120.png",
+// ─── Equipment images ─────────────────────────────────────────────────────────
+const MARCA_POOL: Record<string, string[]> = {
+  "rcf":           ["/images/presentacion/rcf-hdl30a.png", "/images/presentacion/rcf-sub8006.png"],
+  "electro voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "electro-voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "ev":            ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "allen & heath": ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
+  "allen&heath":   ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
+  "shure":         ["/images/presentacion/shure-axient.png", "/images/presentacion/shure-slxd.png", "/images/presentacion/shure-sm58.png", "/images/presentacion/shure-beta52a.png"],
+  "pioneer":       ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
+  "pioneer dj":    ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
+  "grand ma":      ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "grandma":       ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "ma":            ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "ma lighting":   ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "chauvet":       ["/images/presentacion/chauvet-spot260.png", "/images/presentacion/chauvet-slimpar.png", "/images/presentacion/chauvet-pinspot-bar.png"],
+  "lite tek":      ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-flasher200.png", "/images/presentacion/lite-tek-par.png"],
+  "litetek":       ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-par.png"],
+  "lumos":         ["/images/presentacion/lumos-l7.png", "/images/presentacion/lumos-l1-retro.png", "/images/presentacion/lumos-maple-lamp.png", "/images/presentacion/lumos-sixaline.png"],
+  "sunstar":       ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
+  "sun star":      ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
 };
+const MARCA_IMAGES: Record<string, string> = {
+  "midas":      "/images/presentacion/midas-m32.png",
+  "sennheiser": "/images/presentacion/sennheiser-iem.png",
+  "rode":       "/images/presentacion/rode-m5.png",
+  "astera":     "/images/presentacion/astera-ax1.png",
+  "steel pro":  "/images/presentacion/steel-pro-razor.png",
+  "blackmagic": "/images/presentacion/blackmagic-atem.png",
+  "predator":   "/images/presentacion/predator-9500.png",
+  "wacker":     "/images/presentacion/wacker-g120.png",
+};
+
+function idHash(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
 const MODELO_IMAGES: Record<string, string> = {
   "DJM A9": "/images/presentacion/pioneer-djmv10.png",
   "DJM V10": "/images/presentacion/pioneer-djmv10.png",
@@ -115,6 +123,12 @@ const MODELO_IMAGES: Record<string, string> = {
 function getEquipoImage(linea: Linea): string | null {
   if (linea.modelo && MODELO_IMAGES[linea.modelo]) return MODELO_IMAGES[linea.modelo];
   const marca = (linea.marca ?? "").toLowerCase().trim();
+  for (const key of Object.keys(MARCA_POOL)) {
+    if (marca.includes(key) || key.includes(marca)) {
+      const pool = MARCA_POOL[key];
+      return pool[idHash(linea.id) % pool.length];
+    }
+  }
   for (const key of Object.keys(MARCA_IMAGES)) {
     if (marca.includes(key) || key.includes(marca)) return MARCA_IMAGES[key];
   }
@@ -371,7 +385,7 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #0a0a0a; }
-        ::-webkit-scrollbar-thumb { background: #B3985B40; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
       {/* ── NAV ── */}

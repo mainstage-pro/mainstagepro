@@ -21,6 +21,8 @@ const CRITERIOS = [
   { key: "relacionCalidadPrecio",  label: "Relación calidad-precio",      desc: "¿El servicio justificó la inversión realizada?" },
 ];
 
+const FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
+
 export default function EncuestaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [data, setData] = useState<EvaluacionData | null>(null);
@@ -70,82 +72,94 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
   }
 
   function colorBtn(selected: number, n: number) {
-    if (selected !== n) return "bg-[#1a1a1a] text-gray-400 hover:bg-[#252525] hover:text-white";
-    if (n >= 9) return "bg-green-600 text-white";
-    if (n >= 7) return "bg-[#B3985B] text-black";
-    if (n >= 5) return "bg-yellow-600 text-black";
-    return "bg-red-700 text-white";
+    if (selected !== n) return "bg-white/[0.04] text-white/35 hover:bg-white/8 hover:text-white/70 border border-white/6";
+    if (n >= 9) return "bg-green-700 text-white border border-green-600";
+    if (n >= 7) return "bg-[#B3985B] text-black border border-[#B3985B]";
+    if (n >= 5) return "bg-yellow-600 text-black border border-yellow-500";
+    return "bg-red-700 text-white border border-red-600";
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <p className="text-gray-500 text-sm">Cargando...</p>
+    <div className="min-h-screen bg-black flex items-center justify-center" style={{ fontFamily: FONT }}>
+      <div className="w-6 h-6 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin" />
     </div>
   );
 
   if (error) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-black flex items-center justify-center p-6" style={{ fontFamily: FONT }}>
       <div className="text-center max-w-sm">
-        <div className="w-12 h-12 bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-          <span className="text-red-400 text-xl">!</span>
-        </div>
-        <p className="text-white font-semibold mb-2">Enlace no disponible</p>
-        <p className="text-gray-500 text-sm">{error}</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-white.png" alt="Mainstage Pro" className="h-5 mx-auto mb-8 opacity-30" draggable={false} />
+        <p className="text-white/50 font-semibold mb-2">Enlace no disponible</p>
+        <p className="text-white/25 text-sm">{error}</p>
       </div>
     </div>
   );
 
   if (enviado) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-black flex items-center justify-center p-6" style={{ fontFamily: FONT }}>
       <div className="text-center max-w-sm">
-        <div className="w-16 h-16 bg-green-900/30 border border-green-700/30 rounded-full flex items-center justify-center mx-auto mb-5">
-          <span className="text-green-400 text-2xl">✓</span>
+        <div className="w-16 h-16 bg-green-900/30 border border-green-500/30 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-green-400">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
         </div>
-        <h2 className="text-white text-xl font-semibold mb-2">¡Gracias por tu opinión!</h2>
-        <p className="text-gray-500 text-sm">Tu evaluación fue recibida. Nos ayuda a mejorar para futuros eventos.</p>
-        <div className="mt-6 pt-5 border-t border-[#1a1a1a]">
-          <div className="w-8 h-8 bg-[#B3985B] rounded-sm flex items-center justify-center mx-auto mb-2">
-            <span className="text-black font-bold text-xs">M</span>
-          </div>
-          <p className="text-[#555] text-xs">Mainstage Pro</p>
-        </div>
+        <h2 className="text-white font-bold text-xl mb-2">¡Gracias por tu opinión!</h2>
+        <p className="text-white/35 text-sm mb-8 leading-relaxed">Tu evaluación fue recibida. Nos ayuda a mejorar para futuros eventos.</p>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-white.png" alt="Mainstage Pro" className="h-4 mx-auto opacity-20" draggable={false} />
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] py-10 px-4">
-      <div className="max-w-2xl mx-auto space-y-6">
+    <div className="min-h-screen bg-black py-16 px-6" style={{ fontFamily: FONT }}>
+      <style>{`
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
+      `}</style>
+
+      <div className="max-w-2xl mx-auto space-y-5">
         {/* Header */}
-        <div className="text-center space-y-2 pb-2">
-          <div className="w-10 h-10 bg-[#B3985B] rounded-sm flex items-center justify-center mx-auto mb-4">
-            <span className="text-black font-bold text-sm">M</span>
-          </div>
-          <h1 className="text-white text-2xl font-semibold">Evaluación del servicio</h1>
+        <div className="text-center pb-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-white.png" alt="Mainstage Pro" className="h-5 mx-auto mb-8 opacity-40" draggable={false} />
+          <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-[0.25em] mb-3">Evaluación del servicio</p>
+          <h1 className="text-white font-bold text-2xl mb-2" style={{ letterSpacing: "-0.02em" }}>
+            ¿Cómo fue tu experiencia?
+          </h1>
           {data && (
-            <div>
-              <p className="text-[#B3985B] font-medium">{data.proyecto.nombre}</p>
-              <p className="text-gray-500 text-sm">
+            <div className="mt-2">
+              <p className="text-[#B3985B] text-sm font-medium">{data.proyecto.nombre}</p>
+              <p className="text-white/25 text-xs mt-0.5">
                 {data.proyecto.cliente.nombre} · {new Date(data.proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
               </p>
             </div>
           )}
-          <p className="text-gray-600 text-sm pt-1">Tu opinión es muy valiosa para nosotros. Califica del 1 al 10 cada criterio.</p>
+          <p className="text-white/25 text-sm mt-3">Califica del 1 al 10 cada criterio.</p>
         </div>
 
         {/* Criterios */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
-          <div className="divide-y divide-[#1a1a1a]">
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl overflow-hidden">
+          <div className="divide-y divide-white/5">
             {CRITERIOS.map(({ key, label, desc }) => {
               const val = form[key] as number;
               return (
-                <div key={key} className="px-5 py-5">
-                  <div className="flex items-start justify-between gap-4 mb-3">
+                <div key={key} className="px-6 py-5">
+                  <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
-                      <p className="text-white text-sm font-medium">{label}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
+                      <p className="text-white/85 text-sm font-semibold">{label}</p>
+                      <p className="text-white/30 text-xs mt-0.5 leading-snug">{desc}</p>
                     </div>
-                    <span className={`text-2xl font-bold shrink-0 w-8 text-right ${val === 0 ? "text-gray-700" : val >= 9 ? "text-green-400" : val >= 7 ? "text-[#B3985B]" : val >= 5 ? "text-yellow-400" : "text-red-400"}`}>
+                    <span className={`text-2xl font-black shrink-0 w-8 text-right leading-none ${
+                      val === 0 ? "text-white/15"
+                        : val >= 9 ? "text-green-400"
+                        : val >= 7 ? "text-[#B3985B]"
+                        : val >= 5 ? "text-yellow-400"
+                        : "text-red-400"
+                    }`} style={{ letterSpacing: "-0.03em" }}>
                       {val === 0 ? "—" : val}
                     </span>
                   </div>
@@ -164,9 +178,9 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
         </div>
 
         {/* NPS */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
-          <p className="text-white text-sm font-medium mb-1">¿Qué tan probable es que nos recomiendes?</p>
-          <p className="text-gray-500 text-xs mb-4">1 = muy poco probable · 10 = definitivamente lo haría</p>
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-6">
+          <p className="text-white/85 text-sm font-semibold mb-1">¿Qué tan probable es que nos recomiendes?</p>
+          <p className="text-white/25 text-xs mb-4">1 = muy poco probable · 10 = definitivamente lo haría</p>
           <div className="flex gap-1.5 flex-wrap">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
               <button key={n} onClick={() => setScore("probabilidadRecontratacion", n)}
@@ -178,33 +192,34 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
         </div>
 
         {/* Texto libre */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5 space-y-4">
+        <div className="bg-white/[0.025] border border-white/8 rounded-2xl p-6 space-y-5">
           <div>
-            <label className="text-white text-sm font-medium block mb-1">¿Qué fue lo mejor del servicio?</label>
+            <label className="text-white/85 text-sm font-semibold block mb-2">¿Qué fue lo mejor del servicio?</label>
             <textarea value={form.loMejor as string} onChange={e => setForm(p => ({ ...p, loMejor: e.target.value }))}
               rows={3} placeholder="Lo que más te gustó..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" />
+              className="w-full bg-black/50 border border-white/8 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/15 focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors" />
           </div>
           <div>
-            <label className="text-white text-sm font-medium block mb-1">¿Qué podríamos mejorar?</label>
+            <label className="text-white/85 text-sm font-semibold block mb-2">¿Qué podríamos mejorar?</label>
             <textarea value={form.loMejorable as string} onChange={e => setForm(p => ({ ...p, loMejorable: e.target.value }))}
               rows={3} placeholder="Áreas de oportunidad..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" />
+              className="w-full bg-black/50 border border-white/8 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/15 focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors" />
           </div>
           <div>
-            <label className="text-white text-sm font-medium block mb-1">Comentario adicional (opcional)</label>
+            <label className="text-white/85 text-sm font-semibold block mb-2">Comentario adicional <span className="text-white/25 font-normal">(opcional)</span></label>
             <textarea value={form.comentarioAdicional as string} onChange={e => setForm(p => ({ ...p, comentarioAdicional: e.target.value }))}
               rows={2} placeholder="Cualquier otro comentario..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" />
+              className="w-full bg-black/50 border border-white/8 rounded-xl px-4 py-3 text-white/80 text-sm placeholder-white/15 focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors" />
           </div>
         </div>
 
         {/* Submit */}
         <button onClick={submit} disabled={submitting}
-          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold py-3.5 rounded-xl transition-colors text-sm">
+          className="w-full bg-[#B3985B] hover:bg-[#c9a960] disabled:opacity-40 text-black font-bold py-4 rounded-xl transition-colors text-sm shadow-[0_0_30px_rgba(179,152,91,0.15)]">
           {submitting ? "Enviando..." : "Enviar evaluación"}
         </button>
-        <p className="text-center text-gray-600 text-xs pb-4">
+
+        <p className="text-center text-white/15 text-xs pb-4">
           Mainstage Pro · Tu privacidad está protegida
         </p>
       </div>

@@ -39,35 +39,45 @@ interface Cotizacion {
 }
 
 // ─── Equipment Image Mapping ──────────────────────────────────────────────────
-const MARCA_IMAGES: Record<string, string> = {
-  "rcf":             "/images/presentacion/rcf-hdl30a.png",
-  "electro voice":   "/images/presentacion/ev-ekx12p.png",
-  "electro-voice":   "/images/presentacion/ev-ekx12p.png",
-  "ev":              "/images/presentacion/ev-ekx12p.png",
-  "allen & heath":   "/images/presentacion/allen-heath-dlive.png",
-  "allen&heath":     "/images/presentacion/allen-heath-dlive.png",
-  "midas":           "/images/presentacion/midas-m32.png",
-  "shure":           "/images/presentacion/shure-axient.png",
-  "sennheiser":      "/images/presentacion/sennheiser-iem.png",
-  "rode":            "/images/presentacion/rode-m5.png",
-  "pioneer":         "/images/presentacion/pioneer-cdj3000.png",
-  "pioneer dj":      "/images/presentacion/pioneer-cdj3000.png",
-  "grand ma":        "/images/presentacion/grandma-ma3.png",
-  "grandma":         "/images/presentacion/grandma-ma3.png",
-  "ma":              "/images/presentacion/grandma-ma3.png",
-  "ma lighting":     "/images/presentacion/grandma-ma3.png",
-  "astera":          "/images/presentacion/astera-ax1.png",
-  "chauvet":         "/images/presentacion/chauvet-spot260.png",
-  "lite tek":        "/images/presentacion/lite-tek-beam280.png",
-  "litetek":         "/images/presentacion/lite-tek-beam280.png",
-  "lumos":           "/images/presentacion/lumos-l7.png",
-  "sun star":        "/images/presentacion/sunstar-kaleidos.png",
-  "sunstar":         "/images/presentacion/sunstar-soul-rgbw.png",
-  "steel pro":       "/images/presentacion/steel-pro-razor.png",
-  "blackmagic":      "/images/presentacion/blackmagic-atem.png",
-  "predator":        "/images/presentacion/predator-9500.png",
-  "wacker":          "/images/presentacion/wacker-g120.png",
+// Brands with multiple product images — varies by item id so same-brand items show different photos
+const MARCA_POOL: Record<string, string[]> = {
+  "rcf":           ["/images/presentacion/rcf-hdl30a.png", "/images/presentacion/rcf-sub8006.png"],
+  "electro voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "electro-voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "ev":            ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
+  "allen & heath": ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
+  "allen&heath":   ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
+  "shure":         ["/images/presentacion/shure-axient.png", "/images/presentacion/shure-slxd.png", "/images/presentacion/shure-sm58.png", "/images/presentacion/shure-beta52a.png"],
+  "pioneer":       ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
+  "pioneer dj":    ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
+  "grand ma":      ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "grandma":       ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "ma":            ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "ma lighting":   ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
+  "chauvet":       ["/images/presentacion/chauvet-spot260.png", "/images/presentacion/chauvet-slimpar.png", "/images/presentacion/chauvet-pinspot-bar.png"],
+  "lite tek":      ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-flasher200.png", "/images/presentacion/lite-tek-par.png"],
+  "litetek":       ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-par.png"],
+  "lumos":         ["/images/presentacion/lumos-l7.png", "/images/presentacion/lumos-l1-retro.png", "/images/presentacion/lumos-maple-lamp.png", "/images/presentacion/lumos-sixaline.png"],
+  "sunstar":       ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
+  "sun star":      ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
 };
+// Single-image brands
+const MARCA_IMAGES: Record<string, string> = {
+  "midas":      "/images/presentacion/midas-m32.png",
+  "sennheiser": "/images/presentacion/sennheiser-iem.png",
+  "rode":       "/images/presentacion/rode-m5.png",
+  "astera":     "/images/presentacion/astera-ax1.png",
+  "steel pro":  "/images/presentacion/steel-pro-razor.png",
+  "blackmagic": "/images/presentacion/blackmagic-atem.png",
+  "predator":   "/images/presentacion/predator-9500.png",
+  "wacker":     "/images/presentacion/wacker-g120.png",
+};
+
+function idHash(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
 
 const MODELO_IMAGES: Record<string, string> = {
   "DJM A9":          "/images/presentacion/pioneer-djmv10.png",
@@ -116,8 +126,17 @@ const MODELO_IMAGES: Record<string, string> = {
 };
 
 function getEquipoImage(linea: Linea): string | null {
+  // 1. Exact model match
   if (linea.modelo && MODELO_IMAGES[linea.modelo]) return MODELO_IMAGES[linea.modelo];
   const marca = (linea.marca ?? "").toLowerCase().trim();
+  // 2. Brand pool — rotates images by id hash so same-brand items show variety
+  for (const key of Object.keys(MARCA_POOL)) {
+    if (marca.includes(key) || key.includes(marca)) {
+      const pool = MARCA_POOL[key];
+      return pool[idHash(linea.id) % pool.length];
+    }
+  }
+  // 3. Single-image brand fallback
   for (const key of Object.keys(MARCA_IMAGES)) {
     if (marca.includes(key) || key.includes(marca)) return MARCA_IMAGES[key];
   }
@@ -508,20 +527,18 @@ function ScrollZoom({ children, className = "" }: { children: React.ReactNode; c
 }
 
 // ─── Equipment photo card ─────────────────────────────────────────────────────
-function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?: number; index?: number }) {
+function EquipoPhotoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
   const img = getEquipoImage(linea);
-  const floatDelay = (index % 4) * 0.5;
   return (
     <R delay={delay} y={30}>
       <div className="bg-white/[0.025] border border-white/8 rounded-xl overflow-hidden transition-all duration-300 group h-full"
-           style={{ animation: `float 4s ease-in-out ${floatDelay}s infinite` }}
            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 0 1px rgba(179,152,91,0.5), 0 8px 32px rgba(179,152,91,0.08)"; }}
            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.boxShadow = ""; }}>
-        <div className="h-36 sm:h-40 bg-[#080808] flex items-center justify-center p-4">
+        <div className="h-44 sm:h-48 bg-[#080808] flex items-center justify-center p-5 overflow-hidden">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={linea.modelo ?? linea.descripcion} draggable={false}
-                 className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500" />
+                 className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
           ) : (
             <div className="w-11 h-11 rounded-full bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center">
               <span className="text-[#B3985B]/70 text-base font-bold">
@@ -542,8 +559,8 @@ function EquipoPhotoCard({ linea, delay = 0, index = 0 }: { linea: Linea; delay?
 
 function EquipoGrid({ lineas }: { lineas: Linea[] }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {lineas.map((l, i) => <EquipoPhotoCard key={l.id} linea={l} delay={Math.min(i * 40, 400)} index={i} />)}
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      {lineas.map((l, i) => <EquipoPhotoCard key={l.id} linea={l} delay={Math.min(i * 40, 400)} />)}
     </div>
   );
 }
@@ -656,7 +673,10 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         @keyframes fadeUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
         .animate-fadeUp { animation: fadeUp 0.9s ease forwards; opacity:0; }
         @keyframes marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-        @keyframes float { 0%,100% { transform: translateY(0px) } 50% { transform: translateY(-7px) } }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
       {/* ── STICKY NAV ──────────────────────────────────────────────────────── */}

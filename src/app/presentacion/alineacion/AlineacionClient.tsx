@@ -70,7 +70,7 @@ function SH({ tag, title, sub }: { tag: string; title: React.ReactNode; sub?: st
         {tag}
       </p>
       <h2 className="font-bold text-white mb-4 leading-tight"
-          style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.022em" }}>
+          style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
         {title}
       </h2>
       {sub && <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-12">{sub}</p>}
@@ -184,8 +184,8 @@ export default function AlineacionClient() {
         @keyframes pulse-ring { 0% { transform:scale(1); opacity:0.3; } 100% { transform:scale(1.5); opacity:0; } }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-track { background: #060606; }
-        ::-webkit-scrollbar-thumb { background: #B3985B30; border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
       {/* ── NAV ── */}
@@ -195,7 +195,7 @@ export default function AlineacionClient() {
              backdropFilter: scrollY > 20 ? "blur(20px)" : "none",
              borderBottom: scrollY > 20 ? "1px solid rgba(255,255,255,0.04)" : "none",
            }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-white.png" alt="Mainstage Pro" className="h-5 opacity-90" draggable={false} />
           {/* Nav links — hidden on mobile */}

@@ -479,7 +479,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
 
   return (
     <div className="bg-[#080808] text-white min-h-screen"
-         style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+         style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       <style>{`
         @keyframes kenBurns {
           from { transform: scale(1) translate(0, 0); }
@@ -490,8 +490,9 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           to   { opacity: 1; transform: translateY(0); }
         }
         html { scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #B3985B40; border-radius: 2px; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #080808; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
       {/* Nav */}
@@ -538,7 +539,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           </p>
           <h1 className="font-bold text-white leading-[1.02]"
               style={{
-                fontSize: "clamp(2rem, 5vw, 4.6rem)",
+                fontSize: "clamp(2.8rem,8vw,7rem)",
                 letterSpacing: "-0.03em",
                 whiteSpace: "pre-line",
                 animation: "fadeUp 0.95s ease forwards 0.4s",
@@ -592,7 +593,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-5">Propuesta de valor</p>
             <h2 className="font-bold text-white leading-[1.04] mb-7"
-                style={{ fontSize: "clamp(1.8rem, 3.8vw, 3.2rem)", letterSpacing: "-0.03em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               {x.propuestaValor}
             </h2>
             <p className="text-white/45 max-w-2xl leading-relaxed"
@@ -609,7 +610,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-5">Problemas que resolvemos</p>
             <h2 className="font-bold text-white leading-tight mb-16"
-                style={{ fontSize: "clamp(1.8rem, 3.5vw, 3rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               Lo que otros dejan<br />
               <span style={{ color: GOLD }}>sin resolver.</span>
             </h2>
@@ -643,7 +644,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B]/55 text-2xl font-light mb-3 italic">{c.stmt1}</p>
             <h2 className="font-bold text-white leading-[1.04]"
-                style={{ fontSize: "clamp(1.8rem, 3.8vw, 3.4rem)", letterSpacing: "-0.03em", whiteSpace: "pre-line" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em", whiteSpace: "pre-line" }}>
               {c.stmt2}
             </h2>
             <p className="text-white/45 mt-9 max-w-2xl leading-relaxed"
@@ -665,7 +666,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-5">Lo que llevamos a tu evento</p>
             <h2 className="font-bold text-white leading-tight mb-16"
-                style={{ fontSize: "clamp(1.9rem, 4vw, 3.2rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               Audio, iluminación,{" "}
               <span style={{ color: GOLD }}>DJ y video —</span>
               <br />en un solo servicio.
@@ -712,7 +713,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-5">Proceso de trabajo</p>
             <h2 className="font-bold text-white leading-tight mb-16"
-                style={{ fontSize: "clamp(1.9rem, 4vw, 3.2rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               Cómo trabajamos<br />
               <span style={{ color: GOLD }}>desde el primer contacto.</span>
             </h2>
@@ -747,7 +748,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-5">Por qué Mainstage Pro</p>
             <h2 className="font-bold text-white leading-tight mb-16"
-                style={{ fontSize: "clamp(1.9rem, 4vw, 3.2rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               Lo que nos diferencia<br />
               <span style={{ color: GOLD }}>de otros proveedores.</span>
             </h2>
@@ -777,7 +778,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4 text-center">Cuéntanos tu evento</p>
             <h2 className="font-bold text-white text-center mb-3"
-                style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.5rem)", letterSpacing: "-0.02em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               Solicita una cotización
             </h2>
             <p className="text-white/35 text-center mb-10 text-sm leading-relaxed">
@@ -794,7 +795,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-6">Siguiente paso</p>
             <h2 className="font-bold text-white leading-tight mb-5"
-                style={{ fontSize: "clamp(2rem, 4.5vw, 3.5rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
               {c.cta}
             </h2>
             <p className="text-white/35 mb-12 leading-relaxed" style={{ fontSize: "clamp(0.9rem, 1.5vw, 1.05rem)" }}>

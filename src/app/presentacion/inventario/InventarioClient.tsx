@@ -260,7 +260,7 @@ export default function InventarioClient({ data }: Props) {
   const brands = ["Pioneer DJ", "RCF", "Allen & Heath", "Shure", "Sennheiser", "Grand MA", "Chauvet", "Astera", "Lite Tek", "Lumos", "Electro-Voice", "Rode", "Blackmagic", "Midas", "Sun Star"];
 
   return (
-    <div className="bg-[#050505] text-white min-h-screen" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+    <div className="bg-[#050505] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       <style>{`
         @keyframes kenBurns { from { transform:scale(1); } to { transform:scale(1.05) translate(-0.8%,-0.5%); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
@@ -269,7 +269,8 @@ export default function InventarioClient({ data }: Props) {
         @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #B3985B30; border-radius: 2px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
       {/* ── Nav ── */}

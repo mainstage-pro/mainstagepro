@@ -168,7 +168,8 @@ export default function TradePage({ params }: { params: Promise<{ token: string 
   const ivaFactor = cot.aplicaIva ? 1.16 : 1;
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black text-white"
+         style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {/* Fondo con gradiente sutil */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(179,152,91,0.08)_0%,transparent_60%)]" />

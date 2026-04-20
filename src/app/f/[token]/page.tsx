@@ -524,7 +524,8 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
   const progreso = Math.round(((seccionActual + 1) / secciones.length) * 100);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen bg-[#0a0a0a]"
+         style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {/* Header */}
       <div className="bg-[#0d0d0d] border-b border-[#1a1a1a] px-4 py-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
