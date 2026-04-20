@@ -114,16 +114,50 @@ function lunesDeSemanaLocal(isoDate: string): string {
   d.setDate(d.getDate() + diff);
   return d.toISOString().slice(0, 10);
 }
+function miercolesDeSeamana(lunesIso: string): string {
+  const d = new Date(lunesIso + "T12:00:00");
+  d.setDate(d.getDate() + 2);
+  return d.toISOString().slice(0, 10);
+}
 function fmtSemana(iso: string) {
   return new Date(iso + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+}
+function fmtDiaSemana(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
+}
+
+interface SemanaOpCobro {
+  id: string; concepto: string; monto: number; montoCobrado: number; estado: string; tipoPago: string;
+  cliente: { nombre: string; telefono: string | null };
+  proyecto: { nombre: string; numeroProyecto: string } | null;
+}
+interface SemanaOpPago {
+  id: string; concepto: string; monto: number; estado: string; tipoAcreedor: string;
+  tecnico: { nombre: string; celular: string | null } | null;
+  proveedor: { nombre: string; telefono: string | null } | null;
+  proyecto: { nombre: string; numeroProyecto: string } | null;
 }
 interface SemanaOpLocal {
   lunesIso: string;
   miercolesIso: string;
   totalCobros: number;
   totalPagos: number;
-  cobros: { id: string; concepto: string; monto: number; montoCobrado: number; estado: string; tipoPago: string; cliente: { nombre: string; telefono: string | null }; proyecto: { nombre: string; numeroProyecto: string } | null }[];
-  pagos: { id: string; concepto: string; monto: number; estado: string; tipoAcreedor: string; tecnico: { nombre: string; celular: string | null } | null; proveedor: { nombre: string; telefono: string | null } | null; proyecto: { nombre: string; numeroProyecto: string } | null }[];
+  cobros: SemanaOpCobro[];
+  pagos: SemanaOpPago[];
+}
+
+function generarEstructuraSemanas(lunesHoy: string, cuantas = 10): SemanaOpLocal[] {
+  const semanas: SemanaOpLocal[] = [];
+  const base = new Date(lunesHoy + "T12:00:00");
+  // 2 semanas atrás + semana actual + 7 semanas adelante
+  base.setDate(base.getDate() - 14);
+  for (let i = 0; i < cuantas; i++) {
+    const lunes = new Date(base);
+    lunes.setDate(lunes.getDate() + i * 7);
+    const lunesIso = lunes.toISOString().slice(0, 10);
+    semanas.push({ lunesIso, miercolesIso: miercolesDeSeamana(lunesIso), totalCobros: 0, totalPagos: 0, cobros: [], pagos: [] });
+  }
+  return semanas;
 }
 
 export default function CobrosPagosPage() {
@@ -160,14 +194,31 @@ export default function CobrosPagosPage() {
   async function cargarProgramacion() {
     if (semanasOp.length > 0) return;
     setLoadingSemana(true);
-    const r = await fetch("/api/finanzas/semana");
-    const d = await r.json();
-    const semanas: SemanaOpLocal[] = d.semanas ?? [];
-    setSemanasOp(semanas);
     const hoy = new Date().toISOString().slice(0, 10);
     const lunesHoy = lunesDeSemanaLocal(hoy);
-    const idx = semanas.findIndex(s => s.lunesIso === lunesHoy);
-    setSemanaIdx(idx >= 0 ? idx : 0);
+    // Siempre genera estructura de semanas aunque la API no tenga datos
+    const estructura = generarEstructuraSemanas(lunesHoy, 10);
+    try {
+      const r = await fetch("/api/finanzas/semana");
+      const d = await r.json();
+      const apiSemanas: SemanaOpLocal[] = d.semanas ?? [];
+      // Merge: sobrescribe las semanas que la API devuelva con sus cobros/pagos
+      for (const api of apiSemanas) {
+        const match = estructura.find(s => s.lunesIso === api.lunesIso);
+        if (match) {
+          match.cobros = api.cobros;
+          match.pagos = api.pagos;
+          match.totalCobros = api.totalCobros;
+          match.totalPagos = api.totalPagos;
+        } else {
+          estructura.push(api);
+        }
+      }
+      estructura.sort((a, b) => a.lunesIso.localeCompare(b.lunesIso));
+    } catch { /* muestra la estructura vacía de todas formas */ }
+    setSemanasOp(estructura);
+    const idx = estructura.findIndex(s => s.lunesIso === lunesHoy);
+    setSemanaIdx(idx >= 0 ? idx : 2); // fallback al índice 2 (semana actual en el array)
     setLoadingSemana(false);
   }
 
@@ -339,8 +390,6 @@ export default function CobrosPagosPage() {
         <div className="space-y-5">
           {loadingSemana ? (
             <div className="text-sm text-gray-600 py-8 text-center">Cargando programación...</div>
-          ) : semanasOp.length === 0 ? (
-            <div className="text-sm text-gray-600 py-8 text-center">Sin datos de programación</div>
           ) : (
             <>
               {/* Navegación semanas */}
@@ -348,77 +397,135 @@ export default function CobrosPagosPage() {
                 <button onClick={() => setSemanaIdx(i => Math.max(0, i - 1))} disabled={semanaIdx === 0}
                   className="px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white disabled:opacity-30 text-sm transition-colors">← Anterior</button>
                 <div className="text-center">
-                  <p className="text-white font-medium text-sm">Semana del {semanaActual && fmtSemana(semanaActual.lunesIso)}</p>
-                  <p className="text-gray-600 text-xs">al {semanaActual && fmtSemana(semanaActual.miercolesIso)}</p>
+                  <p className="text-white font-medium text-sm capitalize">
+                    {semanaActual ? fmtSemana(semanaActual.lunesIso) : ""}
+                  </p>
+                  <p className="text-gray-600 text-xs">
+                    {semanaActual ? `al ${fmtSemana(semanaActual.miercolesIso)}` : ""}
+                  </p>
                 </div>
                 <button onClick={() => setSemanaIdx(i => Math.min(semanasOp.length - 1, i + 1))} disabled={semanaIdx === semanasOp.length - 1}
                   className="px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white disabled:opacity-30 text-sm transition-colors">Siguiente →</button>
               </div>
 
               {/* KPIs semana */}
-              {semanaActual && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobros programados</p>
-                    <p className="text-green-400 text-xl font-semibold">{formatCurrency(semanaActual.totalCobros)}</p>
-                    <p className="text-gray-600 text-xs mt-1">{semanaActual.cobros.length} registros · Lunes y Miércoles</p>
-                  </div>
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Pagos programados</p>
-                    <p className="text-yellow-400 text-xl font-semibold">{formatCurrency(semanaActual.totalPagos)}</p>
-                    <p className="text-gray-600 text-xs mt-1">{semanaActual.pagos.length} registros · Miércoles</p>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobros esta semana</p>
+                  <p className={`text-xl font-semibold ${semanaActual && semanaActual.totalCobros > 0 ? "text-green-400" : "text-gray-600"}`}>
+                    {semanaActual ? formatCurrency(semanaActual.totalCobros) : "$0"}
+                  </p>
+                  <p className="text-gray-600 text-xs mt-1">{semanaActual?.cobros.length ?? 0} registros · Lunes y Miércoles</p>
                 </div>
-              )}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Pagos esta semana</p>
+                  <p className={`text-xl font-semibold ${semanaActual && semanaActual.totalPagos > 0 ? "text-yellow-400" : "text-gray-600"}`}>
+                    {semanaActual ? formatCurrency(semanaActual.totalPagos) : "$0"}
+                  </p>
+                  <p className="text-gray-600 text-xs mt-1">{semanaActual?.pagos.length ?? 0} registros · Miércoles</p>
+                </div>
+              </div>
 
-              {/* Cobros */}
-              {semanaActual && semanaActual.cobros.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Por cobrar esta semana</p>
-                  <div className="space-y-1.5">
+              {/* Sección cobros — siempre visible */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <div>
+                    <p className="text-white text-sm font-medium">Cobros</p>
+                    <p className="text-gray-600 text-[10px] mt-0.5 capitalize">
+                      {semanaActual ? `Lunes ${fmtDiaSemana(semanaActual.lunesIso)} y Miércoles ${fmtDiaSemana(semanaActual.miercolesIso)}` : ""}
+                    </p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-green-400/60" />
+                </div>
+                {semanaActual && semanaActual.cobros.length > 0 ? (
+                  <div className="divide-y divide-[#1a1a1a]">
                     {semanaActual.cobros.map(c => (
-                      <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
+                      <div key={c.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
                           <p className="text-white text-sm font-medium truncate">{c.cliente.nombre}</p>
                           <p className="text-gray-500 text-xs truncate">{c.concepto}{c.proyecto ? ` · ${c.proyecto.numeroProyecto}` : ""}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] text-gray-600 capitalize">{c.tipoPago === "ANTICIPO" ? "Anticipo" : c.tipoPago === "LIQUIDACION" ? "Liquidación" : c.tipoPago}</span>
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-green-400 font-semibold text-sm">{formatCurrency(c.monto)}</p>
-                          <p className={`text-xs ${ESTADO_SEM[c.estado] ?? "text-gray-400"}`}>{c.estado}</p>
+                          <p className={`text-[10px] ${ESTADO_SEM[c.estado] ?? "text-gray-400"}`}>{c.estado}</p>
+                          {c.cliente.telefono && (
+                            <a href={`https://wa.me/${c.cliente.telefono.replace(/\D/g, "")}?text=${waMsgCobro(c.cliente.nombre, c.monto, c.concepto)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="text-[10px] text-green-500/70 hover:text-green-400 transition-colors">WhatsApp →</a>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* Pagos */}
-              {semanaActual && semanaActual.pagos.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">Por pagar esta semana (miércoles)</p>
-                  <div className="space-y-1.5">
-                    {semanaActual.pagos.map(p => {
-                      const nombre = p.tecnico?.nombre ?? p.proveedor?.nombre ?? "Sin nombre";
-                      return (
-                        <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-white text-sm font-medium truncate">{nombre}</p>
-                            <p className="text-gray-500 text-xs truncate">{p.concepto}{p.proyecto ? ` · ${p.proyecto.numeroProyecto}` : ""}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-yellow-400 font-semibold text-sm">{formatCurrency(p.monto)}</p>
-                            <p className={`text-xs ${ESTADO_SEM[p.estado] ?? "text-gray-400"}`}>{p.estado}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                ) : (
+                  <div className="px-4 py-8 text-center">
+                    <p className="text-gray-700 text-sm">Sin cobros programados esta semana</p>
+                    <p className="text-gray-700 text-xs mt-1">Los cobros con fecha de compromiso en esta semana aparecerán aquí</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
-              {semanaActual && semanaActual.cobros.length === 0 && semanaActual.pagos.length === 0 && (
-                <p className="text-gray-600 text-sm text-center py-6">Sin cobros ni pagos programados esta semana</p>
-              )}
+              {/* Sección pagos — siempre visible */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <div>
+                    <p className="text-white text-sm font-medium">Pagos</p>
+                    <p className="text-gray-600 text-[10px] mt-0.5 capitalize">
+                      {semanaActual ? `Miércoles ${fmtDiaSemana(semanaActual.miercolesIso)}` : ""}
+                    </p>
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-yellow-400/60" />
+                </div>
+
+                {/* Agrupados por tipo */}
+                {semanaActual && semanaActual.pagos.length > 0 ? (() => {
+                  const tecnicos = semanaActual.pagos.filter(p => p.tipoAcreedor === "TECNICO");
+                  const proveedores = semanaActual.pagos.filter(p => p.tipoAcreedor === "PROVEEDOR");
+                  const otros = semanaActual.pagos.filter(p => p.tipoAcreedor !== "TECNICO" && p.tipoAcreedor !== "PROVEEDOR");
+                  return (
+                    <div className="divide-y divide-[#1a1a1a]">
+                      {[
+                        { label: "Técnicos", items: tecnicos, color: "text-blue-400" },
+                        { label: "Proveedores", items: proveedores, color: "text-purple-400" },
+                        { label: "Otros", items: otros, color: "text-yellow-400" },
+                      ].filter(g => g.items.length > 0).map(grupo => (
+                        <div key={grupo.label}>
+                          <p className="px-4 py-2 text-[10px] text-gray-600 uppercase tracking-wider font-semibold bg-[#0d0d0d]">{grupo.label}</p>
+                          {grupo.items.map(p => {
+                            const nombre = p.tecnico?.nombre ?? p.proveedor?.nombre ?? "Sin nombre";
+                            const tel = p.tecnico?.celular ?? p.proveedor?.telefono ?? null;
+                            return (
+                              <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3 border-t border-[#1a1a1a]">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-white text-sm font-medium truncate">{nombre}</p>
+                                  <p className="text-gray-500 text-xs truncate">{p.concepto}{p.proyecto ? ` · ${p.proyecto.numeroProyecto}` : ""}</p>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <p className={`font-semibold text-sm ${grupo.color}`}>{formatCurrency(p.monto)}</p>
+                                  <p className={`text-[10px] ${ESTADO_SEM[p.estado] ?? "text-gray-400"}`}>{p.estado}</p>
+                                  {tel && (
+                                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgPago(nombre, p.monto, p.concepto)}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      className="text-[10px] text-green-500/70 hover:text-green-400 transition-colors">WhatsApp →</a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })() : (
+                  <div className="px-4 py-8 text-center">
+                    <p className="text-gray-700 text-sm">Sin pagos programados esta semana</p>
+                    <p className="text-gray-700 text-xs mt-1">Los pagos a técnicos, proveedores y otros con fecha en esta semana aparecerán aquí</p>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
