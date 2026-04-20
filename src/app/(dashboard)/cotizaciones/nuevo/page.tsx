@@ -235,13 +235,19 @@ function CotizadorForm() {
   const [selOcDias, setSelOcDias] = useState("1");
 
   // Descuentos
-  const [volumenActivo, setVolumenActivo] = useState(false); // volumen NO automático — se activa manualmente
-  const [dVolumenManual, setDVolumenManual] = useState<string>("");
+  // Descuentos — todos con toggle (off por defecto, se activan manualmente o desde trato)
+  const [b2bActivo, setB2bActivo] = useState(false);
+  const [b2bEdit, setB2bEdit] = useState(false);
   const [dB2BManual, setDB2BManual] = useState<string>("");
+  const [volumenActivo, setVolumenActivo] = useState(false);
+  const [volumenEdit, setVolumenEdit] = useState(false);
+  const [dVolumenManual, setDVolumenManual] = useState<string>("");
+  const [multidiaActivo, setMultidiaActivo] = useState(false);
+  const [multidiaEdit, setMultidiaEdit] = useState(false);
   const [dMultidiaManual, setDMultidiaManual] = useState<string>("");
-  const [dPatrocinio, setDPatrocinio] = useState(""); const [dPatrocinioNota, setDPatrocinioNota] = useState("");
-  const [dEspecial, setDEspecial] = useState(""); const [dEspecialNota, setDEspecialNota] = useState("");
-  const [dFamilyFriends, setDFamilyFriends] = useState("");
+  const [especialActivo, setEspecialActivo] = useState(false); // renombrado de Family & Friends
+  const [especialEdit, setEspecialEdit] = useState(false);
+  const [dFamilyFriends, setDFamilyFriends] = useState("10"); // % fijo por defecto
   const [aplicaIva, setAplicaIva] = useState(false);
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
@@ -314,7 +320,10 @@ function CotizadorForm() {
         });
         setObservaciones(cot.observaciones ?? "");
         setIncluirChofer(cot.incluirChofer ?? false);
+        if ((cot.descuentoB2bPct ?? 0) > 0) { setB2bActivo(true); if (Math.round(cot.descuentoB2bPct * 100) !== 10) setDB2BManual(String(Math.round(cot.descuentoB2bPct * 100))); }
         if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
+        if ((cot.descuentoMultidiaPct ?? 0) > 0) { setMultidiaActivo(true); }
+        if ((cot.descuentoFamilyFriendsPct ?? 0) > 0) { setEspecialActivo(true); setDFamilyFriends(String(Math.round(cot.descuentoFamilyFriendsPct * 100))); }
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -371,8 +380,9 @@ function CotizadorForm() {
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
-        // Auto-apply Family & Friends discount if flagged
+        // Auto-activate "Descuento especial" if trato is Family & Friends
         if (t.familyAndFriends) {
+          setEspecialActivo(true);
           setDFamilyFriends("10");
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
@@ -670,22 +680,17 @@ function CotizadorForm() {
 
     const dias = parseInt(evento.diasEquipo) || 1;
 
-    // Descuentos: solo aplican a equipos propios
+    // Descuentos: todos tienen toggle — solo aplican cuando están activos
     const autoVolumen = calcularDescuentoVolumen(subtotalEquiposBruto);
-    const autoB2B = tipoCliente === "B2B" ? DESCUENTO_B2B : 0;
+    const autoB2B = DESCUENTO_B2B; // 10% fijo para B2B
     const autoMultidia = calcularDescuentoMultidia(dias);
 
-    // Volumen: manual-only — solo aplica cuando el vendedor lo activa
-    const dVolumen = volumenActivo
-      ? (dVolumenManual !== "" ? parseFloat(dVolumenManual) / 100 : autoVolumen)
-      : 0;
-    const dB2B = dB2BManual !== "" ? parseFloat(dB2BManual) / 100 : autoB2B;
-    const dMultidia = dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia;
-    const dPatro = parseFloat(dPatrocinio) / 100 || 0;
-    const dEsp = parseFloat(dEspecial) / 100 || 0;
-    const dFF = dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0;
+    const dB2B = b2bActivo ? (dB2BManual !== "" ? parseFloat(dB2BManual) / 100 : autoB2B) : 0;
+    const dVolumen = volumenActivo ? (dVolumenManual !== "" ? parseFloat(dVolumenManual) / 100 : autoVolumen) : 0;
+    const dMultidia = multidiaActivo ? (dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia) : 0;
+    const dFF = especialActivo ? (dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0.10) : 0;
 
-    const descuentoTotalPct = dVolumen + dB2B + dMultidia + dPatro + dEsp + dFF;
+    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF;
     const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
@@ -718,13 +723,14 @@ function CotizadorForm() {
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       autoVolumen, autoB2B, autoMultidia,
-      dVolumen, dB2B, dMultidia, dPatro, dEsp, dFF,
+      dB2B, dVolumen, dMultidia, dFF,
       descuentoTotalPct, montoDescuento,
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
     };
-  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
-    volumenActivo, dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
+  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo,
+    b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
+    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -778,16 +784,16 @@ function CotizadorForm() {
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
-      descuentoPatrocinioNota: dPatrocinioNota || null,
-      descuentoEspecialNota: dEspecialNota || null,
+      descuentoPatrocinioNota: null,
+      descuentoEspecialNota: null,
       observaciones,
       lineas: todasLineas,
       subtotalEquiposBruto: resumen.subtotalEquiposBruto,
-      descuentoVolumenPct: resumen.dVolumen,
       descuentoB2bPct: resumen.dB2B,
+      descuentoVolumenPct: resumen.dVolumen,
       descuentoMultidiaPct: resumen.dMultidia,
-      descuentoPatrocinioPct: resumen.dPatro,
-      descuentoEspecialPct: resumen.dEsp,
+      descuentoPatrocinioPct: 0,
+      descuentoEspecialPct: 0,
       descuentoFamilyFriendsPct: resumen.dFF,
       descuentoTotalPct: resumen.descuentoTotalPct,
       montoDescuento: resumen.montoDescuento,
@@ -1689,90 +1695,132 @@ function CotizadorForm() {
                 </button>
                 {volumenActivo ? (
                   <>
-                    <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoVolumen)} según subtotal equipos</span>
-                    <div className="flex items-center gap-1">
-                      <input type="number" min="0" max="100" step="1"
-                        value={dVolumenManual}
-                        onChange={e => setDVolumenManual(e.target.value)}
-                        placeholder={String(Math.round(resumen.autoVolumen * 100))}
-                        className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                      />
-                      <span className="text-gray-400 text-sm">%</span>
-                      {dVolumenManual !== "" && <button onClick={() => setDVolumenManual("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Auto</button>}
-                    </div>
+                    {volumenEdit ? (
+                      <>
+                        <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoVolumen)}</span>
+                        <input type="number" min="0" max="100" step="1" autoFocus
+                          value={dVolumenManual} onChange={e => setDVolumenManual(e.target.value)}
+                          placeholder={String(Math.round(resumen.autoVolumen * 100))}
+                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                        <span className="text-gray-400 text-sm">%</span>
+                        <button onClick={() => { setDVolumenManual(""); setVolumenEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-white text-sm font-semibold flex-1">{dVolumenManual !== "" ? dVolumenManual : String(Math.round(resumen.autoVolumen * 100))}%</span>
+                        <button onClick={() => setVolumenEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
+                      </>
+                    )}
                     <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dVolumen)}</span>
                   </>
                 ) : (
                   <span className="text-gray-700 text-xs flex-1 italic">Inactivo · actívalo si el cliente pide mejor precio</span>
                 )}
               </div>
+
               {/* B2B */}
               <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Cliente B2B</span>
-                <span className="text-gray-500 text-xs flex-1">Auto: {tipoCliente === "B2B" ? "10%" : "0% (no es B2B)"}</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1"
-                    value={dB2BManual}
-                    onChange={e => setDB2BManual(e.target.value)}
-                    placeholder={tipoCliente === "B2B" ? "5" : "0"}
-                    className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <span className="text-gray-400 text-sm">%</span>
-                  {dB2BManual !== "" && <button onClick={() => setDB2BManual("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Auto</button>}
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dB2B)}</span>
+                <button
+                  onClick={() => { setB2bActivo(v => !v); setB2bEdit(false); setDB2BManual(""); }}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${b2bActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${b2bActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${b2bActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Descuento B2B
+                </button>
+                {b2bActivo ? (
+                  <>
+                    {b2bEdit ? (
+                      <>
+                        <span className="text-gray-500 text-xs flex-1">Fijo: 10%</span>
+                        <input type="number" min="0" max="100" step="1" autoFocus
+                          value={dB2BManual} onChange={e => setDB2BManual(e.target.value)}
+                          placeholder="10"
+                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                        <span className="text-gray-400 text-sm">%</span>
+                        <button onClick={() => { setDB2BManual(""); setB2bEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-white text-sm font-semibold flex-1">{dB2BManual !== "" ? dB2BManual : "10"}%</span>
+                        <button onClick={() => setB2bEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
+                      </>
+                    )}
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dB2B)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · 10% para clientes B2B</span>
+                )}
               </div>
+
               {/* Multi-día */}
               <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Multi-día</span>
-                <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoMultidia)} · {evento.diasEquipo} día(s)</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1"
-                    value={dMultidiaManual}
-                    onChange={e => setDMultidiaManual(e.target.value)}
-                    placeholder={String(Math.round(resumen.autoMultidia * 100))}
-                    className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <span className="text-gray-400 text-sm">%</span>
-                  {dMultidiaManual !== "" && <button onClick={() => setDMultidiaManual("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Auto</button>}
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dMultidia)}</span>
+                <button
+                  onClick={() => { setMultidiaActivo(v => !v); setMultidiaEdit(false); setDMultidiaManual(""); }}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${multidiaActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${multidiaActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${multidiaActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Multi-día
+                </button>
+                {multidiaActivo ? (
+                  <>
+                    {multidiaEdit ? (
+                      <>
+                        <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoMultidia)} · {evento.diasEquipo} día(s)</span>
+                        <input type="number" min="0" max="100" step="1" autoFocus
+                          value={dMultidiaManual} onChange={e => setDMultidiaManual(e.target.value)}
+                          placeholder={String(Math.round(resumen.autoMultidia * 100))}
+                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                        <span className="text-gray-400 text-sm">%</span>
+                        <button onClick={() => { setDMultidiaManual(""); setMultidiaEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-white text-sm font-semibold flex-1">{dMultidiaManual !== "" ? dMultidiaManual : String(Math.round(resumen.autoMultidia * 100))}% · {evento.diasEquipo} día(s)</span>
+                        <button onClick={() => setMultidiaEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
+                      </>
+                    )}
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dMultidia)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · {formatPct(resumen.autoMultidia)} por {evento.diasEquipo} día(s)</span>
+                )}
               </div>
-              {/* Patrocinio */}
+
+              {/* Descuento especial (ex Family & Friends) */}
               <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Patrocinio / Collab</span>
-                <input value={dPatrocinioNota} onChange={e => setDPatrocinioNota(e.target.value)} placeholder="Nota..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1" value={dPatrocinio} onChange={e => setDPatrocinio(e.target.value)} placeholder="0" className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
-                  <span className="text-gray-400 text-sm">%</span>
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dPatro)}</span>
-              </div>
-              {/* Especial */}
-              <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Descuento especial</span>
-                <input value={dEspecialNota} onChange={e => setDEspecialNota(e.target.value)} placeholder="Nota..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1" value={dEspecial} onChange={e => setDEspecial(e.target.value)} placeholder="0" className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
-                  <span className="text-gray-400 text-sm">%</span>
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dEsp)}</span>
-              </div>
-              {/* Family & Friends */}
-              <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Family &amp; Friends</span>
-                <span className="text-gray-500 text-xs flex-1">Clientes referidos / red cercana</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1"
-                    value={dFamilyFriends}
-                    onChange={e => setDFamilyFriends(e.target.value)}
-                    placeholder="20"
-                    className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <span className="text-gray-400 text-sm">%</span>
-                  {dFamilyFriends !== "" && <button onClick={() => setDFamilyFriends("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Limpiar</button>}
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dFF)}</span>
+                <button
+                  onClick={() => { setEspecialActivo(v => !v); setEspecialEdit(false); }}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${especialActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${especialActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${especialActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Descuento especial
+                </button>
+                {especialActivo ? (
+                  <>
+                    {especialEdit ? (
+                      <>
+                        <span className="text-gray-500 text-xs flex-1">Editable</span>
+                        <input type="number" min="0" max="100" step="1" autoFocus
+                          value={dFamilyFriends} onChange={e => setDFamilyFriends(e.target.value)}
+                          placeholder="10"
+                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                        <span className="text-gray-400 text-sm">%</span>
+                        <button onClick={() => setEspecialEdit(false)} className="text-gray-600 hover:text-white text-xs">✕</button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-white text-sm font-semibold flex-1">{dFamilyFriends !== "" ? dFamilyFriends : "10"}%</span>
+                        <button onClick={() => setEspecialEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
+                      </>
+                    )}
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dFF)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · se activa automáticamente en tratos Family & Friends</span>
+                )}
               </div>
               {/* Total descuento */}
               <div className="flex items-center justify-between pt-2 border-t border-[#222]">
