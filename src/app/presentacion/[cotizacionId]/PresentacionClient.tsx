@@ -29,6 +29,12 @@ interface Cotizacion {
   aplicaIva: boolean;
   montoIva: number;
   montoDescuento: number;
+  subtotalEquiposBruto: number;
+  descuentoB2bPct: number;
+  descuentoVolumenPct: number;
+  descuentoMultidiaPct: number;
+  descuentoFamilyFriendsPct: number;
+  descuentoEspecialPct: number;
   descuentoPatrocinioPct: number;
   descuentoPatrocinioNota: string | null;
   mainstageTradeData: string | null;
@@ -1133,12 +1139,31 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ fontSize: "clamp(3.5rem,13vw,8rem)", letterSpacing: "-0.035em" }}>
               {fmt(cotizacion.granTotal)}
             </p>
-            {cotizacion.montoDescuento > 0 && tradeAplicado && (
-              <p className="text-[#B3985B] text-base font-semibold mb-2">Incluye {tradePct}% Trade — ahorras {fmt(cotizacion.montoDescuento)}</p>
-            )}
-            {cotizacion.montoDescuento > 0 && !tradeAplicado && cotizacion.descuentoPatrocinioPct > 0 && (
-              <p className="text-[#B3985B] text-base font-semibold mb-2">Precio preferencial — ahorras {fmt(cotizacion.montoDescuento)}</p>
-            )}
+            {cotizacion.montoDescuento > 0 && (() => {
+              const sb = cotizacion.subtotalEquiposBruto;
+              const items: { label: string; monto: number }[] = [];
+              if ((cotizacion.descuentoB2bPct ?? 0) > 0)
+                items.push({ label: `Descuento B2B (${Math.round(cotizacion.descuentoB2bPct * 100)}%)`, monto: sb * cotizacion.descuentoB2bPct });
+              if ((cotizacion.descuentoVolumenPct ?? 0) > 0)
+                items.push({ label: `Descuento por volumen (${Math.round(cotizacion.descuentoVolumenPct * 100)}%)`, monto: sb * cotizacion.descuentoVolumenPct });
+              if ((cotizacion.descuentoMultidiaPct ?? 0) > 0)
+                items.push({ label: `Descuento multi-día (${Math.round(cotizacion.descuentoMultidiaPct * 100)}%)`, monto: sb * cotizacion.descuentoMultidiaPct });
+              if ((cotizacion.descuentoFamilyFriendsPct ?? 0) > 0)
+                items.push({ label: `Family & Friends (${Math.round(cotizacion.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * cotizacion.descuentoFamilyFriendsPct });
+              if (tradeAplicado)
+                items.push({ label: `Mainstage Trade (${tradePct}%)`, monto: sb * (tradePct / 100) });
+              return items.length > 0 ? (
+                <div className="flex flex-col items-center gap-1 mb-3">
+                  {items.map(it => (
+                    <p key={it.label} className="text-[#B3985B] text-sm font-semibold">
+                      {it.label} — {fmt(it.monto)}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[#B3985B] text-base font-semibold mb-2">Ahorras {fmt(cotizacion.montoDescuento)}</p>
+              );
+            })()}
           </R>
           <R delay={100}>
             {cotizacion.aplicaIva && (

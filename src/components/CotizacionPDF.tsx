@@ -482,6 +482,8 @@ interface CotizacionData {
   descuentoPatrocinioPct: number;
   descuentoPatrocinioNota: string | null;
   descuentoEspecialPct: number;
+  descuentoEspecialNota?: string | null;
+  descuentoFamilyFriendsPct: number;
   montoDescuento: number;
   montoBeneficio: number;
   subtotalEquiposNeto: number;
@@ -671,22 +673,32 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   const anticipo = c.granTotal * 0.5;
   const liquidacion = c.granTotal * 0.5;
   const tieneDescuento = c.montoDescuento > 0;
-  const esTrade = c.descuentoPatrocinioPct > 0 && c.descuentoPatrocinioNota?.toLowerCase().includes("trade");
 
-  // Parse Trade data for desglose
-  let tradePctPDF = 0;
-  let tradeNivelLabelPDF: string | null = null;
-  let tradeMontoCalcPDF = 0;
+  // Build individual discount rows
+  type DiscRow = { label: string; monto: number; gold?: boolean };
+  const discRows: DiscRow[] = [];
+  const sb = c.subtotalEquiposBruto;
+  if ((c.descuentoB2bPct ?? 0) > 0)
+    discRows.push({ label: `Descuento B2B (${Math.round(c.descuentoB2bPct * 100)}%)`, monto: sb * c.descuentoB2bPct });
+  if ((c.descuentoVolumenPct ?? 0) > 0)
+    discRows.push({ label: `Descuento por volumen (${Math.round(c.descuentoVolumenPct * 100)}%)`, monto: sb * c.descuentoVolumenPct });
+  if ((c.descuentoMultidiaPct ?? 0) > 0)
+    discRows.push({ label: `Descuento multi-día (${Math.round(c.descuentoMultidiaPct * 100)}%)`, monto: sb * c.descuentoMultidiaPct });
+  if ((c.descuentoFamilyFriendsPct ?? 0) > 0)
+    discRows.push({ label: `Family & Friends (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
+  if ((c.descuentoEspecialPct ?? 0) > 0)
+    discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
+  // Trade
   try {
     const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
-    if (td.nivelSeleccionado && td.pct) {
-      tradePctPDF = td.pct;
+    if (td.nivelSeleccionado && td.pct && td.activo) {
       const NLBL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
-      tradeNivelLabelPDF = NLBL[td.nivelSeleccionado] ?? null;
-      tradeMontoCalcPDF = Math.round(c.subtotalEquiposBruto * (td.pct / 100) * 100) / 100;
+      discRows.push({ label: `Mainstage Trade · ${NLBL[td.nivelSeleccionado] ?? ""} (${td.pct}%)`, monto: Math.round(sb * (td.pct / 100) * 100) / 100, gold: true });
     }
   } catch { /* noop */ }
-  const otroDescuentoPDF = tradeMontoCalcPDF > 0 ? c.montoDescuento - tradeMontoCalcPDF : c.montoDescuento;
+  // Fallback if no individual rows resolved
+  if (discRows.length === 0 && tieneDescuento)
+    discRows.push({ label: "Descuento", monto: c.montoDescuento });
 
   const vigenciaDate = new Date(c.createdAt);
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
@@ -776,20 +788,12 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto)}</Text>
               </View>
             )}
-            {tieneDescuento && otroDescuentoPDF > 0.01 && (
-              <View style={s.totalFila}>
-                <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>Precio preferencial</Text>
-                <Text style={[s.totalFilaMonto, s.totalFilaDescuento]}>-{fmtMXN(otroDescuentoPDF)}</Text>
+            {discRows.map((r, i) => (
+              <View key={i} style={s.totalFila}>
+                <Text style={[s.totalFilaDes, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>{r.label}</Text>
+                <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>-{fmtMXN(r.monto)}</Text>
               </View>
-            )}
-            {tradeMontoCalcPDF > 0 && (
-              <View style={s.totalFila}>
-                <Text style={[s.totalFilaDes, s.totalFilaDescuento, { color: "#B3985B" }]}>
-                  {`Mainstage Trade${tradeNivelLabelPDF ? ` · ${tradeNivelLabelPDF}` : ""} (${tradePctPDF}%)`}
-                </Text>
-                <Text style={[s.totalFilaMonto, s.totalFilaDescuento, { color: "#B3985B" }]}>-{fmtMXN(tradeMontoCalcPDF)}</Text>
-              </View>
-            )}
+            ))}
             {c.subtotalOperacion > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Operación técnica</Text>

@@ -234,7 +234,8 @@ function CotizadorForm() {
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
 
-  // Descuentos (null = automático)
+  // Descuentos
+  const [volumenActivo, setVolumenActivo] = useState(false); // volumen NO automático — se activa manualmente
   const [dVolumenManual, setDVolumenManual] = useState<string>("");
   const [dB2BManual, setDB2BManual] = useState<string>("");
   const [dMultidiaManual, setDMultidiaManual] = useState<string>("");
@@ -313,6 +314,7 @@ function CotizadorForm() {
         });
         setObservaciones(cot.observaciones ?? "");
         setIncluirChofer(cot.incluirChofer ?? false);
+        if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -673,7 +675,10 @@ function CotizadorForm() {
     const autoB2B = tipoCliente === "B2B" ? DESCUENTO_B2B : 0;
     const autoMultidia = calcularDescuentoMultidia(dias);
 
-    const dVolumen = dVolumenManual !== "" ? parseFloat(dVolumenManual) / 100 : autoVolumen;
+    // Volumen: manual-only — solo aplica cuando el vendedor lo activa
+    const dVolumen = volumenActivo
+      ? (dVolumenManual !== "" ? parseFloat(dVolumenManual) / 100 : autoVolumen)
+      : 0;
     const dB2B = dB2BManual !== "" ? parseFloat(dB2BManual) / 100 : autoB2B;
     const dMultidia = dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia;
     const dPatro = parseFloat(dPatrocinio) / 100 || 0;
@@ -719,7 +724,7 @@ function CotizadorForm() {
       costos, utilidad, pctUtilidad, semaforo,
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo, tipoCliente,
-    dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
+    volumenActivo, dVolumenManual, dB2BManual, dMultidiaManual, dPatrocinio, dEspecial, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -1672,26 +1677,39 @@ function CotizadorForm() {
           {/* ── Descuentos ── */}
           <Seccion titulo="Descuentos" hint="sobre subtotal de equipos propios">
             <div className="space-y-3">
-              {/* Volumen */}
+              {/* Volumen — toggle manual */}
               <div className="flex items-center gap-3">
-                <span className="text-gray-400 text-sm w-40">Volumen de venta</span>
-                <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoVolumen)} · {formatCurrency(resumen.subtotalEquiposBruto)}</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" min="0" max="100" step="1"
-                    value={dVolumenManual}
-                    onChange={e => setDVolumenManual(e.target.value)}
-                    placeholder={String(Math.round(resumen.autoVolumen * 100))}
-                    className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <span className="text-gray-400 text-sm">%</span>
-                  {dVolumenManual !== "" && <button onClick={() => setDVolumenManual("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Auto</button>}
-                </div>
-                <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dVolumen)}</span>
+                <button
+                  onClick={() => { setVolumenActivo(v => !v); setDVolumenManual(""); }}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${volumenActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${volumenActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${volumenActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Descuento por volumen
+                </button>
+                {volumenActivo ? (
+                  <>
+                    <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoVolumen)} según subtotal equipos</span>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="0" max="100" step="1"
+                        value={dVolumenManual}
+                        onChange={e => setDVolumenManual(e.target.value)}
+                        placeholder={String(Math.round(resumen.autoVolumen * 100))}
+                        className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
+                      />
+                      <span className="text-gray-400 text-sm">%</span>
+                      {dVolumenManual !== "" && <button onClick={() => setDVolumenManual("")} className="text-gray-600 hover:text-[#B3985B] text-xs">Auto</button>}
+                    </div>
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dVolumen)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · actívalo si el cliente pide mejor precio</span>
+                )}
               </div>
               {/* B2B */}
               <div className="flex items-center gap-3">
                 <span className="text-gray-400 text-sm w-40">Cliente B2B</span>
-                <span className="text-gray-500 text-xs flex-1">Auto: {tipoCliente === "B2B" ? "5%" : "0% (no es B2B)"}</span>
+                <span className="text-gray-500 text-xs flex-1">Auto: {tipoCliente === "B2B" ? "10%" : "0% (no es B2B)"}</span>
                 <div className="flex items-center gap-1">
                   <input type="number" min="0" max="100" step="1"
                     value={dB2BManual}

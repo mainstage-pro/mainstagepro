@@ -49,6 +49,13 @@ interface Cotizacion {
   diasOperacion: number;
   notasSecciones: string | null;
   subtotalEquiposBruto: number;
+  descuentoVolumenPct: number;
+  descuentoB2bPct: number;
+  descuentoMultidiaPct: number;
+  descuentoPatrocinioPct: number;
+  descuentoFamilyFriendsPct: number;
+  descuentoEspecialPct: number;
+  descuentoEspecialNota: string | null;
   descuentoTotalPct: number;
   montoDescuento: number;
   subtotalEquiposNeto: number;
@@ -757,35 +764,52 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <span className="text-white font-bold">{formatCurrency(subtotalEquipo)}</span>
               </div>
               {cot.montoDescuento > 0 && (() => {
-                // Desglosar descuento: regular vs Mainstage Trade
-                let tradePctParsed: number | null = null;
-                let tradeNivelLabel: string | null = null;
-                let tradeMontoCalc: number | null = null;
+                // Desglosar cada tipo de descuento individualmente
+                const sb = cot.subtotalEquiposBruto;
+                const rows: { label: string; pct: number; monto: number; color: string }[] = [];
+
+                if ((cot.descuentoB2bPct ?? 0) > 0)
+                  rows.push({ label: `Descuento B2B (${Math.round(cot.descuentoB2bPct * 100)}%)`, pct: cot.descuentoB2bPct, monto: sb * cot.descuentoB2bPct, color: "text-blue-400" });
+                if ((cot.descuentoVolumenPct ?? 0) > 0)
+                  rows.push({ label: `Descuento por volumen (${Math.round(cot.descuentoVolumenPct * 100)}%)`, pct: cot.descuentoVolumenPct, monto: sb * cot.descuentoVolumenPct, color: "text-red-400" });
+                if ((cot.descuentoMultidiaPct ?? 0) > 0)
+                  rows.push({ label: `Descuento multi-día (${Math.round(cot.descuentoMultidiaPct * 100)}%)`, pct: cot.descuentoMultidiaPct, monto: sb * cot.descuentoMultidiaPct, color: "text-red-400" });
+                if ((cot.descuentoFamilyFriendsPct ?? 0) > 0)
+                  rows.push({ label: `Family & Friends (${Math.round(cot.descuentoFamilyFriendsPct * 100)}%)`, pct: cot.descuentoFamilyFriendsPct, monto: sb * cot.descuentoFamilyFriendsPct, color: "text-red-400" });
+                if ((cot.descuentoEspecialPct ?? 0) > 0)
+                  rows.push({ label: `Descuento especial (${Math.round(cot.descuentoEspecialPct * 100)}%)${cot.descuentoEspecialNota ? ` · ${cot.descuentoEspecialNota}` : ""}`, pct: cot.descuentoEspecialPct, monto: sb * cot.descuentoEspecialPct, color: "text-red-400" });
+
+                // Trade (de mainstageTradeData)
+                let tradeRow: { label: string; monto: number } | null = null;
                 try {
                   const td = cot.mainstageTradeData ? JSON.parse(cot.mainstageTradeData) : {};
-                  if (td.nivelSeleccionado && td.pct) {
-                    tradePctParsed = td.pct;
+                  if (td.nivelSeleccionado && td.pct && td.activo) {
                     const NLBL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
-                    tradeNivelLabel = NLBL[td.nivelSeleccionado] ?? null;
-                    // trade monto = subtotalEquiposBruto * pct/100
-                    tradeMontoCalc = Math.round(cot.subtotalEquiposBruto * (td.pct / 100) * 100) / 100;
+                    tradeRow = {
+                      label: `Mainstage Trade · ${NLBL[td.nivelSeleccionado] ?? ""}  (${td.pct}%)`,
+                      monto: Math.round(sb * (td.pct / 100) * 100) / 100,
+                    };
                   }
                 } catch { /* noop */ }
-                const otroDescuento = tradeMontoCalc !== null ? cot.montoDescuento - tradeMontoCalc : cot.montoDescuento;
+
                 return (
                   <>
-                    {otroDescuento > 0.01 && (
+                    {rows.map(r => (
+                      <div key={r.label} className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
+                        <span className={`text-xs ${r.color}`}>{r.label}</span>
+                        <span className={`${r.color} font-medium text-sm`}>-{formatCurrency(r.monto)}</span>
+                      </div>
+                    ))}
+                    {tradeRow && (
                       <div className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
-                        <span className="text-xs text-red-400">Precio preferencial</span>
-                        <span className="text-red-400 font-medium text-sm">-{formatCurrency(otroDescuento)}</span>
+                        <span className="text-xs text-[#B3985B]">{tradeRow.label}</span>
+                        <span className="text-[#B3985B] font-medium text-sm">-{formatCurrency(tradeRow.monto)}</span>
                       </div>
                     )}
-                    {tradeMontoCalc !== null && tradeMontoCalc > 0.01 && (
+                    {rows.length === 0 && !tradeRow && (
                       <div className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
-                        <span className="text-xs text-[#B3985B]">
-                          Mainstage Trade{tradeNivelLabel ? ` · ${tradeNivelLabel}` : ""}{tradePctParsed ? ` (${tradePctParsed}%)` : ""}
-                        </span>
-                        <span className="text-[#B3985B] font-medium text-sm">-{formatCurrency(tradeMontoCalc)}</span>
+                        <span className="text-xs text-red-400">Descuento</span>
+                        <span className="text-red-400 font-medium text-sm">-{formatCurrency(cot.montoDescuento)}</span>
                       </div>
                     )}
                   </>

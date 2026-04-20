@@ -136,7 +136,7 @@ export const DESCUENTOS_VOLUMEN = [
 ];
 
 // Descuento B2B
-export const DESCUENTO_B2B = 0.05;
+export const DESCUENTO_B2B = 0.10;
 
 // Descuentos multi-día
 export const DESCUENTOS_MULTIDIA = [
