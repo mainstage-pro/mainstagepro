@@ -205,7 +205,6 @@ interface User {
 interface SidebarProps {
   user: User;
   labels: Record<string, string>;
-  privateModules: string[];
   userModuleKeys: string[] | null; // null = admin (all access)
 }
 
@@ -214,10 +213,9 @@ function resolveLabel(key: string | undefined, defaultLabel: string, labels: Rec
   return defaultLabel;
 }
 
-function canAccess(key: string | undefined, isAdmin: boolean, privateModules: string[], userModuleKeys: string[] | null): boolean {
+function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: string[] | null): boolean {
   if (!key) return true;
   if (isAdmin) return true;
-  if (!privateModules.includes(key)) return true;
   if (userModuleKeys === null) return true;
   return userModuleKeys.includes(key);
 }
@@ -248,7 +246,7 @@ function getActiveSectionKey(pathname: string): string | null {
 
 const ALL_SECTION_KEYS = NAV.filter(s => s.section).map(s => s.key);
 
-export default function Sidebar({ user, labels, privateModules, userModuleKeys }: SidebarProps) {
+export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
@@ -298,7 +296,7 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
             if (item.adminOnly && !isAdmin) return false;
-            return canAccess(item.key, isAdmin, privateModules, userModuleKeys);
+            return canAccess(item.key, isAdmin, userModuleKeys);
           });
           if (visibleItems.length === 0) return null;
 
@@ -317,7 +315,12 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                   }`}>
                     {sectionLabel}
                   </span>
-                  <span className={`text-[9px] text-white/30 group-hover:text-white/60 transition-transform ${isSectionOpen ? "" : "-rotate-90"}`}>▾</span>
+                  <svg
+                    className={`w-4 h-4 text-white/40 group-hover:text-white/70 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
+                    fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
               )}
               {isSectionOpen && <div className="space-y-0.5">
@@ -338,7 +341,12 @@ export default function Sidebar({ user, labels, privateModules, userModuleKeys }
                           }`}
                         >
                           <span>{itemLabel}</span>
-                          <span className={`text-[9px] transition-transform opacity-40 ${isOpen ? "rotate-90" : ""}`}>▶</span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform shrink-0 opacity-50 ${isOpen ? "rotate-90" : ""} ${isGroupActive ? "opacity-80" : ""}`}
+                            fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">

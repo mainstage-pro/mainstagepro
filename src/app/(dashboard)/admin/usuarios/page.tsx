@@ -127,37 +127,25 @@ export default function UsuariosPage() {
     }
   }
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
-  const [accessControlEnabled, setAccessControlEnabled] = useState(false);
-  const [savingConfig, setSavingConfig] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [proyectosList, setProyectosList] = useState<{ id: string; nombre: string; numeroProyecto: string }[]>([]);
   const [loadingProyectos, setLoadingProyectos] = useState(false);
 
   async function load() {
-    const [usersRes, configRes] = await Promise.all([
-      fetch("/api/admin/usuarios"),
-      fetch("/api/admin/config"),
-    ]);
-    const usersData = await usersRes.json();
-    const configData = await configRes.json();
-    setUsers(usersData.users ?? []);
-    const privateModules: string[] = configData.config?.["nav.private"]
-      ? JSON.parse(configData.config["nav.private"])
-      : [];
-    setAccessControlEnabled(privateModules.length > 0);
+    const res = await fetch("/api/admin/usuarios");
+    const data = await res.json();
+    setUsers(data.users ?? []);
   }
 
   useEffect(() => { load(); }, []);
 
-  async function toggleAccessControl() {
-    setSavingConfig(true);
-    const newEnabled = !accessControlEnabled;
-    await fetch("/api/admin/config", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "nav.private", value: newEnabled ? JSON.stringify(ALL_MODULE_KEYS) : "[]" }),
-    });
-    setAccessControlEnabled(newEnabled);
-    setSavingConfig(false);
+  async function deleteUser(u: User) {
+    if (!confirm(`¿Eliminar a ${u.name}? Esta acción no se puede deshacer.`)) return;
+    setDeletingId(u.id);
+    await fetch(`/api/admin/usuarios/${u.id}`, { method: "DELETE" });
+    setUsers(prev => prev.filter(x => x.id !== u.id));
+    setDeletingId(null);
+    if (expandedPermisos === u.id) setExpandedPermisos(null);
   }
 
   async function toggleModulo(userId: string, key: string, hasAccess: boolean) {
@@ -299,31 +287,12 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {/* Control de acceso por módulo */}
+      {/* Info de control de acceso */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white text-sm font-semibold">Control de acceso por sección y proyecto</p>
-            <p className="text-gray-500 text-xs mt-0.5">
-              {accessControlEnabled
-                ? "Activo — los usuarios solo ven las secciones y proyectos asignados"
-                : "Inactivo — todos los usuarios pueden ver toda la plataforma"}
-            </p>
-          </div>
-          <button onClick={toggleAccessControl} disabled={savingConfig}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
-              accessControlEnabled ? "bg-[#B3985B]" : "bg-[#2a2a2a]"
-            }`}>
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              accessControlEnabled ? "translate-x-6" : "translate-x-1"
-            }`} />
-          </button>
-        </div>
-        {accessControlEnabled && (
-          <p className="text-[10px] text-yellow-600 mt-3 bg-yellow-900/10 border border-yellow-900/30 rounded-lg px-3 py-2">
-            Los administradores siempre tienen acceso total. Los usuarios regulares solo ven lo que se les asigne.
-          </p>
-        )}
+        <p className="text-white text-sm font-semibold">Control de acceso por sección y proyecto</p>
+        <p className="text-gray-500 text-xs mt-0.5">
+          Los administradores tienen acceso total. Los usuarios regulares solo ven las secciones y proyectos que se les asignen.
+        </p>
       </div>
 
       {/* Formulario nuevo/editar usuario */}
@@ -414,22 +383,22 @@ export default function UsuariosPage() {
                       </span>
                     )}
                     {!u.active && <span className="text-xs text-[#555]">Inactivo</span>}
-                    {accessControlEnabled && !isAdminUser && (
+                    {!isAdminUser && (
                       <span className="text-xs text-gray-600">{grantedCount}/{ALL_MODULE_KEYS.length} secciones</span>
                     )}
                   </div>
                   <p className="text-[#555] text-xs">{u.email}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {accessControlEnabled && !isAdminUser && (
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  {!isAdminUser && (
                     <button onClick={() => expandPermisos(isExpanded ? null : u.id)}
                       className={`text-xs px-2 py-1 border rounded transition-colors ${
                         isExpanded ? "text-[#B3985B] border-[#B3985B]/40" : "text-[#6b7280] hover:text-white border-[#333]"
                       }`}>
-                      🔐 Permisos
+                      Permisos
                     </button>
                   )}
-                  {isAdminUser && accessControlEnabled && (
+                  {isAdminUser && (
                     <span className="text-xs text-[#B3985B]/60 px-2">Acceso total</span>
                   )}
                   <button onClick={() => startEdit(u)}
@@ -443,6 +412,13 @@ export default function UsuariosPage() {
                   <button onClick={() => toggleActive(u)}
                     className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
                     {u.active ? "Desactivar" : "Activar"}
+                  </button>
+                  <button
+                    onClick={() => deleteUser(u)}
+                    disabled={deletingId === u.id}
+                    className="text-xs text-red-500 hover:text-red-400 disabled:opacity-40 px-2 py-1 border border-red-900/40 rounded transition-colors"
+                  >
+                    {deletingId === u.id ? "..." : "Eliminar"}
                   </button>
                 </div>
               </div>

@@ -12,6 +12,18 @@ export async function GET(req: Request) {
   const where: Record<string, unknown> = {};
   if (lugarEvento) where.lugarEvento = { contains: lugarEvento, mode: "insensitive" };
 
+  // Non-admins: filter by specific project accesses if any are set
+  if (session.role !== "ADMIN") {
+    const accesos = await prisma.moduloAcceso.findMany({
+      where: { userId: session.id, moduloKey: { startsWith: "proyecto:" } },
+      select: { moduloKey: true },
+    });
+    if (accesos.length > 0) {
+      const proyectoIds = accesos.map(a => a.moduloKey.replace("proyecto:", ""));
+      where.id = { in: proyectoIds };
+    }
+  }
+
   try {
     const proyectos = await prisma.proyecto.findMany({
       where,
