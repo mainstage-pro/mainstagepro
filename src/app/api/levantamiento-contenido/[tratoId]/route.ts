@@ -46,11 +46,33 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tra
     notasAdicionales: notasAdicionales ?? null,
   };
 
+  const existia = await prisma.levantamientoContenido.findUnique({ where: { tratoId }, select: { id: true } });
+
   const levantamiento = await prisma.levantamientoContenido.upsert({
     where: { tratoId },
     create: { tratoId, ...data },
     update: { ...data },
   });
+
+  // Notificar a usuarios de marketing cuando se crea un levantamiento nuevo
+  if (!existia && nombreEvento) {
+    const marketingUsers = await prisma.user.findMany({
+      where: { area: "MARKETING", active: true },
+      select: { id: true },
+    });
+    if (marketingUsers.length > 0) {
+      await prisma.notificacion.createMany({
+        data: marketingUsers.map(u => ({
+          usuarioId: u.id,
+          tipo: "LEVANTAMIENTO",
+          titulo: "Nuevo levantamiento de contenido",
+          mensaje: `Se agendó un levantamiento para "${nombreEvento}"${planCobertura ? ` — Plan ${planCobertura}` : ""}${fecha ? ` el ${new Date(fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}` : ""}.`,
+          url: `/marketing/levantamientos`,
+          metadata: JSON.stringify({ tratoId, levantamientoId: levantamiento.id }),
+        })),
+      });
+    }
+  }
 
   return NextResponse.json({ levantamiento });
 }

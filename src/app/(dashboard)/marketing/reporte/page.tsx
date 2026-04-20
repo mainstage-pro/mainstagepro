@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -37,10 +37,17 @@ function pct(v: number, total: number) {
   return total === 0 ? 0 : Math.round((v / total) * 100);
 }
 
+function getMesActual() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function MarketingReportePage() {
   const [data, setData] = useState<ReporteData | null>(null);
   const [loading, setLoading] = useState(true);
   const [rango, setRango] = useState(6);
+  const [showEjecutivo, setShowEjecutivo] = useState(false);
+  const reporteRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -48,6 +55,12 @@ export default function MarketingReportePage() {
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); });
   }, [rango]);
+
+  // Build executive summary from current month data
+  const mesActual = getMesActual();
+  const mesActualData = data?.porMes.find(m => m.mes === mesActual);
+  const topPlataforma = data ? Object.entries(data.plataformas).sort((a, b) => b[1] - a[1])[0] : null;
+  const topTipo = data?.porTipo[0] ?? null;
 
   const maxTipoTotal = data ? Math.max(...data.porTipo.map(t => t.total), 1) : 1;
   const totalPlataformas = data
@@ -62,11 +75,18 @@ export default function MarketingReportePage() {
           <h1 className="text-xl font-semibold text-white">Reporte de publicaciones</h1>
           <p className="text-[#6b7280] text-sm">Contenido orgánico · análisis de rendimiento</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link href="/marketing/calendario"
             className="bg-[#1a1a1a] border border-[#333] text-gray-400 text-xs px-3 py-2 rounded-lg hover:bg-[#222] transition-colors">
             ← Calendario
           </Link>
+          <button
+            onClick={() => setShowEjecutivo(true)}
+            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-all"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Reporte ejecutivo
+          </button>
           <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
             {[3, 6, 12].map(n => (
               <button key={n} onClick={() => setRango(n)}
@@ -261,6 +281,108 @@ export default function MarketingReportePage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Reporte ejecutivo modal */}
+      {showEjecutivo && data && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+          <div ref={reporteRef} className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <div>
+                <h2 className="text-white font-semibold text-base">Reporte ejecutivo</h2>
+                <p className="text-[#555] text-xs mt-0.5">Resumen de los últimos {rango} meses</p>
+              </div>
+              <button onClick={() => setShowEjecutivo(false)} className="text-[#444] hover:text-white transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5 max-h-[70vh] overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(179,152,91,0.3) transparent" }}>
+
+              {/* Headline numbers */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Publicaciones totales", value: data.total, sub: `${rango} meses` },
+                  { label: "Publicadas", value: data.publicadas, sub: `${pct(data.publicadas, data.total)}% completadas` },
+                  { label: "En proceso", value: data.enProceso + data.listas, sub: "pendientes de publicar" },
+                ].map(k => (
+                  <div key={k.label} className="bg-[#151515] border border-[#1e1e1e] rounded-xl p-3 text-center">
+                    <p className="text-white text-2xl font-bold">{k.value}</p>
+                    <p className="text-[#B3985B] text-[9px] font-semibold uppercase tracking-wider mt-0.5">{k.label}</p>
+                    <p className="text-[#444] text-[9px] mt-0.5">{k.sub}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* This month */}
+              {mesActualData && (
+                <div className="bg-[#151515] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-[#555] text-[10px] font-semibold uppercase tracking-wider mb-3">Mes actual</p>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    {[
+                      { label: "Total", value: mesActualData.total, color: "text-white" },
+                      { label: "Publicadas", value: mesActualData.publicadas, color: "text-green-400" },
+                      { label: "Listas", value: mesActualData.listas, color: "text-yellow-400" },
+                      { label: "Pendientes", value: mesActualData.pendientes, color: "text-gray-500" },
+                    ].map(s => (
+                      <div key={s.label}>
+                        <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                        <p className="text-[#444] text-[9px]">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Top plataforma */}
+              {topPlataforma && (
+                <div className="flex items-center justify-between bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-[#555] text-[10px] uppercase tracking-wider">Plataforma más activa</p>
+                    <p className="text-white font-semibold capitalize mt-0.5">{topPlataforma[0]}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#B3985B] text-2xl font-bold">{topPlataforma[1]}</p>
+                    <p className="text-[#444] text-[9px]">publicaciones</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Top tipo */}
+              {topTipo && (
+                <div className="flex items-center justify-between bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-[#555] text-[10px] uppercase tracking-wider">Tipo de contenido líder</p>
+                    <p className="text-white font-semibold mt-0.5">{topTipo.nombre}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white text-xl font-bold">{topTipo.total}</p>
+                    <p className="text-green-400 text-[9px]">{topTipo.publicadas} publicadas</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Format breakdown */}
+              {data.porFormato.length > 0 && (
+                <div className="bg-[#151515] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-[#555] text-[10px] font-semibold uppercase tracking-wider mb-3">Formatos</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {data.porFormato.map(f => (
+                      <div key={f.formato} className="flex items-center justify-between">
+                        <span className={`text-[10px] font-semibold ${FORMATO_TEXT[f.formato] ?? "text-gray-400"}`}>{f.formato}</span>
+                        <span className="text-white text-sm font-bold">{f.total}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[#333] text-[10px] text-center">Generado el {new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

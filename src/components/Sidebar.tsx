@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import AlertasPanelV2 from "@/components/AlertasPanelV2";
+import NotificacionesBell from "@/components/NotificacionesBell";
 
 interface NavChild {
   key?: string;
@@ -116,6 +117,9 @@ const NAV: NavSection[] = [
         label: "Contenido orgánico",
         children: [
           { key: "mkt-calendario", label: "Calendario", href: "/marketing/calendario" },
+          { key: "mkt-kanban", label: "Pipeline / Kanban", href: "/marketing/kanban" },
+          { key: "mkt-levantamientos", label: "Levantamientos", href: "/marketing/levantamientos" },
+          { key: "mkt-metricas", label: "Métricas orgánicas", href: "/marketing/metricas" },
           { key: "mkt-contenidos", label: "Tipos de contenido", href: "/marketing/contenidos" },
           { key: "mkt-reporte", label: "Reporte", href: "/marketing/reporte" },
         ],
@@ -424,6 +428,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           <div className="flex items-center gap-2 mt-3">
             <div className="flex-1"><BusquedaGlobal /></div>
             <AlertasPanelV2 />
+            <NotificacionesBell />
           </div>
         </div>
         {navContent}
@@ -477,6 +482,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
+        <NotificacionesBell />
         <AlertasPanelV2 />
         <button
           onClick={() => setMobileOpen(true)}

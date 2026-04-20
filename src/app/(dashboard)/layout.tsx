@@ -19,7 +19,7 @@ export default async function DashboardLayout({
 
   const AREA_MODULES: Record<string, string[]> = {
     ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador"],
-    MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones"],
+    MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas"],
     VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones"],
     PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario"],
   };

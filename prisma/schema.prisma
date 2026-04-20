@@ -38,6 +38,7 @@ model User {
   actividades           ActividadUsuario[] @relation("actividades")
   versiones             VersionHistorial[] @relation("versiones")
   clientesVendedor      Cliente[]          @relation("ClientesVendedor")
+  notificaciones        Notificacion[]
 
   @@map("users")
 }
@@ -1734,6 +1735,8 @@ model LevantamientoContenido {
   colaboradoresNombres        String?
   notasAdicionales            String?
 
+  activos   ActivoEvento[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2071,4 +2074,58 @@ model ReporteSemanal {
 
   @@unique([semana])
   @@map("reportes_semanales")
+}
+
+// ─── MÉTRICAS ORGÁNICAS ───────────────────────────────────────────────────────
+
+model MetricaOrganica {
+  id            String   @id @default(cuid())
+  mes           String   // YYYY-MM
+  plataforma    String   // INSTAGRAM | FACEBOOK | TIKTOK | YOUTUBE
+  seguidores    Int?
+  alcance       Int?
+  impresiones   Int?
+  interacciones Int?
+  publicaciones Int?
+  notas         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([mes, plataforma])
+  @@map("metricas_organicas")
+}
+
+// ─── ACTIVOS POR EVENTO ───────────────────────────────────────────────────────
+
+model ActivoEvento {
+  id               String                 @id @default(cuid())
+  levantamientoId  String
+  levantamiento    LevantamientoContenido @relation(fields: [levantamientoId], references: [id], onDelete: Cascade)
+  tipo             String                 // FOTO | VIDEO | LOGO | COPY | OTRO
+  nombre           String
+  url              String
+  descripcion      String?
+  estado           String                 @default("ENTREGADO") // PENDIENTE | EN_EDICION | ENTREGADO | APROBADO
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@map("activos_evento")
+}
+
+// ─── NOTIFICACIONES ───────────────────────────────────────────────────────────
+
+model Notificacion {
+  id          String   @id @default(cuid())
+  usuarioId   String
+  usuario     User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  tipo        String   // LEVANTAMIENTO | PUBLICACION | CAMPANA | SISTEMA
+  titulo      String
+  mensaje     String
+  leida       Boolean  @default(false)
+  url         String?
+  metadata    String?  // JSON extra data
+  createdAt   DateTime @default(now())
+
+  @@index([usuarioId, leida])
+  @@map("notificaciones")
 }
