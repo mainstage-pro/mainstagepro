@@ -469,6 +469,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
 
+  // Estados para nuevo técnico inline
+  const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
+  const [nuevoTecNombre, setNuevoTecNombre] = useState("");
+  const [nuevoTecCelular, setNuevoTecCelular] = useState("");
+  const [nuevoTecRolId, setNuevoTecRolId] = useState("");
+  const [nuevoTecNivel, setNuevoTecNivel] = useState("A");
+  const [creandoTecnico, setCreandoTecnico] = useState(false);
+
   // Estados para checklist
   const [nuevoItem, setNuevoItem] = useState("");
   const [aplicandoPlantilla, setAplicandoPlantilla] = useState(false);
@@ -1251,6 +1259,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     setGenerandoRider(false);
     if (d.mensaje) toast.info(d.mensaje);
+  }
+
+  // ── Crear técnico inline ──
+  async function crearTecnicoInline() {
+    if (!nuevoTecNombre.trim()) return;
+    setCreandoTecnico(true);
+    const res = await fetch("/api/tecnicos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nuevoTecNombre.trim(),
+        celular: nuevoTecCelular.trim() || null,
+        rolId: nuevoTecRolId || null,
+        nivel: nuevoTecNivel,
+      }),
+    });
+    const d = await res.json();
+    if (d.tecnico) {
+      setTecnicos(prev => [...prev, d.tecnico].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      setSelTecnico(d.tecnico.id);
+    }
+    setShowNuevoTecnico(false);
+    setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A");
+    setCreandoTecnico(false);
   }
 
   // ── Agregar personal ──
@@ -2288,9 +2319,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Técnico</label>
-                    <select value={selTecnico} onChange={e => setSelTecnico(e.target.value)}
+                    <select value={selTecnico} onChange={e => {
+                      if (e.target.value === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
+                      else { setSelTecnico(e.target.value); setShowNuevoTecnico(false); }
+                    }}
                       className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}>
                       <option value="">— Sin asignar —</option>
+                      <option value="__nuevo__">＋ Nuevo técnico...</option>
                       {tecnicos.map(t => (
                         <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
                       ))}
@@ -2302,6 +2337,41 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     )}
                     {disponibilidad?.disponible && selTecnico && (
                       <p className="text-green-500 text-xs mt-1">✓ Disponible para esta fecha</p>
+                    )}
+                    {/* Mini-form nuevo técnico */}
+                    {showNuevoTecnico && (
+                      <div className="mt-2 p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
+                        <p className="text-[#B3985B] text-xs font-semibold mb-2">Registrar nuevo técnico</p>
+                        <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                          placeholder="Nombre completo *"
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                        <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                          placeholder="Celular (WhatsApp)"
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                        <div className="flex gap-2">
+                          <select value={nuevoTecRolId} onChange={e => setNuevoTecRolId(e.target.value)}
+                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none">
+                            <option value="">— Rol (opcional) —</option>
+                            {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
+                          </select>
+                          <select value={nuevoTecNivel} onChange={e => setNuevoTecNivel(e.target.value)}
+                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none">
+                            <option value="AAA">AAA</option>
+                            <option value="AA">AA</option>
+                            <option value="A">A</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={crearTecnicoInline} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                            className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                            {creandoTecnico ? "Guardando..." : "Guardar y seleccionar"}
+                          </button>
+                          <button onClick={() => { setShowNuevoTecnico(false); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                            className="px-3 text-gray-500 hover:text-white text-xs transition-colors">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div>
