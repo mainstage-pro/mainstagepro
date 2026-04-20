@@ -756,12 +756,41 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal equipos</span>
                 <span className="text-white font-bold">{formatCurrency(subtotalEquipo)}</span>
               </div>
-              {cot.montoDescuento > 0 && (
-                <div className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
-                  <span className="text-xs text-red-400">Precio preferencial</span>
-                  <span className="text-red-400 font-medium text-sm">-{formatCurrency(cot.montoDescuento)}</span>
-                </div>
-              )}
+              {cot.montoDescuento > 0 && (() => {
+                // Desglosar descuento: regular vs Mainstage Trade
+                let tradePctParsed: number | null = null;
+                let tradeNivelLabel: string | null = null;
+                let tradeMontoCalc: number | null = null;
+                try {
+                  const td = cot.mainstageTradeData ? JSON.parse(cot.mainstageTradeData) : {};
+                  if (td.nivelSeleccionado && td.pct) {
+                    tradePctParsed = td.pct;
+                    const NLBL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+                    tradeNivelLabel = NLBL[td.nivelSeleccionado] ?? null;
+                    // trade monto = subtotalEquiposBruto * pct/100
+                    tradeMontoCalc = Math.round(cot.subtotalEquiposBruto * (td.pct / 100) * 100) / 100;
+                  }
+                } catch { /* noop */ }
+                const otroDescuento = tradeMontoCalc !== null ? cot.montoDescuento - tradeMontoCalc : cot.montoDescuento;
+                return (
+                  <>
+                    {otroDescuento > 0.01 && (
+                      <div className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
+                        <span className="text-xs text-red-400">Precio preferencial</span>
+                        <span className="text-red-400 font-medium text-sm">-{formatCurrency(otroDescuento)}</span>
+                      </div>
+                    )}
+                    {tradeMontoCalc !== null && tradeMontoCalc > 0.01 && (
+                      <div className="flex justify-between items-center px-4 py-2 bg-[#0d0d0d] border-t border-[#1a1a1a]">
+                        <span className="text-xs text-[#B3985B]">
+                          Mainstage Trade{tradeNivelLabel ? ` · ${tradeNivelLabel}` : ""}{tradePctParsed ? ` (${tradePctParsed}%)` : ""}
+                        </span>
+                        <span className="text-[#B3985B] font-medium text-sm">-{formatCurrency(tradeMontoCalc)}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -1014,7 +1043,35 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 )}
 
                 {tradeNivel && (
-                  <p className="text-xs text-gray-500">El cliente seleccionó Nivel {tradeNivel} ({NIVEL_LABEL[tradeNivel]}). El descuento del {tradePct}% ya está aplicado en la cotización.</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-gray-500">El cliente seleccionó Nivel {tradeNivel} ({NIVEL_LABEL[tradeNivel]}). El descuento del {tradePct}% ya está aplicado en la cotización.</p>
+                    <button
+                      onClick={async () => {
+                        setSavingTrade(true);
+                        try {
+                          const td = JSON.parse(cot.mainstageTradeData ?? "{}");
+                          const tradeMontoAplicado = Math.round(cot.subtotalEquiposBruto * ((td.pct ?? 0) / 100) * 100) / 100;
+                          // Revertir descuento trade del montoDescuento
+                          const res = await fetch(`/api/cotizaciones/${id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              mainstageTradeData: JSON.stringify({ ...td, nivelSeleccionado: null, nivelAplicado: null, activo: false }),
+                            }),
+                          });
+                          if (res.ok) {
+                            const d = await res.json();
+                            setCot(prev => prev ? { ...prev, mainstageTradeData: d.cotizacion?.mainstageTradeData ?? prev.mainstageTradeData } : prev);
+                            toast.success("Selección Trade eliminada");
+                          }
+                        } finally { setSavingTrade(false); }
+                      }}
+                      disabled={savingTrade}
+                      className="text-[10px] text-red-400 hover:text-red-300 border border-red-900/40 hover:border-red-700/60 px-2 py-1 rounded-lg transition-colors shrink-0 disabled:opacity-40"
+                    >
+                      Eliminar selección
+                    </button>
+                  </div>
                 )}
               </div>
             );

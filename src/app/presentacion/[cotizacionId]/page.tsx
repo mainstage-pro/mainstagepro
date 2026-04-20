@@ -23,7 +23,10 @@ export default async function PresentacionPage({
         orderBy: { orden: "asc" },
         include: {
           equipo: {
-            select: { categoria: { select: { nombre: true } } },
+            select: {
+              categoria: { select: { nombre: true } },
+              imagenUrl: true,
+            },
           },
         },
       },

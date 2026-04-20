@@ -13,7 +13,7 @@ interface Linea {
   subtotal: number;
   esIncluido: boolean;
   notas: string | null;
-  equipo?: { categoria: { nombre: string } | null } | null;
+  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null } | null;
 }
 interface Cotizacion {
   id: string;
@@ -31,6 +31,8 @@ interface Cotizacion {
   montoDescuento: number;
   descuentoPatrocinioPct: number;
   descuentoPatrocinioNota: string | null;
+  mainstageTradeData: string | null;
+  tradeToken: string | null;
   observaciones: string | null;
   terminosComerciales: string | null;
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
@@ -126,6 +128,8 @@ const MODELO_IMAGES: Record<string, string> = {
 };
 
 function getEquipoImage(linea: Linea): string | null {
+  // 0. Inventory image (direct from DB — highest priority)
+  if (linea.equipo?.imagenUrl) return linea.equipo.imagenUrl;
   // 1. Exact model match
   if (linea.modelo && MODELO_IMAGES[linea.modelo]) return MODELO_IMAGES[linea.modelo];
   const marca = (linea.marca ?? "").toLowerCase().trim();
@@ -620,6 +624,14 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
   const [contractOpen, setContract] = useState(false);
   const [heroIdx, setHeroIdx]       = useState(0);
 
+  // Parse trade data
+  let tradeData: { pct?: number; nivelSeleccionado?: number | null; nivelAplicado?: number | null; activo?: boolean } = {};
+  try { if (cotizacion.mainstageTradeData) tradeData = JSON.parse(cotizacion.mainstageTradeData); } catch { /* noop */ }
+  const tradePct       = tradeData.pct ?? 0;
+  const tradeElegido   = (tradeData.nivelSeleccionado ?? 0) > 0;
+  const tradeAplicado  = tradeElegido && tradeData.activo;
+  const NIVEL_LABEL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+
   useEffect(() => {
     const fn = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", fn, { passive: true });
@@ -778,17 +790,20 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       </div>
 
       {/* ── STATEMENT ───────────────────────────────────────────────────────── */}
-      <section className="bg-[#040404] py-28 sm:py-36 px-6 text-center">
-        <div className="max-w-4xl mx-auto">
-          <ScrollZoom className="text-center">
-            <p className="text-white/20 text-xs uppercase tracking-[0.22em] mb-8">La diferencia</p>
-            <Heading className="mb-8">
+      <section className="bg-[#040404] py-32 sm:py-44 px-6 text-center overflow-hidden">
+        <div className="max-w-5xl mx-auto">
+          <R className="mb-4">
+            <p className="text-white/20 text-xs uppercase tracking-[0.22em]">La diferencia</p>
+          </R>
+          <ScrollZoom className="text-center mb-10">
+            <Heading>
               {ev.stmt1}
               <br /><span className="text-white/40">{ev.stmt2.split("\n").join(" ")}</span>
             </Heading>
           </ScrollZoom>
-          <R delay={180}>
-            <p className="text-white/40 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto">
+          <R delay={200}>
+            <p className="text-white/50 font-medium leading-snug mx-auto"
+               style={{ fontSize: "clamp(1.4rem,3.5vw,2.4rem)", letterSpacing: "-0.015em", maxWidth: "48rem" }}>
               {ev.stmtSub}
             </p>
           </R>
@@ -1025,26 +1040,78 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       </section>
 
       {/* ── MAINSTAGE TRADE ─────────────────────────────────────────────────── */}
-      {cotizacion.descuentoPatrocinioPct > 0 && cotizacion.descuentoPatrocinioNota?.toLowerCase().includes("trade") && (
-        <section className="bg-[#080808] border-y border-[#B3985B]/20 py-24 px-6">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
-            <R>
-              <GoldLabel>Mainstage Trade</GoldLabel>
-              <h2 className="text-white font-bold text-3xl md:text-4xl mt-4">Colaboramos contigo.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></h2>
-            </R>
-            <R delay={80}>
-              <p className="text-white/40 text-base leading-relaxed max-w-xl mx-auto">
-                Esta propuesta incluye el programa <span className="text-[#B3985B] font-semibold">Mainstage Trade</span> — un esquema de colaboración donde ofrecemos un descuento sobre la renta de equipos a cambio de visibilidad de marca y contenido en tu evento.
+      {(tradeAplicado || cotizacion.tradeToken) && (
+        <section className="relative overflow-hidden py-32 px-6"
+          style={{ background: "linear-gradient(180deg,#050505 0%,#090808 60%,#050505 100%)" }}>
+          {/* Background texture */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(179,152,91,0.07) 0%, transparent 70%)",
+          }} />
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/20 to-transparent" />
+
+          <div className="max-w-4xl mx-auto relative">
+            <R className="text-center mb-16">
+              <div className="inline-flex items-center gap-2 mb-6">
+                <div className="h-px w-8 bg-[#B3985B]/40" />
+                <GoldLabel>Mainstage Trade</GoldLabel>
+                <div className="h-px w-8 bg-[#B3985B]/40" />
+              </div>
+              <h2 className="text-white font-bold leading-tight mb-5"
+                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
+                {tradeAplicado ? (
+                  <>Colaboración activada.<br /><span className="text-[#B3985B]">Tu descuento ya está incluido.</span></>
+                ) : (
+                  <>Colaboremos.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></>
+                )}
+              </h2>
+              <p className="text-white/35 text-lg leading-relaxed max-w-2xl mx-auto">
+                Mainstage Trade es un programa de colaboración donde ofrecemos un descuento directo en equipos a cambio de visibilidad de marca y contenido en tu evento.
               </p>
             </R>
-            <R delay={140}>
-              <div className="inline-flex flex-col items-center gap-2 bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-2xl px-10 py-7">
-                <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-widest">{cotizacion.descuentoPatrocinioNota}</p>
-                <p className="text-white font-black text-5xl">{cotizacion.descuentoPatrocinioPct}%</p>
-                <p className="text-white/40 text-sm">descuento en renta de equipos</p>
-                <p className="text-[#B3985B] font-bold text-xl mt-1">Ahorro: {fmt(cotizacion.montoDescuento)}</p>
-              </div>
-            </R>
+
+            {tradeAplicado ? (
+              /* Post-selección: mostrar nivel y ahorro */
+              <R delay={80} className="flex justify-center">
+                <div className="inline-grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+                  {[
+                    { label: "Nivel elegido", value: NIVEL_LABEL[tradeData.nivelSeleccionado ?? 1] ?? "—" },
+                    { label: "Descuento aplicado", value: `${tradePct}%` },
+                    { label: "Tu ahorro", value: fmt(cotizacion.montoDescuento) },
+                  ].map(k => (
+                    <div key={k.label} className="text-center bg-white/[0.03] border border-[#B3985B]/20 rounded-2xl px-6 py-6">
+                      <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">{k.label}</p>
+                      <p className="text-white font-black text-3xl">{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </R>
+            ) : cotizacion.tradeToken ? (
+              /* Pre-selección: invitar a elegir paquete */
+              <R delay={80} className="flex justify-center">
+                <div className="text-center max-w-lg">
+                  <div className="grid grid-cols-3 gap-3 mb-10">
+                    {[
+                      { nivel: 1, nombre: "Base", pct: 5 },
+                      { nivel: 2, nombre: "Estratégico", pct: 10 },
+                      { nivel: 3, nombre: "Premium", pct: 12 },
+                    ].map(n => (
+                      <div key={n.nivel} className="bg-white/[0.03] border border-white/8 rounded-xl px-3 py-4 text-center">
+                        <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">{n.nombre}</p>
+                        <p className="text-[#B3985B] text-3xl font-black">{n.pct}%</p>
+                        <p className="text-white/25 text-[10px] mt-1">descuento</p>
+                      </div>
+                    ))}
+                  </div>
+                  <a href={`/trade/${cotizacion.tradeToken}`}
+                     className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-base transition-all hover:scale-[1.02] active:scale-95">
+                    <span>Elegir mi nivel de colaboración</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  </a>
+                  <p className="text-white/20 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte a tu evento</p>
+                </div>
+              </R>
+            ) : null}
           </div>
         </section>
       )}
@@ -1066,8 +1133,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ fontSize: "clamp(3.5rem,13vw,8rem)", letterSpacing: "-0.035em" }}>
               {fmt(cotizacion.granTotal)}
             </p>
-            {cotizacion.montoDescuento > 0 && (
-              <p className="text-[#B3985B] text-base font-semibold mb-2">Incluye {cotizacion.descuentoPatrocinioPct}% Trade — ahorras {fmt(cotizacion.montoDescuento)}</p>
+            {cotizacion.montoDescuento > 0 && tradeAplicado && (
+              <p className="text-[#B3985B] text-base font-semibold mb-2">Incluye {tradePct}% Trade — ahorras {fmt(cotizacion.montoDescuento)}</p>
+            )}
+            {cotizacion.montoDescuento > 0 && !tradeAplicado && cotizacion.descuentoPatrocinioPct > 0 && (
+              <p className="text-[#B3985B] text-base font-semibold mb-2">Precio preferencial — ahorras {fmt(cotizacion.montoDescuento)}</p>
             )}
           </R>
           <R delay={100}>

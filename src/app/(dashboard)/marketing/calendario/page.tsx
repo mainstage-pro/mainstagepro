@@ -413,27 +413,66 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
   deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
 }) {
+  const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
+
+  // Extract unique tipos from the publicaciones list
+  const tiposUnicos = Array.from(
+    new Map(publicaciones.filter(p => p.tipo).map(p => [p.tipo!.id, p.tipo!])).values()
+  );
+
+  const filtered = filtroTipo
+    ? publicaciones.filter(p => p.tipoId === filtroTipo)
+    : publicaciones;
+
   return (
+    <div className="space-y-3">
+      {/* Tipo filter pills */}
+      {tiposUnicos.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">Tipo:</span>
+          <button
+            onClick={() => setFiltroTipo(null)}
+            className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${
+              filtroTipo === null
+                ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]"
+                : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-gray-300"
+            }`}>
+            Todos
+          </button>
+          {tiposUnicos.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setFiltroTipo(filtroTipo === t.id ? null : t.id)}
+              className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors ${
+                filtroTipo === t.id
+                  ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]"
+                  : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-gray-300"
+              }`}>
+              {t.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
       {/* Table header */}
-      <div className="grid grid-cols-[60px_80px_1fr_80px_80px_100px_60px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
+      <div className="grid grid-cols-[60px_80px_1fr_1fr_80px_100px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
         <span>Fecha</span>
         <span>Formato</span>
         <span>Tipo / Descripción</span>
+        <span>Copy</span>
         <span className="text-center">Plataformas</span>
         <span className="text-center">Estado</span>
-        <span></span>
-        <span></span>
       </div>
 
       <div className="divide-y divide-[#181818]">
-        {publicaciones.map(p => {
+        {filtered.map(p => {
           const d = parseDate(p.fecha);
           const formato = p.formato ?? p.tipo?.formato ?? null;
           return (
             <div key={p.id}>
               <div
-                className={`grid grid-cols-[60px_80px_1fr_80px_80px_100px_60px] gap-2 px-4 py-2.5 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
+                className={`grid grid-cols-[60px_80px_1fr_1fr_80px_100px] gap-2 px-4 py-2.5 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
                 onClick={() => { if (editId !== p.id) setExpandedId(expandedId === p.id ? null : p.id); }}>
 
                 {/* Fecha */}
@@ -453,6 +492,14 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                   {p.descripcion && <p className="text-gray-500 text-[10px] truncate">{p.descripcion}</p>}
                 </div>
 
+                {/* Copy */}
+                <div className="min-w-0">
+                  {p.copy
+                    ? <p className="text-gray-400 text-[10px] truncate leading-snug">{p.copy}</p>
+                    : <span className="text-gray-700 text-[9px] italic">—</span>
+                  }
+                </div>
+
                 {/* Plataformas */}
                 <div className="flex gap-1 justify-center flex-wrap" onClick={e => e.stopPropagation()}>
                   {PLATAFORMAS.filter(plt => p[plt.key]).map(plt => (
@@ -460,45 +507,19 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                   ))}
                 </div>
 
-                {/* Estado badge */}
-                <div className="flex justify-center">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado]}`}>
-                    {ESTADO_LABEL[p.estado]}
-                  </span>
-                </div>
-
-                {/* Portada thumbnail */}
+                {/* Estado — dropdown (reversible) */}
                 <div className="flex justify-center" onClick={e => e.stopPropagation()}>
-                  {p.portadaUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.portadaUrl} alt="" className="w-10 h-10 object-cover rounded border border-[#2a2a2a]" />
-                  ) : (
-                    <div className="w-10 h-10 rounded border border-dashed border-[#2a2a2a] flex items-center justify-center">
-                      <span className="text-[8px] text-gray-700">IMG</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Acciones */}
-                <div className="flex items-center gap-1 justify-end" onClick={e => e.stopPropagation()}>
-                  {p.estado === "PENDIENTE" && (
-                    <button onClick={() => quickEstado(p.id, "EN_PROCESO")}
-                      className="text-[9px] px-1.5 py-1 rounded bg-[#1a1a1a] text-gray-500 hover:text-blue-300 transition-colors whitespace-nowrap">
-                      Iniciar
-                    </button>
-                  )}
-                  {p.estado === "EN_PROCESO" && (
-                    <button onClick={() => quickEstado(p.id, "LISTO")}
-                      className="text-[9px] px-1.5 py-1 rounded bg-[#1a1a1a] text-gray-500 hover:text-yellow-300 transition-colors">
-                      Listo
-                    </button>
-                  )}
-                  {p.estado === "LISTO" && (
-                    <button onClick={() => quickEstado(p.id, "PUBLICADO")}
-                      className="text-[9px] px-1.5 py-1 rounded bg-[#1a1a1a] text-gray-500 hover:text-green-300 transition-colors">
-                      Publicar
-                    </button>
-                  )}
+                  <select
+                    value={p.estado}
+                    onChange={e => quickEstado(p.id, e.target.value)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border-0 focus:outline-none cursor-pointer ${ESTADO_COLORS[p.estado]}`}
+                    style={{ appearance: "none", WebkitAppearance: "none" }}>
+                    {ESTADOS.map(e => (
+                      <option key={e} value={e} className="bg-[#111] text-white text-xs">
+                        {ESTADO_LABEL[e]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -552,6 +573,7 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
           );
         })}
       </div>
+    </div>
     </div>
   );
 }

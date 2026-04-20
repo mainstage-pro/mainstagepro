@@ -762,7 +762,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
             )}
             {tieneDescuento && (
               <View style={s.totalFila}>
-                <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>{esTrade ? tradeLabel : "Precio preferencial"}</Text>
+                <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>Precio preferencial</Text>
                 <Text style={[s.totalFilaMonto, s.totalFilaDescuento]}>-{fmtMXN(c.montoDescuento)}</Text>
               </View>
             )}
@@ -808,32 +808,17 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         </View>
 
         {/* ── BENEFICIO / DESCUENTO ── */}
-        {tieneDescuento && (
+        {tieneDescuento && !esTrade && (
           <View style={s.beneficioBloque}>
-            <Text style={s.beneficioTitulo}>{esTrade ? `MAINSTAGE TRADE — AHORRO: ${fmtMXN(c.montoDescuento)}` : `BENEFICIO / DESCUENTO: ${fmtMXN(c.montoDescuento)}`}</Text>
-            {esTrade ? (
-              <>
-                <Text style={s.beneficioTexto}>
-                  Este descuento forma parte del programa Mainstage Trade ({tradeLabel}). A cambio de visibilidad de marca
-                  y contenido en tu evento, Mainstage Pro aplica un descuento del {c.descuentoPatrocinioPct}% sobre la renta de equipos.
-                </Text>
-                <Text style={s.beneficioNota}>
-                  El descuento aplica exclusivamente sobre la renta de equipos propios de Mainstage Pro. Los entregables de
-                  visibilidad acordados deberán cumplirse en las fechas pactadas con el equipo.
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={s.beneficioTexto}>
-                  El beneficio podrá utilizarse como descuento automático en esta cotización o como saldo a favor para ampliar
-                  tu producción con más equipos o servicios en esta misma cotización.
-                </Text>
-                <Text style={s.beneficioNota}>
-                  La utilización del saldo como ampliación de servicios está sujeta a disponibilidad de equipo al momento de la confirmación.
-                  Favor de notificar al vendedor si se aplica el descuento o se utiliza el saldo a favor, a la brevedad.
-                </Text>
-              </>
-            )}
+            <Text style={s.beneficioTitulo}>{`BENEFICIO / DESCUENTO: ${fmtMXN(c.montoDescuento)}`}</Text>
+            <Text style={s.beneficioTexto}>
+              El beneficio podrá utilizarse como descuento automático en esta cotización o como saldo a favor para ampliar
+              tu producción con más equipos o servicios en esta misma cotización.
+            </Text>
+            <Text style={s.beneficioNota}>
+              La utilización del saldo como ampliación de servicios está sujeta a disponibilidad de equipo al momento de la confirmación.
+              Favor de notificar al vendedor si se aplica el descuento o se utiliza el saldo a favor, a la brevedad.
+            </Text>
           </View>
         )}
 
@@ -842,37 +827,6 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
           <View style={[s.beneficioBloque, { borderColor: "#ddd", backgroundColor: BG_SECTION }]}>
             <Text style={[s.beneficioTitulo, { color: GRAY }]}>OBSERVACIONES</Text>
             <Text style={s.beneficioTexto}>{c.observaciones}</Text>
-          </View>
-        )}
-
-        {/* ── MAINSTAGE TRADE ── */}
-        {c.tradeCalificado && (
-          <View style={[s.beneficioBloque, { borderColor: "#B3985B", backgroundColor: "#0d0c08" }]}>
-            <Text style={[s.beneficioTitulo, { color: "#B3985B" }]}>MAINSTAGE TRADE — PROGRAMA DE COLABORACIÓN</Text>
-            <Text style={[s.beneficioTexto, { marginBottom: 8 }]}>
-              Este evento califica para el programa Mainstage Trade. Elige tu nivel de colaboración y obtén un descuento sobre el subtotal de equipos propios de Mainstage Pro:
-            </Text>
-            {/* Level cards */}
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              {/* Base */}
-              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>BASE — 5%</Text>
-                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Mención en redes sociales (1 post + 3 stories){"\n"}• Crédito en material impreso o pantallas{"\n"}• Logo en comunicaciones del evento</Text>
-              </View>
-              {/* Estratégico */}
-              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>ESTRATÉGICO — 10%</Text>
-                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Todo lo de Base{"\n"}• Sesión de fotos/video para portafolio{"\n"}• Testimonio en video o carta</Text>
-              </View>
-              {/* Premium */}
-              <View style={{ flex: 1, borderWidth: 1, borderColor: "#B3985B", borderRadius: 6, padding: 8 }}>
-                <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#B3985B", marginBottom: 3 }}>PREMIUM — 12%</Text>
-                <Text style={{ fontSize: 7, color: "#ccc", lineHeight: 1.5 }}>• Todo lo de Estratégico{"\n"}• Exclusividad como proveedor AV en tus eventos{"\n"}• Presencia de marca activa el día del evento</Text>
-              </View>
-            </View>
-            <Text style={[s.beneficioNota, { marginTop: 6, color: "#999" }]}>
-              El descuento aplica sobre equipos propios de Mainstage. Los entregables deberán cumplirse en fechas acordadas con nuestro equipo.
-            </Text>
           </View>
         )}
 

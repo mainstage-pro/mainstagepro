@@ -168,39 +168,30 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
 // ─── Componente campo editable ────────────────────────────────────────────────
 function Campo({ label, value, field, onSave, type = "text", multiline = false }:
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean }) {
-  const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value ?? "");
+  const [dirty, setDirty] = useState(false);
 
-  function save() {
-    onSave(field, val);
-    setEditing(false);
+  // Sync external value changes (e.g. after load)
+  useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
+
+  function handleBlur() {
+    if (dirty) { onSave(field, val); setDirty(false); }
   }
 
-  if (editing) {
-    return (
-      <div>
-        <label className="text-gray-500 text-xs mb-1 block">{label}</label>
-        {multiline ? (
-          <textarea value={val} onChange={e => setVal(e.target.value)} rows={3}
-            className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none resize-none" />
-        ) : (
-          <input type={type} value={val} onChange={e => setVal(e.target.value)}
-            className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" />
-        )}
-        <div className="flex gap-2 mt-1">
-          <button onClick={save} className="text-xs text-[#B3985B] hover:text-white">Guardar</button>
-          <button onClick={() => { setEditing(false); setVal(value ?? ""); }} className="text-xs text-gray-500 hover:text-white">Cancelar</button>
-        </div>
-      </div>
-    );
-  }
+  const inputCls = "w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-colors";
 
   return (
-    <div onClick={() => setEditing(true)} className="cursor-pointer group">
-      <p className="text-gray-500 text-xs mb-0.5">{label}</p>
-      <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${value ? "text-white" : "text-gray-600 italic"}`}>
-        {value || "Click para editar..."}
-      </p>
+    <div>
+      <label className="text-gray-500 text-xs mb-1 block">{label}</label>
+      {multiline ? (
+        <textarea value={val} rows={3} className={inputCls + " resize-none"}
+          onChange={e => { setVal(e.target.value); setDirty(true); }}
+          onBlur={handleBlur} />
+      ) : (
+        <input type={type} value={val} className={inputCls}
+          onChange={e => { setVal(e.target.value); setDirty(true); }}
+          onBlur={handleBlur} />
+      )}
     </div>
   );
 }
@@ -2454,7 +2445,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     {grupo.map(p => (
                       <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700" : "border-l-yellow-800/60"}`}>
-                        <div className="flex items-center justify-between">
+                        {/* Name / info row */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex-1 min-w-0">
                             {!p.tecnico ? (
                               asignandoId === p.id ? (
@@ -2474,7 +2466,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                     className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-yellow-500 text-sm italic">Sin asignar</span>
                                   {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                                   <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); }}
@@ -2495,65 +2487,66 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                            {p.tarifaAcordada != null && (
-                              <span className="text-gray-300 text-sm">{fmt(p.tarifaAcordada)}</span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
+                          <button onClick={() => eliminarPersonal(p.id)}
+                            className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors shrink-0">×</button>
+                        </div>
+                        {/* Actions row — wraps cleanly on mobile */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {p.tarifaAcordada != null && (
+                            <span className="text-gray-300 text-sm font-medium">{fmt(p.tarifaAcordada)}</span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                            p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
+                          }`}>
+                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
+                          </span>
+                          {p.confirmRespuesta && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
                             }`}>
-                              {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
+                              {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
                             </span>
-                            {p.confirmRespuesta && (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-                              }`}>
-                                {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
-                              </span>
-                            )}
-                            <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
-                              className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
-                                p.confirmado
-                                  ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700"
-                                  : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"
-                              }`}>
-                              {p.confirmado ? "✓ Confirmado" : "Confirmar"}
+                          )}
+                          <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
+                              p.confirmado
+                                ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700"
+                                : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"
+                            }`}>
+                            {p.confirmado ? "✓ Confirmado" : "Confirmar"}
+                          </button>
+                          {p.tecnico && (
+                            <button
+                              disabled={!fichaCompleta}
+                              title={fichaCompleta ? "Enviar invitación por WhatsApp" : fichaTooltip}
+                              onClick={async () => {
+                                const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
+                                const d = await res.json();
+                                if (d.whatsappUrl) {
+                                  window.open(d.whatsappUrl, "_blank");
+                                  await load();
+                                } else if (d.token) {
+                                  const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
+                                  await navigator.clipboard.writeText(url).catch(() => {});
+                                  toast.info("Sin número registrado. Link copiado al portapapeles.");
+                                  await load();
+                                }
+                              }}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+                              📲 Invitar
                             </button>
-                            {p.tecnico && (
-                              <button
-                                disabled={!fichaCompleta}
-                                title={fichaCompleta ? "Enviar invitación por WhatsApp" : fichaTooltip}
-                                onClick={async () => {
-                                  const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
-                                  const d = await res.json();
-                                  if (d.whatsappUrl) {
-                                    window.open(d.whatsappUrl, "_blank");
-                                    await load();
-                                  } else if (d.token) {
-                                    const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
-                                    await navigator.clipboard.writeText(url).catch(() => {});
-                                    toast.info("Sin número registrado. Link copiado al portapapeles.");
-                                    await load();
-                                  }
-                                }}
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-                                📲 Invitar
-                              </button>
-                            )}
-                            {p.tecnico && (
-                              <a
-                                href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Descargar carta responsiva freelance"
-                                className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
-                              >
-                                📄 Carta
-                              </a>
-                            )}
-                            <button onClick={() => eliminarPersonal(p.id)}
-                              className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors">×</button>
-                          </div>
+                          )}
+                          {p.tecnico && (
+                            <a
+                              href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Descargar carta responsiva freelance"
+                              className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
+                            >
+                              📄 Carta
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -2856,6 +2849,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })}
           </div>
 
+          {/* ── Siguiente: Logística → Cronograma ── */}
+          <div className={`flex justify-end pt-2${operTab !== "logistica" ? " hidden" : ""}`}>
+            <button
+              onClick={() => setOperTab("cronograma")}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
+              Cronograma →
+            </button>
+          </div>
+
           {/* ── Contactos ── */}
           <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "cronograma" ? " hidden" : ""}`}>
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
@@ -3083,6 +3085,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <p className="text-gray-700 text-xs mt-1">Agrega equipo propio o externo para este proyecto</p>
               </div>
             )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setOperTab("logistica")}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
+                Logística →
+              </button>
+            </div>
           </div>
         );
       })()}
