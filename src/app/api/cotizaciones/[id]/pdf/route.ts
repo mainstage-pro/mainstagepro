@@ -56,6 +56,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const cotizacionWithImgs = {
     ...cotizacion,
     tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
+    mainstageTradeData: cotizacion.mainstageTradeData ?? null,
     lineas: cotizacion.lineas.map(l => ({
       ...l,
       imagenUrl: resolveImg(l.equipo?.imagenUrl),

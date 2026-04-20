@@ -503,6 +503,7 @@ interface CotizacionData {
   creadaPor: { name: string } | null;
   lineas: Linea[];
   tradeCalificado?: boolean;
+  mainstageTradeData?: string | null;
 }
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
@@ -671,7 +672,22 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   const liquidacion = c.granTotal * 0.5;
   const tieneDescuento = c.montoDescuento > 0;
   const esTrade = c.descuentoPatrocinioPct > 0 && c.descuentoPatrocinioNota?.toLowerCase().includes("trade");
-  const tradeLabel = c.descuentoPatrocinioNota ?? "Mainstage Trade";
+
+  // Parse Trade data for desglose
+  let tradePctPDF = 0;
+  let tradeNivelLabelPDF: string | null = null;
+  let tradeMontoCalcPDF = 0;
+  try {
+    const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
+    if (td.nivelSeleccionado && td.pct) {
+      tradePctPDF = td.pct;
+      const NLBL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
+      tradeNivelLabelPDF = NLBL[td.nivelSeleccionado] ?? null;
+      tradeMontoCalcPDF = Math.round(c.subtotalEquiposBruto * (td.pct / 100) * 100) / 100;
+    }
+  } catch { /* noop */ }
+  const otroDescuentoPDF = tradeMontoCalcPDF > 0 ? c.montoDescuento - tradeMontoCalcPDF : c.montoDescuento;
+
   const vigenciaDate = new Date(c.createdAt);
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
 
@@ -760,10 +776,18 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto)}</Text>
               </View>
             )}
-            {tieneDescuento && (
+            {tieneDescuento && otroDescuentoPDF > 0.01 && (
               <View style={s.totalFila}>
                 <Text style={[s.totalFilaDes, s.totalFilaDescuento]}>Precio preferencial</Text>
-                <Text style={[s.totalFilaMonto, s.totalFilaDescuento]}>-{fmtMXN(c.montoDescuento)}</Text>
+                <Text style={[s.totalFilaMonto, s.totalFilaDescuento]}>-{fmtMXN(otroDescuentoPDF)}</Text>
+              </View>
+            )}
+            {tradeMontoCalcPDF > 0 && (
+              <View style={s.totalFila}>
+                <Text style={[s.totalFilaDes, s.totalFilaDescuento, { color: "#B3985B" }]}>
+                  {`Mainstage Trade${tradeNivelLabelPDF ? ` · ${tradeNivelLabelPDF}` : ""} (${tradePctPDF}%)`}
+                </Text>
+                <Text style={[s.totalFilaMonto, s.totalFilaDescuento, { color: "#B3985B" }]}>-{fmtMXN(tradeMontoCalcPDF)}</Text>
               </View>
             )}
             {c.subtotalOperacion > 0 && (
@@ -806,21 +830,6 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
             <Text style={s.anticipoMonto}>{fmtMXN(liquidacion)}</Text>
           </View>
         </View>
-
-        {/* ── BENEFICIO / DESCUENTO ── */}
-        {tieneDescuento && !esTrade && (
-          <View style={s.beneficioBloque}>
-            <Text style={s.beneficioTitulo}>{`BENEFICIO / DESCUENTO: ${fmtMXN(c.montoDescuento)}`}</Text>
-            <Text style={s.beneficioTexto}>
-              El beneficio podrá utilizarse como descuento automático en esta cotización o como saldo a favor para ampliar
-              tu producción con más equipos o servicios en esta misma cotización.
-            </Text>
-            <Text style={s.beneficioNota}>
-              La utilización del saldo como ampliación de servicios está sujeta a disponibilidad de equipo al momento de la confirmación.
-              Favor de notificar al vendedor si se aplica el descuento o se utiliza el saldo a favor, a la brevedad.
-            </Text>
-          </View>
-        )}
 
         {/* ── OBSERVACIONES ── */}
         {c.observaciones && (
