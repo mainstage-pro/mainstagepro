@@ -85,7 +85,10 @@ interface NuevoRegistroForm {
   // CxP
   tipoAcreedor: string;
   acreedorNombre: string;
+  proveedorId: string;
   notas: string;
+  // Ambos
+  proyectoId: string;
 }
 
 const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
@@ -98,7 +101,9 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   clienteId: "",
   tipoAcreedor: "OTRO",
   acreedorNombre: "",
+  proveedorId: "",
   notas: "",
+  proyectoId: "",
 };
 
 export default function CobrosPagosPage() {
@@ -123,6 +128,8 @@ export default function CobrosPagosPage() {
   const [nuevoForm, setNuevoForm] = useState<NuevoRegistroForm>({ ...NUEVO_REGISTRO_EMPTY });
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [clientes, setClientes] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
+  const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
+  const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
   const [clienteQuery, setClienteQuery] = useState("");
 
   const load = useCallback(async () => {
@@ -140,6 +147,8 @@ export default function CobrosPagosPage() {
   useEffect(() => {
     fetch("/api/clientes", { cache: "no-store" }).then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
     fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
+    fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()).then(d => setProveedores(d.proveedores ?? [])).catch(() => {});
+    fetch("/api/proyectos", { cache: "no-store" }).then(r => r.json()).then(d => setProyectos((d.proyectos ?? []).filter((p: { estado: string }) => p.estado !== "CANCELADO"))).catch(() => {});
   }, []);
 
   async function guardarNuevo() {
@@ -153,6 +162,7 @@ export default function CobrosPagosPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             clienteId: nuevoForm.clienteId,
+            proyectoId: nuevoForm.proyectoId || null,
             concepto: nuevoForm.concepto,
             monto: nuevoForm.monto,
             fechaCompromiso: nuevoForm.fechaCompromiso,
@@ -171,6 +181,8 @@ export default function CobrosPagosPage() {
             monto: nuevoForm.monto,
             fechaCompromiso: nuevoForm.fechaCompromiso,
             notas: nuevoForm.notas || null,
+            proveedorId: nuevoForm.proveedorId || null,
+            proyectoId: nuevoForm.proyectoId || null,
           }),
         });
       }
@@ -685,11 +697,23 @@ export default function CobrosPagosPage() {
               {nuevoForm.tipo === "cxp" && (
                 <>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">A quién se le paga</label>
-                    <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}
-                      placeholder="Nombre del proveedor, persona o empresa…"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    <label className="text-xs text-gray-500 block mb-1">Proveedor (opcional)</label>
+                    <select value={nuevoForm.proveedorId} onChange={e => setNuevoForm(p => ({ ...p, proveedorId: e.target.value, acreedorNombre: e.target.options[e.target.selectedIndex].text === "— Sin proveedor —" ? p.acreedorNombre : "" }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                      <option value="">— Sin proveedor —</option>
+                      {proveedores.map(p => (
+                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>
+                      ))}
+                    </select>
                   </div>
+                  {!nuevoForm.proveedorId && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">A quién se le paga</label>
+                      <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}
+                        placeholder="Nombre si no está en proveedores…"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Notas</label>
                     <input value={nuevoForm.notas} onChange={e => setNuevoForm(p => ({ ...p, notas: e.target.value }))}
@@ -698,6 +722,18 @@ export default function CobrosPagosPage() {
                   </div>
                 </>
               )}
+
+              {/* Proyecto — para ambos tipos */}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Proyecto (opcional)</label>
+                <select value={nuevoForm.proyectoId} onChange={e => setNuevoForm(p => ({ ...p, proyectoId: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Sin proyecto —</option>
+                  {proyectos.map(p => (
+                    <option key={p.id} value={p.id}>{p.numeroProyecto} · {p.nombre}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-1">

@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const SECRET = "setup-mainstage-2026-schema";
+import { timingSafeEqual } from "crypto";
 
 export async function POST(req: NextRequest) {
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) return NextResponse.json({ error: "No configurado" }, { status: 403 });
+
   const { secret } = await req.json().catch(() => ({}));
-  if (secret !== SECRET) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const a = Buffer.from(secret ?? "");
+  const b = Buffer.from(adminSecret);
+  const authorized = a.length === b.length && timingSafeEqual(a, b);
+  if (!authorized) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const results: string[] = [];
 
@@ -731,6 +736,10 @@ export async function POST(req: NextRequest) {
     // 38. migrar BASIC → REGULAR (clasificación legacy)
     await prisma.$executeRawUnsafe(`UPDATE "clientes" SET "clasificacion" = 'REGULAR' WHERE "clasificacion" = 'BASIC'`);
     results.push("✅ clientes BASIC→REGULAR migración");
+
+    // 39. realizarRender on tratos
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "realizarRender" BOOLEAN NOT NULL DEFAULT false`);
+    results.push("✅ tratos.realizarRender");
 
     return NextResponse.json({ ok: true, results });
   } catch (error) {

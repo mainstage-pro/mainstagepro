@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { randomBytes } from "crypto";
+import { createExpiringToken } from "@/lib/tokens";
 
 // POST — generar token único para el portal del proveedor
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -9,7 +9,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const { id } = await params;
 
-  const token = randomBytes(24).toString("hex");
+  const token = createExpiringToken(365);
   const proveedor = await prisma.proveedor.update({
     where: { id },
     data: { portalToken: token },

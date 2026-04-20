@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createExpiringToken } from "@/lib/tokens";
 
-// POST: genera o devuelve el token de aprobación
+// POST — generar o regenerar el trade token de una cotización
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -12,22 +12,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const cot = await prisma.cotizacion.findUnique({
     where: { id },
-    select: { id: true, estado: true, aprobacionToken: true },
+    select: { id: true, estado: true },
+  });
+  if (!cot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const token = createExpiringToken(90);
+
+  await prisma.cotizacion.update({
+    where: { id },
+    data: { tradeToken: token },
   });
 
-  if (!cot) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
-  if (cot.estado === "APROBADA") return NextResponse.json({ error: "Ya está aprobada" }, { status: 400 });
-
-  // Reusar token existente o generar uno nuevo (con expiración de 90 días embebida)
-  const token = cot.aprobacionToken ?? createExpiringToken(90);
-
-  if (!cot.aprobacionToken) {
-    await prisma.cotizacion.update({
-      where: { id },
-      data: { aprobacionToken: token, estado: "ENVIADA" },
-    });
-  }
-
-  const url = `${process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"}/aprobacion/cotizacion/${token}`;
+  const url = `${process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"}/trade/${token}`;
   return NextResponse.json({ token, url });
 }

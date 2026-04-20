@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isTokenExpired } from "@/lib/tokens";
 
 // Verificar que el token corresponde al proveedor dueño del equipo
 async function verify(token: string, equipoId: string) {
@@ -16,7 +18,12 @@ async function verify(token: string, equipoId: string) {
 
 // PATCH — editar equipo
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ token: string; equipoId: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`proveedor-equipo-edit:${ip}`, 20, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
   const { token, equipoId } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Enlace expirado" }, { status: 410 });
   const proveedor = await verify(token, equipoId);
   if (!proveedor) return NextResponse.json({ error: "No autorizado o no encontrado" }, { status: 404 });
 
@@ -56,8 +63,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ to
 }
 
 // DELETE — eliminar equipo
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ token: string; equipoId: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ token: string; equipoId: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`proveedor-equipo-del:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
   const { token, equipoId } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Enlace expirado" }, { status: 410 });
   const proveedor = await verify(token, equipoId);
   if (!proveedor) return NextResponse.json({ error: "No autorizado o no encontrado" }, { status: 404 });
 

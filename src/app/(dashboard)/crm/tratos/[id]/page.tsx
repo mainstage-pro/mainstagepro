@@ -62,6 +62,7 @@ interface Trato {
   tradeCalificado: boolean;
   tradeNivel: number | null;
   familyAndFriends: boolean;
+  realizarRender: boolean;
   tipoProspecto: string;
   nurturingData: string | null;
   ventanaMontajeFin: string | null;
@@ -632,6 +633,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     notas: "",
     serviciosInteres: [] as string[],
     familyAndFriends: false,
+    realizarRender: false,
     tradeAplica: false,
     // Campos específicos de Renta
     rentaModalidadServicio: "",
@@ -773,6 +775,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             notas: t.notas ?? "",
             serviciosInteres: t.serviciosInteres ? JSON.parse(t.serviciosInteres) : [],
             familyAndFriends: t.familyAndFriends ?? false,
+            realizarRender: t.realizarRender ?? false,
             tradeAplica: t.tradeCalificado ?? false,
             // Rental fields
             rentaModalidadServicio: rentaData.modalidadServicio ?? "",
@@ -855,6 +858,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       tipoServicio: discForm.tipoServicio || null,
       notas: discForm.notas || null,
       familyAndFriends: discForm.familyAndFriends,
+      realizarRender: discForm.realizarRender,
       tradeCalificado: discForm.tradeAplica,
       horaInicioEvento:     discForm.horaInicioEvento || null,
       horaFinEvento:        discForm.horaFinEvento || null,
@@ -912,6 +916,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         tipoServicio: form.tipoServicio || null,
         notas: form.notas || null,
         familyAndFriends: form.familyAndFriends,
+        realizarRender: form.realizarRender,
         tradeCalificado: form.tradeAplica,
         horaInicioEvento: form.horaInicioEvento || null,
         horaFinEvento: form.horaFinEvento || null,
@@ -2295,6 +2300,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}
                       className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.tradeAplica ? "bg-[#B3985B]" : "bg-[#333]"}`}>
                       <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.tradeAplica ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-white font-medium">Realizar render para facilitar venta</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Se habilitará el botón de solicitud en la cotización</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, realizarRender: !p.realizarRender }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.realizarRender ? "bg-purple-600" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.realizarRender ? "translate-x-5" : "translate-x-0"}`} />
                     </button>
                   </div>
                 </div>

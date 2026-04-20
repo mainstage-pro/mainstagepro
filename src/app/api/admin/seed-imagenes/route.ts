@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
+import { timingSafeEqual } from "crypto";
 
 const BASE_PATH = "/inventario/equipos/";
 
@@ -120,17 +121,19 @@ function buildGroups(): Map<string, string[]> {
   return groups;
 }
 
-const ADMIN_SECRET = "setup-mainstage-2026-schema";
-
-function isAuthorized(req: NextRequest, session: Awaited<ReturnType<typeof getSession>>): boolean {
+function isAuthorized(session: Awaited<ReturnType<typeof requireAdmin>>, req: NextRequest): boolean {
   if (session) return true;
-  const secret = req.nextUrl.searchParams.get("secret") ?? req.headers.get("x-admin-secret");
-  return secret === ADMIN_SECRET;
+  const adminSecret = process.env.ADMIN_SECRET;
+  if (!adminSecret) return false;
+  const provided = req.nextUrl.searchParams.get("secret") ?? req.headers.get("x-admin-secret") ?? "";
+  const a = Buffer.from(provided);
+  const b = Buffer.from(adminSecret);
+  return a.length === b.length && timingSafeEqual(a, b);
 }
 
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!isAuthorized(req, session)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const session = await requireAdmin();
+  if (!isAuthorized(session, req)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const equipos = await prisma.equipo.findMany({
     select: { id: true, descripcion: true, marca: true, modelo: true, imagenUrl: true },
@@ -190,8 +193,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!isAuthorized(req, session)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const session = await requireAdmin();
+  if (!isAuthorized(session, req)) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
   // Accept either: { apply: true } to auto-apply all matches, or { overrides: [{equipoId, imagenUrl, imagenesUrls}] }

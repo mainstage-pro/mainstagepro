@@ -1,8 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isTokenExpired } from "@/lib/tokens";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`portal:${ip}`, 60, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
   const { token } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Enlace expirado" }, { status: 410 });
 
   const proyecto = await prisma.proyecto.findUnique({
     where: { portalToken: token },

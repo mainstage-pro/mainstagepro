@@ -9,12 +9,28 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Para TRANSFERENCIA entre cuentas se envía cuentaId (origen) y cuentaDestinoId (destino)
+    // Para INGRESO: la plata entra → cuentaDestinoId = cuentaId
+    // Para GASTO: la plata sale → cuentaOrigenId = cuentaId
+    let cuentaOrigenId: string | null = null;
+    let cuentaDestinoId: string | null = null;
+
+    if (body.tipo === "TRANSFERENCIA") {
+      cuentaOrigenId = body.cuentaId || null;
+      cuentaDestinoId = body.cuentaDestinoId || null;
+    } else if (body.tipo === "GASTO" || body.tipo === "RETIRO") {
+      cuentaOrigenId = body.cuentaId || null;
+    } else {
+      // INGRESO, INVERSION u otro
+      cuentaDestinoId = body.cuentaId || null;
+    }
+
     const movimiento = await prisma.movimientoFinanciero.create({
       data: {
         fecha: new Date(body.fecha),
         tipo: body.tipo,
-        cuentaOrigenId: body.tipo === "GASTO" || body.tipo === "TRANSFERENCIA" ? body.cuentaId : null,
-        cuentaDestinoId: body.tipo === "INGRESO" || body.tipo === "TRANSFERENCIA" ? body.cuentaId : null,
+        cuentaOrigenId,
+        cuentaDestinoId,
         clienteId: body.clienteId || null,
         proveedorId: body.proveedorId || null,
         proyectoId: body.proyectoId || null,

@@ -171,6 +171,7 @@ model Trato {
   tradeCalificado     Boolean  @default(false)
   tradeNivel          Int?     // 1 = Base | 2 = Estratégico | 3 = Premium
   familyAndFriends    Boolean  @default(false)
+  realizarRender      Boolean  @default(false)
   // ─────────────────────────────────────────────────────────────────────────────
   tipoProspecto       String   @default("ACTIVO")  // ACTIVO | NURTURING
   nurturingData       String?  // JSON: { etapa, temperatura, nextFollowup, nextMotivo, log[] }

@@ -73,7 +73,7 @@ interface Cotizacion {
   aprobacionFecha: string | null;
   aprobacionNombre: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
-  trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean };
+  trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean; realizarRender: boolean; ideasReferencias: string | null; notas: string | null; lugarEstimado: string | null };
   creadaPor: { name: string } | null;
   lineas: Linea[];
   proyecto: { id: string; numeroProyecto: string; estado: string } | null;
@@ -118,6 +118,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkAprobacion, setLinkAprobacion] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [showRenderModal, setShowRenderModal] = useState(false);
+  const [renderTel, setRenderTel] = useState<string>(() => typeof window !== "undefined" ? localStorage.getItem("renderTelefono") ?? "" : "");
+  const [renderFecha, setRenderFecha] = useState("");
+  const [renderNotas, setRenderNotas] = useState("");
   const [editingPlan, setEditingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savingTrade, setSavingTrade] = useState(false);
@@ -226,11 +230,12 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   async function generarTradeToken() {
     setSavingTrade(true);
-    const token = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
-    await saveTrade(
-      JSON.parse(cot!.mainstageTradeData ?? "{}"),
-      { tradeToken: token }
-    );
+    const res = await fetch(`/api/cotizaciones/${id}/trade-token`, { method: "POST" });
+    if (res.ok) {
+      const d = await res.json();
+      setCot(prev => prev ? { ...prev, tradeToken: d.token } : prev);
+    }
+    setSavingTrade(false);
   }
 
   async function aplicarNivelTrade() {
@@ -295,13 +300,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
       // Auto-generar trade token si el trato califica y aún no tiene token
       if (cot?.trato.tradeCalificado && !cot.tradeToken) {
-        const tradeToken = crypto.randomUUID().replace(/-/g, "").slice(0, 20);
-        const trResp = await fetch(`/api/cotizaciones/${id}`, {
-          method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tradeToken }),
-        });
+        const trResp = await fetch(`/api/cotizaciones/${id}/trade-token`, { method: "POST" });
         if (trResp.ok) {
-          setCot(prev => prev ? { ...prev, tradeToken } : prev);
+          const trData = await trResp.json();
+          setCot(prev => prev ? { ...prev, tradeToken: trData.token } : prev);
         }
       }
     }
@@ -412,7 +414,38 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const siguienteLetra = LETRAS_LABELS.find(l => !letrasUsadas.has(l));
   const tieneOpciones = opciones.length > 1 || (opciones.length === 1 && cot.grupoId);
 
+  const renderEquipos = cot.lineas
+    .filter(l => !["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
+    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${l.descripcion}${l.marca ? ` (${l.marca})` : ""}`)
+    .join("\n");
+
+  const buildRenderMsg = () => [
+      `🎬 *Solicitud de Render — Mainstage Pro*`,
+      ``,
+      `📋 *Evento:* ${cot.nombreEvento ?? "Sin nombre"} · ${cot.tipoEvento ?? cot.trato.tipoEvento ?? ""}`,
+      `📍 *Venue:* ${cot.lugarEvento ?? cot.trato.lugarEstimado ?? "Por confirmar"}`,
+      cot.fechaEvento ? `📅 *Fecha de evento:* ${new Date(cot.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : null,
+      renderFecha ? `⏰ *Render necesario para:* ${new Date(renderFecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}` : null,
+      ``,
+      `🎛️ *Rider de equipos:*`,
+      renderEquipos || "Ver cotización adjunta",
+      cot.trato.ideasReferencias ? [``, `💡 *Ideas / Referencias:*`, cot.trato.ideasReferencias].join("\n") : null,
+      cot.trato.notas ? [``, `📝 *Notas del trato:*`, cot.trato.notas].join("\n") : null,
+      renderNotas ? [``, `🗒️ *Notas adicionales:*`, renderNotas].join("\n") : null,
+      ``,
+      `📎 *Cotización:* ${cot.numeroCotizacion} · ${cot.cliente.nombre}`,
+  ].filter(Boolean).join("\n");
+
+  const enviarRenderWhatsApp = () => {
+    if (renderTel) localStorage.setItem("renderTelefono", renderTel);
+    const tel = renderTel.replace(/\D/g, "");
+    const msg = buildRenderMsg();
+    window.open(`https://wa.me/${tel.startsWith("52") ? tel : `52${tel}`}?text=${encodeURIComponent(msg)}`, "_blank");
+    setShowRenderModal(false);
+  };
+
   return (
+    <>
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
 
       {/* Tabs de opciones */}
@@ -604,6 +637,20 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 })()}
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Solicitar Render ── */}
+        {cot.trato.realizarRender && cot.lineas.length > 0 && (
+          <div className="border-t border-[#1a1a1a] pt-3">
+            <button
+              onClick={() => setShowRenderModal(true)}
+              className="flex items-center gap-2 text-purple-400 hover:text-purple-300 text-xs transition-colors">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+              </svg>
+              Solicitar render al equipo de diseño
+            </button>
           </div>
         )}
 
@@ -1065,5 +1112,83 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
     </div>
+
+    {/* ── Modal Solicitar Render ── */}
+    {showRenderModal && (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+        onClick={e => { if (e.target === e.currentTarget) setShowRenderModal(false); }}>
+        <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg space-y-4 p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-purple-900/40 border border-purple-700/40 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.868V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+                </svg>
+              </div>
+              <h3 className="text-white font-semibold text-sm">Solicitar Render</h3>
+            </div>
+            <button onClick={() => setShowRenderModal(false)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+          </div>
+
+          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-3 space-y-1">
+            <p className="text-[11px] text-gray-600 uppercase tracking-wider mb-2">Info que se enviará</p>
+            <p className="text-gray-300 text-xs"><span className="text-gray-600">Evento:</span> {cot.nombreEvento ?? "—"} · {cot.tipoEvento ?? cot.trato.tipoEvento}</p>
+            <p className="text-gray-300 text-xs"><span className="text-gray-600">Venue:</span> {cot.lugarEvento ?? cot.trato.lugarEstimado ?? "Por confirmar"}</p>
+            <p className="text-gray-300 text-xs"><span className="text-gray-600">Equipos:</span> {cot.lineas.filter(l => !["TRANSPORTE","COMIDA","HOSPEDAJE"].includes(l.tipo)).length} líneas de rider</p>
+            {cot.trato.ideasReferencias && <p className="text-gray-300 text-xs"><span className="text-gray-600">Referencias:</span> ✓</p>}
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">WhatsApp del responsable de renders</label>
+              <input
+                value={renderTel}
+                onChange={e => setRenderTel(e.target.value)}
+                placeholder="52 55 1234 5678"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-600/60"
+              />
+              {renderTel && <p className="text-[10px] text-gray-600 mt-1">Se guardará para la próxima vez</p>}
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Fecha de entrega del render *</label>
+              <input
+                type="date"
+                value={renderFecha}
+                onChange={e => setRenderFecha(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-600/60"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Notas adicionales para el render</label>
+              <textarea
+                value={renderNotas}
+                onChange={e => setRenderNotas(e.target.value)}
+                rows={2}
+                placeholder="Estilo visual, paleta de colores, referencias específicas..."
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-600/60 resize-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={() => setShowRenderModal(false)}
+              className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+              Cancelar
+            </button>
+            <button
+              onClick={enviarRenderWhatsApp}
+              disabled={!renderTel || !renderFecha}
+              className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+              </svg>
+              Enviar por WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

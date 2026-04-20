@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logActividad } from "@/lib/actividad";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isTokenExpired } from "@/lib/tokens";
 
 // Public endpoint — no session required (accessed by client via shared URL)
 
@@ -17,8 +19,13 @@ type TradeData = {
   granTotalOriginal?: number; // preservado para mostrar correctamente en la página Trade
 };
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`trade:get:${ip}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
   const { token } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Link expirado" }, { status: 410 });
 
   const cot = await prisma.cotizacion.findUnique({
     where: { tradeToken: token },
@@ -66,7 +73,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`trade:post:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
   const { token } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Link expirado" }, { status: 410 });
   const body = await req.json();
   const { nivel, bonoVariable } = body;
 

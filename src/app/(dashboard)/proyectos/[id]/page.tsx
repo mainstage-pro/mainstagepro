@@ -244,8 +244,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
-  const [extrasTab, setExtrasTab] = useState<"rider" | "docs" | "checklist" | "protocolo" | "bitacora" | "evaluacion">("rider");
   const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
+  const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
@@ -726,10 +726,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }, [id]);
 
-  // Lazy-load evaluación cliente when evaluacion tab opens
+  // Lazy-load evaluación cliente when Operativo tab opens
   useEffect(() => {
-    if (tab === "extras" && extrasTab === "evaluacion") loadEvalCliente();
-  }, [tab, extrasTab]);
+    if (tab === "extras") loadEvalCliente();
+  }, [tab]);
+
+  // Auto-expand suggested docs on first open
+  useEffect(() => {
+    if (tab !== "extras" || !proyecto || openDocs.size > 0) return;
+    const te = (proyecto.tipoEvento || "").toUpperCase();
+    const isMusical = te.includes("MUSICAL") || te.includes("CONCIERTO") || te.includes("FESTIVAL");
+    const isEmpresarial = te.includes("EMPRESARIAL") || te.includes("CORPORATIVO") || te.includes("CONGRESO") || te.includes("CONFERENCIA");
+    const suggested = isMusical ? ["inputList", "soundcheck", "runningOrder"] :
+      isEmpresarial ? ["avRundown", "requerimientosAV", "setupTecnico"] :
+      ["programaEvento", "indicacionesMusicales", "coordinacionProveedores"];
+    setOpenDocs(new Set(suggested));
+  }, [tab, proyecto]); // eslint-disable-line
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -911,7 +923,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         setEvalCliente(d.evaluacion);
         setEvalClienteLoaded(true);
         setTab("extras");
-        setExtrasTab("evaluacion");
       }
       await load(); // recargar para mostrar el cierre generado
     }
@@ -1716,7 +1727,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
               tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
             }`}>
-            {t === "resumen" ? "Resumen" : t === "operacion" ? "Operación" : t === "finanzas" ? "Finanzas" : "···  Más"}
+            {t === "resumen" ? "Resumen" : t === "operacion" ? "Operación" : t === "finanzas" ? "Finanzas" : "Operativo"}
           </button>
         ))}
       </div>
@@ -1831,7 +1842,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {loadingCierre ? "Calculando cierre…" : proyecto.cierreFinanciero ? "Cierre financiero registrado — ver detalle" : "Generar cierre financiero (real vs estimado)"}
                     </button>
                     {/* Eval interna shortcut */}
-                    <button onClick={() => { setTab("extras"); setExtrasTab("evaluacion"); }}
+                    <button onClick={() => setTab("extras")}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">
                       <span className="w-5 h-5 rounded border border-[#444] flex items-center justify-center text-[10px]">→</span>
                       Llenar evaluación interna del evento
@@ -1876,7 +1887,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   ))}
                   {proyecto.bitacora.length > 3 && (
-                    <button onClick={() => { setTab("extras"); setExtrasTab("bitacora"); }} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                    <button onClick={() => setTab("extras")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
                       Ver {proyecto.bitacora.length - 3} entradas más →
                     </button>
                   )}
@@ -1909,7 +1920,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   💰 Finanzas →
                 </button>
                 {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
-                  <button onClick={() => { setTab("extras"); setExtrasTab("protocolo"); }}
+                  <button onClick={() => setTab("extras")}
                     className="text-xs px-3 py-2 border border-[#B3985B]/40 rounded-lg text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                     📦 Protocolo salida/entrada →
                   </button>
@@ -3006,52 +3017,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── Extras sub-tab nav ────── */}
-      {tab === "extras" && (
-        <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1 flex-wrap mb-2">
-          {([
-            { key: "rider", label: "Rider" },
-            { key: "docs", label: "Docs" },
-            { key: "checklist", label: "Checklist" },
-            { key: "protocolo", label: "Protocolo" },
-            { key: "bitacora", label: "Bitácora" },
-            { key: "evaluacion", label: "Evaluación" },
-          ] as const).map(st => (
-            <button key={st.key} onClick={() => setExtrasTab(st.key)}
-              className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                extrasTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
-              }`}>
-              {st.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ────── TAB: DOCS ────── */}
-      {tab === "extras" && extrasTab === "docs" && (() => {
+      {/* ────── TAB: OPERATIVO (scroll único — Rider · Checklist · Bitácora · Docs · Cierre) ────── */}
+      {tab === "extras" && (() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
         const esSocial = !esMusical && !esEmpresarial;
+        const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
 
         type DocsData = {
-          horarioGeneral: { hora: string; actividad: string; responsable: string }[];
-          // Musical
           inputList: { canal: string; instrumento: string; artista: string; microfono: string; notas: string }[];
           soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
           runningOrder: { hora: string; acto: string; duracion: string; notas: string }[];
-          // Social
           programaEvento: { hora: string; actividad: string; responsable: string; notas: string }[];
           indicacionesMusicales: string;
           coordinacionProveedores: { proveedor: string; contacto: string; horario: string; notas: string }[];
-          // Empresarial
           avRundown: { hora: string; actividad: string; presentador: string; av: string; notas: string }[];
           requerimientosAV: { ponente: string; micro: string; presentacion: string; notas: string }[];
           setupTecnico: string;
         };
 
         const defaultDocs: DocsData = {
-          horarioGeneral: [{ hora: "", actividad: "", responsable: "" }],
           inputList: [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }],
           soundcheck: [{ hora: "", artista: "", duracion: "", notas: "" }],
           runningOrder: [{ hora: "", acto: "", duracion: "", notas: "" }],
@@ -3087,538 +3073,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         );
 
-        return (
-          <div className="space-y-6">
-            {/* Horario general del evento */}
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-[#222]">
-                <div>
-                  <p className="text-white text-sm font-semibold">Horario general del evento</p>
-                  <p className="text-gray-500 text-xs mt-0.5">Cronograma maestro del día</p>
-                </div>
-              </div>
-              <div className="p-4 space-y-2 overflow-x-auto">
-                <TableHeader cols={["Hora", "Actividad", "Responsable"]} />
-                {docs.horarioGeneral.map((row, i) => {
-                  const update = (field: string, val: string) => {
-                    const next = docs.horarioGeneral.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                    saveDocs({ ...docs, horarioGeneral: next });
-                  };
-                  return (
-                    <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "120px 1fr 1fr 32px" }}>
-                      <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
-                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                      <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad"
-                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                      <input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable"
-                        className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                      <button onClick={() => { const next = docs.horarioGeneral.filter((_, j) => j !== i); saveDocs({ ...docs, horarioGeneral: next.length ? next : [{ hora: "", actividad: "", responsable: "" }] }); }}
-                        className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                    </div>
-                  );
-                })}
-                <button onClick={() => saveDocs({ ...docs, horarioGeneral: [...docs.horarioGeneral, { hora: "", actividad: "", responsable: "" }] })}
-                  className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">
-                  + Agregar fila
-                </button>
-              </div>
-            </div>
-
-            {/* ── DOCUMENTOS MUSICALES ── */}
-            {esMusical && (
-              <>
-                {/* Input List */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Input List</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Canal por canal · micrófono, instrumento, artista</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
-                    {docs.inputList.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.inputList.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, inputList: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "50px 1fr 1fr 1fr 1fr 32px" }}>
-                          <input defaultValue={row.canal} onBlur={e => update("canal", e.target.value)} placeholder="#"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white text-center placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.instrumento} onBlur={e => update("instrumento", e.target.value)} placeholder="Instrumento"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.microfono} onBlur={e => update("microfono", e.target.value)} placeholder="Micrófono / DI"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.inputList.filter((_, j) => j !== i); saveDocs({ ...docs, inputList: next.length ? next : [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, inputList: [...docs.inputList, { canal: String(docs.inputList.length + 1), instrumento: "", artista: "", microfono: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar canal</button>
-                  </div>
-                </div>
-
-                {/* Soundcheck */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Orden de Soundcheck</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Secuencia y horario de pruebas de sonido</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
-                    {docs.soundcheck.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, soundcheck: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}>
-                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
-                  </div>
-                </div>
-
-                {/* Running Order / Show Schedule */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Show Schedule / Running Order</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Secuencia y tiempos del show</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
-                    {docs.runningOrder.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.runningOrder.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, runningOrder: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}>
-                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.acto} onBlur={e => update("acto", e.target.value)} placeholder="Acto / Momento"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="45 min"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Cambio de set, iluminación..."
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.runningOrder.filter((_, j) => j !== i); saveDocs({ ...docs, runningOrder: next.length ? next : [{ hora: "", acto: "", duracion: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, runningOrder: [...docs.runningOrder, { hora: "", acto: "", duracion: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar momento</button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ── DOCUMENTOS SOCIALES ── */}
-            {esSocial && (
-              <>
-                {/* Programa del evento */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Programa del evento</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Secuencia completa de actividades</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
-                    {docs.programaEvento.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, programaEvento: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}>
-                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
-                  </div>
-                </div>
-
-                {/* Indicaciones musicales */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Indicaciones musicales</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Géneros, canciones específicas, restricciones</p>
-                  </div>
-                  <div className="p-4">
-                    <textarea defaultValue={docs.indicacionesMusicales}
-                      onBlur={e => saveDocs({ ...docs, indicacionesMusicales: e.target.value })}
-                      rows={4} placeholder="Ej: primer vals: 'A Thousand Years' · No reggaeton · Playlist de coctel: jazz suave..."
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
-                  </div>
-                </div>
-
-                {/* Coordinación proveedores */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Coordinación de proveedores</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Catering, decoración, fotografía, etc.</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
-                    {docs.coordinacionProveedores.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, coordinacionProveedores: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}>
-                          <input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ── DOCUMENTOS EMPRESARIALES ── */}
-            {esEmpresarial && (
-              <>
-                {/* AV Rundown */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">AV Rundown</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Agenda técnica audiovisual por sesión</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
-                    {docs.avRundown.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.avRundown.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, avRundown: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 32px" }}>
-                          <input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Sesión / actividad"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.presentador} onBlur={e => update("presentador", e.target.value)} placeholder="Ponente"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.av} onBlur={e => update("av", e.target.value)} placeholder="Pantalla, micro, video..."
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.avRundown.filter((_, j) => j !== i); saveDocs({ ...docs, avRundown: next.length ? next : [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, avRundown: [...docs.avRundown, { hora: "", actividad: "", presentador: "", av: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar sesión</button>
-                  </div>
-                </div>
-
-                {/* Requerimientos AV por ponente */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Requerimientos AV por ponente</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Necesidades técnicas individuales</p>
-                  </div>
-                  <div className="p-4 space-y-2 overflow-x-auto">
-                    <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
-                    {docs.requerimientosAV.map((row, i) => {
-                      const update = (field: string, val: string) => {
-                        const next = docs.requerimientosAV.map((r, j) => j === i ? { ...r, [field]: val } : r);
-                        saveDocs({ ...docs, requerimientosAV: next });
-                      };
-                      return (
-                        <div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr 32px" }}>
-                          <input defaultValue={row.ponente} onBlur={e => update("ponente", e.target.value)} placeholder="Nombre ponente"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.micro} onBlur={e => update("micro", e.target.value)} placeholder="Solapa / diadema / mano"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.presentacion} onBlur={e => update("presentacion", e.target.value)} placeholder="Laptop / HDMI / USB"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas"
-                            className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                          <button onClick={() => { const next = docs.requerimientosAV.filter((_, j) => j !== i); saveDocs({ ...docs, requerimientosAV: next.length ? next : [{ ponente: "", micro: "", presentacion: "", notas: "" }] }); }}
-                            className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button>
-                        </div>
-                      );
-                    })}
-                    <button onClick={() => saveDocs({ ...docs, requerimientosAV: [...docs.requerimientosAV, { ponente: "", micro: "", presentacion: "", notas: "" }] })}
-                      className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar ponente</button>
-                  </div>
-                </div>
-
-                {/* Setup técnico */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 border-b border-[#222]">
-                    <p className="text-white text-sm font-semibold">Setup técnico</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Descripción del montaje de audio y video</p>
-                  </div>
-                  <div className="p-4">
-                    <textarea defaultValue={docs.setupTecnico}
-                      onBlur={e => saveDocs({ ...docs, setupTecnico: e.target.value })}
-                      rows={5} placeholder="Describe el setup: ubicación del mixer, pantallas, proyectores, cámaras, sistema de audio line array / puntual, etc."
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
-                  </div>
-                </div>
-              </>
-            )}
-
-            <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
-          </div>
-        );
-      })()}
-
-      {/* ────── SUB-NAVEGADOR: EXTRAS ────── */}
-      {/* ────── TAB: CHECKLIST ────── */}
-      {tab === "extras" && extrasTab === "checklist" && (
-        <div className="space-y-4">
-
-          {/* ── Sección OPERACIÓN ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <div>
-                <span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Checklist de operación</span>
-                <span className="text-gray-600 text-xs ml-2">({checkDone}/{checkTotal})</span>
-              </div>
-              <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden">
-                <div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} />
-              </div>
-            </div>
-
-            {checkOp.length === 0 && (
-              <div className="px-4 py-4 border-b border-[#1a1a1a] space-y-2">
-                <p className="text-gray-500 text-xs font-medium mb-2">Aplicar plantilla:</p>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { key: "GENERAL", label: "General" },
-                    { key: "MUSICAL", label: "Musical" },
-                    { key: "CORPORATIVO", label: "Corporativo" },
-                    { key: "SOCIAL", label: "Social" },
-                  ].map(({ key, label }) => (
-                    <button key={key} onClick={() => aplicarPlantilla(key)} disabled={aplicandoPlantilla}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B] disabled:opacity-40 transition-colors">
-                      {aplicandoPlantilla ? "Aplicando..." : `+ ${label}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {checkOp.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-4 italic">Sin items de operación</p>
-            ) : (
-              checkOp.map(c => (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
-                  <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
-                    className="w-4 h-4 rounded accent-[#B3985B] shrink-0" />
-                  <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>
-                    {c.item}
-                  </span>
-                  <button onClick={() => eliminarItem(c.id)}
-                    className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
-                </div>
-              ))
-            )}
-
-            {/* Agregar item operación */}
-            <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-              <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && agregarItem()}
-                placeholder="Agregar item de operación..."
-                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                + Agregar
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between">
-            <p className="text-gray-500 text-sm">El rider técnico con accesorios está en la pestaña <span className="text-blue-400 font-medium">Rider</span>.</p>
-            <button onClick={() => { setTab("extras"); setExtrasTab("rider"); }} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 px-3 py-1.5 rounded-lg transition-colors">
-              Ir al Rider →
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ────── TAB: RIDER ────── */}
-      {tab === "extras" && extrasTab === "rider" && (
-        <div className="space-y-4">
-          {/* Header + acciones */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-semibold">Rider técnico</p>
-              <p className="text-gray-500 text-xs mt-0.5">Guía de carga del día del evento · toca un equipo para ver sus accesorios</p>
-            </div>
-            <div className="flex items-center gap-2">
-              {proyecto.equipos.length > 0 && (
-                <button onClick={generarRiderAutomatico} disabled={generandoRider}
-                  className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors">
-                  {generandoRider ? "Generando..." : "↺ Regenerar rider"}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Lista equipo + accesorios */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            {proyecto.equipos.length === 0 ? (
-              <div className="py-12 text-center">
-                <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
-                <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos para ver el rider</p>
-              </div>
-            ) : (() => {
-              const grupos: Record<string, typeof proyecto.equipos> = {};
-              for (const e of proyecto.equipos) {
-                const cat = e.equipo.categoria.nombre;
-                if (!grupos[cat]) grupos[cat] = [];
-                grupos[cat].push(e);
-              }
-              return Object.entries(grupos).map(([cat, items]) => (
-                <div key={cat}>
-                  <div className="px-4 py-1.5 bg-[#0d0d0d] border-b border-[#1a1a1a]">
-                    <span className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest">{cat}</span>
-                  </div>
-                  {items.map(e => {
-                    const accesorios = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre);
-                    const isExpanded = !!equipoExpanded[e.id];
-                    const isCargado = !!equipoCargado[e.id];
-                    const totalAcc = accesorios.length;
-                    const cargadosAcc = accesorios.filter((_, i) => !!accesorioCargado[`${e.id}_${i}`]).length;
-                    return (
-                      <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
-                        <div
-                          className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
-                          onClick={() => setEquipoExpanded(prev => ({ ...prev, [e.id]: !isExpanded }))}
-                        >
-                          <input type="checkbox" checked={isCargado}
-                            onChange={ev => { ev.stopPropagation(); setEquipoCargado(prev => ({ ...prev, [e.id]: !isCargado })); }}
-                            onClick={ev => ev.stopPropagation()}
-                            className="w-4 h-4 rounded accent-blue-500 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-sm font-medium ${isCargado ? "line-through text-gray-600" : "text-white"}`}>
-                              {e.equipo.descripcion}
-                              {e.equipo.marca && <span className="text-gray-500 font-normal"> · {e.equipo.marca}</span>}
-                            </span>
-                            <span className="ml-2 text-[#B3985B] text-xs">×{e.cantidad}</span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {cargadosAcc > 0 && <span className="text-[10px] text-blue-400">{cargadosAcc}/{totalAcc} acc</span>}
-                            <svg className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                              fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </div>
-                        </div>
-                        {isExpanded && (
-                          <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-5 py-3 space-y-1">
-                            <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios requeridos</p>
-                            {accesorios.map((acc, i) => {
-                              const key = `${e.id}_${i}`;
-                              const checked = !!accesorioCargado[key];
-                              return (
-                                <label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer">
-                                  <input type="checkbox" checked={checked}
-                                    onChange={() => setAccesorioCargado(prev => ({ ...prev, [key]: !checked }))}
-                                    className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0" />
-                                  <span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>{acc}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ));
-            })()}
-          </div>
-
-          {/* Items de rider persistidos (DB) */}
-          {(checkRider.length > 0 || true) && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                <span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">
-                  Items de bodega adicionales ({checkRider.length})
-                </span>
-              </div>
-              {checkRider.length === 0 ? (
-                <p className="text-gray-600 text-sm text-center py-5 italic">Sin items adicionales</p>
-              ) : checkRider.map(c => (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors">
-                  <input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)}
-                    className="w-4 h-4 rounded accent-blue-500 shrink-0" />
-                  <span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span>
-                  <button onClick={() => eliminarItem(c.id)}
-                    className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button>
-                </div>
-              ))}
-              <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-                <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && agregarItemRider()}
-                  placeholder="Agregar accesorio / item extra de bodega..."
-                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
-                <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()}
-                  className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                  + Agregar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ────── TAB: PROTOCOLO ────── */}
-      {tab === "extras" && extrasTab === "protocolo" && (() => {
-        type ProtocoloData = {
-          estado: string; // PENDIENTE | EN_REVISION | OK
-          responsable: string;
-          hora: string;
-          observaciones: string;
-          fotos: string[]; // base64
-        };
+        // ── Protocolo helpers ──────────────────────────────────────────
+        type ProtocoloData = { estado: string; responsable: string; hora: string; observaciones: string; fotos: string[] };
         const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
-
         async function comprimirFoto(file: File): Promise<string> {
           return new Promise(resolve => {
             const reader = new FileReader();
@@ -3637,144 +3094,326 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             reader.readAsDataURL(file);
           });
         }
-
         let salida: ProtocoloData;
         let entrada: ProtocoloData;
-        try { salida = proyecto.protocoloSalida ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloSalida) } : defaultProtocolo; }
-        catch { salida = defaultProtocolo; }
-        try { entrada = proyecto.protocoloEntrada ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloEntrada) } : defaultProtocolo; }
-        catch { entrada = defaultProtocolo; }
-
+        try { salida = proyecto.protocoloSalida ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloSalida) } : defaultProtocolo; } catch { salida = defaultProtocolo; }
+        try { entrada = proyecto.protocoloEntrada ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloEntrada) } : defaultProtocolo; } catch { entrada = defaultProtocolo; }
         const saveProtocolo = async (tipo: "salida" | "entrada", data: ProtocoloData) => {
           const field = tipo === "salida" ? "protocoloSalida" : "protocoloEntrada";
-          const res = await fetch(`/api/proyectos/${proyecto.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ [field]: JSON.stringify(data) }),
-          });
-          if (res.ok) {
-            const d = await res.json();
-            setProyecto(prev => prev ? { ...prev, [field]: d.proyecto?.[field] ?? JSON.stringify(data) } : prev);
-          }
+          const res = await fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: JSON.stringify(data) }) });
+          if (res.ok) { const d = await res.json(); setProyecto(prev => prev ? { ...prev, [field]: d.proyecto?.[field] ?? JSON.stringify(data) } : prev); }
         };
-
         const ESTADO_OPTS = [
           { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
           { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
           { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
         ];
-
         const ProtocoloPanel = ({ tipo, data }: { tipo: "salida" | "entrada"; data: ProtocoloData }) => {
           const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
           const icon = tipo === "salida" ? "🚚" : "🏠";
           const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
           const [local, setLocal] = useState<ProtocoloData>(data);
           const [saving2, setSaving2] = useState(false);
-
           const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
+            const file = e.target.files?.[0]; if (!file) return;
             const b64 = await comprimirFoto(file);
-            const next = { ...local, fotos: [...local.fotos, b64] };
-            setLocal(next);
-            await saveProtocolo(tipo, next);
-            e.target.value = "";
+            const next = { ...local, fotos: [...local.fotos, b64] }; setLocal(next); await saveProtocolo(tipo, next); e.target.value = "";
           };
-
-          const removeFoto = async (idx: number) => {
-            const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) };
-            setLocal(next);
-            await saveProtocolo(tipo, next);
-          };
-
-          const save = async () => {
-            setSaving2(true);
-            await saveProtocolo(tipo, local);
-            setSaving2(false);
-          };
-
+          const removeFoto = async (idx: number) => { const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) }; setLocal(next); await saveProtocolo(tipo, next); };
+          const save = async () => { setSaving2(true); await saveProtocolo(tipo, local); setSaving2(false); };
           return (
             <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{icon}</span>
-                  <div>
-                    <p className="text-white text-sm font-semibold">{title}</p>
-                    <p className="text-gray-500 text-xs">{desc}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {ESTADO_OPTS.map(opt => (
-                    <button key={opt.id}
-                      onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); saveProtocolo(tipo, next); }}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+                <div className="flex items-center gap-3"><span className="text-2xl">{icon}</span><div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div></div>
+                <div className="flex gap-2">{ESTADO_OPTS.map(opt => (<button key={opt.id} onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); saveProtocolo(tipo, next); }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>{opt.label}</button>))}</div>
               </div>
               <div className="p-5 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label>
-                    <input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))}
-                      placeholder="Nombre del técnico" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Hora de verificación</label>
-                    <input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))}
-                      placeholder="ej. 09:30" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label><input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))} placeholder="Nombre del técnico" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Hora de verificación</label><input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))} placeholder="ej. 09:30" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                 </div>
+                <div><label className="text-xs text-gray-400 block mb-1">Observaciones</label><textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))} rows={3} placeholder="Estado del equipo, daños, faltantes, notas..." className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Observaciones</label>
-                  <textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))}
-                    rows={3} placeholder="Estado del equipo, daños, faltantes, notas..."
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                  <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label><label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">+ Agregar foto<input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} /></label></div>
+                  {local.fotos.length > 0 && (<div className="flex flex-wrap gap-2">{local.fotos.map((foto, i) => (<div key={i} className="relative group"><a href={foto} target="_blank" rel="noopener noreferrer"><img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" /></a><button onClick={() => removeFoto(i)} className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}</div>)}
                 </div>
-                {/* Fotos */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label>
-                    <label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">
-                      + Agregar foto
-                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} />
-                    </label>
-                  </div>
-                  {local.fotos.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {local.fotos.map((foto, i) => (
-                        <div key={i} className="relative group">
-                          <a href={foto} target="_blank" rel="noopener noreferrer">
-                            <img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" />
-                          </a>
-                          <button onClick={() => removeFoto(i)}
-                            className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <button onClick={save} disabled={saving2}
-                  className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">
-                  {saving2 ? "Guardando..." : "Guardar protocolo"}
-                </button>
+                <button onClick={save} disabled={saving2} className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">{saving2 ? "Guardando..." : "Guardar protocolo"}</button>
               </div>
             </div>
           );
         };
 
-        return (
-          <div className="space-y-5">
-            <div>
-              <p className="text-white font-semibold">Protocolo de entrada / salida</p>
-              <p className="text-gray-500 text-xs mt-0.5">Verificación del estado de los equipos al salir y al regresar del evento</p>
+        // ── Evaluación helpers ──────────────────────────────────────────
+        const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
+          { key: "planeacionPrevia", label: "Preparación de la renta", desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
+          { key: "puntualidad", label: "Puntualidad en entrega", desc: "Entrega del equipo en el horario y fecha acordados con el cliente" },
+          { key: "usoEquipo", label: "Estado del equipo", desc: "Equipo entregado en buen estado, regresado completo y sin daños" },
+          { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Claridad en la coordinación, firma de responsiva y trato durante el proceso" },
+          { key: "resolucionOperativa", label: "Resolución de imprevistos", desc: "Manejo de situaciones no previstas: faltantes, cambios de última hora, daños" },
+          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos de logística, combustible y tiempo invertido" },
+          { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global de la renta: ¿la repetiríamos en las mismas condiciones?" },
+        ] : [
+          { key: "planeacionPrevia", label: "Planeación previa", desc: "Preparación técnica, logística y coordinación antes del evento" },
+          { key: "cumplimientoTecnico", label: "Cumplimiento técnico", desc: "Calidad del sonido, iluminación, video y operación en sitio" },
+          { key: "puntualidad", label: "Puntualidad", desc: "Llegada, montaje y apertura en los tiempos acordados" },
+          { key: "resolucionOperativa", label: "Resolución operativa", desc: "Manejo de imprevistos, problemas técnicos y decisiones en tiempo real" },
+          { key: "desempenoPersonal", label: "Desempeño del personal", desc: "Actitud, profesionalismo y efectividad del equipo técnico" },
+          { key: "comunicacionInterna", label: "Comunicación interna", desc: "Coordinación entre los miembros del equipo durante el evento" },
+          { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Trato, respuesta y satisfacción comunicada por el cliente" },
+          { key: "usoEquipo", label: "Uso del equipo", desc: "Cuidado, aprovechamiento y regreso en buen estado del material" },
+          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos reales vs. lo cobrado" },
+          { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global del proyecto como equipo" },
+        ];
+        const evalPromedio = evalLoaded && evaluacion.promedioCalculado != null
+          ? evaluacion.promedioCalculado
+          : CRITERIOS.map(c => evaluacion[c.key] as number).filter(v => v > 0).reduce((a, b, _, arr) => a + b / arr.length, 0) || null;
+        function colorCalif(v: number) { return v === 0 ? "text-gray-600" : v >= 9 ? "text-green-400" : v >= 7 ? "text-[#B3985B]" : v >= 5 ? "text-yellow-400" : "text-red-400"; }
+        function colorBg(v: number) { return v === 0 ? "bg-[#222]" : v >= 9 ? "bg-green-900/40 border-green-700/40" : v >= 7 ? "bg-[#B3985B]/10 border-[#B3985B]/30" : v >= 5 ? "bg-yellow-900/30 border-yellow-700/40" : "bg-red-900/30 border-red-700/40"; }
+
+        // ── Accordion helpers ──────────────────────────────────────────
+        const toggleDoc = (key: string) => setOpenDocs(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+        const DocAccordion = ({ docKey, title, desc, tag, children }: { docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode }) => {
+          const isOpen = openDocs.has(docKey);
+          return (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <button onClick={() => toggleDoc(docKey)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                <div className="flex items-center gap-2 min-w-0"><div className="min-w-0"><p className="text-white text-sm font-semibold">{title}</p>{desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}</div>{tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}</div>
+                <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              </button>
+              {isOpen && <div className="border-t border-[#222]">{children}</div>}
             </div>
-            <ProtocoloPanel tipo="salida" data={salida} />
-            <ProtocoloPanel tipo="entrada" data={entrada} />
+          );
+        };
+        const SectionDivider = ({ label }: { label: string }) => (
+          <div className="flex items-center gap-3 pt-2"><p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p><div className="flex-1 border-t border-[#1a1a1a]" /></div>
+        );
+
+        return (
+          <div className="space-y-6">
+
+            {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
+            <SectionDivider label="Rider & Checklist" />
+
+            {/* Rider técnico */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div><p className="text-white font-semibold">Rider técnico</p><p className="text-gray-500 text-xs mt-0.5">Guía de carga del día del evento · toca un equipo para ver sus accesorios</p></div>
+                {proyecto.equipos.length > 0 && (<button onClick={generarRiderAutomatico} disabled={generandoRider} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors">{generandoRider ? "Generando..." : "↺ Regenerar rider"}</button>)}
+              </div>
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                {proyecto.equipos.length === 0 ? (
+                  <div className="py-12 text-center"><p className="text-gray-600 text-sm">Sin equipos en este proyecto</p><p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos para ver el rider</p></div>
+                ) : (() => {
+                  const grupos: Record<string, typeof proyecto.equipos> = {};
+                  for (const e of proyecto.equipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
+                  return Object.entries(grupos).map(([cat, items]) => (
+                    <div key={cat}>
+                      <div className="px-4 py-1.5 bg-[#0d0d0d] border-b border-[#1a1a1a]"><span className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest">{cat}</span></div>
+                      {items.map(e => {
+                        const accesorios = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre);
+                        const isExpanded = !!equipoExpanded[e.id]; const isCargado = !!equipoCargado[e.id];
+                        const cargadosAcc = accesorios.filter((_, i) => !!accesorioCargado[`${e.id}_${i}`]).length;
+                        return (
+                          <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
+                            <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none" onClick={() => setEquipoExpanded(prev => ({ ...prev, [e.id]: !isExpanded }))}>
+                              <input type="checkbox" checked={isCargado} onChange={ev => { ev.stopPropagation(); setEquipoCargado(prev => ({ ...prev, [e.id]: !isCargado })); }} onClick={ev => ev.stopPropagation()} className="w-4 h-4 rounded accent-blue-500 shrink-0" />
+                              <div className="flex-1 min-w-0"><span className={`text-sm font-medium ${isCargado ? "line-through text-gray-600" : "text-white"}`}>{e.equipo.descripcion}{e.equipo.marca && <span className="text-gray-500 font-normal"> · {e.equipo.marca}</span>}</span><span className="ml-2 text-[#B3985B] text-xs">×{e.cantidad}</span></div>
+                              <div className="flex items-center gap-2 shrink-0">{cargadosAcc > 0 && <span className="text-[10px] text-blue-400">{cargadosAcc}/{accesorios.length} acc</span>}<svg className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
+                            </div>
+                            {isExpanded && (<div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-5 py-3 space-y-1"><p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios requeridos</p>{accesorios.map((acc, i) => { const key = `${e.id}_${i}`; const checked = !!accesorioCargado[key]; return (<label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer"><input type="checkbox" checked={checked} onChange={() => setAccesorioCargado(prev => ({ ...prev, [key]: !checked }))} className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0" /><span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>{acc}</span></label>); })}</div>)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </div>
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#1a1a1a]"><span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Items de bodega adicionales ({checkRider.length})</span></div>
+                {checkRider.length === 0 ? (<p className="text-gray-600 text-sm text-center py-5 italic">Sin items adicionales</p>) : checkRider.map(c => (<div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors"><input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)} className="w-4 h-4 rounded accent-blue-500 shrink-0" /><span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span><button onClick={() => eliminarItem(c.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button></div>))}
+                <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
+                  <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarItemRider()} placeholder="Agregar accesorio / item extra de bodega..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
+                  <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()} className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">+ Agregar</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Checklist operativo */}
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                <div><span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Checklist de operación</span><span className="text-gray-600 text-xs ml-2">({checkDone}/{checkTotal})</span></div>
+                <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden"><div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} /></div>
+              </div>
+              {checkOp.length === 0 && (<div className="px-4 py-4 border-b border-[#1a1a1a] space-y-2"><p className="text-gray-500 text-xs font-medium mb-2">Aplicar plantilla:</p><div className="flex flex-wrap gap-2">{[{ key: "GENERAL", label: "General" }, { key: "MUSICAL", label: "Musical" }, { key: "CORPORATIVO", label: "Corporativo" }, { key: "SOCIAL", label: "Social" }].map(({ key, label }) => (<button key={key} onClick={() => aplicarPlantilla(key)} disabled={aplicandoPlantilla} className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B] disabled:opacity-40 transition-colors">{aplicandoPlantilla ? "Aplicando..." : `+ ${label}`}</button>))}</div></div>)}
+              {checkOp.length === 0 ? (<p className="text-gray-600 text-sm text-center py-4 italic">Sin items de operación</p>) : (checkOp.map(c => (<div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors"><input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)} className="w-4 h-4 rounded accent-[#B3985B] shrink-0" /><span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span><button onClick={() => eliminarItem(c.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button></div>)))}
+              <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
+                <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarItem()} placeholder="Agregar item de operación..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">+ Agregar</button>
+              </div>
+            </div>
+
+            {/* Bitácora */}
+            <div className="space-y-3">
+              <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Bitácora del proyecto</p>
+                <textarea value={notaBitacora} onChange={e => setNotaBitacora(e.target.value)} rows={3} placeholder="¿Qué pasó hoy? ¿Qué aprendimos? Cada detalle que documentes hoy le ahorra horas al equipo mañana..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-2" />
+                <div className="flex justify-end"><button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">{addingNota ? "Guardando..." : "Agregar nota"}</button></div>
+              </div>
+              {proyecto.bitacora.length === 0 ? (
+                <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">Sin entradas en la bitácora</div>
+              ) : (
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  {proyecto.bitacora.map(b => (
+                    <div key={b.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.tipo === "ACCION" ? "bg-blue-900/40 text-blue-300" : b.tipo === "CAMBIO" ? "bg-yellow-900/40 text-yellow-300" : b.tipo === "ALERTA" ? "bg-red-900/40 text-red-300" : "bg-[#222] text-gray-400"}`}>{b.tipo}</span>
+                        <span className="text-gray-600 text-xs">{fmtDateTime(b.createdAt)} · {b.usuario?.name ?? "Sistema"}</span>
+                      </div>
+                      <p className="text-gray-300 text-sm leading-relaxed">{b.contenido}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
+            <SectionDivider label="Documentos del show" />
+            <div className="space-y-3">
+              <DocAccordion docKey="inputList" title="Input List" desc="Canal por canal · micrófono, instrumento, artista" tag={esMusical ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
+                  {docs.inputList.map((row, i) => { const update = (field: string, val: string) => { const next = docs.inputList.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, inputList: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "50px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.canal} onBlur={e => update("canal", e.target.value)} placeholder="#" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white text-center placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.instrumento} onBlur={e => update("instrumento", e.target.value)} placeholder="Instrumento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.microfono} onBlur={e => update("microfono", e.target.value)} placeholder="Micrófono / DI" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.inputList.filter((_, j) => j !== i); saveDocs({ ...docs, inputList: next.length ? next : [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, inputList: [...docs.inputList, { canal: String(docs.inputList.length + 1), instrumento: "", artista: "", microfono: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar canal</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" tag={esMusical ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
+                  {docs.soundcheck.map((row, i) => { const update = (field: string, val: string) => { const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, soundcheck: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="runningOrder" title="Show Schedule / Running Order" desc="Secuencia y tiempos del show" tag={esMusical ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
+                  {docs.runningOrder.map((row, i) => { const update = (field: string, val: string) => { const next = docs.runningOrder.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, runningOrder: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.acto} onBlur={e => update("acto", e.target.value)} placeholder="Acto / Momento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="45 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Cambio de set, iluminación..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.runningOrder.filter((_, j) => j !== i); saveDocs({ ...docs, runningOrder: next.length ? next : [{ hora: "", acto: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, runningOrder: [...docs.runningOrder, { hora: "", acto: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar momento</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="programaEvento" title="Programa del evento" desc="Secuencia completa de actividades" tag={esSocial ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
+                  {docs.programaEvento.map((row, i) => { const update = (field: string, val: string) => { const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, programaEvento: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="indicacionesMusicales" title="Indicaciones musicales" desc="Géneros, canciones específicas, restricciones" tag={esSocial ? "Sugerido" : undefined}>
+                <div className="p-4"><textarea defaultValue={docs.indicacionesMusicales} onBlur={e => saveDocs({ ...docs, indicacionesMusicales: e.target.value })} rows={4} placeholder="Ej: primer vals: 'A Thousand Years' · No reggaeton · Playlist de coctel: jazz suave..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
+              </DocAccordion>
+              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." tag={esSocial ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
+                  {docs.coordinacionProveedores.map((row, i) => { const update = (field: string, val: string) => { const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, coordinacionProveedores: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}><input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="avRundown" title="AV Rundown" desc="Agenda técnica audiovisual por sesión" tag={esEmpresarial ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
+                  {docs.avRundown.map((row, i) => { const update = (field: string, val: string) => { const next = docs.avRundown.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, avRundown: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Sesión / actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentador} onBlur={e => update("presentador", e.target.value)} placeholder="Ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.av} onBlur={e => update("av", e.target.value)} placeholder="Pantalla, micro, video..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.avRundown.filter((_, j) => j !== i); saveDocs({ ...docs, avRundown: next.length ? next : [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, avRundown: [...docs.avRundown, { hora: "", actividad: "", presentador: "", av: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar sesión</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="requerimientosAV" title="Requerimientos AV por ponente" desc="Necesidades técnicas individuales" tag={esEmpresarial ? "Sugerido" : undefined}>
+                <div className="p-4 space-y-2 overflow-x-auto">
+                  <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
+                  {docs.requerimientosAV.map((row, i) => { const update = (field: string, val: string) => { const next = docs.requerimientosAV.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, requerimientosAV: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.ponente} onBlur={e => update("ponente", e.target.value)} placeholder="Nombre ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.micro} onBlur={e => update("micro", e.target.value)} placeholder="Solapa / diadema / mano" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentacion} onBlur={e => update("presentacion", e.target.value)} placeholder="Laptop / HDMI / USB" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.requerimientosAV.filter((_, j) => j !== i); saveDocs({ ...docs, requerimientosAV: next.length ? next : [{ ponente: "", micro: "", presentacion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
+                  <button onClick={() => saveDocs({ ...docs, requerimientosAV: [...docs.requerimientosAV, { ponente: "", micro: "", presentacion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar ponente</button>
+                </div>
+              </DocAccordion>
+              <DocAccordion docKey="setupTecnico" title="Setup técnico" desc="Descripción del montaje de audio y video" tag={esEmpresarial ? "Sugerido" : undefined}>
+                <div className="p-4"><textarea defaultValue={docs.setupTecnico} onBlur={e => saveDocs({ ...docs, setupTecnico: e.target.value })} rows={5} placeholder="Describe el setup: ubicación del mixer, pantallas, proyectores, cámaras, sistema de audio line array / puntual, etc." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
+              </DocAccordion>
+              <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
+            </div>
+
+            {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
+            <SectionDivider label="Cierre & Evaluación" />
+
+            {esRenta && (
+              <div className="space-y-5">
+                <div><p className="text-white font-semibold">Protocolo de entrada / salida</p><p className="text-gray-500 text-xs mt-0.5">Verificación del estado de los equipos al salir y al regresar del evento</p></div>
+                <ProtocoloPanel tipo="salida" data={salida} />
+                <ProtocoloPanel tipo="entrada" data={entrada} />
+              </div>
+            )}
+
+            {/* Evaluación interna */}
+            <div className="space-y-4">
+              {evalPromedio !== null && evalPromedio > 0 && (
+                <div className="bg-[#111] border border-[#222] rounded-xl p-5 flex items-center justify-between">
+                  <div><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Promedio general</p><p className={`text-4xl font-bold ${colorCalif(evalPromedio)}`}>{evalPromedio.toFixed(1)}<span className="text-gray-600 text-lg font-normal">/10</span></p></div>
+                  <div className="text-right"><p className="text-xs text-gray-500 mb-1">{CRITERIOS.filter(c => (evaluacion[c.key] as number) > 0).length} de {CRITERIOS.length} criterios evaluados</p>{evalPromedio >= 9 && <span className="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded-full">Excelente</span>}{evalPromedio >= 7 && evalPromedio < 9 && <span className="text-xs text-[#B3985B] bg-[#B3985B]/10 px-2 py-1 rounded-full">Muy bueno</span>}{evalPromedio >= 5 && evalPromedio < 7 && <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-full">Regular</span>}{evalPromedio < 5 && evalPromedio > 0 && <span className="text-xs text-red-400 bg-red-900/30 px-2 py-1 rounded-full">Necesita mejorar</span>}</div>
+                </div>
+              )}
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#1a1a1a]"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
+                <div className="divide-y divide-[#1a1a1a]">
+                  {CRITERIOS.map(({ key, label, desc }) => {
+                    const val = evaluacion[key] as number;
+                    const comentario = evaluacion.comentariosCriterios[key] ?? "";
+                    return (
+                      <div key={key} className={`px-5 py-4 border border-transparent ${colorBg(val)}`}>
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="flex-1 min-w-0"><p className="text-sm text-white font-medium">{label}</p><p className="text-xs text-gray-500 mt-0.5">{desc}</p></div>
+                          <div className="flex items-center gap-3 shrink-0"><span className={`text-2xl font-bold w-10 text-right ${colorCalif(val)}`}>{val === 0 ? "—" : val}</span><div className="flex gap-1">{[0,1,2,3,4,5,6,7,8,9,10].map(n => (<button key={n} onClick={() => setEvaluacion(prev => ({ ...prev, [key]: n }))} className={`w-6 h-6 rounded text-xs font-bold transition-all ${val === n ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white" : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"}`}>{n === 0 ? "—" : n}</button>))}</div></div>
+                        </div>
+                        <input value={comentario} onChange={e => setEvaluacion(prev => ({ ...prev, comentariosCriterios: { ...prev.comentariosCriterios, [key]: e.target.value } }))} placeholder="Comentario (opcional)..." className="mt-2 w-full bg-[#0d0d0d]/50 border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-gray-300 placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas y observaciones</p><textarea value={evaluacion.notas} onChange={e => setEvaluacion(prev => ({ ...prev, notas: e.target.value }))} rows={4} placeholder="¿Qué funcionó bien? ¿Qué mejoraría para el siguiente evento similar? ¿Algún incidente relevante?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
+              <div className="flex justify-end"><button onClick={guardarEval} disabled={savingEval} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">{savingEval ? "Guardando..." : "Guardar evaluación"}</button></div>
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte de mejora post-evento</p><p className="text-gray-500 text-xs mt-0.5">Documenta problemas y sus soluciones por área para mejorar futuros eventos</p></div><button onClick={() => setReportePostEvento(prev => [...prev, { area: "", problema: "", causa: "", solucion: "" }])} className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:border-[#B3985B] hover:text-white px-3 py-1.5 rounded-lg transition-colors">+ Agregar área</button></div>
+                {reportePostEvento.length === 0 ? (<div className="py-8 text-center"><p className="text-gray-600 text-sm">Sin registros aún</p><p className="text-gray-700 text-xs mt-1">Agrega cada área con el problema encontrado, causa y solución aplicada</p></div>) : (
+                  <div className="divide-y divide-[#1a1a1a]">{reportePostEvento.map((item, i) => (<div key={i} className="px-5 py-4 space-y-3"><div className="flex items-center justify-between"><input value={item.area} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, area: e.target.value } : x))} placeholder="Área (ej: Audio, Iluminación, Logística...)" className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#B3985B] font-semibold text-sm focus:outline-none focus:border-[#B3985B]/60" /><button onClick={() => setReportePostEvento(prev => prev.filter((_, j) => j !== i))} className="ml-3 text-gray-600 hover:text-red-400 transition-colors text-lg shrink-0">×</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-2"><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Problema</label><textarea value={item.problema} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, problema: e.target.value } : x))} rows={3} placeholder="¿Qué falló o salió diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-red-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Causa raíz</label><textarea value={item.causa} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, causa: e.target.value } : x))} rows={3} placeholder="¿Por qué ocurrió?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Solución aplicada / propuesta</label><textarea value={item.solucion} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, solucion: e.target.value } : x))} rows={3} placeholder="¿Qué se hizo o se hará diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-green-900/60 resize-none" /></div></div></div>))}</div>
+                )}
+                {reportePostEvento.length > 0 && (<div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center gap-2 flex-wrap"><a href={`/api/proyectos/${id}/reporte-post-evento/pdf`} download className="flex items-center gap-1.5 text-xs text-gray-300 border border-[#333] hover:bg-[#222] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Descargar PDF</a>{proyecto.cliente?.telefono && (<button onClick={async () => { try { const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`, { cache: "no-store" }); const blob = await res.blob(); const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: `Reporte post-evento: ${proyecto!.nombre}` }); } else { const tel = proyecto!.cliente!.telefono!.replace(/\D/g, ""); window.open(`https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${proyecto!.cliente!.nombre}, adjunto el reporte de mejora del evento *${proyecto!.nombre}*.`)}`, "_blank"); } } catch (e) { console.error(e); } }} className="flex items-center gap-1.5 text-xs text-green-500 border border-green-800/50 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>Enviar a cliente</button>)}<button onClick={guardarReporte} disabled={savingReporte} className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">{savingReporte ? "Guardando..." : "Guardar reporte"}</button></div>)}
+              </div>
+              {(() => {
+                const linkBase = typeof window !== "undefined" ? `${window.location.origin}/encuesta/` : "/encuesta/";
+                return (
+                  <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+                    <div className="flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div>{!evalCliente && (<button onClick={generarLinkEvalCliente} disabled={generandoLink || loadingEvalCliente} className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors">{generandoLink ? "Generando..." : "Generar link"}</button>)}</div>
+                    {loadingEvalCliente && <p className="text-gray-600 text-sm">Cargando...</p>}
+                    {evalCliente && (
+                      <div className="space-y-3">
+                        <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2"><span className="text-gray-500 text-xs flex-1 truncate font-mono">{linkBase}{evalCliente.tokenAcceso}</span><button onClick={() => navigator.clipboard.writeText(`${linkBase}${evalCliente.tokenAcceso}`)} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>{proyecto.cliente.telefono && (<a href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, fue un placer trabajar contigo en ${proyecto.nombre}. Te compartimos este breve formulario para conocer tu experiencia: ${linkBase}${evalCliente.tokenAcceso}`)}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>WhatsApp</a>)}</div>
+                        <div className="flex items-center gap-3"><span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${evalCliente.respondida ? "bg-green-900/50 text-green-300" : evalCliente.enviada ? "bg-yellow-900/50 text-yellow-300" : "bg-gray-800 text-gray-500"}`}>{evalCliente.respondida ? "Respondida" : evalCliente.enviada ? "Enviada" : "Pendiente"}</span>{evalCliente.promedioCalculado && (<span className="text-sm text-white font-semibold">Promedio: <span className="text-[#B3985B]">{evalCliente.promedioCalculado.toFixed(1)}</span>/10</span>)}</div>
+                        {evalCliente.respondida && (<div className="grid grid-cols-2 gap-2 pt-1">{[{ label: "Satisfacción general", val: evalCliente.satisfaccionGeneral }, { label: "Calidad del servicio", val: evalCliente.calidadServicio }, { label: "Puntualidad", val: evalCliente.puntualidad }, { label: "Atención del equipo", val: evalCliente.atencionEquipo }, { label: "Comunicación", val: evalCliente.claridadComunicacion }, { label: "Calidad-precio", val: evalCliente.relacionCalidadPrecio }].map(({ label, val }) => val != null && (<div key={label} className="flex items-center justify-between bg-[#0d0d0d] rounded-lg px-3 py-2"><span className="text-xs text-gray-500">{label}</span><span className={`text-sm font-bold ${val >= 9 ? "text-green-400" : val >= 7 ? "text-[#B3985B]" : val >= 5 ? "text-yellow-400" : "text-red-400"}`}>{val}</span></div>))}{evalCliente.probabilidadRecontratacion != null && (<div className="flex items-center justify-between bg-[#0d0d0d] rounded-lg px-3 py-2 col-span-2"><span className="text-xs text-gray-500">Probabilidad de recontratación (NPS)</span><span className={`text-sm font-bold ${evalCliente.probabilidadRecontratacion >= 9 ? "text-green-400" : evalCliente.probabilidadRecontratacion >= 7 ? "text-[#B3985B]" : evalCliente.probabilidadRecontratacion >= 5 ? "text-yellow-400" : "text-red-400"}`}>{evalCliente.probabilidadRecontratacion}/10</span></div>)}</div>)}
+                        {evalCliente.loMejor && (<div className="bg-[#0d0d0d] rounded-lg px-3 py-2"><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Lo mejor</p><p className="text-gray-300 text-sm">{evalCliente.loMejor}</p></div>)}
+                        {evalCliente.loMejorable && (<div className="bg-[#0d0d0d] rounded-lg px-3 py-2"><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Áreas de mejora</p><p className="text-gray-300 text-sm">{evalCliente.loMejorable}</p></div>)}
+                        {evalCliente.comentarioAdicional && (<div className="bg-[#0d0d0d] rounded-lg px-3 py-2"><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentario adicional</p><p className="text-gray-300 text-sm">{evalCliente.comentarioAdicional}</p></div>)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+                <div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Score foto / video</p><p className="text-gray-500 text-xs mt-0.5">Calidad del contenido fotográfico y/o audiovisual generado durante el evento</p></div>
+                <div className="flex items-center gap-4"><span className={`text-3xl font-bold w-10 ${scoreFotoVideo === 0 ? "text-gray-600" : scoreFotoVideo >= 9 ? "text-green-400" : scoreFotoVideo >= 7 ? "text-[#B3985B]" : scoreFotoVideo >= 5 ? "text-yellow-400" : "text-red-400"}`}>{scoreFotoVideo === 0 ? "—" : scoreFotoVideo}</span><div className="flex gap-1 flex-wrap">{[0,1,2,3,4,5,6,7,8,9,10].map(n => (<button key={n} onClick={() => setScoreFotoVideo(n)} className={`w-7 h-7 rounded text-xs font-bold transition-all ${scoreFotoVideo === n ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white" : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"}`}>{n === 0 ? "—" : n}</button>))}</div></div>
+                <div><label className="text-xs text-gray-500 mb-1 block">Recomendación para próximos eventos</label><textarea value={recomendacionFotoVideo} onChange={e => setRecomendacionFotoVideo(e.target.value)} rows={3} placeholder="Fotógrafo recomendado, estilo, indicaciones técnicas..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
+                <div className="flex justify-end"><button onClick={guardarScore} disabled={savingScore} className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg transition-colors">{savingScore ? "Guardando..." : "Guardar score"}</button></div>
+              </div>
+            </div>
+
           </div>
         );
       })()}
+
 
       {/* ────── TAB: FINANZAS ────── */}
       {tab === "finanzas" && (() => {
@@ -4661,438 +4300,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
       )}
-
-      {/* ────── TAB: BITÁCORA ────── */}
-      {tab === "extras" && extrasTab === "bitacora" && (
-        <div className="space-y-3">
-          {/* Agregar nota */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <textarea value={notaBitacora} onChange={e => setNotaBitacora(e.target.value)}
-              rows={3} placeholder="¿Qué pasó hoy? ¿Qué aprendimos? Cada detalle que documentes hoy le ahorra horas al equipo mañana..."
-              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-2" />
-            <div className="flex justify-end">
-              <button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                {addingNota ? "Guardando..." : "Agregar nota"}
-              </button>
-            </div>
-          </div>
-
-          {/* Historial */}
-          {proyecto.bitacora.length === 0 ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">
-              Sin entradas en la bitácora
-            </div>
-          ) : (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              {proyecto.bitacora.map(b => (
-                <div key={b.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      b.tipo === "ACCION" ? "bg-blue-900/40 text-blue-300" :
-                      b.tipo === "CAMBIO" ? "bg-yellow-900/40 text-yellow-300" :
-                      b.tipo === "ALERTA" ? "bg-red-900/40 text-red-300" :
-                      "bg-[#222] text-gray-400"
-                    }`}>{b.tipo}</span>
-                    <span className="text-gray-600 text-xs">{fmtDateTime(b.createdAt)} · {b.usuario?.name ?? "Sistema"}</span>
-                  </div>
-                  <p className="text-gray-300 text-sm leading-relaxed">{b.contenido}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ────── TAB: EVALUACIÓN ────── */}
-      {tab === "extras" && extrasTab === "evaluacion" && (() => {
-        const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-        const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
-          { key: "planeacionPrevia",    label: "Preparación de la renta",   desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
-          { key: "puntualidad",         label: "Puntualidad en entrega",     desc: "Entrega del equipo en el horario y fecha acordados con el cliente" },
-          { key: "usoEquipo",           label: "Estado del equipo",          desc: "Equipo entregado en buen estado, regresado completo y sin daños" },
-          { key: "comunicacionCliente", label: "Comunicación con cliente",   desc: "Claridad en la coordinación, firma de responsiva y trato durante el proceso" },
-          { key: "resolucionOperativa", label: "Resolución de imprevistos",  desc: "Manejo de situaciones no previstas: faltantes, cambios de última hora, daños" },
-          { key: "rentabilidadReal",    label: "Rentabilidad real",          desc: "Resultó rentable considerando costos de logística, combustible y tiempo invertido" },
-          { key: "resultadoGeneral",    label: "Resultado general",          desc: "Impresión global de la renta: ¿la repetiríamos en las mismas condiciones?" },
-        ] : [
-          { key: "planeacionPrevia",    label: "Planeación previa",         desc: "Preparación técnica, logística y coordinación antes del evento" },
-          { key: "cumplimientoTecnico", label: "Cumplimiento técnico",      desc: "Calidad del sonido, iluminación, video y operación en sitio" },
-          { key: "puntualidad",         label: "Puntualidad",               desc: "Llegada, montaje y apertura en los tiempos acordados" },
-          { key: "resolucionOperativa", label: "Resolución operativa",      desc: "Manejo de imprevistos, problemas técnicos y decisiones en tiempo real" },
-          { key: "desempenoPersonal",   label: "Desempeño del personal",    desc: "Actitud, profesionalismo y efectividad del equipo técnico" },
-          { key: "comunicacionInterna", label: "Comunicación interna",      desc: "Coordinación entre los miembros del equipo durante el evento" },
-          { key: "comunicacionCliente", label: "Comunicación con cliente",  desc: "Trato, respuesta y satisfacción comunicada por el cliente" },
-          { key: "usoEquipo",           label: "Uso del equipo",            desc: "Cuidado, aprovechamiento y regreso en buen estado del material" },
-          { key: "rentabilidadReal",    label: "Rentabilidad real",         desc: "Resultó rentable considerando costos reales vs. lo cobrado" },
-          { key: "resultadoGeneral",    label: "Resultado general",         desc: "Impresión global del proyecto como equipo" },
-        ];
-
-        const promedio = evalLoaded && evaluacion.promedioCalculado != null
-          ? evaluacion.promedioCalculado
-          : CRITERIOS.map(c => evaluacion[c.key] as number).filter(v => v > 0).reduce((a, b, _, arr) => a + b / arr.length, 0) || null;
-
-        function colorCalif(v: number) {
-          if (v === 0) return "text-gray-600";
-          if (v >= 9) return "text-green-400";
-          if (v >= 7) return "text-[#B3985B]";
-          if (v >= 5) return "text-yellow-400";
-          return "text-red-400";
-        }
-        function colorBg(v: number) {
-          if (v === 0) return "bg-[#222]";
-          if (v >= 9) return "bg-green-900/40 border-green-700/40";
-          if (v >= 7) return "bg-[#B3985B]/10 border-[#B3985B]/30";
-          if (v >= 5) return "bg-yellow-900/30 border-yellow-700/40";
-          return "bg-red-900/30 border-red-700/40";
-        }
-
-        return (
-          <div className="space-y-4">
-            {/* Promedio global */}
-            {promedio !== null && promedio > 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Promedio general</p>
-                  <p className={`text-4xl font-bold ${colorCalif(promedio)}`}>{promedio.toFixed(1)}<span className="text-gray-600 text-lg font-normal">/10</span></p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500 mb-1">
-                    {CRITERIOS.filter(c => (evaluacion[c.key] as number) > 0).length} de {CRITERIOS.length} criterios evaluados
-                  </p>
-                  {promedio >= 9 && <span className="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded-full">Excelente</span>}
-                  {promedio >= 7 && promedio < 9 && <span className="text-xs text-[#B3985B] bg-[#B3985B]/10 px-2 py-1 rounded-full">Muy bueno</span>}
-                  {promedio >= 5 && promedio < 7 && <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-full">Regular</span>}
-                  {promedio < 5 && promedio > 0 && <span className="text-xs text-red-400 bg-red-900/30 px-2 py-1 rounded-full">Necesita mejorar</span>}
-                </div>
-              </div>
-            )}
-
-            {/* Criterios */}
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#1a1a1a]">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación</p>
-                <p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p>
-              </div>
-              <div className="divide-y divide-[#1a1a1a]">
-                {CRITERIOS.map(({ key, label, desc }) => {
-                  const val = evaluacion[key] as number;
-                  const comentario = evaluacion.comentariosCriterios[key] ?? "";
-                  return (
-                    <div key={key} className={`px-5 py-4 border border-transparent ${colorBg(val)}`}>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-white font-medium">{label}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className={`text-2xl font-bold w-10 text-right ${colorCalif(val)}`}>
-                            {val === 0 ? "—" : val}
-                          </span>
-                          <div className="flex gap-1">
-                            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                              <button key={n} onClick={() => setEvaluacion(prev => ({ ...prev, [key]: n }))}
-                                className={`w-6 h-6 rounded text-xs font-bold transition-all ${
-                                  val === n
-                                    ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white"
-                                    : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"
-                                }`}>
-                                {n === 0 ? "—" : n}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      {/* Comentario por criterio */}
-                      <input
-                        value={comentario}
-                        onChange={e => setEvaluacion(prev => ({
-                          ...prev,
-                          comentariosCriterios: { ...prev.comentariosCriterios, [key]: e.target.value },
-                        }))}
-                        placeholder="Comentario (opcional)..."
-                        className="mt-2 w-full bg-[#0d0d0d]/50 border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-gray-300 placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Notas */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas y observaciones</p>
-              <textarea
-                value={evaluacion.notas}
-                onChange={e => setEvaluacion(prev => ({ ...prev, notas: e.target.value }))}
-                rows={4}
-                placeholder="¿Qué funcionó bien? ¿Qué mejoraría para el siguiente evento similar? ¿Algún incidente relevante?"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none"
-              />
-            </div>
-
-            {/* Guardar evaluación */}
-            <div className="flex justify-end">
-              <button onClick={guardarEval} disabled={savingEval}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">
-                {savingEval ? "Guardando..." : "Guardar evaluación"}
-              </button>
-            </div>
-
-            {/* ── Reporte post-evento ── */}
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte de mejora post-evento</p>
-                  <p className="text-gray-500 text-xs mt-0.5">Documenta problemas y sus soluciones por área para mejorar futuros eventos</p>
-                </div>
-                <button
-                  onClick={() => setReportePostEvento(prev => [...prev, { area: "", problema: "", causa: "", solucion: "" }])}
-                  className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:border-[#B3985B] hover:text-white px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  + Agregar área
-                </button>
-              </div>
-
-              {reportePostEvento.length === 0 ? (
-                <div className="py-8 text-center">
-                  <p className="text-gray-600 text-sm">Sin registros aún</p>
-                  <p className="text-gray-700 text-xs mt-1">Agrega cada área con el problema encontrado, causa y solución aplicada</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-[#1a1a1a]">
-                  {reportePostEvento.map((item, i) => (
-                    <div key={i} className="px-5 py-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <input
-                          value={item.area}
-                          onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, area: e.target.value } : x))}
-                          placeholder="Área (ej: Audio, Iluminación, Logística...)"
-                          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#B3985B] font-semibold text-sm focus:outline-none focus:border-[#B3985B]/60"
-                        />
-                        <button onClick={() => setReportePostEvento(prev => prev.filter((_, j) => j !== i))}
-                          className="ml-3 text-gray-600 hover:text-red-400 transition-colors text-lg shrink-0">×</button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                        <div>
-                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Problema</label>
-                          <textarea
-                            value={item.problema}
-                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, problema: e.target.value } : x))}
-                            rows={3} placeholder="¿Qué falló o salió diferente?"
-                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-red-900/60 resize-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Causa raíz</label>
-                          <textarea
-                            value={item.causa}
-                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, causa: e.target.value } : x))}
-                            rows={3} placeholder="¿Por qué ocurrió?"
-                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-900/60 resize-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Solución aplicada / propuesta</label>
-                          <textarea
-                            value={item.solucion}
-                            onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, solucion: e.target.value } : x))}
-                            rows={3} placeholder="¿Qué se hizo o se hará diferente?"
-                            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-green-900/60 resize-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {reportePostEvento.length > 0 && (
-                <div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center gap-2 flex-wrap">
-                  {/* Descargar PDF */}
-                  <a
-                    href={`/api/proyectos/${id}/reporte-post-evento/pdf`}
-                    download
-                    className="flex items-center gap-1.5 text-xs text-gray-300 border border-[#333] hover:bg-[#222] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descargar PDF
-                  </a>
-                  {/* WhatsApp — compartir PDF via Web Share API */}
-                  {proyecto.cliente?.telefono && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`, { cache: "no-store" });
-                          const blob = await res.blob();
-                          const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" });
-                          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            await navigator.share({ files: [file], title: `Reporte post-evento: ${proyecto!.nombre}` });
-                          } else {
-                            // Fallback: abrir WhatsApp con texto si Web Share no disponible
-                            const tel = proyecto!.cliente!.telefono!.replace(/\D/g, "");
-                            window.open(`https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${proyecto!.cliente!.nombre}, adjunto el reporte de mejora del evento *${proyecto!.nombre}*.`)}`, "_blank");
-                          }
-                        } catch (e) {
-                          console.error(e);
-                        }
-                      }}
-                      className="flex items-center gap-1.5 text-xs text-green-500 border border-green-800/50 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-                      Enviar a cliente
-                    </button>
-                  )}
-                  <button onClick={guardarReporte} disabled={savingReporte}
-                    className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">
-                    {savingReporte ? "Guardando..." : "Guardar reporte"}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Evaluación cliente */}
-            {(() => {
-              const linkBase = typeof window !== "undefined" ? `${window.location.origin}/encuesta/` : "/encuesta/";
-              return (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p>
-                      <p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p>
-                    </div>
-                    {!evalCliente && (
-                      <button onClick={generarLinkEvalCliente} disabled={generandoLink || loadingEvalCliente}
-                        className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors">
-                        {generandoLink ? "Generando..." : "Generar link"}
-                      </button>
-                    )}
-                  </div>
-
-                  {loadingEvalCliente && <p className="text-gray-600 text-sm">Cargando...</p>}
-
-                  {evalCliente && (
-                    <div className="space-y-3">
-                      {/* Link */}
-                      <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-                        <span className="text-gray-500 text-xs flex-1 truncate font-mono">{linkBase}{evalCliente.tokenAcceso}</span>
-                        <button onClick={() => navigator.clipboard.writeText(`${linkBase}${evalCliente.tokenAcceso}`)}
-                          className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
-                        {proyecto.cliente.telefono && (
-                          <a
-                            href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, fue un placer trabajar contigo en ${proyecto.nombre}. Te compartimos este breve formulario para conocer tu experiencia: ${linkBase}${evalCliente.tokenAcceso}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
-                          >
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-                            WhatsApp
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${evalCliente.respondida ? "bg-green-900/50 text-green-300" : evalCliente.enviada ? "bg-yellow-900/50 text-yellow-300" : "bg-gray-800 text-gray-500"}`}>
-                          {evalCliente.respondida ? "Respondida" : evalCliente.enviada ? "Enviada" : "Pendiente"}
-                        </span>
-                        {evalCliente.promedioCalculado && (
-                          <span className="text-sm text-white font-semibold">
-                            Promedio: <span className="text-[#B3985B]">{evalCliente.promedioCalculado.toFixed(1)}</span>/10
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Resultados si ya respondió */}
-                      {evalCliente.respondida && (
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          {[
-                            { label: "Satisfacción general", val: evalCliente.satisfaccionGeneral },
-                            { label: "Calidad del servicio", val: evalCliente.calidadServicio },
-                            { label: "Puntualidad", val: evalCliente.puntualidad },
-                            { label: "Atención del equipo", val: evalCliente.atencionEquipo },
-                            { label: "Comunicación", val: evalCliente.claridadComunicacion },
-                            { label: "Calidad-precio", val: evalCliente.relacionCalidadPrecio },
-                          ].map(({ label, val }) => val != null && (
-                            <div key={label} className="flex items-center justify-between bg-[#0d0d0d] rounded-lg px-3 py-2">
-                              <span className="text-xs text-gray-500">{label}</span>
-                              <span className={`text-sm font-bold ${val >= 9 ? "text-green-400" : val >= 7 ? "text-[#B3985B]" : val >= 5 ? "text-yellow-400" : "text-red-400"}`}>{val}</span>
-                            </div>
-                          ))}
-                          {evalCliente.probabilidadRecontratacion != null && (
-                            <div className="flex items-center justify-between bg-[#0d0d0d] rounded-lg px-3 py-2 col-span-2">
-                              <span className="text-xs text-gray-500">Probabilidad de recontratación (NPS)</span>
-                              <span className={`text-sm font-bold ${evalCliente.probabilidadRecontratacion >= 9 ? "text-green-400" : evalCliente.probabilidadRecontratacion >= 7 ? "text-[#B3985B]" : evalCliente.probabilidadRecontratacion >= 5 ? "text-yellow-400" : "text-red-400"}`}>{evalCliente.probabilidadRecontratacion}/10</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {evalCliente.loMejor && (
-                        <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Lo mejor</p>
-                          <p className="text-gray-300 text-sm">{evalCliente.loMejor}</p>
-                        </div>
-                      )}
-                      {evalCliente.loMejorable && (
-                        <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Áreas de mejora</p>
-                          <p className="text-gray-300 text-sm">{evalCliente.loMejorable}</p>
-                        </div>
-                      )}
-                      {evalCliente.comentarioAdicional && (
-                        <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentario adicional</p>
-                          <p className="text-gray-300 text-sm">{evalCliente.comentarioAdicional}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Score Foto / Video */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
-              <div>
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Score foto / video</p>
-                <p className="text-gray-500 text-xs mt-0.5">Calidad del contenido fotográfico y/o audiovisual generado durante el evento</p>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`text-3xl font-bold w-10 ${scoreFotoVideo === 0 ? "text-gray-600" : scoreFotoVideo >= 9 ? "text-green-400" : scoreFotoVideo >= 7 ? "text-[#B3985B]" : scoreFotoVideo >= 5 ? "text-yellow-400" : "text-red-400"}`}>
-                  {scoreFotoVideo === 0 ? "—" : scoreFotoVideo}
-                </span>
-                <div className="flex gap-1 flex-wrap">
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                    <button key={n} onClick={() => setScoreFotoVideo(n)}
-                      className={`w-7 h-7 rounded text-xs font-bold transition-all ${
-                        scoreFotoVideo === n
-                          ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white"
-                          : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"
-                      }`}>
-                      {n === 0 ? "—" : n}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Recomendación para próximos eventos</label>
-                <textarea
-                  value={recomendacionFotoVideo}
-                  onChange={e => setRecomendacionFotoVideo(e.target.value)}
-                  rows={3}
-                  placeholder="Fotógrafo recomendado, estilo, indicaciones técnicas..."
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none"
-                />
-              </div>
-              <div className="flex justify-end">
-                <button onClick={guardarScore} disabled={savingScore}
-                  className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg transition-colors">
-                  {savingScore ? "Guardando..." : "Guardar score"}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* ── Zona de peligro ── */}
       <div className="border border-red-900/40 rounded-xl p-4">
         <p className="text-xs text-red-500/70 uppercase tracking-wider font-semibold mb-3">Zona de peligro</p>

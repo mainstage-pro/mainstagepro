@@ -15,6 +15,7 @@ export async function GET() {
       trato: { select: { tipoEvento: true } },
     },
     orderBy: { createdAt: "desc" },
+    take: 500,
   });
 
   return NextResponse.json({ cotizaciones });

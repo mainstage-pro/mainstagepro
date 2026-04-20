@@ -55,6 +55,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "tradeCalificado", "tradeNivel",
     // Family & Friends
     "familyAndFriends",
+    // Render
+    "realizarRender",
   ];
 
   const data: Record<string, unknown> = {};
@@ -66,7 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseFloat(body[key]);
       } else if (key === "asistentesEstimados" && body[key] !== null && body[key] !== "") {
         data[key] = parseInt(body[key]);
-      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends") {
+      } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends" || key === "realizarRender") {
         data[key] = Boolean(body[key]);
       } else if (key === "tradeNivel") {
         data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : null;

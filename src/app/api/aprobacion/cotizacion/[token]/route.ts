@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isTokenExpired } from "@/lib/tokens";
 
 // GET: datos de la cotización para mostrar en la página pública
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`aprobacion:get:${ip}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
+
   const { token } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Link no válido o expirado" }, { status: 410 });
 
   const cot = await prisma.cotizacion.findUnique({
     where: { aprobacionToken: token },
@@ -21,9 +29,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
 // POST: el cliente aprueba
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`aprobacion:post:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Demasiadas solicitudes" }, { status: 429 });
+  }
+
   const { token } = await params;
+  if (isTokenExpired(token)) return NextResponse.json({ error: "Link expirado" }, { status: 410 });
+
   const body = await req.json().catch(() => ({}));
   const nombre = (body.nombre as string | undefined)?.trim() || null;
+  if (!nombre || nombre.length < 2 || nombre.length > 100) {
+    return NextResponse.json({ error: "Nombre requerido (2–100 caracteres)" }, { status: 400 });
+  }
 
   const cot = await prisma.cotizacion.findUnique({
     where: { aprobacionToken: token },

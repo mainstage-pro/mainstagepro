@@ -1,8 +1,25 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
+import { timingSafeEqual } from "crypto";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // Require SEED_SECRET to prevent unauthorized initialization
+  const seedSecret = process.env.SEED_SECRET;
+  if (!seedSecret) return NextResponse.json({ error: "No configurado" }, { status: 403 });
+
+  const { secret, adminPassword } = await req.json().catch(() => ({}));
+  const secretBuf = Buffer.from(secret ?? "");
+  const expectedBuf = Buffer.from(seedSecret);
+  const secretsMatch =
+    secretBuf.length === expectedBuf.length &&
+    timingSafeEqual(secretBuf, expectedBuf);
+  if (!secretsMatch) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  if (!adminPassword || typeof adminPassword !== "string" || adminPassword.length < 8) {
+    return NextResponse.json({ error: "adminPassword requerido (mínimo 8 caracteres)" }, { status: 400 });
+  }
+
   try {
     // Verificar si ya hay usuarios
     const existingUser = await prisma.user.findFirst();
@@ -11,7 +28,7 @@ export async function POST() {
     }
 
     // Crear usuario administrador
-    const hashedPassword = await hashPassword("mainstage2026");
+    const hashedPassword = await hashPassword(adminPassword);
     await prisma.user.create({
       data: {
         name: "Mauricio Hernández",
@@ -212,10 +229,6 @@ export async function POST() {
     return NextResponse.json({
       ok: true,
       message: "Sistema inicializado correctamente",
-      credenciales: {
-        email: "mauricio@mainstagepro.mx",
-        password: "mainstage2026",
-      },
     });
   } catch (error) {
     console.error("Seed error:", error);

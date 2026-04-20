@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST() {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   // 1. Fetch all técnicos ordered by createdAt (oldest first = keeper preference)
   const todos = await prisma.tecnico.findMany({
     include: {

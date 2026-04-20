@@ -4,9 +4,10 @@ import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(
-  process.env.NEXTAUTH_SECRET ?? "mainstage-secret-fallback"
-);
+if (!process.env.NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET env var is not set");
+}
+const SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -22,7 +23,7 @@ export async function verifyPassword(
 export async function createToken(userId: string, role: string): Promise<string> {
   return new SignJWT({ userId, role })
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("7d")
+    .setExpirationTime("24h")
     .sign(SECRET);
 }
 

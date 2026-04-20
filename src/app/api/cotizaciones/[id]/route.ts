@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cliente: true,
-      trato: { select: { id: true, tipoEvento: true, etapa: true, tradeCalificado: true, familyAndFriends: true } },
+      trato: { select: { id: true, tipoEvento: true, etapa: true, tradeCalificado: true, familyAndFriends: true, realizarRender: true, ideasReferencias: true, notas: true, lugarEstimado: true } },
       creadaPor: { select: { name: true } },
       lineas: {
         orderBy: { orden: "asc" },

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import crypto from "crypto";
+import { createExpiringToken } from "@/lib/tokens";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const token = crypto.randomBytes(24).toString("hex");
+  const token = createExpiringToken(365);
 
   const proyecto = await prisma.proyecto.update({
     where: { id },

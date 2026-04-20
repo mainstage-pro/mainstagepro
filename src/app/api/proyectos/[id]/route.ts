@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
+import { createExpiringToken } from "@/lib/tokens";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -151,7 +152,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
     const evalExistente = await prisma.evaluacionCliente.findUnique({ where: { proyectoId: id } });
     if (!evalExistente) {
-      await prisma.evaluacionCliente.create({ data: { proyectoId: id } });
+      await prisma.evaluacionCliente.create({ data: { proyectoId: id, tokenAcceso: createExpiringToken(180) } });
     }
   }
 
