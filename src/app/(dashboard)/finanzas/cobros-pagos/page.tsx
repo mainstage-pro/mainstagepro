@@ -1051,15 +1051,21 @@ export default function CobrosPagosPage() {
                     {!nuevoForm.clienteId && (
                       <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-48 overflow-y-auto">
                         {clientes
-                          .filter(c => !clienteQuery || (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase()))
+                          .filter(c => {
+                            if (!clienteQuery) return true;
+                            const q = clienteQuery.toLowerCase();
+                            return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
+                          })
                           .map(c => (
                             <button key={c.id}
-                              onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : "")); }}
-                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-b border-[#2a2a2a] last:border-0">
-                              {c.nombre}{c.empresa ? <span className="text-gray-600 text-xs"> · {c.empresa}</span> : null}
+                              onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.empresa ? `${c.empresa} · ${c.nombre}` : c.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                              {c.empresa
+                                ? <><p className="text-sm text-white">{c.empresa}</p><p className="text-xs text-gray-500">{c.nombre}</p></>
+                                : <p className="text-sm text-gray-300">{c.nombre}</p>}
                             </button>
                           ))}
-                        {clientes.filter(c => !clienteQuery || (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase())).length === 0 && (
+                        {clientes.filter(c => { const q = clienteQuery.toLowerCase(); return !clienteQuery || c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q); }).length === 0 && (
                           <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
                         )}
                       </div>
@@ -1104,12 +1110,18 @@ export default function CobrosPagosPage() {
                           — Sin proveedor —
                         </button>
                         {proveedores
-                          .filter(p => !proveedorQuery || p.nombre.toLowerCase().includes(proveedorQuery.toLowerCase()))
+                          .filter(p => {
+                            if (!proveedorQuery) return true;
+                            const q = proveedorQuery.toLowerCase();
+                            return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
+                          })
                           .map(p => (
                             <button key={p.id}
-                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, acreedorNombre: "" })); setProveedorQuery(p.nombre + (p.empresa ? ` · ${p.empresa}` : "")); }}
-                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-b border-[#2a2a2a] last:border-0">
-                              {p.nombre}{p.empresa ? <span className="text-gray-600 text-xs"> · {p.empresa}</span> : null}
+                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, acreedorNombre: "" })); setProveedorQuery(p.empresa ? `${p.empresa} · ${p.nombre}` : p.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                              {p.empresa
+                                ? <><p className="text-sm text-white">{p.empresa}</p><p className="text-xs text-gray-500">{p.nombre}</p></>
+                                : <p className="text-sm text-gray-300">{p.nombre}</p>}
                             </button>
                           ))}
                       </div>
