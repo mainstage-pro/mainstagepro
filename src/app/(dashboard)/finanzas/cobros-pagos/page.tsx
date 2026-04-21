@@ -190,6 +190,10 @@ export default function CobrosPagosPage() {
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
   const [clienteQuery, setClienteQuery] = useState("");
+  // Recibos de técnicos
+  const [showReciboModal, setShowReciboModal] = useState(false);
+  const [reciboGrupos, setReciboGrupos] = useState<Array<{ key: string; nombre: string; items: CxPItem[] }>>([]);
+  const [reciboSeleccionados, setReciboSeleccionados] = useState<Record<string, Set<string>>>({});
 
   async function cargarProgramacion() {
     if (semanasOp.length > 0) return;
@@ -368,6 +372,40 @@ export default function CobrosPagosPage() {
     setAnulando(null);
   }
 
+  function openReciboModal() {
+    const tecnicos = cxp.filter(
+      c => (c.tipoAcreedor === "TECNICO" || c.tipoAcreedor === "PERSONAL_INTERNO") && c.estado !== "LIQUIDADO"
+    );
+    const gruposMap: Record<string, { nombre: string; items: CxPItem[] }> = {};
+    for (const c of tecnicos) {
+      const key = c.tecnico?.id ?? `nombre:${c.tecnico?.nombre ?? c.concepto}`;
+      if (!gruposMap[key]) {
+        gruposMap[key] = { nombre: c.tecnico?.nombre ?? "Técnico sin nombre", items: [] };
+      }
+      gruposMap[key].items.push(c);
+    }
+    const grupos = Object.entries(gruposMap).map(([key, g]) => ({ key, ...g }));
+    const sel: Record<string, Set<string>> = {};
+    for (const g of grupos) sel[g.key] = new Set(g.items.map(i => i.id));
+    setReciboGrupos(grupos);
+    setReciboSeleccionados(sel);
+    setShowReciboModal(true);
+  }
+
+  function toggleReciboItem(grupoKey: string, itemId: string) {
+    setReciboSeleccionados(prev => {
+      const set = new Set(prev[grupoKey] ?? []);
+      if (set.has(itemId)) set.delete(itemId); else set.add(itemId);
+      return { ...prev, [grupoKey]: set };
+    });
+  }
+
+  function generarReciboTecnico(grupoKey: string) {
+    const ids = Array.from(reciboSeleccionados[grupoKey] ?? []);
+    if (ids.length === 0) return;
+    window.open(`/api/recibos/tecnico?ids=${ids.join(",")}`, "_blank");
+  }
+
   const semanaActual = semanasOp[semanaIdx];
   const ESTADO_SEM: Record<string, string> = { PENDIENTE: "text-yellow-400", LIQUIDADO: "text-green-400", VENCIDO: "text-red-400", PARCIAL: "text-blue-400" };
 
@@ -540,11 +578,18 @@ export default function CobrosPagosPage() {
           <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
           <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
         </div>
-        <button
-          onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setClienteQuery(""); setShowNuevo(true); }}
-          className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
-          + Nuevo registro
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={openReciboModal}
+            className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
+            Recibos técnicos
+          </button>
+          <button
+            onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setClienteQuery(""); setShowNuevo(true); }}
+            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+            + Nuevo registro
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -998,6 +1043,104 @@ export default function CobrosPagosPage() {
                 className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
                 {guardandoNuevo ? "Guardando…" : "Guardar"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal recibos de técnicos ── */}
+      {showReciboModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowReciboModal(false); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
+              <div>
+                <h3 className="text-white font-semibold text-base">Recibos de Técnicos</h3>
+                <p className="text-gray-500 text-xs mt-0.5">Selecciona los conceptos a incluir en cada recibo</p>
+              </div>
+              <button onClick={() => setShowReciboModal(false)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
+              {reciboGrupos.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-600 text-sm">Sin pagos pendientes a técnicos</p>
+                  <p className="text-gray-700 text-xs mt-1">Los pagos con estado Pendiente o Parcial aparecerán aquí</p>
+                </div>
+              ) : reciboGrupos.map(grupo => {
+                const seleccionados = reciboSeleccionados[grupo.key] ?? new Set();
+                const totalSeleccionado = grupo.items
+                  .filter(i => seleccionados.has(i.id))
+                  .reduce((s, i) => s + i.monto, 0);
+                const todosSeleccionados = grupo.items.every(i => seleccionados.has(i.id));
+                return (
+                  <div key={grupo.key} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                    {/* Encabezado técnico */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e]">
+                      <div className="flex items-center gap-3">
+                        <input type="checkbox" checked={todosSeleccionados}
+                          onChange={() => {
+                            setReciboSeleccionados(prev => ({
+                              ...prev,
+                              [grupo.key]: todosSeleccionados
+                                ? new Set()
+                                : new Set(grupo.items.map(i => i.id)),
+                            }));
+                          }}
+                          className="w-4 h-4 accent-[#B3985B] cursor-pointer" />
+                        <div>
+                          <p className="text-white text-sm font-semibold">{grupo.nombre}</p>
+                          <p className="text-gray-600 text-[10px]">{grupo.items.length} concepto{grupo.items.length !== 1 ? "s" : ""} pendiente{grupo.items.length !== 1 ? "s" : ""}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[#B3985B] text-sm font-semibold">{formatCurrency(totalSeleccionado)}</p>
+                        <p className="text-gray-600 text-[10px]">{seleccionados.size} seleccionado{seleccionados.size !== 1 ? "s" : ""}</p>
+                      </div>
+                    </div>
+
+                    {/* Conceptos */}
+                    <div className="divide-y divide-[#1a1a1a]">
+                      {grupo.items.map(item => (
+                        <label key={item.id} className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.02] transition-colors">
+                          <input type="checkbox"
+                            checked={seleccionados.has(item.id)}
+                            onChange={() => toggleReciboItem(grupo.key, item.id)}
+                            className="w-4 h-4 accent-[#B3985B] cursor-pointer mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-200 text-xs leading-snug">{item.concepto}</p>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {item.proyecto && (
+                                <span className="text-gray-600 text-[10px]">{item.proyecto.numeroProyecto} · {item.proyecto.nombre}</span>
+                              )}
+                              <span className={`text-[10px] ${item.estado !== "LIQUIDADO" && new Date(item.fechaCompromiso) < hoy ? "text-red-400" : "text-gray-600"}`}>
+                                {fmtDate(item.fechaCompromiso)}
+                              </span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${ESTADO_COLORS[item.estado] ?? "bg-gray-800 text-gray-400"}`}>
+                                {item.estado}
+                              </span>
+                            </div>
+                          </div>
+                          <p className="text-white text-xs font-semibold shrink-0">{formatCurrency(item.monto)}</p>
+                        </label>
+                      ))}
+                    </div>
+
+                    {/* Botón generar */}
+                    <div className="px-4 py-3 border-t border-[#1e1e1e]">
+                      <button
+                        onClick={() => generarReciboTecnico(grupo.key)}
+                        disabled={seleccionados.size === 0}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Generar recibo · {formatCurrency(totalSeleccionado)}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
