@@ -138,7 +138,7 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     djHeadline: "CDJs, mixer y booth listos antes del soundcheck — la misma cadena que los DJs exigen en su rider.",
     videoHeadline: "Pantallas posicionadas correctamente, señal estable y brillo adecuado para el espacio.",
     whyPoints: [
-      { icon: "star",   title: "Equipo 100% propio", body: "Todo el inventario es nuestro. Nada rentado, nada subcontratado. Control total sobre lo que te entregamos." },
+      { icon: "star",   title: "Tu producción en manos expertas", body: "Cada elemento de tu evento es operado por nuestro equipo técnico — personas que conocen el equipo y saben cómo responder en vivo." },
       { icon: "people", title: "Operadores con experiencia real", body: "Nuestros ingenieros conocen el equipo porque lo usan en cada evento. No improvisamos en vivo." },
       { icon: "clock",  title: "Setup a tiempo, sin carreras", body: "Llegamos con margen para montar, calibrar y resolver antes de que llegue el público." },
       { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. Cualquier cosa que pase, la resolvemos nosotros." },
@@ -152,7 +152,7 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     djHeadline: "Equipo verificado y con señal lista antes del primer invitado.",
     videoHeadline: "Pantallas para que todos vean la ceremonia, el video y las presentaciones sin esfuerzo.",
     whyPoints: [
-      { icon: "star",   title: "Equipo 100% propio", body: "Llegamos con lo que confirmamos — sin sorpresas el día del evento." },
+      { icon: "star",   title: "Tu producción en manos expertas", body: "Llegamos con lo que confirmamos y el equipo que lo opera — sin sorpresas el día del evento." },
       { icon: "people", title: "Discretos y coordinados", body: "Nos alineamos con decoración, venue y fotografía. El protagonismo es de los festejados, no nuestro." },
       { icon: "clock",  title: "Conocemos el programa", body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo para estar listos en cada momento clave." },
       { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. Sin coordinar piezas sueltas." },
@@ -166,7 +166,7 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     djHeadline: "Señal de audio limpia para música ambiental o equipo completo de DJ para el cierre.",
     videoHeadline: "Tu presentación en pantalla sin fallas técnicas — compatible con HDMI, transmisiones en vivo y contenido de agencia.",
     whyPoints: [
-      { icon: "star",   title: "Equipo 100% propio", body: "Control total sobre calidad y tiempos — crítico cuando la imagen de tu empresa está en juego." },
+      { icon: "star",   title: "Tu producción en manos expertas", body: "Control total sobre calidad y tiempos — crítico cuando la imagen de tu empresa está en juego." },
       { icon: "people", title: "Puntuales y profesionales", body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos en segundo plano durante el evento." },
       { icon: "clock",  title: "Trabajamos con tu agencia", body: "Si ya tienes coordinador o agencia creativa, nos alineamos con ellos desde la planeación. Sin fricciones." },
       { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. No cinco proveedores sin coordinación entre sí." },
@@ -512,7 +512,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           {dj.length > 0    && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Setup DJ</span>}
           {video.length > 0 && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Video</span>}
           {staff.length > 0 && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Personal técnico</span>}
-          <span className="text-[11px] px-3 py-1 rounded-full border border-[#B3985B]/25 text-[#B3985B]/60">Equipo 100% propio</span>
+          <span className="text-[11px] px-3 py-1 rounded-full border border-[#B3985B]/25 text-[#B3985B]/60">Operado por expertos</span>
           <span className="text-[11px] px-3 py-1 rounded-full border border-[#B3985B]/25 text-[#B3985B]/60">Sin intermediarios</span>
         </div>
       </section>
