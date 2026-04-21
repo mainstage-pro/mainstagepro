@@ -1052,7 +1052,6 @@ export default function CobrosPagosPage() {
                       <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-48 overflow-y-auto">
                         {clientes
                           .filter(c => !clienteQuery || (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase()))
-                          .slice(0, 20)
                           .map(c => (
                             <button key={c.id}
                               onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : "")); }}
@@ -1091,7 +1090,7 @@ export default function CobrosPagosPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs text-gray-500">Proveedor (opcional)</label>
-                      <a href="/proveedores/nuevo" target="_blank" rel="noopener noreferrer"
+                      <a href="/catalogo/proveedores" target="_blank" rel="noopener noreferrer"
                         className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Registrar nuevo</a>
                     </div>
                     <input value={proveedorQuery}
@@ -1106,7 +1105,6 @@ export default function CobrosPagosPage() {
                         </button>
                         {proveedores
                           .filter(p => !proveedorQuery || p.nombre.toLowerCase().includes(proveedorQuery.toLowerCase()))
-                          .slice(0, 15)
                           .map(p => (
                             <button key={p.id}
                               onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, acreedorNombre: "" })); setProveedorQuery(p.nombre + (p.empresa ? ` · ${p.empresa}` : "")); }}
