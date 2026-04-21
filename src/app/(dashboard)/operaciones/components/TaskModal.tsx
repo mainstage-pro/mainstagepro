@@ -332,10 +332,10 @@ export default function TaskModal({
             <div className="w-6 h-6 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-[1fr_240px]">
+          <div className="flex-1 overflow-y-auto md:overflow-hidden grid grid-cols-1 md:grid-cols-[1fr_240px]">
 
             {/* ── LEFT COLUMN: main content ───────────────────────────────── */}
-            <div className="overflow-y-auto p-5 space-y-5 border-r border-[#141414]">
+            <div className="md:overflow-y-auto p-5 space-y-5 border-b md:border-b-0 md:border-r border-[#141414]">
 
               {/* Title */}
               <textarea
@@ -508,7 +508,7 @@ export default function TaskModal({
             </div>
 
             {/* ── RIGHT COLUMN: metadata ───────────────────────────────────── */}
-            <div className="overflow-y-auto p-4 space-y-5 bg-[#090909]">
+            <div className="md:overflow-y-auto p-4 space-y-5 bg-[#090909]">
 
               {/* Prioridad */}
               <div>
