@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { clienteId, proyectoId, cotizacionId, concepto, tipoPago = "ANTICIPO", monto, fechaCompromiso } = body;
+  const { clienteId, proyectoId, cotizacionId, concepto, tipoPago = "ANTICIPO", monto, fechaCompromiso, notas } = body;
 
   if (!clienteId || !concepto || !monto || !fechaCompromiso) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       monto: parseFloat(monto),
       fechaCompromiso: new Date(fechaCompromiso),
       estado: "PENDIENTE",
+      notas: notas || null,
     },
   });
 

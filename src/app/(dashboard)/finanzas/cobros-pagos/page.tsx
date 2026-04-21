@@ -208,6 +208,7 @@ export default function CobrosPagosPage() {
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
   const [clienteQuery, setClienteQuery] = useState("");
+  const [proveedorQuery, setProveedorQuery] = useState("");
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
   const [reciboGrupos, setReciboGrupos] = useState<Array<{ key: string; nombre: string; items: CxPItem[] }>>([]);
@@ -281,6 +282,7 @@ export default function CobrosPagosPage() {
             monto: nuevoForm.monto,
             fechaCompromiso: nuevoForm.fechaCompromiso,
             tipoPago: nuevoForm.tipoPago,
+            notas: nuevoForm.notas || null,
           }),
         });
       } else {
@@ -303,6 +305,7 @@ export default function CobrosPagosPage() {
       setShowNuevo(false);
       setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
       setClienteQuery("");
+      setProveedorQuery("");
       await load();
     } finally {
       setGuardandoNuevo(false);
@@ -1040,17 +1043,26 @@ export default function CobrosPagosPage() {
                 <>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Cliente *</label>
-                    <input value={clienteQuery} onChange={e => { setClienteQuery(e.target.value); setNuevoForm(p => ({ ...p, clienteId: "" })); }}
+                    <input value={clienteQuery}
+                      onChange={e => { setClienteQuery(e.target.value); setNuevoForm(p => ({ ...p, clienteId: "" })); }}
+                      onFocus={() => { if (!clienteQuery) setClienteQuery(""); }}
                       placeholder="Buscar cliente…"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    {clienteQuery.length >= 2 && !nuevoForm.clienteId && (
-                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-40 overflow-y-auto">
-                        {clientes.filter(c => (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase())).slice(0, 8).map(c => (
-                          <button key={c.id} onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : "")); }}
-                            className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors">
-                            {c.nombre}{c.empresa ? <span className="text-gray-600"> · {c.empresa}</span> : null}
-                          </button>
-                        ))}
+                    {!nuevoForm.clienteId && (
+                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-48 overflow-y-auto">
+                        {clientes
+                          .filter(c => !clienteQuery || (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase()))
+                          .slice(0, 20)
+                          .map(c => (
+                            <button key={c.id}
+                              onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : "")); }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-b border-[#2a2a2a] last:border-0">
+                              {c.nombre}{c.empresa ? <span className="text-gray-600 text-xs"> · {c.empresa}</span> : null}
+                            </button>
+                          ))}
+                        {clientes.filter(c => !clienteQuery || (c.nombre + (c.empresa ?? "")).toLowerCase().includes(clienteQuery.toLowerCase())).length === 0 && (
+                          <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
+                        )}
                       </div>
                     )}
                     {nuevoForm.clienteId && <p className="text-[11px] text-[#B3985B] mt-1">✓ {clienteQuery}</p>}
@@ -1064,6 +1076,12 @@ export default function CobrosPagosPage() {
                       <option value="OTRO">Otro</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Notas (opcional)</label>
+                    <textarea value={nuevoForm.notas} onChange={e => setNuevoForm(p => ({ ...p, notas: e.target.value }))}
+                      rows={2} placeholder="Observaciones del cobro…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                  </div>
                 </>
               )}
 
@@ -1071,28 +1089,48 @@ export default function CobrosPagosPage() {
               {nuevoForm.tipo === "cxp" && (
                 <>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Proveedor (opcional)</label>
-                    <select value={nuevoForm.proveedorId} onChange={e => setNuevoForm(p => ({ ...p, proveedorId: e.target.value, acreedorNombre: e.target.options[e.target.selectedIndex].text === "— Sin proveedor —" ? p.acreedorNombre : "" }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="">— Sin proveedor —</option>
-                      {proveedores.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-500">Proveedor (opcional)</label>
+                      <a href="/proveedores/nuevo" target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Registrar nuevo</a>
+                    </div>
+                    <input value={proveedorQuery}
+                      onChange={e => { setProveedorQuery(e.target.value); setNuevoForm(p => ({ ...p, proveedorId: "" })); }}
+                      placeholder="Buscar proveedor…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    {!nuevoForm.proveedorId && (
+                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-36 overflow-y-auto">
+                        <button onClick={() => { setNuevoForm(p => ({ ...p, proveedorId: "" })); setProveedorQuery(""); }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-[#222] border-b border-[#2a2a2a]">
+                          — Sin proveedor —
+                        </button>
+                        {proveedores
+                          .filter(p => !proveedorQuery || p.nombre.toLowerCase().includes(proveedorQuery.toLowerCase()))
+                          .slice(0, 15)
+                          .map(p => (
+                            <button key={p.id}
+                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, acreedorNombre: "" })); setProveedorQuery(p.nombre + (p.empresa ? ` · ${p.empresa}` : "")); }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors border-b border-[#2a2a2a] last:border-0">
+                              {p.nombre}{p.empresa ? <span className="text-gray-600 text-xs"> · {p.empresa}</span> : null}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                    {nuevoForm.proveedorId && <p className="text-[11px] text-[#B3985B] mt-1">✓ {proveedorQuery}</p>}
                   </div>
                   {!nuevoForm.proveedorId && (
                     <div>
-                      <label className="text-xs text-gray-500 block mb-1">A quién se le paga</label>
+                      <label className="text-xs text-gray-500 block mb-1">A quién se le paga (si no está en lista)</label>
                       <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}
-                        placeholder="Nombre si no está en proveedores…"
+                        placeholder="Nombre del acreedor…"
                         className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                     </div>
                   )}
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                    <input value={nuevoForm.notas} onChange={e => setNuevoForm(p => ({ ...p, notas: e.target.value }))}
-                      placeholder="Opcional…"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    <label className="text-xs text-gray-500 block mb-1">Notas (opcional)</label>
+                    <textarea value={nuevoForm.notas} onChange={e => setNuevoForm(p => ({ ...p, notas: e.target.value }))}
+                      rows={2} placeholder="Observaciones del pago…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                   </div>
                 </>
               )}
