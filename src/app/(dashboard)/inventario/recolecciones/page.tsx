@@ -246,7 +246,7 @@ export default function RecoleccionesPage() {
                 </div>
 
                 {/* Cuerpo */}
-                <div className="p-4 grid grid-cols-3 gap-4 text-sm">
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                   {/* Col 1: Cliente + fechas */}
                   <div className="space-y-3">
                     <div>

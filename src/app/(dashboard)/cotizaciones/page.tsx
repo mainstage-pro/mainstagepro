@@ -70,6 +70,7 @@ export default function CotizacionesPage() {
             <p className="text-[#444] text-xs mt-1">Crea una cotización desde un trato</p>
           </div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
@@ -146,6 +147,7 @@ export default function CotizacionesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

@@ -372,7 +372,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
       {activos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
@@ -563,7 +563,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       ) : rentas.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">Sin rentas en {MESES[filMes]} {filAnio}</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">

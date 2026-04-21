@@ -377,7 +377,7 @@ export default function TecnicosPage() {
         </>
       ) : (
         /* ── LISTA ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">

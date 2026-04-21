@@ -530,7 +530,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
         </div>
       )}
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {activos.length === 0 ? (
           <div className="text-center py-10 text-gray-600 text-sm">
             <p>No hay activos registrados</p>
@@ -669,7 +669,7 @@ function ConfigTab({ configData, onRefresh }: { configData: ConfigData; onRefres
       {/* Modo de cálculo */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Modo de cálculo</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { key: "FIJO", title: "Fijo", desc: "Siempre paga el monto fijo, sin importar la utilidad" },
             { key: "VARIABLE", title: "Variable", desc: "Paga según la utilidad del mes, con piso y techo" },
@@ -785,7 +785,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
           No hay pagos registrados aún. Registra el primer mes desde la pestaña Resumen.
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">

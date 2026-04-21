@@ -129,7 +129,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {[
           { label: "En bodega",    value: enBodega,    color: "text-green-400" },
           { label: "En renta/uso", value: checklist.items.filter(i => i.estado === "EN_RENTA_O_USO").length, color: "text-blue-400" },

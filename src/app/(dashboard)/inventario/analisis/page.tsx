@@ -244,7 +244,7 @@ export default function AnalisisInventarioPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
@@ -331,7 +331,7 @@ export default function AnalisisInventarioPage() {
                 </div>
               </div>
 
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b border-[#1e1e1e]">
@@ -402,7 +402,7 @@ export default function AnalisisInventarioPage() {
           {data.itemsCustom.length === 0 ? (
             <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center text-gray-500">Sin items personalizados este mes</div>
           ) : (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-[#1e1e1e]">

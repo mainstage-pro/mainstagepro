@@ -111,7 +111,7 @@ export default async function DashboardProduccionPage() {
       </div>
 
       {/* Próximos proyectos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Proyectos próximos 30 días</p>
           <Link href="/proyectos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>

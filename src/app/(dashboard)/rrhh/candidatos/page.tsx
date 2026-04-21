@@ -173,7 +173,7 @@ export default function CandidatosPage() {
         </div>
       ) : (
         /* ── Lista ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b border-[#1a1a1a]">

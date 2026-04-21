@@ -546,7 +546,7 @@ export default function TratosPage() {
       {vista === "kanban" && (
         <div>
           {loading ? (
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {ETAPAS.map(e => (
                 <div key={e} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 h-64 animate-pulse" />
               ))}

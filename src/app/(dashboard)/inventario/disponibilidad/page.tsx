@@ -230,7 +230,7 @@ export default function DisponibilidadPage() {
               </div>
             ) : (
               Object.entries(equiposFiltrados).map(([categoria, equipos]) => (
-                <div key={categoria} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div key={categoria} className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
                   <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
                     <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{categoria}</p>
                   </div>

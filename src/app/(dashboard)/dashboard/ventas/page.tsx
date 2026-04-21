@@ -202,7 +202,7 @@ export default async function DashboardVentasPage() {
       </div>
 
       {/* Tratos activos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Tratos activos recientes</p>
           <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>

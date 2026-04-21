@@ -163,9 +163,9 @@ export default function MetaAdsPage() {
   if (loading) return <div className="text-gray-400 text-sm p-6">Cargando...</div>;
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+    <div className="flex flex-col md:flex-row md:h-[calc(100vh-64px)] md:overflow-hidden">
       {/* ── Panel izquierdo: lista de campañas ── */}
-      <div className="w-80 shrink-0 border-r border-[#1a1a1a] flex flex-col bg-[#060606]">
+      <div className="w-full md:w-80 shrink-0 border-b md:border-b-0 md:border-r border-[#1a1a1a] flex flex-col bg-[#060606] max-h-64 md:max-h-none overflow-y-auto md:overflow-visible">
         <div className="p-4 border-b border-[#1a1a1a] flex items-center justify-between">
           <div>
             <h1 className="text-white font-semibold">Meta Ads</h1>
@@ -316,7 +316,7 @@ export default function MetaAdsPage() {
               </div>
 
               {/* KPIs */}
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                 {[
                   { label: "Inversión", value: fmt(m.gastado), sub: m.presupuestoUsado != null ? `${m.presupuestoUsado.toFixed(0)}% del presupuesto` : null },
                   { label: "Leads", value: String(m.leads), sub: m.cpl != null ? `CPL ${fmt(m.cpl)}` : null },
@@ -373,7 +373,7 @@ export default function MetaAdsPage() {
                 {/* Formulario nuevo resultado */}
                 {showResultForm && (
                   <div className="p-4 bg-[#0d0d0d] border-b border-[#1a1a1a]">
-                    <div className="grid grid-cols-4 gap-3 mb-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
                       <div>
                         <label className="text-[10px] text-gray-500 block mb-1">Fecha</label>
                         <input type="date" value={resultForm.fecha} onChange={e => setResultForm(p => ({ ...p, fecha: e.target.value }))}
@@ -422,7 +422,7 @@ export default function MetaAdsPage() {
                 {selected.resultados.length === 0 ? (
                   <div className="p-6 text-center text-gray-600 text-sm">Sin resultados registrados</div>
                 ) : (
-                  <table className="w-full text-xs">
+                  <div className="overflow-x-auto"><table className="w-full min-w-[600px] text-xs">
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
                         {["Fecha", "Gastado", "Leads", "CPL", "Clics", "CPC", "Alcance", "CPM", "Frec.", ""].map(h => (
@@ -450,7 +450,7 @@ export default function MetaAdsPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </div>
             </div>

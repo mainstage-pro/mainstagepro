@@ -174,7 +174,7 @@ export default function CuentasPage() {
       )}
 
       {/* Lista */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {loading ? (
           <SkeletonTable rows={4} cols={4} />
         ) : cuentas.length === 0 ? (

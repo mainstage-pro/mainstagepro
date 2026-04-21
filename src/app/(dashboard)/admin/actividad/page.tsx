@@ -53,7 +53,7 @@ export default function ActividadPage() {
       ) : actividades.length === 0 ? (
         <div className="text-center py-16 text-gray-600 text-sm">Sin actividad registrada</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">

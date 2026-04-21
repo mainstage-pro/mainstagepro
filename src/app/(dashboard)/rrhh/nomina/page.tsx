@@ -129,7 +129,7 @@ export default function NominaPage() {
 
       {/* ── KPIs ── */}
       {!loading && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-[#111] border border-yellow-900/30 rounded-xl p-4">
             <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Por pagar</p>
             <p className="text-yellow-400 text-xl font-semibold">{fmt(totalPendiente)}</p>
@@ -266,7 +266,7 @@ export default function NominaPage() {
 
       {/* ── HISTORIAL ── */}
       {historial.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
           <div className="px-5 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos</p>
           </div>
