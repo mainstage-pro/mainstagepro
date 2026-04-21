@@ -4,7 +4,7 @@ import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import QuickAdd from "./components/QuickAdd";
-import MobileQuickAdd from "./components/MobileQuickAdd";
+import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
@@ -496,6 +496,8 @@ export default function OperacionesPage() {
 
   const [mobileQuickAdd, setMobileQuickAdd] = useState(false);
   const [mobileProyectos, setMobileProyectos] = useState(false);
+  const mobileQARef = useRef<MobileQuickAddHandle>(null);
+  const [quickAddTrigger, setQuickAddTrigger] = useState(0);
 
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
@@ -508,7 +510,7 @@ export default function OperacionesPage() {
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">
           <button
-            onClick={() => { setVista("bandeja"); }}
+            onClick={() => { setVista("bandeja"); setQuickAddTrigger(n => n + 1); }}
             className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
           >
             <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 group-hover:bg-[#B3985B]/30 flex items-center justify-center transition-colors">
@@ -714,6 +716,7 @@ export default function OperacionesPage() {
                     placeholder={vista === "hoy" ? "Agregar tarea para hoy…" : "Agregar tarea…"}
                     proyectos={proyectosNav}
                     usuarios={usuarios}
+                    triggerOpen={quickAddTrigger}
                   />
                 </div>
               )}
@@ -850,9 +853,12 @@ export default function OperacionesPage() {
 
       {/* FAB */}
       <button
-        onClick={() => setMobileQuickAdd(true)}
+        onClick={() => {
+          // Focus BEFORE setState so iOS keyboard triggers within the gesture
+          mobileQARef.current?.focus();
+          setMobileQuickAdd(true);
+        }}
         className="md:hidden fixed bottom-[76px] right-4 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.8" strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -861,6 +867,7 @@ export default function OperacionesPage() {
 
       {/* Mobile Quick Add bottom sheet */}
       <MobileQuickAdd
+        ref={mobileQARef}
         open={mobileQuickAdd}
         onClose={() => setMobileQuickAdd(false)}
         onAdd={addTarea}

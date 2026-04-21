@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from "react";
 import { parsearRecurrencia, detectarFechaEnTitulo, formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 
@@ -47,7 +47,11 @@ function formatDisplay(iso: string) {
 
 type Panel = "fecha" | "prioridad" | "proyecto" | "asignar" | null;
 
-export default function MobileQuickAdd({ open, onClose, onAdd, proyectos = [], usuarios = [], defaultProyectoId = null }: Props) {
+export interface MobileQuickAddHandle { focus: () => void }
+
+const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQuickAdd(
+  { open, onClose, onAdd, proyectos = [], usuarios = [], defaultProyectoId = null }, ref
+) {
   const [titulo, setTitulo]         = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [fecha, setFecha]           = useState("");
@@ -58,13 +62,17 @@ export default function MobileQuickAdd({ open, onClose, onAdd, proyectos = [], u
   const [detIgnorada, setDetIgnorada] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset on open
+  // Expose focus() to parent so FAB can call it synchronously from click handler
+  useImperativeHandle(ref, () => ({
+    focus: () => titleRef.current?.focus(),
+  }));
+
+  // Reset state when opened
   useEffect(() => {
     if (open) {
       setTitulo(""); setDescripcion(""); setFecha("");
       setPrioridad("MEDIA"); setProyectoId(defaultProyectoId);
       setAsignadoId(null); setPanel(null); setDetIgnorada(false);
-      setTimeout(() => titleRef.current?.focus(), 120);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -102,19 +110,19 @@ export default function MobileQuickAdd({ open, onClose, onAdd, proyectos = [], u
   const hasDate   = !!(fecha || deteccion?.fecha);
   const dateLabel = fecha ? formatDisplay(fecha) : (deteccion?.fecha ? formatDisplay(deteccion.fecha) : null);
 
-  if (!open) return null;
-
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — only visible when open */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 md:hidden"
+        className={`fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity duration-200 ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
         onClick={onClose}
       />
 
-      {/* Bottom sheet */}
-      <div className="fixed inset-x-0 bottom-0 z-50 md:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] overflow-hidden"
+      {/* Bottom sheet — always in DOM so focus() works from FAB click handler */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-50 md:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] overflow-hidden transition-transform duration-200 ${open ? "translate-y-0" : "translate-y-full"}`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-hidden={!open}
       >
         {/* Handle */}
         <div className="flex justify-center pt-2.5 pb-1">
@@ -301,7 +309,9 @@ export default function MobileQuickAdd({ open, onClose, onAdd, proyectos = [], u
       </div>
     </>
   );
-}
+});
+
+export default MobileQuickAdd;
 
 function ChipBtn({ icon, label, active, activeColor, isOpen, onClick }: {
   icon: React.ReactNode; label: string; active: boolean;

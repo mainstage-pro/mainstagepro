@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { parsearRecurrencia, formatearRecurrencia, detectarFechaEnTitulo } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 
@@ -86,6 +86,7 @@ interface Props {
   parentId?: string | null;
   proyectos?: ProyectoOption[];
   usuarios?: UsuarioOption[];
+  triggerOpen?: number;
   onAdd: (tarea: {
     titulo: string;
     fecha: string | null;
@@ -124,6 +125,7 @@ export default function QuickAdd({
   parentId = null,
   proyectos = [],
   usuarios = [],
+  triggerOpen,
   onAdd,
   placeholder = "Agregar tarea…",
   compact = false,
@@ -142,6 +144,13 @@ export default function QuickAdd({
   const [panel, setPanel]             = useState<ActivePanel>(null);
   const [detIgnorada, setDetIgnorada] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+
+  // Open and focus when parent triggers (e.g. sidebar "Nueva tarea" button)
+  useEffect(() => {
+    if (!triggerOpen) return;
+    setOpen(true);
+    setTimeout(() => titleRef.current?.focus(), 30);
+  }, [triggerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Natural language date detection — only active when no date manually set
   const deteccion = useMemo(() => {
