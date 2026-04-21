@@ -4,6 +4,7 @@ import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import QuickAdd from "./components/QuickAdd";
+import MobileQuickAdd from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
@@ -493,13 +494,16 @@ export default function OperacionesPage() {
     });
   }
 
+  const [mobileQuickAdd, setMobileQuickAdd] = useState(false);
+  const [mobileProyectos, setMobileProyectos] = useState(false);
+
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — Todoist-style navigation
       ══════════════════════════════════════════════════════════════════════ */}
-      <aside className={`${sidebarOpen ? "w-56" : "w-0"} shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex flex-col`}>
+      <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden md:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col`}>
 
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">
@@ -670,7 +674,7 @@ export default function OperacionesPage() {
         </div>
 
         {/* ── TASK LIST ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-[72px] md:pb-0">
           {loadingMain ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
@@ -839,6 +843,135 @@ export default function OperacionesPage() {
       {/* ── UNDO TOAST ──────────────────────────────────────────────────────── */}
       <UndoToast undo={undoState} onUndo={handleUndo} onDismiss={handleDismissUndo} />
       {CelebrationToastEl}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          MOBILE: FAB + Bottom Tab Bar
+      ══════════════════════════════════════════════════════════════════════ */}
+
+      {/* FAB */}
+      <button
+        onClick={() => setMobileQuickAdd(true)}
+        className="md:hidden fixed bottom-[76px] right-4 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.8" strokeLinecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+
+      {/* Mobile Quick Add bottom sheet */}
+      <MobileQuickAdd
+        open={mobileQuickAdd}
+        onClose={() => setMobileQuickAdd(false)}
+        onAdd={addTarea}
+        proyectos={proyectosNav}
+        usuarios={usuarios}
+        defaultProyectoId={typeof vista !== "string" ? vista.id : null}
+      />
+
+      {/* Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0d0d0d] border-t border-[#1a1a1a] flex items-stretch"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {([
+          {
+            key: "bandeja", label: "Bandeja",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>,
+            onClick: () => { setVista("bandeja"); setMobileProyectos(false); },
+            isActive: vistaKey === "bandeja" && !mobileProyectos,
+          },
+          {
+            key: "hoy", label: "Hoy",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+            onClick: () => { setVista("hoy"); setMobileProyectos(false); },
+            isActive: vistaKey === "hoy" && !mobileProyectos,
+          },
+          {
+            key: "proximas", label: "Próximo",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            onClick: () => { setVista("proximas"); setMobileProyectos(false); },
+            isActive: vistaKey === "proximas" && !mobileProyectos,
+          },
+          {
+            key: "explorar", label: "Explorar",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+            onClick: () => setMobileProyectos(v => !v),
+            isActive: mobileProyectos || (typeof vistaKey !== "string"),
+          },
+          {
+            key: "equipo", label: "Equipo",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            href: "/operaciones/equipo",
+            isActive: false,
+          },
+        ] as const).map(tab => {
+          const isActive = tab.isActive;
+          const content = (
+            <span className={`flex flex-col items-center gap-1 py-2 flex-1 transition-colors ${isActive ? "text-[#B3985B]" : "text-[#444]"}`}>
+              {tab.icon}
+              <span className="text-[10px] font-medium leading-none">{tab.label}</span>
+            </span>
+          );
+          if ("href" in tab) {
+            return <Link key={tab.key} href={tab.href} className="flex-1 flex items-center justify-center">{content}</Link>;
+          }
+          return (
+            <button key={tab.key} onClick={tab.onClick} className="flex-1 flex items-center justify-center">
+              {content}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Mobile: panel de proyectos (Explorar) */}
+      {mobileProyectos && (
+        <>
+          <div className="fixed inset-0 z-[35] bg-black/60 md:hidden" onClick={() => setMobileProyectos(false)} />
+          <div className="md:hidden fixed inset-x-0 bottom-[56px] z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <div className="flex justify-center pt-2.5 pb-2">
+              <div className="w-8 h-1 rounded-full bg-[#2a2a2a]" />
+            </div>
+            <div className="flex items-center justify-between px-4 pb-2">
+              <h2 className="text-white font-semibold text-base">Proyectos</h2>
+              <button
+                onClick={() => { setShowNuevoProyecto(true); setMobileProyectos(false); setTimeout(() => proyectoInputRef.current?.focus(), 80); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-[#B3985B]/10 text-[#B3985B] hover:bg-[#B3985B]/20 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            <div className="pb-4">
+              {proyectosSinCarpeta.map(p => (
+                <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                  {p.nombre}
+                </button>
+              ))}
+              {carpetas.map(c => (
+                <div key={c.id}>
+                  <div className="flex items-center gap-2 px-4 py-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{c.nombre}</span>
+                  </div>
+                  {c.proyectos.map(p => (
+                    <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
+                      className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                      {p.nombre}
+                    </button>
+                  ))}
+                </div>
+              ))}
+              {proyectosSinCarpeta.length === 0 && carpetas.length === 0 && (
+                <p className="text-center text-[#444] text-sm py-8">Sin proyectos aún</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── MODAL: Nuevo proyecto ───────────────────────────────────────────── */}
       {showNuevoProyecto && (
