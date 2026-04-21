@@ -144,40 +144,40 @@ const EVENTO_CONFIG: Record<string, EventoCfg> = {
     djHeadline: "CDJs, mixer y booth listos antes del soundcheck — la misma cadena que los DJs exigen en su rider.",
     videoHeadline: "Pantallas posicionadas correctamente, señal estable y brillo adecuado para el espacio.",
     whyPoints: [
-      { icon: "star",   title: "Tu producción en manos expertas", body: "Cada elemento de tu evento es operado por nuestro equipo técnico — personas que conocen el equipo y saben cómo responder en vivo." },
-      { icon: "people", title: "Operadores con experiencia real", body: "Nuestros ingenieros conocen el equipo porque lo usan en cada evento. No improvisamos en vivo." },
-      { icon: "clock",  title: "Setup a tiempo, sin carreras", body: "Llegamos con margen para montar, calibrar y resolver antes de que llegue el público." },
-      { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. Cualquier cosa que pase, la resolvemos nosotros." },
+      { icon: "star",   title: "7 años haciendo que funcione", body: "Desde 2019 resolvemos producciones musicales de todos los tamaños. Sabemos qué puede pasar y cómo anticiparlo." },
+      { icon: "people", title: "Ingenieros, no improvisados", body: "Cada operador conoce el equipo que maneja y ha trabajado en shows reales. El día del evento no es momento de aprender." },
+      { icon: "clock",  title: "Setup completo antes del soundcheck", body: "Llegamos con margen real para montar, calibrar y tener todo funcionando antes de que llegue el artista." },
+      { icon: "check",  title: "Un solo interlocutor, cero fricciones", body: "Audio, luz, video y operadores en un solo contrato. Tú hablas con nosotros — nosotros resolvemos todo lo demás." },
     ],
     ctaLine: "La producción está lista. Solo falta confirmar la fecha.",
   },
   SOCIAL: {
     stmt: "Los momentos que importan\nmerecen técnica impecable.",
     audioHeadline: "Micrófonos inalámbricos para el brindis y la ceremonia — sin retroalimentación, sin cortes.",
-    ilumHeadline: "Luz cálida para la cena, vibrante para la pista — ambiente que cambia con el momento.",
-    djHeadline: "Equipo verificado y con señal lista antes del primer invitado.",
+    ilumHeadline: "Luz cálida para la cena, vibrante para la pista — ambiente que cambia con cada momento.",
+    djHeadline: "Equipo verificado y señal lista antes del primer invitado.",
     videoHeadline: "Pantallas para que todos vean la ceremonia, el video y las presentaciones sin esfuerzo.",
     whyPoints: [
-      { icon: "star",   title: "Tu producción en manos expertas", body: "Llegamos con lo que confirmamos y el equipo que lo opera — sin sorpresas el día del evento." },
-      { icon: "people", title: "Discretos y coordinados", body: "Nos alineamos con decoración, venue y fotografía. El protagonismo es de los festejados, no nuestro." },
-      { icon: "clock",  title: "Conocemos el programa", body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo para estar listos en cada momento clave." },
-      { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. Sin coordinar piezas sueltas." },
+      { icon: "star",   title: "750+ eventos nos respaldan", body: "Hemos producido bodas, XV años y celebraciones privadas de todos los tamaños. Conocemos cada detalle que puede marcar la diferencia." },
+      { icon: "people", title: "Discretos, coordinados y puntuales", body: "Nos alineamos con venue, decoración y fotografía. El protagonismo es de los festejados — nosotros garantizamos que todo suene y se vea perfecto." },
+      { icon: "clock",  title: "Listos en cada momento clave", body: "Brindis, primer baile, vals, pastel — revisamos el programa contigo para estar listos antes de que llegue el momento." },
+      { icon: "check",  title: "Un solo interlocutor, cero fricciones", body: "Audio, luz, video y operadores en un solo contrato. No coordinas proveedores sueltos — nosotros nos encargamos de que todo encaje." },
     ],
     ctaLine: "Asegura la fecha. El resto lo coordinamos nosotros.",
   },
   EMPRESARIAL: {
     stmt: "Cuando la técnica funciona bien,\ntu empresa se ve bien.",
     audioHeadline: "El orador se escucha claro desde cualquier punto del salón — sin cortes ni retroalimentación.",
-    ilumHeadline: "Iluminación profesional acorde al tono del evento — presentaciones, lanzamientos o cenas.",
-    djHeadline: "Señal de audio limpia para música ambiental o equipo completo de DJ para el cierre.",
-    videoHeadline: "Tu presentación en pantalla sin fallas técnicas — compatible con HDMI, transmisiones en vivo y contenido de agencia.",
+    ilumHeadline: "Iluminación acorde al tono del evento — presentaciones, lanzamientos o cenas corporativas.",
+    djHeadline: "Audio limpio para música ambiental o setup completo de DJ para el cierre.",
+    videoHeadline: "Tu contenido en pantalla sin contratiempos — HDMI, transmisión en vivo o material de agencia.",
     whyPoints: [
-      { icon: "star",   title: "Tu producción en manos expertas", body: "Control total sobre calidad y tiempos — crítico cuando la imagen de tu empresa está en juego." },
-      { icon: "people", title: "Puntuales y profesionales", body: "Llegamos antes de tiempo, montamos con orden y nos mantenemos en segundo plano durante el evento." },
-      { icon: "clock",  title: "Trabajamos con tu agencia", body: "Si ya tienes coordinador o agencia creativa, nos alineamos con ellos desde la planeación. Sin fricciones." },
-      { icon: "check",  title: "Una sola fuente de responsabilidad", body: "Audio, luz, video y operadores — un solo contrato. No cinco proveedores sin coordinación entre sí." },
+      { icon: "star",   title: "La imagen de tu empresa no admite errores", body: "Con 7 años y más de 750 eventos, sabemos que en un evento corporativo cada detalle refleja a tu organización. Trabajamos a esa altura." },
+      { icon: "people", title: "Profesionales en segundo plano", body: "Llegamos antes de tiempo, montamos con orden y operamos sin interrumpir el flujo del evento. Tu audiencia solo nota que todo funciona." },
+      { icon: "clock",  title: "Coordinación total con tu equipo", body: "Si ya tienes coordinador, agencia creativa o equipo de marketing, nos alineamos con ellos desde la planeación. Sin roces ni duplicidades." },
+      { icon: "check",  title: "Un solo interlocutor, cero fricciones", body: "Audio, luz, video y operadores en un solo contrato. Una llamada resuelve cualquier ajuste — antes o durante el evento." },
     ],
-    ctaLine: "Confirmemos los detalles técnicos con tiempo suficiente.",
+    ctaLine: "Confirmemos los detalles técnicos con anticipación.",
   },
 };
 const DEFAULT_EVENTO: EventoCfg = EVENTO_CONFIG.MUSICAL;
@@ -413,10 +413,10 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
 
   /* eslint-disable react-hooks/rules-of-hooks */
   const stats = [
-    { hook: useCounter(200),   suffix: "+", label: "Producciones" },
+    { hook: useCounter(750),   suffix: "+", label: "Eventos realizados" },
     { hook: useCounter(50000), suffix: "+", label: "Asistentes cubiertos" },
-    { hook: useCounter(6),     suffix: "+", label: "Años de experiencia" },
-    { hook: useCounter(100),   suffix: "%", label: "Satisfacción de clientes" },
+    { hook: useCounter(7),     suffix: "+", label: "Años de experiencia" },
+    { hook: useCounter(100),   suffix: "%", label: "Compromiso con cada evento" },
   ];
   /* eslint-enable react-hooks/rules-of-hooks */
 
