@@ -437,127 +437,206 @@ export default function OperacionesPage() {
     vista === "bandeja"   ? "Bandeja de entrada" :
     vista === "hoy"       ? "Hoy" :
     vista === "proximas"  ? "Próximas" :
-    vista === "integrada" ? "Operación Integrada" :
+    vista === "integrada" ? "Alertas" :
     proyectoDetalle?.nombre ?? "Proyecto";
 
+  // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
+  async function renameProyecto(id: string, nombre: string) {
+    await fetch(`/api/operaciones/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre }),
+    });
+    setProyectosNav(prev => prev.map(p => p.id === id ? { ...p, nombre } : p));
+    setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.map(p => p.id === id ? { ...p, nombre } : p) })));
+  }
+
+  async function deleteProyecto(id: string) {
+    await fetch(`/api/operaciones/proyectos/${id}`, { method: "DELETE" });
+    setProyectosNav(prev => prev.filter(p => p.id !== id));
+    setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.filter(p => p.id !== id) })));
+    if (typeof vista !== "string" && vista.id === id) setVista("bandeja");
+  }
+
+  async function renameCarpeta(id: string, nombre: string) {
+    await fetch(`/api/operaciones/carpetas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre }),
+    });
+    setCarpetas(prev => prev.map(c => c.id === id ? { ...c, nombre } : c));
+  }
+
+  async function deleteCarpeta(id: string) {
+    await fetch(`/api/operaciones/carpetas/${id}`, { method: "DELETE" });
+    setCarpetas(prev => prev.filter(c => c.id !== id));
+  }
+
+  // Today count for badge
+  const hoyCount = useMemo(() => {
+    const hoy = new Date(); hoy.setHours(23,59,59,999);
+    if (typeof vista === "string" && vista === "hoy") {
+      return tareas.filter(t => t.estado !== "COMPLETADA").length;
+    }
+    return 0; // don't calculate cross-view for perf
+  }, [tareas, vista]);
+
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
 
-      {/* ── MAIN CONTENT ──────────────────────────────────────────────────── */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      {/* ══════════════════════════════════════════════════════════════════════
+          LEFT SIDEBAR — Todoist-style navigation
+      ══════════════════════════════════════════════════════════════════════ */}
+      <aside className={`${sidebarOpen ? "w-56" : "w-0"} shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex flex-col`}>
 
-        {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
-        <div className="shrink-0 border-b border-[#111] bg-[#060606]">
-          {/* Row 1: vistas fijas + acciones */}
-          <div className="flex items-center gap-1 px-4 pt-2">
-            {([
-              { key:"bandeja",   label:"Bandeja",
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg> },
-              { key:"hoy",       label:"Hoy",
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> },
-              { key:"proximas",  label:"Próximas",
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
-              { key:"integrada", label:"Integrada",
-                icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
-            ] as const).map(item => (
-              <button key={item.key} onClick={() => setVista(item.key)}
-                className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors rounded-t-md ${
-                  vistaKey === item.key
-                    ? "text-[#B3985B] bg-[#0f0f0f]"
-                    : "text-[#444] hover:text-[#888]"
-                }`}>
-                <span className={vistaKey === item.key ? "text-[#B3985B]" : "text-[#3a3a3a]"}>{item.icon}</span>
-                {item.label}
-                {vistaKey === item.key && (
-                  <span className="absolute bottom-0 left-0 right-0 h-px bg-[#B3985B]" />
-                )}
-              </button>
-            ))}
-
-            {/* Divisor */}
-            <div className="w-px h-4 bg-[#1e1e1e] mx-1" />
-
-            {/* Proyectos abiertos como tabs */}
-            <div className="flex items-center gap-1 flex-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {/* Tabs de carpetas con proyectos dentro */}
-              {carpetas.flatMap(c => c.proyectos).concat(proyectosSinCarpeta).map(p => {
-                const isActive = vistaKey === p.id;
-                return (
-                  <button key={p.id} onClick={() => setVista({ tipo:"proyecto", id: p.id })}
-                    className={`relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors rounded-t-md whitespace-nowrap shrink-0 ${
-                      isActive ? "text-white bg-[#0f0f0f]" : "text-[#444] hover:text-[#777]"
-                    }`}>
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ background: p.color ?? "#555" }} />
-                    {p.nombre}
-                    {isActive && <span className="absolute bottom-0 left-0 right-0 h-px" style={{ background: p.color ?? "#B3985B" }} />}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Acciones: equipo + nuevo proyecto + nueva carpeta */}
-            <div className="flex items-center gap-1 ml-auto shrink-0">
-              <Link
-                href="/operaciones/equipo"
-                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#888] transition-colors rounded"
-                title="Ver tareas del equipo">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                Equipo
-              </Link>
-              <button
-                onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
-                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#B3985B] transition-colors rounded"
-                title="Nuevo proyecto">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Proyecto
-              </button>
-              <button
-                onClick={() => { setShowNuevaCarpeta(true); setTimeout(() => carpetaInputRef.current?.focus(), 50); }}
-                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#888] transition-colors rounded"
-                title="Nueva carpeta">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
-                Carpeta
-              </button>
-            </div>
-          </div>
-
-          {/* Formularios inline: nueva carpeta / nuevo proyecto */}
-          {(showNuevaCarpeta || showNuevoProyecto) && (
-            <div className="px-4 py-2 border-t border-[#111] flex items-center gap-3 flex-wrap">
-              {showNuevaCarpeta && (
-                <>
-                  <input ref={carpetaInputRef} value={nuevoCarpetaNombre} onChange={e => setNuevoCarpetaNombre(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter") crearCarpeta(); if (e.key === "Escape") setShowNuevaCarpeta(false); }}
-                    placeholder="Nombre de carpeta"
-                    className="bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B] w-44" />
-                  <button onClick={crearCarpeta} className="text-xs text-[#B3985B] hover:underline">Crear carpeta</button>
-                  <button onClick={() => setShowNuevaCarpeta(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
-                </>
-              )}
-            </div>
-          )}
+        {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
+        <div className="p-3 shrink-0">
+          <button
+            onClick={() => { setVista("bandeja"); }}
+            className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
+          >
+            <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 group-hover:bg-[#B3985B]/30 flex items-center justify-center transition-colors">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </span>
+            Nueva tarea
+          </button>
         </div>
 
-        {/* ── CONTENT HEADER ──────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-[#111] shrink-0">
-          <h1 className="text-sm font-semibold text-white">{vistaLabel}</h1>
+        {/* ── Fixed nav items ────────────────────────────────────────────── */}
+        <nav className="px-2 space-y-0.5 shrink-0">
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>}
+            label="Bandeja" isActive={vistaKey === "bandeja"} onClick={() => setVista("bandeja")}
+          />
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>}
+            label="Hoy" isActive={vistaKey === "hoy"} onClick={() => setVista("hoy")}
+            count={vistaKey === "hoy" ? (hoyCount > 0 ? hoyCount : undefined) : undefined}
+          />
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+            label="Próximas" isActive={vistaKey === "proximas"} onClick={() => setVista("proximas")}
+          />
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>}
+            label="Alertas" isActive={vistaKey === "integrada"} onClick={() => setVista("integrada")}
+          />
+        </nav>
 
+        {/* ── Proyectos section ──────────────────────────────────────────── */}
+        <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
+            <span className="text-[10px] text-[#333] uppercase tracking-widest font-semibold select-none">Proyectos</span>
+            <button
+              onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
+              className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
+              title="Nuevo proyecto"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-0.5" style={{ scrollbarWidth: "none" }}>
+            {/* Proyectos sin carpeta */}
+            {proyectosSinCarpeta.map(p => (
+              <NavProyecto key={p.id} proyecto={p} isActive={vistaKey === p.id}
+                onSelect={() => setVista({ tipo: "proyecto", id: p.id })}
+                onRename={n => renameProyecto(p.id, n)}
+                onDelete={() => deleteProyecto(p.id)}
+              />
+            ))}
+
+            {/* Carpetas */}
+            {carpetas.map(c => (
+              <NavCarpeta key={c.id} carpeta={c} open={carpetasOpen.has(c.id)} vistaKey={vistaKey}
+                onToggle={() => setCarpetasOpen(prev => {
+                  const next = new Set(prev);
+                  next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                  return next;
+                })}
+                onSelectProyecto={id => setVista({ tipo: "proyecto", id })}
+                onRenameCarpeta={renameCarpeta}
+                onDeleteCarpeta={deleteCarpeta}
+                onRenameProyecto={renameProyecto}
+                onDeleteProyecto={deleteProyecto}
+              />
+            ))}
+
+            {/* Nueva carpeta inline */}
+            {showNuevaCarpeta ? (
+              <div className="flex items-center gap-1.5 px-2 py-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <input ref={carpetaInputRef} value={nuevoCarpetaNombre} onChange={e => setNuevoCarpetaNombre(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") crearCarpeta(); if (e.key === "Escape") setShowNuevaCarpeta(false); }}
+                  placeholder="Nombre de carpeta"
+                  className="flex-1 bg-transparent text-xs text-white placeholder-[#333] focus:outline-none min-w-0" />
+              </div>
+            ) : (
+              <button
+                onClick={() => { setShowNuevaCarpeta(true); setTimeout(() => carpetaInputRef.current?.focus(), 50); }}
+                className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-[#2a2a2a] hover:text-[#555] transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                Nueva carpeta
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── Bottom ─────────────────────────────────────────────────────── */}
+        <div className="shrink-0 p-2 border-t border-[#0f0f0f]">
+          <Link
+            href="/operaciones/equipo"
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-[#333] hover:text-white hover:bg-[#111] transition-all"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Vista de equipo
+          </Link>
+        </div>
+      </aside>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          MAIN CONTENT
+      ══════════════════════════════════════════════════════════════════════ */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+
+        {/* ── CONTENT HEADER ─────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#0f0f0f] shrink-0">
+
+          {/* Sidebar toggle */}
+          <button
+            onClick={() => setSidebarOpen(v => !v)}
+            className="w-6 h-6 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#777] hover:bg-[#111] transition-all shrink-0"
+            title={sidebarOpen ? "Ocultar sidebar" : "Mostrar sidebar"}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+
+          <h1 className="text-base font-semibold text-white tracking-tight">{vistaLabel}</h1>
+
+          {/* Sort (Hoy / Próximas) */}
           {(vista === "hoy" || vista === "proximas") && (
-            <div className="ml-auto flex items-center gap-1 flex-wrap">
+            <div className="ml-auto flex items-center gap-0.5 flex-wrap">
               {SORT_OPTIONS.map(opt => (
                 <button key={opt} onClick={() => setSortHoy(opt)}
-                  className={`px-2 py-0.5 rounded text-xs transition-colors ${sortHoy === opt ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#888]"}`}>
+                  className={`px-2 py-1 rounded-lg text-xs transition-all ${
+                    sortHoy === opt ? "bg-[#1a1a1a] text-white" : "text-[#333] hover:text-[#777]"
+                  }`}>
                   {opt}
                 </button>
               ))}
             </div>
           )}
 
+          {/* Show completed toggle */}
           {typeof vista === "string" && vista !== "integrada" && (
             <button
               onClick={() => setShowCompleted(v => !v)}
-              className={`${vista === "hoy" ? "ml-2" : "ml-auto"} flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors ${showCompleted ? "text-[#B3985B] bg-[#B3985B]/10" : "text-[#444] hover:text-[#888]"}`}
+              className={`${(vista === "hoy" || vista === "proximas") ? "ml-2" : "ml-auto"} flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all ${
+                showCompleted ? "text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20" : "text-[#333] hover:text-[#666] hover:bg-[#111]"
+              }`}
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="20 6 9 17 4 12"/>
@@ -566,98 +645,82 @@ export default function OperacionesPage() {
             </button>
           )}
 
+          {/* Add section (project view) */}
           {typeof vista !== "string" && proyectoDetalle && (
-            <button onClick={() => setShowNuevaSeccion(true)} className="ml-auto px-3 py-1 bg-[#1a1a1a] text-xs text-[#888] rounded hover:bg-[#222] hover:text-white transition-colors">
-              + Sección
+            <button
+              onClick={() => setShowNuevaSeccion(true)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#111] text-xs text-[#666] rounded-lg hover:bg-[#1a1a1a] hover:text-white transition-all"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Sección
             </button>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-20">
+        {/* ── TASK LIST ─────────────────────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto">
           {loadingMain ? (
             <div className="flex items-center justify-center h-40">
-              <div className="w-5 h-5 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
+              <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
             </div>
+
           ) : vista === "integrada" ? (
-            <div className="max-w-3xl mx-auto px-6 py-4 space-y-2">
+            <div className="max-w-2xl mx-auto px-4 py-5 space-y-2">
               {integradas.length === 0 ? (
-                <div className="text-center py-16 text-[#333]">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 opacity-40">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                  </svg>
-                  <p className="text-sm mt-1">Sin alertas integradas</p>
-                </div>
+                <EmptyState icon="⚡" title="Sin alertas" sub="Todo en orden en todos los módulos" />
               ) : integradas.map(t => (
                 <Link key={t.id} href={t.href}
-                  className={`flex items-start gap-3 p-3 rounded-md bg-[#080808] border-l-2 hover:bg-[#0d0d0d] transition-colors ${severityColor(t.severidad)}`}>
+                  className={`flex items-start gap-3 p-4 rounded-xl bg-[#080808] border-l-2 hover:bg-[#0d0d0d] transition-colors ${severityColor(t.severidad)}`}>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-white">{t.titulo}</p>
+                    <p className="text-sm text-white font-medium">{t.titulo}</p>
                     {t.descripcion && <p className="text-xs text-[#555] mt-0.5">{t.descripcion}</p>}
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      <span className="text-[11px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888]">{t.etiqueta}</span>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#1a1a1a] text-[#666]">{t.etiqueta}</span>
                       {t.diasVencido && <span className="text-[11px] text-red-400">{t.diasVencido}d vencida</span>}
-                      {t.monto && <span className="text-[11px] text-[#B3985B]">${t.monto.toLocaleString("es-MX")}</span>}
-                      {t.cliente && <span className="text-[11px] text-[#666]">{t.cliente}</span>}
+                      {t.monto && <span className="text-[11px] text-[#B3985B] font-medium">${t.monto.toLocaleString("es-MX")}</span>}
+                      {t.cliente && <span className="text-[11px] text-[#555]">{t.cliente}</span>}
                     </div>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" className="shrink-0 mt-1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" className="shrink-0 mt-1">
                     <path d="M9 18l6-6-6-6"/>
                   </svg>
                 </Link>
               ))}
             </div>
+
           ) : typeof vista === "string" ? (
-            <div className="max-w-3xl mx-auto px-4 py-3 flex flex-col min-h-0">
-              {(vista === "bandeja" || vista === "proximas") && (
-                <div className="mb-4">
-                  <QuickAdd onAdd={addTarea} placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios} />
+            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+              {/* Quick add at top for bandeja/proximas */}
+              {(vista === "bandeja" || vista === "proximas" || vista === "hoy") && (
+                <div className="mb-3">
+                  <QuickAdd
+                    onAdd={addTarea}
+                    placeholder={vista === "hoy" ? "Agregar tarea para hoy…" : "Agregar tarea…"}
+                    proyectos={proyectosNav}
+                    usuarios={usuarios}
+                  />
                 </div>
               )}
-              {tareasOrdenadas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center flex-1 py-20 text-[#333]">
-                  <div className="mb-4">
-                    {vista === "hoy" ? (
-                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
-                        <circle cx="12" cy="12" r="5"/>
-                        <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                      </svg>
-                    ) : vista === "proximas" ? (
-                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                    ) : (
-                      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-30">
-                        <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
-                        <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-sm text-[#444]">
-                    {vista === "hoy" ? "Sin tareas para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
-                  </p>
-                  {vista === "bandeja" && (
-                    <p className="text-xs text-[#2a2a2a] mt-1">Agrega una tarea arriba para empezar</p>
-                  )}
-                </div>
+
+              {tareasOrdenadas.length === 0 && !hoyGrouped ? (
+                <EmptyState
+                  icon={vista === "hoy" ? "☀️" : vista === "proximas" ? "📅" : "📥"}
+                  title={vista === "hoy" ? "Nada para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
+                  sub={vista === "bandeja" ? "Escribe una tarea arriba y presiona Enter" : ""}
+                />
               ) : hoyGrouped ? (
                 hoyGrouped.map(group => group.tareas.length === 0 ? null : (
-                  <div key={group.label} className="mb-5">
-                    <div className="flex items-center gap-2 px-3 py-1.5 mb-0.5">
-                      <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{group.label}</span>
-                      <span className="text-[11px] text-[#2a2a2a]">{group.tareas.length}</span>
+                  <div key={group.label} className="mb-6">
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="text-xs text-[#555] font-semibold uppercase tracking-widest">{group.label}</span>
+                      <span className="text-[11px] text-[#2a2a2a] font-medium">{group.tareas.length}</span>
                     </div>
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                         onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
-                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                        onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                         showProject draggable
-                        onDragStart={setDraggingId}
-                        onDragEnd={() => setDraggingId(null)}
+                        onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                         isDragOver={false}
                       />
@@ -668,18 +731,18 @@ export default function OperacionesPage() {
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
-                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                    onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                     showProject draggable
-                    onDragStart={setDraggingId}
-                    onDragEnd={() => setDraggingId(null)}
+                    onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                     onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                     isDragOver={false}
                   />
                 ))
               )}
             </div>
+
           ) : (
-            <div className="max-w-3xl mx-auto px-4 py-3">
+            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {proyectoDetalle && (
                 <>
                   {proyectoDetalle.tareas.map(t => (
@@ -687,25 +750,22 @@ export default function OperacionesPage() {
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
                       onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                       draggable
-                      onDragStart={setDraggingId}
-                      onDragEnd={() => setDraggingId(null)}
+                      onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                     />
                   ))}
-                  <QuickAdd proyectoTareaId={proyectoDetalle.id} onAdd={addTarea} placeholder="Agregar tarea al proyecto…" proyectos={proyectosNav} usuarios={usuarios} />
+                  <QuickAdd
+                    proyectoTareaId={proyectoDetalle.id} onAdd={addTarea}
+                    placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios}
+                  />
+
                   {proyectoDetalle.secciones.map(seccion => (
                     <SectionBlock
-                      key={seccion.id}
-                      seccion={seccion}
-                      proyectoId={proyectoDetalle.id}
+                      key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
-                      onComplete={completeTarea}
-                      onSelect={setSelectedId}
-                      onDelete={deleteTarea}
-                      onAddTarea={addTarea}
-                      draggingId={draggingId}
-                      onDragStart={setDraggingId}
-                      onDragEnd={() => setDraggingId(null)}
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      onAddTarea={addTarea} draggingId={draggingId}
+                      onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
@@ -724,22 +784,23 @@ export default function OperacionesPage() {
                       }}
                     />
                   ))}
+
                   {showNuevaSeccion ? (
-                    <div className="mt-4 px-3 py-2 border border-dashed border-[#2a2a2a] rounded-md space-y-2">
+                    <div className="mt-5 px-3 py-3 border border-dashed border-[#1e1e1e] rounded-xl space-y-2">
                       <input autoFocus value={nuevaSeccionNombre}
                         onChange={e => setNuevaSeccionNombre(e.target.value)}
                         onKeyDown={e => { if (e.key === "Enter") addSeccion(); if (e.key === "Escape") setShowNuevaSeccion(false); }}
                         placeholder="Nombre de la sección"
-                        className="w-full bg-transparent text-sm text-white placeholder-[#444] focus:outline-none" />
-                      <div className="flex gap-2">
-                        <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline">Crear</button>
-                        <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
+                        className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
+                      <div className="flex gap-3">
+                        <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
+                        <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
                       </div>
                     </div>
                   ) : (
                     <button onClick={() => setShowNuevaSeccion(true)}
-                      className="mt-4 flex items-center gap-2 text-xs text-[#333] hover:text-[#555] px-3 py-2 transition-colors">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      className="mt-5 flex items-center gap-2 text-xs text-[#2a2a2a] hover:text-[#555] px-3 py-2 rounded-lg transition-colors">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                       </svg>
                       Agregar sección
@@ -752,54 +813,46 @@ export default function OperacionesPage() {
         </div>
       </main>
 
-      {/* ── TASK MODAL ────────────────────────────────────────────────────── */}
+      {/* ── TASK MODAL ──────────────────────────────────────────────────────── */}
       {selectedId && (
         <TaskModal
-          tarea={selectedTask}
-          loading={loadingPanel}
-          usuarios={usuarios}
-          proyectos={proyectosNav}
-          iniciativas={iniciativas}
-          sessionId={sessionId}
-          onClose={() => setSelectedId(null)}
-          onSave={saveTarea}
-          onComplete={completeTarea}
-          onDelete={deleteTarea}
-          onAddSubtarea={addSubtarea}
-          onCompleteSubtarea={completeTarea}
-          onDeleteSubtarea={deleteTarea}
+          tarea={selectedTask} loading={loadingPanel}
+          usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId}
+          onClose={() => setSelectedId(null)} onSave={saveTarea}
+          onComplete={completeTarea} onDelete={deleteTarea}
+          onAddSubtarea={addSubtarea} onCompleteSubtarea={completeTarea} onDeleteSubtarea={deleteTarea}
         />
       )}
 
-      {/* ── UNDO TOAST ────────────────────────────────────────────────────── */}
+      {/* ── UNDO TOAST ──────────────────────────────────────────────────────── */}
       <UndoToast undo={undoState} onUndo={handleUndo} onDismiss={handleDismissUndo} />
       {CelebrationToastEl}
 
-      {/* ── MODAL: Nuevo proyecto ──────────────────────────────────────────── */}
+      {/* ── MODAL: Nuevo proyecto ───────────────────────────────────────────── */}
       {showNuevoProyecto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowNuevoProyecto(false)}>
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-6 w-80 space-y-4" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowNuevoProyecto(false)}>
+          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-6 w-80 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-white font-semibold">Nuevo proyecto</h3>
             <div className="space-y-3">
               <input ref={proyectoInputRef} value={nuevoProyectoNombre}
                 onChange={e => setNuevoProyectoNombre(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") crearProyecto(); if (e.key === "Escape") setShowNuevoProyecto(false); }}
                 placeholder="Nombre del proyecto"
-                className="w-full bg-[#111] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]" />
-              <div className="space-y-1">
-                <label className="text-[11px] text-[#555] uppercase tracking-wider">Color</label>
+                className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-[#444] uppercase tracking-wider">Color</label>
                 <div className="flex gap-2 flex-wrap">
                   {PROJECT_COLORS.map(c => (
                     <button key={c} onClick={() => setNuevoProyectoColor(c)}
-                      className={`w-5 h-5 rounded-full hover:scale-110 transition-transform ${nuevoProyectoColor === c ? "ring-2 ring-white ring-offset-1 ring-offset-[#0d0d0d]" : ""}`}
+                      className={`w-6 h-6 rounded-full hover:scale-110 transition-transform ${nuevoProyectoColor === c ? "ring-2 ring-white ring-offset-2 ring-offset-[#0d0d0d]" : ""}`}
                       style={{ backgroundColor: c }} />
                   ))}
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] text-[#555] uppercase tracking-wider">Carpeta (opcional)</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] text-[#444] uppercase tracking-wider">Carpeta (opcional)</label>
                 <select value={nuevoProyectoCarpeta} onChange={e => setNuevoProyectoCarpeta(e.target.value)}
-                  className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
+                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-[#B3985B]">
                   <option value="">— Sin carpeta —</option>
                   {carpetas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
@@ -807,13 +860,50 @@ export default function OperacionesPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowNuevoProyecto(false)} className="px-3 py-1.5 text-sm text-[#555] hover:text-white">Cancelar</button>
-              <button onClick={crearProyecto} className="px-4 py-1.5 bg-[#B3985B] text-black text-sm font-medium rounded hover:bg-[#c9aa6a] transition-colors">
+              <button onClick={crearProyecto} className="px-4 py-1.5 bg-[#B3985B] text-black text-sm font-semibold rounded-xl hover:bg-[#c9aa6a] transition-colors">
                 Crear
               </button>
             </div>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── SideItem ─────────────────────────────────────────────────────────────────
+
+function SideItem({ icon, label, isActive, onClick, count }: {
+  icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void; count?: number;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
+        isActive
+          ? "bg-[#1a1a1a] text-white"
+          : "text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d]"
+      }`}
+    >
+      <span className={`shrink-0 ${isActive ? "text-[#B3985B]" : ""}`}>{icon}</span>
+      <span className="flex-1 text-left truncate">{label}</span>
+      {count !== undefined && (
+        <span className={`text-[11px] font-semibold min-w-[18px] text-center rounded-full px-1 ${
+          isActive ? "text-[#B3985B]" : "text-[#444]"
+        }`}>{count}</span>
+      )}
+    </button>
+  );
+}
+
+// ── EmptyState ───────────────────────────────────────────────────────────────
+
+function EmptyState({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 text-center">
+      <span className="text-4xl mb-4 opacity-60">{icon}</span>
+      <p className="text-sm font-medium text-[#444]">{title}</p>
+      {sub && <p className="text-xs text-[#2a2a2a] mt-1">{sub}</p>}
     </div>
   );
 }
