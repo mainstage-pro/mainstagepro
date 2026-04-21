@@ -33,6 +33,23 @@ interface CxPItem {
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
 }
 
+interface MovDirecto {
+  id: string;
+  fecha: string;
+  tipo: string;
+  concepto: string;
+  monto: number;
+  metodoPago: string;
+  referencia: string | null;
+  notas: string | null;
+  cliente: { id: string; nombre: string } | null;
+  proveedor: { id: string; nombre: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  categoria: { id: string; nombre: string } | null;
+  cuentaOrigen: { nombre: string } | null;
+  cuentaDestino: { nombre: string } | null;
+}
+
 const ESTADO_COLORS: Record<string, string> = {
   PENDIENTE: "bg-yellow-900/40 text-yellow-400",
   PARCIAL: "bg-blue-900/40 text-blue-400",
@@ -164,7 +181,8 @@ export default function CobrosPagosPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [pageTab, setPageTab] = useState<"cobros" | "programacion">("cobros");
-  const [tab, setTab] = useState<"cobrar" | "pagar">("cobrar");
+  const [tab, setTab] = useState<"cobrar" | "pagar" | "directos">("cobrar");
+  const [movDirectos, setMovDirectos] = useState<MovDirecto[]>([]);
   // Programación semanal
   const [semanasOp, setSemanasOp] = useState<SemanaOpLocal[]>([]);
   const [semanaIdx, setSemanaIdx] = useState(0);
@@ -228,12 +246,14 @@ export default function CobrosPagosPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rc, rp] = await Promise.all([
+    const [rc, rp, rm] = await Promise.all([
       fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()),
+      fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()),
     ]);
     setCxc(Array.isArray(rc) ? rc : []);
     setCxp(Array.isArray(rp) ? rp : []);
+    setMovDirectos(rm.movimientos ?? []);
     setLoading(false);
   }, []);
 
@@ -626,7 +646,7 @@ export default function CobrosPagosPage() {
       {/* Tabs + filtro */}
       <div className="flex items-center justify-between mb-4 border-b border-[#1a1a1a] pb-0">
         <div className="flex gap-1">
-          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length]] as const).map(([key, label, count]) => (
+          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length], ["directos", "Movimientos directos", movDirectos.length]] as const).map(([key, label, count]) => (
             <button key={key} onClick={() => setTab(key)}
               className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
                 tab === key
@@ -855,6 +875,59 @@ export default function CobrosPagosPage() {
         </div>
       )}
 
+      {/* ── Tab: Movimientos directos ── */}
+      {tab === "directos" && (
+        <div className="space-y-2">
+          {movDirectos.length === 0 ? (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
+              <p className="text-[#6b7280] text-sm">Sin movimientos directos</p>
+              <p className="text-[#444] text-xs mt-1">Los ingresos y gastos registrados directamente (no vinculados a CxC/CxP) aparecen aquí</p>
+              <a href="/finanzas/movimientos/nuevo" className="inline-block mt-4 px-4 py-1.5 rounded-lg bg-[#B3985B]/15 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/25 transition-colors">
+                + Registrar movimiento
+              </a>
+            </div>
+          ) : movDirectos.map(mov => (
+            <div key={mov.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="text-white text-sm font-medium">{mov.concepto}</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${mov.tipo === "INGRESO" ? "bg-green-900/40 text-green-300" : mov.tipo === "GASTO" ? "bg-red-900/40 text-red-300" : "bg-blue-900/40 text-blue-300"}`}>
+                      {mov.tipo === "INGRESO" ? "Ingreso" : mov.tipo === "GASTO" ? "Gasto" : mov.tipo}
+                    </span>
+                    {mov.categoria && (
+                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">{mov.categoria.nombre}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap">
+                    {mov.proyecto && (
+                      <Link href={`/proyectos/${mov.proyecto.id}`} className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
+                        {mov.proyecto.numeroProyecto} · {mov.proyecto.nombre}
+                      </Link>
+                    )}
+                    {mov.cliente && <span className="text-[10px] text-[#555]">{mov.cliente.nombre}</span>}
+                    {mov.referencia && <span className="text-[10px] text-[#555]">Ref: {mov.referencia}</span>}
+                    <span className="text-[10px] text-[#555]">{fmtDate(mov.fecha)}</span>
+                    <span className="text-[10px] text-[#555]">{mov.cuentaDestino?.nombre ?? mov.cuentaOrigen?.nombre ?? ""}</span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className={`font-semibold text-base ${mov.tipo === "INGRESO" ? "text-green-400" : mov.tipo === "GASTO" ? "text-red-400" : "text-white"}`}>
+                    {mov.tipo === "GASTO" ? "-" : "+"}{formatCurrency(mov.monto)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-[#1a1a1a]">
+                <Link href="/finanzas/movimientos"
+                  className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+                  Ver en movimientos →
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Modal confirmar */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
@@ -867,7 +940,7 @@ export default function CobrosPagosPage() {
             <div className="space-y-3 mb-5">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Monto recibido / pagado</label>
-                <input type="number" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
+                <input type="number" step="0.01" min="0" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
                 <p className="text-[10px] text-gray-600 mt-1">Total: {formatCurrency(modal.monto)}</p>
               </div>
@@ -951,7 +1024,7 @@ export default function CobrosPagosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Monto *</label>
-                  <input type="number" value={nuevoForm.monto} onChange={e => setNuevoForm(p => ({ ...p, monto: e.target.value }))}
+                  <input type="number" step="0.01" min="0" value={nuevoForm.monto} onChange={e => setNuevoForm(p => ({ ...p, monto: e.target.value }))}
                     placeholder="0.00"
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>

@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+export async function GET(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const directos = req.nextUrl.searchParams.get("directos") === "true";
+
+  const movimientos = await prisma.movimientoFinanciero.findMany({
+    where: directos ? { cuentaCobrar: null, cuentaPagar: null } : undefined,
+    include: {
+      cliente: { select: { id: true, nombre: true } },
+      proveedor: { select: { id: true, nombre: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
+      categoria: { select: { id: true, nombre: true } },
+      cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
+      cuentaDestino: { select: { id: true, nombre: true, banco: true } },
+    },
+    orderBy: { fecha: "desc" },
+    take: 200,
+  });
+
+  return NextResponse.json({ movimientos });
+}
+
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
