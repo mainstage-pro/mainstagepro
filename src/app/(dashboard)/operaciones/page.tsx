@@ -80,6 +80,7 @@ export default function OperacionesPage() {
   });
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showCompleted, setShowCompleted]       = useState(false);
+  const [busqueda, setBusqueda]                 = useState("");
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
@@ -392,10 +393,16 @@ export default function OperacionesPage() {
   }
 
   // ── Hoy / Próximas grouped ───────────────────────────────────────────────
+  const applyBusqueda = (list: TareaItem[]) => {
+    const q = busqueda.toLowerCase().trim();
+    if (!q) return list;
+    return list.filter(t => t.titulo.toLowerCase().includes(q));
+  };
+
   const hoyGrouped = useMemo(() => {
     if (typeof vista !== "string" || (vista !== "hoy" && vista !== "proximas")) return null;
 
-    const base = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
+    const base = applyBusqueda(showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
 
     // Manual sort options (from the sort buttons)
     if (sortHoy !== SORT_OPTIONS[0]) {
@@ -427,13 +434,13 @@ export default function OperacionesPage() {
     const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH"];
     const keys = AREA_ORD.filter(k => grouped[k]);
     return keys.map(key => ({ label: areaLabel(key), tareas: sortCronoPrio(grouped[key]) }));
-  }, [tareas, sortHoy, vista, showCompleted]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tareas, sortHoy, vista, showCompleted, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flat sorted list (used when no grouping)
   const tareasOrdenadas = useMemo(() => {
-    const base = showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA");
+    const base = applyBusqueda(showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     return sortCronoPrio(base);
-  }, [tareas, showCompleted]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tareas, showCompleted, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proyectosSinCarpeta = useMemo(() =>
     proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
@@ -638,7 +645,26 @@ export default function OperacionesPage() {
             </svg>
           </button>
 
-          <h1 className="text-base font-semibold text-white tracking-tight">{vistaLabel}</h1>
+          <h1 className="text-base font-semibold text-white tracking-tight shrink-0">{vistaLabel}</h1>
+
+          {/* Search */}
+          <div className="relative flex-1 max-w-xs mx-2">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#444] pointer-events-none" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar tarea…"
+              className="w-full pl-7 pr-7 py-1 bg-[#111] border border-[#1a1a1a] rounded-lg text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#444] hover:text-white transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            )}
+          </div>
 
           {/* Sort dropdown (Hoy / Próximas) */}
           {(vista === "hoy" || vista === "proximas") && (
@@ -984,8 +1010,8 @@ export default function OperacionesPage() {
             <div className="flex justify-center pt-2.5 pb-2">
               <div className="w-8 h-1 rounded-full bg-[#2a2a2a]" />
             </div>
-            <div className="flex items-center justify-between px-4 pb-2">
-              <h2 className="text-white font-semibold text-base">Proyectos</h2>
+            <div className="flex items-center justify-between px-4 pb-3">
+              <h2 className="text-white font-semibold text-base">Explorar</h2>
               <button
                 onClick={() => { setShowNuevoProyecto(true); setMobileProyectos(false); setTimeout(() => proyectoInputRef.current?.focus(), 80); }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#B3985B]/10 text-[#B3985B] hover:bg-[#B3985B]/20 transition-colors"
@@ -993,31 +1019,82 @@ export default function OperacionesPage() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
             </div>
+
+            {/* Search input */}
+            <div className="px-4 pb-3">
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  type="text"
+                  value={busqueda}
+                  onChange={e => setBusqueda(e.target.value)}
+                  placeholder="Buscar tarea por nombre…"
+                  className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#1e1e1e] rounded-xl text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
+                />
+                {busqueda && (
+                  <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Results: tasks when searching, projects when not */}
             <div className="pb-4">
-              {proyectosSinCarpeta.map(p => (
-                <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
-                  {p.nombre}
-                </button>
-              ))}
-              {carpetas.map(c => (
-                <div key={c.id}>
-                  <div className="flex items-center gap-2 px-4 py-2">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                    <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{c.nombre}</span>
-                  </div>
-                  {c.proyectos.map(p => (
+              {busqueda.trim() ? (() => {
+                const q = busqueda.toLowerCase().trim();
+                const resultados = tareas.filter(t =>
+                  t.titulo.toLowerCase().includes(q) && t.estado !== "COMPLETADA" && t.estado !== "CANCELADA"
+                );
+                if (resultados.length === 0) return (
+                  <p className="text-center text-[#444] text-sm py-8">Sin resultados para &ldquo;{busqueda}&rdquo;</p>
+                );
+                return resultados.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setSelectedId(t.id); setMobileProyectos(false); setBusqueda(""); }}
+                    className="w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-[#111] transition-colors border-b border-[#0d0d0d] last:border-0"
+                  >
+                    <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${t.prioridad === "URGENTE" ? "bg-red-500" : t.prioridad === "ALTA" ? "bg-orange-400" : t.prioridad === "MEDIA" ? "bg-yellow-400" : "bg-[#444]"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-sm font-medium truncate">{t.titulo}</p>
+                      <p className="text-[#555] text-xs mt-0.5">
+                        {t.proyectoTarea?.nombre ?? "Bandeja"} · {t.area}
+                        {t.fecha && <> · {new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</>}
+                      </p>
+                    </div>
+                  </button>
+                ));
+              })() : (
+                <>
+                  {proyectosSinCarpeta.map(p => (
                     <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
-                      className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
                       {p.nombre}
                     </button>
                   ))}
-                </div>
-              ))}
-              {proyectosSinCarpeta.length === 0 && carpetas.length === 0 && (
-                <p className="text-center text-[#444] text-sm py-8">Sin proyectos aún</p>
+                  {carpetas.map(c => (
+                    <div key={c.id}>
+                      <div className="flex items-center gap-2 px-4 py-2">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{c.nombre}</span>
+                      </div>
+                      {c.proyectos.map(p => (
+                        <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
+                          className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                          {p.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                  {proyectosSinCarpeta.length === 0 && carpetas.length === 0 && (
+                    <p className="text-center text-[#444] text-sm py-8">Sin proyectos aún</p>
+                  )}
+                </>
               )}
             </div>
           </div>
