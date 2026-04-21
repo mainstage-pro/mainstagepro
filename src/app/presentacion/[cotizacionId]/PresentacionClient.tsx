@@ -330,9 +330,14 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             </div>
           )}
         </div>
-        <div className="px-3 py-2.5 border-t border-white/5 flex items-center justify-between gap-2">
-          <p className="text-white/80 text-xs font-medium truncate">{linea.modelo ?? linea.descripcion}</p>
-          <span className="text-[#B3985B] text-[10px] font-bold shrink-0">×{linea.cantidad}</span>
+        <div className="px-3 py-2.5 border-t border-white/5 flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-white/80 text-xs font-medium truncate">{linea.modelo ?? linea.descripcion}</p>
+            {linea.modelo && linea.descripcion && (
+              <p className="text-white/35 text-[10px] truncate mt-0.5">{linea.descripcion}</p>
+            )}
+          </div>
+          <span className="text-[#B3985B] text-[10px] font-bold shrink-0 mt-0.5">×{linea.cantidad}</span>
         </div>
       </div>
     </R>
