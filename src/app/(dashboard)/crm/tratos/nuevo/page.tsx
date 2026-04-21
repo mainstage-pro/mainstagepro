@@ -36,22 +36,18 @@ const EVENTOS_CARDS = [
 ] as const;
 
 const CANALES = [
-  { value: "WHATSAPP",    label: "WhatsApp",   icon: "💬" },
-  { value: "LLAMADA",     label: "Llamada",    icon: "📞" },
-  { value: "REUNION",     label: "Reunión",    icon: "👥" },
-  { value: "REFERIDO",    label: "Referido",   icon: "🤝" },
-  { value: "FORMULARIO",  label: "Formulario", icon: "📋" },
-  { value: "INFORMACION", label: "Solo info",  icon: "ℹ️" },
+  { value: "WHATSAPP", label: "WhatsApp", icon: "💬" },
+  { value: "LLAMADA",  label: "Llamada",  icon: "📞" },
+  { value: "REUNION",  label: "Reunión",  icon: "👥" },
 ];
 
 const ORIGEN_OPTIONS = [
-  { value: "ORGANICO",    label: "Orgánico / Directo" },
-  { value: "META_ADS",    label: "Meta Ads" },
-  { value: "GOOGLE_ADS",  label: "Google Ads" },
-  { value: "RECOMPRA",    label: "Recompra" },
-  { value: "REFERIDO",    label: "Referido" },
-  { value: "PROSPECCION", label: "Prospección activa" },
-  { value: "OTRO",        label: "Otro" },
+  { value: "ORGANICO",   label: "Orgánico / Directo" },
+  { value: "META_ADS",   label: "Meta Ads" },
+  { value: "GOOGLE_ADS", label: "Google Ads" },
+  { value: "RECOMPRA",   label: "Recompra" },
+  { value: "REFERIDO",   label: "Referido" },
+  { value: "OTRO",       label: "Otro" },
 ];
 
 const ORIGEN_VENTA_OPTIONS = [
@@ -165,7 +161,7 @@ export default function NuevoTratoPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
-                onClick={() => { setTipoProspecto("NURTURING"); setStep(1); }}
+                onClick={() => { setTipoProspecto("NURTURING"); setS1(p => ({ ...p, tipoLead: "OUTBOUND" })); setStep(1); }}
                 className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
                 <div className="text-3xl mb-3">🌱</div>
                 <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
@@ -173,7 +169,7 @@ export default function NuevoTratoPage() {
                 <p className="text-emerald-700 text-xs mt-3 font-medium">Proceso de semanas o meses →</p>
               </button>
               <button
-                onClick={() => { setTipoProspecto("ACTIVO"); setStep(1); }}
+                onClick={() => { setTipoProspecto("ACTIVO"); setS1(p => ({ ...p, tipoLead: "INBOUND" })); setStep(1); }}
                 className="border-2 border-[#B3985B]/50 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-5 text-left transition-all group">
                 <div className="text-3xl mb-3">🎯</div>
                 <p className="text-[#B3985B] font-semibold text-base group-hover:text-[#c9a96a] transition-colors">Tiene necesidad concreta</p>

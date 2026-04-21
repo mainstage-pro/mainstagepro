@@ -137,6 +137,7 @@ const CATEGORIAS_BASE: ServicioItem[] = [
   { id: "ILUMINACION",   label: "Iluminación",              grupo: "base" },
   { id: "PANTALLAS_LED", label: "Pantallas LED / Video",    grupo: "base" },
   { id: "RIGGING",       label: "Rigging / Estructuras",    grupo: "base" },
+  { id: "ENTARIMADO",    label: "Entarimado",               grupo: "base" },
   { id: "PROYECCION",    label: "Proyección",               grupo: "base" },
   { id: "DJ_EQUIPO",     label: "Equipo DJ",                grupo: "base" },
   { id: "BACKLINE",      label: "Backline (amps, batería)",  grupo: "base" },
@@ -2027,7 +2028,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
                   const catMeta = {
                     REFERENCIA: { label: "Referencias del cliente", icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
-                    DOCUMENTO:  { label: "Documentos adicionales",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                    DOCUMENTO:  { label: "Otros documentos",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
                   }[cat];
                   const catArchivos = archivos.filter(a => a.tipo === cat);
                   const uploading = uploadingTipo === cat;
@@ -2159,49 +2160,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
                       </div>;
                     })()}
-                    {scoutingTab === "form" && <div className="space-y-5">
-                      <div>
-                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Venue / Recinto</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Contacto en el venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del contacto" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                        </div>
+                    {scoutingTab === "form" && <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Encargado del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del encargado" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                       </div>
-                      <div>
-                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Dimensiones del espacio</p>
-                        <div className="grid grid-cols-4 gap-3">
-                          <div><label className="text-[10px] text-gray-500 mb-1 block">Largo (m)</label><input type="number" value={scoutingForm.largo} onChange={e => setScoutingForm(p => ({ ...p, largo: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                          <div><label className="text-[10px] text-gray-500 mb-1 block">Ancho (m)</label><input type="number" value={scoutingForm.ancho} onChange={e => setScoutingForm(p => ({ ...p, ancho: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                          <div><label className="text-[10px] text-gray-500 mb-1 block">Altura máx.</label><input type="number" value={scoutingForm.alturaMaxima} onChange={e => setScoutingForm(p => ({ ...p, alturaMaxima: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                          <div><label className="text-[10px] text-gray-500 mb-1 block">Capacidad</label><input type="number" value={scoutingForm.capacidadPersonas} onChange={e => setScoutingForm(p => ({ ...p, capacidadPersonas: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Eléctrico y accesos</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input type="number" value={scoutingForm.voltajeDisponible} onChange={e => setScoutingForm(p => ({ ...p, voltajeDisponible: e.target.value }))} placeholder="Voltaje (V)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input type="number" value={scoutingForm.amperajeTotalDisponible} onChange={e => setScoutingForm(p => ({ ...p, amperajeTotalDisponible: e.target.value }))} placeholder="Amperaje total (A)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <select value={scoutingForm.fases} onChange={e => setScoutingForm(p => ({ ...p, fases: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                            <option value="">Fases...</option>
-                            <option value="Monofásico 127V">Monofásico 127V</option>
-                            <option value="Bifásico 220V">Bifásico 220V</option>
-                            <option value="Trifásico 220V">Trifásico 220V</option>
-                            <option value="Trifásico 440V">Trifásico 440V</option>
-                          </select>
-                          <input value={scoutingForm.accesoVehicular} onChange={e => setScoutingForm(p => ({ ...p, accesoVehicular: e.target.value }))} placeholder="Acceso vehicular" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide mb-3">Restricciones</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <input value={scoutingForm.restriccionDecibeles} onChange={e => setScoutingForm(p => ({ ...p, restriccionDecibeles: e.target.value }))} placeholder="Límite de decibeles" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input value={scoutingForm.restriccionHorarioAcceso} onChange={e => setScoutingForm(p => ({ ...p, restriccionHorarioAcceso: e.target.value }))} placeholder="Horario de acceso/montaje" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          <input value={scoutingForm.restriccionInstalacion} onChange={e => setScoutingForm(p => ({ ...p, restriccionInstalacion: e.target.value }))} placeholder="Restricciones de instalación" className="sm:col-span-2 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                        </div>
-                      </div>
-                      <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas adicionales: acústica, reflejos, obstáculos, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                      <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas del scouting: accesos, restricciones, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
                     </div>}
                   </div>)}
                 </>
@@ -2257,7 +2223,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div><label className="text-xs text-gray-400 block mb-1">Fecha</label><input type="date" value={briefForm.fecha} onChange={e => setBriefForm(p => ({ ...p, fecha: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                   <div><label className="text-xs text-gray-400 block mb-1">Horario del evento</label><input value={briefForm.horarioEvento} onChange={e => setBriefForm(p => ({ ...p, horarioEvento: e.target.value }))} placeholder="ej. 18:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Horario de cobertura</label><input value={briefForm.horarioCobertura} onChange={e => setBriefForm(p => ({ ...p, horarioCobertura: e.target.value }))} placeholder="ej. 17:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                  <div><label className="text-xs text-gray-400 block mb-1">Horario sugerido de cobertura</label><input value={briefForm.horarioCobertura} onChange={e => setBriefForm(p => ({ ...p, horarioCobertura: e.target.value }))} placeholder="ej. 17:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                   <div><label className="text-xs text-gray-400 block mb-1">Lugar / Venue</label><input value={briefForm.lugar} onChange={e => setBriefForm(p => ({ ...p, lugar: e.target.value }))} placeholder="Nombre y dirección" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                 </div>
                 <div>
@@ -2289,7 +2255,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-white font-medium">Descuento Family &amp; Friends</p>
+                      <p className="text-sm text-white font-medium">Descuento especial</p>
                       <p className="text-[11px] text-gray-500 mt-0.5">Se aplicará en la cotización automáticamente</p>
                     </div>
                     <button
@@ -2301,9 +2267,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                   <div className="flex items-center justify-between">
-                    <div>
+                    <div className="flex-1 pr-3">
                       <p className="text-sm text-white font-medium">Aplica Mainstage Trade</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">El cliente elegirá su nivel de colaboración</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">Intercambio de servicios por contenido o difusión. El cliente obtiene descuento a cambio de publicar en redes, crear contenido de calidad o mencionar a Mainstage Pro.</p>
                     </div>
                     <button
                       onClick={() => setDiscForm(p => ({ ...p, tradeAplica: !p.tradeAplica }))}

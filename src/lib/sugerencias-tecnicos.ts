@@ -34,12 +34,6 @@ export function getSugerenciasTecnicos(
       motivo: "Operador de audio",
     },
     {
-      rolKeyword: "video",
-      cantidad: 1,
-      esOpcional: false,
-      motivo: "Operador de video / pantalla",
-    },
-    {
       rolKeyword: "iluminaci",
       cantidad: asistentes > 400 ? 2 : 1,
       esOpcional: false,

@@ -126,6 +126,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkAprobacion, setLinkAprobacion] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [presCopiado, setPresCopiado] = useState(false);
   const [showRenderModal, setShowRenderModal] = useState(false);
   const [renderTel, setRenderTel] = useState<string>(() => typeof window !== "undefined" ? localStorage.getItem("renderTelefono") ?? "" : "");
   const [renderFecha, setRenderFecha] = useState("");
@@ -444,11 +445,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       `📎 *Cotización:* ${cot.numeroCotizacion} · ${cot.cliente.nombre}`,
   ].filter(Boolean).join("\n");
 
+  const CARLOS_LUNA_TEL = "524428633023";
   const enviarRenderWhatsApp = () => {
-    if (renderTel) localStorage.setItem("renderTelefono", renderTel);
-    const tel = renderTel.replace(/\D/g, "");
     const msg = buildRenderMsg();
-    window.open(`https://wa.me/${tel.startsWith("52") ? tel : `52${tel}`}?text=${encodeURIComponent(msg)}`, "_blank");
+    window.open(`https://wa.me/${CARLOS_LUNA_TEL}?text=${encodeURIComponent(msg)}`, "_blank");
     setShowRenderModal(false);
   };
 
@@ -661,6 +661,37 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </button>
           </div>
         )}
+
+        {/* Links copiables — siempre visibles */}
+        <div className="border-t border-[#1a1a1a] pt-3 space-y-2">
+          <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold">Links</p>
+          {presentacionToken && (() => {
+            const presUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/presentacion/${cot.id}?token=${presentacionToken}`;
+            return (
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] text-gray-600 w-20 shrink-0">Presentación</span>
+                <input readOnly value={presUrl} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-gray-400 text-xs font-mono truncate" />
+                <button onClick={async () => { await navigator.clipboard.writeText(presUrl); setPresCopiado(true); setTimeout(() => setPresCopiado(false), 2000); }}
+                  className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                  {presCopiado ? "✓" : "Copiar"}
+                </button>
+              </div>
+            );
+          })()}
+          {(linkAprobacion || cot.aprobacionToken) && (() => {
+            const aprobUrl = linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`;
+            return (
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] text-gray-600 w-20 shrink-0">Aprobación</span>
+                <input readOnly value={aprobUrl} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-gray-400 text-xs font-mono truncate" />
+                <button onClick={async () => { await navigator.clipboard.writeText(aprobUrl); setLinkCopiado(true); setTimeout(() => setLinkCopiado(false), 2000); }}
+                  className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                  {linkCopiado ? "✓" : "Copiar"}
+                </button>
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Badge aprobada */}
         {cot.estado === "APROBADA" && cot.aprobacionNombre && (
@@ -1220,17 +1251,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             {cot.trato.ideasReferencias && <p className="text-gray-300 text-xs"><span className="text-gray-600">Referencias:</span> ✓</p>}
           </div>
 
+          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <p className="text-[11px] text-gray-500">📲 Se enviará a <span className="text-white font-medium">Carlos Luna</span> vía WhatsApp</p>
+          </div>
           <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">WhatsApp del responsable de renders</label>
-              <input
-                value={renderTel}
-                onChange={e => setRenderTel(e.target.value)}
-                placeholder="52 55 1234 5678"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-purple-600/60"
-              />
-              {renderTel && <p className="text-[10px] text-gray-600 mt-1">Se guardará para la próxima vez</p>}
-            </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Fecha de entrega del render *</label>
               <input
@@ -1259,7 +1283,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </button>
             <button
               onClick={enviarRenderWhatsApp}
-              disabled={!renderTel || !renderFecha}
+              disabled={!renderFecha}
               className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>

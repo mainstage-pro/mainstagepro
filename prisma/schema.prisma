@@ -946,6 +946,19 @@ model PersonalInterno {
   cuentaBancaria String?
   datosFiscales  String?
   notas          String?
+  // Datos bancarios
+  banco          String?
+  clabe          String?   @map("clabe")
+  numeroCuenta   String?   @map("numero_cuenta")
+  numeroTarjeta  String?   @map("numero_tarjeta")
+  // Datos personales
+  ineUrl         String?   @map("ine_url")
+  domicilio      String?
+  // Contacto de emergencia
+  emergenciaNombre String? @map("emergencia_nombre")
+  emergenciaTel    String? @map("emergencia_tel")
+  // Salud
+  padecimientos  String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

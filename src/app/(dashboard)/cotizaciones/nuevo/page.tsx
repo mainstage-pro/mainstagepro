@@ -8,6 +8,8 @@ import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants"
 import { getSugerencias, type SugItem } from "@/lib/sugerencias-equipo";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import VenuePicker from "@/components/ui/VenuePicker";
+import NumSelect from "@/components/ui/NumSelect";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -215,10 +217,10 @@ function CotizadorForm() {
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
   const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
-  const [selLogTipo, setSelLogTipo] = useState<"COMIDA" | "TRANSPORTE" | "HOSPEDAJE">("COMIDA");
-  const [selLogConcepto, setSelLogConcepto] = useState(CONCEPTOS_COMIDA[0].label);
-  const [selLogPrecio, setSelLogPrecio] = useState(String(CONCEPTOS_COMIDA[0].precio));
-  const [selLogCant, setSelLogCant] = useState("1"); const [selLogDias, setSelLogDias] = useState("1");
+  const [logConcepto, setLogConcepto] = useState({ COMIDA: CONCEPTOS_COMIDA[0].label, TRANSPORTE: CONCEPTOS_TRANSPORTE[0].label, HOSPEDAJE: CONCEPTOS_HOSPEDAJE[0].label });
+  const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
+  const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
+  const [logDias, setLogDias] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
 
   // Proveedores para selector en modal nuevo equipo
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; telefono: string | null }>>([]);
@@ -396,7 +398,7 @@ function CotizadorForm() {
   useEffect(() => {
     const totalTecnicos = lineasOp.reduce((s, l) => s + Math.round(l.cantidad), 0)
       + lineasDJ.length;
-    if (totalTecnicos > 0) setSelLogCant(String(totalTecnicos));
+    if (totalTecnicos > 0) setLogCant(p => ({ ...p, COMIDA: String(totalTecnicos) }));
   }, [lineasOp, lineasDJ]);
 
   // Cargar disponibilidad cuando cambia la fecha del evento
@@ -1100,32 +1102,30 @@ function CotizadorForm() {
             <div className="flex gap-2 mb-4 items-end">
               <div className="flex-1">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
-                <select value={selEq} onChange={e => setSelEq(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Selecciona equipo{loadingDisp ? " (cargando disp...)" : ""} —</option>
-                  {equiposPorCategoria.map(([cat, eqs]) => (
-                    <optgroup key={cat} label={cat}>
-                      {eqs.map(eq => {
-                        const d = dispMap[eq.id];
-                        const dispLabel = evento.fechaEvento && d !== undefined
-                          ? (d.disponible === 0 ? " ⛔ sin stock" : d.disponible < d.total ? ` ⚠ ${d.disponible}/${d.total} disp.` : ` ✓ ${d.disponible} disp.`)
-                          : "";
-                        return (
-                          <option key={eq.id} value={eq.id}>
-                            {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""}{eq.modelo ? ` ${eq.modelo}` : ""}{eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}{dispLabel}
-                          </option>
-                        );
-                      })}
-                    </optgroup>
-                  ))}
-                </select>
+                <SearchableSelect
+                  value={selEq}
+                  onChange={setSelEq}
+                  placeholder={`— Buscar equipo${loadingDisp ? " (cargando disp.)" : ""}… —`}
+                  options={equiposPorCategoria.flatMap(([cat, eqs]) => eqs.map(eq => {
+                    const d = dispMap[eq.id];
+                    const dispLabel = evento.fechaEvento && d !== undefined
+                      ? (d.disponible === 0 ? " ⛔" : d.disponible < d.total ? ` ⚠${d.disponible}/${d.total}` : ` ✓${d.disponible}`)
+                      : "";
+                    return {
+                      value: eq.id,
+                      label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""}${eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}${dispLabel}`,
+                      group: cat,
+                    };
+                  }))}
+                />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <input type="number" min="1" value={selEqCant} onChange={e => setSelEqCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selEqCant} onChange={setSelEqCant} max={20} className="w-20 py-2" />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <input type="number" min="1" value={selEqDias} onChange={e => setSelEqDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
               </div>
               <button onClick={agregarEquipo} disabled={!selEq} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
@@ -1201,8 +1201,8 @@ function CotizadorForm() {
                               </div>
                               {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
                             </div>
-                            <input type="number" value={l.cantidad} min="1" onChange={e => updateEquipo(l.id, "cantidad", parseFloat(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Cantidad" />
-                            <input type="number" value={l.dias} min="1" onChange={e => updateEquipo(l.id, "dias", parseInt(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Días" />
+                            <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
+                            <NumSelect value={l.dias} onChange={v => updateEquipo(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
                             <div className="flex flex-col items-end gap-0.5">
                               <input type="number" value={l.precioUnitario} min="0"
                                 onChange={e => updateEquipo(l.id, "precioUnitario", parseFloat(e.target.value) || 0)}
@@ -1370,11 +1370,11 @@ function CotizadorForm() {
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <input type="number" min="1" value={selExtCant} onChange={e => setSelExtCant(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selExtCant} onChange={setSelExtCant} max={20} className="w-20 py-2" />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <input type="number" min="1" value={selExtDias} onChange={e => setSelExtDias(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selExtDias} onChange={setSelExtDias} max={10} className="w-20 py-2" />
               </div>
               <button onClick={agregarExterno} disabled={!selExt} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">+ Agregar</button>
             </div>
@@ -1390,8 +1390,8 @@ function CotizadorForm() {
                       {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
-                    <input type="number" value={l.cantidad} min="1" onChange={e => updateExterno(l.id, "cantidad", parseFloat(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Cantidad" />
-                    <input type="number" value={l.dias} min="1" onChange={e => updateExterno(l.id, "dias", parseInt(e.target.value) || 1)} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-1 py-1 text-white text-sm text-center" title="Días" />
+                    <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
+                    <NumSelect value={l.dias} onChange={v => updateExterno(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
                     <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
                     <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                     <button onClick={() => setLineasExterno(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
@@ -1439,13 +1439,11 @@ function CotizadorForm() {
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
-                <input type="number" min="1" value={selOcCant} onChange={e => setSelOcCant(e.target.value)}
-                  className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selOcCant} onChange={setSelOcCant} max={20} className="w-16 py-2" />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
-                <input type="number" min="1" value={selOcDias} onChange={e => setSelOcDias(e.target.value)}
-                  className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]" />
+                <NumSelect value={selOcDias} onChange={setSelOcDias} max={10} className="w-16 py-2" />
               </div>
               <button onClick={agregarOcasional} disabled={!selOcDesc.trim() || !selOcPrecio}
                 className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">
@@ -1505,7 +1503,7 @@ function CotizadorForm() {
                                 {rol && (
                                   item.isStagehands ? (
                                     <div className="flex gap-1 shrink-0">
-                                      {[2, 4, 6, 8].map(n => {
+                                      {[1, 2, 4, 6, 8].map(n => {
                                         const yaEsteN = lineasOp.some(l => l.rolTecnicoId === rol.id && l.cantidad === n);
                                         return (
                                           <button
@@ -1553,17 +1551,20 @@ function CotizadorForm() {
           {/* ── Operación técnica ── */}
           <Seccion titulo="Operación técnica" hint="sin descuento">
             <div className="flex gap-2 mb-3">
-              <select value={selRol} onChange={e => setSelRol(e.target.value)} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Selecciona rol —</option>
-                {roles.filter(r => r.nombre !== "DJ").map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-              </select>
+              <SearchableSelect
+                value={selRol}
+                onChange={setSelRol}
+                placeholder="— Buscar rol —"
+                options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
+                className="flex-1"
+              />
               <select value={selRolNivel} onChange={e => setSelRolNivel(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none">
                 <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
               </select>
               <select value={selRolJornada} onChange={e => setSelRolJornada(e.target.value)} className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none">
                 <option value="CORTA">0–8 hrs</option><option value="MEDIA">8–12 hrs</option><option value="LARGA">12+ hrs</option>
               </select>
-              <input type="number" min="1" value={selRolCant} onChange={e => setSelRolCant(e.target.value)} className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" title="Cantidad" />
+              <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
             {lineasOp.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin técnicos agregados</p> : lineasOp.map(l => (
@@ -1606,78 +1607,65 @@ function CotizadorForm() {
 
           {/* ── Logística ── */}
           <Seccion titulo="Logística" hint="sin descuento">
-            {/* Formulario de agregar */}
-            <div className="flex gap-2 mb-3 flex-wrap">
-              <select value={selLogTipo} onChange={e => {
-                const t = e.target.value as "COMIDA" | "TRANSPORTE" | "HOSPEDAJE";
-                setSelLogTipo(t);
-                const conceptos = t === "COMIDA" ? CONCEPTOS_COMIDA : t === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-                const primer = conceptos[0];
-                setSelLogConcepto(primer.label);
-                setSelLogPrecio(String(primer.precio));
-              }} className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="COMIDA">Comidas</option>
-                <option value="TRANSPORTE">Transporte</option>
-                <option value="HOSPEDAJE">Hospedaje</option>
-              </select>
-              <select value={selLogConcepto} onChange={e => {
-                const conceptos = selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-                const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? 0;
-                setSelLogConcepto(e.target.value);
-                setSelLogPrecio(String(precio));
-              }} className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {(selLogTipo === "COMIDA" ? CONCEPTOS_COMIDA : selLogTipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE).map(c => (
-                  <option key={c.label} value={c.label}>{c.label}</option>
-                ))}
-              </select>
-              <input type="number" value={selLogPrecio} onChange={e => setSelLogPrecio(e.target.value)} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              <input type="number" min="1" value={selLogCant} onChange={e => setSelLogCant(e.target.value)} title="Cantidad" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" />
-              <input type="number" min="1" value={selLogDias} onChange={e => setSelLogDias(e.target.value)} title="Días" className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-center focus:outline-none" />
-              <button onClick={() => {
-                const precio = parseFloat(selLogPrecio) || 0;
-                const cant = parseFloat(selLogCant) || 1;
-                const dias = parseInt(selLogDias) || 1;
-                setLineasLog(prev => [...prev, { id: uid(), tipo: selLogTipo, concepto: selLogConcepto, precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
-                setSelLogCant("1"); setSelLogDias("1");
-              }} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm">+ Agregar</button>
-            </div>
-            {/* Lista de líneas */}
-            {lineasLog.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-2">Sin logística agregada</p>
-            ) : (
-              lineasLog.map(l => {
-                const conceptos = l.tipo === "COMIDA" ? CONCEPTOS_COMIDA : l.tipo === "TRANSPORTE" ? CONCEPTOS_TRANSPORTE : CONCEPTOS_HOSPEDAJE;
-                const label = l.tipo === "COMIDA" ? "Comidas" : l.tipo === "TRANSPORTE" ? "Transporte" : "Hospedaje";
-                return (
-                  <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
-                    <div className="flex-1">
-                      <p className="text-white text-sm">{label} — {l.concepto}</p>
-                      <p className="text-gray-500 text-xs">×{l.cantidad} · {l.dias} día(s) · {formatCurrency(l.precioUnitario)}/u</p>
-                    </div>
-                    <select value={l.concepto} onChange={e => {
-                      const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? l.precioUnitario;
-                      setLineasLog(p => p.map(x => x.id === l.id ? { ...x, concepto: e.target.value, precioUnitario: precio, subtotal: precio * x.cantidad * x.dias } : x));
-                    }} className="w-40 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
+            {([
+              { tipo: "COMIDA" as const, label: "Comida", conceptos: CONCEPTOS_COMIDA, icon: "🍽" },
+              { tipo: "TRANSPORTE" as const, label: "Transporte", conceptos: CONCEPTOS_TRANSPORTE, icon: "🚐" },
+              { tipo: "HOSPEDAJE" as const, label: "Hospedaje", conceptos: CONCEPTOS_HOSPEDAJE, icon: "🏨" },
+            ]).map(({ tipo, label, conceptos, icon }) => {
+              const lineas = lineasLog.filter(l => l.tipo === tipo);
+              const subtotal = lineas.reduce((s, l) => s + l.subtotal, 0);
+              return (
+                <div key={tipo} className="mb-4 last:mb-0">
+                  <p className="text-xs font-semibold text-[#888] mb-2 uppercase tracking-wider">{icon} {label}</p>
+                  <div className="flex gap-2 mb-2 flex-wrap items-end">
+                    <select value={logConcepto[tipo]} onChange={e => {
+                      const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? 0;
+                      setLogConcepto(p => ({ ...p, [tipo]: e.target.value }));
+                      setLogPrecio(p => ({ ...p, [tipo]: String(precio) }));
+                    }} className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
                       {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
                     </select>
-                    <input type="number" value={l.precioUnitario} onChange={e => {
-                      const p = parseFloat(e.target.value) || 0;
-                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
-                    }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
-                    <input type="number" min="1" value={l.cantidad} onChange={e => {
-                      const c = parseFloat(e.target.value) || 1;
-                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x));
-                    }} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-center focus:outline-none" />
-                    <input type="number" min="1" value={l.dias} onChange={e => {
-                      const d = parseInt(e.target.value) || 1;
-                      setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x));
-                    }} className="w-14 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-center focus:outline-none" />
-                    <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
-                    <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
+                    <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={20} className="w-16 py-2" title="Cantidad" />
+                    <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
+                    <button onClick={() => {
+                      const precio = parseFloat(logPrecio[tipo]) || 0;
+                      const cant = parseFloat(logCant[tipo]) || 1;
+                      const dias = parseInt(logDias[tipo]) || 1;
+                      setLineasLog(prev => [...prev, { id: uid(), tipo, concepto: logConcepto[tipo], precioUnitario: precio, cantidad: cant, dias, subtotal: precio * cant * dias }]);
+                      setLogCant(p => ({ ...p, [tipo]: "1" }));
+                      setLogDias(p => ({ ...p, [tipo]: "1" }));
+                    }} className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm hover:bg-[#444]">+ Agregar</button>
                   </div>
-                );
-              })
-            )}
+                  {lineas.length > 0 && (
+                    <div className="border border-[#222] rounded-lg overflow-hidden">
+                      {lineas.map(l => (
+                        <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{l.concepto}</p>
+                            <p className="text-gray-500 text-xs">×{l.cantidad} · {l.dias} día(s) · {formatCurrency(l.precioUnitario)}/u</p>
+                          </div>
+                          <input type="number" value={l.precioUnitario} onChange={e => {
+                            const p = parseFloat(e.target.value) || 0;
+                            setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
+                          }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
+                          <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={20} className="w-14 py-1" />
+                          <NumSelect value={l.dias} onChange={v => { const d = parseInt(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x)); }} max={10} className="w-14 py-1" />
+                          <span className="w-20 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                          <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                        </div>
+                      ))}
+                      {lineas.length > 1 && (
+                        <div className="flex justify-between px-3 py-1.5 bg-[#0d0d0d] border-t border-[#222]">
+                          <span className="text-xs text-gray-500">Subtotal {label.toLowerCase()}</span>
+                          <span className="text-xs font-medium text-white">{formatCurrency(subtotal)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </Seccion>
 
           {/* ── Descuentos ── */}

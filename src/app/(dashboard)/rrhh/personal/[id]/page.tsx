@@ -14,6 +14,10 @@ interface PersonalData {
   telefono: string | null; correo: string | null; salario: number | null; periodoPago: string;
   fechaIngreso: string | null; activo: boolean; cuentaBancaria: string | null;
   datosFiscales: string | null; notas: string | null;
+  banco: string | null; clabe: string | null; numeroCuenta: string | null; numeroTarjeta: string | null;
+  ineUrl: string | null; domicilio: string | null;
+  emergenciaNombre: string | null; emergenciaTel: string | null;
+  padecimientos: string | null;
   documentos: Documento[]; pagos: PagoNomina[];
 }
 
@@ -166,7 +170,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 {[
                   { key: "nombre", label: "Nombre" }, { key: "puesto", label: "Puesto" },
                   { key: "telefono", label: "Teléfono" }, { key: "correo", label: "Correo" },
-                  { key: "cuentaBancaria", label: "Cuenta bancaria" }, { key: "datosFiscales", label: "RFC / Datos fiscales" },
+                  { key: "datosFiscales", label: "RFC / Datos fiscales" },
                 ].map(({ key, label }) => (
                   <div key={key}>
                     <label className="text-xs text-gray-500 mb-1 block">{label}</label>
@@ -175,6 +179,46 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
                 ))}
+                <div className="col-span-2"><p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider mb-2 mt-1">Datos bancarios</p></div>
+                {[
+                  { key: "banco", label: "Banco" }, { key: "numeroCuenta", label: "Número de cuenta" },
+                  { key: "clabe", label: "CLABE" }, { key: "numeroTarjeta", label: "Número de tarjeta" },
+                ].map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-500 mb-1 block">{label}</label>
+                    <input value={(editForm as Record<string, unknown>)[key] as string ?? ""}
+                      onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                ))}
+                <div className="col-span-2"><p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider mb-2 mt-1">Datos personales</p></div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Domicilio</label>
+                  <input value={editForm.domicilio ?? ""} onChange={e => setEditForm(p => ({ ...p, domicilio: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Contacto de emergencia</label>
+                  <input value={editForm.emergenciaNombre ?? ""} onChange={e => setEditForm(p => ({ ...p, emergenciaNombre: e.target.value }))} placeholder="Nombre"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Tel. de emergencia</label>
+                  <input value={editForm.emergenciaTel ?? ""} onChange={e => setEditForm(p => ({ ...p, emergenciaTel: e.target.value }))} placeholder="Teléfono"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">Padecimientos / condiciones médicas</label>
+                  <input value={editForm.padecimientos ?? ""} onChange={e => setEditForm(p => ({ ...p, padecimientos: e.target.value }))}
+                    placeholder="Ej: Diabetes, hipertensión, alergias..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-1 block">URL foto INE</label>
+                  <input value={editForm.ineUrl ?? ""} onChange={e => setEditForm(p => ({ ...p, ineUrl: e.target.value }))}
+                    placeholder="https://..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
                   <select value={editForm.departamento ?? ""} onChange={e => setEditForm(p => ({ ...p, departamento: e.target.value }))}
@@ -235,7 +279,6 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
               { label: "Departamento", val: persona.departamento },
               { label: "Fecha de ingreso", val: fmtDate(persona.fechaIngreso) },
               { label: "Salario / tarifa", val: persona.salario ? `${fmt(persona.salario)} / ${persona.periodoPago.toLowerCase()}` : null },
-              { label: "Cuenta bancaria", val: persona.cuentaBancaria },
               { label: "RFC / Datos fiscales", val: persona.datosFiscales },
             ].map(({ label, val }) => (
               <div key={label}>
@@ -243,6 +286,51 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 <p className="text-white">{val ?? <span className="text-gray-600 italic">Sin registrar</span>}</p>
               </div>
             ))}
+            {/* Datos bancarios */}
+            {(persona.banco || persona.numeroCuenta || persona.clabe || persona.numeroTarjeta) && (
+              <div className="col-span-2 border-t border-[#1a1a1a] pt-4 mt-2">
+                <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Datos bancarios</p>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                  {[
+                    { label: "Banco", val: persona.banco },
+                    { label: "Núm. cuenta", val: persona.numeroCuenta },
+                    { label: "CLABE", val: persona.clabe },
+                    { label: "Núm. tarjeta", val: persona.numeroTarjeta },
+                  ].filter(f => f.val).map(({ label, val }) => (
+                    <div key={label}>
+                      <p className="text-gray-500 text-xs mb-0.5">{label}</p>
+                      <p className="text-white font-mono text-sm">{val}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Datos personales */}
+            {(persona.domicilio || persona.emergenciaNombre || persona.padecimientos) && (
+              <div className="col-span-2 border-t border-[#1a1a1a] pt-4 mt-2">
+                <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Datos personales</p>
+                <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                  {persona.domicilio && (
+                    <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Domicilio</p><p className="text-white">{persona.domicilio}</p></div>
+                  )}
+                  {persona.emergenciaNombre && (
+                    <div><p className="text-gray-500 text-xs mb-0.5">Contacto emergencia</p><p className="text-white">{persona.emergenciaNombre}</p></div>
+                  )}
+                  {persona.emergenciaTel && (
+                    <div><p className="text-gray-500 text-xs mb-0.5">Tel. emergencia</p><p className="text-white">{persona.emergenciaTel}</p></div>
+                  )}
+                  {persona.padecimientos && (
+                    <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Padecimientos / condiciones</p><p className="text-white">{persona.padecimientos}</p></div>
+                  )}
+                </div>
+              </div>
+            )}
+            {persona.ineUrl && (
+              <div className="col-span-2">
+                <p className="text-gray-500 text-xs mb-1">INE</p>
+                <a href={persona.ineUrl} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] text-xs hover:underline">Ver foto INE →</a>
+              </div>
+            )}
             {/* Teléfono con WA */}
             <div>
               <p className="text-gray-500 text-xs mb-0.5">Teléfono</p>
