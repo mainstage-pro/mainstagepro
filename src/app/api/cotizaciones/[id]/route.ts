@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
+import { generarTokenPresentacion } from "@/lib/presentacion-token";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -39,7 +40,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     opciones = [{ id: cotizacion.id, numeroCotizacion: cotizacion.numeroCotizacion, opcionLetra: cotizacion.opcionLetra, estado: cotizacion.estado, granTotal: cotizacion.granTotal }];
   }
 
-  return NextResponse.json({ cotizacion, opciones });
+  const presentacionToken = generarTokenPresentacion(cotizacion.id);
+  return NextResponse.json({ cotizacion, opciones, presentacionToken });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

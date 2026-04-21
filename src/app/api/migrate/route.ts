@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const SECRET = "migrate-mainstage-2026-xK9m";
-
 export async function POST(req: NextRequest) {
+  const migrateSecret = process.env.ADMIN_SECRET;
+  if (!migrateSecret) return NextResponse.json({ error: "No configurado" }, { status: 403 });
+
   const { secret, table, rows } = await req.json();
-  if (secret !== SECRET) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (secret !== migrateSecret) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   try {
     let count = 0;

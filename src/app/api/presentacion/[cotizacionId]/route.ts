@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { validarTokenPresentacion } from "@/lib/presentacion-token";
 
-// Public endpoint — no auth required
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ cotizacionId: string }> }
 ) {
   const { cotizacionId } = await params;
+  const token = req.nextUrl.searchParams.get("token");
+
+  if (!validarTokenPresentacion(cotizacionId, token)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id: cotizacionId },

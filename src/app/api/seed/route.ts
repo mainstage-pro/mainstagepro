@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { timingSafeEqual } from "crypto";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (!rateLimit(`seed:${ip}`, 3, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera una hora." }, { status: 429 });
+  }
+
   // Require SEED_SECRET to prevent unauthorized initialization
   const seedSecret = process.env.SEED_SECRET;
   if (!seedSecret) return NextResponse.json({ error: "No configurado" }, { status: 403 });

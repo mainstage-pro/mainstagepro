@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { validarArchivo } from "@/lib/upload-validation";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -18,6 +19,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const nombre = (formData.get("nombre") as string) || "";
 
   if (!file) return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
+
+  const validacion = validarArchivo(file);
+  if (!validacion.ok) return NextResponse.json({ error: validacion.error }, { status: validacion.status });
 
   try {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";

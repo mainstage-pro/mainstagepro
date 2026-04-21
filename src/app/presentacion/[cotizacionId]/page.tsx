@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import PresentacionClient from "./PresentacionClient";
 import PresentacionRentaClient from "./PresentacionRentaClient";
 
@@ -7,10 +8,15 @@ export const dynamic = "force-dynamic";
 
 export default async function PresentacionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ cotizacionId: string }>;
+  searchParams: Promise<{ token?: string }>;
 }) {
   const { cotizacionId } = await params;
+  const { token } = await searchParams;
+
+  if (!validarTokenPresentacion(cotizacionId, token)) notFound();
 
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id: cotizacionId },
@@ -35,7 +41,6 @@ export default async function PresentacionPage({
 
   if (!cotizacion) notFound();
 
-  // Serialize dates for the client component
   const data = {
     ...cotizacion,
     fechaEvento: cotizacion.fechaEvento?.toISOString() ?? null,
@@ -45,7 +50,6 @@ export default async function PresentacionPage({
     fechaVencimiento: cotizacion.fechaVencimiento?.toISOString() ?? null,
   };
 
-  // Rental quotes get a completely different, equipment-focused presentation
   if (cotizacion.tipoServicio === "RENTA") {
     return <PresentacionRentaClient cotizacion={data} />;
   }

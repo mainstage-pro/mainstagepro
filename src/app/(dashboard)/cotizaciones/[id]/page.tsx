@@ -117,6 +117,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const toast = useToast();
   const confirm = useConfirm();
   const [cot, setCot] = useState<Cotizacion | null>(null);
+  const [presentacionToken, setPresentacionToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -165,7 +166,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { setCot(d.cotizacion); setOpciones(d.opciones ?? []); setLoading(false); });
+      .then((d) => { setCot(d.cotizacion); setOpciones(d.opciones ?? []); setPresentacionToken(d.presentacionToken ?? null); setLoading(false); });
   }, [id]);
 
   async function crearNuevaOpcion() {
@@ -536,7 +537,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               Editar
             </Link>
           )}
-          <a href={`/presentacion/${cot.id}`} target="_blank" rel="noopener noreferrer"
+          <a href={`/presentacion/${cot.id}${presentacionToken ? `?token=${presentacionToken}` : ""}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>

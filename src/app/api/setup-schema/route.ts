@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { timingSafeEqual } from "crypto";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  // Max 3 attempts per hour per IP — endpoint is destructive
+  const ip = getClientIp(req);
+  if (!rateLimit(`setup-schema:${ip}`, 3, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Demasiados intentos. Espera una hora." }, { status: 429 });
+  }
+
   const adminSecret = process.env.ADMIN_SECRET;
   if (!adminSecret) return NextResponse.json({ error: "No configurado" }, { status: 403 });
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { put } from "@vercel/blob";
+import { validarArchivo } from "@/lib/upload-validation";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -34,6 +35,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let tamano: number | null = null;
 
   if (file) {
+    const validacion = validarArchivo(file);
+    if (!validacion.ok) return NextResponse.json({ error: validacion.error }, { status: validacion.status });
     try {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
       const pathname = `tareas/${id}/${Date.now()}-${safeName}`;
