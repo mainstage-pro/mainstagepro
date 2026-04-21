@@ -105,14 +105,20 @@ const GALLERY_MUSICAL = [
   { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "DJ Booth · Vista del crowd" },
 ];
 const GALLERY_SOCIAL = [
-  { src: "/images/presentacion/s-couple-purple.png", caption: "Boda · Iluminación especial" },
-  { src: "/images/presentacion/s-dinner-sunset.png", caption: "Cena · Luz de ambiente" },
-  { src: "/images/presentacion/s-vocalist.png",      caption: "En vivo · Vocals" },
-  { src: "/images/presentacion/s-stage-full.png",    caption: "Escenario · Producción social" },
+  { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "El ambiente que recordarán" },
+  { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg",  caption: "Cada rincón, perfectamente iluminado" },
+  { src: "/images/presentacion/sociales/s-boda-colonial.jpg",   caption: "Producción a la altura del momento" },
+  { src: "/images/presentacion/sociales/s-piano-pista.jpg",     caption: "Detalles que marcan la diferencia" },
+  { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Sonido, luz y escenario — todo en uno" },
+  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Tu evento, en manos expertas" },
 ];
 const GALLERY_CORP = [
-  { src: "/images/presentacion/e-corp-screens.jpg",  caption: "Corporativo · Video walls" },
-  { src: "/images/presentacion/e-corp-outdoor.jpg",  caption: "Evento exterior · Producción" },
+  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Experiencias que generan impacto" },
+  { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Producción que refleja tu marca" },
+  { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Tecnología LED de alto nivel" },
+  { src: "/images/presentacion/empresariales/e-networking.jpg",       caption: "Ambientes que invitan a conectar" },
+  { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",    caption: "Iluminación arquitectónica de impacto" },
+  { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Creatividad sin límites" },
 ];
 
 // ─── Copy por tipoServicio ────────────────────────────────────────────────────
