@@ -225,7 +225,7 @@ export default function EquipoPage() {
                     return (
                       <Link
                         key={t.id}
-                        href="/operaciones"
+                        href={`/operaciones?open=${t.id}`}
                         className="flex items-start gap-2.5 px-4 py-2.5 hover:bg-[#151515] transition-colors group"
                       >
                         {/* Priority dot */}

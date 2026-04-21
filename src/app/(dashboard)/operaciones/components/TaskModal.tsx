@@ -158,7 +158,6 @@ export default function TaskModal({
       descripcion:      descripcion      || null,
       notas:            notas            || null,
       prioridad,
-      area,
       asignadoAId:      asignadoAId      || null,
       proyectoTareaId:  proyectoId       || null,
       iniciativaId:     iniciativaId     || null,
@@ -531,18 +530,6 @@ export default function TaskModal({
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Área */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Área</p>
-                <select
-                  value={area}
-                  onChange={e => { setArea(e.target.value); mark(); }}
-                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                >
-                  {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
               </div>
 
               {/* Asignado a */}

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
@@ -68,7 +69,8 @@ export default function OperacionesPage() {
   const [proyectoDetalle, setProyectoDetalle]   = useState<ProyectoDetalle | null>(null);
   const [loadingMain, setLoadingMain]           = useState(false);
 
-  const [selectedId, setSelectedId]             = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [selectedId, setSelectedId]             = useState<string | null>(() => searchParams.get("open"));
   const [selectedTask, setSelectedTask]         = useState<TareaDetalle | null>(null);
   const [loadingPanel, setLoadingPanel]         = useState(false);
 
@@ -858,7 +860,8 @@ export default function OperacionesPage() {
           mobileQARef.current?.focus();
           setMobileQuickAdd(true);
         }}
-        className="md:hidden fixed bottom-[76px] right-4 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
+        className="md:hidden fixed right-5 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 86px)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.8" strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -877,8 +880,9 @@ export default function OperacionesPage() {
       />
 
       {/* Bottom Tab Bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-[#0d0d0d] border-t border-[#1a1a1a] flex items-stretch"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      <nav
+        className="md:hidden fixed z-30 left-3 right-3 bg-[#0d0d0d] border border-[#222] rounded-2xl flex items-stretch overflow-hidden shadow-2xl"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 10px)" }}
       >
         {([
           {
