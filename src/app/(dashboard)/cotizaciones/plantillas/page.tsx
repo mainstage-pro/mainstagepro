@@ -54,7 +54,7 @@ export default function PlantillasPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Plantillas de cotización</h1>
           <p className="text-gray-500 text-sm">

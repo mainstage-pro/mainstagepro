@@ -617,7 +617,8 @@ export default function CalendarioCampanasPage() {
 
       {/* ── Vista Calendario ──────────────────────────────────────────────────── */}
       {!loading && vista === "calendario" && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+          <div className="min-w-[420px]">
           {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-white/[0.05]">
             {DIAS_ES.map(d => (
@@ -654,6 +655,7 @@ export default function CalendarioCampanasPage() {
                 </div>
               );
             })}
+          </div>
           </div>
         </div>
       )}
