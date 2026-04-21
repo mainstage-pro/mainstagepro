@@ -400,6 +400,41 @@ export default function ServiciosClient() {
         </div>
       </section>
 
+      {/* ── Galería ── */}
+      <section className="py-20 px-6 bg-[#060606]">
+        <div className="max-w-6xl mx-auto">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Nuestro trabajo</p>
+            <h2 className="font-bold text-white leading-tight mb-12"
+                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+              Cada evento, una producción<br /><span style={{ color: GOLD }}>hecha a medida.</span>
+            </h2>
+          </R>
+          <div className="columns-2 sm:columns-3 gap-3 space-y-3">
+            {[
+              { src: "/images/presentacion/musicales/Musicales-016.jpg",      alt: "Musical" },
+              { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", alt: "Social" },
+              { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",alt: "Empresarial" },
+              { src: "/images/presentacion/musicales/Musicales-037.jpg",      alt: "Musical" },
+              { src: "/images/presentacion/sociales/s-piano-pista.jpg",       alt: "Social" },
+              { src: "/images/presentacion/empresariales/e-auditorio.jpg",    alt: "Empresarial" },
+              { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", alt: "Musical" },
+              { src: "/images/presentacion/sociales/s-boda-colonial.jpg",     alt: "Social" },
+              { src: "/images/presentacion/empresariales/e-networking.jpg",   alt: "Empresarial" },
+              { src: "/images/presentacion/musicales/Musicales-076.jpg",      alt: "Musical" },
+              { src: "/images/presentacion/sociales/s-dj-salon.png",          alt: "Social" },
+              { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",alt: "Empresarial" },
+            ].map((p, i) => (
+              <R key={i} delay={i * 40} className="break-inside-avoid">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.src} alt={p.alt} draggable={false}
+                     className="w-full rounded-xl object-cover hover:opacity-90 transition-opacity duration-300" />
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA Final ── */}
       <section className="py-28 px-6">
         <div className="max-w-3xl mx-auto text-center">
