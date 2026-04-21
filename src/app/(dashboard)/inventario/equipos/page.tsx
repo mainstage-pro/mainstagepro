@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Proveedor = { id: string; nombre: string };
@@ -50,6 +50,25 @@ function fmt(n: number) {
   return `$${n.toLocaleString("es-MX")}`;
 }
 
+async function compressImage(file: File, maxPx = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export default function InventarioEquiposPage() {
   const [equipos, setEquipos]     = useState<Equipo[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -62,6 +81,12 @@ export default function InventarioEquiposPage() {
   const [nuevoForm, setNuevoForm] = useState<EditForm>(EMPTY_FORM);
   const [creando, setCreando]     = useState(false);
   const [verInactivos, setVerInactivos] = useState(false);
+  const [nuevoImagen, setNuevoImagen] = useState<string | null>(null);
+  const [editImagen, setEditImagen]   = useState<string | null>(null);
+  const [quickImgId, setQuickImgId]   = useState<string | null>(null);
+  const nuevoImgRef = useRef<HTMLInputElement>(null);
+  const editImgRef  = useRef<HTMLInputElement>(null);
+  const quickImgRef = useRef<HTMLInputElement>(null);
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [tipoFiltro, setTipoFiltro] = useState<"TODOS" | "PROPIO" | "EXTERNO">("TODOS");
   const [proveedorFiltro, setProveedorFiltro] = useState<string>("");
@@ -140,35 +165,63 @@ export default function InventarioEquiposPage() {
         notas: nuevoForm.notas || null,
         amperajeRequerido: nuevoForm.amperajeRequerido !== "" ? nuevoForm.amperajeRequerido : null,
         voltajeRequerido: nuevoForm.voltajeRequerido !== "" ? nuevoForm.voltajeRequerido : null,
+        imagenUrl: nuevoImagen || null,
       }),
     });
     await load();
     setNuevoForm(EMPTY_FORM);
+    setNuevoImagen(null);
+    if (nuevoImgRef.current) nuevoImgRef.current.value = "";
     setShowNuevo(false);
     setCreando(false);
   }
 
-  function cancelEdit() { setEditingId(null); setForm(null); }
+  function cancelEdit() { setEditingId(null); setForm(null); setEditImagen(null); }
+
+  async function handleNuevoImagen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setNuevoImagen(await compressImage(file));
+  }
+
+  async function handleEditImagen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file) return;
+    setEditImagen(await compressImage(file));
+  }
+
+  async function handleQuickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]; if (!file || !quickImgId) return;
+    const base64 = await compressImage(file);
+    await fetch(`/api/equipos/${quickImgId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imagenUrl: base64 }),
+    });
+    setQuickImgId(null);
+    if (quickImgRef.current) quickImgRef.current.value = "";
+    await load();
+  }
 
   async function saveEdit(id: string) {
     if (!form) return;
     setSaving(true);
+    const body: Record<string, unknown> = {
+      descripcion: form.descripcion,
+      marca: form.marca || null,
+      modelo: form.modelo || null,
+      tipo: form.tipo,
+      precioRenta: parseFloat(form.precioRenta) || 0,
+      costoProveedor: form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
+      cantidadTotal: parseInt(form.cantidadTotal) || 1,
+      proveedorDefaultId: form.proveedorDefaultId || null,
+      notas: form.notas || null,
+      amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
+      voltajeRequerido: form.voltajeRequerido !== "" ? parseInt(form.voltajeRequerido) : null,
+    };
+    if (editImagen !== null) body.imagenUrl = editImagen;
     await fetch(`/api/equipos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        descripcion: form.descripcion,
-        marca: form.marca || null,
-        modelo: form.modelo || null,
-        tipo: form.tipo,
-        precioRenta: parseFloat(form.precioRenta) || 0,
-        costoProveedor: form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
-        cantidadTotal: parseInt(form.cantidadTotal) || 1,
-        proveedorDefaultId: form.proveedorDefaultId || null,
-        notas: form.notas || null,
-        amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
-        voltajeRequerido: form.voltajeRequerido !== "" ? parseInt(form.voltajeRequerido) : null,
-      }),
+      body: JSON.stringify(body),
     });
     await load();
     cancelEdit();
@@ -249,6 +302,10 @@ export default function InventarioEquiposPage() {
         </div>
       </div>
 
+      {/* Hidden input para cambio rápido de imagen desde thumbnail */}
+      <input ref={quickImgRef} type="file" accept="image/*" className="hidden"
+             onChange={handleQuickImage} />
+
       {/* ── Formulario nuevo equipo ── */}
       {showNuevo && (
         <div className="mb-6 bg-[#111] border border-[#B3985B]/40 rounded-xl p-5">
@@ -328,6 +385,33 @@ export default function InventarioEquiposPage() {
               <input value={nuevoForm.notas} onChange={e => setNuevoForm(f => ({ ...f, notas: e.target.value }))}
                 placeholder="Condiciones, disponibilidad, etc."
                 className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
+            </div>
+            {/* Imagen del equipo */}
+            <div className="col-span-2 md:col-span-4">
+              <label className="text-xs text-[#6b7280] block mb-1">Imagen del equipo (PNG / JPG)</label>
+              <div className="flex items-center gap-3">
+                {nuevoImagen ? (
+                  <div className="relative w-16 h-16 bg-[#0a0a0a] rounded-lg border border-[#333] overflow-hidden flex items-center justify-center shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={nuevoImagen} alt="" className="max-h-full max-w-full object-contain" />
+                    <button onClick={() => { setNuevoImagen(null); if (nuevoImgRef.current) nuevoImgRef.current.value = ""; }}
+                      className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-600 hover:bg-red-500 text-white rounded-full text-[9px] flex items-center justify-center leading-none">✕</button>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 bg-[#0a0a0a] rounded-lg border-2 border-dashed border-[#333] flex items-center justify-center shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain opacity-10" />
+                  </div>
+                )}
+                <div>
+                  <input ref={nuevoImgRef} type="file" accept="image/*" className="hidden" onChange={handleNuevoImagen} />
+                  <button onClick={() => nuevoImgRef.current?.click()}
+                    className="text-xs bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B]/60 text-[#9ca3af] hover:text-white px-3 py-1.5 rounded-lg transition-colors">
+                    {nuevoImagen ? "Cambiar imagen" : "Subir imagen"}
+                  </button>
+                  <p className="text-[#444] text-[10px] mt-1">Se comprime automáticamente. Recomendado: fondo transparente.</p>
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -481,6 +565,34 @@ export default function InventarioEquiposPage() {
                                 className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
                                 placeholder="Condiciones especiales, disponibilidad, etc." />
                             </div>
+                            {/* Imagen */}
+                            <div className="col-span-2 md:col-span-4">
+                              <label className="text-xs text-[#6b7280] block mb-1">Imagen del equipo</label>
+                              <div className="flex items-center gap-3">
+                                {(editImagen ?? e.imagenUrl) ? (
+                                  <div className="relative w-14 h-14 bg-[#0a0a0a] rounded-lg border border-[#333] overflow-hidden flex items-center justify-center shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={editImagen ?? e.imagenUrl!} alt="" className="max-h-full max-w-full object-contain" />
+                                  </div>
+                                ) : (
+                                  <div className="w-14 h-14 bg-[#0a0a0a] rounded-lg border-2 border-dashed border-[#2a2a2a] flex items-center justify-center shrink-0">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src="/logo-icon.png" alt="" className="w-7 h-7 object-contain opacity-10" />
+                                  </div>
+                                )}
+                                <div>
+                                  <input ref={editImgRef} type="file" accept="image/*" className="hidden" onChange={handleEditImagen} />
+                                  <button onClick={() => editImgRef.current?.click()}
+                                    className="text-xs bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B]/60 text-[#9ca3af] hover:text-white px-3 py-1.5 rounded-lg transition-colors">
+                                    {(editImagen ?? e.imagenUrl) ? "Cambiar imagen" : "Subir imagen"}
+                                  </button>
+                                  {editImagen && (
+                                    <button onClick={() => { setEditImagen(null); if (editImgRef.current) editImgRef.current.value = ""; }}
+                                      className="ml-2 text-xs text-red-400 hover:text-red-300 transition-colors">Descartar</button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </div>
                           <div className="flex gap-2">
                             <button onClick={() => saveEdit(e.id)} disabled={saving}
@@ -499,13 +611,22 @@ export default function InventarioEquiposPage() {
                         className={`hover:bg-[#1a1a1a] transition-colors cursor-pointer group ${!e.activo ? "opacity-50" : ""}`}>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {e.imagenUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded shrink-0 opacity-80 group-hover:opacity-100" />
-                            ) : (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
-                            )}
+                            <div className="relative shrink-0 group/img w-8 h-8"
+                                 title="Clic para cambiar imagen"
+                                 onClick={ev => { ev.stopPropagation(); setQuickImgId(e.id); setTimeout(() => quickImgRef.current?.click(), 0); }}>
+                              {e.imagenUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded opacity-80 group-hover:opacity-100 cursor-pointer" />
+                              ) : (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain opacity-15 cursor-pointer" />
+                              )}
+                              <div className="absolute inset-0 bg-black/60 rounded opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                              </div>
+                            </div>
                             <p className={`text-sm group-hover:text-[#B3985B] transition-colors ${e.activo ? "text-white" : "text-[#555] line-through"}`}>{e.descripcion}</p>
                             {!e.activo && <span className="text-[9px] bg-orange-900/40 text-orange-400 border border-orange-800 px-1.5 py-0.5 rounded font-medium">INACTIVO</span>}
                           </div>
@@ -546,8 +667,8 @@ export default function InventarioEquiposPage() {
                           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Link href={`/inventario/equipos/${e.id}`}
                               onClick={ev => ev.stopPropagation()}
-                              className="text-[10px] text-[#B3985B] hover:text-white transition-colors whitespace-nowrap font-medium">
-                              Ver ficha
+                              className="text-[10px] text-[#6b7280] hover:text-[#B3985B] transition-colors whitespace-nowrap">
+                              Ver historial
                             </Link>
                             {e.tipo === "PROPIO" && (
                               <Link href={`/inventario/mantenimiento?equipoId=${e.id}`}

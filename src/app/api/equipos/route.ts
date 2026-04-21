@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido } = body;
+  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl } = body;
 
   if (!descripcion || !categoriaId) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       notas: notas || null,
       amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
       voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? parseInt(voltajeRequerido) : null,
+      imagenUrl: imagenUrl || null,
       activo: true,
     },
     select: EQUIPO_SELECT,
