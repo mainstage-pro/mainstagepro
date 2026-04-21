@@ -133,14 +133,14 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/50 md:hidden transition-opacity duration-200 ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        className={`fixed inset-0 z-40 bg-black/50 lg:hidden transition-opacity duration-200 ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
         onClick={onClose}
       />
 
       {/* Bottom sheet — always in DOM so focus() works from FAB click handler */}
       <div
         ref={sheetRef}
-        className={`fixed inset-x-0 z-50 md:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] flex flex-col transition-transform duration-200 ${open ? "translate-y-0" : "translate-y-full"}`}
+        className={`fixed inset-x-0 z-50 lg:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] flex flex-col transition-transform duration-200 ${open ? "translate-y-0" : "translate-y-full"}`}
         style={{
           bottom: keyboardBottom > 0 ? `${keyboardBottom}px` : 0,
           maxHeight: "92dvh",

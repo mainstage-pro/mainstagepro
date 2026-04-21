@@ -518,7 +518,7 @@ export default function OperacionesPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — Todoist-style navigation
       ══════════════════════════════════════════════════════════════════════ */}
-      <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden md:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col`}>
+      <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden lg:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col`}>
 
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">
@@ -634,10 +634,10 @@ export default function OperacionesPage() {
         {/* ── CONTENT HEADER ─────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#0f0f0f] shrink-0">
 
-          {/* Sidebar toggle */}
+          {/* Sidebar toggle — desktop only */}
           <button
             onClick={toggleSidebar}
-            className="w-6 h-6 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#777] hover:bg-[#111] transition-all shrink-0"
+            className="hidden lg:flex w-6 h-6 items-center justify-center rounded text-[#2a2a2a] hover:text-[#777] hover:bg-[#111] transition-all shrink-0"
             title={sidebarOpen ? "Ocultar sidebar" : "Mostrar sidebar"}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -744,7 +744,7 @@ export default function OperacionesPage() {
         </div>
 
         {/* ── TASK LIST ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto pb-[72px] md:pb-0">
+        <div className="flex-1 overflow-y-auto pb-[72px] lg:pb-0">
           {loadingMain ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
@@ -926,7 +926,7 @@ export default function OperacionesPage() {
           mobileQARef.current?.focus();
           setMobileQuickAdd(true);
         }}
-        className="md:hidden fixed right-5 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
+        className="lg:hidden fixed right-5 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 100px)" }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.8" strokeLinecap="round">
@@ -947,7 +947,7 @@ export default function OperacionesPage() {
 
       {/* Bottom Tab Bar */}
       <nav
-        className="md:hidden fixed z-30 left-3 right-3 bg-[#0d0d0d] border border-[#222] rounded-2xl flex items-stretch overflow-hidden shadow-2xl"
+        className="lg:hidden fixed z-30 left-3 right-3 bg-[#0d0d0d] border border-[#222] rounded-2xl flex items-stretch overflow-hidden shadow-2xl"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
       >
         {([
@@ -1003,8 +1003,8 @@ export default function OperacionesPage() {
       {/* Mobile: panel de proyectos (Explorar) */}
       {mobileProyectos && (
         <>
-          <div className="fixed inset-0 z-[35] bg-black/60 md:hidden" onClick={() => setMobileProyectos(false)} />
-          <div className="md:hidden fixed inset-x-0 bottom-[56px] z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"
+          <div className="fixed inset-0 z-[35] bg-black/60 lg:hidden" onClick={() => setMobileProyectos(false)} />
+          <div className="lg:hidden fixed inset-x-0 bottom-[56px] z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"
             style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="flex justify-center pt-2.5 pb-2">
