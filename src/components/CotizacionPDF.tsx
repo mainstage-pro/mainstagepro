@@ -652,6 +652,28 @@ function SubtotalOperacion({ lineas }: { lineas: Linea[] }) {
   );
 }
 
+// Conceptos adicionales (OTRO): lista con descripción y subtotal
+function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
+  const otros = lineas.filter(l => l.tipo === "OTRO");
+  if (otros.length === 0) return null;
+  return (
+    <View style={{ marginHorizontal: 40, marginTop: 8 }}>
+      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Conceptos adicionales</Text>
+      {otros.map((l, i) => (
+        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
+            {(l.cantidad > 1 || l.dias > 1) && (
+              <Text style={{ fontSize: 7.5, color: GRAY }}>{l.cantidad} × {l.dias} día{l.dias !== 1 ? "s" : ""} × {fmtMXN(l.precioUnitario)}</Text>
+            )}
+          </View>
+          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", marginLeft: 16 }}>{fmtMXN(l.subtotal)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 // Logística: solo subtotal global (sin detallar comidas, gasolina, etc.)
 function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
   const logLineas = lineas.filter(l => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
@@ -773,6 +795,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── EQUIPOS ── */}
         <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} />
 
+        {/* ── CONCEPTOS ADICIONALES (OTRO) ── */}
+        <TablaAdicionales lineas={c.lineas} />
+
         {/* ── OPERACIÓN TÉCNICA (subtotal global, sin desglose) ── */}
         <SubtotalOperacion lineas={c.lineas} />
 
@@ -794,6 +819,12 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>-{fmtMXN(r.monto)}</Text>
               </View>
             ))}
+            {c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0) > 0 && (
+              <View style={s.totalFila}>
+                <Text style={s.totalFilaDes}>Conceptos adicionales</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0))}</Text>
+              </View>
+            )}
             {c.subtotalOperacion > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Operación técnica</Text>

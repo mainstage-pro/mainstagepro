@@ -200,11 +200,12 @@ function groupLineas(lineas: Linea[]) {
   const isEquipo = (l: Linea) => l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO";
   const cat = (l: Linea) => l.equipo?.categoria?.nombre ?? "";
   return {
-    audio: lineas.filter(l => isEquipo(l) && AUDIO_CATS.includes(cat(l))),
-    ilum:  lineas.filter(l => isEquipo(l) && ILUM_CATS.includes(cat(l))),
-    dj:    lineas.filter(l => l.tipo === "DJ" || (isEquipo(l) && DJ_CATS.includes(cat(l)))),
-    video: lineas.filter(l => isEquipo(l) && VIDEO_CATS.includes(cat(l))),
-    staff: lineas.filter(l => l.tipo === "OPERACION_TECNICA"),
+    audio:  lineas.filter(l => isEquipo(l) && AUDIO_CATS.includes(cat(l))),
+    ilum:   lineas.filter(l => isEquipo(l) && ILUM_CATS.includes(cat(l))),
+    dj:     lineas.filter(l => l.tipo === "DJ" || (isEquipo(l) && DJ_CATS.includes(cat(l)))),
+    video:  lineas.filter(l => isEquipo(l) && VIDEO_CATS.includes(cat(l))),
+    staff:  lineas.filter(l => l.tipo === "OPERACION_TECNICA"),
+    otros:  lineas.filter(l => l.tipo === "OTRO"),
   };
 }
 
@@ -389,7 +390,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
     return () => window.removeEventListener("scroll", fn);
   }, []);
 
-  const { audio, ilum, dj, video, staff } = groupLineas(cotizacion.lineas);
+  const { audio, ilum, dj, video, staff, otros } = groupLineas(cotizacion.lineas);
   const tipoEvento   = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
   const tipoServicio = cotizacion.tipoServicio ?? "";
   const evento       = cotizacion.nombreEvento ?? tipoEvento ?? "Tu Evento";
@@ -522,7 +523,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           {ilum.length > 0  && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Iluminación</span>}
           {dj.length > 0    && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Setup DJ</span>}
           {video.length > 0 && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Video</span>}
-          {staff.length > 0 && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Personal técnico</span>}
+          {staff.length > 0  && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Personal técnico</span>}
+          {otros.length > 0  && <span className="text-[11px] px-3 py-1 rounded-full border border-white/10 text-white/45">Adicionales</span>}
           <span className="text-[11px] px-3 py-1 rounded-full border border-[#B3985B]/25 text-[#B3985B]/60">Operado por expertos</span>
           <span className="text-[11px] px-3 py-1 rounded-full border border-[#B3985B]/25 text-[#B3985B]/60">Sin intermediarios</span>
         </div>
@@ -603,6 +605,31 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                     <span className="text-[#B3985B] text-xs shrink-0">◆</span>
                     <p className="text-white/75 text-sm font-medium flex-1">{l.descripcion}</p>
                     {l.cantidad > 1 && <span className="text-white/25 text-xs shrink-0">×{l.cantidad}</span>}
+                  </div>
+                </R>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── CONCEPTOS ADICIONALES ── */}
+      {otros.length > 0 && (
+        <section className="bg-[#060606] border-t border-white/[0.05] py-20 px-6 sm:px-12 lg:px-20">
+          <div className="max-w-5xl mx-auto">
+            <R className="mb-10">
+              <GoldLabel>Conceptos adicionales</GoldLabel>
+              <Heading>Servicios adicionales<br /><span className="text-white/30">incluidos en esta propuesta.</span></Heading>
+            </R>
+            <div className="space-y-2">
+              {otros.map((l, i) => (
+                <R key={l.id} delay={i * 40}>
+                  <div className="flex items-center justify-between gap-4 px-4 py-3.5 rounded-xl border border-white/6 bg-white/[0.02] hover:border-white/10 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-[#B3985B] text-xs shrink-0">◆</span>
+                      <p className="text-white/75 text-sm font-medium truncate">{l.descripcion}</p>
+                      {l.cantidad > 1 && <span className="text-white/25 text-xs shrink-0">×{l.cantidad}</span>}
+                    </div>
                   </div>
                 </R>
               ))}

@@ -223,6 +223,13 @@ export default function CobrosPagosPage() {
   const [empresas, setEmpresas] = useState<EmpresaItem[]>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
   const [empresaQuery, setEmpresaQuery] = useState("");
+  // Editar CxC / CxP
+  const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string } | null>(null);
+  const [editMonto, setEditMonto] = useState("");
+  const [editConcepto, setEditConcepto] = useState("");
+  const [editFecha, setEditFecha] = useState("");
+  const [editMotivo, setEditMotivo] = useState("");
+  const [guardandoEdit, setGuardandoEdit] = useState(false);
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
   const [reciboGrupos, setReciboGrupos] = useState<Array<{ key: string; nombre: string; items: CxPItem[] }>>([]);
@@ -369,6 +376,42 @@ export default function CobrosPagosPage() {
     setModalFecha(new Date().toISOString().split("T")[0]);
     setModalCuentaId("");
     setModalMetodoPago("TRANSFERENCIA");
+  }
+
+  function openEdit(item: CxCItem | CxPItem, tipo: "cxc" | "cxp") {
+    setEditModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, fechaCompromiso: item.fechaCompromiso.slice(0, 10) });
+    setEditMonto(String(item.monto));
+    setEditConcepto(item.concepto);
+    setEditFecha(item.fechaCompromiso.slice(0, 10));
+    setEditMotivo("");
+  }
+
+  async function guardarEdit() {
+    if (!editModal) return;
+    const nuevoMonto = parseFloat(editMonto);
+    const montoChanged = nuevoMonto !== editModal.monto;
+    if (montoChanged && editMotivo.trim().length < 5) {
+      toast.error("El motivo del ajuste debe tener al menos 5 caracteres");
+      return;
+    }
+    setGuardandoEdit(true);
+    const body: Record<string, unknown> = {};
+    if (editConcepto !== editModal.concepto) body.concepto = editConcepto;
+    if (editFecha !== editModal.fechaCompromiso) body.fechaCompromiso = editFecha;
+    if (montoChanged) { body.monto = nuevoMonto; body.motivo = editMotivo.trim(); }
+    const endpoint = editModal.tipo === "cxc"
+      ? `/api/cuentas-cobrar/${editModal.id}`
+      : `/api/cuentas-pagar/${editModal.id}`;
+    const res = await fetch(endpoint, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (res.ok) {
+      toast.success("Registro actualizado");
+      await load();
+      setEditModal(null);
+    } else {
+      const data = await res.json();
+      toast.error(data.error ?? "Error al guardar");
+    }
+    setGuardandoEdit(false);
   }
 
   async function confirmar() {
@@ -765,13 +808,22 @@ export default function CobrosPagosPage() {
               {/* Acciones */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
                 {c.estado !== "LIQUIDADO" && (
-                  <button onClick={() => openModal(c, "cobro")}
-                    className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Confirmar cobro
-                  </button>
+                  <>
+                    <button onClick={() => openModal(c, "cobro")}
+                      className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Confirmar cobro
+                    </button>
+                    <button onClick={() => openEdit(c, "cxc")}
+                      className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Editar
+                    </button>
+                  </>
                 )}
                 {(() => {
                   const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
@@ -851,13 +903,22 @@ export default function CobrosPagosPage() {
 
                 <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
                   {c.estado !== "LIQUIDADO" && (
-                    <button onClick={() => openModal(c, "pago")}
-                      className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Marcar pagado
-                    </button>
+                    <>
+                      <button onClick={() => openModal(c, "pago")}
+                        className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Marcar pagado
+                      </button>
+                      <button onClick={() => openEdit(c, "cxp")}
+                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Editar
+                      </button>
+                    </>
                   )}
                   {telefono && (
                     <a
@@ -1004,6 +1065,54 @@ export default function CobrosPagosPage() {
                 {confirmando ? "Guardando..." : modal.tipo === "cobro" ? "Confirmar cobro" : "Confirmar pago"}
               </button>
               <button onClick={() => setModal(null)}
+                className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal editar CxC / CxP ── */}
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={e => { if (e.target === e.currentTarget) setEditModal(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">Editar registro</h3>
+              <button onClick={() => setEditModal(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Concepto</label>
+                <input value={editConcepto} onChange={e => setEditConcepto(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Monto</label>
+                <input type="number" step="0.01" min="0" value={editMonto} onChange={e => setEditMonto(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Fecha compromiso</label>
+                <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              {parseFloat(editMonto) !== editModal.monto && (
+                <div>
+                  <label className="text-xs text-[#B3985B] mb-1 block">Motivo del ajuste de monto (requerido)</label>
+                  <input value={editMotivo} onChange={e => setEditMotivo(e.target.value)}
+                    placeholder="Ej: Negociación con cliente, error de captura..."
+                    className="w-full bg-[#1a1a1a] border border-[#B3985B]/40 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={guardarEdit} disabled={guardandoEdit}
+                className="flex-1 bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                {guardandoEdit ? "Guardando..." : "Guardar cambios"}
+              </button>
+              <button onClick={() => setEditModal(null)}
                 className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
                 Cancelar
               </button>
