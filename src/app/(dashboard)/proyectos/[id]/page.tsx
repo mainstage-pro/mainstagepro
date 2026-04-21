@@ -236,6 +236,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
   const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
@@ -563,29 +564,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function load() {
     setLoadError(false);
+    setLoadErrorMsg("");
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
+    const timeout = setTimeout(() => { controller.abort(); }, 15000);
     try {
       const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store", signal: controller.signal });
       clearTimeout(timeout);
-      if (!res.ok) {
-        console.error("API error cargando proyecto:", res.status);
-        setLoadError(true);
-        return;
-      }
-      const d = await res.json();
-      if (!d.proyecto) { setLoadError(true); return; }
-      setProyecto(d.proyecto);
-      setRiderEquipos(d.proyecto.equipos ?? []);
-      setNotasPortal(d.proyecto.notasPortal ?? "");
+      const text = await res.text();
+      let d: Record<string, unknown> = {};
+      try { d = JSON.parse(text); } catch { setLoadError(true); setLoadErrorMsg(`Respuesta no válida (${res.status}): ${text.slice(0, 200)}`); return; }
+      if (!res.ok) { setLoadError(true); setLoadErrorMsg(`Error ${res.status}: ${(d.error as string) ?? text.slice(0, 200)}`); return; }
+      if (!d.proyecto) { setLoadError(true); setLoadErrorMsg("API no devolvió proyecto"); return; }
+      const p = d.proyecto as Proyecto;
+      setProyecto(p);
+      setRiderEquipos(p.equipos ?? []);
+      setNotasPortal(p.notasPortal ?? "");
       try {
-        const resp = d.proyecto.responsables ? JSON.parse(d.proyecto.responsables) : {};
+        const resp = p.responsables ? JSON.parse(p.responsables) : {};
         setResponsables({ produccion: resp.produccion ?? "", logistica: resp.logistica ?? "", finanzas: resp.finanzas ?? "", marketing: resp.marketing ?? "" });
       } catch { /* ignore */ }
     } catch (e) {
       clearTimeout(timeout);
-      console.error("Error cargando proyecto:", e);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("Error cargando proyecto:", msg);
       setLoadError(true);
+      setLoadErrorMsg(msg.includes("abort") ? "Tiempo de espera agotado (15s)" : msg);
     } finally {
       setLoading(false);
     }
@@ -1664,8 +1667,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   if (loading) return <SkeletonPage rows={6} cols={4} />;
   if (loadError || !proyecto) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-6">
       <p className="text-white/60 text-sm">No se pudo cargar el proyecto</p>
+      {loadErrorMsg && (
+        <p className="text-red-400/80 text-xs max-w-md text-center bg-red-950/30 border border-red-900/30 rounded-lg px-4 py-2 font-mono break-all">
+          {loadErrorMsg}
+        </p>
+      )}
       <button
         onClick={() => { setLoading(true); load(); }}
         className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
