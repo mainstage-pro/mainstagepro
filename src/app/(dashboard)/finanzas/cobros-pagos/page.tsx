@@ -1061,8 +1061,12 @@ export default function CobrosPagosPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="text-xs text-gray-500">Empresa o cliente *</label>
-                      <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
-                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
+                      <div className="flex items-center gap-3">
+                        <a href="/crm/clientes/nuevo" target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nuevo cliente</a>
+                        <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
+                      </div>
                     </div>
                     <input value={empresaQuery}
                       onChange={e => { setEmpresaQuery(e.target.value); setNuevoForm(p => ({ ...p, empresaId: "", clienteId: "" })); }}

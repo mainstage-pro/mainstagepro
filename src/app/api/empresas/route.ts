@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, giro, telefono, correo, sitioWeb, notas, datosFiscales, cuentaBancaria, tipo } = body;
+  const { nombre, giro, telefono, correo, sitioWeb, notas,
+    rfc, datosFiscales, cuentaBancaria, clabe, banco, noTarjeta, tipo } = body;
 
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -35,8 +36,12 @@ export async function POST(req: NextRequest) {
       correo: correo || null,
       sitioWeb: sitioWeb || null,
       notas: notas || null,
+      rfc: rfc || null,
       datosFiscales: datosFiscales || null,
       cuentaBancaria: cuentaBancaria || null,
+      clabe: clabe || null,
+      banco: banco || null,
+      noTarjeta: noTarjeta || null,
       tipo: tipo || "AMBOS",
     },
   });

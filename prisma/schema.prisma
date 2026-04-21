@@ -82,8 +82,12 @@ model Empresa {
   correo         String?
   sitioWeb       String?
   notas          String?
+  rfc            String?
   datosFiscales  String?
-  cuentaBancaria String?
+  cuentaBancaria String?  // número de cuenta
+  clabe          String?
+  banco          String?
+  noTarjeta      String?
   tipo           String   @default("AMBOS")  // CLIENTE | PROVEEDOR | AMBOS
   activo         Boolean  @default(true)
   createdAt      DateTime @default(now())
@@ -652,7 +656,11 @@ model Proveedor {
   telefono       String?
   correo         String?
   notas          String?
-  cuentaBancaria String?
+  rfc            String?
+  cuentaBancaria String?  // número de cuenta
+  clabe          String?
+  banco          String?
+  noTarjeta      String?
   datosFiscales  String?
   activo         Boolean  @default(true)
   portalToken    String?  @unique @map("portal_token")

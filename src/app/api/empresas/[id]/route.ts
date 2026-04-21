@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
 
   const data: Record<string, unknown> = {};
-  const fields = ["nombre", "giro", "telefono", "correo", "sitioWeb", "notas", "datosFiscales", "cuentaBancaria", "tipo", "activo"];
+  const fields = ["nombre", "giro", "telefono", "correo", "sitioWeb", "notas", "rfc", "datosFiscales", "cuentaBancaria", "clabe", "banco", "noTarjeta", "tipo", "activo"];
   for (const f of fields) {
     if (f in body) data[f] = body[f] === "" ? null : body[f];
   }

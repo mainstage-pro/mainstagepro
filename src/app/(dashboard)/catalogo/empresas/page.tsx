@@ -14,15 +14,19 @@ interface Empresa {
   correo: string | null;
   sitioWeb: string | null;
   notas: string | null;
+  rfc: string | null;
   datosFiscales: string | null;
   cuentaBancaria: string | null;
+  clabe: string | null;
+  banco: string | null;
+  noTarjeta: string | null;
   tipo: string;
   activo: boolean;
   contactosCliente: Contacto[];
   contactosProveedor: Contacto[];
 }
 
-const EMPTY_FORM = { nombre: "", giro: "", telefono: "", correo: "", sitioWeb: "", notas: "", datosFiscales: "", cuentaBancaria: "", tipo: "AMBOS" };
+const EMPTY_FORM = { nombre: "", giro: "", telefono: "", correo: "", sitioWeb: "", notas: "", rfc: "", datosFiscales: "", cuentaBancaria: "", clabe: "", banco: "", noTarjeta: "", tipo: "AMBOS" };
 
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
 
@@ -59,7 +63,9 @@ export default function EmpresasPage() {
     setForm({
       nombre: e.nombre, giro: e.giro ?? "", telefono: e.telefono ?? "",
       correo: e.correo ?? "", sitioWeb: e.sitioWeb ?? "", notas: e.notas ?? "",
-      datosFiscales: e.datosFiscales ?? "", cuentaBancaria: e.cuentaBancaria ?? "", tipo: e.tipo,
+      rfc: e.rfc ?? "", datosFiscales: e.datosFiscales ?? "",
+      cuentaBancaria: e.cuentaBancaria ?? "", clabe: e.clabe ?? "",
+      banco: e.banco ?? "", noTarjeta: e.noTarjeta ?? "", tipo: e.tipo,
     });
     setShowForm(true);
   }
@@ -183,8 +189,20 @@ export default function EmpresasPage() {
                     <p className="text-xs text-[#444] mt-2">Sin contactos vinculados</p>
                   )}
                   {e.notas && <p className="text-xs text-[#555] mt-2 italic">{e.notas}</p>}
-                  {e.datosFiscales && <p className="text-xs text-[#555] mt-1">Fiscal: {e.datosFiscales}</p>}
-                  {e.cuentaBancaria && <p className="text-xs text-[#555] mt-1">Banco: {e.cuentaBancaria}</p>}
+                  {(e.rfc || e.datosFiscales) && (
+                    <div className="mt-2 space-y-0.5">
+                      {e.rfc && <p className="text-xs text-[#555]">RFC: <span className="text-gray-400 font-mono">{e.rfc}</span></p>}
+                      {e.datosFiscales && <p className="text-xs text-[#555]">{e.datosFiscales}</p>}
+                    </div>
+                  )}
+                  {(e.banco || e.cuentaBancaria || e.clabe || e.noTarjeta) && (
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5">
+                      {e.banco && <p className="text-xs text-[#555]">Banco: <span className="text-gray-400">{e.banco}</span></p>}
+                      {e.cuentaBancaria && <p className="text-xs text-[#555]">Cuenta: <span className="text-gray-400 font-mono">{e.cuentaBancaria}</span></p>}
+                      {e.clabe && <p className="text-xs text-[#555] col-span-2">CLABE: <span className="text-gray-400 font-mono">{e.clabe}</span></p>}
+                      {e.noTarjeta && <p className="text-xs text-[#555]">Tarjeta: <span className="text-gray-400 font-mono">{e.noTarjeta}</span></p>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -237,12 +255,32 @@ export default function EmpresasPage() {
                 <input value={form.sitioWeb} onChange={e => setForm(p => ({ ...p, sitioWeb: e.target.value }))} className={inputCls} placeholder="https://…" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Datos fiscales (RFC, razón social…)</label>
-                <input value={form.datosFiscales} onChange={e => setForm(p => ({ ...p, datosFiscales: e.target.value }))} className={inputCls} />
+                <label className="text-xs text-gray-500 block mb-1">RFC</label>
+                <input value={form.rfc} onChange={e => setForm(p => ({ ...p, rfc: e.target.value }))} className={inputCls} placeholder="RFC de la empresa" />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Cuenta bancaria</label>
-                <input value={form.cuentaBancaria} onChange={e => setForm(p => ({ ...p, cuentaBancaria: e.target.value }))} className={inputCls} />
+                <label className="text-xs text-gray-500 block mb-1">Datos fiscales adicionales</label>
+                <input value={form.datosFiscales} onChange={e => setForm(p => ({ ...p, datosFiscales: e.target.value }))} className={inputCls} placeholder="Razón social, régimen fiscal…" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Banco</label>
+                  <input value={form.banco} onChange={e => setForm(p => ({ ...p, banco: e.target.value }))} className={inputCls} placeholder="BBVA, Banorte…" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Número de cuenta</label>
+                  <input value={form.cuentaBancaria} onChange={e => setForm(p => ({ ...p, cuentaBancaria: e.target.value }))} className={inputCls} placeholder="11 dígitos" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">CLABE interbancaria</label>
+                  <input value={form.clabe} onChange={e => setForm(p => ({ ...p, clabe: e.target.value }))} className={inputCls} placeholder="18 dígitos" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Número de tarjeta</label>
+                  <input value={form.noTarjeta} onChange={e => setForm(p => ({ ...p, noTarjeta: e.target.value }))} className={inputCls} placeholder="Últimos 4 dígitos" />
+                </div>
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Notas</label>

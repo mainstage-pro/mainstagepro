@@ -12,7 +12,11 @@ type Proveedor = {
   telefono: string | null;
   correo: string | null;
   notas: string | null;
+  rfc: string | null;
   cuentaBancaria: string | null;
+  clabe: string | null;
+  banco: string | null;
+  noTarjeta: string | null;
   datosFiscales: string | null;
   activo: boolean;
   portalToken: string | null;
@@ -46,7 +50,7 @@ const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", c
 
 const EMPTY = {
   nombre: "", empresa: "", giro: "", telefono: "", correo: "",
-  notas: "", cuentaBancaria: "", datosFiscales: "",
+  notas: "", rfc: "", cuentaBancaria: "", clabe: "", banco: "", noTarjeta: "", datosFiscales: "",
 };
 
 type SortKey = "nombre" | "giro" | "empresa";
@@ -130,7 +134,7 @@ export default function ProveedoresPage() {
     if (!editing || editing.id !== currentEditId.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const payload = { nombre: form.nombre, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, cuentaBancaria: form.cuentaBancaria || null, datosFiscales: form.datosFiscales || null };
+      const payload = { nombre: form.nombre, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, rfc: form.rfc || null, cuentaBancaria: form.cuentaBancaria || null, clabe: form.clabe || null, banco: form.banco || null, noTarjeta: form.noTarjeta || null, datosFiscales: form.datosFiscales || null };
       await fetch(`/api/proveedores/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       setProveedores(prev => prev.map(p => p.id === editing.id ? { ...p, ...payload } : p));
       setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
@@ -143,7 +147,9 @@ export default function ProveedoresPage() {
     setForm({
       nombre: p.nombre, empresa: p.empresa ?? "", giro: p.giro ?? "",
       telefono: p.telefono ?? "", correo: p.correo ?? "",
-      notas: p.notas ?? "", cuentaBancaria: p.cuentaBancaria ?? "",
+      notas: p.notas ?? "", rfc: p.rfc ?? "",
+      cuentaBancaria: p.cuentaBancaria ?? "", clabe: p.clabe ?? "",
+      banco: p.banco ?? "", noTarjeta: p.noTarjeta ?? "",
       datosFiscales: p.datosFiscales ?? "",
     });
     setCreating(false);
@@ -164,7 +170,11 @@ export default function ProveedoresPage() {
       telefono: form.telefono || null,
       correo: form.correo || null,
       notas: form.notas || null,
+      rfc: form.rfc || null,
       cuentaBancaria: form.cuentaBancaria || null,
+      clabe: form.clabe || null,
+      banco: form.banco || null,
+      noTarjeta: form.noTarjeta || null,
       datosFiscales: form.datosFiscales || null,
     };
     const url = editing ? `/api/proveedores/${editing.id}` : "/api/proveedores";
@@ -271,16 +281,40 @@ export default function ProveedoresPage() {
                 placeholder="contacto@proveedor.com" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Cuenta bancaria</label>
+              <label className="text-xs text-gray-500 mb-1 block">RFC</label>
+              <input value={form.rfc} onChange={e => set("rfc", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="RFC del proveedor" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Banco</label>
+              <input value={form.banco} onChange={e => set("banco", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="BBVA, Banorte, HSBC…" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
               <input value={form.cuentaBancaria} onChange={e => set("cuentaBancaria", e.target.value)}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Banco, CLABE o número de tarjeta" />
+                placeholder="11 dígitos" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">CLABE interbancaria</label>
+              <input value={form.clabe} onChange={e => set("clabe", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="18 dígitos" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Número de tarjeta</label>
+              <input value={form.noTarjeta} onChange={e => set("noTarjeta", e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                placeholder="16 dígitos (últimos 4 si es necesario)" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Datos fiscales (RFC / razón social)</label>
+              <label className="text-xs text-gray-500 mb-1 block">Datos fiscales adicionales</label>
               <input value={form.datosFiscales} onChange={e => set("datosFiscales", e.target.value)}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="RFC, razón social para facturas" />
+                placeholder="Razón social, régimen fiscal, dirección fiscal…" />
             </div>
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Notas</label>

@@ -18,7 +18,8 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { nombre, empresa, giro, telefono, correo, notas, cuentaBancaria, datosFiscales } = body;
+  const { nombre, empresa, giro, telefono, correo, notas,
+    rfc, cuentaBancaria, clabe, banco, noTarjeta, datosFiscales } = body;
 
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -30,7 +31,11 @@ export async function POST(request: NextRequest) {
       telefono: telefono || null,
       correo: correo || null,
       notas: notas || null,
+      rfc: rfc || null,
       cuentaBancaria: cuentaBancaria || null,
+      clabe: clabe || null,
+      banco: banco || null,
+      noTarjeta: noTarjeta || null,
       datosFiscales: datosFiscales || null,
     },
   });
