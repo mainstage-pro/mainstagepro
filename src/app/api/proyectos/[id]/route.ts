@@ -25,48 +25,104 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  const proyecto = await prisma.proyecto.findUnique({
-    where: { id },
-    include: {
-      cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
-      encargado: { select: { id: true, name: true } },
-      trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-      cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
-      personal: {
-        include: {
-          tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
-          rolTecnico: { select: { nombre: true } },
+  // Try with rider accessories (new tables); fall back without them if tables don't exist yet
+  let proyecto = null;
+  try {
+    proyecto = await prisma.proyecto.findUnique({
+      where: { id },
+      include: {
+        cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
+        encargado: { select: { id: true, name: true } },
+        trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
+        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        personal: {
+          include: {
+            tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
+            rolTecnico: { select: { nombre: true } },
+          },
+          orderBy: { id: "asc" },
         },
-        orderBy: { id: "asc" },
-      },
-      equipos: {
-        include: {
-          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
-          proveedor: { select: { nombre: true, telefono: true } },
-          riderAccesorios: { orderBy: { orden: "asc" } },
+        equipos: {
+          include: {
+            equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
+            proveedor: { select: { nombre: true, telefono: true } },
+            riderAccesorios: { orderBy: { orden: "asc" } },
+          },
+          orderBy: { id: "asc" },
         },
-        orderBy: { id: "asc" },
-      },
-      checklist: { orderBy: { orden: "asc" } },
-      archivos: { orderBy: { createdAt: "asc" } },
-      bitacora: {
-        include: { usuario: { select: { name: true } } },
-        orderBy: { createdAt: "desc" },
-      },
-      cuentasCobrar: true,
-      cuentasPagar: true,
-      movimientos: {
-        where: { tipo: "GASTO" },
-        orderBy: { fecha: "desc" },
-        include: {
-          categoria: { select: { nombre: true } },
-          proveedor: { select: { nombre: true } },
+        checklist: { orderBy: { orden: "asc" } },
+        archivos: { orderBy: { createdAt: "asc" } },
+        bitacora: {
+          include: { usuario: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
         },
+        cuentasCobrar: true,
+        cuentasPagar: true,
+        movimientos: {
+          where: { tipo: "GASTO" },
+          orderBy: { fecha: "desc" },
+          include: {
+            categoria: { select: { nombre: true } },
+            proveedor: { select: { nombre: true } },
+          },
+        },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
       },
-      cierreFinanciero: { select: { cerradoEn: true, notas: true } },
-      // notasPortal is a scalar field returned automatically with include
-    },
-  });
+    });
+  } catch {
+    // Fallback: query without new rider tables (migration may not have run yet)
+    proyecto = await prisma.proyecto.findUnique({
+      where: { id },
+      include: {
+        cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
+        encargado: { select: { id: true, name: true } },
+        trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
+        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        personal: {
+          include: {
+            tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
+            rolTecnico: { select: { nombre: true } },
+          },
+          orderBy: { id: "asc" },
+        },
+        equipos: {
+          include: {
+            equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+            proveedor: { select: { nombre: true, telefono: true } },
+          },
+          orderBy: { id: "asc" },
+        },
+        checklist: { orderBy: { orden: "asc" } },
+        archivos: { orderBy: { createdAt: "asc" } },
+        bitacora: {
+          include: { usuario: { select: { name: true } } },
+          orderBy: { createdAt: "desc" },
+        },
+        cuentasCobrar: true,
+        cuentasPagar: true,
+        movimientos: {
+          where: { tipo: "GASTO" },
+          orderBy: { fecha: "desc" },
+          include: {
+            categoria: { select: { nombre: true } },
+            proveedor: { select: { nombre: true } },
+          },
+        },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+      },
+    });
+    // Normalize fallback: add empty arrays for new fields
+    if (proyecto) {
+      proyecto = {
+        ...proyecto,
+        equipos: proyecto.equipos.map((e: Record<string, unknown>) => ({
+          ...e,
+          riderAccesorios: [],
+          equipo: { ...(e.equipo as Record<string, unknown>), accesorios: [] },
+        })),
+      } as typeof proyecto;
+    }
+  }
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 

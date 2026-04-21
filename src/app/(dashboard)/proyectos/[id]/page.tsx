@@ -561,16 +561,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   };
 
   async function load() {
-    const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
-    const d = await res.json();
-    setProyecto(d.proyecto);
-    setRiderEquipos(d.proyecto?.equipos ?? []);
-    setNotasPortal(d.proyecto?.notasPortal ?? "");
     try {
-      const resp = d.proyecto?.responsables ? JSON.parse(d.proyecto.responsables) : {};
-      setResponsables({ produccion: resp.produccion ?? "", logistica: resp.logistica ?? "", finanzas: resp.finanzas ?? "", marketing: resp.marketing ?? "" });
-    } catch { /* ignore */ }
-    setLoading(false);
+      const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
+      const d = await res.json();
+      setProyecto(d.proyecto ?? null);
+      setRiderEquipos(d.proyecto?.equipos ?? []);
+      setNotasPortal(d.proyecto?.notasPortal ?? "");
+      try {
+        const resp = d.proyecto?.responsables ? JSON.parse(d.proyecto.responsables) : {};
+        setResponsables({ produccion: resp.produccion ?? "", logistica: resp.logistica ?? "", finanzas: resp.finanzas ?? "", marketing: resp.marketing ?? "" });
+      } catch { /* ignore */ }
+    } catch (e) {
+      console.error("Error cargando proyecto:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loadGastosOp() {
