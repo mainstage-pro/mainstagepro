@@ -28,32 +28,10 @@ function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 
-// Devuelve el lunes de la semana actual como YYYY-MM-DD
-function getLunes() {
-  const d = new Date();
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d.toISOString().slice(0, 10);
-}
-
-// Quincena actual: "2026-04-01" ó "2026-04-16"
-function getQuincena() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return d.getDate() <= 15 ? `${y}-${m}-01` : `${y}-${m}-16`;
-}
-
 // Mes actual
 function getMes() {
   return new Date().toISOString().slice(0, 7);
 }
-
-const PERIODO_DEFAULTS: Record<string, () => string> = {
-  SEMANAL:   getLunes,
-  QUINCENAL: getQuincena,
-  MENSUAL:   getMes,
-};
 
 const TIPO_LABELS: Record<string, string> = {
   SEMANAL: "Semanal", QUINCENAL: "Quincenal", MENSUAL: "Mensual",
@@ -75,13 +53,6 @@ export default function NominaPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Generar nómina
-  const [generando, setGenerando] = useState(false);
-  const [genTipo, setGenTipo] = useState<"SEMANAL" | "QUINCENAL" | "MENSUAL">("SEMANAL");
-  const [genPeriodo, setGenPeriodo] = useState(getLunes());
-  const [genResult, setGenResult] = useState<{ created: number; skipped: number } | null>(null);
-  const [showGenForm, setShowGenForm] = useState(false);
-
   // Confirmar pago
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [pagoData, setPagoData] = useState<Record<string, { cuentaId: string; metodo: string; fecha: string }>>({});
@@ -97,25 +68,6 @@ export default function NominaPage() {
   }
 
   useEffect(() => { load(); }, []);
-
-  // Cuando cambia tipoPeriodo, actualizar fecha sugerida
-  useEffect(() => {
-    setGenPeriodo(PERIODO_DEFAULTS[genTipo]?.() ?? getLunes());
-  }, [genTipo]);
-
-  async function generarNomina() {
-    setGenerando(true);
-    setGenResult(null);
-    const r = await fetch("/api/rrhh/nomina", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ periodo: genPeriodo, tipoPeriodo: genTipo }),
-    });
-    const d = await r.json();
-    setGenResult(d);
-    setGenerando(false);
-    await load();
-  }
 
   function getPagoData(id: string) {
     return pagoData[id] ?? { cuentaId: cuentas[0]?.id ?? "", metodo: "TRANSFERENCIA", fecha: new Date().toISOString().slice(0, 10) };
@@ -171,68 +123,9 @@ export default function NominaPage() {
           <Link href="/rrhh/personal" className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">
             Personal
           </Link>
-          <button onClick={() => setShowGenForm(v => !v)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            {showGenForm ? "Cancelar" : "Generar nómina"}
-          </button>
         </div>
       </div>
 
-      {/* ── GENERAR NÓMINA ── */}
-      {showGenForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Generar pagos pendientes</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tipo de período</label>
-              <select value={genTipo} onChange={e => setGenTipo(e.target.value as typeof genTipo)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="SEMANAL">Semanal</option>
-                <option value="QUINCENAL">Quincenal</option>
-                <option value="MENSUAL">Mensual</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">
-                {genTipo === "SEMANAL" ? "Semana (lunes)" : genTipo === "QUINCENAL" ? "Quincena (inicio)" : "Mes (YYYY-MM)"}
-              </label>
-              <input type={genTipo === "MENSUAL" ? "month" : "date"}
-                value={genPeriodo}
-                onChange={e => setGenPeriodo(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div className="flex items-end">
-              <button onClick={generarNomina} disabled={generando}
-                className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-4 py-2 rounded-lg transition-colors">
-                {generando ? "Generando..." : "Generar"}
-              </button>
-            </div>
-          </div>
-
-          {/* Resultado */}
-          {genResult && (
-            <div className={`text-sm px-4 py-2.5 rounded-lg ${genResult.created > 0 ? "bg-green-900/20 text-green-300 border border-green-800/40" : "bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a]"}`}>
-              {genResult.created > 0
-                ? `✓ Se generaron ${genResult.created} pago${genResult.created !== 1 ? "s" : ""} pendientes${genResult.skipped > 0 ? ` · ${genResult.skipped} ya existían` : ""}`
-                : `Sin cambios — todos los pagos de este período ya estaban registrados (${genResult.skipped})`}
-            </div>
-          )}
-
-          {/* Personal que aplica */}
-          {personal.filter(p => p.periodoPago === genTipo && p.salario).length > 0 && (
-            <div>
-              <p className="text-xs text-gray-600 mb-2">Aplica para:</p>
-              <div className="flex flex-wrap gap-2">
-                {personal.filter(p => p.periodoPago === genTipo && p.salario).map(p => (
-                  <span key={p.id} className="text-xs bg-[#1a1a1a] text-gray-300 px-2 py-1 rounded-lg">
-                    {p.nombre} · {fmt(p.salario!)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── KPIs ── */}
       {!loading && (
@@ -332,7 +225,7 @@ export default function NominaPage() {
       {!loading && pendientes.length === 0 && (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center">
           <p className="text-green-400 text-sm font-medium">Sin pagos pendientes</p>
-          <p className="text-gray-600 text-xs mt-1">Usa "Generar nómina" cada lunes para crear los pagos del período</p>
+          <p className="text-gray-600 text-xs mt-1">No hay pagos pendientes en este momento</p>
         </div>
       )}
 
