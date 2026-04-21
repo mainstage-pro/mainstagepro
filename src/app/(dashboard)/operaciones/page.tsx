@@ -74,7 +74,11 @@ export default function OperacionesPage() {
   const [selectedTask, setSelectedTask]         = useState<TareaDetalle | null>(null);
   const [loadingPanel, setLoadingPanel]         = useState(false);
 
-  const [sortHoy, setSortHoy]                   = useState(SORT_OPTIONS[0]);
+  const [sortHoy, setSortHoy]                   = useState(() => {
+    if (typeof window === "undefined") return SORT_OPTIONS[0];
+    return localStorage.getItem("op_sort_hoy") ?? SORT_OPTIONS[0];
+  });
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showCompleted, setShowCompleted]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
@@ -636,17 +640,53 @@ export default function OperacionesPage() {
 
           <h1 className="text-base font-semibold text-white tracking-tight">{vistaLabel}</h1>
 
-          {/* Sort (Hoy / Próximas) */}
+          {/* Sort dropdown (Hoy / Próximas) */}
           {(vista === "hoy" || vista === "proximas") && (
-            <div className="ml-auto flex items-center gap-0.5 flex-wrap">
-              {SORT_OPTIONS.map(opt => (
-                <button key={opt} onClick={() => setSortHoy(opt)}
-                  className={`px-2 py-1 rounded-lg text-xs transition-all ${
-                    sortHoy === opt ? "bg-[#1a1a1a] text-white" : "text-[#333] hover:text-[#777]"
-                  }`}>
-                  {opt}
-                </button>
-              ))}
+            <div className="ml-auto relative">
+              <button
+                onClick={() => setSortDropdownOpen(v => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
+                  sortHoy !== SORT_OPTIONS[0]
+                    ? "bg-[#1a1a1a] text-white border-[#2a2a2a]"
+                    : "text-[#444] border-[#1a1a1a] hover:text-[#777] hover:bg-[#111]"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/>
+                  <line x1="21" y1="14" x2="7" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/>
+                </svg>
+                {sortHoy === SORT_OPTIONS[0] ? "Agrupar" : sortHoy.replace("Por ", "")}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points={sortDropdownOpen ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
+                </svg>
+              </button>
+              {sortDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-[9990]" onClick={() => setSortDropdownOpen(false)} />
+                  <div className="absolute right-0 top-9 z-[9991] bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl shadow-2xl py-1 min-w-[160px]">
+                    {SORT_OPTIONS.map(opt => (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          setSortHoy(opt);
+                          localStorage.setItem("op_sort_hoy", opt);
+                          setSortDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-[#151515] ${
+                          sortHoy === opt ? "text-[#B3985B]" : "text-[#666] hover:text-white"
+                        }`}
+                      >
+                        {opt}
+                        {sortHoy === opt && (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

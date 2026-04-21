@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
+import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
@@ -230,6 +231,16 @@ export default async function DashboardVentasPage() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Tareas pendientes del área */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <p className="text-[11px] font-bold text-[#3a3a3a] uppercase tracking-widest">TAREAS DEL DÍA</p>
+          <div className="flex-1 h-px bg-[#1a1a1a]" />
+          <Link href="/operaciones" className="text-[#B3985B] text-xs hover:underline shrink-0">Ver módulo →</Link>
+        </div>
+        <TareasPendientesWidget area="VENTAS" />
       </div>
     </div>
   );

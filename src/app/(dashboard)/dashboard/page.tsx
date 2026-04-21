@@ -6,17 +6,20 @@ import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
+import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 
 export default async function DashboardPage() {
   const session = await getSession();
 
-  // Redirect non-admin/non-CEO users to their area dashboard
-  if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL" && session.area !== "DIRECCION") {
+  // Redirect non-admin users to their area-specific dashboard
+  if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL") {
     const areaRoutes: Record<string, string> = {
-      ADMINISTRACION: "/dashboard/administracion",
-      MARKETING: "/dashboard/marketing",
-      VENTAS: "/dashboard/ventas",
-      PRODUCCION: "/dashboard/produccion",
+      DIRECCION:     "/dashboard/direccion",
+      ADMINISTRACION:"/dashboard/administracion",
+      MARKETING:     "/dashboard/marketing",
+      VENTAS:        "/dashboard/ventas",
+      PRODUCCION:    "/dashboard/produccion",
+      RRHH:          "/dashboard/rrhh",
     };
     const target = areaRoutes[session.area];
     if (target) {
@@ -771,6 +774,13 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+      </Section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          OPERACIONES
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="OPERACIONES" href="/operaciones/equipo">
+        <TareasPendientesWidget />
       </Section>
     </div>
   );

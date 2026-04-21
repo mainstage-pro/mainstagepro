@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
-import AlertasPanelV2 from "@/components/AlertasPanelV2";
 import NotificacionesBell from "@/components/NotificacionesBell";
 
 interface NavChild {
@@ -427,7 +426,6 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           </Link>
           <div className="flex items-center gap-2 mt-3">
             <div className="flex-1"><BusquedaGlobal /></div>
-            <AlertasPanelV2 />
             <NotificacionesBell />
           </div>
         </div>
@@ -483,7 +481,6 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           </svg>
         </button>
         <NotificacionesBell />
-        <AlertasPanelV2 />
         <button
           onClick={() => setMobileOpen(true)}
           className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors shrink-0"
