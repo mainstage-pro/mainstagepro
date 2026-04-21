@@ -144,6 +144,7 @@ export interface ConceptoReciboTecnico {
 
 export interface ReciboTecnicoData {
   tecnicoNombre: string;
+  tipoAcreedor?: string;
   conceptos: ConceptoReciboTecnico[];
   total: number;
   fechaEmision: string;
@@ -151,6 +152,7 @@ export interface ReciboTecnicoData {
 }
 
 export function ReciboTecnicoPDF({ recibo }: { recibo: ReciboTecnicoData }) {
+  const titulo = recibo.tipoAcreedor === "PROVEEDOR" ? "RECIBO DE PAGO" : "RECIBO DE HONORARIOS";
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -162,7 +164,7 @@ export function ReciboTecnicoPDF({ recibo }: { recibo: ReciboTecnicoData }) {
             <Text style={s.tagline}>SOLUCIONES AUDIOVISUALES PROFESIONALES</Text>
           </View>
           <View style={s.headerRight}>
-            <Text style={s.docTitle}>RECIBO DE HONORARIOS</Text>
+            <Text style={s.docTitle}>{titulo}</Text>
             <Text style={s.docNum}>Ref. {recibo.refNum}</Text>
           </View>
         </View>

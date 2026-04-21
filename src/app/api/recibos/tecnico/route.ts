@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     where: { id: { in: ids } },
     include: {
       tecnico: { select: { id: true, nombre: true } },
+      proveedor: { select: { id: true, nombre: true } },
       proyecto: { select: { nombre: true, numeroProyecto: true } },
     },
     orderBy: { fechaCompromiso: "asc" },
@@ -23,16 +24,19 @@ export async function GET(req: NextRequest) {
 
   if (cxps.length === 0) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  // Infer technician name from linked tecnico or from the concepto string
-  const tecnicoNombre =
+  const first = cxps[0];
+  const beneficiarioNombre =
     cxps.find(c => c.tecnico?.nombre)?.tecnico?.nombre ??
-    cxps[0].concepto.split("·")[0].replace(/^Honorarios\s*[-–]\s*/i, "").trim();
+    cxps.find(c => c.proveedor?.nombre)?.proveedor?.nombre ??
+    first.concepto.split("·")[0].replace(/^Honorarios\s*[-–]\s*/i, "").trim();
 
+  const tipoAcreedor = first.tipoAcreedor;
   const total = cxps.reduce((sum, c) => sum + c.monto, 0);
   const refNum = Date.now().toString(36).toUpperCase().slice(-6);
 
   const reciboData = {
-    tecnicoNombre,
+    tecnicoNombre: beneficiarioNombre,
+    tipoAcreedor,
     conceptos: cxps.map(c => ({
       id: c.id,
       concepto: c.concepto,
@@ -62,7 +66,7 @@ export async function GET(req: NextRequest) {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="Recibo-${tecnicoNombre.replace(/\s+/g, "-")}-${refNum}.pdf"`,
+      "Content-Disposition": `attachment; filename="Recibo-${beneficiarioNombre.replace(/\s+/g, "-")}-${refNum}.pdf"`,
       "Content-Length": String(pdfBuffer.length),
     },
   });

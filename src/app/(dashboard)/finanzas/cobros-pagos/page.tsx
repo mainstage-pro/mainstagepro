@@ -373,21 +373,24 @@ export default function CobrosPagosPage() {
   }
 
   function openReciboModal() {
-    const tecnicos = cxp.filter(
-      c => (c.tipoAcreedor === "TECNICO" || c.tipoAcreedor === "PERSONAL_INTERNO") && c.estado !== "LIQUIDADO"
-    );
-    const gruposMap: Record<string, { nombre: string; items: CxPItem[] }> = {};
-    for (const c of tecnicos) {
-      const key = c.tecnico?.id ?? `nombre:${c.tecnico?.nombre ?? c.concepto}`;
+    const pendientes = cxp.filter(c => c.estado !== "LIQUIDADO");
+    const gruposMap: Record<string, { nombre: string; tipo: string; items: CxPItem[] }> = {};
+    for (const c of pendientes) {
+      const key = c.tecnico?.id ?? c.proveedor?.id ?? `otro:${c.concepto}`;
       if (!gruposMap[key]) {
-        gruposMap[key] = { nombre: c.tecnico?.nombre ?? "Técnico sin nombre", items: [] };
+        const nombre = c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.concepto;
+        const tipo = c.tipoAcreedor === "TECNICO" ? "Técnico"
+          : c.tipoAcreedor === "PERSONAL_INTERNO" ? "Nómina"
+          : c.tipoAcreedor === "PROVEEDOR" ? "Proveedor"
+          : "Otro";
+        gruposMap[key] = { nombre, tipo, items: [] };
       }
       gruposMap[key].items.push(c);
     }
     const grupos = Object.entries(gruposMap).map(([key, g]) => ({ key, ...g }));
     const sel: Record<string, Set<string>> = {};
     for (const g of grupos) sel[g.key] = new Set(g.items.map(i => i.id));
-    setReciboGrupos(grupos);
+    setReciboGrupos(grupos as Array<{ key: string; nombre: string; items: CxPItem[] }>);
     setReciboSeleccionados(sel);
     setShowReciboModal(true);
   }
@@ -1064,7 +1067,7 @@ export default function CobrosPagosPage() {
             <div className="overflow-y-auto flex-1 px-6 py-4 space-y-5">
               {reciboGrupos.length === 0 ? (
                 <div className="text-center py-10">
-                  <p className="text-gray-600 text-sm">Sin pagos pendientes a técnicos</p>
+                  <p className="text-gray-600 text-sm">Sin pagos pendientes</p>
                   <p className="text-gray-700 text-xs mt-1">Los pagos con estado Pendiente o Parcial aparecerán aquí</p>
                 </div>
               ) : reciboGrupos.map(grupo => {
@@ -1075,7 +1078,7 @@ export default function CobrosPagosPage() {
                 const todosSeleccionados = grupo.items.every(i => seleccionados.has(i.id));
                 return (
                   <div key={grupo.key} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                    {/* Encabezado técnico */}
+                    {/* Encabezado beneficiario */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e1e1e]">
                       <div className="flex items-center gap-3">
                         <input type="checkbox" checked={todosSeleccionados}
