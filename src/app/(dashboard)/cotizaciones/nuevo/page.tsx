@@ -1359,14 +1359,15 @@ function CotizadorForm() {
             <div className="flex gap-2 mb-4 items-end">
               <div className="flex-1">
                 <p className="text-[10px] text-[#555] mb-1 px-1">Equipo del catálogo</p>
-                <select value={selExt} onChange={e => setSelExt(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Selecciona equipo externo —</option>
-                  {equiposExternos.map(eq => (
-                    <option key={eq.id} value={eq.id}>
-                      {eq.descripcion}{eq.marca ? ` · ${eq.marca}` : ""} — cliente: {formatCurrency(eq.precioRenta)} / costo: {formatCurrency(eq.costoProveedor ?? 0)}
-                    </option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  options={equiposExternos.map(eq => ({
+                    value: eq.id,
+                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
+                  }))}
+                  value={selExt}
+                  onChange={setSelExt}
+                  placeholder="— Buscar equipo externo —"
+                />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
