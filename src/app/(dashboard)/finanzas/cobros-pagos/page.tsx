@@ -1074,33 +1074,27 @@ export default function CobrosPagosPage() {
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                     {!nuevoForm.empresaId && !nuevoForm.clienteId && (
                       <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-52 overflow-y-auto">
-                        {/* Empresas primero */}
-                        {empresas
-                          .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
-                          .map(e => (
-                            <button key={`emp-${e.id}`}
-                              onClick={() => { setNuevoForm(p => ({ ...p, empresaId: e.id, clienteId: "" })); setEmpresaQuery(e.nombre); }}
-                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
-                              <p className="text-sm text-white">{e.nombre}</p>
-                              {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
-                            </button>
-                          ))}
-                        {/* Contactos sin empresa vinculada */}
                         {clientes
-                          .filter(c => !c.empresa)
-                          .filter(c => !empresaQuery || c.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                          .filter(c => {
+                            if (!empresaQuery) return true;
+                            const q = empresaQuery.toLowerCase();
+                            return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
+                          })
                           .map(c => (
                             <button key={`cli-${c.id}`}
                               onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, empresaId: "" })); setEmpresaQuery(c.nombre); }}
                               className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
-                              <p className="text-sm text-gray-300">{c.nombre}</p>
-                              <p className="text-[10px] text-gray-600">Contacto individual</p>
+                              <p className="text-sm text-white">{c.nombre}</p>
+                              {c.empresa && <p className="text-[10px] text-gray-500">{c.empresa}</p>}
                             </button>
                           ))}
-                        {empresas.filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase())).length === 0 &&
-                          clientes.filter(c => !c.empresa && (!empresaQuery || c.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))).length === 0 && (
-                            <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
-                          )}
+                        {clientes.filter(c => {
+                          if (!empresaQuery) return true;
+                          const q = empresaQuery.toLowerCase();
+                          return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
+                        }).length === 0 && (
+                          <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
+                        )}
                       </div>
                     )}
                     {(nuevoForm.empresaId || nuevoForm.clienteId) && (
@@ -1148,7 +1142,22 @@ export default function CobrosPagosPage() {
                           className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-[#222] border-b border-[#2a2a2a]">
                           — Sin acreedor —
                         </button>
+                        {proveedores
+                          .filter(p => {
+                            if (!empresaQuery) return true;
+                            const q = empresaQuery.toLowerCase();
+                            return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
+                          })
+                          .map(p => (
+                            <button key={`prov-${p.id}`}
+                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, empresaId: "" })); setEmpresaQuery(p.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                              <p className="text-sm text-white">{p.nombre}</p>
+                              {p.empresa && <p className="text-[10px] text-gray-500">{p.empresa}</p>}
+                            </button>
+                          ))}
                         {empresas
+                          .filter(e => e.contactosProveedor.length === 0)
                           .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
                           .map(e => (
                             <button key={`emp-${e.id}`}
@@ -1156,17 +1165,6 @@ export default function CobrosPagosPage() {
                               className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
                               <p className="text-sm text-white">{e.nombre}</p>
                               {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
-                            </button>
-                          ))}
-                        {proveedores
-                          .filter(p => !p.empresa)
-                          .filter(p => !empresaQuery || p.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
-                          .map(p => (
-                            <button key={`prov-${p.id}`}
-                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, empresaId: "" })); setEmpresaQuery(p.nombre); }}
-                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
-                              <p className="text-sm text-gray-300">{p.nombre}</p>
-                              <p className="text-[10px] text-gray-600">Proveedor individual</p>
                             </button>
                           ))}
                       </div>
