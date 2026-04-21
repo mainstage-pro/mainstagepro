@@ -131,8 +131,8 @@ export default function ServiciosClient() {
           </h1>
           <p className="text-white/60 mt-8 leading-relaxed max-w-xl mx-auto"
              style={{ fontSize: "clamp(1rem,2vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Producción técnica integral para eventos que no pueden fallar.
-            Cuando llegas con Mainstage Pro, los problemas técnicos no son tu problema.
+            7 años resolviendo la producción técnica de eventos que no pueden fallar.
+            Sonido, luz, video y operadores — todo en un solo equipo, con un solo responsable.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
@@ -166,9 +166,9 @@ export default function ServiciosClient() {
             <span style={{ color: GOLD }}>más de equipo.</span>
           </h2>
           <p className="text-white/55 mt-8 max-w-2xl leading-relaxed" style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)" }}>
-            Somos el equipo técnico que hace que todo funcione el día del evento.
-            Equipo 100% propio, operadores formados internamente y una sola fuente de responsabilidad —
-            para que tú te enfoques en lo que importa y nosotros en que nada falle.
+            Somos el equipo técnico detrás de más de 750 eventos. Operadores formados en campo,
+            equipo de nivel profesional y una sola fuente de responsabilidad — para que tú te enfoques
+            en lo que importa y nosotros en que nada falle.
           </p>
         </R>
       </section>
@@ -176,10 +176,10 @@ export default function ServiciosClient() {
       {/* ── Stats ── */}
       <section className="py-20 px-6 border-t border-b border-white/[0.04]">
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-10 sm:gap-4">
-          <StatCount target={8}   suffix="+"  label="Años de experiencia" />
-          <StatCount target={500} suffix="+"  label="Eventos realizados"  />
+          <StatCount target={7}   suffix="+"  label="Años de experiencia" />
+          <StatCount target={750} suffix="+"  label="Eventos realizados"  />
           <StatCount target={3}   suffix=""   label="Zonas de servicio"   />
-          <StatCount target={100} suffix="%"  label="Equipo propio"       />
+          <StatCount target={100} suffix="%"  label="Compromiso con cada evento" />
         </div>
       </section>
 
@@ -250,21 +250,21 @@ export default function ServiciosClient() {
               {
                 title: "Musicales",
                 sub: "Conciertos · Festivales · DJ Sets · Showcases",
-                img: "/images/presentacion/m-stage-green.jpg",
+                img: "/images/presentacion/musicales/Musicales-016.jpg",
                 href: "/presentacion/evento/musical",
                 delay: 0,
               },
               {
                 title: "Sociales",
                 sub: "Bodas · XV Años · Fiestas privadas · Celebraciones",
-                img: "/images/presentacion/s-couple-purple.png",
+                img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",
                 href: "/presentacion/evento/social",
                 delay: 120,
               },
               {
                 title: "Empresariales",
                 sub: "Conferencias · Lanzamientos · Corporativos · Ferias",
-                img: "/images/presentacion/e-corp-screens.jpg",
+                img: "/images/presentacion/empresariales/e-sala-pantallas.jpg",
                 href: "/presentacion/evento/empresarial",
                 delay: 240,
               },
@@ -295,34 +295,29 @@ export default function ServiciosClient() {
         </div>
       </section>
 
-      {/* ── Scouting ── */}
+      {/* ── Por qué Mainstage ── */}
       <section className="py-24 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Scouting de venue</p>
-            <h2 className="font-bold text-white leading-tight mb-6"
+            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Por qué Mainstage Pro</p>
+            <h2 className="font-bold text-white leading-tight mb-14"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Visitamos el venue antes<br />
-              <span style={{ color: GOLD }}>de enviarte la propuesta.</span>
+              Lo que nos hace<br />
+              <span style={{ color: GOLD }}>la opción correcta.</span>
             </h2>
-            <p className="text-white/50 max-w-2xl leading-relaxed mb-14" style={{ fontSize: "clamp(0.95rem,1.6vw,1.1rem)" }}>
-              No cotizamos a ciegas. Cuando el proyecto lo requiere, uno de nuestros técnicos visita el espacio en persona
-              para evaluar condiciones reales — eléctricas, acústicas y de acceso. Así la propuesta que recibes está basada
-              en lo que el venue realmente permite, no en supuestos.
-            </p>
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { icon: "⚡", title: "Instalación eléctrica", body: "Voltaje disponible, amperaje por circuito, número de fases y ubicación del tablero. Evaluamos si el venue soporta la carga del equipo." },
-              { icon: "◎",  title: "Acústica del espacio",  body: "Dimensiones, materiales, forma del salón y posibles puntos muertos. Determinamos la configuración de audio más adecuada antes de cotizar." },
-              { icon: "📐", title: "Accesos y logística",   body: "Ancho de puertas, rampas, montacargas, restricciones de horario y estacionamiento para nuestras unidades. Nada que improvise el día del montaje." },
-              { icon: "📋", title: "Reporte documentado",   body: "Todo lo relevante queda registrado en una ficha técnica del venue. Puedes consultarla como referencia para futuros eventos en el mismo espacio." },
+              { title: "7 años de experiencia real", body: "Desde 2019 produciendo eventos de todos los tamaños. Conocemos lo que puede pasar y cómo anticiparlo antes de que sea un problema." },
+              { title: "Ingenieros, no improvisados", body: "Cada operador trabaja en campo constantemente. El día del evento no es momento de aprender — nuestro equipo ya sabe qué hacer." },
+              { title: "Setup a tiempo, siempre", body: "Llegamos con margen real para montar, calibrar y verificar todo antes de que llegue el primer invitado o artista." },
+              { title: "Un solo interlocutor", body: "Audio, luz, video y operadores en un solo contrato. Si algo necesita ajuste antes o durante el evento, una llamada lo resuelve." },
             ].map((item, i) => (
               <R key={item.title} delay={i * 90}>
                 <div className="rounded-2xl p-6 h-full"
                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="text-2xl block mb-4">{item.icon}</span>
-                  <h4 className="font-semibold text-white text-sm mb-2">{item.title}</h4>
+                  <div className="w-8 h-px mb-6" style={{ background: GOLD }} />
+                  <h4 className="font-semibold text-white text-sm mb-3 leading-snug">{item.title}</h4>
                   <p className="text-white/40 text-xs leading-relaxed">{item.body}</p>
                 </div>
               </R>
@@ -345,7 +340,7 @@ export default function ServiciosClient() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
             {[
               { n: "1", title: "Contáctanos", body: "Escríbenos o llámanos. Te enviamos un formulario breve para entender tus necesidades." },
-              { n: "2", title: "Scouting y descubrimiento", body: "Cuando el proyecto lo requiere, visitamos el venue para levantar un reporte técnico completo — eléctrico, acústico y de logística. Así la cotización es precisa desde el primer borrador." },
+              { n: "2", title: "Levantamiento técnico", body: "Analizamos las necesidades del evento, el espacio y el programa. Con esa información diseñamos la solución técnica adecuada — no una propuesta genérica." },
               { n: "3", title: "Cotización personalizada", body: "Una propuesta clara, basada en condiciones reales del espacio. Sin supuestos ni letra chica." },
               { n: "4", title: "Ajustes y revisión", body: "Hacemos los cambios necesarios para que el resultado sea exactamente lo que imaginas." },
               { n: "5", title: "Cierre y reserva", body: "Formalizamos con contrato, recibimos el anticipo y bloqueamos la fecha en nuestra agenda." },
@@ -401,8 +396,8 @@ export default function ServiciosClient() {
             </div>
             <p className="font-bold text-white leading-[1.08]"
                style={{ fontSize: "clamp(2rem,6vw,5rem)", letterSpacing: "-0.03em" }}>
-              "Cuando llegas con Mainstage Pro,<br />
-              <span style={{ color: GOLD }}>los problemas técnicos no son tu problema."</span>
+              Tu evento merece técnica<br />
+              <span style={{ color: GOLD }}>que no se note — solo se sienta.</span>
             </p>
           </R>
         </div>
@@ -416,7 +411,7 @@ export default function ServiciosClient() {
             <h2 className="font-bold text-white leading-tight mb-8"
                 style={{ fontSize: "clamp(1.8rem,4vw,3.2rem)", letterSpacing: "-0.025em" }}>
               Cuéntanos sobre tu evento.<br />
-              Los problemas técnicos quedan con nosotros.
+              Nosotros nos encargamos de que todo funcione.
             </h2>
             <p className="text-white/45 mb-10 leading-relaxed">
               Respuesta en menos de 24 horas. Sin compromiso. Solo una conversación para entender qué necesitas y cotizarte con precisión.
