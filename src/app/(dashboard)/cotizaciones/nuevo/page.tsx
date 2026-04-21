@@ -697,12 +697,15 @@ function CotizadorForm() {
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
+    // Cuando el checkbox está activo, aplica el mismo % de descuento a externos Y ocasionales
+    const descuentoMontaExternos    = descuentoAplicaAdicionales ? subtotalExternos  * descuentoTotalPct : 0;
     const descuentoMontaAdicionales = descuentoAplicaAdicionales ? subtotalOcasionales * descuentoTotalPct : 0;
+    const subtotalExternosNeto    = subtotalExternos    - descuentoMontaExternos;
     const subtotalOcasionalesNeto = subtotalOcasionales - descuentoMontaAdicionales;
 
-    // Total incluye equipos propios (con descuento) + externos (sin descuento) + ocasionales + operación + logística
+    // Total incluye equipos propios (con descuento) + externos (con/sin descuento) + ocasionales + operación + logística
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
 
@@ -721,7 +724,8 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, subtotalOcasionalesNeto, descuentoMontaAdicionales, costoExternos,
+      subtotalEquiposBruto, subtotalExternos, subtotalExternosNeto, subtotalOcasionales, subtotalOcasionalesNeto,
+      descuentoMontaExternos, descuentoMontaAdicionales, costoExternos,
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       autoVolumen, autoB2B, autoMultidia,
@@ -802,7 +806,7 @@ function CotizadorForm() {
       montoBeneficio: resumen.montoDescuento,
       subtotalEquiposNeto: resumen.subtotalEquiposNeto,
       subtotalPaquetes: 0,
-      subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
+      subtotalTerceros: resumen.subtotalExternosNeto + resumen.subtotalOcasionalesNeto,
       subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
       subtotalTransporte: resumen.subtotalTransporte,
       subtotalComidas: resumen.subtotalComidas,
@@ -1820,10 +1824,10 @@ function CotizadorForm() {
               <div className="flex items-center gap-3 pt-2 border-t border-[#222]">
                 <label className="flex items-center gap-2 cursor-pointer flex-1">
                   <input type="checkbox" checked={descuentoAplicaAdicionales} onChange={e => setDescuentoAplicaAdicionales(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
-                  <span className="text-sm text-gray-300">Aplicar descuentos también a equipos adicionales</span>
+                  <span className="text-sm text-gray-300">Aplicar descuento a equipos externos y conceptos adicionales</span>
                 </label>
-                {descuentoAplicaAdicionales && resumen.descuentoMontaAdicionales > 0 && (
-                  <span className="text-red-400 text-sm shrink-0">-{formatCurrency(resumen.descuentoMontaAdicionales)}</span>
+                {descuentoAplicaAdicionales && (resumen.descuentoMontaExternos + resumen.descuentoMontaAdicionales) > 0 && (
+                  <span className="text-red-400 text-sm shrink-0">-{formatCurrency(resumen.descuentoMontaExternos + resumen.descuentoMontaAdicionales)}</span>
                 )}
               </div>
               {/* Chofer */}

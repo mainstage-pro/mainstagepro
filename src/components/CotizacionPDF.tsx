@@ -802,10 +802,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── TOTALES ── */}
         <View style={s.totalesBloque}>
           <View style={s.totalesTabla}>
-            {c.subtotalEquiposBruto > 0 && (
+            {(c.subtotalEquiposBruto + subtotalExternos) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Equipo de audio, iluminación y video</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto)}</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto + subtotalExternos)}</Text>
               </View>
             )}
             {discRows.map((r, i) => (
@@ -814,12 +814,6 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>-{fmtMXN(r.monto)}</Text>
               </View>
             ))}
-            {subtotalExternos > 0 && (
-              <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Equipos adicionales</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(subtotalExternos)}</Text>
-              </View>
-            )}
             {c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Conceptos adicionales</Text>
