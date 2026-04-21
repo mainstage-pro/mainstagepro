@@ -120,7 +120,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           riderAccesorios: [],
           equipo: { ...(e.equipo as Record<string, unknown>), accesorios: [] },
         })),
-      } as typeof proyecto;
+      } as unknown as typeof proyecto;
     }
   }
 
