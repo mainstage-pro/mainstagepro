@@ -52,11 +52,12 @@ export async function GET(req: NextRequest) {
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
   } else if (vista === "proximas") {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const en30 = new Date(hoy);
-    en30.setDate(hoy.getDate() + 30);
-    where.fecha  = { gte: hoy, lte: en30 };
+    const manana = new Date();
+    manana.setHours(0, 0, 0, 0);
+    manana.setDate(manana.getDate() + 1);
+    const en30 = new Date(manana);
+    en30.setDate(manana.getDate() + 30);
+    where.fecha  = { gte: manana, lte: en30 };
     where.estado = { not: "COMPLETADA" };
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
