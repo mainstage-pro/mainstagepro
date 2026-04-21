@@ -336,13 +336,14 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             </div>
           )}
         </div>
-        <div className="px-3 py-2.5 border-t border-white/5 flex items-start justify-between gap-2">
+        <div className="px-3 py-3 border-t border-white/5 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            {linea.modelo && <p className="text-white/80 text-xs font-medium truncate">{linea.modelo}</p>}
-            {linea.marca && <p className="text-white/40 text-[10px] truncate mt-0.5">{linea.marca}</p>}
-            {!linea.modelo && !linea.marca && <p className="text-white/80 text-xs font-medium truncate">{linea.descripcion}</p>}
+            {linea.marca && <p className="text-white/40 text-[11px] truncate">{linea.marca}</p>}
+            {linea.modelo && <p className="text-white text-sm font-semibold truncate mt-0.5">{linea.modelo}</p>}
+            {linea.descripcion && <p className="text-white/40 text-[11px] truncate mt-0.5">{linea.descripcion}</p>}
+            {!linea.modelo && !linea.marca && <p className="text-white text-sm font-semibold truncate">{linea.descripcion}</p>}
           </div>
-          <span className="text-[#B3985B] text-[10px] font-bold shrink-0 mt-0.5">×{linea.cantidad}</span>
+          <span className="text-[#B3985B] text-xs font-bold shrink-0 mt-1">×{linea.cantidad}</span>
         </div>
       </div>
     </R>
