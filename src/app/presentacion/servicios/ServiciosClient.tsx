@@ -126,13 +126,12 @@ export default function ServiciosClient() {
           </p>
           <h1 className="font-bold text-white leading-[1.0]"
               style={{ fontSize: "clamp(2.8rem,8vw,7rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
-            Producción técnica<br />
-            <span style={{ color: GOLD }}>profesional.</span>
+            La técnica que hace<br />
+            <span style={{ color: GOLD }}>que todo funcione.</span>
           </h1>
-          <p className="text-white/60 mt-8 leading-relaxed max-w-xl mx-auto"
-             style={{ fontSize: "clamp(1rem,2vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            7 años resolviendo la producción técnica de eventos que no pueden fallar.
-            Sonido, luz, video y operadores — todo en un solo equipo, con un solo responsable.
+          <p className="text-white/60 mt-8 max-w-lg mx-auto"
+             style={{ fontSize: "clamp(1rem,2vw,1.15rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
+            Audio, luz, video y operadores. Un solo equipo. Desde 2019.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
@@ -159,16 +158,14 @@ export default function ServiciosClient() {
       {/* ── Statement ── */}
       <section className="py-28 px-6 max-w-5xl mx-auto">
         <R>
-          <p className="text-white/30 text-xs tracking-[0.22em] uppercase mb-6">Nuestra propuesta</p>
           <h2 className="font-bold text-white leading-[1.1]"
               style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
             No somos un proveedor<br />
             <span style={{ color: GOLD }}>más de equipo.</span>
           </h2>
-          <p className="text-white/55 mt-8 max-w-2xl leading-relaxed" style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)" }}>
-            Somos el equipo técnico detrás de más de 750 eventos. Operadores formados en campo,
-            equipo de nivel profesional y una sola fuente de responsabilidad — para que tú te enfoques
-            en lo que importa y nosotros en que nada falle.
+          <p className="text-white/50 mt-6 max-w-xl" style={{ fontSize: "clamp(1rem,1.8vw,1.15rem)" }}>
+            Somos el equipo técnico detrás de más de 750 eventos.<br className="hidden sm:block" />
+            Un solo responsable para que tú te enfoques en lo que importa.
           </p>
         </R>
       </section>
@@ -199,22 +196,22 @@ export default function ServiciosClient() {
               {
                 num: "L1",
                 title: "Renta de equipo",
-                body: "El equipo profesional que necesitas, entregado e instalado a tiempo. Todo sale de nuestro inventario — sin intermediarios, sin sorpresas.",
-                detail: "Audio · Iluminación · Video · DJ Gear · Rigging",
+                body: "El equipo correcto para tu fecha.",
+                detail: "Audio · Iluminación · Video · DJ Gear",
                 delay: 0,
               },
               {
                 num: "L2",
                 title: "Producción técnica",
-                body: "Equipo + operadores especializados en un solo servicio. Nosotros montamos, operamos y desmontamos. Tú recibes el resultado — sin gestionar piezas por separado.",
-                detail: "Ingenieros de audio e iluminación · Operación durante el evento",
+                body: "Equipo y operadores. Sin coordinar piezas sueltas.",
+                detail: "Ingenieros especializados · Operación completa",
                 delay: 120,
               },
               {
                 num: "L3",
                 title: "Dirección técnica",
-                body: "Diseño, planeación, coordinación y operación integral del área técnica. La capa más completa: una sola fuente de responsabilidad para todo lo técnico.",
-                detail: "Desde el concepto hasta el cierre · Coordinación con tu equipo y proveedores",
+                body: "De la planeación al cierre. Todo resuelto.",
+                detail: "Coordinación integral · Un solo responsable",
                 delay: 240,
               },
             ].map(s => (
@@ -308,10 +305,10 @@ export default function ServiciosClient() {
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { title: "7 años de experiencia real", body: "Desde 2019 produciendo eventos de todos los tamaños. Conocemos lo que puede pasar y cómo anticiparlo antes de que sea un problema." },
-              { title: "Ingenieros, no improvisados", body: "Cada operador trabaja en campo constantemente. El día del evento no es momento de aprender — nuestro equipo ya sabe qué hacer." },
-              { title: "Setup a tiempo, siempre", body: "Llegamos con margen real para montar, calibrar y verificar todo antes de que llegue el primer invitado o artista." },
-              { title: "Un solo interlocutor", body: "Audio, luz, video y operadores en un solo contrato. Si algo necesita ajuste antes o durante el evento, una llamada lo resuelve." },
+              { title: "7 años en campo.", body: "Sabemos qué puede pasar. Y cómo anticiparlo." },
+              { title: "Operadores reales.", body: "Trabajan en eventos constantemente. Sin improvisar." },
+              { title: "Puntuales, siempre.", body: "Montados y calibrados antes del primer invitado." },
+              { title: "Un responsable.", body: "Cualquier ajuste, antes o durante. Una llamada." },
             ].map((item, i) => (
               <R key={item.title} delay={i * 90}>
                 <div className="rounded-2xl p-6 h-full"
@@ -339,12 +336,12 @@ export default function ServiciosClient() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
             {[
-              { n: "1", title: "Contáctanos", body: "Escríbenos o llámanos. Te enviamos un formulario breve para entender tus necesidades." },
-              { n: "2", title: "Levantamiento técnico", body: "Analizamos las necesidades del evento, el espacio y el programa. Con esa información diseñamos la solución técnica adecuada — no una propuesta genérica." },
-              { n: "3", title: "Cotización personalizada", body: "Una propuesta clara, basada en condiciones reales del espacio. Sin supuestos ni letra chica." },
-              { n: "4", title: "Ajustes y revisión", body: "Hacemos los cambios necesarios para que el resultado sea exactamente lo que imaginas." },
-              { n: "5", title: "Cierre y reserva", body: "Formalizamos con contrato, recibimos el anticipo y bloqueamos la fecha en nuestra agenda." },
-              { n: "6", title: "Tú disfrutas, nosotros ejecutamos", body: "Montaje, operación y desmontaje. Cuidamos cada detalle para que todo salga impecable." },
+              { n: "1", title: "Contáctanos", body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
+              { n: "2", title: "Levantamiento técnico", body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
+              { n: "3", title: "Cotización personalizada", body: "Clara, sin letra chica. Ajustamos lo que necesites." },
+              { n: "4", title: "Confirmación y reserva", body: "Contrato, anticipo y la fecha bloqueada en nuestra agenda." },
+              { n: "5", title: "Coordinación previa", body: "Revisamos el programa contigo. Llegamos listos." },
+              { n: "6", title: "Tú disfrutas.", body: "Montaje, operación y cierre. Todo en nuestras manos." },
             ].map((step, i) => (
               <R key={step.n} delay={i * 80}>
                 <div className="flex gap-6">
@@ -408,13 +405,13 @@ export default function ServiciosClient() {
         <div className="max-w-3xl mx-auto text-center">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-6">Siguiente paso</p>
-            <h2 className="font-bold text-white leading-tight mb-8"
+            <h2 className="font-bold text-white leading-tight mb-6"
                 style={{ fontSize: "clamp(1.8rem,4vw,3.2rem)", letterSpacing: "-0.025em" }}>
-              Cuéntanos sobre tu evento.<br />
-              Nosotros nos encargamos de que todo funcione.
+              Tu próximo evento,<br />
+              <span style={{ color: GOLD }}>en buenas manos.</span>
             </h2>
-            <p className="text-white/45 mb-10 leading-relaxed">
-              Respuesta en menos de 24 horas. Sin compromiso. Solo una conversación para entender qué necesitas y cotizarte con precisión.
+            <p className="text-white/45 mb-10">
+              Escríbenos. Respondemos en menos de 24 horas.
             </p>
             <a href={WA} target="_blank" rel="noopener noreferrer"
                className="inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-xl"
