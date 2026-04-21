@@ -33,7 +33,9 @@ interface CxP { id: string; concepto: string; monto: number; estado: string; fec
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string } }; proveedor: { nombre: string; telefono: string | null } | null }
+interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
+interface RiderAccesorio { id: string; nombre: string; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -479,6 +481,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [equipoCargado, setEquipoCargado] = useState<Record<string, boolean>>({});
   const [accesorioCargado, setAccesorioCargado] = useState<Record<string, boolean>>({});
   const [equipoExpanded, setEquipoExpanded] = useState<Record<string, boolean>>({});
+  // Rider accesorios — estado persistido por proyecto
+  const [riderEquipos, setRiderEquipos] = useState<ProyectoEquipoItem[]>([]);
+  const [riderExpandido, setRiderExpandido] = useState<Record<string, boolean>>({});
+  const [riderAddOpen, setRiderAddOpen] = useState<string | null>(null); // proyectoEquipoId
+  const [riderAddNombre, setRiderAddNombre] = useState("");
+  const [riderAddCategoria, setRiderAddCategoria] = useState("");
+  const [riderAddGuardar, setRiderAddGuardar] = useState(true);
+  const [riderAddSaving, setRiderAddSaving] = useState(false);
 
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
@@ -554,6 +564,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
     const d = await res.json();
     setProyecto(d.proyecto);
+    setRiderEquipos(d.proyecto?.equipos ?? []);
     setNotasPortal(d.proyecto?.notasPortal ?? "");
     try {
       const resp = d.proyecto?.responsables ? JSON.parse(d.proyecto.responsables) : {};
@@ -1303,6 +1314,73 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     setGenerandoRider(false);
     if (d.mensaje) toast.info(d.mensaje);
+  }
+
+  // ── Rider: agregar accesorio persistido ──
+  async function riderAgregarAccesorio(proyectoEquipoId: string) {
+    if (!riderAddNombre.trim()) return;
+    setRiderAddSaving(true);
+    const res = await fetch(`/api/proyectos/${id}/rider-accesorios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        proyectoEquipoId,
+        nombre: riderAddNombre.trim(),
+        categoria: riderAddCategoria || null,
+        guardarEnBiblioteca: riderAddGuardar,
+      }),
+    });
+    const d = await res.json();
+    if (d.accesorio) {
+      setRiderEquipos(prev => prev.map(e =>
+        e.id === proyectoEquipoId
+          ? { ...e, riderAccesorios: [...e.riderAccesorios, d.accesorio] }
+          : e
+      ));
+    }
+    setRiderAddNombre("");
+    setRiderAddCategoria("");
+    setRiderAddGuardar(true);
+    setRiderAddOpen(null);
+    setRiderAddSaving(false);
+  }
+
+  async function riderToggleAccesorio(proyectoEquipoId: string, accesorioId: string, completado: boolean) {
+    await fetch(`/api/rider-accesorios/${accesorioId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completado: !completado }),
+    });
+    setRiderEquipos(prev => prev.map(e =>
+      e.id === proyectoEquipoId
+        ? { ...e, riderAccesorios: e.riderAccesorios.map(a => a.id === accesorioId ? { ...a, completado: !completado } : a) }
+        : e
+    ));
+  }
+
+  async function riderEliminarAccesorio(proyectoEquipoId: string, accesorioId: string) {
+    await fetch(`/api/rider-accesorios/${accesorioId}`, { method: "DELETE" });
+    setRiderEquipos(prev => prev.map(e =>
+      e.id === proyectoEquipoId
+        ? { ...e, riderAccesorios: e.riderAccesorios.filter(a => a.id !== accesorioId) }
+        : e
+    ));
+  }
+
+  async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string) {
+    const res = await fetch(`/api/proyectos/${id}/rider-accesorios`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proyectoEquipoId, nombre, guardarEnBiblioteca: false }),
+    });
+    const d = await res.json();
+    if (d.accesorio) {
+      setRiderEquipos(prev => prev.map(e =>
+        e.id === proyectoEquipoId
+          ? { ...e, riderAccesorios: [...e.riderAccesorios, d.accesorio] }
+          : e
+      ));
+    }
   }
 
   // ── Crear técnico inline ──
@@ -3327,48 +3405,176 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
             <SectionDivider label="Rider & Checklist" />
 
-            {/* Rider técnico */}
+            {/* ══ RIDER DE CARGA ══ */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div><p className="text-white font-semibold">Rider técnico</p><p className="text-gray-500 text-xs mt-0.5">Guía de carga del día del evento · toca un equipo para ver sus accesorios</p></div>
-                {proyecto.equipos.length > 0 && (<button onClick={generarRiderAutomatico} disabled={generandoRider} className="text-xs text-blue-400 border border-blue-900/50 hover:border-blue-600 disabled:opacity-40 px-3 py-1.5 rounded-lg transition-colors">{generandoRider ? "Generando..." : "↺ Regenerar rider"}</button>)}
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                {proyecto.equipos.length === 0 ? (
-                  <div className="py-12 text-center"><p className="text-gray-600 text-sm">Sin equipos en este proyecto</p><p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos para ver el rider</p></div>
-                ) : (() => {
-                  const grupos: Record<string, typeof proyecto.equipos> = {};
-                  for (const e of proyecto.equipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
-                  return Object.entries(grupos).map(([cat, items]) => (
-                    <div key={cat}>
-                      <div className="px-4 py-1.5 bg-[#0d0d0d] border-b border-[#1a1a1a]"><span className="text-[10px] text-blue-400/70 font-bold uppercase tracking-widest">{cat}</span></div>
-                      {items.map(e => {
-                        const accesorios = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre);
-                        const isExpanded = !!equipoExpanded[e.id]; const isCargado = !!equipoCargado[e.id];
-                        const cargadosAcc = accesorios.filter((_, i) => !!accesorioCargado[`${e.id}_${i}`]).length;
-                        return (
-                          <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
-                            <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none" onClick={() => setEquipoExpanded(prev => ({ ...prev, [e.id]: !isExpanded }))}>
-                              <input type="checkbox" checked={isCargado} onChange={ev => { ev.stopPropagation(); setEquipoCargado(prev => ({ ...prev, [e.id]: !isCargado })); }} onClick={ev => ev.stopPropagation()} className="w-4 h-4 rounded accent-blue-500 shrink-0" />
-                              <div className="flex-1 min-w-0"><span className={`text-sm font-medium ${isCargado ? "line-through text-gray-600" : "text-white"}`}>{e.equipo.descripcion}{e.equipo.marca && <span className="text-gray-500 font-normal"> · {e.equipo.marca}</span>}</span><span className="ml-2 text-[#B3985B] text-xs">×{e.cantidad}</span></div>
-                              <div className="flex items-center gap-2 shrink-0">{cargadosAcc > 0 && <span className="text-[10px] text-blue-400">{cargadosAcc}/{accesorios.length} acc</span>}<svg className={`w-3.5 h-3.5 text-[#444] transition-transform ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></div>
-                            </div>
-                            {isExpanded && (<div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-5 py-3 space-y-1"><p className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Accesorios requeridos</p>{accesorios.map((acc, i) => { const key = `${e.id}_${i}`; const checked = !!accesorioCargado[key]; return (<label key={key} className="flex items-center gap-2.5 py-1 cursor-pointer"><input type="checkbox" checked={checked} onChange={() => setAccesorioCargado(prev => ({ ...prev, [key]: !checked }))} className="w-3.5 h-3.5 rounded accent-blue-500 shrink-0" /><span className={`text-xs ${checked ? "line-through text-gray-600" : "text-gray-300"}`}>{acc}</span></label>); })}</div>)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#1a1a1a]"><span className="text-xs text-blue-400 font-semibold uppercase tracking-wider">Items de bodega adicionales ({checkRider.length})</span></div>
-                {checkRider.length === 0 ? (<p className="text-gray-600 text-sm text-center py-5 italic">Sin items adicionales</p>) : checkRider.map(c => (<div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors"><input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)} className="w-4 h-4 rounded accent-blue-500 shrink-0" /><span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span><button onClick={() => eliminarItem(c.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button></div>))}
-                <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-                  <input value={nuevoItemRider} onChange={e => setNuevoItemRider(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarItemRider()} placeholder="Agregar accesorio / item extra de bodega..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-700" />
-                  <button onClick={agregarItemRider} disabled={addingItemRider || !nuevoItemRider.trim()} className="bg-blue-800 hover:bg-blue-700 disabled:opacity-40 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">+ Agregar</button>
+                <div>
+                  <p className="text-white font-semibold">Rider de carga</p>
+                  <p className="text-gray-500 text-xs mt-0.5">Listado de equipos con accesorios y herramientas necesarias para montaje</p>
                 </div>
+                {riderEquipos.length > 0 && (
+                  <a href={`/proyectos/${id}/rider-print`} target="_blank" className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Imprimir rider
+                  </a>
+                )}
               </div>
+
+              {riderEquipos.length === 0 ? (
+                <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
+                  <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
+                  <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos</p>
+                </div>
+              ) : (() => {
+                const grupos: Record<string, typeof riderEquipos> = {};
+                for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
+                return (
+                  <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                    {Object.entries(grupos).map(([cat, items]) => (
+                      <div key={cat}>
+                        <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
+                          <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
+                        </div>
+                        {items.map(e => {
+                          const isExpanded = !!riderExpandido[e.id];
+                          const riderNames = new Set(e.riderAccesorios.map(a => a.nombre.toLowerCase()));
+                          const libNames = new Set(e.equipo.accesorios.map(a => a.nombre.toLowerCase()));
+                          const sistemaSugs = accesoriosPorEquipo(e.equipo.descripcion, e.equipo.categoria.nombre)
+                            .filter(s => !riderNames.has(s.toLowerCase()) && !libNames.has(s.toLowerCase()));
+                          const libSugs = e.equipo.accesorios.filter(a => !riderNames.has(a.nombre.toLowerCase()));
+                          const completados = e.riderAccesorios.filter(a => a.completado).length;
+                          const totalGuardados = e.riderAccesorios.length;
+                          const isAddOpen = riderAddOpen === e.id;
+
+                          return (
+                            <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
+                              {/* Equipo header row */}
+                              <div
+                                className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
+                                onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                              >
+                                <svg className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm font-medium text-white">{e.equipo.descripcion}</span>
+                                  {e.equipo.marca && <span className="text-gray-500 text-xs font-normal"> · {e.equipo.marca}</span>}
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {totalGuardados > 0 && (
+                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${completados === totalGuardados ? "text-green-400 bg-green-900/20" : "text-[#B3985B] bg-[#B3985B]/10"}`}>
+                                      {completados}/{totalGuardados} acc
+                                    </span>
+                                  )}
+                                  <span className="text-[#B3985B] text-xs font-bold">×{e.cantidad}</span>
+                                </div>
+                              </div>
+
+                              {/* Expanded panel */}
+                              {isExpanded && (
+                                <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-3 space-y-4">
+
+                                  {/* Confirmed accessories */}
+                                  {e.riderAccesorios.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Accesorios confirmados</p>
+                                      <div className="space-y-1">
+                                        {e.riderAccesorios.map(a => (
+                                          <div key={a.id} className="flex items-center gap-2.5 group py-0.5">
+                                            <input type="checkbox" checked={a.completado} onChange={() => riderToggleAccesorio(e.id, a.id, a.completado)} className="w-3.5 h-3.5 rounded accent-[#B3985B] shrink-0 cursor-pointer" />
+                                            <span className={`flex-1 text-xs ${a.completado ? "line-through text-gray-600" : "text-gray-200"}`}>{a.nombre}</span>
+                                            {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
+                                            <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Library suggestions */}
+                                  {libSugs.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Sugerencias guardadas (biblioteca)</p>
+                                      <div className="space-y-1">
+                                        {libSugs.map(a => (
+                                          <div key={a.id} className="flex items-center gap-2.5 py-0.5">
+                                            <div className="w-3.5 h-3.5 rounded border border-[#333] shrink-0" />
+                                            <span className="flex-1 text-xs text-gray-400">{a.nombre}</span>
+                                            <button onClick={() => riderAgregarSugerencia(e.id, a.nombre)} className="text-[10px] text-[#B3985B] hover:underline shrink-0">+ Agregar</button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* System suggestions */}
+                                  {sistemaSugs.length > 0 && (
+                                    <div>
+                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Sugerencias del sistema</p>
+                                      <div className="space-y-1">
+                                        {sistemaSugs.map((s, i) => (
+                                          <div key={i} className="flex items-center gap-2.5 py-0.5">
+                                            <div className="w-3.5 h-3.5 rounded border border-dashed border-[#2a2a2a] shrink-0" />
+                                            <span className="flex-1 text-xs text-gray-500">{s}</span>
+                                            <button onClick={() => riderAgregarSugerencia(e.id, s)} className="text-[10px] text-[#B3985B] hover:underline shrink-0">+ Agregar</button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Add accessory form */}
+                                  {isAddOpen ? (
+                                    <div className="bg-[#111] border border-[#222] rounded-lg p-3 space-y-2">
+                                      <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Agregar accesorio</p>
+                                      <input
+                                        autoFocus
+                                        value={riderAddNombre}
+                                        onChange={e => setRiderAddNombre(e.target.value)}
+                                        onKeyDown={ev => { if (ev.key === "Enter") riderAgregarAccesorio(e.id); if (ev.key === "Escape") setRiderAddOpen(null); }}
+                                        placeholder="Nombre del accesorio o herramienta..."
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
+                                      />
+                                      <div className="flex gap-2">
+                                        <select value={riderAddCategoria} onChange={ev => setRiderAddCategoria(ev.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-gray-400 text-xs focus:outline-none focus:border-[#B3985B]/60">
+                                          <option value="">Categoría (opcional)</option>
+                                          <option value="cable">Cable</option>
+                                          <option value="herramienta">Herramienta</option>
+                                          <option value="consumible">Consumible</option>
+                                          <option value="soporte">Soporte / Stand</option>
+                                          <option value="otro">Otro</option>
+                                        </select>
+                                        <label className="flex items-center gap-1.5 cursor-pointer">
+                                          <input type="checkbox" checked={riderAddGuardar} onChange={ev => setRiderAddGuardar(ev.target.checked)} className="w-3.5 h-3.5 rounded accent-[#B3985B]" />
+                                          <span className="text-[11px] text-gray-400">Guardar en biblioteca</span>
+                                        </label>
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <button onClick={() => riderAgregarAccesorio(e.id)} disabled={riderAddSaving || !riderAddNombre.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                                          {riderAddSaving ? "Guardando..." : "Agregar"}
+                                        </button>
+                                        <button onClick={() => { setRiderAddOpen(null); setRiderAddNombre(""); }} className="text-gray-500 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#333] transition-colors">
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={ev => { ev.stopPropagation(); setRiderAddOpen(e.id); setRiderAddNombre(""); setRiderAddCategoria(""); setRiderAddGuardar(true); }}
+                                      className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#B3985B] border border-dashed border-[#222] hover:border-[#B3985B]/30 px-3 py-1.5 rounded-lg transition-colors"
+                                    >
+                                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                      Agregar accesorio
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Checklist operativo */}

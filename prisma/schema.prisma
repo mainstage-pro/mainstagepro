@@ -437,8 +437,24 @@ model ProyectoEquipo {
   confirmado       Boolean   @default(false)
   confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
   confirmToken     String?   @unique // Token para link de confirmación al proveedor
+  riderAccesorios  RiderAccesorio[]
 
   @@map("proyecto_equipos")
+}
+
+// Accesorios de rider para un equipo en un proyecto específico
+model RiderAccesorio {
+  id               String         @id @default(cuid())
+  proyectoEquipoId String
+  proyectoEquipo   ProyectoEquipo @relation(fields: [proyectoEquipoId], references: [id], onDelete: Cascade)
+  nombre           String
+  categoria        String?        // cable | herramienta | consumible | soporte | otro
+  completado       Boolean        @default(false)
+  esSugerencia     Boolean        @default(false)
+  orden            Int            @default(0)
+  createdAt        DateTime       @default(now())
+
+  @@map("rider_accesorios")
 }
 
 model ProyectoChecklist {
@@ -517,8 +533,21 @@ model Equipo {
   preciosClientes      PrecioClienteEquipo[]
   checklistBodegaItems ChecklistBodegaItem[]
   unidades             EquipoUnidad[]
+  accesorios           EquipoAccesorio[]
 
   @@map("equipos")
+}
+
+// Biblioteca permanente de accesorios por equipo (persiste entre proyectos)
+model EquipoAccesorio {
+  id        String   @id @default(cuid())
+  equipoId  String
+  equipo    Equipo   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  nombre    String
+  categoria String?  // cable | herramienta | consumible | soporte | otro
+  createdAt DateTime @default(now())
+
+  @@map("equipo_accesorios")
 }
 
 model CategoriaEquipo {
