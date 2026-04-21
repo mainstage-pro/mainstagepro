@@ -1046,7 +1046,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
       </section>
 
       {/* ── MAINSTAGE TRADE ─────────────────────────────────────────────────── */}
-      {(tradeAplicado || cotizacion.tradeToken) && (
+      {(
         <section className="relative overflow-hidden py-32 px-6"
           style={{ background: "linear-gradient(180deg,#050505 0%,#090808 60%,#050505 100%)" }}>
           {/* Background texture */}
@@ -1092,8 +1092,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                   ))}
                 </div>
               </R>
-            ) : cotizacion.tradeToken ? (
-              /* Pre-selección: invitar a elegir paquete */
+            ) : (
+              /* Pre-selección o teaser: mostrar niveles con o sin CTA */
               <R delay={80} className="flex justify-center">
                 <div className="text-center max-w-lg">
                   <div className="grid grid-cols-3 gap-3 mb-10">
@@ -1109,15 +1109,21 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                       </div>
                     ))}
                   </div>
-                  <a href={`/trade/${cotizacion.tradeToken}`}
-                     className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-base transition-all hover:scale-[1.02] active:scale-95">
-                    <span>Elegir mi nivel de colaboración</span>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                  </a>
-                  <p className="text-white/20 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte a tu evento</p>
+                  {cotizacion.tradeToken ? (
+                    <>
+                      <a href={`/trade/${cotizacion.tradeToken}`}
+                         className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-base transition-all hover:scale-[1.02] active:scale-95">
+                        <span>Elegir mi nivel de colaboración</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                      </a>
+                      <p className="text-white/20 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte a tu evento</p>
+                    </>
+                  ) : (
+                    <p className="text-white/25 text-sm">¿Te interesa colaborar? Pregúntanos sobre Mainstage Trade.</p>
+                  )}
                 </div>
               </R>
-            ) : null}
+            )}
           </div>
         </section>
       )}
