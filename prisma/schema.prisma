@@ -72,12 +72,39 @@ model VersionHistorial {
   @@index([entidad, entidadId])
 }
 
+// ─── EMPRESA ─────────────────────────────────────────────────────────────────
+
+model Empresa {
+  id             String   @id @default(cuid())
+  nombre         String
+  giro           String?
+  telefono       String?
+  correo         String?
+  sitioWeb       String?
+  notas          String?
+  datosFiscales  String?
+  cuentaBancaria String?
+  tipo           String   @default("AMBOS")  // CLIENTE | PROVEEDOR | AMBOS
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contactosCliente   Cliente[]   @relation("ClienteEmpresa")
+  contactosProveedor Proveedor[] @relation("ProveedorEmpresa")
+  cuentasCobrar      CuentaCobrar[]
+  cuentasPagar       CuentaPagar[]
+
+  @@map("empresas")
+}
+
 // ─── CLIENTE ─────────────────────────────────────────────────────────────────
 
 model Cliente {
   id            String   @id @default(cuid())
   nombre        String
   empresa       String?
+  empresaId     String?
+  compania      Empresa? @relation("ClienteEmpresa", fields: [empresaId], references: [id])
   tipoCliente   String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
   clasificacion String   @default("NUEVO")          // NUEVO | BASIC | REGULAR | PRIORITY
   servicioUsual String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
@@ -619,6 +646,8 @@ model Proveedor {
   id             String   @id @default(cuid())
   nombre         String
   empresa        String?
+  empresaId      String?
+  compania       Empresa? @relation("ProveedorEmpresa", fields: [empresaId], references: [id])
   giro           String?
   telefono       String?
   correo         String?
@@ -782,8 +811,10 @@ model MovimientoFinanciero {
 
 model CuentaCobrar {
   id              String   @id @default(cuid())
-  clienteId       String
-  cliente         Cliente  @relation(fields: [clienteId], references: [id])
+  clienteId       String?
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
+  empresaId       String?
+  empresa         Empresa? @relation(fields: [empresaId], references: [id])
   proyectoId      String?
   proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
   cotizacionId    String?
@@ -810,11 +841,13 @@ model CuentaCobrar {
 
 model CuentaPagar {
   id              String   @id @default(cuid())
-  tipoAcreedor    String   // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO
+  tipoAcreedor    String   // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO | EMPRESA
   tecnicoId       String?
   tecnico         Tecnico? @relation(fields: [tecnicoId], references: [id])
   proveedorId     String?
   proveedor       Proveedor? @relation(fields: [proveedorId], references: [id])
+  empresaId       String?
+  empresa         Empresa? @relation(fields: [empresaId], references: [id])
   proyectoId      String?
   proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
   concepto        String

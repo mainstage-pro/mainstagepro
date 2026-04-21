@@ -15,6 +15,7 @@ export async function POST(req: NextRequest) {
     notas,
     proveedorId,
     tecnicoId,
+    empresaId,
     proyectoId,
   } = body;
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
   const cxp = await prisma.cuentaPagar.create({
     data: {
-      tipoAcreedor,
+      tipoAcreedor: empresaId ? "EMPRESA" : tipoAcreedor,
       concepto,
       monto: parseFloat(monto),
       fechaCompromiso: new Date(fechaCompromiso),
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
       notas: notas || null,
       proveedorId: proveedorId || null,
       tecnicoId: tecnicoId || null,
+      empresaId: empresaId || null,
       proyectoId: proyectoId || null,
     },
   });
@@ -47,6 +49,7 @@ export async function GET() {
     include: {
       tecnico: { select: { id: true, nombre: true, celular: true } },
       proveedor: { select: { id: true, nombre: true, telefono: true } },
+      empresa: { select: { id: true, nombre: true, telefono: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
     },
     orderBy: { fechaCompromiso: "asc" },

@@ -7,15 +7,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { clienteId, proyectoId, cotizacionId, concepto, tipoPago = "ANTICIPO", monto, fechaCompromiso, notas } = body;
+  const { clienteId, empresaId, proyectoId, cotizacionId, concepto, tipoPago = "ANTICIPO", monto, fechaCompromiso, notas } = body;
 
-  if (!clienteId || !concepto || !monto || !fechaCompromiso) {
+  if (!concepto || !monto || !fechaCompromiso) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
+  }
+  if (!clienteId && !empresaId) {
+    return NextResponse.json({ error: "Se requiere cliente o empresa" }, { status: 400 });
   }
 
   const cxc = await prisma.cuentaCobrar.create({
     data: {
-      clienteId,
+      clienteId: clienteId || null,
+      empresaId: empresaId || null,
       proyectoId: proyectoId || null,
       cotizacionId: cotizacionId || null,
       concepto,
@@ -37,6 +41,7 @@ export async function GET() {
   const cuentas = await prisma.cuentaCobrar.findMany({
     include: {
       cliente: { select: { id: true, nombre: true, telefono: true } },
+      empresa: { select: { id: true, nombre: true, telefono: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       cotizacion: { select: { id: true, numeroCotizacion: true } },
     },

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         fechaCompromiso: { gte: inicio, lte: fin },
         estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] },
       },
-      include: { cliente: { select: { nombre: true } }, proyecto: { select: { nombre: true } } },
+      include: { cliente: { select: { nombre: true } }, empresa: { select: { nombre: true } }, proyecto: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
     }),
     // Seguimientos de ventas
@@ -96,7 +96,7 @@ export async function GET(req: NextRequest) {
       dia: new Date(c.fechaCompromiso).getDate(),
       tipo: "CXC",
       titulo: c.proyecto?.nombre ? `Cobro: ${c.proyecto.nombre}` : c.concepto,
-      subtitulo: `${c.cliente.nombre} · ${monto}`,
+      subtitulo: `${c.empresa?.nombre ?? c.cliente?.nombre ?? "—"} · ${monto}`,
       estado: c.estado,
       url: `/finanzas/cxc`,
     });

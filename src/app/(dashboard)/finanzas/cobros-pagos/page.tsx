@@ -8,6 +8,21 @@ import { useConfirm } from "@/components/Confirm";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
+interface EmpresaItem {
+  id: string;
+  nombre: string;
+  giro: string | null;
+  telefono: string | null;
+  correo: string | null;
+  sitioWeb: string | null;
+  notas: string | null;
+  datosFiscales: string | null;
+  cuentaBancaria: string | null;
+  tipo: string;
+  contactosCliente: { id: string; nombre: string; telefono: string | null; correo: string | null }[];
+  contactosProveedor: { id: string; nombre: string; telefono: string | null; correo: string | null }[];
+}
+
 interface CxCItem {
   id: string;
   concepto: string;
@@ -16,7 +31,8 @@ interface CxCItem {
   estado: string;
   fechaCompromiso: string;
   tipoPago: string;
-  cliente: { id: string; nombre: string; telefono: string | null };
+  cliente: { id: string; nombre: string; telefono: string | null } | null;
+  empresa: { id: string; nombre: string; telefono: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
   cotizacion: { id: string; numeroCotizacion: string } | null;
 }
@@ -30,6 +46,7 @@ interface CxPItem {
   tipoAcreedor: string;
   tecnico: { id: string; nombre: string; celular: string | null } | null;
   proveedor: { id: string; nombre: string; telefono: string | null } | null;
+  empresa: { id: string; nombre: string; telefono: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
 }
 
@@ -96,13 +113,11 @@ interface NuevoRegistroForm {
   monto: string;
   fechaCompromiso: string;
   tipoPago: string;
-  // CxC
-  clienteNombre: string;
-  clienteId: string;
-  // CxP
-  tipoAcreedor: string;
+  // CxC / CxP — empresa o contacto individual
+  empresaId: string;
+  clienteId: string;    // solo si se selecciona contacto individual en CxC
+  proveedorId: string;  // solo si se selecciona contacto individual en CxP
   acreedorNombre: string;
-  proveedorId: string;
   notas: string;
   // Ambos
   proyectoId: string;
@@ -114,11 +129,10 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   monto: "",
   fechaCompromiso: new Date().toISOString().split("T")[0],
   tipoPago: "OTRO",
-  clienteNombre: "",
+  empresaId: "",
   clienteId: "",
-  tipoAcreedor: "OTRO",
-  acreedorNombre: "",
   proveedorId: "",
+  acreedorNombre: "",
   notas: "",
   proyectoId: "",
 };
@@ -206,9 +220,9 @@ export default function CobrosPagosPage() {
   const [guardandoNuevo, setGuardandoNuevo] = useState(false);
   const [clientes, setClientes] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
+  const [empresas, setEmpresas] = useState<EmpresaItem[]>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
-  const [clienteQuery, setClienteQuery] = useState("");
-  const [proveedorQuery, setProveedorQuery] = useState("");
+  const [empresaQuery, setEmpresaQuery] = useState("");
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
   const [reciboGrupos, setReciboGrupos] = useState<Array<{ key: string; nombre: string; items: CxPItem[] }>>([]);
@@ -263,6 +277,7 @@ export default function CobrosPagosPage() {
     fetch("/api/clientes", { cache: "no-store" }).then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
     fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
     fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()).then(d => setProveedores(d.proveedores ?? [])).catch(() => {});
+    fetch("/api/empresas", { cache: "no-store" }).then(r => r.json()).then(d => setEmpresas(d.empresas ?? [])).catch(() => {});
     fetch("/api/proyectos", { cache: "no-store" }).then(r => r.json()).then(d => setProyectos((d.proyectos ?? []).filter((p: { estado: string }) => p.estado !== "CANCELADO"))).catch(() => {});
   }, []);
 
@@ -271,12 +286,13 @@ export default function CobrosPagosPage() {
     setGuardandoNuevo(true);
     try {
       if (nuevoForm.tipo === "cxc") {
-        if (!nuevoForm.clienteId) { toast.error("Selecciona un cliente"); setGuardandoNuevo(false); return; }
+        if (!nuevoForm.empresaId && !nuevoForm.clienteId) { toast.error("Selecciona una empresa o cliente"); setGuardandoNuevo(false); return; }
         await fetch("/api/cuentas-cobrar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            clienteId: nuevoForm.clienteId,
+            empresaId: nuevoForm.empresaId || null,
+            clienteId: nuevoForm.clienteId || null,
             proyectoId: nuevoForm.proyectoId || null,
             concepto: nuevoForm.concepto,
             monto: nuevoForm.monto,
@@ -290,22 +306,21 @@ export default function CobrosPagosPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tipoAcreedor: nuevoForm.tipoAcreedor,
+            empresaId: nuevoForm.empresaId || null,
+            proveedorId: nuevoForm.proveedorId || null,
             concepto: nuevoForm.acreedorNombre
               ? `${nuevoForm.acreedorNombre} — ${nuevoForm.concepto}`
               : nuevoForm.concepto,
             monto: nuevoForm.monto,
             fechaCompromiso: nuevoForm.fechaCompromiso,
             notas: nuevoForm.notas || null,
-            proveedorId: nuevoForm.proveedorId || null,
             proyectoId: nuevoForm.proyectoId || null,
           }),
         });
       }
       setShowNuevo(false);
       setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
-      setClienteQuery("");
-      setProveedorQuery("");
+      setEmpresaQuery("");
       await load();
     } finally {
       setGuardandoNuevo(false);
@@ -344,9 +359,10 @@ export default function CobrosPagosPage() {
   const cxpPagd = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
 
   function openModal(item: CxCItem | CxPItem, tipo: "cobro" | "pago") {
+    const cxcItem = item as CxCItem;
     const nombre = tipo === "cobro"
-      ? (item as CxCItem).cliente.nombre
-      : ((item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
+      ? (cxcItem.empresa?.nombre ?? cxcItem.cliente?.nombre ?? "Cliente")
+      : ((item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
     setModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, nombre });
     setModalMonto(String(item.monto));
     setModalNotas("");
@@ -611,7 +627,7 @@ export default function CobrosPagosPage() {
             Recibos técnicos
           </button>
           <button
-            onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setClienteQuery(""); setShowNuevo(true); }}
+            onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setEmpresaQuery(""); setShowNuevo(true); }}
             className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
             + Nuevo registro
           </button>
@@ -694,10 +710,19 @@ export default function CobrosPagosPage() {
                 {/* Info principal */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <Link href={`/crm/clientes/${c.cliente.id}`}
-                      className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-                      {c.cliente.nombre}
-                    </Link>
+                    {c.empresa ? (
+                      <Link href={`/catalogo/empresas`}
+                        className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                        {c.empresa.nombre}
+                      </Link>
+                    ) : c.cliente ? (
+                      <Link href={`/crm/clientes/${c.cliente.id}`}
+                        className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                        {c.cliente.nombre}
+                      </Link>
+                    ) : (
+                      <span className="text-white text-sm font-medium">—</span>
+                    )}
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_COLORS[c.estado] ?? "bg-gray-800 text-gray-400"}`}>
                       {c.estado}
                     </span>
@@ -748,18 +773,21 @@ export default function CobrosPagosPage() {
                     Confirmar cobro
                   </button>
                 )}
-                {c.estado !== "LIQUIDADO" && c.cliente.telefono && (
-                  <a
-                    href={`https://wa.me/${c.cliente.telefono.replace(/\D/g, "")}?text=${waMsgCobro(c.cliente.nombre, c.monto, c.concepto)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
-                    </svg>
-                    WhatsApp
-                  </a>
-                )}
+                {(() => {
+                  const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
+                  const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
+                  return c.estado !== "LIQUIDADO" && tel ? (
+                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, c.monto, c.concepto)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
+                      </svg>
+                      WhatsApp
+                    </a>
+                  ) : null;
+                })()}
                 {c.estado === "LIQUIDADO" && (
                   <>
                     <a href={`/api/cuentas-cobrar/${c.id}/recibo`} target="_blank" rel="noopener noreferrer"
@@ -775,18 +803,6 @@ export default function CobrosPagosPage() {
                     </button>
                   </>
                 )}
-                {c.estado === "LIQUIDADO" && c.cliente.telefono && (
-                  <a
-                    href={`https://wa.me/${c.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${c.cliente.nombre}, adjunto el recibo de tu pago de ${formatCurrency(c.monto)} por ${c.concepto}. Gracias por tu confianza en Mainstage Pro.`)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-green-400/70 border border-green-900/30 hover:border-green-600/50 px-3 py-1.5 rounded-lg transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
-                    </svg>
-                    Enviar recibo
-                  </a>
-                )}
               </div>
             </div>
           ))}
@@ -799,8 +815,8 @@ export default function CobrosPagosPage() {
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
           ) : cxpList.map(c => {
-            const beneficiario = c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
-            const telefono = c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
+            const beneficiario = c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
+            const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
               <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
                 <div className="flex items-start gap-3">
@@ -1041,39 +1057,58 @@ export default function CobrosPagosPage() {
               {/* CxC — cliente */}
               {nuevoForm.tipo === "cxc" && (
                 <>
+                  {/* Empresa / cliente CxC */}
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Cliente *</label>
-                    <input value={clienteQuery}
-                      onChange={e => { setClienteQuery(e.target.value); setNuevoForm(p => ({ ...p, clienteId: "" })); }}
-                      onFocus={() => { if (!clienteQuery) setClienteQuery(""); }}
-                      placeholder="Buscar cliente…"
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-500">Empresa o cliente *</label>
+                      <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
+                    </div>
+                    <input value={empresaQuery}
+                      onChange={e => { setEmpresaQuery(e.target.value); setNuevoForm(p => ({ ...p, empresaId: "", clienteId: "" })); }}
+                      placeholder="Buscar empresa o contacto…"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    {!nuevoForm.clienteId && (
-                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-48 overflow-y-auto">
-                        {clientes
-                          .filter(c => {
-                            if (!clienteQuery) return true;
-                            const q = clienteQuery.toLowerCase();
-                            return c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
-                          })
-                          .map(c => (
-                            <button key={c.id}
-                              onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, clienteNombre: c.nombre })); setClienteQuery(c.empresa ? `${c.empresa} · ${c.nombre}` : c.nombre); }}
-                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
-                              {c.empresa
-                                ? <><p className="text-sm text-white">{c.empresa}</p><p className="text-xs text-gray-500">{c.nombre}</p></>
-                                : <p className="text-sm text-gray-300">{c.nombre}</p>}
+                    {!nuevoForm.empresaId && !nuevoForm.clienteId && (
+                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-52 overflow-y-auto">
+                        {/* Empresas primero */}
+                        {empresas
+                          .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                          .map(e => (
+                            <button key={`emp-${e.id}`}
+                              onClick={() => { setNuevoForm(p => ({ ...p, empresaId: e.id, clienteId: "" })); setEmpresaQuery(e.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
+                              <p className="text-sm text-white">{e.nombre}</p>
+                              {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
                             </button>
                           ))}
-                        {clientes.filter(c => { const q = clienteQuery.toLowerCase(); return !clienteQuery || c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q); }).length === 0 && (
-                          <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
-                        )}
+                        {/* Contactos sin empresa vinculada */}
+                        {clientes
+                          .filter(c => !c.empresa)
+                          .filter(c => !empresaQuery || c.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                          .map(c => (
+                            <button key={`cli-${c.id}`}
+                              onClick={() => { setNuevoForm(p => ({ ...p, clienteId: c.id, empresaId: "" })); setEmpresaQuery(c.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                              <p className="text-sm text-gray-300">{c.nombre}</p>
+                              <p className="text-[10px] text-gray-600">Contacto individual</p>
+                            </button>
+                          ))}
+                        {empresas.filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase())).length === 0 &&
+                          clientes.filter(c => !c.empresa && (!empresaQuery || c.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))).length === 0 && (
+                            <p className="px-3 py-2 text-xs text-gray-600">Sin resultados</p>
+                          )}
                       </div>
                     )}
-                    {nuevoForm.clienteId && <p className="text-[11px] text-[#B3985B] mt-1">✓ {clienteQuery}</p>}
+                    {(nuevoForm.empresaId || nuevoForm.clienteId) && (
+                      <p className="text-[11px] text-[#B3985B] mt-1 flex items-center gap-1">
+                        <span>✓ {empresaQuery}</span>
+                        <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", clienteId: "" })); setEmpresaQuery(""); }}
+                          className="text-gray-600 hover:text-red-400 ml-1">✕</button>
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Tipo</label>
+                    <label className="text-xs text-gray-500 block mb-1">Tipo de pago</label>
                     <select value={nuevoForm.tipoPago} onChange={e => setNuevoForm(p => ({ ...p, tipoPago: e.target.value }))}
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
                       <option value="ANTICIPO">Anticipo</option>
@@ -1090,45 +1125,57 @@ export default function CobrosPagosPage() {
                 </>
               )}
 
-              {/* CxP — acreedor */}
+              {/* CxP — empresa / proveedor */}
               {nuevoForm.tipo === "cxp" && (
                 <>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-gray-500">Proveedor (opcional)</label>
-                      <a href="/catalogo/proveedores" target="_blank" rel="noopener noreferrer"
-                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Registrar nuevo</a>
+                      <label className="text-xs text-gray-500">Empresa o proveedor</label>
+                      <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
+                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
                     </div>
-                    <input value={proveedorQuery}
-                      onChange={e => { setProveedorQuery(e.target.value); setNuevoForm(p => ({ ...p, proveedorId: "" })); }}
-                      placeholder="Buscar proveedor…"
+                    <input value={empresaQuery}
+                      onChange={e => { setEmpresaQuery(e.target.value); setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); }}
+                      placeholder="Buscar empresa o proveedor…"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    {!nuevoForm.proveedorId && (
-                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-36 overflow-y-auto">
-                        <button onClick={() => { setNuevoForm(p => ({ ...p, proveedorId: "" })); setProveedorQuery(""); }}
+                    {!nuevoForm.empresaId && !nuevoForm.proveedorId && (
+                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-52 overflow-y-auto">
+                        <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
                           className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-[#222] border-b border-[#2a2a2a]">
-                          — Sin proveedor —
+                          — Sin acreedor —
                         </button>
+                        {empresas
+                          .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                          .map(e => (
+                            <button key={`emp-${e.id}`}
+                              onClick={() => { setNuevoForm(p => ({ ...p, empresaId: e.id, proveedorId: "" })); setEmpresaQuery(e.nombre); }}
+                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
+                              <p className="text-sm text-white">{e.nombre}</p>
+                              {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
+                            </button>
+                          ))}
                         {proveedores
-                          .filter(p => {
-                            if (!proveedorQuery) return true;
-                            const q = proveedorQuery.toLowerCase();
-                            return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
-                          })
+                          .filter(p => !p.empresa)
+                          .filter(p => !empresaQuery || p.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
                           .map(p => (
-                            <button key={p.id}
-                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, acreedorNombre: "" })); setProveedorQuery(p.empresa ? `${p.empresa} · ${p.nombre}` : p.nombre); }}
+                            <button key={`prov-${p.id}`}
+                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, empresaId: "" })); setEmpresaQuery(p.nombre); }}
                               className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
-                              {p.empresa
-                                ? <><p className="text-sm text-white">{p.empresa}</p><p className="text-xs text-gray-500">{p.nombre}</p></>
-                                : <p className="text-sm text-gray-300">{p.nombre}</p>}
+                              <p className="text-sm text-gray-300">{p.nombre}</p>
+                              <p className="text-[10px] text-gray-600">Proveedor individual</p>
                             </button>
                           ))}
                       </div>
                     )}
-                    {nuevoForm.proveedorId && <p className="text-[11px] text-[#B3985B] mt-1">✓ {proveedorQuery}</p>}
+                    {(nuevoForm.empresaId || nuevoForm.proveedorId) && (
+                      <p className="text-[11px] text-[#B3985B] mt-1 flex items-center gap-1">
+                        <span>✓ {empresaQuery}</span>
+                        <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
+                          className="text-gray-600 hover:text-red-400 ml-1">✕</button>
+                      </p>
+                    )}
                   </div>
-                  {!nuevoForm.proveedorId && (
+                  {!nuevoForm.empresaId && !nuevoForm.proveedorId && (
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">A quién se le paga (si no está en lista)</label>
                       <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}

@@ -129,7 +129,7 @@ export default async function DashboardPage() {
     }),
     prisma.cuentaCobrar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
-      include: { cliente: { select: { nombre: true } } },
+      include: { cliente: { select: { nombre: true } }, empresa: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
       take: 4,
     }),
@@ -383,7 +383,7 @@ export default async function DashboardPage() {
                 <p className="text-gray-600 text-xs px-4 py-3">Sin cobros próximos</p>
               ) : cxcVence7dias.map((c, i) => (
                 <a key={i} href="/finanzas/cobros-pagos" className="flex items-center justify-between px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
-                  <p className="text-white text-xs truncate">{c.cliente.nombre}</p>
+                  <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                   <p className="text-yellow-400 text-[10px] font-semibold ml-2 shrink-0">
                     {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                   </p>
@@ -476,7 +476,7 @@ export default async function DashboardPage() {
                 <p className="text-gray-600 text-xs px-5 py-3">Sin vencimientos próximos</p>
               ) : cxcVence7dias.map((c, i) => (
                 <div key={i} className="flex items-center justify-between px-5 py-2.5">
-                  <p className="text-white text-xs truncate">{c.cliente.nombre}</p>
+                  <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                   <p className="text-yellow-400 text-xs font-medium ml-2 shrink-0">
                     {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                   </p>
