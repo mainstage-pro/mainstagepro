@@ -8,7 +8,7 @@ const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20con
 interface EquipoData {
   id: string; descripcion: string; marca: string | null;
   modelo: string | null; cantidadTotal: number; estado: string; notas: string | null;
-  imagenUrl?: string | null;
+  imagenUrl?: string | null; precioRenta: number;
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
 interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number } }
@@ -76,6 +76,28 @@ const MODELO_IMGS: Record<string, string> = {
   "SOUL RGBW":     "/images/presentacion/sunstar-soul-rgbw.png",
   "Atem Mini Pro": "/images/presentacion/blackmagic-atem.png",
 };
+// ─── Category descriptions ────────────────────────────────────────────────────
+const CAT_DESC: Record<string, string> = {
+  "Sistemas de Audio":          "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
+  "Equipo de Audio":            "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
+  "Consolas de Audio":          "Consolas digitales para mezcla en vivo con control total sobre señal, efectos y ruteo — desde el primer orador hasta el último acorde.",
+  "Sistemas de Microfonía":     "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias, con operación técnica dedicada.",
+  "Microfonía e Inalámbricos":  "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias, con operación técnica dedicada.",
+  "Monitoreo In-Ear":           "Sistemas IEM para artistas y técnicos en tarima — cada músico escucha su mezcla personalizada sin interferencias.",
+  "Equipo de Iluminación":      "Cabezas móviles, beams, pares LED, efectos especiales y estructuras de soporte operados en vivo desde consola.",
+  "Consolas de Iluminación":    "Control de cues, escenas y efectos en tiempo real. Programación previa para que cada momento del evento tenga su luz.",
+  "Consolas/Equipo para DJ":    "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue — el rider cubierto sin negociaciones.",
+  "DJ Booths":                  "Booths estructurales con integración de equipo técnico, adaptables al espacio y al concepto del evento.",
+  "Equipo para DJ":             "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue — el rider cubierto sin negociaciones.",
+  "Pantalla / Video":           "Pantallas, procesadores de señal y sistemas de proyección para presentaciones, contenido en vivo y transmisiones.",
+  "Entarimado":                 "Estructuras modulares para tarimas, risers y escenarios — estables, certificadas y adaptables a cualquier dimensión.",
+};
+
+// ─── Price formatter ──────────────────────────────────────────────────────────
+function fmtPrice(n: number): string {
+  return "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 0 });
+}
+
 const CAT_HERO_IMGS: Record<string, string> = {
   "Equipo de Audio":         "/images/presentacion/rcf-hdl30a.jpg",
   "Sistemas de Audio":       "/images/presentacion/rcf-hdl30a.jpg",
@@ -211,6 +233,12 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
             <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>
           )}
           {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
+          {eq.precioRenta > 0 && (
+            <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3"
+               style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ día</span>
+            </p>
+          )}
         </div>
       </div>
     </R>
@@ -306,22 +334,22 @@ export default function InventarioClient({ data }: Props) {
           <div className="mb-10" style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
             <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full"
                   style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
-              Inventario Propio · Sin Intermediarios
+              Mainstage Pro · Catálogo Técnico
             </span>
           </div>
 
           <h1 className="font-bold leading-[0.95]"
               style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", animation: "fadeUp 0.9s ease forwards 0.3s", opacity: 0 }}>
-            El arsenal.
+            El equipo.
           </h1>
           <h1 className="font-bold leading-[0.95]"
               style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>
-            Propio.
+            Disponible.
           </h1>
           <p className="text-white/40 mt-10 max-w-xl mx-auto leading-relaxed"
              style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.75s", opacity: 0 }}>
-            Todo el equipo que ves aquí es nuestro. No rentamos de terceros,
-            no dependemos de proveedores externos. Llega en condiciones y sale a tiempo.
+            Audio, iluminación y video de nivel profesional.
+            Todo listo para operar en tu evento.
           </p>
         </div>
 
@@ -379,6 +407,9 @@ export default function InventarioClient({ data }: Props) {
                       style={{ fontSize: "clamp(1.8rem,5vw,3.6rem)", letterSpacing: "-0.03em" }}>
                     {cat.nombre}
                   </h2>
+                  {CAT_DESC[cat.nombre] && (
+                    <p className="text-white/35 text-sm leading-relaxed mt-3 max-w-xl">{CAT_DESC[cat.nombre]}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
@@ -420,6 +451,32 @@ export default function InventarioClient({ data }: Props) {
         </div>
       </section>
 
+      {/* ── Solicitud especial ── */}
+      <section className="py-24 px-6" style={{ background: "#070707", borderTop: `1px solid ${GOLD}10` }}>
+        <div className="max-w-3xl mx-auto">
+          <R>
+            <div className="rounded-2xl p-10 sm:p-14 text-center"
+                 style={{ background: `${GOLD}08`, border: `1px solid ${GOLD}20` }}>
+              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Solicitud especial</p>
+              <h2 className="font-bold text-white leading-tight mb-5"
+                  style={{ fontSize: "clamp(1.6rem,4vw,2.6rem)", letterSpacing: "-0.025em" }}>
+                ¿No ves lo que necesitas?
+              </h2>
+              <p className="text-white/40 mb-8 leading-relaxed max-w-lg mx-auto text-sm">
+                Si tienes un requerimiento técnico específico que no aparece en este catálogo, contáctanos.
+                Evaluamos cada solicitud y nos encargamos de conseguirlo — solo dinos qué necesitas.
+              </p>
+              <a href={WA} target="_blank" rel="noopener noreferrer"
+                 className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
+                 style={{ background: GOLD }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                Hacer una solicitud
+              </a>
+            </div>
+          </R>
+        </div>
+      </section>
+
       {/* ── CTA ── */}
       <section className="py-32 px-6">
         <div className="max-w-3xl mx-auto text-center">
@@ -452,7 +509,7 @@ export default function InventarioClient({ data }: Props) {
       {/* Footer */}
       <footer className="py-10 px-6 border-t text-center" style={{ borderColor: `${GOLD}10` }}>
         <p className="text-white/15 text-xs tracking-widest uppercase">
-          © {new Date().getFullYear()} Mainstage Pro · Todo el equipo es propio · Querétaro · SMA · CDMX
+          © {new Date().getFullYear()} Mainstage Pro · Producción audiovisual · Querétaro · SMA · CDMX
         </p>
       </footer>
     </div>

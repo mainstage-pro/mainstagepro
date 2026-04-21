@@ -31,6 +31,7 @@ export default async function InventarioPage() {
         estado: eq.estado,
         notas: eq.notas,
         imagenUrl: eq.imagenUrl ?? null,
+        precioRenta: eq.precioRenta,
       })),
     })),
     totalEquipos: equipos.length,
