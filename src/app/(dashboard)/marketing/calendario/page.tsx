@@ -18,7 +18,7 @@ interface Publicacion {
   alcance: number | null; impresiones: number | null; interacciones: number | null; seguidoresGanados: number | null;
 }
 
-type Vista = "parrilla" | "tipo" | "feed";
+type Vista = "proximas" | "parrilla" | "tipo" | "feed";
 
 const ESTADOS = ["PENDIENTE", "EN_PROCESO", "LISTO", "PUBLICADO", "CANCELADO"];
 const ESTADO_LABEL: Record<string, string> = {
@@ -66,9 +66,12 @@ export default function MarketingCalendarioPage() {
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vista, setVista] = useState<Vista>("parrilla");
+  const [vista, setVista] = useState<Vista>("proximas");
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
+  const [showNueva, setShowNueva] = useState(false);
+  const [nuevaForm, setNuevaForm] = useState({ fecha: new Date().toISOString().slice(0, 10), tipoId: "", descripcion: "", copy: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false });
+  const [guardandoNueva, setGuardandoNueva] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -182,6 +185,52 @@ export default function MarketingCalendarioPage() {
     if (d.creadas) toast.success(`✓ Se generaron ${d.creadas} publicaciones para ${mesLabel(mes)}`);
   }
 
+  function openNueva() {
+    setNuevaForm({ fecha: new Date().toISOString().slice(0, 10), tipoId: "", descripcion: "", copy: "", enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false });
+    setShowNueva(true);
+  }
+
+  function onNuevaTipoChange(tipoId: string) {
+    const tipo = tipos.find(t => t.id === tipoId);
+    setNuevaForm(p => ({
+      ...p, tipoId,
+      enFacebook: tipo?.enFacebook ?? p.enFacebook,
+      enInstagram: tipo?.enInstagram ?? p.enInstagram,
+      enTiktok: tipo?.enTiktok ?? p.enTiktok,
+      enYoutube: tipo?.enYoutube ?? p.enYoutube,
+    }));
+  }
+
+  async function crearPublicacion() {
+    if (!nuevaForm.fecha) { toast.error("La fecha es obligatoria"); return; }
+    setGuardandoNueva(true);
+    const res = await fetch("/api/marketing/publicaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fecha: nuevaForm.fecha,
+        tipoId: nuevaForm.tipoId || null,
+        descripcion: nuevaForm.descripcion || null,
+        copy: nuevaForm.copy || null,
+        enFacebook: nuevaForm.enFacebook,
+        enInstagram: nuevaForm.enInstagram,
+        enTiktok: nuevaForm.enTiktok,
+        enYoutube: nuevaForm.enYoutube,
+        estado: "PENDIENTE",
+      }),
+    });
+    if (res.ok) {
+      toast.success("Publicación agregada");
+      setShowNueva(false);
+      // Switch month if needed so the new pub is visible
+      const newMes = nuevaForm.fecha.slice(0, 7);
+      if (newMes !== mes) setMes(newMes); else await load();
+    } else {
+      toast.error("Error al crear publicación");
+    }
+    setGuardandoNueva(false);
+  }
+
   const publicadas = publicaciones.filter(p => p.estado === "PUBLICADO").length;
   const pendientes = publicaciones.filter(p => p.estado === "PENDIENTE" || p.estado === "EN_PROCESO").length;
   const listas = publicaciones.filter(p => p.estado === "LISTO").length;
@@ -214,7 +263,7 @@ export default function MarketingCalendarioPage() {
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <Link href="/marketing/contenidos"
             className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-400 text-xs px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
-            Tipos de contenido
+            Estrategia
           </Link>
           {publicaciones.length > 0 && (
             <button onClick={eliminarMes} disabled={generating}
@@ -225,6 +274,10 @@ export default function MarketingCalendarioPage() {
           <button onClick={generarMes} disabled={generating}
             className="bg-[#1a1a1a] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
             {generating ? "Generando..." : "⚡ Generar mes"}
+          </button>
+          <button onClick={openNueva}
+            className="bg-[#B3985B] hover:bg-[#d4b068] text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
+            + Nueva publicación
           </button>
         </div>
       </div>
@@ -241,7 +294,7 @@ export default function MarketingCalendarioPage() {
 
         {/* Vista selector */}
         <div className="ml-auto flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
-          {([["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
+          {([["proximas","Próximas"],["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
             <button key={v} onClick={() => setVista(v)}
               className={`text-xs px-3 py-1 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
               {label}
@@ -366,6 +419,17 @@ export default function MarketingCalendarioPage() {
 
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+      ) : vista === "proximas" ? (
+        <VistaProximas
+          publicaciones={sorted}
+          openEdit={openEdit}
+          deletePub={deletePub}
+          quickEstado={quickEstado}
+          onNueva={openNueva}
+          onGenerar={generarMes}
+          generating={generating}
+          mesLabel={mesLabel(mes)}
+        />
       ) : publicaciones.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
           <p className="text-gray-500 text-sm">Sin publicaciones para {mesLabel(mes)}</p>
@@ -398,6 +462,234 @@ export default function MarketingCalendarioPage() {
         />
       ) : (
         <VistaFeedIG feedPosts={feedPosts} openEdit={openEdit} />
+      )}
+
+      {/* ── Modal nueva publicación ── */}
+      {showNueva && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={e => { if (e.target === e.currentTarget) setShowNueva(false); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <div>
+                <h3 className="text-white font-semibold">Nueva publicación</h3>
+                <p className="text-gray-600 text-xs mt-0.5">Agrega una publicación fuera de la estrategia programada</p>
+              </div>
+              <button onClick={() => setShowNueva(false)} className="text-gray-600 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fecha <span className="text-red-400">*</span></label>
+                  <input type="date" value={nuevaForm.fecha} onChange={e => setNuevaForm(p => ({ ...p, fecha: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Tipo de contenido</label>
+                  <select value={nuevaForm.tipoId} onChange={e => onNuevaTipoChange(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Personalizado —</option>
+                    {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Descripción / tema</label>
+                <input value={nuevaForm.descripcion} onChange={e => setNuevaForm(p => ({ ...p, descripcion: e.target.value }))}
+                  placeholder="¿De qué trata esta publicación?"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Copy (opcional)</label>
+                <textarea value={nuevaForm.copy} onChange={e => setNuevaForm(p => ({ ...p, copy: e.target.value }))} rows={2}
+                  placeholder="Texto de la publicación..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
+                <div className="flex gap-4">
+                  {PLATAFORMAS.map(plt => (
+                    <label key={plt.key} className="flex items-center gap-1.5 cursor-pointer">
+                      <input type="checkbox" checked={nuevaForm[plt.key]} onChange={e => setNuevaForm(p => ({ ...p, [plt.key]: e.target.checked }))} className="accent-[#B3985B]" />
+                      <span className="text-gray-400 text-sm">{plt.short}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={crearPublicacion} disabled={guardandoNueva}
+                  className="flex-1 bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                  {guardandoNueva ? "Guardando..." : "Agregar publicación"}
+                </button>
+                <button onClick={() => setShowNueva(false)}
+                  className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Vista Próximas ──────────────────────────────────────────────────────────
+function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNueva, onGenerar, generating, mesLabel }: {
+  publicaciones: Publicacion[];
+  openEdit: (p: Publicacion) => void;
+  deletePub: (id: string) => void;
+  quickEstado: (id: string, estado: string) => void;
+  onNueva: () => void;
+  onGenerar: () => void;
+  generating: boolean;
+  mesLabel: string;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [verPublicadas, setVerPublicadas] = useState(false);
+
+  const porPublicar = publicaciones.filter(p => !["PUBLICADO", "CANCELADO"].includes(p.estado));
+  const publicadas  = publicaciones.filter(p => p.estado === "PUBLICADO");
+
+  if (publicaciones.length === 0) {
+    return (
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
+        <p className="text-gray-500 text-sm">Sin publicaciones programadas para {mesLabel}</p>
+        <p className="text-gray-600 text-xs">Genera el contenido del mes desde la estrategia o agrega una publicación manual</p>
+        <div className="flex items-center justify-center gap-3 mt-2">
+          <button onClick={onGenerar} disabled={generating}
+            className="bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
+            {generating ? "Generando..." : "⚡ Generar desde estrategia"}
+          </button>
+          <button onClick={onNueva}
+            className="bg-[#1a1a1a] border border-[#333] text-gray-400 text-sm px-5 py-2 rounded-lg hover:text-white transition-colors">
+            + Publicación manual
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Por publicar */}
+      {porPublicar.length === 0 ? (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-8 text-center space-y-2">
+          <p className="text-green-400 text-sm font-medium">✓ Todo publicado para {mesLabel}</p>
+          <p className="text-gray-600 text-xs">No hay publicaciones pendientes este mes</p>
+        </div>
+      ) : (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#B3985B]" />
+              <span className="text-white text-sm font-semibold">Por publicar</span>
+              <span className="text-gray-600 text-xs">{porPublicar.length} publicación{porPublicar.length !== 1 ? "es" : ""}</span>
+            </div>
+          </div>
+          <div className="divide-y divide-[#181818]">
+            {porPublicar.map(p => {
+              const d = parseDate(p.fecha);
+              const fechaStr = p.fecha.slice(0, 10);
+              const isToday = fechaStr === today;
+              const isPast  = fechaStr < today;
+              const formato = p.formato ?? p.tipo?.formato ?? null;
+              return (
+                <div key={p.id} className={`px-4 py-3 flex items-center gap-3 hover:bg-[#141414] transition-colors ${isToday ? "bg-[#B3985B]/5" : ""}`}>
+                  {/* Fecha */}
+                  <div className="shrink-0 text-center w-10">
+                    {isToday && <p className="text-[8px] text-[#B3985B] uppercase font-bold tracking-wider leading-none mb-0.5">Hoy</p>}
+                    <p className={`text-lg font-bold leading-none ${isToday ? "text-[#B3985B]" : isPast ? "text-red-400/70" : "text-white"}`}>{d.getDate()}</p>
+                    <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white text-xs font-medium">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</span>
+                      {formato && <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{formato}</span>}
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
+                      {isPast && !isToday && <span className="text-[10px] text-red-400 font-medium">⚠ Atrasada</span>}
+                    </div>
+                    {p.descripcion && <p className="text-gray-500 text-[10px] mt-0.5 truncate">{p.descripcion}</p>}
+                    {!p.descripcion && !p.tipo && <p className="text-gray-700 text-[10px] mt-0.5 italic">Sin descripción · toca Editar para completar</p>}
+                    <div className="flex gap-1 mt-1">
+                      {PLATAFORMAS.filter(plt => p[plt.key]).map(plt => (
+                        <span key={plt.key} className="text-[9px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded">{plt.short}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Acciones */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {p.estado === "PENDIENTE" && (
+                      <button onClick={() => quickEstado(p.id, "EN_PROCESO")}
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-blue-400 hover:bg-blue-900/20 transition-colors whitespace-nowrap">
+                        Iniciar
+                      </button>
+                    )}
+                    {p.estado === "EN_PROCESO" && (
+                      <button onClick={() => quickEstado(p.id, "LISTO")}
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-yellow-400 hover:bg-yellow-900/20 transition-colors whitespace-nowrap">
+                        Listo
+                      </button>
+                    )}
+                    {p.estado === "LISTO" && (
+                      <button onClick={() => quickEstado(p.id, "PUBLICADO")}
+                        className="text-[10px] px-2.5 py-1.5 rounded-lg bg-[#1a1a1a] text-green-400 hover:bg-green-900/20 transition-colors whitespace-nowrap">
+                        Publicar ✓
+                      </button>
+                    )}
+                    <button onClick={() => openEdit(p)}
+                      className="text-[10px] px-2.5 py-1.5 rounded-lg border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors">
+                      Editar
+                    </button>
+                    <button onClick={() => deletePub(p.id)}
+                      className="text-[10px] px-2 py-1.5 rounded-lg text-gray-700 hover:text-red-400 transition-colors">
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Publicadas (colapsable) */}
+      {publicadas.length > 0 && (
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setVerPublicadas(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#111] transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500/60" />
+              <span className="text-gray-500 text-sm">Ya publicadas</span>
+              <span className="text-gray-700 text-xs">{publicadas.length}</span>
+            </div>
+            <span className="text-gray-600 text-xs">{verPublicadas ? "▲ Ocultar" : "▼ Ver"}</span>
+          </button>
+          {verPublicadas && (
+            <div className="divide-y divide-[#1a1a1a] border-t border-[#1a1a1a]">
+              {publicadas.map(p => {
+                const d = parseDate(p.fecha);
+                return (
+                  <div key={p.id} className="px-4 py-2.5 flex items-center gap-3 opacity-60 hover:opacity-90 transition-opacity">
+                    <div className="shrink-0 text-center w-10">
+                      <p className="text-green-500 text-base font-bold leading-none">{d.getDate()}</p>
+                      <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-gray-400 text-xs">{p.tipo?.nombre ?? "Sin tipo"}</span>
+                      {p.descripcion && <span className="text-gray-600 text-[10px] ml-2">{p.descripcion}</span>}
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/40 text-green-300 shrink-0">Publicada</span>
+                    <button onClick={() => openEdit(p)} className="text-[10px] text-gray-700 hover:text-[#B3985B] transition-colors shrink-0">Editar</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
