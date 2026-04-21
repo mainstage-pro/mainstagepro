@@ -1045,89 +1045,6 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         </div>
       </section>
 
-      {/* ── MAINSTAGE TRADE ─────────────────────────────────────────────────── */}
-      {(
-        <section className="relative overflow-hidden py-32 px-6"
-          style={{ background: "linear-gradient(180deg,#050505 0%,#090808 60%,#050505 100%)" }}>
-          {/* Background texture */}
-          <div className="absolute inset-0 pointer-events-none" style={{
-            background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(179,152,91,0.07) 0%, transparent 70%)",
-          }} />
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/30 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/20 to-transparent" />
-
-          <div className="max-w-4xl mx-auto relative">
-            <R className="text-center mb-16">
-              <div className="inline-flex items-center gap-2 mb-6">
-                <div className="h-px w-8 bg-[#B3985B]/40" />
-                <GoldLabel>Mainstage Trade</GoldLabel>
-                <div className="h-px w-8 bg-[#B3985B]/40" />
-              </div>
-              <h2 className="text-white font-bold leading-tight mb-5"
-                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
-                {tradeAplicado ? (
-                  <>Colaboración activada.<br /><span className="text-[#B3985B]">Tu descuento ya está incluido.</span></>
-                ) : (
-                  <>Colaboremos.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></>
-                )}
-              </h2>
-              <p className="text-white/35 text-lg leading-relaxed max-w-2xl mx-auto">
-                Mainstage Trade es un programa de colaboración donde ofrecemos un descuento directo en equipos a cambio de visibilidad de marca y contenido en tu evento.
-              </p>
-            </R>
-
-            {tradeAplicado ? (
-              /* Post-selección: mostrar nivel y ahorro */
-              <R delay={80} className="flex justify-center">
-                <div className="inline-grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
-                  {[
-                    { label: "Nivel elegido", value: NIVEL_LABEL[tradeData.nivelSeleccionado ?? 1] ?? "—" },
-                    { label: "Descuento aplicado", value: `${tradePct}%` },
-                    { label: "Tu ahorro", value: fmt(cotizacion.montoDescuento) },
-                  ].map(k => (
-                    <div key={k.label} className="text-center bg-white/[0.03] border border-[#B3985B]/20 rounded-2xl px-6 py-6">
-                      <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">{k.label}</p>
-                      <p className="text-white font-black text-3xl">{k.value}</p>
-                    </div>
-                  ))}
-                </div>
-              </R>
-            ) : (
-              /* Pre-selección o teaser: mostrar niveles con o sin CTA */
-              <R delay={80} className="flex justify-center">
-                <div className="text-center max-w-lg">
-                  <div className="grid grid-cols-3 gap-3 mb-10">
-                    {[
-                      { nivel: 1, nombre: "Base", pct: 5 },
-                      { nivel: 2, nombre: "Estratégico", pct: 10 },
-                      { nivel: 3, nombre: "Premium", pct: 12 },
-                    ].map(n => (
-                      <div key={n.nivel} className="bg-white/[0.03] border border-white/8 rounded-xl px-3 py-4 text-center">
-                        <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">{n.nombre}</p>
-                        <p className="text-[#B3985B] text-3xl font-black">{n.pct}%</p>
-                        <p className="text-white/25 text-[10px] mt-1">descuento</p>
-                      </div>
-                    ))}
-                  </div>
-                  {cotizacion.tradeToken ? (
-                    <>
-                      <a href={`/trade/${cotizacion.tradeToken}`}
-                         className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-base transition-all hover:scale-[1.02] active:scale-95">
-                        <span>Elegir mi nivel de colaboración</span>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                      </a>
-                      <p className="text-white/20 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte a tu evento</p>
-                    </>
-                  ) : (
-                    <p className="text-white/25 text-sm">¿Te interesa colaborar? Pregúntanos sobre Mainstage Trade.</p>
-                  )}
-                </div>
-              </R>
-            )}
-          </div>
-        </section>
-      )}
-
       {/* ── TU INVERSIÓN ────────────────────────────────────────────────────── */}
       <section className="relative bg-[#040404] py-32 px-6 text-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none"
@@ -1182,6 +1099,84 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
               <div className="border border-white/8 rounded-2xl p-7 text-left bg-white/[0.02] mb-6">
                 <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-3">Notas de la propuesta</p>
                 <p className="text-white/45 text-sm leading-relaxed whitespace-pre-line">{cotizacion.observaciones}</p>
+              </div>
+            </R>
+          )}
+        </div>
+      </section>
+
+      {/* ── MAINSTAGE TRADE ─────────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden py-32 px-6"
+        style={{ background: "linear-gradient(180deg,#050505 0%,#090808 60%,#050505 100%)" }}>
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(179,152,91,0.07) 0%, transparent 70%)",
+        }} />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/30 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#B3985B]/20 to-transparent" />
+
+        <div className="max-w-4xl mx-auto relative">
+          <R className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 mb-6">
+              <div className="h-px w-8 bg-[#B3985B]/40" />
+              <GoldLabel>Mainstage Trade</GoldLabel>
+              <div className="h-px w-8 bg-[#B3985B]/40" />
+            </div>
+            <h2 className="text-white font-bold leading-tight mb-5"
+              style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
+              {tradeAplicado ? (
+                <>Colaboración activada.<br /><span className="text-[#B3985B]">Tu descuento ya está incluido.</span></>
+              ) : (
+                <>Colaboremos.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></>
+              )}
+            </h2>
+            <p className="text-white/35 text-lg leading-relaxed max-w-2xl mx-auto">
+              Mainstage Trade es un programa de colaboración donde ofrecemos un descuento directo en equipos a cambio de visibilidad de marca y contenido en tu evento.
+            </p>
+          </R>
+
+          {tradeAplicado ? (
+            <R delay={80} className="flex justify-center">
+              <div className="inline-grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl">
+                {[
+                  { label: "Nivel elegido", value: NIVEL_LABEL[tradeData.nivelSeleccionado ?? 1] ?? "—" },
+                  { label: "Descuento aplicado", value: `${tradePct}%` },
+                  { label: "Tu ahorro", value: fmt(cotizacion.montoDescuento) },
+                ].map(k => (
+                  <div key={k.label} className="text-center bg-white/[0.03] border border-[#B3985B]/20 rounded-2xl px-6 py-6">
+                    <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">{k.label}</p>
+                    <p className="text-white font-black text-3xl">{k.value}</p>
+                  </div>
+                ))}
+              </div>
+            </R>
+          ) : (
+            <R delay={80} className="flex justify-center">
+              <div className="text-center max-w-lg">
+                <div className="grid grid-cols-3 gap-3 mb-10">
+                  {[
+                    { nivel: 1, nombre: "Base", pct: 5 },
+                    { nivel: 2, nombre: "Estratégico", pct: 10 },
+                    { nivel: 3, nombre: "Premium", pct: 12 },
+                  ].map(n => (
+                    <div key={n.nivel} className="bg-white/[0.03] border border-white/8 rounded-xl px-3 py-4 text-center">
+                      <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">{n.nombre}</p>
+                      <p className="text-[#B3985B] text-3xl font-black">{n.pct}%</p>
+                      <p className="text-white/25 text-[10px] mt-1">descuento</p>
+                    </div>
+                  ))}
+                </div>
+                {cotizacion.tradeToken ? (
+                  <>
+                    <a href={`/trade/${cotizacion.tradeToken}`}
+                       className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-base transition-all hover:scale-[1.02] active:scale-95">
+                      <span>Elegir mi nivel de colaboración</span>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                    <p className="text-white/20 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte a tu evento</p>
+                  </>
+                ) : (
+                  <p className="text-white/25 text-sm">¿Te interesa colaborar? Pregúntanos sobre Mainstage Trade.</p>
+                )}
               </div>
             </R>
           )}
