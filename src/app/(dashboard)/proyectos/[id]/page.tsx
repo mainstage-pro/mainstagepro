@@ -562,6 +562,47 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setLoading(false);
   }
 
+  async function loadGastosOp() {
+    const r = await fetch(`/api/proyectos/gastos-operativos?proyectoId=${id}`, { cache: "no-store" });
+    const d = await r.json();
+    setGastosOp(d.gastos ?? []);
+    setGastosLoaded(true);
+  }
+
+  async function agregarGastoOp() {
+    if (!gastoOpForm.concepto || !gastoOpForm.monto) return;
+    const r = await fetch("/api/proyectos/gastos-operativos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) || 1 }),
+    });
+    if (r.ok) {
+      setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+      setShowGastoOpForm(false);
+      loadGastosOp();
+    }
+  }
+
+  async function toggleEntregadoOp(g: GastoOp) {
+    setTogglingGasto(g.id);
+    await fetch("/api/proyectos/gastos-operativos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
+    });
+    await loadGastosOp();
+    setTogglingGasto(null);
+  }
+
+  async function eliminarGastoOp(gId: string) {
+    await fetch("/api/proyectos/gastos-operativos", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: gId }),
+    });
+    loadGastosOp();
+  }
+
   async function loadEval() {
     const res = await fetch(`/api/proyectos/${id}/evaluacion`, { cache: "no-store" });
     const d = await res.json();
@@ -724,6 +765,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCuentasBancarias(cu.cuentas ?? []);
     });
   }, [id]);
+
+  // Lazy-load gastos operativos when Finanzas tab opens
+  useEffect(() => {
+    if (tab === "finanzas" && !gastosLoaded) loadGastosOp();
+  }, [tab]);
 
   // Lazy-load evaluación cliente when Operativo tab opens
   useEffect(() => {
@@ -3508,7 +3554,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           .filter(c => c.tipoAcreedor === "PROVEEDOR")
           .reduce((s, c) => s + c.monto, 0);
         const otrosGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
-        const costosTotales = costosPersonal + costosProveedor + otrosGastos;
+        const gastosOpTotal = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
+        const costosTotales = costosPersonal + costosProveedor + otrosGastos + gastosOpTotal;
         const utilidadBruta = ingresoContratado - costosTotales;
         const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
 
@@ -3558,6 +3605,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-400">Proveedores</span>
                     <span className="text-red-300">{fmt(costosProveedor)}</span>
+                  </div>
+                )}
+                {gastosOpTotal > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Gastos operativos</span>
+                    <span className="text-red-300">{fmt(gastosOpTotal)}</span>
                   </div>
                 )}
                 {otrosGastos > 0 && (
@@ -4075,6 +4128,100 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             ) : null}
           </div>
 
+          {/* ── Gastos Operativos ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos Operativos</h3>
+                <p className="text-xs text-gray-600 mt-0.5">Comida, transporte y hospedaje — generados desde cotización o agregados manualmente</p>
+              </div>
+              <button onClick={() => setShowGastoOpForm(v => !v)}
+                className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors shrink-0">
+                {showGastoOpForm ? "Cancelar" : "+ Agregar"}
+              </button>
+            </div>
+
+            {showGastoOpForm && (
+              <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Tipo</label>
+                  <select value={gastoOpForm.tipo} onChange={e => setGastoOpForm(f => ({ ...f, tipo: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="COMIDA">Comida</option>
+                    <option value="TRANSPORTE">Transporte</option>
+                    <option value="HOSPEDAJE">Hospedaje</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
+                  <input type="number" min="1" value={gastoOpForm.cantidad} onChange={e => setGastoOpForm(f => ({ ...f, cantidad: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                  <input value={gastoOpForm.concepto} onChange={e => setGastoOpForm(f => ({ ...f, concepto: e.target.value }))}
+                    placeholder="Ej: Comida crew día 1, Gasolina van, Habitación hotel..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
+                  <input type="number" value={gastoOpForm.monto} onChange={e => setGastoOpForm(f => ({ ...f, monto: e.target.value }))}
+                    placeholder="0"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                  <input value={gastoOpForm.notas} onChange={e => setGastoOpForm(f => ({ ...f, notas: e.target.value }))}
+                    placeholder="Opcional"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <button onClick={agregarGastoOp} disabled={!gastoOpForm.concepto || !gastoOpForm.monto}
+                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gastosOp.length === 0 && !showGastoOpForm ? (
+              <p className="text-gray-600 text-sm text-center py-6 italic">Sin gastos operativos registrados</p>
+            ) : (
+              gastosOp.map(g => {
+                const TIPO_COLORS: Record<string, string> = {
+                  COMIDA: "bg-orange-900/30 text-orange-300",
+                  TRANSPORTE: "bg-blue-900/30 text-blue-300",
+                  HOSPEDAJE: "bg-purple-900/30 text-purple-300",
+                  OTRO: "bg-gray-800 text-gray-400",
+                };
+                const TIPO_LABELS: Record<string, string> = { COMIDA: "Comida", TRANSPORTE: "Transporte", HOSPEDAJE: "Hospedaje", OTRO: "Otro" };
+                return (
+                  <div key={g.id} className={`flex items-center gap-3 px-5 py-3 border-t border-[#1a1a1a] hover:bg-[#0d0d0d] transition-colors ${g.entregado ? "opacity-50" : ""}`}>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
+                      {TIPO_LABELS[g.tipo] ?? g.tipo}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white/80 text-sm truncate">{g.concepto}</p>
+                      {g.notas && <p className="text-gray-600 text-xs">{g.notas}</p>}
+                    </div>
+                    {g.cantidad > 1 && <span className="text-gray-600 text-xs shrink-0">×{g.cantidad}</span>}
+                    <p className="text-white text-sm font-medium w-24 text-right shrink-0">{fmt(g.monto * g.cantidad)}</p>
+                    <button onClick={() => toggleEntregadoOp(g)} disabled={togglingGasto === g.id}
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all disabled:opacity-50 ${
+                        g.entregado
+                          ? "border-green-800 text-green-400 hover:border-red-800 hover:text-red-400"
+                          : "border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B] hover:text-black"
+                      }`}>
+                      {togglingGasto === g.id ? "..." : g.entregado ? "✓ Entregado" : "Entregar"}
+                    </button>
+                    <button onClick={() => eliminarGastoOp(g.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
           {/* Otros gastos */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
@@ -4181,8 +4328,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* Resumen financiero */}
           {(() => {
             const totalGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
+            const totalGastosOp = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
                 {proyecto.cotizacion && (
                   <div>
                     <p className="text-gray-500 text-xs mb-1">Total cotizado</p>
@@ -4196,6 +4344,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Por cobrar</p>
                   <p className="text-yellow-400 font-bold">{fmt(totalCxC - cobrado)}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 text-xs mb-1">Gastos operativos</p>
+                  <p className="text-orange-400 font-bold">{fmt(totalGastosOp)}</p>
                 </div>
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Otros gastos</p>

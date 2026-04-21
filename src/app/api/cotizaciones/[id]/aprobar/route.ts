@@ -292,6 +292,44 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
+    // 5b. Crear gastos operativos desde cotización (comidas, transporte, hospedaje)
+    const gastosOpData: Array<{
+      proyectoId: string; tipo: string; concepto: string; monto: number; cantidad: number; notas: string | null;
+    }> = [];
+    if ((cot.subtotalComidas ?? 0) > 0) {
+      gastosOpData.push({
+        proyectoId: proy.id,
+        tipo: "COMIDA",
+        concepto: `Alimentación producción — ${cot.diasComidas} día${cot.diasComidas !== 1 ? "s" : ""}`,
+        monto: cot.subtotalComidas,
+        cantidad: 1,
+        notas: null,
+      });
+    }
+    if ((cot.subtotalTransporte ?? 0) > 0) {
+      gastosOpData.push({
+        proyectoId: proy.id,
+        tipo: "TRANSPORTE",
+        concepto: `Transporte producción — ${cot.diasTransporte} día${cot.diasTransporte !== 1 ? "s" : ""}`,
+        monto: cot.subtotalTransporte,
+        cantidad: 1,
+        notas: null,
+      });
+    }
+    if ((cot.subtotalHospedaje ?? 0) > 0) {
+      gastosOpData.push({
+        proyectoId: proy.id,
+        tipo: "HOSPEDAJE",
+        concepto: `Hospedaje producción — ${cot.diasHospedaje} día${cot.diasHospedaje !== 1 ? "s" : ""}`,
+        monto: cot.subtotalHospedaje,
+        cantidad: 1,
+        notas: null,
+      });
+    }
+    if (gastosOpData.length > 0) {
+      await tx.gastoOperativo.createMany({ data: gastosOpData });
+    }
+
     // 7. Entrada en bitácora
     await tx.proyectoBitacora.create({
       data: {
