@@ -537,20 +537,20 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
     return m ? m[1].trim() : "General";
   }
 
-  const propias = lineas.filter(l => l.tipo === "EQUIPO_PROPIO" && !l.esIncluido);
-  const incluidas = lineas.filter(l => l.tipo === "EQUIPO_PROPIO" && l.esIncluido);
-  const externas = lineas.filter(l => l.tipo === "EQUIPO_EXTERNO");
+  // Merge own + external equipment — client sees one unified list
+  const todasEquipo = lineas.filter(l => (l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO") && !l.esIncluido);
+  const incluidas   = lineas.filter(l => l.tipo === "EQUIPO_PROPIO" && l.esIncluido);
 
-  if (propias.length + incluidas.length + externas.length === 0) return null;
+  if (todasEquipo.length + incluidas.length === 0) return null;
 
-  // Group propias by category, preserving insertion order
+  // Group all equipment by category, preserving insertion order
   const catMap: Map<string, Linea[]> = new Map();
-  for (const l of propias) {
+  for (const l of todasEquipo) {
     const cat = getCat(l);
     if (!catMap.has(cat)) catMap.set(cat, []);
     catMap.get(cat)!.push(l);
   }
-  const cats = Array.from(catMap.entries());
+  const cats    = Array.from(catMap.entries());
   const hasCats = cats.length > 1 || (cats.length === 1 && cats[0][0] !== "General");
 
   return (
@@ -609,7 +609,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
       ) : (
         // Flat list (no categories or single "General" category)
         <>
-          {propias.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
+          {todasEquipo.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
           {incluidas.map((l) => (
             <View key={l.id} style={s.tablaIncluido}>
               <View style={s.colImg} />
@@ -624,14 +624,6 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
         </>
       )}
 
-      {externas.length > 0 && (
-        <>
-          <View style={[s.seccionTitulo, { paddingTop: 8 }]}>
-            <Text style={[s.seccionNombre, { color: GRAY, fontSize: 7.5 }]}>EQUIPOS ADICIONALES (TERCEROS)</Text>
-          </View>
-          {externas.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
-        </>
-      )}
     </View>
   );
 }
@@ -692,9 +684,12 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 
 // ─── Documento principal ─────────────────────────────────────────────────────
 export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: CotizacionData; logoSrc?: string | null }) {
-  const anticipo = c.granTotal * 0.5;
+  const anticipo    = c.granTotal * 0.5;
   const liquidacion = c.granTotal * 0.5;
   const tieneDescuento = c.montoDescuento > 0;
+
+  // External equipment subtotal (merged into the equipment table, still needs its own totals line)
+  const subtotalExternos = c.lineas.filter(l => l.tipo === "EQUIPO_EXTERNO").reduce((s, l) => s + l.subtotal, 0);
 
   // Build individual discount rows
   type DiscRow = { label: string; monto: number; gold?: boolean };
@@ -819,6 +814,12 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={[s.totalFilaMonto, s.totalFilaDescuento, r.gold ? { color: "#B3985B" } : {}]}>-{fmtMXN(r.monto)}</Text>
               </View>
             ))}
+            {subtotalExternos > 0 && (
+              <View style={s.totalFila}>
+                <Text style={s.totalFilaDes}>Equipos adicionales</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(subtotalExternos)}</Text>
+              </View>
+            )}
             {c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Conceptos adicionales</Text>
