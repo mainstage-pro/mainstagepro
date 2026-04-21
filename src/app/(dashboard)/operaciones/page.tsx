@@ -479,7 +479,19 @@ export default function OperacionesPage() {
     return 0; // don't calculate cross-view for perf
   }, [tareas, vista]);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const saved = localStorage.getItem("op_sidebar");
+    return saved === null ? true : saved === "1";
+  });
+
+  function toggleSidebar() {
+    setSidebarOpen(v => {
+      const next = !v;
+      localStorage.setItem("op_sidebar", next ? "1" : "0");
+      return next;
+    });
+  }
 
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
@@ -605,7 +617,7 @@ export default function OperacionesPage() {
 
           {/* Sidebar toggle */}
           <button
-            onClick={() => setSidebarOpen(v => !v)}
+            onClick={toggleSidebar}
             className="w-6 h-6 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#777] hover:bg-[#111] transition-all shrink-0"
             title={sidebarOpen ? "Ocultar sidebar" : "Mostrar sidebar"}
           >
