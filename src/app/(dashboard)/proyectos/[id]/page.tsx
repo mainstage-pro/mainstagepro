@@ -235,6 +235,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const confirm = useConfirm();
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
   const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
@@ -561,18 +562,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   };
 
   async function load() {
+    setLoadError(false);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
+      const res = await fetch(`/api/proyectos/${id}`, { cache: "no-store", signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        console.error("API error cargando proyecto:", res.status);
+        setLoadError(true);
+        return;
+      }
       const d = await res.json();
-      setProyecto(d.proyecto ?? null);
-      setRiderEquipos(d.proyecto?.equipos ?? []);
-      setNotasPortal(d.proyecto?.notasPortal ?? "");
+      if (!d.proyecto) { setLoadError(true); return; }
+      setProyecto(d.proyecto);
+      setRiderEquipos(d.proyecto.equipos ?? []);
+      setNotasPortal(d.proyecto.notasPortal ?? "");
       try {
-        const resp = d.proyecto?.responsables ? JSON.parse(d.proyecto.responsables) : {};
+        const resp = d.proyecto.responsables ? JSON.parse(d.proyecto.responsables) : {};
         setResponsables({ produccion: resp.produccion ?? "", logistica: resp.logistica ?? "", finanzas: resp.finanzas ?? "", marketing: resp.marketing ?? "" });
       } catch { /* ignore */ }
     } catch (e) {
+      clearTimeout(timeout);
       console.error("Error cargando proyecto:", e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -1650,7 +1663,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   if (loading) return <SkeletonPage rows={6} cols={4} />;
-  if (!proyecto) return <div className="text-red-400 text-sm p-6">Proyecto no encontrado</div>;
+  if (loadError || !proyecto) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <p className="text-white/60 text-sm">No se pudo cargar el proyecto</p>
+      <button
+        onClick={() => { setLoading(true); load(); }}
+        className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+        Reintentar
+      </button>
+      <a href="/proyectos" className="text-white/30 text-xs hover:text-white/60 transition-colors">← Volver a proyectos</a>
+    </div>
+  );
 
   const checkOp = proyecto.checklist.filter(c => c.tipo !== "RIDER");
   const checkRider = proyecto.checklist.filter(c => c.tipo === "RIDER");
