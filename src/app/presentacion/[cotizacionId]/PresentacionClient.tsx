@@ -155,13 +155,13 @@ function getEquipoImage(linea: Linea): string | null {
 
 // ─── Gallery Data ─────────────────────────────────────────────────────────────
 const GALLERY_MUSICAL = [
-  { src: "/images/presentacion/hero-festival.png",  caption: "Festival · Producción completa" },
-  { src: "/images/presentacion/m-laser-red.jpg",    caption: "Show · Lasers y producción" },
-  { src: "/images/presentacion/m-crowd-pink.jpg",   caption: "Crowd · Disco ball" },
-  { src: "/images/presentacion/m-stage-green.jpg",  caption: "Escenario · Beams y color" },
-  { src: "/images/presentacion/m-dj-blue.jpg",      caption: "Performance DJ · Full production" },
-  { src: "/images/presentacion/m-smoke-pink.jpg",   caption: "Producción · Humo y efectos" },
-  { src: "/images/presentacion/m-arch-neon.jpg",    caption: "DJ Booth · Arco neón" },
+  { src: "/images/presentacion/musicales/Musicales-194.jpg",                    caption: "Show · Producción completa" },
+  { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Lasers · Show de iluminación" },
+  { src: "/images/presentacion/musicales/Musicales-154.jpg",                    caption: "Club · Disco ball y efectos" },
+  { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Festival · Escenario outdoor" },
+  { src: "/images/presentacion/musicales/Musicales-076.jpg",                    caption: "DJ · Performance con humo" },
+  { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "En vivo · Artista y video wall" },
+  { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "DJ Booth · Vista del crowd" },
 ];
 const GALLERY_SOCIAL = [
   { src: "/images/presentacion/s-couple-purple.png", caption: "Boda · Iluminación especial" },
@@ -833,7 +833,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxAudio.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/m-crowd-pink.jpg",
+                   "/images/presentacion/musicales/Musicales-154.jpg",
                    "/images/presentacion/s-stage-full.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false} className="w-full h-full object-cover object-center" />
@@ -872,7 +872,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxIlum.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/m-laser-red.jpg",
+                   "/images/presentacion/musicales/Musicales-037.jpg",
                    "/images/presentacion/s-dinner-sunset.png",
                    "/images/presentacion/e-corp-screens.jpg")}
                  alt="" draggable={false} className="w-full h-full object-cover object-center" />
@@ -909,7 +909,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxDj.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/m-smoke-pink.jpg",
+                   "/images/presentacion/musicales/Musicales-076.jpg",
                    "/images/presentacion/s-vocalist.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false} className="w-full h-full object-cover object-center" />
@@ -946,7 +946,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                style={{ transform: `translateY(${parallaxVideo.offset}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={sectionBg(tipoEvento,
-                   "/images/presentacion/m-arch-neon.jpg",
+                   "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg",
                    "/images/presentacion/s-couple-purple.png",
                    "/images/presentacion/e-corp-outdoor.jpg")}
                  alt="" draggable={false} className="w-full h-full object-cover object-center" />
