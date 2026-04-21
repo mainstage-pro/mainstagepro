@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
-import TaskPanel, { type TareaDetalle } from "./components/TaskPanel";
+import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import QuickAdd from "./components/QuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import { useCelebration } from "@/components/CelebrationToast";
@@ -496,8 +496,15 @@ export default function OperacionesPage() {
               })}
             </div>
 
-            {/* Acciones: nuevo proyecto + nueva carpeta */}
+            {/* Acciones: equipo + nuevo proyecto + nueva carpeta */}
             <div className="flex items-center gap-1 ml-auto shrink-0">
+              <Link
+                href="/operaciones/equipo"
+                className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#888] transition-colors rounded"
+                title="Ver tareas del equipo">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Equipo
+              </Link>
               <button
                 onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
                 className="flex items-center gap-1 px-2 py-1.5 text-[11px] text-[#444] hover:text-[#B3985B] transition-colors rounded"
@@ -745,28 +752,23 @@ export default function OperacionesPage() {
         </div>
       </main>
 
-      {/* ── TASK PANEL ────────────────────────────────────────────────────── */}
+      {/* ── TASK MODAL ────────────────────────────────────────────────────── */}
       {selectedId && (
-        loadingPanel ? (
-          <aside className="w-full md:w-96 shrink-0 border-l border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-center absolute inset-0 z-30 md:relative md:inset-auto md:z-auto">
-            <div className="w-5 h-5 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
-          </aside>
-        ) : selectedTask ? (
-          <TaskPanel
-            tarea={selectedTask}
-            usuarios={usuarios}
-            proyectos={proyectosNav}
-            iniciativas={iniciativas}
-            sessionId={sessionId}
-            onClose={() => setSelectedId(null)}
-            onSave={saveTarea}
-            onComplete={completeTarea}
-            onDelete={deleteTarea}
-            onAddSubtarea={addSubtarea}
-            onCompleteSubtarea={completeTarea}
-            onDeleteSubtarea={deleteTarea}
-          />
-        ) : null
+        <TaskModal
+          tarea={selectedTask}
+          loading={loadingPanel}
+          usuarios={usuarios}
+          proyectos={proyectosNav}
+          iniciativas={iniciativas}
+          sessionId={sessionId}
+          onClose={() => setSelectedId(null)}
+          onSave={saveTarea}
+          onComplete={completeTarea}
+          onDelete={deleteTarea}
+          onAddSubtarea={addSubtarea}
+          onCompleteSubtarea={completeTarea}
+          onDeleteSubtarea={deleteTarea}
+        />
       )}
 
       {/* ── UNDO TOAST ────────────────────────────────────────────────────── */}
