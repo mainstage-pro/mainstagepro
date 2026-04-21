@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -20,25 +19,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!file) return NextResponse.json({ error: "Archivo requerido" }, { status: 400 });
 
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const safeName = `${Date.now()}-${tipo.toLowerCase()}.${ext}`;
-  const dir = path.join(process.cwd(), "public", "uploads", "tratos", id);
+  try {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const pathname = `tratos/${id}/${Date.now()}-${tipo.toLowerCase()}.${ext}`;
 
-  await mkdir(dir, { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, safeName), buffer);
+    const blob = await put(pathname, file, { access: "public" });
 
-  const url = `/uploads/tratos/${id}/${safeName}`;
+    const archivo = await prisma.tratoArchivo.create({
+      data: {
+        tratoId: id,
+        tipo,
+        nombre: nombre || file.name,
+        url: blob.url,
+        subidoPor: session.id,
+      },
+    });
 
-  const archivo = await prisma.tratoArchivo.create({
-    data: {
-      tratoId: id,
-      tipo,
-      nombre: nombre || file.name,
-      url,
-      subidoPor: session.id,
-    },
-  });
-
-  return NextResponse.json({ archivo });
+    return NextResponse.json({ archivo });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[tratos/archivos POST]", msg);
+    return NextResponse.json({ error: "Error al subir archivo: " + msg }, { status: 500 });
+  }
 }

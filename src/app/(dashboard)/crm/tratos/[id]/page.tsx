@@ -1021,17 +1021,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setUploadingTipo(tipo);
-    for (const file of files) {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("tipo", tipo);
-      fd.append("nombre", file.name);
-      const res = await fetch(`/api/tratos/${id}/archivos`, { method: "POST", body: fd });
-      const data = await res.json();
-      if (data.archivo) setArchivos(prev => [...prev, data.archivo]);
+    try {
+      for (const file of files) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("tipo", tipo);
+        fd.append("nombre", file.name);
+        const res = await fetch(`/api/tratos/${id}/archivos`, { method: "POST", body: fd });
+        const data = await res.json();
+        if (!res.ok) {
+          toast.error(data.error ?? "Error al subir archivo");
+          continue;
+        }
+        if (data.archivo) setArchivos(prev => [...prev, data.archivo]);
+      }
+    } catch {
+      toast.error("Error de conexión al subir archivo");
+    } finally {
+      setUploadingTipo(null);
+      e.target.value = "";
     }
-    setUploadingTipo(null);
-    e.target.value = "";
   }
 
   async function eliminarArchivo(archivoId: string) {

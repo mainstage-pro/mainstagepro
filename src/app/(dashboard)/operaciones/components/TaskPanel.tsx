@@ -191,14 +191,22 @@ export default function TaskPanel({
 
   async function subirArchivo(file: File) {
     setUploading(true);
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`/api/tareas/${tarea.id}/archivos`, { method: "POST", body: form });
-    if (res.ok) {
-      const { archivo } = await res.json();
-      setArchivosLocal(prev => [archivo, ...prev]);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/tareas/${tarea.id}/archivos`, { method: "POST", body: form });
+      const data = await res.json();
+      if (res.ok) {
+        setArchivosLocal(prev => [data.archivo, ...prev]);
+      } else {
+        console.error("[subirArchivo]", data.error);
+        alert(data.error ?? "Error al subir archivo");
+      }
+    } catch {
+      alert("Error de conexión al subir archivo");
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   }
 
   async function adjuntarUrl() {

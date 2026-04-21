@@ -1147,17 +1147,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingTipo(tipo);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("tipo", tipo);
-    fd.append("nombre", file.name);
-    const res = await fetch(`/api/proyectos/${id}/archivos`, { method: "POST", body: fd });
-    const d = await res.json();
-    if (d.archivo) {
-      setProyecto(prev => prev ? { ...prev, archivos: [...prev.archivos, d.archivo] } : prev);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("tipo", tipo);
+      fd.append("nombre", file.name);
+      const res = await fetch(`/api/proyectos/${id}/archivos`, { method: "POST", body: fd });
+      const d = await res.json();
+      if (!res.ok) {
+        toast.error(d.error ?? "Error al subir archivo");
+      } else if (d.archivo) {
+        setProyecto(prev => prev ? { ...prev, archivos: [...prev.archivos, d.archivo] } : prev);
+      }
+    } catch {
+      toast.error("Error de conexión al subir archivo");
+    } finally {
+      setUploadingTipo(null);
+      e.target.value = "";
     }
-    setUploadingTipo(null);
-    e.target.value = "";
   }
 
   async function eliminarArchivo(archivoId: string) {

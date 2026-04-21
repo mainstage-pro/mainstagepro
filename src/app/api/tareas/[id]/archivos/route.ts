@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { put } from "@vercel/blob";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -35,17 +34,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   let tamano: number | null = null;
 
   if (file) {
-    // Save file locally (use Vercel Blob in production)
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "tareas", id);
-    await mkdir(uploadDir, { recursive: true });
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    await writeFile(path.join(uploadDir, filename), buffer);
-    url = `/uploads/tareas/${id}/${filename}`;
-    nombre = file.name;
-    tipo = file.type || null;
-    tamano = file.size;
+    try {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const pathname = `tareas/${id}/${Date.now()}-${safeName}`;
+      const blob = await put(pathname, file, { access: "public" });
+      url = blob.url;
+      nombre = file.name;
+      tipo = file.type || null;
+      tamano = file.size;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[tareas/archivos POST]", msg);
+      return NextResponse.json({ error: "Error al subir archivo: " + msg }, { status: 500 });
+    }
   } else if (urlManual) {
     url = urlManual;
     nombre = nombreManual ?? urlManual.split("/").pop() ?? "archivo";
