@@ -188,6 +188,7 @@ export default function HervamPage() {
 function ResumenTab({ configData, pagos, activos, onRefresh }: {
   configData: ConfigData; pagos: Pago[]; activos: Activo[]; onRefresh: () => void;
 }) {
+  const confirm = useConfirm();
   const { config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso } = configData;
   const now = new Date();
   const mesActual = now.getMonth() + 1;
@@ -198,6 +199,40 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
   const [utilidad, setUtilidad] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingUtilidad, setLoadingUtilidad] = useState(false);
+
+  // Edit/delete current month pago
+  const [editandoPago, setEditandoPago] = useState(false);
+  const [editPagoForm, setEditPagoForm] = useState({ montoAcordado: "", montoPagado: "", estado: "", notas: "" });
+  const [savingPago, setSavingPago] = useState(false);
+
+  function startEditPago(p: Pago) {
+    setEditPagoForm({ montoAcordado: String(p.montoAcordado), montoPagado: String(p.montoPagado), estado: p.estado, notas: p.notas ?? "" });
+    setEditandoPago(true);
+  }
+
+  async function saveEditPago(id: string) {
+    setSavingPago(true);
+    await fetch(`/api/finanzas/hervam/pagos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        montoAcordado: parseFloat(editPagoForm.montoAcordado),
+        montoPagado: parseFloat(editPagoForm.montoPagado),
+        estado: editPagoForm.estado,
+        notas: editPagoForm.notas || null,
+        pagadoEn: editPagoForm.estado === "PAGADO" ? new Date().toISOString() : null,
+      }),
+    });
+    await onRefresh();
+    setEditandoPago(false);
+    setSavingPago(false);
+  }
+
+  async function eliminarPago(id: string) {
+    if (!await confirm({ message: "¿Eliminar la obligación de este mes? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
+    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    await onRefresh();
+  }
 
   async function abrirCreando() {
     setCreando(true);
@@ -243,11 +278,29 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 
   async function crearPagoMes() {
     setSaving(true);
-    await fetch("/api/finanzas/hervam/pagos", {
+    const r = await fetch("/api/finanzas/hervam/pagos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: mesActual, anio: anioActual, utilidadMes: utilidad || undefined }),
     });
+    const data = await r.json();
+
+    // Auto-crear cuenta por pagar con fecha límite = último día del mes
+    if (data.pago) {
+      const ultimoDia = new Date(anioActual, mesActual, 0);
+      const fechaComp = `${ultimoDia.getFullYear()}-${String(ultimoDia.getMonth()+1).padStart(2,"0")}-${String(ultimoDia.getDate()).padStart(2,"0")}`;
+      await fetch("/api/cuentas-pagar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipoAcreedor: "OTRO",
+          concepto: `Renta HERVAM · ${MESES[mesActual-1]} ${anioActual}`,
+          monto: data.pago.montoAcordado,
+          fechaCompromiso: fechaComp,
+        }),
+      });
+    }
+
     await onRefresh();
     setCreando(false);
     setUtilidad("");
@@ -285,30 +338,61 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
         </div>
 
         {pagoActual ? (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase">Monto acordado</p>
-              <p className="text-white text-xl font-bold">{fmt(pagoActual.montoAcordado)}</p>
+          <div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase">Monto acordado</p>
+                <p className="text-white text-xl font-bold">{fmt(pagoActual.montoAcordado)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase">Pagado</p>
+                <p className={`text-xl font-bold ${pagoActual.montoPagado >= pagoActual.montoAcordado ? "text-green-400" : "text-yellow-400"}`}>
+                  {fmt(pagoActual.montoPagado)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase">Pendiente</p>
+                <p className="text-xl font-bold text-orange-400">
+                  {fmt(Math.max(0, pagoActual.montoAcordado - pagoActual.montoPagado))}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-500 uppercase">Modo</p>
+                <p className="text-white font-semibold mt-1">{pagoActual.modoPago ?? "—"}</p>
+                {pagoActual.utilidadMes !== null && (
+                  <p className="text-[10px] text-gray-500">Utilidad: {fmt(pagoActual.utilidadMes)}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase">Pagado</p>
-              <p className={`text-xl font-bold ${pagoActual.montoPagado >= pagoActual.montoAcordado ? "text-green-400" : "text-yellow-400"}`}>
-                {fmt(pagoActual.montoPagado)}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase">Pendiente</p>
-              <p className="text-xl font-bold text-orange-400">
-                {fmt(Math.max(0, pagoActual.montoAcordado - pagoActual.montoPagado))}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-500 uppercase">Modo</p>
-              <p className="text-white font-semibold mt-1">{pagoActual.modoPago ?? "—"}</p>
-              {pagoActual.utilidadMes !== null && (
-                <p className="text-[10px] text-gray-500">Utilidad: {fmt(pagoActual.utilidadMes)}</p>
-              )}
-            </div>
+            {/* Actions */}
+            {!editandoPago ? (
+              <div className="flex gap-3 mt-4 pt-3 border-t border-[#1a1a1a]">
+                <button onClick={() => startEditPago(pagoActual)} className="text-xs text-[#B3985B] hover:underline">Editar</button>
+                <button onClick={() => eliminarPago(pagoActual.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
+              </div>
+            ) : (
+              <div className="mt-4 pt-3 border-t border-[#1a1a1a] space-y-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Inp label="Monto acordado" value={editPagoForm.montoAcordado} onChange={v => setEditPagoForm(f => ({...f, montoAcordado: v}))} type="number" prefix="$" />
+                  <Inp label="Monto pagado" value={editPagoForm.montoPagado} onChange={v => setEditPagoForm(f => ({...f, montoPagado: v}))} type="number" prefix="$" />
+                  <div>
+                    <label className="text-[11px] text-gray-500 mb-1 block">Estado</label>
+                    <select value={editPagoForm.estado} onChange={e => setEditPagoForm(f => ({...f, estado: e.target.value}))}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
+                      {["PENDIENTE","PARCIAL","PAGADO","DIFERIDO"].map(e => <option key={e} value={e}>{e}</option>)}
+                    </select>
+                  </div>
+                  <Inp label="Notas" value={editPagoForm.notas} onChange={v => setEditPagoForm(f => ({...f, notas: v}))} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => saveEditPago(pagoActual.id)} disabled={savingPago}
+                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-4 py-1.5 rounded-lg">
+                    {savingPago ? "..." : "Guardar"}
+                  </button>
+                  <button onClick={() => setEditandoPago(false)} className="text-gray-500 text-xs">Cancelar</button>
+                </div>
+              </div>
+            )}
           </div>
         ) : creando ? (
           <div className="space-y-4">
@@ -730,6 +814,7 @@ function ConfigTab({ configData, onRefresh }: { configData: ConfigData; onRefres
 function HistorialTab({ pagos, configData, onRefresh }: {
   pagos: Pago[]; configData: ConfigData; onRefresh: () => void;
 }) {
+  const confirm = useConfirm();
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ montoAcordado: "", montoPagado: "", estado: "", notas: "" });
   const [saving, setSaving] = useState(false);
@@ -758,6 +843,12 @@ function HistorialTab({ pagos, configData, onRefresh }: {
     await onRefresh();
     setEditId(null);
     setSaving(false);
+  }
+
+  async function deletePago(id: string) {
+    if (!await confirm({ message: "¿Eliminar este registro? No se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
+    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    await onRefresh();
   }
 
   const now = new Date();
@@ -825,10 +916,16 @@ function HistorialTab({ pagos, configData, onRefresh }: {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-right">
-                      <button onClick={() => editId === p.id ? setEditId(null) : startEdit(p)}
-                        className="text-[#B3985B] text-xs hover:underline">
-                        {editId === p.id ? "Cerrar" : "Editar"}
-                      </button>
+                      <div className="flex items-center justify-end gap-3">
+                        <button onClick={() => editId === p.id ? setEditId(null) : startEdit(p)}
+                          className="text-[#B3985B] text-xs hover:underline">
+                          {editId === p.id ? "Cerrar" : "Editar"}
+                        </button>
+                        <button onClick={() => deletePago(p.id)}
+                          className="text-red-500 text-xs hover:underline">
+                          Eliminar
+                        </button>
+                      </div>
                     </td>
                   </tr>
                   {editId === p.id && (

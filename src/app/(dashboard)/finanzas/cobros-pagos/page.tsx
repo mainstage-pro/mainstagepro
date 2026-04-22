@@ -334,18 +334,18 @@ export default function CobrosPagosPage() {
     }
   }
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  // Compare YYYY-MM-DD strings to avoid UTC-vs-local timezone mismatch.
+  // Dates from DB come as ISO strings (UTC midnight). Using < hoyStr means
+  // "vencida" only when the commitment date is strictly before today's date.
+  const _d = new Date();
+  const hoyStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,"0")}-${String(_d.getDate()).padStart(2,"0")}`;
+
+  const isVencida = (fechaCompromiso: string, estado: string) =>
+    estado !== "LIQUIDADO" && fechaCompromiso.substring(0, 10) < hoyStr;
 
   // Apply overdue status locally
-  const enrichCxC = (c: CxCItem) => ({
-    ...c,
-    esVencida: c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy,
-  });
-  const enrichCxP = (c: CxPItem) => ({
-    ...c,
-    esVencida: c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy,
-  });
+  const enrichCxC = (c: CxCItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
+  const enrichCxP = (c: CxPItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
 
   const cxcList = cxc.map(enrichCxC).filter(c => {
     if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
@@ -360,10 +360,10 @@ export default function CobrosPagosPage() {
 
   // Metrics
   const cxcPend = cxc.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxcVenc = cxc.filter(c => c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy).reduce((s, c) => s + c.monto, 0);
+  const cxcVenc = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
   const cxcCobr = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxpPend = cxp.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxpVenc = cxp.filter(c => c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < hoy).reduce((s, c) => s + c.monto, 0);
+  const cxpVenc = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
   const cxpPagd = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
 
   function openModal(item: CxCItem | CxPItem, tipo: "cobro" | "pago") {
@@ -1421,7 +1421,7 @@ export default function CobrosPagosPage() {
                               {item.proyecto && (
                                 <span className="text-gray-600 text-[10px]">{item.proyecto.numeroProyecto} · {item.proyecto.nombre}</span>
                               )}
-                              <span className={`text-[10px] ${item.estado !== "LIQUIDADO" && new Date(item.fechaCompromiso) < hoy ? "text-red-400" : "text-gray-600"}`}>
+                              <span className={`text-[10px] ${isVencida(item.fechaCompromiso, item.estado) ? "text-red-400" : "text-gray-600"}`}>
                                 {fmtDate(item.fechaCompromiso)}
                               </span>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${ESTADO_COLORS[item.estado] ?? "bg-gray-800 text-gray-400"}`}>
