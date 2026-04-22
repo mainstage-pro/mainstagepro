@@ -45,6 +45,9 @@ export default function ContenidosPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filtroFormato, setFiltroFormato] = useState<string | null>(null);
+  const [filtroPlataforma, setFiltroPlataforma] = useState<string | null>(null);
 
   async function load() {
     const r = await fetch("/api/marketing/contenidos", { cache: "no-store" });
@@ -111,8 +114,22 @@ export default function ContenidosPage() {
     await load();
   }
 
-  const activos = tipos.filter(t => t.activo);
-  const inactivos = tipos.filter(t => !t.activo);
+  const PLAT_KEYS: Record<string, keyof TipoContenido> = {
+    FB: "enFacebook", IG: "enInstagram", TT: "enTiktok", YT: "enYoutube", FeedIG: "enFeedIG",
+  };
+
+  function applyFilters(list: TipoContenido[]) {
+    return list.filter(t => {
+      if (search && !t.nombre.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filtroFormato && t.formato !== filtroFormato) return false;
+      if (filtroPlataforma && !t[PLAT_KEYS[filtroPlataforma]]) return false;
+      return true;
+    });
+  }
+
+  const activos = applyFilters(tipos.filter(t => t.activo));
+  const inactivos = applyFilters(tipos.filter(t => !t.activo));
+  const hayFiltros = search || filtroFormato || filtroPlataforma;
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
@@ -129,6 +146,52 @@ export default function ContenidosPage() {
           </button>
         )}
       </div>
+
+      {/* Filtros */}
+      {!showForm && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar tipo..."
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#B3985B] w-44"
+          />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {FORMATOS.map(f => (
+              <button key={f} onClick={() => setFiltroFormato(filtroFormato === f ? null : f)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded border transition-colors ${
+                  filtroFormato === f
+                    ? FORMATO_COLORS[f]
+                    : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-white"
+                }`}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { key: "FB", label: "FB", active: "text-blue-400 bg-blue-900/20 border-blue-700/40" },
+              { key: "IG", label: "IG", active: "text-pink-400 bg-pink-900/20 border-pink-700/40" },
+              { key: "TT", label: "TT", active: "text-cyan-400 bg-cyan-900/20 border-cyan-700/40" },
+              { key: "YT", label: "YT", active: "text-red-400 bg-red-900/20 border-red-700/40" },
+              { key: "FeedIG", label: "Feed IG", active: "text-pink-300 bg-pink-900/20 border-pink-700/40" },
+            ].map(p => (
+              <button key={p.key} onClick={() => setFiltroPlataforma(filtroPlataforma === p.key ? null : p.key)}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded border transition-colors ${
+                  filtroPlataforma === p.key ? p.active : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-white"
+                }`}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {hayFiltros && (
+            <button onClick={() => { setSearch(""); setFiltroFormato(null); setFiltroPlataforma(null); }}
+              className="text-[10px] text-gray-600 hover:text-white transition-colors px-1">
+              Limpiar ×
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Formulario */}
       {showForm && (
@@ -224,10 +287,20 @@ export default function ContenidosPage() {
 
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
-      ) : tipos.length === 0 ? (
+      ) : activos.length === 0 && inactivos.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
-          <p className="text-gray-500 text-sm">Sin tipos de contenido</p>
-          <p className="text-gray-600 text-xs mt-1">Agrega los formatos que usas en tus redes sociales</p>
+          {hayFiltros ? (
+            <>
+              <p className="text-gray-500 text-sm">Sin resultados para los filtros aplicados</p>
+              <button onClick={() => { setSearch(""); setFiltroFormato(null); setFiltroPlataforma(null); }}
+                className="mt-2 text-[#B3985B] text-xs hover:underline">Limpiar filtros</button>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-500 text-sm">Sin tipos de contenido</p>
+              <p className="text-gray-600 text-xs mt-1">Agrega los formatos que usas en tus redes sociales</p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
