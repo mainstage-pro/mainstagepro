@@ -677,6 +677,14 @@ model Proveedor {
   @@map("proveedores")
 }
 
+model GiroProveedor {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("giros_proveedor")
+}
+
 model EquipoProveedor {
   id               String    @id @default(cuid())
   proveedorId      String    @map("proveedor_id")

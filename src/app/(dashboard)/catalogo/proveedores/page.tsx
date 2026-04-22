@@ -71,6 +71,12 @@ export default function ProveedoresPage() {
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Giro combobox state
+  const [girosBase, setGirosBase] = useState<string[]>([]);
+  const [giroQuery, setGiroQuery] = useState("");
+  const [giroDropdown, setGiroDropdown] = useState(false);
+  const giroInputRef = useRef<HTMLInputElement>(null);
+
   // Portal state
   const [generandoToken, setGenerandoToken] = useState<string | null>(null);
   const [equiposPanel, setEquiposPanel] = useState<{ proveedorId: string; equipos: EquipoPortal[] } | null>(null);
@@ -83,7 +89,31 @@ export default function ProveedoresPage() {
     setProveedores(data.proveedores ?? []);
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadGiros() {
+    const res = await fetch("/api/giros-proveedor", { cache: "no-store" });
+    const data = await res.json();
+    setGirosBase(Array.isArray(data) ? data : []);
+  }
+
+  async function selectGiro(nombre: string) {
+    setForm(p => ({ ...p, giro: nombre }));
+    setGiroQuery(nombre);
+    setGiroDropdown(false);
+  }
+
+  async function addGiro(nombre: string) {
+    const trimmed = nombre.trim();
+    if (!trimmed) return;
+    await fetch("/api/giros-proveedor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: trimmed }),
+    });
+    setGirosBase(prev => [...new Set([...prev, trimmed])].sort());
+    selectGiro(trimmed);
+  }
+
+  useEffect(() => { load(); loadGiros(); }, []);
 
   async function generarPortalToken(p: Proveedor) {
     if (p.portalToken) {
@@ -152,10 +182,11 @@ export default function ProveedoresPage() {
       banco: p.banco ?? "", noTarjeta: p.noTarjeta ?? "",
       datosFiscales: p.datosFiscales ?? "",
     });
+    setGiroQuery(p.giro ?? "");
     setCreating(false);
   }
 
-  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); }
+  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); setGiroQuery(""); }
   function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
   function set(key: keyof typeof EMPTY, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -262,11 +293,39 @@ export default function ProveedoresPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 placeholder="Nombre de la empresa" />
             </div>
-            <div>
+            <div className="relative">
               <label className="text-xs text-gray-500 mb-1 block">Giro / Tipo de servicio</label>
-              <input value={form.giro} onChange={e => set("giro", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Ej. Renta de audio, Iluminación, Estructuras" />
+              <input
+                ref={giroInputRef}
+                type="text"
+                value={giroQuery}
+                onChange={e => { setGiroQuery(e.target.value); set("giro", e.target.value); setGiroDropdown(true); }}
+                onFocus={() => setGiroDropdown(true)}
+                onBlur={() => setTimeout(() => setGiroDropdown(false), 150)}
+                placeholder="Buscar o escribe un nuevo giro..."
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#555]"
+              />
+              {giroDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                  {girosBase
+                    .filter(g => !giroQuery || g.toLowerCase().includes(giroQuery.toLowerCase()))
+                    .map(g => (
+                      <button key={g} type="button" onMouseDown={() => selectGiro(g)}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors">
+                        {g}
+                      </button>
+                    ))}
+                  {giroQuery.trim() && !girosBase.some(g => g.toLowerCase() === giroQuery.trim().toLowerCase()) && (
+                    <button type="button" onMouseDown={() => addGiro(giroQuery)}
+                      className="w-full text-left px-3 py-2 text-sm text-[#B3985B] hover:bg-[#222] transition-colors border-t border-[#2a2a2a]">
+                      + Agregar &ldquo;{giroQuery.trim()}&rdquo;
+                    </button>
+                  )}
+                  {!giroQuery && girosBase.length === 0 && (
+                    <p className="px-3 py-2 text-xs text-[#555]">Escribe el primer giro</p>
+                  )}
+                </div>
+              )}
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Teléfono / WhatsApp</label>
