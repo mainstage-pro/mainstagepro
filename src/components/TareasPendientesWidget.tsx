@@ -24,7 +24,7 @@ const PRIO_DOT: Record<string, string> = {
   MEDIA: "bg-[#B3985B]", BAJA: "bg-[#444]",
 };
 
-const CEO_AREAS = ["VENTAS", "ADMINISTRACION", "PRODUCCION", "MARKETING"];
+const CEO_AREAS = ["VENTAS", "ADMINISTRACION", "PRODUCCION", "MARKETING", "RRHH", "GENERAL", "DIRECCION"];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

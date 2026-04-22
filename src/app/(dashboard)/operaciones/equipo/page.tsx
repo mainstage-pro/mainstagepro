@@ -44,7 +44,7 @@ function isToday(fecha: string | null) {
 
 function formatDate(fecha: string | null) {
   if (!fecha) return null;
-  const d = new Date(fecha + "T00:00:00");
+  const d = new Date(fecha.substring(0, 10) + "T00:00:00");
   if (isToday(fecha)) return "Hoy";
   const diff = Math.round((d.getTime() - Date.now()) / 86400000);
   if (diff === 1) return "Mañana";
