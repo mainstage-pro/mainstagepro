@@ -454,6 +454,23 @@ export default function CobrosPagosPage() {
     setAnulando(null);
   }
 
+  async function eliminar(id: string, tipo: "cxc" | "cxp", liquidado: boolean) {
+    const msg = liquidado
+      ? `Este registro ya está liquidado. ¿Eliminar de todas formas? Esta acción no se puede deshacer.`
+      : `¿Eliminar este registro? Esta acción no se puede deshacer.`;
+    if (!await confirm({ message: msg, danger: true, confirmText: "Eliminar" })) return;
+    const endpoint = tipo === "cxc"
+      ? `/api/cuentas-cobrar/${id}`
+      : `/api/cuentas-pagar/${id}`;
+    const res = await fetch(endpoint, { method: "DELETE" });
+    if (res.ok) {
+      toast.success("Registro eliminado");
+      await load();
+    } else {
+      toast.error("Error al eliminar");
+    }
+  }
+
   function openReciboModal() {
     const pendientes = cxp.filter(c => c.estado !== "LIQUIDADO");
     const gruposMap: Record<string, { nombre: string; tipo: string; items: CxPItem[] }> = {};
@@ -855,6 +872,10 @@ export default function CobrosPagosPage() {
                     </button>
                   </>
                 )}
+                <button onClick={() => eliminar(c.id, "cxc", c.estado === "LIQUIDADO")}
+                  className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
+                  Eliminar
+                </button>
               </div>
             </div>
           ))}
@@ -948,6 +969,10 @@ export default function CobrosPagosPage() {
                       </button>
                     </>
                   )}
+                  <button onClick={() => eliminar(c.id, "cxp", c.estado === "LIQUIDADO")}
+                    className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
+                    Eliminar
+                  </button>
                 </div>
               </div>
             );
