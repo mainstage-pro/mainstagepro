@@ -13,6 +13,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       vendedor: { select: { id: true, name: true } },
+      compania: { select: { id: true, nombre: true } },
       tratos: {
         select: { id: true, etapa: true, tipoEvento: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true },
         orderBy: { createdAt: "desc" },
@@ -40,7 +41,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
 
-  // Verificar que no tenga proyectos activos
   const activos = await prisma.proyecto.count({
     where: { clienteId: id, estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] } },
   });
@@ -61,12 +61,44 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "empresa", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas", "vendedorId"];
+  const allowed = ["nombre", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas", "vendedorId"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] || null;
   }
 
-  const cliente = await prisma.cliente.update({ where: { id }, data });
+  // Handle empresa: accept empresaId (FK) or plain empresa name
+  if ("empresaId" in body) {
+    const newId: string | null = body.empresaId || null;
+    data.empresaId = newId;
+    if (newId) {
+      const emp = await prisma.empresa.findUnique({ where: { id: newId }, select: { nombre: true } });
+      data.empresa = emp?.nombre ?? null;
+    } else {
+      data.empresa = null;
+    }
+  } else if ("empresa" in body) {
+    const nombre: string | null = body.empresa || null;
+    if (nombre) {
+      // Find or create empresa
+      let emp = await prisma.empresa.findFirst({
+        where: { nombre: { equals: nombre, mode: "insensitive" }, activo: true },
+      });
+      if (!emp) {
+        emp = await prisma.empresa.create({ data: { nombre, tipo: "CLIENTE" } });
+      }
+      data.empresa = emp.nombre;
+      data.empresaId = emp.id;
+    } else {
+      data.empresa = null;
+      data.empresaId = null;
+    }
+  }
+
+  const cliente = await prisma.cliente.update({
+    where: { id },
+    data,
+    include: { compania: { select: { id: true, nombre: true } } },
+  });
   return NextResponse.json({ cliente });
 }

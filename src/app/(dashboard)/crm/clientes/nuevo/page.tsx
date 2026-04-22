@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -10,7 +11,6 @@ export default function NuevoClientePage() {
 
   const [form, setForm] = useState({
     nombre: "",
-    empresa: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: "NUEVO",
     servicioUsual: "",
@@ -18,6 +18,7 @@ export default function NuevoClientePage() {
     correo: "",
     notas: "",
   });
+  const [empresa, setEmpresa] = useState<{ id: string; nombre: string } | null>(null);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -35,7 +36,7 @@ export default function NuevoClientePage() {
       const res = await fetch("/api/clientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, empresaId: empresa?.id ?? null }),
       });
 
       if (!res.ok) {
@@ -77,12 +78,11 @@ export default function NuevoClientePage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                <input
-                  name="empresa"
-                  value={form.empresa}
-                  onChange={handleChange}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  placeholder="Nombre de la empresa"
+                <EmpresaCombobox
+                  value={empresa}
+                  onChange={setEmpresa}
+                  tipoDefault="CLIENTE"
+                  placeholder="Buscar o crear empresa..."
                 />
               </div>
             </div>

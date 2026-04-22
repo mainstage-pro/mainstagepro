@@ -7,6 +7,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -38,6 +39,8 @@ interface Cliente {
   id: string;
   nombre: string;
   empresa: string | null;
+  empresaId: string | null;
+  compania: { id: string; nombre: string } | null;
   tipoCliente: string;
   clasificacion: string;
   servicioUsual: string | null;
@@ -91,6 +94,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
+  const [empresaEdit, setEmpresaEdit] = useState<{ id: string; nombre: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const router = useRouter();
   const toast = useToast();
@@ -265,7 +269,11 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold text-white truncate">{cliente.nombre}</h1>
-          {cliente.empresa && <p className="text-gray-400 text-sm mt-0.5">{cliente.empresa}</p>}
+          {(cliente.compania ?? cliente.empresa) && (
+            <p className="text-gray-400 text-sm mt-0.5">
+              {cliente.compania?.nombre ?? cliente.empresa}
+            </p>
+          )}
           <div className="flex gap-2 mt-2 flex-wrap">
             <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{cliente.tipoCliente}</span>
             <span className={`px-2 py-0.5 rounded text-xs ${clasificacionColor[cliente.clasificacion] || "bg-gray-700 text-gray-300"}`}>
@@ -281,7 +289,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             + Nuevo trato
           </Link>
           <button
-            onClick={() => { formLoaded.current = false; setTimeout(() => { formLoaded.current = true; }, 100); setEditando(true); }}
+            onClick={() => { formLoaded.current = false; setTimeout(() => { formLoaded.current = true; }, 100); setEmpresaEdit(cliente?.compania ?? null); setEditando(true); }}
             className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
           >
             Editar
@@ -314,8 +322,14 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                  <input value={form.empresa || ""} onChange={(e) => setForm((p) => ({ ...p, empresa: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <EmpresaCombobox
+                    value={empresaEdit}
+                    onChange={(emp) => {
+                      setEmpresaEdit(emp);
+                      setForm(p => ({ ...p, empresaId: emp?.id ?? null, empresa: emp?.nombre ?? null }));
+                    }}
+                    tipoDefault="CLIENTE"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Teléfono</label>

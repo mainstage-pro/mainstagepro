@@ -13,6 +13,7 @@ interface Cliente {
   id: string;
   nombre: string;
   empresa: string | null;
+  compania: { id: string; nombre: string } | null;
   correo: string | null;
   tipoCliente: string;
   clasificacion: string;
@@ -138,7 +139,8 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
   const clientesFiltrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return clientes.filter(c => {
-      if (q && !c.nombre.toLowerCase().includes(q) && !(c.empresa ?? "").toLowerCase().includes(q) && !(c.correo ?? "").toLowerCase().includes(q)) return false;
+      const empresaNombre = c.compania?.nombre ?? c.empresa ?? "";
+      if (q && !c.nombre.toLowerCase().includes(q) && !empresaNombre.toLowerCase().includes(q) && !(c.correo ?? "").toLowerCase().includes(q)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
       if (filtroServicio && c.servicioUsual !== filtroServicio) return false;
@@ -310,7 +312,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
                 <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
                     <p className="text-white text-sm font-medium">{c.nombre}</p>
-                    {c.empresa && <p className="text-[#6b7280] text-xs">{c.empresa}</p>}
+                    {(c.compania?.nombre ?? c.empresa) && <p className="text-[#6b7280] text-xs">{c.compania?.nombre ?? c.empresa}</p>}
                     {c.correo && <span className="flex items-center gap-1"><p className="text-[#555] text-xs">{c.correo}</p><CopyButton value={c.correo} size="xs" /></span>}
                   </td>
                   <td className="px-4 py-3"><TipoBadge tipo={c.tipoCliente} /></td>
@@ -352,7 +354,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
                   <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>
                 </div>
                 <p className="text-white text-sm font-semibold leading-tight">{c.nombre}</p>
-                {c.empresa && <p className="text-[#6b7280] text-xs mt-0.5">{c.empresa}</p>}
+                {(c.compania?.nombre ?? c.empresa) && <p className="text-[#6b7280] text-xs mt-0.5">{c.compania?.nombre ?? c.empresa}</p>}
                 {c.correo && <p className="text-[#444] text-xs mt-0.5 truncate">{c.correo}</p>}
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <TipoBadge tipo={c.tipoCliente} />

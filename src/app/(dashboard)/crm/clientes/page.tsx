@@ -7,6 +7,7 @@ export default async function ClientesPage() {
       include: {
         _count: { select: { tratos: true, proyectos: true } },
         vendedor: { select: { id: true, name: true } },
+        compania: { select: { id: true, nombre: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

@@ -3,11 +3,14 @@
 import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
+import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 
 type Proveedor = {
   id: string;
   nombre: string;
   empresa: string | null;
+  empresaId: string | null;
+  compania: { id: string; nombre: string } | null;
   giro: string | null;
   telefono: string | null;
   correo: string | null;
@@ -49,7 +52,7 @@ const CAT_LABEL: Record<string, string> = {
 const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 
 const EMPTY = {
-  nombre: "", empresa: "", giro: "", telefono: "", correo: "",
+  nombre: "", empresa: "", empresaId: "", giro: "", telefono: "", correo: "",
   notas: "", rfc: "", cuentaBancaria: "", clabe: "", banco: "", noTarjeta: "", datosFiscales: "",
 };
 
@@ -70,6 +73,9 @@ export default function ProveedoresPage() {
   const [showInactivos, setShowInactivos] = useState(false);
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Empresa combobox state
+  const [empresaEdit, setEmpresaEdit] = useState<{ id: string; nombre: string } | null>(null);
 
   // Giro combobox state
   const [girosBase, setGirosBase] = useState<string[]>([]);
@@ -164,7 +170,7 @@ export default function ProveedoresPage() {
     if (!editing || editing.id !== currentEditId.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const payload = { nombre: form.nombre, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, rfc: form.rfc || null, cuentaBancaria: form.cuentaBancaria || null, clabe: form.clabe || null, banco: form.banco || null, noTarjeta: form.noTarjeta || null, datosFiscales: form.datosFiscales || null };
+      const payload = { nombre: form.nombre, empresaId: form.empresaId || null, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, rfc: form.rfc || null, cuentaBancaria: form.cuentaBancaria || null, clabe: form.clabe || null, banco: form.banco || null, noTarjeta: form.noTarjeta || null, datosFiscales: form.datosFiscales || null };
       await fetch(`/api/proveedores/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       setProveedores(prev => prev.map(p => p.id === editing.id ? { ...p, ...payload } : p));
       setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
@@ -175,18 +181,19 @@ export default function ProveedoresPage() {
     currentEditId.current = p.id;
     setEditing(p);
     setForm({
-      nombre: p.nombre, empresa: p.empresa ?? "", giro: p.giro ?? "",
+      nombre: p.nombre, empresa: p.empresa ?? "", empresaId: p.empresaId ?? "", giro: p.giro ?? "",
       telefono: p.telefono ?? "", correo: p.correo ?? "",
       notas: p.notas ?? "", rfc: p.rfc ?? "",
       cuentaBancaria: p.cuentaBancaria ?? "", clabe: p.clabe ?? "",
       banco: p.banco ?? "", noTarjeta: p.noTarjeta ?? "",
       datosFiscales: p.datosFiscales ?? "",
     });
+    setEmpresaEdit(p.compania ?? null);
     setGiroQuery(p.giro ?? "");
     setCreating(false);
   }
 
-  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); setGiroQuery(""); }
+  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); setEmpresaEdit(null); setGiroQuery(""); }
   function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
   function set(key: keyof typeof EMPTY, value: string) {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -196,6 +203,7 @@ export default function ProveedoresPage() {
     setSaving(true);
     const payload = {
       nombre: form.nombre,
+      empresaId: form.empresaId || null,
       empresa: form.empresa || null,
       giro: form.giro || null,
       telefono: form.telefono || null,
@@ -289,9 +297,15 @@ export default function ProveedoresPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Empresa / Razón social</label>
-              <input value={form.empresa} onChange={e => set("empresa", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Nombre de la empresa" />
+              <EmpresaCombobox
+                value={empresaEdit}
+                onChange={(emp) => {
+                  setEmpresaEdit(emp);
+                  setForm(p => ({ ...p, empresaId: emp?.id ?? "", empresa: emp?.nombre ?? "" }));
+                }}
+                tipoDefault="PROVEEDOR"
+                placeholder="Buscar o crear empresa..."
+              />
             </div>
             <div className="relative">
               <label className="text-xs text-gray-500 mb-1 block">Giro / Tipo de servicio</label>
