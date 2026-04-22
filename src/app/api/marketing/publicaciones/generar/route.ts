@@ -6,10 +6,9 @@ const DIA_MAP: Record<string, number> = {
   LUNES: 1, MARTES: 2, "MIÉRCOLES": 3, JUEVES: 4, VIERNES: 5, SÁBADO: 6, DOMINGO: 0,
 };
 
-// Todas las fechas del mes que caen en un día de semana específico
 function diasDelMes(year: number, month: number, weekday: number): Date[] {
-  const result: Date[] = [];
   const total = new Date(year, month, 0).getDate();
+  const result: Date[] = [];
   for (let d = 1; d <= total; d++) {
     const date = new Date(year, month - 1, d);
     if (date.getDay() === weekday) result.push(date);
@@ -17,15 +16,68 @@ function diasDelMes(year: number, month: number, weekday: number): Date[] {
   return result;
 }
 
-// Distribuir N fechas de forma equidistante en el mes
-function diasEspaciados(year: number, month: number, n: number): Date[] {
-  const total = new Date(year, month, 0).getDate();
+/** Pick n items evenly distributed from arr. Returns full arr if n >= arr.length. */
+function pickEvenly(arr: Date[], n: number): Date[] {
+  if (n <= 0) return [];
+  if (n >= arr.length) return [...arr];
+  if (n === 1) return [arr[Math.floor(arr.length / 2)]];
   const result: Date[] = [];
   for (let i = 0; i < n; i++) {
-    const day = Math.round((i * total) / n) + 1;
-    result.push(new Date(year, month - 1, Math.min(day, total)));
+    result.push(arr[Math.round(i * (arr.length - 1) / (n - 1))]);
   }
   return result;
+}
+
+/**
+ * Generate exactly cantMes dates for the given month.
+ * - diaSemana + semanaDelMes: specific occurrence (e.g. first Monday) — exact behavior.
+ * - diaSemana only: prefers those days; fills remaining slots evenly when not enough.
+ * - No diaSemana: evenly distributed across all days of the month.
+ */
+function generarFechas(
+  year: number,
+  month: number,
+  tipo: { cantMes: number; diaSemana: string | null; semanaDelMes: number | null }
+): Date[] {
+  const cant = tipo.cantMes;
+  const total = new Date(year, month, 0).getDate();
+  const allDays = Array.from({ length: total }, (_, i) => new Date(year, month - 1, i + 1));
+
+  if (tipo.diaSemana && tipo.semanaDelMes) {
+    const dias = tipo.diaSemana.split(",").map(d => d.trim());
+    const fechas: Date[] = [];
+    for (const dia of dias) {
+      const wd = DIA_MAP[dia];
+      if (wd === undefined) continue;
+      const occ = diasDelMes(year, month, wd);
+      const fecha = occ[tipo.semanaDelMes - 1];
+      if (fecha) fechas.push(fecha);
+    }
+    return fechas;
+  }
+
+  if (tipo.diaSemana) {
+    const dias = tipo.diaSemana.split(",").map(d => d.trim());
+    const preferidos: Date[] = [];
+    for (const dia of dias) {
+      const wd = DIA_MAP[dia];
+      if (wd === undefined) continue;
+      preferidos.push(...diasDelMes(year, month, wd));
+    }
+    preferidos.sort((a, b) => a.getTime() - b.getTime());
+
+    if (preferidos.length >= cant) {
+      return pickEvenly(preferidos, cant);
+    }
+
+    // Not enough preferred days — fill remaining with evenly-spaced non-preferred days
+    const prefDates = new Set(preferidos.map(d => d.getDate()));
+    const resto = allDays.filter(d => !prefDates.has(d.getDate()));
+    const fill = pickEvenly(resto, cant - preferidos.length);
+    return [...preferidos, ...fill].sort((a, b) => a.getTime() - b.getTime());
+  }
+
+  return pickEvenly(allDays, cant);
 }
 
 export async function POST(request: NextRequest) {
@@ -33,7 +85,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { mes } = body; // "2026-04"
+  const { mes } = body;
   if (!mes) return NextResponse.json({ error: "Mes requerido" }, { status: 400 });
 
   const [year, month] = mes.split("-").map(Number);
@@ -50,49 +102,16 @@ export async function POST(request: NextRequest) {
   }[] = [];
 
   for (const tipo of tipos) {
-    const cant = tipo.cantMes!;
-    let fechas: Date[] = [];
-
-    if (tipo.diaSemana) {
-      // Soporte para múltiples días separados por coma: "LUNES,VIERNES"
-      const dias = tipo.diaSemana.split(",").map(d => d.trim());
-
-      if (tipo.semanaDelMes) {
-        // Publicación en la N-ésima ocurrencia del día en el mes (ej: primer lunes)
-        for (const dia of dias) {
-          const weekday = DIA_MAP[dia];
-          if (weekday === undefined) continue;
-          const ocurrencias = diasDelMes(year, month, weekday);
-          const fecha = ocurrencias[tipo.semanaDelMes - 1];
-          if (fecha) fechas.push(fecha);
-        }
-      } else {
-        // Distribuir cant entre los días disponibles
-        const cantPorDia = Math.ceil(cant / dias.length);
-        for (const dia of dias) {
-          const weekday = DIA_MAP[dia];
-          if (weekday === undefined) continue;
-          const ocurrencias = diasDelMes(year, month, weekday);
-          fechas = [...fechas, ...ocurrencias.slice(0, cantPorDia)];
-        }
-        // Ordenar y recortar al total exacto
-        fechas = fechas.sort((a, b) => a.getTime() - b.getTime()).slice(0, cant);
-      }
-    } else {
-      // Sin día definido: distribuir equitativamente en el mes
-      fechas = diasEspaciados(year, month, cant);
-    }
-
+    const fechas = generarFechas(year, month, {
+      cantMes: tipo.cantMes!,
+      diaSemana: tipo.diaSemana,
+      semanaDelMes: tipo.semanaDelMes,
+    });
     for (const fecha of fechas) {
       toCreate.push({
-        fecha,
-        tipoId: tipo.id,
-        formato: tipo.formato,
-        objetivo: tipo.objetivo,
-        enFacebook: tipo.enFacebook,
-        enInstagram: tipo.enInstagram,
-        enTiktok: tipo.enTiktok,
-        enYoutube: tipo.enYoutube,
+        fecha, tipoId: tipo.id, formato: tipo.formato, objetivo: tipo.objetivo,
+        enFacebook: tipo.enFacebook, enInstagram: tipo.enInstagram,
+        enTiktok: tipo.enTiktok, enYoutube: tipo.enYoutube,
         estado: "PENDIENTE",
       });
     }
