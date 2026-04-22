@@ -90,6 +90,8 @@ export default function MarketingCalendarioPage() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [cancelandoId, setCancelandoId] = useState<string | null>(null);
+  const [cancelRazon, setCancelRazon] = useState("");
 
   async function load() {
     const [pRes, tRes] = await Promise.all([
@@ -161,11 +163,30 @@ export default function MarketingCalendarioPage() {
   }
 
   async function quickEstado(id: string, estado: string) {
+    if (estado === "CANCELADO") {
+      setCancelandoId(id);
+      setCancelRazon("");
+      return;
+    }
     await fetch(`/api/marketing/publicaciones/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
     setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
+  }
+
+  async function confirmarCancelacion() {
+    if (!cancelandoId) return;
+    const razon = cancelRazon.trim();
+    await fetch(`/api/marketing/publicaciones/${cancelandoId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "CANCELADO", ...(razon ? { comentarios: razon } : {}) }),
+    });
+    setPublicaciones(prev => prev.map(p =>
+      p.id === cancelandoId ? { ...p, estado: "CANCELADO", comentarios: razon || p.comentarios } : p
+    ));
+    setCancelandoId(null);
+    setCancelRazon("");
   }
 
   async function deletePub(id: string) {
@@ -518,6 +539,42 @@ export default function MarketingCalendarioPage() {
         />
       ) : (
         <VistaFeedIG feedPosts={feedPosts} openEdit={openEdit} />
+      )}
+
+      {/* ── Modal razón de cancelación ── */}
+      {cancelandoId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+          onClick={e => { if (e.target === e.currentTarget) setCancelandoId(null); }}>
+          <div className="bg-[#111] border border-[#333] rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Cancelar publicación</h3>
+              <button onClick={() => setCancelandoId(null)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-xs text-gray-500 mb-1.5 block">¿Por qué se cancela?</label>
+                <textarea
+                  value={cancelRazon}
+                  onChange={e => setCancelRazon(e.target.value)}
+                  rows={3}
+                  autoFocus
+                  placeholder="Ej: Cliente solicitó pausar, falta de material..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/60 resize-none placeholder-gray-600"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={confirmarCancelacion}
+                  className="flex-1 bg-red-900/40 hover:bg-red-900/60 border border-red-700/40 text-red-300 text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                  Confirmar cancelación
+                </button>
+                <button onClick={() => setCancelandoId(null)}
+                  className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
+                  Volver
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── Modal nueva publicación ── */}
