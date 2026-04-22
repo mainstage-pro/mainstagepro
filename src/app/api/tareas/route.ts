@@ -47,10 +47,10 @@ export async function GET(req: NextRequest) {
   if (vista === "hoy") {
     const ahora = new Date();
     ahora.setHours(23, 59, 59, 999);
-    where.fecha  = { lte: ahora };
-    where.estado = { not: "COMPLETADA" };
-    where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
-    delete where.parentId;
+    where.fecha    = { lte: ahora };
+    where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
+    where.parentId = null;
+    // sin filtro de usuario — muestra todas las áreas y todo el equipo
   } else if (vista === "proximas") {
     const manana = new Date();
     manana.setHours(0, 0, 0, 0);

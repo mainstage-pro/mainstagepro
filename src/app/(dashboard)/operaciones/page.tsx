@@ -49,7 +49,7 @@ function severityColor(s: string) {
 function areaLabel(a: string) {
   const M: Record<string,string> = {
     VENTAS:"Ventas", ADMINISTRACION:"Adm.", PRODUCCION:"Producción",
-    MARKETING:"Marketing", RRHH:"RR.HH.", GENERAL:"General",
+    MARKETING:"Marketing", RRHH:"RR.HH.", GENERAL:"General", DIRECCION:"Dirección",
   };
   return M[a] ?? a;
 }
@@ -422,17 +422,19 @@ export default function OperacionesPage() {
       return keys.map(label => ({ label, tareas: sortCronoPrio(grouped[label]) }));
     }
 
-    // Default: auto-group by área when there are multiple, always cronológico+prioridad
+    // Vista "hoy": siempre agrupa por área
+    // Vista "proximas": agrupa solo si hay múltiples áreas
     const areas = [...new Set(base.map(t => t.area))];
-    if (areas.length <= 1) return null; // render flat list, sorted below
+    if (vista !== "hoy" && areas.length <= 1) return null;
 
     const grouped: Record<string, TareaItem[]> = {};
     for (const t of base) {
       if (!grouped[t.area]) grouped[t.area] = [];
       grouped[t.area].push(t);
     }
-    const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH"];
-    const keys = AREA_ORD.filter(k => grouped[k]);
+    const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH","DIRECCION"];
+    const extra = Object.keys(grouped).filter(k => !AREA_ORD.includes(k)).sort();
+    const keys = [...AREA_ORD.filter(k => grouped[k]), ...extra.filter(k => grouped[k])];
     return keys.map(key => ({ label: areaLabel(key), tareas: sortCronoPrio(grouped[key]) }));
   }, [tareas, sortHoy, vista, showCompleted, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
