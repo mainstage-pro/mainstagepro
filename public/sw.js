@@ -1,7 +1,7 @@
 // Mainstage Pro — Service Worker
 // Estrategia: Network-first para todo (datos siempre frescos) + cola offline para mutaciones
 
-const CACHE_SHELL = "msp-shell-v3";
+const CACHE_SHELL = "msp-shell-v4";
 const DB_NAME     = "msp-offline-queue";
 const DB_VERSION  = 1;
 const SYNC_TAG    = "msp-sync";
