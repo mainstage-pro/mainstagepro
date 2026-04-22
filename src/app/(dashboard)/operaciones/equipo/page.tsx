@@ -72,7 +72,7 @@ function fechaChip(fecha: string | null): { label: string; cls: string } | null 
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const d   = new Date(fecha.substring(0, 10) + "T00:00:00");
   if (d < hoy) return { label: d.toLocaleDateString("es-MX", { day: "numeric", month: "short" }), cls: "bg-red-950/60 text-red-400" };
-  if (isToday(fecha)) return { label: "Hoy", cls: "bg-[#B3985B]/15 text-[#B3985B]" };
+  if (isToday(fecha)) return { label: "Hoy", cls: "bg-emerald-950/50 text-emerald-400" };
   const diff = Math.round((d.getTime() - hoy.getTime()) / 86400000);
   if (diff === 1) return { label: "Mañana", cls: "bg-yellow-950/40 text-yellow-400" };
   if (diff <= 7)  return { label: d.toLocaleDateString("es-MX", { weekday: "short" }), cls: "bg-[#1a1a1a] text-[#555]" };

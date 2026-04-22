@@ -39,7 +39,7 @@ function fechaChip(fecha: Date | null): { label: string; cls: string } | null {
     const days = Math.round((new Date(hoy + "T12:00:00Z").getTime() - new Date(iso + "T12:00:00Z").getTime()) / 86400000);
     return { label: `${days}d vencida`, cls: "bg-red-950/50 text-red-400" };
   }
-  if (iso === hoy) return { label: "Hoy", cls: "bg-[#B3985B]/15 text-[#B3985B]" };
+  if (iso === hoy) return { label: "Hoy", cls: "bg-emerald-950/50 text-emerald-400" };
   const mañana = new Date(hoy + "T12:00:00Z"); mañana.setDate(mañana.getDate() + 1);
   const fechaD = new Date(iso + "T12:00:00Z");
   const diff = Math.round((fechaD.getTime() - new Date(hoy + "T12:00:00Z").getTime()) / 86400000);
