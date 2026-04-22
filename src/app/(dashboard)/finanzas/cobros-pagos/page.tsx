@@ -118,6 +118,7 @@ interface NuevoRegistroForm {
   empresaId: string;
   clienteId: string;    // solo si se selecciona contacto individual en CxC
   proveedorId: string;  // solo si se selecciona contacto individual en CxP
+  tecnicoId: string;    // técnico freelancer
   acreedorNombre: string;
   notas: string;
   // Ambos
@@ -133,6 +134,7 @@ const NUEVO_REGISTRO_EMPTY: NuevoRegistroForm = {
   empresaId: "",
   clienteId: "",
   proveedorId: "",
+  tecnicoId: "",
   acreedorNombre: "",
   notas: "",
   proyectoId: "",
@@ -224,7 +226,12 @@ export default function CobrosPagosPage() {
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; empresa: string | null }>>([]);
   const [empresas, setEmpresas] = useState<EmpresaItem[]>([]);
   const [proyectos, setProyectos] = useState<Array<{ id: string; nombre: string; numeroProyecto: string; estado: string }>>([]);
+  const [tecnicos, setTecnicos] = useState<Array<{ id: string; nombre: string; celular: string | null }>>([]);
   const [empresaQuery, setEmpresaQuery] = useState("");
+  const [tecnicoQuery, setTecnicoQuery] = useState("");
+  const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
+  const [nuevoTecnicoForm, setNuevoTecnicoForm] = useState({ nombre: "", celular: "" });
+  const [guardandoTecnico, setGuardandoTecnico] = useState(false);
   // Editar CxC / CxP
   const [editModal, setEditModal] = useState<{ id: string; tipo: "cxc" | "cxp"; concepto: string; monto: number; fechaCompromiso: string } | null>(null);
   const [editMonto, setEditMonto] = useState("");
@@ -287,6 +294,7 @@ export default function CobrosPagosPage() {
     fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
     fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()).then(d => setProveedores(d.proveedores ?? [])).catch(() => {});
     fetch("/api/empresas", { cache: "no-store" }).then(r => r.json()).then(d => setEmpresas(d.empresas ?? [])).catch(() => {});
+    fetch("/api/tecnicos", { cache: "no-store" }).then(r => r.json()).then(d => setTecnicos(d.tecnicos ?? [])).catch(() => {});
     fetch("/api/proyectos", { cache: "no-store" }).then(r => r.json()).then(d => setProyectos((d.proyectos ?? []).filter((p: { estado: string }) => p.estado !== "CANCELADO"))).catch(() => {});
   }, []);
 
@@ -317,6 +325,7 @@ export default function CobrosPagosPage() {
           body: JSON.stringify({
             empresaId: nuevoForm.empresaId || null,
             proveedorId: nuevoForm.proveedorId || null,
+            tecnicoId: nuevoForm.tecnicoId || null,
             concepto: nuevoForm.acreedorNombre
               ? `${nuevoForm.acreedorNombre} — ${nuevoForm.concepto}`
               : nuevoForm.concepto,
@@ -330,6 +339,9 @@ export default function CobrosPagosPage() {
       setShowNuevo(false);
       setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
       setEmpresaQuery("");
+      setTecnicoQuery("");
+      setShowNuevoTecnico(false);
+      setNuevoTecnicoForm({ nombre: "", celular: "" });
       await load();
     } finally {
       setGuardandoNuevo(false);
@@ -1261,61 +1273,174 @@ export default function CobrosPagosPage() {
                 </>
               )}
 
-              {/* CxP — empresa / proveedor */}
+              {/* CxP — técnico freelancer */}
               {nuevoForm.tipo === "cxp" && (
                 <>
+                  {/* ── Técnico freelancer ── */}
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-gray-500">Empresa o proveedor</label>
-                      <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
-                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
-                    </div>
-                    <input value={empresaQuery}
-                      onChange={e => { setEmpresaQuery(e.target.value); setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); }}
-                      placeholder="Buscar empresa o proveedor…"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    {!nuevoForm.empresaId && !nuevoForm.proveedorId && (
-                      <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-52 overflow-y-auto">
-                        <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
-                          className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-[#222] border-b border-[#2a2a2a]">
-                          — Sin acreedor —
-                        </button>
-                        {proveedores
-                          .filter(p => {
-                            if (!empresaQuery) return true;
-                            const q = empresaQuery.toLowerCase();
-                            return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
-                          })
-                          .map(p => (
-                            <button key={`prov-${p.id}`}
-                              onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, empresaId: "" })); setEmpresaQuery(p.nombre); }}
-                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
-                              <p className="text-sm text-white">{p.nombre}</p>
-                              {p.empresa && <p className="text-[10px] text-gray-500">{p.empresa}</p>}
-                            </button>
-                          ))}
-                        {empresas
-                          .filter(e => e.contactosProveedor.length === 0)
-                          .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
-                          .map(e => (
-                            <button key={`emp-${e.id}`}
-                              onClick={() => { setNuevoForm(p => ({ ...p, empresaId: e.id, proveedorId: "" })); setEmpresaQuery(e.nombre); }}
-                              className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
-                              <p className="text-sm text-white">{e.nombre}</p>
-                              {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
-                            </button>
-                          ))}
-                      </div>
-                    )}
-                    {(nuevoForm.empresaId || nuevoForm.proveedorId) && (
-                      <p className="text-[11px] text-[#B3985B] mt-1 flex items-center gap-1">
-                        <span>✓ {empresaQuery}</span>
-                        <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
+                    <label className="text-xs text-gray-500 block mb-1">Técnico freelancer</label>
+                    {nuevoForm.tecnicoId ? (
+                      <p className="text-[11px] text-[#B3985B] flex items-center gap-1">
+                        <span>✓ {tecnicoQuery}</span>
+                        <button onClick={() => { setNuevoForm(p => ({ ...p, tecnicoId: "" })); setTecnicoQuery(""); setShowNuevoTecnico(false); }}
                           className="text-gray-600 hover:text-red-400 ml-1">✕</button>
                       </p>
+                    ) : (
+                      <>
+                        <input
+                          value={tecnicoQuery}
+                          onChange={e => { setTecnicoQuery(e.target.value); setShowNuevoTecnico(false); }}
+                          placeholder="Buscar técnico por nombre…"
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        />
+                        {/* Lista de técnicos filtrada */}
+                        {tecnicoQuery && (
+                          <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-44 overflow-y-auto">
+                            {tecnicos
+                              .filter(t => t.nombre.toLowerCase().includes(tecnicoQuery.toLowerCase()))
+                              .map(t => (
+                                <button key={t.id}
+                                  onClick={() => {
+                                    setNuevoForm(f => ({ ...f, tecnicoId: t.id, empresaId: "", proveedorId: "" }));
+                                    setTecnicoQuery(t.nombre);
+                                    setEmpresaQuery("");
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                                  <p className="text-sm text-white">{t.nombre}</p>
+                                  {t.celular && <p className="text-[10px] text-gray-500">{t.celular}</p>}
+                                </button>
+                              ))}
+                            {/* No encontrado → registrar nuevo */}
+                            {tecnicos.filter(t => t.nombre.toLowerCase().includes(tecnicoQuery.toLowerCase())).length === 0 && (
+                              <button
+                                onClick={() => setShowNuevoTecnico(true)}
+                                className="w-full text-left px-3 py-2 text-[#B3985B] hover:bg-[#222] transition-colors text-sm">
+                                + Registrar &quot;{tecnicoQuery}&quot; como técnico freelancer
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {/* Mini-form registro rápido */}
+                        {showNuevoTecnico && (
+                          <div className="mt-2 bg-[#161616] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+                            <p className="text-xs font-semibold text-[#B3985B]">Registrar técnico freelancer</p>
+                            <div>
+                              <label className="text-[11px] text-gray-500 block mb-1">Nombre <span className="text-red-400">*</span></label>
+                              <input
+                                value={nuevoTecnicoForm.nombre}
+                                onChange={e => setNuevoTecnicoForm(f => ({ ...f, nombre: e.target.value }))}
+                                placeholder="Nombre completo"
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] text-gray-500 block mb-1">Celular (opcional)</label>
+                              <input
+                                value={nuevoTecnicoForm.celular}
+                                onChange={e => setNuevoTecnicoForm(f => ({ ...f, celular: e.target.value }))}
+                                placeholder="10 dígitos"
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                disabled={guardandoTecnico || !nuevoTecnicoForm.nombre.trim()}
+                                onClick={async () => {
+                                  if (!nuevoTecnicoForm.nombre.trim()) return;
+                                  setGuardandoTecnico(true);
+                                  try {
+                                    const r = await fetch("/api/tecnicos", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ nombre: nuevoTecnicoForm.nombre.trim(), celular: nuevoTecnicoForm.celular || null }),
+                                    });
+                                    const data = await r.json();
+                                    if (r.ok && data.tecnico) {
+                                      setTecnicos(prev => [...prev, data.tecnico]);
+                                      setNuevoForm(f => ({ ...f, tecnicoId: data.tecnico.id, empresaId: "", proveedorId: "" }));
+                                      setTecnicoQuery(data.tecnico.nombre);
+                                      setEmpresaQuery("");
+                                      setShowNuevoTecnico(false);
+                                      setNuevoTecnicoForm({ nombre: "", celular: "" });
+                                    }
+                                  } finally {
+                                    setGuardandoTecnico(false);
+                                  }
+                                }}
+                                className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-xs font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors"
+                              >
+                                {guardandoTecnico ? "Guardando…" : "Registrar técnico"}
+                              </button>
+                              <button
+                                onClick={() => { setShowNuevoTecnico(false); setNuevoTecnicoForm({ nombre: "", celular: "" }); }}
+                                className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-xs hover:text-white transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-                  {!nuevoForm.empresaId && !nuevoForm.proveedorId && (
+
+                  {/* ── Empresa o proveedor ── */}
+                  {!nuevoForm.tecnicoId && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-gray-500">Empresa o proveedor</label>
+                        <a href="/catalogo/empresas" target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-[#B3985B] hover:text-white transition-colors">+ Nueva empresa</a>
+                      </div>
+                      <input value={empresaQuery}
+                        onChange={e => { setEmpresaQuery(e.target.value); setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); }}
+                        placeholder="Buscar empresa o proveedor…"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      {!nuevoForm.empresaId && !nuevoForm.proveedorId && (
+                        <div className="mt-1 bg-[#1a1a1a] border border-[#333] rounded-lg max-h-52 overflow-y-auto">
+                          <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
+                            className="w-full text-left px-3 py-2 text-sm text-gray-500 hover:bg-[#222] border-b border-[#2a2a2a]">
+                            — Sin acreedor —
+                          </button>
+                          {proveedores
+                            .filter(p => {
+                              if (!empresaQuery) return true;
+                              const q = empresaQuery.toLowerCase();
+                              return p.nombre.toLowerCase().includes(q) || (p.empresa ?? "").toLowerCase().includes(q);
+                            })
+                            .map(p => (
+                              <button key={`prov-${p.id}`}
+                                onClick={() => { setNuevoForm(f => ({ ...f, proveedorId: p.id, empresaId: "" })); setEmpresaQuery(p.nombre); }}
+                                className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a] last:border-0">
+                                <p className="text-sm text-white">{p.nombre}</p>
+                                {p.empresa && <p className="text-[10px] text-gray-500">{p.empresa}</p>}
+                              </button>
+                            ))}
+                          {empresas
+                            .filter(e => e.contactosProveedor.length === 0)
+                            .filter(e => !empresaQuery || e.nombre.toLowerCase().includes(empresaQuery.toLowerCase()))
+                            .map(e => (
+                              <button key={`emp-${e.id}`}
+                                onClick={() => { setNuevoForm(p => ({ ...p, empresaId: e.id, proveedorId: "" })); setEmpresaQuery(e.nombre); }}
+                                className="w-full text-left px-3 py-2 hover:bg-[#222] transition-colors border-b border-[#2a2a2a]">
+                                <p className="text-sm text-white">{e.nombre}</p>
+                                {e.giro && <p className="text-[10px] text-gray-500">{e.giro}</p>}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                      {(nuevoForm.empresaId || nuevoForm.proveedorId) && (
+                        <p className="text-[11px] text-[#B3985B] mt-1 flex items-center gap-1">
+                          <span>✓ {empresaQuery}</span>
+                          <button onClick={() => { setNuevoForm(p => ({ ...p, empresaId: "", proveedorId: "" })); setEmpresaQuery(""); }}
+                            className="text-gray-600 hover:text-red-400 ml-1">✕</button>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Fallback nombre libre ── */}
+                  {!nuevoForm.tecnicoId && !nuevoForm.empresaId && !nuevoForm.proveedorId && (
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">A quién se le paga (si no está en lista)</label>
                       <input value={nuevoForm.acreedorNombre} onChange={e => setNuevoForm(p => ({ ...p, acreedorNombre: e.target.value }))}
