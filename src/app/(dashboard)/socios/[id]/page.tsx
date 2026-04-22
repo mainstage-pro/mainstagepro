@@ -31,12 +31,33 @@ type Reporte = {
   estado: string; pagadoEn: string | null; notas: string | null;
 };
 type Socio = {
-  id: string; nombre: string; tipo: string; rfc: string | null; curp: string | null;
+  id: string; nombre: string; tipo: string; esFundador: boolean; rfc: string | null; curp: string | null;
   telefono: string | null; email: string | null; domicilio: string | null; colonia: string | null;
   ciudad: string | null; estado: string | null; cp: string | null;
   status: string; notas: string | null; pctSocio: number; pctMainstage: number;
   contratoInicio: string | null; contratoFin: string | null;
   checklist: Requisito[]; activos: Activo[]; reportes: Reporte[];
+};
+
+// ─── Types HERVAM (solo fundador) ─────────────────────────────────────────────
+type HervamConfig = {
+  id: string; socioId: string | null;
+  valorTotalActivos: number; tasaAnualRendimiento: number; usarSumaActivos: boolean;
+  modoActivo: string; porcentajeVariable: number; pisoMinimoFijo: number;
+  creditoSaldoInicial: number; creditoSaldoActual: number;
+  creditoCuotaMensual: number; creditoPlazoMeses: number;
+  creditoFechaInicio: string | null; notas: string | null;
+};
+type HervamActivo = {
+  id: string; nombre: string; descripcion: string | null; categoria: string;
+  valorAdquisicion: number; valorActual: number; fechaAdquisicion: string | null;
+  activo: boolean; notas: string | null;
+};
+type HervamPago = {
+  id: string; mes: number; anio: number; montoFijo: number;
+  utilidadMes: number | null; montoVariable: number | null; montoAcordado: number;
+  montoPagado: number; estado: string; modoPago: string | null;
+  notas: string | null; pagadoEn: string | null; createdAt: string;
 };
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -843,12 +864,284 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
   );
 }
 
+// ─── Tabs específicos del Socio Fundador (HERVAM) ─────────────────────────────
+
+const MESES_H = ["","Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const CAT_HERVAM: Record<string, string> = {
+  EQUIPO: "text-blue-400 bg-blue-900/20 border-blue-700/40",
+  VEHICULO: "text-purple-400 bg-purple-900/20 border-purple-700/40",
+  INMUEBLE: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
+  INTANGIBLE: "text-teal-400 bg-teal-900/20 border-teal-700/40",
+  OTRO: "text-gray-500 bg-gray-800/20 border-gray-700/40",
+};
+const PAGO_COLORS: Record<string, string> = {
+  PENDIENTE: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
+  PARCIAL: "text-blue-400 bg-blue-900/20 border-blue-700/40",
+  PAGADO: "text-green-400 bg-green-900/20 border-green-700/40",
+  DIFERIDO: "text-gray-400 bg-gray-800/20 border-gray-700/40",
+};
+
+function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso }: {
+  config: HervamConfig; valorEfectivo: number; montoFijoMensual: number; pisoAbsolutoPeso: number;
+}) {
+  const creditoPct = config.creditoSaldoInicial > 0
+    ? ((config.creditoSaldoInicial - config.creditoSaldoActual) / config.creditoSaldoInicial) * 100
+    : 0;
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Estructura de Capital · HERVAM</p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Valor de activos", value: fmt(valorEfectivo), sub: config.usarSumaActivos ? "Suma de activos" : "Declarado", color: "text-white" },
+          { label: "Renta fija mensual", value: fmt(montoFijoMensual), sub: `${config.tasaAnualRendimiento}% anual`, color: "text-[#B3985B]" },
+          { label: "Piso mínimo", value: fmt(pisoAbsolutoPeso), sub: `${config.pisoMinimoFijo}% del fijo`, color: "text-blue-400" },
+          { label: "Crédito pagado", value: `${creditoPct.toFixed(0)}%`, sub: `${fmt(config.creditoSaldoInicial - config.creditoSaldoActual)} / ${fmt(config.creditoSaldoInicial)}`, color: "text-green-400" },
+        ].map(m => (
+          <div key={m.label} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{m.label}</p>
+            <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
+            <p className="text-[11px] text-[#6b7280] mt-0.5">{m.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Modo de cálculo</p>
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+              config.modoActivo === "FIJO" ? "text-blue-400 bg-blue-900/20 border-blue-700/40"
+              : config.modoActivo === "VARIABLE" ? "text-purple-400 bg-purple-900/20 border-purple-700/40"
+              : "text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30"
+            }`}>{config.modoActivo}</span>
+          </div>
+          {config.modoActivo !== "FIJO" && (
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[#555]">% variable sobre utilidad</span>
+                <span className="text-white font-semibold">{config.porcentajeVariable}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#555]">Piso mínimo del fijo</span>
+                <span className="text-white font-semibold">{config.pisoMinimoFijo}%</span>
+              </div>
+            </div>
+          )}
+          <div className="pt-2 border-t border-[#1e1e1e] space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-[#555]">Tasa anual de rendimiento</span>
+              <span className="text-white font-semibold">{config.tasaAnualRendimiento}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#555]">Base de valuación</span>
+              <span className="text-white font-semibold">{config.usarSumaActivos ? "Suma de activos" : "Valor declarado"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Crédito personal HERVAM</p>
+          <div className="space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-[#555]">Saldo inicial</span>
+              <span className="text-white font-semibold">{fmt(config.creditoSaldoInicial)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#555]">Saldo actual</span>
+              <span className="text-green-400 font-semibold">{fmt(config.creditoSaldoActual)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#555]">Cuota mensual</span>
+              <span className="text-white font-semibold">{config.creditoCuotaMensual > 0 ? fmt(config.creditoCuotaMensual) : "—"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#555]">Plazo</span>
+              <span className="text-white font-semibold">{config.creditoPlazoMeses} meses</span>
+            </div>
+            {config.creditoFechaInicio && (
+              <div className="flex justify-between">
+                <span className="text-[#555]">Inicio</span>
+                <span className="text-white font-semibold">{new Date(config.creditoFechaInicio).toLocaleDateString("es-MX")}</span>
+              </div>
+            )}
+          </div>
+          <div className="pt-2">
+            <div className="w-full h-1.5 bg-[#1e1e1e] rounded-full">
+              <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${creditoPct}%` }} />
+            </div>
+            <p className="text-[10px] text-[#555] mt-1">{creditoPct.toFixed(1)}% liquidado</p>
+          </div>
+        </div>
+      </div>
+
+      {config.notas && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <p className="text-xs text-[#555] mb-1">Notas</p>
+          <p className="text-sm text-[#6b7280]">{config.notas}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
+  const totalValorActual = activos.reduce((s, a) => s + a.valorActual, 0);
+  const totalValorAdq = activos.reduce((s, a) => s + a.valorAdquisicion, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Activos declarados HERVAM · {activos.length} registros</p>
+        <a href="/finanzas/hervam" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+          Administrar en Estructura de Capital →
+        </a>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-2">
+        <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor de adquisición</p>
+          <p className="text-xl font-bold text-white">{fmt(totalValorAdq)}</p>
+        </div>
+        <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+          <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor actual declarado</p>
+          <p className="text-xl font-bold text-[#B3985B]">{fmt(totalValorActual)}</p>
+        </div>
+      </div>
+
+      {activos.length === 0 ? (
+        <div className="text-center py-12 text-gray-600 text-sm">
+          Sin activos registrados.{" "}
+          <a href="/finanzas/hervam" className="text-[#B3985B] hover:underline">Agregar en Estructura de Capital</a>
+        </div>
+      ) : (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[500px]">
+            <thead>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Activo","Categoría","V. Adquisición","V. Actual","Fecha",""].map(h => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]">
+              {activos.map(a => (
+                <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3">
+                    <p className="text-white text-sm font-medium">{a.nombre}</p>
+                    {a.descripcion && <p className="text-[#555] text-xs mt-0.5">{a.descripcion}</p>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${CAT_HERVAM[a.categoria] || CAT_HERVAM.OTRO}`}>
+                      {a.categoria}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorAdquisicion)}</td>
+                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
+                  <td className="px-4 py-3 text-[#555] text-xs">
+                    {a.fechaAdquisicion ? new Date(a.fechaAdquisicion).toLocaleDateString("es-MX") : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`text-[10px] ${a.activo ? "text-green-400" : "text-gray-600"}`}>
+                      {a.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="border-t border-[#2a2a2a]">
+              <tr>
+                <td colSpan={2} className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-[#555] font-semibold">Totales</td>
+                <td className="px-4 py-2.5 text-white font-bold text-sm">{fmt(totalValorAdq)}</td>
+                <td className="px-4 py-2.5 text-[#B3985B] font-bold text-sm">{fmt(totalValorActual)}</td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
+  const pagados = pagos.filter(p => p.estado === "PAGADO");
+  const totalPagado = pagados.reduce((s, p) => s + p.montoPagado, 0);
+  const totalAcordado = pagados.reduce((s, p) => s + p.montoAcordado, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos · HERVAM</p>
+        <a href="/finanzas/hervam" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+          Registrar en Estructura de Capital →
+        </a>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: "Meses registrados", value: pagos.length, color: "text-white" },
+          { label: "Total acordado pagado", value: fmt(totalAcordado), color: "text-[#B3985B]" },
+          { label: "Total pagado efectivo", value: fmt(totalPagado), color: "text-green-400" },
+        ].map(m => (
+          <div key={m.label} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{m.label}</p>
+            <p className={`text-xl font-bold ${m.color}`}>{m.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {pagos.length === 0 ? (
+        <div className="text-center py-12 text-gray-600 text-sm">Sin pagos registrados aún</div>
+      ) : (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[600px]">
+            <thead>
+              <tr className="border-b border-[#1e1e1e]">
+                {["Mes","Renta fija","Variable","Acordado","Pagado","Estado","Pagado en"].map(h => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1a1a]">
+              {pagos.map(p => (
+                <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
+                  <td className="px-4 py-3 text-white text-sm font-semibold">{MESES_H[p.mes]} {p.anio}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(p.montoFijo)}</td>
+                  <td className="px-4 py-3 text-[#6b7280] text-sm">{p.montoVariable != null ? fmt(p.montoVariable) : "—"}</td>
+                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(p.montoAcordado)}</td>
+                  <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(p.montoPagado)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${PAGO_COLORS[p.estado] || PAGO_COLORS.PENDIENTE}`}>
+                      {p.estado}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[#555] text-xs">
+                    {p.pagadoEn ? new Date(p.pagadoEn).toLocaleDateString("es-MX") : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
-const TABS = ["perfil", "activos", "rentas", "reportes", "mantenimiento"] as const;
-type Tab = (typeof TABS)[number];
-const TAB_LABEL: Record<Tab, string> = {
+const TABS_STD = ["perfil", "activos", "rentas", "reportes", "mantenimiento"] as const;
+const TABS_FUNDADOR = ["perfil", "capital", "activos_hervam", "pagos_hervam"] as const;
+type TabStd = (typeof TABS_STD)[number];
+type TabFundador = (typeof TABS_FUNDADOR)[number];
+const TAB_LABEL_STD: Record<TabStd, string> = {
   perfil: "Perfil", activos: "Activos", rentas: "Rentas",
   reportes: "Reportes", mantenimiento: "Mantenimiento",
+};
+const TAB_LABEL_FUNDADOR: Record<TabFundador, string> = {
+  perfil: "Perfil", capital: "Capital · HERVAM",
+  activos_hervam: "Activos declarados", pagos_hervam: "Historial de pagos",
 };
 
 export default function SocioDetallePage() {
@@ -856,13 +1149,28 @@ export default function SocioDetallePage() {
   const id = params.id as string;
   const [socio, setSocio] = useState<Socio | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<Tab>("perfil");
+  const [tab, setTab] = useState<string>("perfil");
+  // HERVAM data (solo fundador)
+  const [hervamConfig, setHervamConfig] = useState<{ config: HervamConfig; valorEfectivo: number; montoFijoMensual: number; pisoAbsolutoPeso: number } | null>(null);
+  const [hervamActivos, setHervamActivos] = useState<HervamActivo[]>([]);
+  const [hervamPagos, setHervamPagos] = useState<HervamPago[]>([]);
 
   const cargar = useCallback(async () => {
     setLoading(true);
     const r = await fetch(`/api/socios/${id}`, { cache: "no-store" });
     const d = await r.json();
-    setSocio(d.socio || null);
+    const s: Socio = d.socio;
+    setSocio(s || null);
+    if (s?.esFundador) {
+      const [cfg, act, pag] = await Promise.all([
+        fetch("/api/finanzas/hervam/config").then(r => r.json()),
+        fetch("/api/finanzas/hervam/activos").then(r => r.json()),
+        fetch("/api/finanzas/hervam/pagos").then(r => r.json()),
+      ]);
+      setHervamConfig(cfg);
+      setHervamActivos(act.activos || []);
+      setHervamPagos((pag.pagos || []).sort((a: HervamPago, b: HervamPago) => b.anio - a.anio || b.mes - a.mes));
+    }
     setLoading(false);
   }, [id]);
 
@@ -873,12 +1181,19 @@ export default function SocioDetallePage() {
 
   const completados = socio.checklist.filter((r) => r.completado).length;
   const pendientesReporte = socio.reportes.filter((r) => r.estado !== "PAGADO").length;
+  const isFundador = socio.esFundador;
+  const tabs = isFundador ? TABS_FUNDADOR : TABS_STD;
+  const tabLabels = isFundador ? TAB_LABEL_FUNDADOR : TAB_LABEL_STD;
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
-        <div className="w-12 h-12 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${
+          isFundador
+            ? "bg-gradient-to-br from-[#B3985B]/30 to-[#B3985B]/10 border border-[#B3985B]/40"
+            : "bg-[#1e1e1e] border border-[#262626]"
+        }`}>
           <span className="text-[#B3985B] text-base font-bold">
             {socio.nombre.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
           </span>
@@ -886,6 +1201,11 @@ export default function SocioDetallePage() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-semibold text-white">{socio.nombre}</h1>
+            {isFundador && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30">
+                Socio Fundador
+              </span>
+            )}
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_COLORS[socio.status]}`}>
               {STATUS_LABEL[socio.status]}
             </span>
@@ -897,28 +1217,37 @@ export default function SocioDetallePage() {
             {socio.email && ` · ${socio.email}`}
           </p>
           <p className="text-[#555] text-xs mt-1">
-            Split: {socio.pctSocio}% socio / {socio.pctMainstage}% Mainstage
-            {" · "}{socio.activos.length} equipos
-            {" · "}Requisitos: {completados}/{socio.checklist.length}
+            {isFundador
+              ? `Estructura de Capital · HERVAM${hervamConfig ? ` · Renta fija ${fmt(hervamConfig.montoFijoMensual)}/mes` : ""}`
+              : `Split: ${socio.pctSocio}% socio / ${socio.pctMainstage}% Mainstage · ${socio.activos.length} equipos · Requisitos: ${completados}/${socio.checklist.length}`
+            }
           </p>
         </div>
-        <Link href={`/socios/${socio.id}/contrato`} target="_blank"
-          className="shrink-0 text-xs border border-[#2a2a2a] text-[#6b7280] hover:text-white hover:border-[#B3985B] px-3 py-2 rounded-lg transition-colors">
-          Ver contrato ↗
-        </Link>
+        {!isFundador && (
+          <Link href={`/socios/${socio.id}/contrato`} target="_blank"
+            className="shrink-0 text-xs border border-[#2a2a2a] text-[#6b7280] hover:text-white hover:border-[#B3985B] px-3 py-2 rounded-lg transition-colors">
+            Ver contrato ↗
+          </Link>
+        )}
+        {isFundador && (
+          <Link href="/finanzas/hervam"
+            className="shrink-0 text-xs border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 px-3 py-2 rounded-lg transition-colors">
+            Estructura de Capital ↗
+          </Link>
+        )}
       </div>
 
       {/* Tabs */}
       <div className="border-b border-[#1e1e1e] mb-6">
-        <div className="flex gap-1">
-          {TABS.map((t) => (
+        <div className="flex gap-1 flex-wrap">
+          {tabs.map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 tab === t
                   ? "border-[#B3985B] text-[#B3985B]"
                   : "border-transparent text-[#555] hover:text-white"
               }`}>
-              {TAB_LABEL[t]}
+              {(tabLabels as Record<string, string>)[t]}
               {t === "activos" && socio.activos.length > 0 && (
                 <span className="ml-1.5 text-[10px] bg-[#1e1e1e] text-[#6b7280] rounded-full px-1.5 py-0.5">
                   {socio.activos.length}
@@ -929,6 +1258,16 @@ export default function SocioDetallePage() {
                   {pendientesReporte}
                 </span>
               )}
+              {t === "activos_hervam" && hervamActivos.length > 0 && (
+                <span className="ml-1.5 text-[10px] bg-[#1e1e1e] text-[#6b7280] rounded-full px-1.5 py-0.5">
+                  {hervamActivos.length}
+                </span>
+              )}
+              {t === "pagos_hervam" && hervamPagos.length > 0 && (
+                <span className="ml-1.5 text-[10px] bg-[#1e1e1e] text-[#6b7280] rounded-full px-1.5 py-0.5">
+                  {hervamPagos.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -937,10 +1276,18 @@ export default function SocioDetallePage() {
       {/* Contenido */}
       <div>
         {tab === "perfil" && <TabPerfil socio={socio} reload={cargar} />}
-        {tab === "activos" && <TabActivos socio={socio} activos={socio.activos} reload={cargar} />}
-        {tab === "rentas" && <TabRentas socio={socio} activos={socio.activos} reload={cargar} />}
-        {tab === "reportes" && <TabReportes socio={socio} reload={cargar} />}
-        {tab === "mantenimiento" && <TabMantenimiento socio={socio} activos={socio.activos} />}
+        {/* Tabs estándar (socios convencionales) */}
+        {!isFundador && tab === "activos" && <TabActivos socio={socio} activos={socio.activos} reload={cargar} />}
+        {!isFundador && tab === "rentas" && <TabRentas socio={socio} activos={socio.activos} reload={cargar} />}
+        {!isFundador && tab === "reportes" && <TabReportes socio={socio} reload={cargar} />}
+        {!isFundador && tab === "mantenimiento" && <TabMantenimiento socio={socio} activos={socio.activos} />}
+        {/* Tabs fundador (HERVAM) */}
+        {isFundador && tab === "capital" && hervamConfig && (
+          <TabCapital config={hervamConfig.config} valorEfectivo={hervamConfig.valorEfectivo}
+            montoFijoMensual={hervamConfig.montoFijoMensual} pisoAbsolutoPeso={hervamConfig.pisoAbsolutoPeso} />
+        )}
+        {isFundador && tab === "activos_hervam" && <TabActivosHervam activos={hervamActivos} />}
+        {isFundador && tab === "pagos_hervam" && <TabPagosHervam pagos={hervamPagos} />}
       </div>
     </div>
   );

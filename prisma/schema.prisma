@@ -2027,6 +2027,7 @@ model Socio {
   id             String    @id @default(cuid())
   nombre         String
   tipo           String    @default("FISICA") // FISICA | MORAL
+  esFundador     Boolean   @default(false)
   rfc            String?
   curp           String?
   telefono       String?

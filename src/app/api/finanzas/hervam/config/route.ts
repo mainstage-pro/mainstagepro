@@ -18,13 +18,16 @@ async function getOrCreateMauricio(): Promise<string> {
     data: {
       nombre: "Mauricio Hernández",
       tipo: "FISICA",
+      esFundador: true,
       email: "mauriciohernandezvm@gmail.com",
       status: "ACTIVO",
-      pctSocio: 70,
-      pctMainstage: 30,
+      pctSocio: 100,
+      pctMainstage: 0,
       checklist: { create: REQUISITOS_DEFAULT.map((req, i) => ({ requisito: req, orden: i })) },
     },
   });
+  // If Mauricio already exists but esFundador is not set, fix it
+  await prisma.socio.updateMany({ where: { nombre: "Mauricio Hernández", esFundador: false }, data: { esFundador: true } });
   return socio.id;
 }
 
