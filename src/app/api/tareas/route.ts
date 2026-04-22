@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
     where.proyectoTareaId = null;
     where.iniciativaId    = null;
     where.parentId        = null;
+    where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   }
 
   const tareas = await prisma.tarea.findMany({
