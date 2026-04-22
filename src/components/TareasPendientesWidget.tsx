@@ -158,7 +158,7 @@ function CeoWidget({ tareas }: { tareas: TareaRow[] }) {
           const urg  = lista.filter(t => t.prioridad === "URGENTE").length;
           const venc = lista.filter(t => isOverdue(t.fecha)).length;
           const col  = AREA_COLORS[areaKey] ?? AREA_COLORS.GENERAL;
-          const top  = sortTareas(lista).slice(0, 5);
+          const all  = sortTareas(lista);
 
           return (
             <div key={areaKey} className="bg-[#0e0e0e] border border-[#1c1c1c] rounded-xl overflow-hidden">
@@ -185,20 +185,10 @@ function CeoWidget({ tareas }: { tareas: TareaRow[] }) {
                 </div>
               </div>
 
-              {/* Tareas */}
-              <div className="divide-y divide-[#131313]">
-                {top.map(t => <TareaRow key={t.id} t={t} />)}
+              {/* Tareas — todas visibles, scroll si son muchas */}
+              <div className="divide-y divide-[#131313] max-h-64 overflow-y-auto">
+                {all.map(t => <TareaRow key={t.id} t={t} />)}
               </div>
-
-              {/* Footer */}
-              {lista.length > 5 && (
-                <Link
-                  href="/operaciones/equipo"
-                  className="flex items-center justify-center px-3 py-1.5 border-t border-[#131313] text-[10px] text-[#333] hover:text-[#B3985B] transition-colors"
-                >
-                  +{lista.length - 5} más
-                </Link>
-              )}
             </div>
           );
         })}

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 interface TareaEquipo {
@@ -81,24 +81,26 @@ function fechaChip(fecha: string | null): { label: string; cls: string } | null 
 
 // ── Componente tarea ──────────────────────────────────────────────────────────
 
-function TareaCard({ t, showArea }: { t: TareaEquipo; showArea?: boolean }) {
-  const chip    = fechaChip(t.fecha);
-  const overdue = isOverdue(t.fecha);
-  const prioBadge = PRIO_BADGE[t.prioridad];
+function TareaCard({ t, showArea, onDateChange }: {
+  t: TareaEquipo;
+  showArea?: boolean;
+  onDateChange?: (id: string, fecha: string) => void;
+}) {
+  const chip       = fechaChip(t.fecha);
+  const overdue    = isOverdue(t.fecha);
+  const prioBadge  = PRIO_BADGE[t.prioridad];
+  const dateRef    = useRef<HTMLInputElement>(null);
 
   return (
-    <Link
-      href={`/operaciones?open=${t.id}`}
-      className={`flex items-stretch gap-0 hover:bg-[#141414] transition-colors group rounded-lg overflow-hidden border ${overdue ? "border-red-900/20" : "border-transparent hover:border-[#1e1e1e]"}`}
-    >
+    <div className={`flex items-stretch gap-0 rounded-lg overflow-hidden border ${overdue ? "border-red-900/20" : "border-transparent hover:border-[#1e1e1e]"} hover:bg-[#141414] transition-colors group`}>
       {/* Barra de prioridad */}
       <div className={`w-1 shrink-0 rounded-l-lg ${PRIO_BAR[t.prioridad] ?? "bg-[#2a2a2a]"}`} />
 
       <div className="flex-1 min-w-0 px-3 py-2.5">
-        {/* Título */}
-        <p className="text-[12px] text-white leading-snug font-medium group-hover:text-[#ddd] truncate">
+        {/* Título — navega a la tarea */}
+        <Link href={`/operaciones?open=${t.id}`} className="text-[12px] text-white leading-snug font-medium group-hover:text-[#ddd] truncate block">
           {t.titulo}
-        </p>
+        </Link>
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -113,11 +115,37 @@ function TareaCard({ t, showArea }: { t: TareaEquipo; showArea?: boolean }) {
               <span className="truncate max-w-[120px]">{t.proyectoTarea.nombre}</span>
             </span>
           )}
-          {chip && (
-            <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${chip.cls}`}>
-              {chip.label}
-            </span>
-          )}
+          {/* Chip de fecha — click abre calendario */}
+          {chip ? (
+            <button
+              onClick={() => dateRef.current?.showPicker?.()}
+              title="Reagendar"
+              className={`relative text-[9px] px-1.5 py-0.5 rounded font-semibold cursor-pointer hover:brightness-125 transition-all ${chip.cls}`}
+            >
+              📅 {chip.label}
+              <input
+                ref={dateRef}
+                type="date"
+                defaultValue={t.fecha?.substring(0, 10) ?? ""}
+                onChange={e => { if (e.target.value) onDateChange?.(t.id, e.target.value); }}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+            </button>
+          ) : onDateChange ? (
+            <button
+              onClick={() => dateRef.current?.showPicker?.()}
+              title="Asignar fecha"
+              className="relative text-[9px] px-1.5 py-0.5 rounded font-semibold text-[#333] hover:text-[#555] transition-all"
+            >
+              + fecha
+              <input
+                ref={dateRef}
+                type="date"
+                onChange={e => { if (e.target.value) onDateChange?.(t.id, e.target.value); }}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              />
+            </button>
+          ) : null}
           {t._count.subtareas > 0 && (
             <span className="text-[10px] text-[#3a3a3a]">◫ {t._count.subtareas}</span>
           )}
@@ -135,7 +163,7 @@ function TareaCard({ t, showArea }: { t: TareaEquipo; showArea?: boolean }) {
           </span>
         </div>
       )}
-    </Link>
+    </div>
   );
 }
 
@@ -165,6 +193,15 @@ export default function EquipoPage() {
       .then(d => { setTareas(d.tareas ?? []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [filtroFecha]);
+
+  async function handleDateChange(id: string, fecha: string) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha }),
+    });
+    setTareas(prev => prev.map(t => t.id === id ? { ...t, fecha } : t));
+  }
 
   // Filtros
   const tareasFiltradas = tareas.filter(t =>
@@ -394,7 +431,7 @@ export default function EquipoPage() {
                 {/* ── Lista de tareas ─────────────────────────────────────── */}
                 <div className="flex-1 divide-y divide-[#131313] px-1 py-1">
                   {sorted.map(t => (
-                    <TareaCard key={t.id} t={t} showArea={showAreaChip} />
+                    <TareaCard key={t.id} t={t} showArea={showAreaChip} onDateChange={handleDateChange} />
                   ))}
                 </div>
               </div>
