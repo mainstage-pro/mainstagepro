@@ -47,6 +47,7 @@ interface CxPItem {
   tecnico: { id: string; nombre: string; celular: string | null } | null;
   proveedor: { id: string; nombre: string; telefono: string | null } | null;
   empresa: { id: string; nombre: string; telefono: string | null } | null;
+  socio: { id: string; nombre: string; email: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
 }
 
@@ -166,6 +167,7 @@ interface SemanaOpPago {
   id: string; concepto: string; monto: number; estado: string; tipoAcreedor: string;
   tecnico: { nombre: string; celular: string | null } | null;
   proveedor: { nombre: string; telefono: string | null } | null;
+  socio: { nombre: string; email: string | null } | null;
   proyecto: { nombre: string; numeroProyecto: string } | null;
 }
 interface SemanaOpLocal {
@@ -370,7 +372,7 @@ export default function CobrosPagosPage() {
     const cxcItem = item as CxCItem;
     const nombre = tipo === "cobro"
       ? (cxcItem.empresa?.nombre ?? cxcItem.cliente?.nombre ?? "Cliente")
-      : ((item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
+      : ((item as CxPItem).socio?.nombre ?? (item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
     setModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, nombre });
     setModalMonto(String(item.monto));
     setModalNotas("");
@@ -476,10 +478,11 @@ export default function CobrosPagosPage() {
     const pendientes = cxp.filter(c => c.estado !== "LIQUIDADO");
     const gruposMap: Record<string, { nombre: string; tipo: string; items: CxPItem[] }> = {};
     for (const c of pendientes) {
-      const key = c.tecnico?.id ?? c.proveedor?.id ?? `otro:${c.concepto}`;
+      const key = c.socio?.id ?? c.tecnico?.id ?? c.proveedor?.id ?? `otro:${c.concepto}`;
       if (!gruposMap[key]) {
-        const nombre = c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.concepto;
-        const tipo = c.tipoAcreedor === "TECNICO" ? "Técnico"
+        const nombre = c.socio?.nombre ?? c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.concepto;
+        const tipo = c.tipoAcreedor === "SOCIO" ? "Socio"
+          : c.tipoAcreedor === "TECNICO" ? "Técnico"
           : c.tipoAcreedor === "PERSONAL_INTERNO" ? "Nómina"
           : c.tipoAcreedor === "PROVEEDOR" ? "Proveedor"
           : "Otro";
@@ -636,7 +639,7 @@ export default function CobrosPagosPage() {
                         <div key={grupo.label}>
                           <p className="px-4 py-2 text-[10px] text-gray-600 uppercase tracking-wider font-semibold bg-[#0d0d0d]">{grupo.label}</p>
                           {grupo.items.map(p => {
-                            const nombre = p.tecnico?.nombre ?? p.proveedor?.nombre ?? "Sin nombre";
+                            const nombre = p.socio?.nombre ?? p.tecnico?.nombre ?? p.proveedor?.nombre ?? "Sin nombre";
                             const tel = p.tecnico?.celular ?? p.proveedor?.telefono ?? null;
                             return (
                               <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3 border-t border-[#1a1a1a]">
@@ -889,7 +892,7 @@ export default function CobrosPagosPage() {
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
           ) : cxpList.map(c => {
-            const beneficiario = c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
+            const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
               <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>

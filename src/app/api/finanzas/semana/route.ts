@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     include: {
       tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
       proveedor: { select: { id: true, nombre: true, telefono: true } },
+      socio: { select: { id: true, nombre: true, email: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true, cliente: { select: { nombre: true } } } },
     },
     orderBy: [{ fechaCompromiso: "asc" }, { tipoAcreedor: "asc" }],

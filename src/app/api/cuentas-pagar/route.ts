@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
     proveedorId,
     tecnicoId,
     empresaId,
+    socioId,
     proyectoId,
   } = body;
 
@@ -23,9 +24,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
+  const resolvedTipo = empresaId ? "EMPRESA" : socioId ? "SOCIO" : tipoAcreedor;
   const cxp = await prisma.cuentaPagar.create({
     data: {
-      tipoAcreedor: empresaId ? "EMPRESA" : tipoAcreedor,
+      tipoAcreedor: resolvedTipo,
       concepto,
       monto: parseFloat(monto),
       fechaCompromiso: new Date(fechaCompromiso),
@@ -34,6 +36,7 @@ export async function POST(req: NextRequest) {
       proveedorId: proveedorId || null,
       tecnicoId: tecnicoId || null,
       empresaId: empresaId || null,
+      socioId: socioId || null,
       proyectoId: proyectoId || null,
     },
   });
@@ -50,6 +53,7 @@ export async function GET() {
       tecnico: { select: { id: true, nombre: true, celular: true } },
       proveedor: { select: { id: true, nombre: true, telefono: true } },
       empresa: { select: { id: true, nombre: true, telefono: true } },
+      socio: { select: { id: true, nombre: true, email: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
     },
     orderBy: { fechaCompromiso: "asc" },

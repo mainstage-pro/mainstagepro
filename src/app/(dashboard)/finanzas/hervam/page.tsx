@@ -6,6 +6,7 @@ import { useConfirm } from "@/components/Confirm";
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
   id: string;
+  socioId: string | null;
   valorTotalActivos: number;
   tasaAnualRendimiento: number;
   usarSumaActivos: boolean;
@@ -22,6 +23,7 @@ type Config = {
 
 type ConfigData = {
   config: Config;
+  socio: { id: string; nombre: string } | null;
   valorEfectivo: number;
   montoFijoMensual: number;
   pisoAbsolutoPeso: number;
@@ -189,7 +191,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
   configData: ConfigData; pagos: Pago[]; activos: Activo[]; onRefresh: () => void;
 }) {
   const confirm = useConfirm();
-  const { config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso } = configData;
+  const { config, socio, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso } = configData;
   const now = new Date();
   const mesActual = now.getMonth() + 1;
   const anioActual = now.getFullYear();
@@ -293,7 +295,8 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipoAcreedor: "OTRO",
+          tipoAcreedor: socio ? "SOCIO" : "OTRO",
+          ...(socio ? { socioId: socio.id } : {}),
           concepto: `Renta HERVAM · ${MESES[mesActual-1]} ${anioActual}`,
           monto: data.pago.montoAcordado,
           fechaCompromiso: fechaComp,

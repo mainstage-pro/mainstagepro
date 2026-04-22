@@ -857,13 +857,15 @@ model CuentaCobrar {
 
 model CuentaPagar {
   id              String   @id @default(cuid())
-  tipoAcreedor    String   // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO | EMPRESA
+  tipoAcreedor    String   // PROVEEDOR | TECNICO | PERSONAL_INTERNO | OTRO | EMPRESA | SOCIO
   tecnicoId       String?
   tecnico         Tecnico? @relation(fields: [tecnicoId], references: [id])
   proveedorId     String?
   proveedor       Proveedor? @relation(fields: [proveedorId], references: [id])
   empresaId       String?
   empresa         Empresa? @relation(fields: [empresaId], references: [id])
+  socioId         String?
+  socio           Socio? @relation(fields: [socioId], references: [id])
   proyectoId      String?
   proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
   concepto        String
@@ -1978,6 +1980,8 @@ model HervamActivo {
 
 model HervamConfig {
   id                   String   @id @default(cuid())
+  socioId              String?
+  socio                Socio?   @relation(fields: [socioId], references: [id])
   // Valuación
   valorTotalActivos    Float    @default(5000000)
   tasaAnualRendimiento Float    @default(15)
@@ -2041,9 +2045,11 @@ model Socio {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  activos    SocioActivo[]
-  reportes   SocioReporte[]
-  checklist  SocioRequisitoItem[]
+  activos      SocioActivo[]
+  reportes     SocioReporte[]
+  checklist    SocioRequisitoItem[]
+  cuentasPagar CuentaPagar[]
+  hervamConfig HervamConfig[]
 
   @@map("socios")
 }
