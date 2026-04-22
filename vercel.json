@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/reporte-semanal",
       "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron/hervam-mensual",
+      "schedule": "0 14 1 * *"
     }
   ]
 }
