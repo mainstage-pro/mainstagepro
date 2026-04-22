@@ -29,10 +29,11 @@ function StatCard({ label, value, sub, color = "text-white", href }: {
 
 export default async function DashboardDireccionPage() {
   const session = await getSession();
-  const ahora     = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
-  const finDeHoy  = new Date(ahora); finDeHoy.setHours(23, 59, 59, 999);
+  const ahora       = new Date();
+  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioMes   = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const finMes      = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
+  const finDeHoy    = new Date(ahora); finDeHoy.setHours(23, 59, 59, 999);
 
   // ── Datos operativos (paralelo) ──────────────────────────────────────────
   const [
@@ -81,7 +82,7 @@ export default async function DashboardDireccionPage() {
 
     // CxC vencidas
     prisma.cuentaCobrar.count({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: ahora } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
 
     // Tratos activos en pipeline

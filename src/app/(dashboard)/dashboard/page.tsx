@@ -28,6 +28,7 @@ export default async function DashboardPage() {
   }
 
   const ahora = new Date();
+  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const en7dias   = new Date(ahora.getTime() + 7 * 86400000);
@@ -125,7 +126,7 @@ export default async function DashboardPage() {
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
     prisma.cuentaCobrar.count({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: ahora } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },

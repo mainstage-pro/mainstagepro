@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const meses = parseInt(req.nextUrl.searchParams.get("meses") ?? "6");
-  const ahora = new Date();
+  const ahora       = new Date();
+  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
   const desde = new Date(ahora.getFullYear(), ahora.getMonth() - (meses - 1), 1);
 
   const [movimientos, cxc, cxp, cuentas] = await Promise.all([
@@ -62,8 +63,8 @@ export async function GET(req: NextRequest) {
 
   const cxcTotal = cxc.reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxpTotal = cxp.reduce((s, c) => s + c.monto, 0);
-  const cxcVencido = cxc.filter(c => new Date(c.fechaCompromiso) < ahora).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
-  const cxpVencido = cxp.filter(c => new Date(c.fechaCompromiso) < ahora).reduce((s, c) => s + c.monto, 0);
+  const cxcVencido = cxc.filter(c => new Date(c.fechaCompromiso) < inicioDeHoy).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxpVencido = cxp.filter(c => new Date(c.fechaCompromiso) < inicioDeHoy).reduce((s, c) => s + c.monto, 0);
 
   return NextResponse.json({
     kpis: {

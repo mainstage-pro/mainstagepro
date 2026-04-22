@@ -6,7 +6,8 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const ahora = new Date();
+  const ahora       = new Date();
+  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
   const en30 = new Date(ahora.getTime() + 30 * 86400000);
   const en7  = new Date(ahora.getTime() + 7  * 86400000);
   const en14 = new Date(ahora.getTime() + 14 * 86400000);
@@ -78,7 +79,7 @@ export async function GET() {
   }
 
   // CxC vencidas
-  const cxcVencidas = cxcPendientes.filter(c => new Date(c.fechaCompromiso) < ahora);
+  const cxcVencidas = cxcPendientes.filter(c => new Date(c.fechaCompromiso) < inicioDeHoy);
   if (cxcVencidas.length > 0) {
     alertas.push({
       tipo: "cxc_vencida",

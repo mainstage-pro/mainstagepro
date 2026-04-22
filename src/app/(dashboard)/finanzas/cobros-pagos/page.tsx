@@ -335,6 +335,7 @@ export default function CobrosPagosPage() {
   }
 
   const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
   // Apply overdue status locally
   const enrichCxC = (c: CxCItem) => ({

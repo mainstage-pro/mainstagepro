@@ -90,10 +90,11 @@ export async function generarReporteData(
   fechaInicio: Date,
   fechaFin: Date
 ): Promise<ReporteData> {
-  const ahora = new Date();
-  const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
-  const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
-  const en7dias   = new Date(ahora.getTime() + 7 * 86400000);
+  const ahora       = new Date();
+  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioMes   = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const finMes      = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
+  const en7dias     = new Date(ahora.getTime() + 7 * 86400000);
   const en30dias  = new Date(ahora.getTime() + 30 * 86400000);
   const mes       = ahora.getMonth() + 1;
   const anio      = ahora.getFullYear();
@@ -165,7 +166,7 @@ export async function generarReporteData(
       where: { fecha: { gte: inicioMes, lte: finMes } },
     }),
     prisma.cuentaCobrar.aggregate({ _sum: { monto: true }, where: { estado: { in: ["PENDIENTE","PARCIAL"] } } }),
-    prisma.cuentaCobrar.count({ where: { estado: { in: ["PENDIENTE","PARCIAL"] }, fechaCompromiso: { lt: ahora } } }),
+    prisma.cuentaCobrar.count({ where: { estado: { in: ["PENDIENTE","PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } } }),
     prisma.cuentaPagar.aggregate({ _sum: { monto: true }, where: { estado: { in: ["PENDIENTE","PARCIAL"] } } }),
     prisma.cuentaPagar.count({ where: { estado: { in: ["PENDIENTE","PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } } }),
     prisma.cuentaBancaria.findMany({

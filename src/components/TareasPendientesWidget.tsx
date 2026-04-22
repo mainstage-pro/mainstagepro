@@ -47,7 +47,7 @@ function fechaStr(fecha: Date | null): string | null {
 
 function isOverdue(fecha: Date | null) {
   if (!fecha) return false;
-  return fecha.toISOString().substring(0, 10) < todayISO();
+  return fecha.toISOString().substring(0, 10) < todayISO(); // vencida = dia anterior a hoy
 }
 
 type TareaRow = {

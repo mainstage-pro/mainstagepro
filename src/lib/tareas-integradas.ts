@@ -39,8 +39,9 @@ function sev(dias: number): SeveridadTarea {
 // Función principal — agrega una query más aquí para integrar un nuevo módulo
 // ─────────────────────────────────────────────────────────────────────────────
 export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
-  const now  = new Date();
-  const en30 = new Date(now.getTime() + 30 * 86400000);
+  const now         = new Date();
+  const inicioDeHoy = new Date(now); inicioDeHoy.setHours(0, 0, 0, 0);
+  const en30        = new Date(now.getTime() + 30 * 86400000);
 
   const [tratos, cxcs, cxps, proyectos, equipos] = await Promise.all([
 
@@ -61,7 +62,7 @@ export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
 
     // 2. CxC vencidas
     prisma.cuentaCobrar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: now } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
       select: {
         id: true, concepto: true, monto: true, fechaCompromiso: true,
         cliente: { select: { nombre: true } },
@@ -73,7 +74,7 @@ export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
 
     // 3. CxP vencidas
     prisma.cuentaPagar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] }, fechaCompromiso: { lt: now } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] }, fechaCompromiso: { lt: inicioDeHoy } },
       select: {
         id: true, concepto: true, monto: true, fechaCompromiso: true, tipoAcreedor: true,
         tecnico:  { select: { nombre: true } },

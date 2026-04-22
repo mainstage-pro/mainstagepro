@@ -91,7 +91,8 @@ function lunesDeSemana(isoDate: string): string {
   return d.toISOString().slice(0, 10);
 }
 function esVencido(item: CxP) {
-  return item.estado !== "LIQUIDADO" && new Date(item.fechaCompromiso) < new Date();
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  return item.estado !== "LIQUIDADO" && new Date(item.fechaCompromiso) < hoy;
 }
 
 const WA_ICON = (
@@ -1089,7 +1090,8 @@ export default function PagosSemanaPage() {
                     ) : (
                       <div className="divide-y divide-[#1a1a1a]">
                         {sem.cobros.map(c => {
-                          const vencido = c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < new Date();
+                          const _hoy = new Date(); _hoy.setHours(0,0,0,0);
+                          const vencido = c.estado !== "LIQUIDADO" && new Date(c.fechaCompromiso) < _hoy;
                           return (
                             <div key={c.id} className={`px-4 py-2.5 ${c.estado === "LIQUIDADO" ? "opacity-40" : ""}`}>
                               <div className="flex items-start gap-2">
