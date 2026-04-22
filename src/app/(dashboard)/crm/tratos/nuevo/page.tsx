@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Cliente {
@@ -63,6 +63,9 @@ export default function NuevoTratoPage() {
   const [tipoProspecto, setTipoProspecto] = useState<"ACTIVO"|"NURTURING"|"">("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clienteDropdown, setClienteDropdown] = useState(false);
+  const clienteInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -207,11 +210,35 @@ export default function NuevoTratoPage() {
               ))}
             </div>
             {modoCliente==="existente" ? (
-              <div>
-                <select value={s1.clienteId} onChange={e=>{const c=clientes.find(cl=>cl.id===e.target.value);setS1(p=>({...p,clienteId:e.target.value,clasificacionOriginal:c?.clasificacion??"PROSPECTO"}));}} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Selecciona —</option>
-                  {clientes.map(c=><option key={c.id} value={c.id}>{c.nombre}{c.empresa?` · ${c.empresa}`:""}</option>)}
-                </select>
+              <div className="relative">
+                <input
+                  ref={clienteInputRef}
+                  type="text"
+                  value={clienteQuery}
+                  onChange={e=>{setClienteQuery(e.target.value);setClienteDropdown(true);if(!e.target.value){setS1(p=>({...p,clienteId:"",clasificacionOriginal:"PROSPECTO"}));}}}
+                  onFocus={()=>setClienteDropdown(true)}
+                  onBlur={()=>setTimeout(()=>setClienteDropdown(false),150)}
+                  placeholder="Buscar cliente por nombre o empresa..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#555]"
+                />
+                {clienteDropdown && (
+                  <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                    {clientes.filter(c=>{
+                      const q=clienteQuery.toLowerCase();
+                      return !q || c.nombre.toLowerCase().includes(q) || (c.empresa??'').toLowerCase().includes(q);
+                    }).length === 0 ? (
+                      <p className="px-3 py-2 text-xs text-[#555]">Sin resultados</p>
+                    ) : clientes.filter(c=>{
+                      const q=clienteQuery.toLowerCase();
+                      return !q || c.nombre.toLowerCase().includes(q) || (c.empresa??'').toLowerCase().includes(q);
+                    }).map(c=>(
+                      <button key={c.id} type="button" onMouseDown={()=>{setS1(p=>({...p,clienteId:c.id,clasificacionOriginal:c.clasificacion??"PROSPECTO"}));setClienteQuery(c.nombre+(c.empresa?` · ${c.empresa}`:""));setClienteDropdown(false);}} className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors">
+                        <span className="font-medium">{c.nombre}</span>
+                        {c.empresa && <span className="text-[#666] ml-1.5">· {c.empresa}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {clienteSel&&<p className="text-xs text-gray-500 mt-1.5">Clasificación: <span className="text-[#B3985B] font-medium">{clienteSel.clasificacion}</span>{clienteSel.telefono&&<span className="ml-2 text-gray-600">· {clienteSel.telefono}</span>}</p>}
               </div>
             ) : (
