@@ -1286,7 +1286,16 @@ export default function CobrosPagosPage() {
                 <>
                   {/* ── Técnico freelancer ── */}
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Técnico freelancer</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-500">Técnico freelancer</label>
+                      {!nuevoForm.tecnicoId && (
+                        <button type="button"
+                          onClick={() => { setShowNuevoTecnico(v => !v); setDropdownOpen(null); }}
+                          className="text-[10px] text-[#B3985B] hover:text-white transition-colors">
+                          {showNuevoTecnico ? "Cancelar" : "+ Nuevo técnico"}
+                        </button>
+                      )}
+                    </div>
                     {nuevoForm.tecnicoId ? (
                       <div className="flex items-center gap-2 bg-[#1a1a1a] border border-[#B3985B]/40 rounded-lg px-3 py-2">
                         <span className="text-[#B3985B] text-sm flex-1 truncate">✓ {tecnicoQuery}</span>
