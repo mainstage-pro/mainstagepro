@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Mainstage Pro — Reset</title>
+  <style>
+    body { background:#0a0a0a; color:#fff; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0; text-align:center; }
+    .box { max-width:340px; }
+    h2 { color:#B3985B; margin-bottom:8px; }
+    p  { color:#6b7280; font-size:14px; }
+    .dot { display:inline-block; animation:pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Reiniciando la app<span class="dot">...</span></h2>
+    <p>Limpiando caché. Te redirigimos en un momento.</p>
+  </div>
+  <script>
+    async function reset() {
+      try {
+        // Unregister all service workers
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        // Delete all caches
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        // Clear storage
+        try { localStorage.clear(); } catch(e) {}
+        try { sessionStorage.clear(); } catch(e) {}
+      } catch(e) {
+        console.error(e);
+      }
+      window.location.replace('/login');
+    }
+    reset();
+  </script>
+</body>
+</html>
