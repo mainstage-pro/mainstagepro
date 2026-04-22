@@ -29,7 +29,8 @@ const PRIO_LABEL: Record<string, string> = {
 };
 
 function todayStr() {
-  return new Date().toISOString().substring(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 function isOverdue(fecha: string | null) {
@@ -44,11 +45,13 @@ function isToday(fecha: string | null) {
 
 function formatDate(fecha: string | null) {
   if (!fecha) return null;
-  const d = new Date(fecha.substring(0, 10) + "T00:00:00");
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const d   = new Date(fecha.substring(0, 10) + "T00:00:00");
+  if (d < hoy)  return d.toLocaleDateString("es-MX", { month: "short", day: "numeric" });
   if (isToday(fecha)) return "Hoy";
-  const diff = Math.round((d.getTime() - Date.now()) / 86400000);
+  const diff = Math.round((d.getTime() - hoy.getTime()) / 86400000);
   if (diff === 1) return "Mañana";
-  if (diff > 1 && diff <= 7) return d.toLocaleDateString("es-MX", { weekday: "short" });
+  if (diff <= 7)  return d.toLocaleDateString("es-MX", { weekday: "short" });
   return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
