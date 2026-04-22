@@ -81,7 +81,7 @@ export default function MarketingCalendarioPage() {
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vista, setVista] = useState<Vista>("calendario");
+  const [vista, setVista] = useState<Vista>("parrilla");
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
   const [showNueva, setShowNueva] = useState(false);
