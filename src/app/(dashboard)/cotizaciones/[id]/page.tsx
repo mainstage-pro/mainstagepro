@@ -545,6 +545,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </svg>
             Presentación
           </a>
+          <Link href={`/contratos/${cot.trato.id}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Contrato
+          </Link>
           <button onClick={sharePdf} disabled={sharingPdf}
             className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
             {sharingPdf ? (
