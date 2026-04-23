@@ -3771,7 +3771,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ────── TAB: TAREAS ────── */}
       {tab === "tareas" && (
-        <ProyectoTareas proyectoId={proyecto.id} />
+        <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
       )}
 
       {/* ────── TAB: FINANZAS ────── */}
