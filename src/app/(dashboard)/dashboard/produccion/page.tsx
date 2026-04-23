@@ -75,8 +75,9 @@ export default async function DashboardProduccionPage() {
   const estadosMap = Object.fromEntries(proyectosPorEstado.map(p => [p.estado, p._count._all]));
   const activos = (estadosMap.PLANEACION ?? 0) + (estadosMap.CONFIRMADO ?? 0) + (estadosMap.EN_CURSO ?? 0);
 
+  const hoyStrProd = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const diasHasta = proximoEvento?.fechaEvento
-    ? Math.max(0, Math.floor((new Date(proximoEvento.fechaEvento).getTime() - ahora.getTime()) / 86400000))
+    ? Math.max(0, Math.round((new Date(new Date(proximoEvento.fechaEvento).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" })).getTime() - new Date(hoyStrProd).getTime()) / 86400000))
     : null;
 
   const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" }) : "—";
@@ -134,7 +135,8 @@ export default async function DashboardProduccionPage() {
                 const confirmados = p.personal.filter(x => x.confirmado).length;
                 const checkOk = p.checklist.filter(x => x.completado).length;
                 const checkTotal = p.checklist.length;
-                const dias = Math.max(0, Math.floor((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000));
+                const evStrProd = new Date(p.fechaEvento).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const dias = Math.max(0, Math.round((new Date(evStrProd).getTime() - new Date(hoyStrProd).getTime()) / 86400000));
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`} className="contents">
                     <tr className="hover:bg-[#1a1a1a] transition-colors">

@@ -1691,7 +1691,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const checkDone = checkOp.filter(c => c.completado).length;
   const checkPct = checkTotal > 0 ? (checkDone / checkTotal) * 100 : 0;
   const personalConfirmado = proyecto.personal.filter(p => p.confirmado).length;
-  const diasRestantes = Math.ceil((new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").getTime() - Date.now()) / 86400000);
+  const hoyStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const eventoStr = proyecto.fechaEvento.substring(0, 10);
+  const diasRestantes = Math.round((new Date(eventoStr).getTime() - new Date(hoyStr).getTime()) / 86400000);
   const totalCxC = proyecto.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
 
