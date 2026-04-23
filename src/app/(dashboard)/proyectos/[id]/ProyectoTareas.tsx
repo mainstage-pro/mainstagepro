@@ -854,8 +854,6 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
   const [usuarios, setUsuarios]         = useState<Usuario[]>([]);
   const [modalOpen, setModalOpen]       = useState(false);
   const [modalTareaId, setModalTareaId] = useState<string | null>(null);
-  const [quickInput, setQuickInput]     = useState("");
-  const [addingQuick, setAddingQuick]   = useState(false);
   const [filterEstado, setFilterEstado] = useState<string>("activas");
 
   const load = useCallback(async () => {
@@ -889,25 +887,6 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
     if (!confirm("¿Eliminar esta tarea?")) return;
     setTareas(prev => prev.filter(t => t.id !== id));
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
-  }
-
-  async function quickAdd(e: React.KeyboardEvent) {
-    if (e.key !== "Enter" || !quickInput.trim()) return;
-    setAddingQuick(true);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: quickInput.trim(), prioridad: "MEDIA", area: "PRODUCCION" }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTareas(prev => [...prev, data.tarea]);
-        setQuickInput("");
-      }
-    } finally {
-      setAddingQuick(false);
-    }
   }
 
   function openNew() {
@@ -989,20 +968,6 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
             </div>
           </div>
         )}
-      </div>
-
-      {/* ── Quick add ── */}
-      <div className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-2.5">
-        <span className="text-gray-600 text-sm">+</span>
-        <input
-          className="flex-1 bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none"
-          placeholder="Escribe una tarea rápida y presiona Enter…"
-          value={quickInput}
-          onChange={e => setQuickInput(e.target.value)}
-          onKeyDown={quickAdd}
-          disabled={addingQuick}
-        />
-        {addingQuick && <span className="text-[10px] text-gray-600 animate-pulse">Guardando…</span>}
       </div>
 
       {/* ── Filters ── */}
