@@ -18,7 +18,7 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
     paddingTop: 36,
-    paddingBottom: 90,
+    paddingBottom: 100,
     paddingHorizontal: 0,
     fontSize: 9,
     color: BLACK,
@@ -683,7 +683,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
             )}
 
             {/* Resumen financiero */}
-            <View style={s.resumenBloque}>
+            <View style={s.resumenBloque} wrap={false}>
               <View style={s.resumenTabla}>
                 {totalBruto > 0 && (
                   <View style={s.resFila}>
@@ -741,7 +741,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <SeccionTitulo num="2" titulo="Precio, Anticipo, Saldo y Cancelaciones" />
 
         {/* Bloque anticipo / saldo */}
-        <View style={s.pagoBloque}>
+        <View style={s.pagoBloque} wrap={false}>
           <View style={s.pagoItem}>
             <Text style={s.pagoLabel}>MONTO TOTAL</Text>
             <Text style={s.pagoMonto}>{fmtMXN(granTotal)}</Text>
@@ -852,7 +852,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         </View>
 
         {/* Firmas */}
-        <View style={s.firmasBloque}>
+        <View style={s.firmasBloque} wrap={false}>
           {/* Cliente */}
           <View style={s.firmaCol}>
             <Text style={s.firmaRol}>El Cliente</Text>
@@ -879,7 +879,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         </View>
 
         {/* Nota vigencia */}
-        <View style={s.nota}>
+        <View style={s.nota} wrap={false}>
           <Text style={s.notaTitulo}>NOTA IMPORTANTE</Text>
           <Text style={s.notaTexto}>
             Este contrato es válido únicamente con la firma autógrafa de ambas partes y el pago del anticipo correspondiente. La cotización de referencia ({cotizacion?.numeroCotizacion ?? "—"}) forma parte integral del mismo.

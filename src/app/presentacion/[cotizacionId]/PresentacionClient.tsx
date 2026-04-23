@@ -785,11 +785,11 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
               {tradeConfirmado ? (
                 <>Colaboración activada.<br /><span className="text-[#B3985B]">Tu descuento ya está incluido.</span></>
               ) : (
-                <>Colabora y ahorra.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></>
+                <>Colabora con Mainstage.<br /><span className="text-[#B3985B]">Visibilidad para nosotros, ahorro para ti.</span></>
               )}
             </h2>
             <p className="text-white/30 text-base leading-relaxed max-w-xl mx-auto">
-              A cambio de visibilidad de marca y contenido en tu evento, ofrecemos un descuento directo en la propuesta.
+              Te ofrecemos un descuento a cambio de visibilidad de marca en tu evento. Tú reduces tu inversión; nosotros ganamos presencia con tu audiencia.
             </p>
           </R>
 
