@@ -179,7 +179,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
             />
             {plan.fechaIngreso && (
               <p className="text-gray-600 text-xs mt-1">
-                Ingreso: {new Date(plan.fechaIngreso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                Ingreso: {(() => { const [y,m,d] = plan.fechaIngreso.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"long",year:"numeric"}); })()}
               </p>
             )}
           </div>

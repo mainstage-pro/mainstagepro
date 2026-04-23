@@ -39,7 +39,8 @@ function fmt(n: number) {
 }
 function fmtDate(s?: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
 }
 function getDayOfWeek(s?: string | null) {
   if (!s) return null;

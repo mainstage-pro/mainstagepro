@@ -26,7 +26,11 @@ const DEPARTAMENTOS = ["GENERAL", "BODEGA", "COORDINACION", "PRODUCCION", "ADMIN
 const TIPOS_PERIODO = ["MENSUAL", "QUINCENAL", "SEMANAL", "POR_EVENTO"];
 
 function fmt(n: number) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n); }
-function fmtDate(s: string | null) { return s ? new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—"; }
+function fmtDate(s: string | null) {
+  if (!s) return "—";
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
 
 export default function PersonalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);

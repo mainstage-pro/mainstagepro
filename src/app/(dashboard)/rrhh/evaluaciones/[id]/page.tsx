@@ -82,7 +82,8 @@ export default function EvaluacionDetailPage() {
   if (!evaluacion) return <div className="p-6 text-gray-600 text-sm">Evaluación no encontrada.</div>;
 
   const e = evaluacion;
-  const fecha = new Date(e.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const [_fy, _fm, _fd] = e.fecha.substring(0, 10).split("-").map(Number);
+  const fecha = new Date(_fy, _fm - 1, _fd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">

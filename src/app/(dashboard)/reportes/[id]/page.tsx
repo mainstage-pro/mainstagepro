@@ -19,7 +19,8 @@ type Reporte = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function ScoreBar({ pts, max, label, color }: { pts: number; max: number; label: string; color: string }) {

@@ -74,8 +74,11 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
 
   if (!proyecto) notFound();
 
-  const fmtDate = (d: Date | null) =>
-    d ? new Date(d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" }) : "—";
+  const fmtDate = (d: Date | null) => {
+    if (!d) return "—";
+    const [y, m, day] = d.toISOString().substring(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, day).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  };
 
   // Group equipment by category
   const grupos: Record<string, typeof proyecto.equipos> = {};

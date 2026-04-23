@@ -291,7 +291,7 @@ export default function NominaPage() {
                   <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate">{p.concepto ?? "—"}</td>
                   <td className="px-4 py-3 text-sm text-white font-medium">{fmt(p.monto)}</td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {p.fechaPago ? new Date(p.fechaPago).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : "—"}
+                    {p.fechaPago ? (() => { const [y,m,d] = p.fechaPago!.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"short"}); })() : "—"}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500 capitalize">{p.metodoPago?.toLowerCase() ?? "—"}</td>
                 </tr>

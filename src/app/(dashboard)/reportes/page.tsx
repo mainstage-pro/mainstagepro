@@ -47,8 +47,10 @@ export default function ReportesPage() {
     setGenerating(false);
   };
 
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const fmt = (iso: string) => {
+    const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  };
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto">

@@ -25,7 +25,8 @@ interface Movimiento {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);

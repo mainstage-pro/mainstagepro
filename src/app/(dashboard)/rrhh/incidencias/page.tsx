@@ -193,7 +193,7 @@ export default function IncidenciasPage() {
                   {i.aplicada && <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded">Aplicada</span>}
                 </div>
                 <p className="text-gray-500 text-xs mt-0.5">
-                  {new Date(i.fecha).toLocaleDateString("es-MX",{day:"numeric",month:"long"})}
+                  {(() => { const [y,m,d] = i.fecha.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"long"}); })()}
                   {i.descripcion && ` · ${i.descripcion}`}
                   {i.periodoNomina && ` · nómina ${i.periodoNomina}`}
                 </p>

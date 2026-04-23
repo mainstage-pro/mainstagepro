@@ -39,7 +39,8 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
