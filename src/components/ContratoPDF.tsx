@@ -269,9 +269,15 @@ const s = StyleSheet.create({
     color: GRAY,
     lineHeight: 1.5,
   },
+  clausulaTextoBlock: {
+    fontSize: 8,
+    color: GRAY,
+    lineHeight: 1.5,
+  },
   clausulaBold: {
     fontFamily: "Helvetica-Bold",
     color: BLACK,
+    lineHeight: 1.5,
   },
   // ── Firmas ───────────────────────────────────────────────────────────────────
   firmasBloque: {
@@ -594,7 +600,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 1. OBJETO Y DATOS DEL EVENTO ── */}
         <SeccionTitulo num="1" titulo="Objeto y Datos del Evento" />
         <View style={s.secBody}>
-          <Text style={{ ...s.clausulaTexto, marginBottom: 8 }}>
+          <Text style={{ ...s.clausulaTextoBlock, marginBottom: 8 }}>
             EL PROVEEDOR prestará servicios de{" "}
             <Text style={s.clausulaBold}>
               {TIPO_SERVICIO[trato.tipoServicio ?? ""] || "producción técnica y/o renta de equipo"}
@@ -806,7 +812,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 6. RETRASOS ── */}
         <SeccionTitulo num="6" titulo="Retrasos Imputables a Mainstage Producciones" />
         <View style={s.clausulaBloque}>
-          <Text style={{ ...s.clausulaTexto, paddingLeft: 0 }}>
+          <Text style={s.clausulaTextoBlock}>
             En caso de retraso imputable únicamente a EL PROVEEDOR, este compensará cumpliendo las horas pactadas siempre que lo permitan las políticas del venue y las condiciones de seguridad, sin otro tipo de penalización económica.
           </Text>
         </View>
@@ -821,21 +827,21 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
 
         <SeccionTitulo num="8" titulo="Fotografía y Medios" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             EL PROVEEDOR se reserva el derecho de documentar fotográfica y audiovisualmente el montaje y evento para portafolio y promoción institucional. Si EL CLIENTE desea restringir este derecho, deberá notificarlo por escrito antes de la firma del contrato.
           </Text>
         </View>
 
         <SeccionTitulo num="9" titulo="Caso Fortuito y Fuerza Mayor" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             Ninguna parte será responsable por incumplimiento derivado de desastres naturales, actos de autoridad, pandemia, huelgas o cualquier evento fuera del control razonable de las partes. Ambas acordarán de buena fe una solución que minimice perjuicios.
           </Text>
         </View>
 
         <SeccionTitulo num="10" titulo="Jurisdicción y Ley Aplicable" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             El presente contrato se rige por las leyes de los Estados Unidos Mexicanos. Las partes se someten a los tribunales competentes de la ciudad donde tenga lugar el evento o, en su defecto, a los de la Ciudad de Querétaro, renunciando a cualquier otro fuero.
           </Text>
         </View>
@@ -844,7 +850,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 11. ACEPTACIÓN Y FIRMAS ── */}
         <SeccionTitulo num="11" titulo="Aceptación" />
         <View style={s.secBody}>
-          <Text style={{ ...s.clausulaTexto, marginBottom: 4 }}>
+          <Text style={{ ...s.clausulaTextoBlock, marginBottom: 4 }}>
             Leído el presente contrato, las partes manifiestan su conformidad y lo aceptan como documento legalmente vinculante, firmándolo en{" "}
             <Text style={s.clausulaBold}>{trato.lugarEstimado || "_______________"}</Text>, el día{" "}
             <Text style={s.clausulaBold}>{hoy}</Text>.
