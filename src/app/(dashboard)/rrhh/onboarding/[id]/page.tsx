@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
@@ -170,12 +171,12 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
             )}
           </div>
           <div className="shrink-0 text-right">
-            <select value={plan.estado} onChange={e => cambiarEstado(e.target.value)}
-              className={`bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:border-[#B3985B]/50 ${ESTADO_COLORS[plan.estado] ?? "text-gray-400"}`}>
-              {ESTADO_OPTIONS.map(e => (
-                <option key={e} value={e}>{e.replace("_", " ")}</option>
-              ))}
-            </select>
+            <Combobox
+              value={plan.estado}
+              onChange={v => cambiarEstado(v)}
+              options={ESTADO_OPTIONS.map(e => ({ value: e, label: e.replace("_", " ") }))}
+              className={`bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm font-semibold focus:outline-none focus:border-[#B3985B]/50 ${ESTADO_COLORS[plan.estado] ?? "text-gray-400"}`}
+            />
             {plan.fechaIngreso && (
               <p className="text-gray-600 text-xs mt-1">
                 Ingreso: {new Date(plan.fechaIngreso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}

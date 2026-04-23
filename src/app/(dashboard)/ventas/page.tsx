@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonCards } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 interface Vendedor {
   id: string;
@@ -144,16 +145,12 @@ export default function VentasPage() {
       {session?.role === "ADMIN" && (
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">Ver pipeline de:</span>
-          <select
+          <Combobox
             value={vendedorSelId}
-            onChange={e => setVendedorSelId(e.target.value)}
+            onChange={v => setVendedorSelId(v)}
+            options={[{ value: "", label: "Todos los vendedores" }, ...vendedores.map(v => ({ value: v.id, label: v.name }))]}
             className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-          >
-            <option value="">Todos los vendedores</option>
-            {vendedores.map(v => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
+          />
           <Link
             href={`/ventas/reporte?mes=${mesActual}${vendedorSelId ? `&vendedorId=${vendedorSelId}` : ""}`}
             className="text-xs text-[#B3985B] hover:text-white transition-colors"

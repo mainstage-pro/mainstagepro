@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 interface Proveedor { id: string; nombre: string; empresa: string | null; telefono: string | null }
 interface Proyecto  { id: string; nombre: string; numeroProyecto: string }
@@ -159,19 +160,21 @@ export default function OrdenesCompraPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Proveedor *</label>
-              <select value={form.proveedorId} onChange={e => setForm(p => ({ ...p, proveedorId: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Seleccionar proveedor...</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` — ${p.empresa}` : ""}</option>)}
-              </select>
+              <Combobox
+                value={form.proveedorId}
+                onChange={v => setForm(p => ({ ...p, proveedorId: v }))}
+                options={[{ value: "", label: "Seleccionar proveedor..." }, ...proveedores.map(p => ({ value: p.id, label: `${p.nombre}${p.empresa ? ` — ${p.empresa}` : ""}` }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Proyecto vinculado</label>
-              <select value={form.proyectoId} onChange={e => setForm(p => ({ ...p, proyectoId: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Sin proyecto</option>
-                {proyectos.slice(0, 30).map(p => <option key={p.id} value={p.id}>{p.numeroProyecto} — {p.nombre}</option>)}
-              </select>
+              <Combobox
+                value={form.proyectoId}
+                onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
+                options={[{ value: "", label: "Sin proyecto" }, ...proyectos.slice(0, 30).map(p => ({ value: p.id, label: `${p.numeroProyecto} — ${p.nombre}` }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div className="md:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Descripción del servicio/producto *</label>

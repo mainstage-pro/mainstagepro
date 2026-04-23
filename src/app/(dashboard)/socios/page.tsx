@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 type Socio = {
   id: string;
@@ -138,11 +139,12 @@ export default function SociosPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tipo de persona</label>
-              <select value={form.tipo} onChange={(e) => set("tipo", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="FISICA">Persona Física</option>
-                <option value="MORAL">Persona Moral</option>
-              </select>
+              <Combobox
+                value={form.tipo}
+                onChange={v => set("tipo", v)}
+                options={[{ value: "FISICA", label: "Persona Física" }, { value: "MORAL", label: "Persona Moral" }]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>

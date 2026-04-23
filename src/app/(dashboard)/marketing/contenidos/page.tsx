@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 
 interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
@@ -208,10 +209,12 @@ export default function ContenidosPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Formato</label>
-              <select value={form.formato} onChange={e => setForm(p => ({ ...p, formato: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {FORMATOS.map(f => <option key={f} value={f}>{f}</option>)}
-              </select>
+              <Combobox
+                value={form.formato}
+                onChange={v => setForm(p => ({ ...p, formato: v }))}
+                options={FORMATOS.map(f => ({ value: f, label: f }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Día de publicación</label>
@@ -222,22 +225,21 @@ export default function ContenidosPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Semana del mes</label>
-              <select value={form.semanaDelMes} onChange={e => setForm(p => ({ ...p, semanaDelMes: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Todas las semanas</option>
-                <option value="1">1er semana</option>
-                <option value="2">2da semana</option>
-                <option value="3">3er semana</option>
-                <option value="4">4ta semana</option>
-              </select>
+              <Combobox
+                value={form.semanaDelMes}
+                onChange={v => setForm(p => ({ ...p, semanaDelMes: v }))}
+                options={[{ value: "", label: "Todas las semanas" }, { value: "1", label: "1er semana" }, { value: "2", label: "2da semana" }, { value: "3", label: "3er semana" }, { value: "4", label: "4ta semana" }]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Recurrencia</label>
-              <select value={form.recurrencia} onChange={e => setForm(p => ({ ...p, recurrencia: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Sin definir</option>
-                {RECURRENCIAS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
+              <Combobox
+                value={form.recurrencia}
+                onChange={v => setForm(p => ({ ...p, recurrencia: v }))}
+                options={[{ value: "", label: "Sin definir" }, ...RECURRENCIAS.map(r => ({ value: r, label: r }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Cantidad por mes</label>

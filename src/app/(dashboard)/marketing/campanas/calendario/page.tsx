@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -293,13 +294,12 @@ export default function CalendarioCampanasPage() {
           {!editId && (
             <div>
               <label className="block text-xs text-white/40 mb-1">Tipo de campaña</label>
-              <select value={form.tipoId} onChange={e => onTipoChange(e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Personalizada (sin tipo) —</option>
-                {tipos.filter(t => t.activo !== false).map(t => (
-                  <option key={t.id} value={t.id}>{t.nombre}</option>
-                ))}
-              </select>
+              <Combobox
+                value={form.tipoId}
+                onChange={v => onTipoChange(v)}
+                options={[{ value: "", label: "— Personalizada (sin tipo) —" }, ...tipos.filter(t => t.activo !== false).map(t => ({ value: t.id, label: t.nombre }))]}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
           )}
 
@@ -347,10 +347,12 @@ export default function CalendarioCampanasPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-white/40 mb-1">Estado</label>
-              <select value={form.estado} onChange={e => setForm(f => ({ ...f, estado: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                {ESTADOS.map(s => <option key={s} value={s}>{ESTADO_LABEL[s]}</option>)}
-              </select>
+              <Combobox
+                value={form.estado}
+                onChange={v => setForm(f => ({ ...f, estado: v }))}
+                options={ESTADOS.map(s => ({ value: s, label: ESTADO_LABEL[s] }))}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="block text-xs text-white/40 mb-1">Presupuesto (MXN)</label>

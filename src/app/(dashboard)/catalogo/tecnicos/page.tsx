@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
+import { Combobox } from "@/components/Combobox";
 
 type Rol = { id: string; nombre: string };
 type Tecnico = {
@@ -264,20 +265,21 @@ export default function TecnicosPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Rol / Especialidad</label>
-              <select value={form.rolId} onChange={e => set("rolId", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Sin rol definido</option>
-                {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-              </select>
+              <Combobox
+                value={form.rolId}
+                onChange={v => set("rolId", v)}
+                options={[{ value: "", label: "Sin rol definido" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Nivel</label>
-              <select value={form.nivel} onChange={e => set("nivel", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="AAA">AAA — Top</option>
-                <option value="AA">AA — Intermedio alto</option>
-                <option value="A">A — Intermedio</option>
-              </select>
+              <Combobox
+                value={form.nivel}
+                onChange={v => set("nivel", v)}
+                options={[{ value: "AAA", label: "AAA — Top" }, { value: "AA", label: "AA — Intermedio alto" }, { value: "A", label: "A — Intermedio" }]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Zona habitual</label>
@@ -329,24 +331,24 @@ export default function TecnicosPage() {
           <input value={search} onChange={e => setSearch(e.target.value)}
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
             placeholder="Buscar técnico..." />
-          <select value={filterNivel} onChange={e => setFilterNivel(e.target.value)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-            <option value="TODOS">Todos los niveles</option>
-            <option value="AAA">AAA</option>
-            <option value="AA">AA</option>
-            <option value="A">A</option>
-          </select>
-          <select value={filterRol} onChange={e => setFilterRol(e.target.value)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-            <option value="TODOS">Todos los roles</option>
-            {rolesUnicos.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-            <option value="nombre">Ordenar: Nombre</option>
-            <option value="nivel">Ordenar: Nivel</option>
-            <option value="rol">Ordenar: Rol</option>
-          </select>
+          <Combobox
+            value={filterNivel}
+            onChange={v => setFilterNivel(v)}
+            options={[{ value: "TODOS", label: "Todos los niveles" }, { value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+          />
+          <Combobox
+            value={filterRol}
+            onChange={v => setFilterRol(v)}
+            options={[{ value: "TODOS", label: "Todos los roles" }, ...rolesUnicos.map(r => ({ value: r, label: r }))]}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+          />
+          <Combobox
+            value={sortBy}
+            onChange={v => setSortBy(v as SortKey)}
+            options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "nivel", label: "Ordenar: Nivel" }, { value: "rol", label: "Ordenar: Rol" }]}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+          />
           {tecnicos.some(t => !t.activo) && (
             <button onClick={() => setShowInactivos(!showInactivos)}
               className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>

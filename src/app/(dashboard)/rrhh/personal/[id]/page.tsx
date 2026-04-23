@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
 interface PagoNomina { id: string; periodo: string; tipoPeriodo: string; monto: number; concepto: string | null; estado: string; fechaPago: string | null; metodoPago: string; notas: string | null; cuentaOrigen: { nombre: string } | null }
@@ -221,10 +222,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
-                  <select value={editForm.departamento ?? ""} onChange={e => setEditForm(p => ({ ...p, departamento: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  <Combobox
+                    value={editForm.departamento ?? ""}
+                    onChange={v => setEditForm(p => ({ ...p, departamento: v }))}
+                    options={DEPARTAMENTOS.map(d => ({ value: d, label: d }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Salario</label>
@@ -233,10 +236,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Periodo pago</label>
-                  <select value={editForm.periodoPago ?? "MENSUAL"} onChange={e => setEditForm(p => ({ ...p, periodoPago: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    {TIPOS_PERIODO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <Combobox
+                    value={editForm.periodoPago ?? "MENSUAL"}
+                    onChange={v => setEditForm(p => ({ ...p, periodoPago: v }))}
+                    options={TIPOS_PERIODO.map(t => ({ value: t, label: t }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs text-gray-500 mb-1 block">Notas</label>
@@ -382,10 +387,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-                  <select value={pagoForm.tipoPeriodo} onChange={e => setPagoForm(p => ({ ...p, tipoPeriodo: e.target.value }))}
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    {TIPOS_PERIODO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <Combobox
+                    value={pagoForm.tipoPeriodo}
+                    onChange={v => setPagoForm(p => ({ ...p, tipoPeriodo: v }))}
+                    options={TIPOS_PERIODO.map(t => ({ value: t, label: t }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Monto *</label>
@@ -399,11 +406,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Cuenta origen</label>
-                  <select value={pagoForm.cuentaOrigenId} onChange={e => setPagoForm(p => ({ ...p, cuentaOrigenId: e.target.value }))}
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">Sin especificar</option>
-                    {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={pagoForm.cuentaOrigenId}
+                    onChange={v => setPagoForm(p => ({ ...p, cuentaOrigenId: v }))}
+                    options={[{ value: "", label: "Sin especificar" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </div>
               <div className="flex gap-3">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Definición de módulos configurables ─────────────────────────────────────
 
@@ -72,6 +73,7 @@ export default function ConfiguracionPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
   const [addingUser, setAddingUser] = useState<string | null>(null); // moduloKey
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [saving, setSaving] = useState(false);
 
   // ── Etiquetas ────────────────────────────────────────────────────────────
@@ -240,14 +242,14 @@ export default function ConfiguracionPage() {
                     {available.length > 0 && (
                       addingUser === modulo.key ? (
                         <div className="flex items-center gap-2 mt-2">
-                          <select id={`sel-${modulo.key}`}
-                            className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                            <option value="">Seleccionar usuario...</option>
-                            {available.map(u => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}
-                          </select>
+                          <Combobox
+                            value={selectedUserId}
+                            onChange={v => setSelectedUserId(v)}
+                            options={[{ value: "", label: "Seleccionar usuario..." }, ...available.map(u => ({ value: u.id, label: `${u.name} (${u.email})` }))]}
+                            className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
                           <button onClick={() => {
-                            const sel = document.getElementById(`sel-${modulo.key}`) as HTMLSelectElement;
-                            if (sel.value) grantAccess(modulo.key, sel.value);
+                            if (selectedUserId) { grantAccess(modulo.key, selectedUserId); setSelectedUserId(""); }
                           }} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg">
                             Dar acceso
                           </button>

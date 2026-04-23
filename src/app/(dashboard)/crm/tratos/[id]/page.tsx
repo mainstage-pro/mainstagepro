@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useCelebration } from "@/components/CelebrationToast";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -1691,14 +1692,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
-                <select value={discForm.tipoServicio} onChange={e => setDiscForm(p => ({ ...p, tipoServicio: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Seleccionar —</option>
-                  <option value="POR_DESCUBRIR">Por descubrir</option>
-                  <option value="RENTA">Renta de equipo</option>
-                  <option value="PRODUCCION_TECNICA">Producción técnica</option>
-                  <option value="DIRECCION_TECNICA">Dirección técnica</option>
-                </select>
+                <Combobox
+                  value={discForm.tipoServicio}
+                  onChange={v => setDiscForm(p => ({ ...p, tipoServicio: v }))}
+                  options={[{ value: "", label: "— Seleccionar —" }, { value: "POR_DESCUBRIR", label: "Por descubrir" }, { value: "RENTA", label: "Renta de equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección técnica" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>
@@ -2062,9 +2061,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div><label className="text-xs text-gray-400 block mb-1">Nombre del evento</label><input value={briefForm.nombreEvento} onChange={e => setBriefForm(p => ({ ...p, nombreEvento: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                   <div><label className="text-xs text-gray-400 block mb-1">Tipo de evento</label>
-                    <select value={briefForm.tipoEvento} onChange={e => setBriefForm(p => ({ ...p, tipoEvento: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="">Seleccionar</option><option value="EMPRESARIAL">Empresarial</option><option value="SOCIAL">Social</option><option value="MUSICAL">Musical</option><option value="OTRO">Otro</option>
-                    </select>
+                    <Combobox
+                      value={briefForm.tipoEvento}
+                      onChange={v => setBriefForm(p => ({ ...p, tipoEvento: v }))}
+                      options={[{ value: "", label: "Seleccionar" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "SOCIAL", label: "Social" }, { value: "MUSICAL", label: "Musical" }, { value: "OTRO", label: "Otro" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
                   </div>
                   <div><label className="text-xs text-gray-400 block mb-1">Fecha</label><input type="date" value={briefForm.fecha} onChange={e => setBriefForm(p => ({ ...p, fecha: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
                   <div><label className="text-xs text-gray-400 block mb-1">Horario del evento</label><input value={briefForm.horarioEvento} onChange={e => setBriefForm(p => ({ ...p, horarioEvento: e.target.value }))} placeholder="ej. 18:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
@@ -2180,13 +2182,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-400 block mb-1">Tipo de evento</label>
-              <select value={discForm.tipoEvento} onChange={e => setDiscForm(p => ({ ...p, tipoEvento: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="MUSICAL">Musical</option>
-                <option value="SOCIAL">Social</option>
-                <option value="EMPRESARIAL">Empresarial</option>
-                <option value="OTRO">Otro</option>
-              </select>
+              <Combobox
+                value={discForm.tipoEvento}
+                onChange={v => setDiscForm(p => ({ ...p, tipoEvento: v }))}
+                options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-400 block mb-1">Fecha aproximada</label>
@@ -2339,17 +2340,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="p-6 space-y-4">
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Razón principal</label>
-                <select value={razonPerdida} onChange={e => setRazonPerdida(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Seleccionar —</option>
-                  <option value="Precio">Precio fuera de presupuesto</option>
-                  <option value="Fechas">Fechas no coinciden</option>
-                  <option value="Eligió a otro proveedor">Eligió a otro proveedor</option>
-                  <option value="No respondió">No respondió / se enfrió</option>
-                  <option value="Evento cancelado">Evento cancelado</option>
-                  <option value="Fuera de cobertura">Fuera de cobertura geográfica</option>
-                  <option value="Otro">Otro</option>
-                </select>
+                <Combobox
+                  value={razonPerdida}
+                  onChange={v => setRazonPerdida(v)}
+                  options={[{ value: "", label: "— Seleccionar —" }, { value: "Precio", label: "Precio fuera de presupuesto" }, { value: "Fechas", label: "Fechas no coinciden" }, { value: "Eligió a otro proveedor", label: "Eligió a otro proveedor" }, { value: "No respondió", label: "No respondió / se enfrió" }, { value: "Evento cancelado", label: "Evento cancelado" }, { value: "Fuera de cobertura", label: "Fuera de cobertura geográfica" }, { value: "Otro", label: "Otro" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Notas adicionales (opcional)</label>
@@ -2382,23 +2378,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
-                  <select value={form.tipoEvento || ""} onChange={e => setForm(p => ({ ...p, tipoEvento: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="MUSICAL">Musical</option>
-                    <option value="SOCIAL">Social</option>
-                    <option value="EMPRESARIAL">Empresarial</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
+                  <Combobox
+                    value={form.tipoEvento || ""}
+                    onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
+                    options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
-                  <select value={form.tipoServicio || ""} onChange={e => setForm(p => ({ ...p, tipoServicio: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin especificar —</option>
-                    <option value="RENTA">Renta de Equipo</option>
-                    <option value="PRODUCCION_TECNICA">Producción Técnica</option>
-                    <option value="DIRECCION_TECNICA">Dirección Técnica</option>
-                  </select>
+                  <Combobox
+                    value={form.tipoServicio || ""}
+                    onChange={v => setForm(p => ({ ...p, tipoServicio: v }))}
+                    options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Lugar estimado</label>
@@ -2417,13 +2411,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-                  <select value={form.clasificacion || "PROSPECTO"} onChange={e => setForm(p => ({ ...p, clasificacion: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="PROSPECTO">Prospecto</option>
-                    <option value="BASIC">Basic</option>
-                    <option value="REGULAR">Regular</option>
-                    <option value="PRIORITY">Priority</option>
-                  </select>
+                  <Combobox
+                    value={form.clasificacion || "PROSPECTO"}
+                    onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
+                    options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "BASIC", label: "Basic" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </div>
               <div>
@@ -2490,22 +2483,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div>
                 <p className="text-gray-500 text-xs mb-1">Origen de venta</p>
                 <div className="flex items-center gap-2">
-                  <select
+                  <Combobox
                     value={trato.origenVenta}
-                    onChange={async (e) => {
+                    onChange={async (v) => {
                       await fetch(`/api/tratos/${trato.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ origenVenta: e.target.value }),
+                        body: JSON.stringify({ origenVenta: v }),
                       });
-                      setTrato(prev => prev ? { ...prev, origenVenta: e.target.value } : prev);
+                      setTrato(prev => prev ? { ...prev, origenVenta: v } : prev);
                     }}
+                    options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10%)" }, { value: "PUBLICIDAD", label: "Publicidad (5%)" }, { value: "ASIGNADO", label: "Asignado empresa (5%+5%)" }]}
                     className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="CLIENTE_PROPIO">Cliente propio (10%)</option>
-                    <option value="PUBLICIDAD">Publicidad (5%)</option>
-                    <option value="ASIGNADO">Asignado empresa (5%+5%)</option>
-                  </select>
+                  />
                 </div>
               </div>
               <div>

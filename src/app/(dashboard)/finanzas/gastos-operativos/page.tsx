@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonTable } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 interface GastoRow {
   id: string;
@@ -117,14 +118,12 @@ export default function GastosOperativosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <select value={filterTipo} onChange={e => setFilterTipo(e.target.value)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none">
-            <option value="TODOS">Todos los tipos</option>
-            <option value="COMIDA">Comida</option>
-            <option value="TRANSPORTE">Transporte</option>
-            <option value="HOSPEDAJE">Hospedaje</option>
-            <option value="OTRO">Otro</option>
-          </select>
+          <Combobox
+            value={filterTipo}
+            onChange={v => setFilterTipo(v)}
+            options={[{ value: "TODOS", label: "Todos los tipos" }, { value: "COMIDA", label: "Comida" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "HOSPEDAJE", label: "Hospedaje" }, { value: "OTRO", label: "Otro" }]}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none"
+          />
         </div>
       </div>
 

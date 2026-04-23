@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface Movimiento {
@@ -245,18 +246,21 @@ export default function MovimientosPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <select value={editForm.metodoPago} onChange={e => setEditForm(p => ({ ...p, metodoPago: e.target.value }))} className={inputCls}>
-                    {["TRANSFERENCIA", "EFECTIVO", "CHEQUE", "TARJETA"].map(m => (
-                      <option key={m} value={m}>{m.charAt(0) + m.slice(1).toLowerCase()}</option>
-                    ))}
-                  </select>
+                  <Combobox
+                    value={editForm.metodoPago}
+                    onChange={v => setEditForm(p => ({ ...p, metodoPago: v }))}
+                    options={["TRANSFERENCIA", "EFECTIVO", "CHEQUE", "TARJETA"].map(m => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))}
+                    className={inputCls}
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Categoría</label>
-                  <select value={editForm.categoriaId} onChange={e => setEditForm(p => ({ ...p, categoriaId: e.target.value }))} className={inputCls}>
-                    <option value="">— Sin categoría —</option>
-                    {categoriasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={editForm.categoriaId}
+                    onChange={v => setEditForm(p => ({ ...p, categoriaId: v }))}
+                    options={[{ value: "", label: "— Sin categoría —" }, ...categoriasFiltradas.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className={inputCls}
+                  />
                 </div>
               </div>
               <div>

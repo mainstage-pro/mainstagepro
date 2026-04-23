@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -407,10 +408,12 @@ function MantenimientoContent() {
                         </div>
                         <div>
                           <label className="text-[10px] text-gray-600 mb-1 block">Estado</label>
-                          <select value={unidadForm.estado} onChange={e => setUnidadForm(p => ({ ...p, estado: e.target.value }))}
-                            className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                            {ESTADOS_EQUIPO.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                          </select>
+                          <Combobox
+                            value={unidadForm.estado}
+                            onChange={v => setUnidadForm(p => ({ ...p, estado: v }))}
+                            options={ESTADOS_EQUIPO.map(s => ({ value: s, label: s.replace(/_/g, " ") }))}
+                            className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
                         </div>
                         <div className="col-span-3">
                           <label className="text-[10px] text-gray-600 mb-1 block">Notas</label>
@@ -525,18 +528,21 @@ function MantenimientoContent() {
                       </div>
                       <div>
                         <label className="text-gray-500 text-xs mb-1 block">Tipo *</label>
-                        <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                          className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                          {TIPOS.map(t => <option key={t} value={t}>{TIPOS_LABEL[t]}</option>)}
-                        </select>
+                        <Combobox
+                          value={form.tipo}
+                          onChange={v => setForm(p => ({ ...p, tipo: v }))}
+                          options={TIPOS.map(t => ({ value: t, label: TIPOS_LABEL[t] }))}
+                          className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                        />
                       </div>
                       <div>
                         <label className="text-gray-500 text-xs mb-1 block">Estado resultante</label>
-                        <select value={form.estadoEquipo} onChange={e => setForm(p => ({ ...p, estadoEquipo: e.target.value }))}
-                          className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                          <option value="">Sin cambio</option>
-                          {ESTADOS_EQUIPO.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-                        </select>
+                        <Combobox
+                          value={form.estadoEquipo}
+                          onChange={v => setForm(p => ({ ...p, estadoEquipo: v }))}
+                          options={[{ value: "", label: "Sin cambio" }, ...ESTADOS_EQUIPO.map(s => ({ value: s, label: s.replace(/_/g, " ") }))]}
+                          className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                        />
                       </div>
                       <div className="md:col-span-3">
                         <label className="text-gray-500 text-xs mb-1 block">Acción realizada *</label>

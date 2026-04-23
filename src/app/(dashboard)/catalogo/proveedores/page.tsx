@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
+import { Combobox } from "@/components/Combobox";
 
 type Proveedor = {
   id: string;
@@ -415,18 +416,19 @@ export default function ProveedoresPage() {
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
             placeholder="Buscar proveedor..." />
           {girosUnicos.length > 0 && (
-            <select value={filterGiro} onChange={e => setFilterGiro(e.target.value)}
-              className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-              <option value="TODOS">Todos los giros</option>
-              {girosUnicos.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
+            <Combobox
+              value={filterGiro}
+              onChange={v => setFilterGiro(v)}
+              options={[{ value: "TODOS", label: "Todos los giros" }, ...girosUnicos.map(g => ({ value: g, label: g }))]}
+              className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+            />
           )}
-          <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-            <option value="nombre">Ordenar: Nombre</option>
-            <option value="empresa">Ordenar: Empresa</option>
-            <option value="giro">Ordenar: Giro</option>
-          </select>
+          <Combobox
+            value={sortBy}
+            onChange={v => setSortBy(v as SortKey)}
+            options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "empresa", label: "Ordenar: Empresa" }, { value: "giro", label: "Ordenar: Giro" }]}
+            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+          />
           {proveedores.some(p => !p.activo) && (
             <button onClick={() => setShowInactivos(!showInactivos)}
               className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>

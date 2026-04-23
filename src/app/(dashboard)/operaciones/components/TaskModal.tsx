@@ -4,6 +4,7 @@ import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
+import { Combobox } from "@/components/Combobox";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -535,41 +536,35 @@ export default function TaskModal({
               {/* Asignado a */}
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Asignado a</p>
-                <select
+                <Combobox
                   value={asignadoAId}
-                  onChange={e => { setAsignadoAId(e.target.value); mark(); }}
+                  onChange={v => { setAsignadoAId(v); mark(); }}
+                  options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
                   className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Sin asignar —</option>
-                  {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
+                />
               </div>
 
               {/* Proyecto */}
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Proyecto</p>
-                <select
+                <Combobox
                   value={proyectoId}
-                  onChange={e => { setProyectoId(e.target.value); mark(); }}
+                  onChange={v => { setProyectoId(v); mark(); }}
+                  options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
                   className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Bandeja de entrada —</option>
-                  {proyectos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
+                />
               </div>
 
               {/* Iniciativa */}
               {iniciativas.length > 0 && (
                 <div>
                   <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Iniciativa</p>
-                  <select
+                  <Combobox
                     value={iniciativaId}
-                    onChange={e => { setIniciativaId(e.target.value); mark(); }}
+                    onChange={v => { setIniciativaId(v); mark(); }}
+                    options={[{ value: "", label: "— Ninguna —" }, ...iniciativas.map(i => ({ value: i.id, label: i.nombre }))]}
                     className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="">— Ninguna —</option>
-                    {iniciativas.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                  </select>
+                  />
                 </div>
               )}
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { Combobox } from "@/components/Combobox";
 
 interface Cliente {
   id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
@@ -252,9 +253,12 @@ export default function NuevoTratoPage() {
                   <div><label className="text-xs text-gray-500 mb-1 block">Correo</label><input type="email" value={clienteNuevo.correo} onChange={e=>setClienteNuevo(p=>({...p,correo:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="correo@ejemplo.com"/></div>
                 </div>
                 <div><label className="text-xs text-gray-500 mb-1 block">Tipo de cliente</label>
-                  <select value={clienteNuevo.tipoCliente} onChange={e=>setClienteNuevo(p=>({...p,tipoCliente:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="POR_DESCUBRIR">Por descubrir</option><option value="B2B">B2B (empresa)</option><option value="B2C">B2C (persona)</option>
-                  </select>
+                  <Combobox
+                    value={clienteNuevo.tipoCliente}
+                    onChange={v => setClienteNuevo(p => ({ ...p, tipoCliente: v }))}
+                    options={[{ value: "POR_DESCUBRIR", label: "Por descubrir" }, { value: "B2B", label: "B2B (empresa)" }, { value: "B2C", label: "B2C (persona)" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </div>
             )}
@@ -295,19 +299,28 @@ export default function NuevoTratoPage() {
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
-                <select value={s1.origenLead} onChange={e=>setS1(p=>({...p,origenLead:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {ORIGEN_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <Combobox
+                  value={s1.origenLead}
+                  onChange={v => setS1(p => ({ ...p, origenLead: v }))}
+                  options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
-                <select value={s1.tipoLead} onChange={e=>setS1(p=>({...p,tipoLead:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="INBOUND">Inbound (nos buscó)</option><option value="OUTBOUND">Outbound (prospección)</option>
-                </select>
+                <Combobox
+                  value={s1.tipoLead}
+                  onChange={v => setS1(p => ({ ...p, tipoLead: v }))}
+                  options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Origen de venta (comisiones)</label>
-                <select value={s1.origenVenta} onChange={e=>setS1(p=>({...p,origenVenta:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {ORIGEN_VENTA_OPTIONS.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <Combobox
+                  value={s1.origenVenta}
+                  onChange={v => setS1(p => ({ ...p, origenVenta: v }))}
+                  options={ORIGEN_VENTA_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
             </div>
           </div>

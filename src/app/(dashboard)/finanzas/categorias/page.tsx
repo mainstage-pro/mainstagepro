@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonCards } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 interface Categoria {
   id: string;
@@ -108,10 +109,12 @@ export default function CategoriasPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
-              <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <Combobox
+                value={form.tipo}
+                onChange={v => setForm(p => ({ ...p, tipo: v }))}
+                options={TIPOS.map(t => ({ value: t, label: t }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
           </div>
           <div className="w-32">

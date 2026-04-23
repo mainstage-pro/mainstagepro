@@ -4,6 +4,7 @@ import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
+import { Combobox } from "@/components/Combobox";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -326,32 +327,35 @@ export default function TaskPanel({
           {/* Assignee */}
           <div className="space-y-0.5">
             <label className="text-[11px] text-[#444] uppercase tracking-wider">Asignado a</label>
-            <select value={asignadoAId} onChange={e => { setAsignadoAId(e.target.value); mark(); }}
-              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-              <option value="">— Sin asignar —</option>
-              {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <Combobox
+              value={asignadoAId}
+              onChange={v => { setAsignadoAId(v); mark(); }}
+              options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+            />
           </div>
 
           {/* Project */}
           <div className="space-y-0.5">
             <label className="text-[11px] text-[#444] uppercase tracking-wider">Proyecto</label>
-            <select value={proyectoId} onChange={e => { setProyectoId(e.target.value); mark(); }}
-              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-              <option value="">— Bandeja de entrada —</option>
-              {proyectos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </select>
+            <Combobox
+              value={proyectoId}
+              onChange={v => { setProyectoId(v); mark(); }}
+              options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+            />
           </div>
 
           {/* Iniciativa */}
           {iniciativas.length > 0 && (
             <div className="space-y-0.5">
               <label className="text-[11px] text-[#444] uppercase tracking-wider">Iniciativa</label>
-              <select value={iniciativaId} onChange={e => { setIniciativaId(e.target.value); mark(); }}
-                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Ninguna —</option>
-                {iniciativas.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-              </select>
+              <Combobox
+                value={iniciativaId}
+                onChange={v => { setIniciativaId(v); mark(); }}
+                options={[{ value: "", label: "— Ninguna —" }, ...iniciativas.map(i => ({ value: i.id, label: i.nombre }))]}
+                className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
           )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { Combobox } from "@/components/Combobox";
 
 type Rol = {
   id: string;
@@ -148,16 +149,12 @@ export default function RolesPage() {
             </div>
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">Tipo de pago</label>
-              <select
+              <Combobox
                 value={form.tipoPago}
-                onChange={e => set("tipoPago", e.target.value)}
+                onChange={v => set("tipoPago", v)}
+                options={[{ value: "POR_JORNADA", label: "Por Jornada (0–8 hrs / 8–12 hrs / 12+ hrs)" }, { value: "TARIFA_PLANA", label: "Tarifa Plana (por evento)" }, { value: "POR_HORA", label: "Por Hora" }, { value: "POR_PROYECTO", label: "Por Proyecto" }]}
                 className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="POR_JORNADA">Por Jornada (0–8 hrs / 8–12 hrs / 12+ hrs)</option>
-                <option value="TARIFA_PLANA">Tarifa Plana (por evento)</option>
-                <option value="POR_HORA">Por Hora</option>
-                <option value="POR_PROYECTO">Por Proyecto</option>
-              </select>
+              />
             </div>
           </div>
 

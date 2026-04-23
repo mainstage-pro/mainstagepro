@@ -9,6 +9,7 @@ import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQu
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
+import { Combobox } from "@/components/Combobox";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1126,11 +1127,12 @@ export default function OperacionesPage() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[11px] text-[#444] uppercase tracking-wider">Carpeta (opcional)</label>
-                <select value={nuevoProyectoCarpeta} onChange={e => setNuevoProyectoCarpeta(e.target.value)}
-                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Sin carpeta —</option>
-                  {carpetas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+                <Combobox
+                  value={nuevoProyectoCarpeta}
+                  onChange={v => setNuevoProyectoCarpeta(v)}
+                  options={[{ value: "", label: "— Sin carpeta —" }, ...carpetas.map(c => ({ value: c.id, label: c.nombre }))]}
+                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2">

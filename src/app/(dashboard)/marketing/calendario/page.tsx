@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 
 interface Tipo {
   id: string; nombre: string; formato: string;
@@ -402,18 +403,21 @@ export default function MarketingCalendarioPage() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-                  <select value={form.tipoId} onChange={e => onTipoChange(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">Sin tipo</option>
-                    {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={form.tipoId}
+                    onChange={v => onTipoChange(v)}
+                    options={[{ value: "", label: "Sin tipo" }, ...tipos.map(t => ({ value: t.id, label: t.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Estado</label>
-                  <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    {ESTADOS.map(s => <option key={s} value={s}>{ESTADO_LABEL[s]}</option>)}
-                  </select>
+                  <Combobox
+                    value={form.estado}
+                    onChange={v => setForm(p => ({ ...p, estado: v }))}
+                    options={ESTADOS.map(s => ({ value: s, label: ESTADO_LABEL[s] }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div className="md:col-span-3">
                   <label className="text-xs text-gray-500 mb-1 block">Descripción</label>
@@ -598,11 +602,12 @@ export default function MarketingCalendarioPage() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tipo de contenido</label>
-                  <select value={nuevaForm.tipoId} onChange={e => onNuevaTipoChange(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Personalizado —</option>
-                    {tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={nuevaForm.tipoId}
+                    onChange={v => onNuevaTipoChange(v)}
+                    options={[{ value: "", label: "— Personalizado —" }, ...tipos.map(t => ({ value: t.id, label: t.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </div>
               <div>
@@ -1017,11 +1022,12 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                     ))}
                   </div>
                   <div className="flex justify-center" onClick={e => e.stopPropagation()}>
-                    <select value={p.estado} onChange={e => quickEstado(p.id, e.target.value)}
+                    <Combobox
+                      value={p.estado}
+                      onChange={v => quickEstado(p.id, v)}
+                      options={ESTADOS.map(e => ({ value: e, label: ESTADO_LABEL[e] }))}
                       className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold border-0 focus:outline-none cursor-pointer ${ESTADO_COLORS[p.estado]}`}
-                      style={{ appearance: "none", WebkitAppearance: "none" }}>
-                      {ESTADOS.map(e => <option key={e} value={e} className="bg-[#111] text-white text-xs">{ESTADO_LABEL[e]}</option>)}
-                    </select>
+                    />
                   </div>
                 </div>
                 {expandedId === p.id && editId !== p.id && (

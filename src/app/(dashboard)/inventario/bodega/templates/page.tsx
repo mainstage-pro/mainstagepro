@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Template { id: string; descripcion: string; categoria: string; orden: number; activo: boolean }
 
@@ -92,10 +93,12 @@ export default function TemplatesPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Categoría</label>
-              <select value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <Combobox
+                value={form.categoria}
+                onChange={v => setForm(p => ({ ...p, categoria: v }))}
+                options={CATEGORIAS.map(c => ({ value: c, label: c }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div className="w-24">
               <label className="text-xs text-gray-500 mb-1 block">Orden</label>

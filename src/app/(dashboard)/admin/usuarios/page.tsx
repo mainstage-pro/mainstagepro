@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 
 type User = {
   id: string;
@@ -324,24 +325,21 @@ export default function UsuariosPage() {
             </div>
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">Tipo de acceso</label>
-              <select value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                <option value="ADMIN">Administrador — acceso total</option>
-                <option value="USER">Usuario regular — puede crear y editar</option>
-                <option value="READONLY">Solo lectura — no puede modificar</option>
-              </select>
+              <Combobox
+                value={form.role}
+                onChange={v => setForm(p => ({ ...p, role: v }))}
+                options={[{ value: "ADMIN", label: "Administrador — acceso total" }, { value: "USER", label: "Usuario regular — puede crear y editar" }, { value: "READONLY", label: "Solo lectura — no puede modificar" }]}
+                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">Área</label>
-              <select value={form.area} onChange={e => setForm(p => ({ ...p, area: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                <option value="DIRECCION">Dirección</option>
-                <option value="ADMINISTRACION">Administración</option>
-                <option value="MARKETING">Marketing</option>
-                <option value="VENTAS">Ventas</option>
-                <option value="PRODUCCION">Producción</option>
-                <option value="GENERAL">General</option>
-              </select>
+              <Combobox
+                value={form.area}
+                onChange={v => setForm(p => ({ ...p, area: v }))}
+                options={[{ value: "DIRECCION", label: "Dirección" }, { value: "ADMINISTRACION", label: "Administración" }, { value: "MARKETING", label: "Marketing" }, { value: "VENTAS", label: "Ventas" }, { value: "PRODUCCION", label: "Producción" }, { value: "GENERAL", label: "General" }]}
+                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
           </div>
           {error && <p className="text-red-400 text-sm mb-3">{error}</p>}

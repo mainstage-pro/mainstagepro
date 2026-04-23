@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 type Proveedor = { id: string; nombre: string };
 type Categoria = { id: string; nombre: string; orden: number };
@@ -319,19 +320,21 @@ export default function InventarioEquiposPage() {
             </div>
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Categoría *</label>
-              <select value={nuevoForm.categoriaId} onChange={e => setNuevoForm(f => ({ ...f, categoriaId: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Selecciona —</option>
-                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
+              <Combobox
+                value={nuevoForm.categoriaId}
+                onChange={v => setNuevoForm(f => ({ ...f, categoriaId: v }))}
+                options={[{ value: "", label: "— Selecciona —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Tipo</label>
-              <select value={nuevoForm.tipo} onChange={e => setNuevoForm(f => ({ ...f, tipo: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                <option value="PROPIO">Propio</option>
-                <option value="EXTERNO">Externo (tercero)</option>
-              </select>
+              <Combobox
+                value={nuevoForm.tipo}
+                onChange={v => setNuevoForm(f => ({ ...f, tipo: v }))}
+                options={[{ value: "PROPIO", label: "Propio" }, { value: "EXTERNO", label: "Externo (tercero)" }]}
+                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Marca</label>
@@ -362,11 +365,12 @@ export default function InventarioEquiposPage() {
                 </div>
                 <div>
                   <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
-                  <select value={nuevoForm.proveedorDefaultId} onChange={e => setNuevoForm(f => ({ ...f, proveedorDefaultId: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                    <option value="">Sin proveedor</option>
-                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={nuevoForm.proveedorDefaultId}
+                    onChange={v => setNuevoForm(f => ({ ...f, proveedorDefaultId: v }))}
+                    options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </>
             )}
@@ -456,16 +460,12 @@ export default function InventarioEquiposPage() {
 
         {/* Filtro por proveedor (solo visible cuando tipo = EXTERNO o TODOS con proveedores) */}
         {proveedoresConEquipo.length > 0 && tipoFiltro !== "PROPIO" && (
-          <select
+          <Combobox
             value={proveedorFiltro}
-            onChange={e => { setProveedorFiltro(e.target.value); if (e.target.value) setTipoFiltro("EXTERNO"); }}
+            onChange={v => { setProveedorFiltro(v); if (v) setTipoFiltro("EXTERNO"); }}
+            options={[{ value: "", label: "Todos los proveedores" }, ...proveedoresConEquipo.map(p => ({ value: p.id, label: p.nombre }))]}
             className="bg-[#111] border border-[#222] text-sm rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#B3985B]"
-          >
-            <option value="">Todos los proveedores</option>
-            {proveedoresConEquipo.map(p => (
-              <option key={p.id} value={p.id}>{p.nombre}</option>
-            ))}
-          </select>
+          />
         )}
 
         {/* Limpiar filtros */}
@@ -526,11 +526,12 @@ export default function InventarioEquiposPage() {
                             </div>
                             <div>
                               <label className="text-xs text-[#6b7280] block mb-1">Tipo</label>
-                              <select value={form.tipo} onChange={ev => setForm(f => f ? { ...f, tipo: ev.target.value } : f)}
-                                className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                                <option value="PROPIO">Propio</option>
-                                <option value="EXTERNO">Externo (tercero)</option>
-                              </select>
+                              <Combobox
+                                value={form.tipo}
+                                onChange={v => setForm(f => f ? { ...f, tipo: v } : f)}
+                                options={[{ value: "PROPIO", label: "Propio" }, { value: "EXTERNO", label: "Externo (tercero)" }]}
+                                className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                              />
                             </div>
                             {form.tipo === "EXTERNO" && (
                               <>
@@ -541,11 +542,12 @@ export default function InventarioEquiposPage() {
                                 </div>
                                 <div className="col-span-2">
                                   <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
-                                  <select value={form.proveedorDefaultId} onChange={ev => setForm(f => f ? { ...f, proveedorDefaultId: ev.target.value } : f)}
-                                    className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                                    <option value="">Sin proveedor</option>
-                                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                                  </select>
+                                  <Combobox
+                                    value={form.proveedorDefaultId}
+                                    onChange={v => setForm(f => f ? { ...f, proveedorDefaultId: v } : f)}
+                                    options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                                    className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                                  />
                                 </div>
                               </>
                             )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonTable } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CxC {
@@ -461,13 +462,12 @@ function CardElemento({
         {showNoContemplado && (
           <div className="px-4 pb-4 space-y-2">
             <div className="flex gap-2 flex-wrap">
-              <select value={ncProyectoId} onChange={e => setNcProyectoId(e.target.value)}
-                className="flex-1 min-w-40 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Proyecto *</option>
-                {proyectos.map(p => (
-                  <option key={p.id} value={p.id}>{p.numeroProyecto} — {p.nombre}</option>
-                ))}
-              </select>
+              <Combobox
+                value={ncProyectoId}
+                onChange={v => setNcProyectoId(v)}
+                options={[{ value: "", label: "— Proyecto *" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} — ${p.nombre}` }))]}
+                className="flex-1 min-w-40 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+              />
               <input value={ncConcepto} onChange={e => setNcConcepto(e.target.value)}
                 placeholder="Concepto del servicio *"
                 className="flex-1 min-w-40 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
@@ -768,23 +768,26 @@ function FormNuevoNoContemplado({
             Nuevo pago — {tab === "TECNICO" ? "Técnico" : "Proveedor"} no contemplado
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <select value={proyectoId} onChange={e => setProyectoId(e.target.value)}
-              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-              <option value="">— Proyecto *</option>
-              {proyectos.map(p => <option key={p.id} value={p.id}>{p.numeroProyecto} — {p.nombre}</option>)}
-            </select>
+            <Combobox
+              value={proyectoId}
+              onChange={v => setProyectoId(v)}
+              options={[{ value: "", label: "— Proyecto *" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} — ${p.nombre}` }))]}
+              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
             {tab === "TECNICO" ? (
-              <select value={tecnicoId} onChange={e => setTecnicoId(e.target.value)}
-                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Técnico del catálogo (o escribe abajo) —</option>
-                {tecnicos.map(t => <option key={t.id} value={t.id}>{t.nombre}{t.rol ? ` · ${t.rol.nombre}` : ""}</option>)}
-              </select>
+              <Combobox
+                value={tecnicoId}
+                onChange={v => setTecnicoId(v)}
+                options={[{ value: "", label: "— Técnico del catálogo (o escribe abajo) —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre + (t.rol ? ` · ${t.rol.nombre}` : "") }))]}
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             ) : (
-              <select value={proveedorId} onChange={e => setProveedorId(e.target.value)}
-                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Proveedor del catálogo (o escribe abajo) —</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select>
+              <Combobox
+                value={proveedorId}
+                onChange={v => setProveedorId(v)}
+                options={[{ value: "", label: "— Proveedor del catálogo (o escribe abajo) —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             )}
             {((tab === "TECNICO" && !tecnicoId) || (tab === "PROVEEDOR" && !proveedorId)) && (
               <input value={nombreLibre} onChange={e => setNombreLibre(e.target.value)}

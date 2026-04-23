@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 interface PagoNomina {
   id: string;
@@ -189,18 +190,19 @@ export default function NominaPage() {
 
                       {/* Controles de pago */}
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <select value={data.metodo} onChange={e => setPago(pago.id, "metodo", e.target.value)}
-                          className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                          <option value="TRANSFERENCIA">Transferencia</option>
-                          <option value="EFECTIVO">Efectivo</option>
-                          <option value="TARJETA">Tarjeta</option>
-                        </select>
+                        <Combobox
+                          value={data.metodo}
+                          onChange={v => setPago(pago.id, "metodo", v)}
+                          options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }]}
+                          className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                        />
                         {cuentas.length > 0 && (
-                          <select value={data.cuentaId} onChange={e => setPago(pago.id, "cuentaId", e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-                            <option value="">— Cuenta —</option>
-                            {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                          </select>
+                          <Combobox
+                            value={data.cuentaId}
+                            onChange={v => setPago(pago.id, "cuentaId", v)}
+                            options={[{ value: "", label: "— Cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre }))]}
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                          />
                         )}
                         <input type="date" value={data.fecha} onChange={e => setPago(pago.id, "fecha", e.target.value)}
                           className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />

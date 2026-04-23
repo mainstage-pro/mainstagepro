@@ -6,6 +6,7 @@ import { ESTADO_PROYECTO_LABELS, ESTADO_PROYECTO_COLORS, TIPO_EVENTO_LABELS, TIP
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Proyecto = any;
@@ -206,13 +207,12 @@ export default function ProyectosPage() {
               ))}
             </div>
             {tiposDisponibles.length > 1 && (
-              <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}
-                className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-[11px] text-gray-400 focus:outline-none focus:border-[#B3985B]/50">
-                <option value="TODOS">Tipo: Todos</option>
-                {tiposDisponibles.map((t: string) => (
-                  <option key={t} value={t}>{TIPO_EVENTO_LABELS[t] ?? t}</option>
-                ))}
-              </select>
+              <Combobox
+                value={filtroTipo}
+                onChange={v => setFiltroTipo(v)}
+                options={[{ value: "TODOS", label: "Tipo: Todos" }, ...tiposDisponibles.map((t: string) => ({ value: t, label: TIPO_EVENTO_LABELS[t] ?? t }))]}
+                className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-[11px] text-gray-400 focus:outline-none focus:border-[#B3985B]/50"
+              />
             )}
             {(busqueda || filtroEstado !== "TODOS" || filtroTipo !== "TODOS") && (
               <button onClick={() => { setBusqueda(""); setFiltroEstado("TODOS"); setFiltroTipo("TODOS"); }}

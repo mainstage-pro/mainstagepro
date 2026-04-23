@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Personal { id: string; nombre: string; puesto: string; salario: number | null; periodoPago: string; }
 interface TipoIncidencia { id: string; nombre: string; categoria: string; calculoTipo: string; valor: number; esDescuento: boolean; descripcion: string | null; activo: boolean; }
@@ -130,19 +131,21 @@ export default function IncidenciasPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Empleado</label>
-                <select value={incForm.personalId} onChange={e=>setIncForm(p=>({...p,personalId:e.target.value}))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">Seleccionar...</option>
-                  {personal.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-                </select>
+                <Combobox
+                  value={incForm.personalId}
+                  onChange={v => setIncForm(p => ({ ...p, personalId: v }))}
+                  options={[{ value: "", label: "Seleccionar..." }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Tipo de incidencia</label>
-                <select value={incForm.tipoId} onChange={e=>setIncForm(p=>({...p,tipoId:e.target.value}))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">Seleccionar...</option>
-                  {tiposActivos.map(t=><option key={t.id} value={t.id}>{t.nombre} {t.calculoTipo!=="SIN_DESCUENTO"?`(${t.calculoTipo==="FIJO"?fmt(t.valor):t.valor+"%"})`:""}</option>)}
-                </select>
+                <Combobox
+                  value={incForm.tipoId}
+                  onChange={v => setIncForm(p => ({ ...p, tipoId: v }))}
+                  options={[{ value: "", label: "Seleccionar..." }, ...tiposActivos.map(t => ({ value: t.id, label: t.nombre + (t.calculoTipo !== "SIN_DESCUENTO" ? ` (${t.calculoTipo === "FIJO" ? fmt(t.valor) : t.valor + "%"})` : "") }))]}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
@@ -224,15 +227,19 @@ export default function IncidenciasPage() {
                   placeholder="Ej: Falta injustificada, Retardo menor..."
                   className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Categoría</label>
-                <select value={tipoForm.categoria} onChange={e=>setTipoForm(p=>({...p,categoria:e.target.value}))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {CATEGORIAS.map(c=><option key={c} value={c}>{c}</option>)}
-                </select></div>
+                <Combobox
+                  value={tipoForm.categoria}
+                  onChange={v => setTipoForm(p => ({ ...p, categoria: v }))}
+                  options={CATEGORIAS.map(c => ({ value: c, label: c }))}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                /></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Tipo de cálculo</label>
-                <select value={tipoForm.calculoTipo} onChange={e=>setTipoForm(p=>({...p,calculoTipo:e.target.value}))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {CALCULOS.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}
-                </select></div>
+                <Combobox
+                  value={tipoForm.calculoTipo}
+                  onChange={v => setTipoForm(p => ({ ...p, calculoTipo: v }))}
+                  options={CALCULOS.map(c => ({ value: c.value, label: c.label }))}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                /></div>
               {tipoForm.calculoTipo !== "SIN_DESCUENTO" && (
                 <div><label className="text-xs text-gray-500 mb-1 block">Valor {tipoForm.calculoTipo==="FIJO"?"($)":"(%)"}</label>
                   <input type="number" value={tipoForm.valor} onChange={e=>setTipoForm(p=>({...p,valor:e.target.value}))}

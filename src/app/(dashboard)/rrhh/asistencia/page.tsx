@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
@@ -400,14 +401,15 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
                     className={`h-14 border-b border-r border-[#181818] relative p-1.5 ${esFinDeSemana ? "bg-[#0d0d0d]" : ""} ${esHoy ? "ring-1 ring-[#B3985B]/40 ring-inset" : ""}`}>
                     <p className={`text-[10px] font-medium mb-1 ${esHoy ? "text-[#B3985B]" : esFinDeSemana ? "text-gray-700" : "text-gray-500"}`}>{dia}</p>
                     {!esFinDeSemana && (
-                      <select value={asist?.estado ?? ""} onChange={e => e.target.value && marcar(fecha, e.target.value as EstadoAsist)}
+                      <Combobox
+                        value={asist?.estado ?? ""}
+                        onChange={v => v && marcar(fecha, v as EstadoAsist)}
                         disabled={saving === fecha}
+                        options={[{ value: "", label: "—" }, ...ESTADOS.map(e => ({ value: e.value, label: `${e.icon} ${e.label}` }))]}
                         className={`w-full text-[9px] rounded px-0.5 py-0.5 border-0 focus:outline-none cursor-pointer appearance-none text-center ${
                           info ? `${info.dot.replace("bg-", "bg-")} ${info.btn.split(" ").slice(0, 2).join(" ")}` : "bg-[#1a1a1a] text-gray-600"
-                        }`}>
-                        <option value="">—</option>
-                        {ESTADOS.map(e => <option key={e.value} value={e.value}>{e.icon} {e.label}</option>)}
-                      </select>
+                        }`}
+                      />
                     )}
                   </div>
                 );

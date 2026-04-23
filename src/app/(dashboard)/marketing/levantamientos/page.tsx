@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { Combobox } from "@/components/Combobox";
 
 const GOLD = "#B3985B";
 const PLANES: Record<string, { label: string; color: string }> = {
@@ -269,17 +270,21 @@ export default function LevantamientosPage() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-white/30 block mb-1">Tipo</label>
-                  <select value={formActivo.tipo} onChange={e => setFormActivo(f => ({ ...f, tipo: e.target.value }))}
-                    className={inputCls}>
-                    {TIPOS_ACTIVO.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  <Combobox
+                    value={formActivo.tipo}
+                    onChange={v => setFormActivo(f => ({ ...f, tipo: v }))}
+                    options={TIPOS_ACTIVO.map(t => ({ value: t, label: t }))}
+                    className={inputCls}
+                  />
                 </div>
                 <div>
                   <label className="text-[10px] text-white/30 block mb-1">Estado</label>
-                  <select value={formActivo.estado} onChange={e => setFormActivo(f => ({ ...f, estado: e.target.value }))}
-                    className={inputCls}>
-                    {Object.entries(ESTADOS_ACTIVO).map(([v, s]) => <option key={v} value={v}>{s.label}</option>)}
-                  </select>
+                  <Combobox
+                    value={formActivo.estado}
+                    onChange={v => setFormActivo(f => ({ ...f, estado: v }))}
+                    options={Object.entries(ESTADOS_ACTIVO).map(([v, s]) => ({ value: v, label: s.label }))}
+                    className={inputCls}
+                  />
                 </div>
               </div>
               <div>
@@ -338,10 +343,12 @@ export default function LevantamientosPage() {
                          className="text-[#B3985B] text-[10px] hover:underline truncate">
                         🔗 Ver archivo →
                       </a>
-                      <select value={a.estado} onChange={e => patchActivo(a.id, e.target.value)}
-                        className="text-[10px] bg-transparent border border-white/10 text-white/50 rounded px-1 py-0.5 focus:outline-none">
-                        {Object.entries(ESTADOS_ACTIVO).map(([v, s]) => <option key={v} value={v}>{s.label}</option>)}
-                      </select>
+                      <Combobox
+                        value={a.estado}
+                        onChange={v => patchActivo(a.id, v)}
+                        options={Object.entries(ESTADOS_ACTIVO).map(([v, s]) => ({ value: v, label: s.label }))}
+                        className="text-[10px] bg-transparent border border-white/10 text-white/50 rounded px-1 py-0.5 focus:outline-none"
+                      />
                     </div>
                   </div>
                 );

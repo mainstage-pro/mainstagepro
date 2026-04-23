@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -212,16 +213,12 @@ export default function CajaChicaPage() {
 
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Categoría</label>
-              <select
-                className={inputCls}
+              <Combobox
                 value={form.categoriaId}
-                onChange={e => setForm(f => ({ ...f, categoriaId: e.target.value }))}
-              >
-                <option value="">Sin categoría</option>
-                {categorias.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+                onChange={v => setForm(f => ({ ...f, categoriaId: v }))}
+                options={[{ value: "", label: "Sin categoría" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                className={inputCls}
+              />
             </div>
 
             <div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -1076,23 +1077,21 @@ export default function CobrosPagosPage() {
                 <label className="text-xs text-gray-500 mb-1 block">
                   {modal.tipo === "cobro" ? "Cuenta de destino (banco donde entra)" : "Cuenta de origen (banco de donde sale)"}
                 </label>
-                <select value={modalCuentaId} onChange={e => setModalCuentaId(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Sin especificar —</option>
-                  {cuentas.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}{c.banco ? ` · ${c.banco}` : ""}</option>
-                  ))}
-                </select>
+                <Combobox
+                  value={modalCuentaId}
+                  onChange={v => setModalCuentaId(v)}
+                  options={[{ value: "", label: "— Sin especificar —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Método de pago</label>
-                <select value={modalMetodoPago} onChange={e => setModalMetodoPago(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]">
-                  <option value="TRANSFERENCIA">Transferencia</option>
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="TARJETA">Tarjeta</option>
-                  <option value="CHEQUE">Cheque</option>
-                </select>
+                <Combobox
+                  value={modalMetodoPago}
+                  onChange={v => setModalMetodoPago(v)}
+                  options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Notas / referencia (opcional)</label>
@@ -1265,12 +1264,12 @@ export default function CobrosPagosPage() {
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Tipo de pago</label>
-                    <select value={nuevoForm.tipoPago} onChange={e => setNuevoForm(p => ({ ...p, tipoPago: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="ANTICIPO">Anticipo</option>
-                      <option value="LIQUIDACION">Liquidación</option>
-                      <option value="OTRO">Otro</option>
-                    </select>
+                    <Combobox
+                      value={nuevoForm.tipoPago}
+                      onChange={v => setNuevoForm(p => ({ ...p, tipoPago: v }))}
+                      options={[{ value: "ANTICIPO", label: "Anticipo" }, { value: "LIQUIDACION", label: "Liquidación" }, { value: "OTRO", label: "Otro" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Notas (opcional)</label>
@@ -1493,13 +1492,12 @@ export default function CobrosPagosPage() {
               {/* Proyecto — para ambos tipos */}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Proyecto (opcional)</label>
-                <select value={nuevoForm.proyectoId} onChange={e => setNuevoForm(p => ({ ...p, proyectoId: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Sin proyecto —</option>
-                  {proyectos.map(p => (
-                    <option key={p.id} value={p.id}>{p.numeroProyecto} · {p.nombre}</option>
-                  ))}
-                </select>
+                <Combobox
+                  value={nuevoForm.proyectoId}
+                  onChange={v => setNuevoForm(p => ({ ...p, proyectoId: v }))}
+                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
             </div>
 

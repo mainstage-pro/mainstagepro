@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import { CopyButton } from "@/components/CopyButton";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
-import { Combobox } from "@/components/Combobox";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -628,20 +628,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
             <div className="border-t border-[#222] pt-4">
               <p className="text-xs text-gray-400 mb-3 font-medium">Agregar precio especial</p>
               <div className="flex gap-2 flex-wrap">
-                <select
+                <Combobox
                   value={selEqId}
-                  onChange={(e) => setSelEqId(e.target.value)}
+                  onChange={v => setSelEqId(v)}
+                  options={[{ value: "", label: "— Selecciona equipo —" }, ...equiposCatalogo.sort((a, b) => a.descripcion.localeCompare(b.descripcion)).map(eq => ({ value: eq.id, label: `${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}` }))]}
                   className="flex-1 min-w-[200px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Selecciona equipo —</option>
-                  {equiposCatalogo
-                    .sort((a, b) => a.descripcion.localeCompare(b.descripcion))
-                    .map((eq) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.descripcion}{eq.marca ? ` (${eq.marca})` : ""}
-                      </option>
-                    ))}
-                </select>
+                />
                 <input
                   type="number"
                   placeholder="Precio especial"

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Contacto { id: string; nombre: string; telefono: string | null; correo: string | null; }
 
@@ -233,11 +234,12 @@ export default function EmpresasPage() {
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Tipo</label>
-                  <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))} className={inputCls}>
-                    <option value="AMBOS">Cliente y Proveedor</option>
-                    <option value="CLIENTE">Solo Cliente</option>
-                    <option value="PROVEEDOR">Solo Proveedor</option>
-                  </select>
+                  <Combobox
+                    value={form.tipo}
+                    onChange={v => setForm(p => ({ ...p, tipo: v }))}
+                    options={[{ value: "AMBOS", label: "Cliente y Proveedor" }, { value: "CLIENTE", label: "Solo Cliente" }, { value: "PROVEEDOR", label: "Solo Proveedor" }]}
+                    className={inputCls}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -409,17 +410,21 @@ export default function TiposCampanaPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-white/30 mb-1">Categoría del documento</p>
-                <select value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                  {OBJETIVOS.map(o => <option key={o} value={o}>{OBJ_LABEL[o]}</option>)}
-                </select>
+                <Combobox
+                  value={form.objetivo}
+                  onChange={v => setForm(f => ({ ...f, objetivo: v }))}
+                  options={OBJETIVOS.map(o => ({ value: o, label: OBJ_LABEL[o] }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <p className="text-xs text-white/30 mb-1">Objetivo en Meta Ads</p>
-                <select value={form.objetivoMeta} onChange={e => setForm(f => ({ ...f, objetivoMeta: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                  {OBJ_META.map(o => <option key={o} value={o}>{OBJ_META_LABEL[o]}</option>)}
-                </select>
+                <Combobox
+                  value={form.objetivoMeta}
+                  onChange={v => setForm(f => ({ ...f, objetivoMeta: v }))}
+                  options={OBJ_META.map(o => ({ value: o, label: OBJ_META_LABEL[o] }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
             </div>
           </div>
@@ -455,10 +460,12 @@ export default function TiposCampanaPage() {
               </div>
               <div>
                 <p className="text-xs text-white/30 mb-1">Género</p>
-                <select value={form.publicoGenero} onChange={e => setForm(f => ({ ...f, publicoGenero: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                  {GENEROS.map(g => <option key={g} value={g}>{GENERO_LABEL[g]}</option>)}
-                </select>
+                <Combobox
+                  value={form.publicoGenero}
+                  onChange={v => setForm(f => ({ ...f, publicoGenero: v }))}
+                  options={GENEROS.map(g => ({ value: g, label: GENERO_LABEL[g] }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
             </div>
           </div>
@@ -497,18 +504,21 @@ export default function TiposCampanaPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-white/40 mb-1">CTA del anuncio</label>
-              <select value={form.cta} onChange={e => setForm(f => ({ ...f, cta: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                {CTAS.map(c => <option key={c} value={c}>{CTA_LABEL[c]}</option>)}
-              </select>
+              <Combobox
+                value={form.cta}
+                onChange={v => setForm(f => ({ ...f, cta: v }))}
+                options={CTAS.map(c => ({ value: c, label: CTA_LABEL[c] }))}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="block text-xs text-white/40 mb-1">Evento del píxel</label>
-              <select value={form.pixelEvento} onChange={e => setForm(f => ({ ...f, pixelEvento: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]">
-                <option value="">— Sin píxel —</option>
-                {PIXEL_EVENTOS.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
+              <Combobox
+                value={form.pixelEvento}
+                onChange={v => setForm(f => ({ ...f, pixelEvento: v }))}
+                options={[{ value: "", label: "— Sin píxel —" }, ...PIXEL_EVENTOS.map(p => ({ value: p, label: p }))]}
+                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
           </div>
 

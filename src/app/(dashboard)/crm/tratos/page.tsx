@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 
@@ -184,15 +185,12 @@ function NuevaOportunidadModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Tipo de evento</label>
-              <select
+              <Combobox
                 value={form.tipoEvento}
-                onChange={e => setForm(p => ({ ...p, tipoEvento: e.target.value }))}
+                onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
+                options={TIPOS_EVENTO.map(t => ({ value: t, label: TIPO_EVENTO_LABELS[t] }))}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                {TIPOS_EVENTO.map(t => (
-                  <option key={t} value={t}>{TIPO_EVENTO_LABELS[t]}</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Nombre del evento</label>

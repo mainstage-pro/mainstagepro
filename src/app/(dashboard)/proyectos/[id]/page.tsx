@@ -10,6 +10,7 @@ import { useConfirm } from "@/components/Confirm";
 import { CopyButton } from "@/components/CopyButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -1959,16 +1960,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
                 <div>
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
-                  <select
+                  <Combobox
                     value={proyecto.encargado?.id ?? ""}
-                    onChange={e => guardarCampo("encargadoId", e.target.value)}
+                    onChange={v => guardarCampo("encargadoId", v)}
+                    options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
                     className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
-                  >
-                    <option value="">— Sin asignar —</option>
-                    {usuariosActivos.map(u => (
-                      <option key={u.id} value={u.id}>{u.name}{u.area ? ` (${u.area})` : ""}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               </div>
             </div>
@@ -2170,20 +2167,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {(["produccion", "logistica", "finanzas", "marketing"] as const).map(area => (
                 <div key={area}>
                   <label className="text-gray-500 text-xs mb-1 block capitalize">{area}</label>
-                  <select
+                  <Combobox
                     value={responsables[area]}
-                    onChange={e => {
-                      const next = { ...responsables, [area]: e.target.value };
+                    onChange={v => {
+                      const next = { ...responsables, [area]: v };
                       setResponsables(next);
                       guardarResponsables(next);
                     }}
+                    options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
                     className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="">— Sin asignar —</option>
-                    {usuariosActivos.map(u => (
-                      <option key={u.id} value={u.id}>{u.name}{u.area ? ` (${u.area})` : ""}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               ))}
             </div>
@@ -2211,15 +2204,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </button>
               </div>
               {choferTipo === "INTERNO" ? (
-                <select value={choferPersonalId} onChange={e => setChoferPersonalId(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  <option value="">— Seleccionar del personal —</option>
-                  {proyecto.personal.filter(p => p.tecnico).map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.tecnico!.nombre} · {p.rolTecnico?.nombre ?? p.participacion ?? "Personal"}
-                    </option>
-                  ))}
-                </select>
+                <Combobox
+                  value={choferPersonalId}
+                  onChange={v => setChoferPersonalId(v)}
+                  options={[{ value: "", label: "— Seleccionar del personal —" }, ...proyecto.personal.filter(p => p.tecnico).map(p => ({ value: p.id, label: p.tecnico!.nombre + " · " + (p.rolTecnico?.nombre ?? p.participacion ?? "Personal") }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               ) : (
                 <div className="space-y-2">
                   <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
@@ -2233,15 +2223,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {vehiculos.length > 0 && (
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
-                  <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin vehículo específico —</option>
-                    {vehiculos.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <Combobox
+                    value={vehiculoId}
+                    onChange={v => setVehiculoId(v)}
+                    options={[{ value: "", label: "— Sin vehículo específico —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               )}
               {guardandoChofer && <p className="text-xs text-gray-600 text-center">Guardando...</p>}
@@ -2466,28 +2453,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Participación en</label>
-                    <select value={selParticipacion} onChange={e => setSelParticipacion(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                      <option value="OPERACION">Operación del evento</option>
-                      <option value="MONTAJE">Montaje</option>
-                      <option value="DESMONTAJE">Desmontaje</option>
-                      <option value="TRANSPORTE">Transporte</option>
-                      <option value="OTRO">Otro</option>
-                    </select>
+                    <Combobox
+                      value={selParticipacion}
+                      onChange={v => setSelParticipacion(v)}
+                      options={[{ value: "OPERACION", label: "Operación del evento" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Técnico</label>
-                    <select value={selTecnico} onChange={e => {
-                      if (e.target.value === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
-                      else { setSelTecnico(e.target.value); setShowNuevoTecnico(false); }
-                    }}
-                      className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}>
-                      <option value="">— Sin asignar —</option>
-                      <option value="__nuevo__">＋ Nuevo técnico...</option>
-                      {tecnicos.map(t => (
-                        <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
-                      ))}
-                    </select>
+                    <Combobox
+                      value={selTecnico}
+                      onChange={v => {
+                        if (v === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
+                        else { setSelTecnico(v); setShowNuevoTecnico(false); }
+                      }}
+                      options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` }))]}
+                      className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}
+                    />
                     {disponibilidad && !disponibilidad.disponible && (
                       <p className="text-red-400 text-xs mt-1">
                         ⚠ Conflicto: asignado en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}
@@ -2507,17 +2490,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           placeholder="Celular (WhatsApp)"
                           className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                         <div className="flex gap-2">
-                          <select value={nuevoTecRolId} onChange={e => setNuevoTecRolId(e.target.value)}
-                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none">
-                            <option value="">— Rol (opcional) —</option>
-                            {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                          </select>
-                          <select value={nuevoTecNivel} onChange={e => setNuevoTecNivel(e.target.value)}
-                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none">
-                            <option value="AAA">AAA</option>
-                            <option value="AA">AA</option>
-                            <option value="A">A</option>
-                          </select>
+                          <Combobox
+                            value={nuevoTecRolId}
+                            onChange={v => setNuevoTecRolId(v)}
+                            options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+                          />
+                          <Combobox
+                            value={nuevoTecNivel}
+                            onChange={v => setNuevoTecNivel(v)}
+                            options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+                          />
                         </div>
                         <div className="flex gap-2 pt-1">
                           <button onClick={crearTecnicoInline} disabled={creandoTecnico || !nuevoTecNombre.trim()}
@@ -2534,27 +2518,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>
-                    <select value={selRol} onChange={e => setSelRol(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="">— Rol —</option>
-                      {roles.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}
-                    </select>
+                    <Combobox
+                      value={selRol}
+                      onChange={v => setSelRol(v)}
+                      options={[{ value: "", label: "— Rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Nivel</label>
-                    <select value={selNivel} onChange={e => setSelNivel(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                      <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
-                    </select>
+                    <Combobox
+                      value={selNivel}
+                      onChange={v => setSelNivel(v)}
+                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Jornada</label>
-                    <select value={selJornada} onChange={e => setSelJornada(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none">
-                      <option value="CORTA">0–8 hrs</option>
-                      <option value="MEDIA">8–12 hrs</option>
-                      <option value="LARGA">12+ hrs</option>
-                    </select>
+                    <Combobox
+                      value={selJornada}
+                      onChange={v => setSelJornada(v)}
+                      options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
@@ -2618,17 +2605,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             {!p.tecnico ? (
                               asignandoId === p.id ? (
                                 <div className="flex items-center gap-2">
-                                  <select
-                                    autoFocus
-                                    defaultValue=""
-                                    onChange={e => { if (e.target.value) asignarTecnico(p.id, e.target.value); }}
+                                  <Combobox
+                                    value=""
+                                    onChange={v => { if (v) asignarTecnico(p.id, v); }}
+                                    options={[{ value: "", label: "— Seleccionar técnico —" }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` }))]}
                                     className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
-                                  >
-                                    <option value="">— Seleccionar técnico —</option>
-                                    {tecnicos.map(t => (
-                                      <option key={t.id} value={t.id}>{t.nombre} · {t.rol?.nombre ?? "Sin rol"} · {t.nivel}</option>
-                                    ))}
-                                  </select>
+                                  />
                                   <button onClick={() => { setAsignandoId(null); setSelAsignar(""); }}
                                     className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
                                 </div>
@@ -2743,23 +2725,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
-                      <select value={slot.vehiculoId} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                        <option value="">— Seleccionar vehículo —</option>
-                        {vehiculos.map(v => (
-                          <option key={v.id} value={v.id}>{v.nombre}{v.marca ? ` · ${v.marca}` : ""}{v.modelo ? ` ${v.modelo}` : ""}{v.placas ? ` (${v.placas})` : ""}</option>
-                        ))}
-                      </select>
+                      <Combobox
+                        value={slot.vehiculoId}
+                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Chofer</label>
-                      <select value={slot.choferId} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                        <option value="">— Seleccionar chofer —</option>
-                        {tecnicos.map(t => (
-                          <option key={t.id} value={t.id}>{t.nombre}</option>
-                        ))}
-                      </select>
+                      <Combobox
+                        value={slot.choferId}
+                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
@@ -2800,25 +2780,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 {/* Proveedor de catering */}
                 <div className="col-span-2">
                   <label className="text-xs text-gray-500 block mb-1">Proveedor de catering</label>
-                  <select
+                  <Combobox
                     value={catering.proveedorId}
-                    onChange={e => {
-                      const prov = proveedores.find(p => p.id === e.target.value);
+                    onChange={v => {
+                      const prov = proveedores.find(p => p.id === v);
                       setCatering(prev => ({
                         ...prev,
-                        proveedorId: e.target.value,
+                        proveedorId: v,
                         contactoNombre: prov ? prov.nombre : prev.contactoNombre,
                         contactoTelefono: prov?.telefono ?? prev.contactoTelefono,
                       }));
                     }}
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Seleccionar proveedor —</option>
-                    {proveedores.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.nombre}{p.giro ? ` · ${p.giro}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                    options={[{ value: "", label: "— Seleccionar proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre + (p.giro ? ` · ${p.giro}` : "") }))]}
+                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Teléfono / WhatsApp del proveedor</label>
@@ -3147,13 +3122,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 mb-1 block">Equipo *</label>
-                    <select value={selEquipoId} onChange={e => setSelEquipoId(e.target.value)}
-                      className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}>
-                      <option value="">Seleccionar equipo...</option>
-                      {equipoCatalogo.map(eq => (
-                        <option key={eq.id} value={eq.id}>{eq.categoria.nombre} — {eq.descripcion}{eq.marca ? ` (${eq.marca})` : ""}</option>
-                      ))}
-                    </select>
+                    <Combobox
+                      value={selEquipoId}
+                      onChange={v => setSelEquipoId(v)}
+                      options={[{ value: "", label: "Seleccionar equipo..." }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}` }))]}
+                      className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${dispEquipo && !dispEquipo.disponible ? "border-red-500/60" : "border-[#2a2a2a]"}`}
+                    />
                     {dispEquipo && selEquipoTipo === "PROPIO" && selEquipoId && (
                       dispEquipo.disponible ? (
                         <p className="text-green-500 text-xs mt-1">✓ Disponible: {dispEquipo.cantidadDisponible} de {dispEquipo.cantidadTotal} unidades libres</p>
@@ -3166,11 +3140,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-                    <select value={selEquipoTipo} onChange={e => setSelEquipoTipo(e.target.value)}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      <option value="PROPIO">Propio</option>
-                      <option value="EXTERNO">Externo (renta)</option>
-                    </select>
+                    <Combobox
+                      value={selEquipoTipo}
+                      onChange={v => setSelEquipoTipo(v)}
+                      options={[{ value: "PROPIO", label: "Propio" }, { value: "EXTERNO", label: "Externo (renta)" }]}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Cantidad</label>
@@ -3192,11 +3167,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
-                        <select value={selEquipoProveedor} onChange={e => setSelEquipoProveedor(e.target.value)}
-                          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                          <option value="">Sin proveedor</option>
-                          {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                        </select>
+                        <Combobox
+                          value={selEquipoProveedor}
+                          onChange={v => setSelEquipoProveedor(v)}
+                          options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        />
                       </div>
                     </>
                   )}
@@ -3570,14 +3546,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
                                       />
                                       <div className="flex gap-2">
-                                        <select value={riderAddCategoria} onChange={ev => setRiderAddCategoria(ev.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-gray-400 text-xs focus:outline-none focus:border-[#B3985B]/60">
-                                          <option value="">Categoría (opcional)</option>
-                                          <option value="cable">Cable</option>
-                                          <option value="herramienta">Herramienta</option>
-                                          <option value="consumible">Consumible</option>
-                                          <option value="soporte">Soporte / Stand</option>
-                                          <option value="otro">Otro</option>
-                                        </select>
+                                        <Combobox
+                                          value={riderAddCategoria}
+                                          onChange={v => setRiderAddCategoria(v)}
+                                          options={[{ value: "", label: "Categoría (opcional)" }, { value: "cable", label: "Cable" }, { value: "herramienta", label: "Herramienta" }, { value: "consumible", label: "Consumible" }, { value: "soporte", label: "Soporte / Stand" }, { value: "otro", label: "Otro" }]}
+                                          className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-gray-400 text-xs focus:outline-none focus:border-[#B3985B]/60"
+                                        />
                                         <label className="flex items-center gap-1.5 cursor-pointer">
                                           <input type="checkbox" checked={riderAddGuardar} onChange={ev => setRiderAddGuardar(ev.target.checked)} className="w-3.5 h-3.5 rounded accent-[#B3985B]" />
                                           <span className="text-[11px] text-gray-400">Guardar en biblioteca</span>
@@ -4144,18 +4118,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                             <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                               className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                            <select value={cuentaPagoId} onChange={e => setCuentaPagoId(e.target.value)}
-                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                              <option value="">— Cuenta —</option>
-                              {cuentasBancarias.map(cu => <option key={cu.id} value={cu.id}>{cu.nombre}{cu.banco ? ` · ${cu.banco}` : ""}</option>)}
-                            </select>
-                            <select value={metodoPagoFinanzas} onChange={e => setMetodoPagoFinanzas(e.target.value)}
-                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                              <option value="TRANSFERENCIA">Transferencia</option>
-                              <option value="EFECTIVO">Efectivo</option>
-                              <option value="TARJETA">Tarjeta</option>
-                              <option value="CHEQUE">Cheque</option>
-                            </select>
+                            <Combobox
+                              value={cuentaPagoId}
+                              onChange={v => setCuentaPagoId(v)}
+                              options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                            />
+                            <Combobox
+                              value={metodoPagoFinanzas}
+                              onChange={v => setMetodoPagoFinanzas(v)}
+                              options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                            />
                             <button onClick={() => registrarPagoCxC(c.id)}
                               className="bg-green-700 hover:bg-green-600 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar</button>
                             <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
@@ -4341,18 +4315,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                           <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                             className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                          <select value={cuentaPagoId} onChange={e => setCuentaPagoId(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                            <option value="">— Cuenta —</option>
-                            {cuentasBancarias.map(cu => <option key={cu.id} value={cu.id}>{cu.nombre}{cu.banco ? ` · ${cu.banco}` : ""}</option>)}
-                          </select>
-                          <select value={metodoPagoFinanzas} onChange={e => setMetodoPagoFinanzas(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                            <option value="TRANSFERENCIA">Transferencia</option>
-                            <option value="EFECTIVO">Efectivo</option>
-                            <option value="TARJETA">Tarjeta</option>
-                            <option value="CHEQUE">Cheque</option>
-                          </select>
+                          <Combobox
+                            value={cuentaPagoId}
+                            onChange={v => setCuentaPagoId(v)}
+                            options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                          />
+                          <Combobox
+                            value={metodoPagoFinanzas}
+                            onChange={v => setMetodoPagoFinanzas(v)}
+                            options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                          />
                           <button onClick={() => registrarPagoCxP(c.id)}
                             className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
                           <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
@@ -4394,13 +4368,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Tipo</label>
-                  <select value={gastoOpForm.tipo} onChange={e => setGastoOpForm(f => ({ ...f, tipo: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="COMIDA">Comida</option>
-                    <option value="TRANSPORTE">Transporte</option>
-                    <option value="HOSPEDAJE">Hospedaje</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
+                  <Combobox
+                    value={gastoOpForm.tipo}
+                    onChange={v => setGastoOpForm(f => ({ ...f, tipo: v }))}
+                    options={[{ value: "COMIDA", label: "Comida" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "HOSPEDAJE", label: "Hospedaje" }, { value: "OTRO", label: "Otro" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
@@ -4502,29 +4475,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Categoría</label>
-                  <select value={gastoCategoria} onChange={e => setGastoCategoria(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin categoría —</option>
-                    {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={gastoCategoria}
+                    onChange={v => setGastoCategoria(v)}
+                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
-                  <select value={gastoProveedor} onChange={e => setGastoProveedor(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— No aplica / Genérico —</option>
-                    {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={gastoProveedor}
+                    onChange={v => setGastoProveedor(v)}
+                    options={[{ value: "", label: "— No aplica / Genérico —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <select value={gastoMetodo} onChange={e => setGastoMetodo(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="TRANSFERENCIA">Transferencia</option>
-                    <option value="EFECTIVO">Efectivo</option>
-                    <option value="TARJETA">Tarjeta</option>
-                    <option value="CHEQUE">Cheque</option>
-                  </select>
+                  <Combobox
+                    value={gastoMetodo}
+                    onChange={v => setGastoMetodo(v)}
+                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Referencia / comprobante</label>

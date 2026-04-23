@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface MetaResultado {
   id: string;
@@ -243,10 +244,12 @@ export default function MetaAdsPage() {
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Objetivo</label>
-                <select value={form.objetivo} onChange={e => setForm(p => ({ ...p, objetivo: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {Object.entries(OBJETIVO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                <Combobox
+                  value={form.objetivo}
+                  onChange={v => setForm(p => ({ ...p, objetivo: v }))}
+                  options={Object.entries(OBJETIVO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Presupuesto total ($)</label>
@@ -306,10 +309,12 @@ export default function MetaAdsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <select value={selected.estado} onChange={e => guardarEstado(selected.id, e.target.value)}
-                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]">
-                    {["BORRADOR", "ACTIVA", "PAUSADA", "FINALIZADA"].map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
+                  <Combobox
+                    value={selected.estado}
+                    onChange={v => guardarEstado(selected.id, v)}
+                    options={["BORRADOR", "ACTIVA", "PAUSADA", "FINALIZADA"].map(s => ({ value: s, label: s }))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                  />
                   <button onClick={() => eliminarCampana(selected.id)}
                     className="text-gray-600 hover:text-red-400 text-xs px-2 py-1.5 transition-colors">Eliminar</button>
                 </div>

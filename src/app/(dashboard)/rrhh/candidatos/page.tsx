@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SkeletonCards } from "@/components/Skeleton";
+import { Combobox } from "@/components/Combobox";
 
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
@@ -243,10 +244,12 @@ export default function CandidatosPage() {
               </div>
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Puesto al que aplica</label>
-                <select value={form.puestoId} onChange={e=>setForm(p=>({...p,puestoId:e.target.value}))} className={inputCls}>
-                  <option value="">— Seleccionar puesto ideal —</option>
-                  {puestos.map(p => <option key={p.id} value={p.id}>{p.titulo} · {p.area}</option>)}
-                </select>
+                <Combobox
+                  value={form.puestoId}
+                  onChange={v => setForm(p => ({ ...p, puestoId: v }))}
+                  options={[{ value: "", label: "— Seleccionar puesto ideal —" }, ...puestos.map(p => ({ value: p.id, label: `${p.titulo} · ${p.area}` }))]}
+                  className={inputCls}
+                />
               </div>
               {!form.puestoId && (
                 <div className="grid grid-cols-2 gap-3">

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatCurrency, formatPct } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 
@@ -1017,20 +1018,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             />
                             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
                           </div>
-                          <select defaultValue={p.diasAntes}
-                            onChange={e => {
-                              const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(e.target.value) } : q);
+                          <Combobox
+                            value={String(p.diasAntes)}
+                            onChange={v => {
+                              const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(v) } : q);
                               savePlan({ esquema: "PERSONALIZADO", pagos: updated });
                             }}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
-                            <option value="-3">3d tras aprobar</option>
-                            <option value="-7">7d tras aprobar</option>
-                            <option value="-14">14d tras aprobar</option>
-                            <option value="30">30d antes evento</option>
-                            <option value="15">15d antes evento</option>
-                            <option value="7">7d antes evento</option>
-                            <option value="1">1d antes evento</option>
-                          </select>
+                            options={[{ value: "-3", label: "3d tras aprobar" }, { value: "-7", label: "7d tras aprobar" }, { value: "-14", label: "14d tras aprobar" }, { value: "30", label: "30d antes evento" }, { value: "15", label: "15d antes evento" }, { value: "7", label: "7d antes evento" }, { value: "1", label: "1d antes evento" }]}
+                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                          />
                         </div>
                       ))}
                     </div>

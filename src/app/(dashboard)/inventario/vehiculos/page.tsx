@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Mantenimiento {
   id: string;
@@ -387,11 +388,12 @@ export default function VehiculosPage() {
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
-                        <select value={mantForm.tipoRegistro}
-                          onChange={e => setMantForm(p => ({ ...p, tipoRegistro: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50">
-                          {Object.entries(TIPO_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                        </select>
+                        <Combobox
+                          value={mantForm.tipoRegistro}
+                          onChange={v => setMantForm(p => ({ ...p, tipoRegistro: v }))}
+                          options={Object.entries(TIPO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Km al registrar</label>
@@ -442,22 +444,21 @@ export default function VehiculosPage() {
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
-                        <select value={mantForm.prioridad} onChange={e => setMantForm(p => ({ ...p, prioridad: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50">
-                          <option value="BAJA">Baja</option>
-                          <option value="NORMAL">Normal</option>
-                          <option value="ALTA">Alta</option>
-                          <option value="URGENTE">Urgente</option>
-                        </select>
+                        <Combobox
+                          value={mantForm.prioridad}
+                          onChange={v => setMantForm(p => ({ ...p, prioridad: v }))}
+                          options={[{ value: "BAJA", label: "Baja" }, { value: "NORMAL", label: "Normal" }, { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Urgente" }]}
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                        />
                       </div>
                       <div>
                         <label className="text-xs text-gray-500 mb-1 block">Estatus</label>
-                        <select value={mantForm.estatus} onChange={e => setMantForm(p => ({ ...p, estatus: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50">
-                          <option value="COMPLETADO">Completado</option>
-                          <option value="EN_PROCESO">En proceso</option>
-                          <option value="PENDIENTE">Pendiente</option>
-                        </select>
+                        <Combobox
+                          value={mantForm.estatus}
+                          onChange={v => setMantForm(p => ({ ...p, estatus: v }))}
+                          options={[{ value: "COMPLETADO", label: "Completado" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "PENDIENTE", label: "Pendiente" }]}
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                        />
                       </div>
                       <div className="col-span-2 md:col-span-3">
                         <label className="text-xs text-gray-500 mb-1 block">Comentarios</label>

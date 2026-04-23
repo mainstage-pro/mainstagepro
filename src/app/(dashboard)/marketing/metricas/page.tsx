@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Combobox } from "@/components/Combobox";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -305,13 +306,12 @@ export default function MetricasPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-white/40 text-xs mb-1 block">Plataforma</label>
-                <select
+                <Combobox
                   value={form.plataforma}
-                  onChange={e => setForm(f => ({ ...f, plataforma: e.target.value }))}
+                  onChange={v => setForm(f => ({ ...f, plataforma: v }))}
+                  options={PLATAFORMAS.map(p => ({ value: p, label: p }))}
                   className={inputCls}
-                >
-                  {PLATAFORMAS.map(p => <option key={p}>{p}</option>)}
-                </select>
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3">

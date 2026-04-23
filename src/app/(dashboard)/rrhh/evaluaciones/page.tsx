@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
 interface Evaluacion {
@@ -116,11 +117,12 @@ export default function EvaluacionesPage() {
 
       {/* Filtro */}
       <div className="flex items-center gap-3">
-        <select value={filtroPersonal} onChange={e=>setFiltroPersonal(e.target.value)}
-          className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-          <option value="">Todos los empleados</option>
-          {personal.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-        </select>
+        <Combobox
+          value={filtroPersonal}
+          onChange={v => setFiltroPersonal(v)}
+          options={[{ value: "", label: "Todos los empleados" }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
+          className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+        />
         {evaluaciones.length > 0 && promedio > 0 && (
           <span className={`text-sm font-semibold ${scoreColor(promedio)}`}>
             Promedio: {promedio.toFixed(1)}/5
@@ -134,11 +136,12 @@ export default function EvaluacionesPage() {
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva evaluación</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div><label className="text-xs text-gray-500 mb-1 block">Empleado</label>
-              <select value={form.personalId} onChange={e=>setForm(p=>({...p,personalId:e.target.value}))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="">Seleccionar...</option>
-                {personal.map(p=><option key={p.id} value={p.id}>{p.nombre}</option>)}
-              </select></div>
+              <Combobox
+                value={form.personalId}
+                onChange={v => setForm(p => ({ ...p, personalId: v }))}
+                options={[{ value: "", label: "Seleccionar..." }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              /></div>
             <div><label className="text-xs text-gray-500 mb-1 block">Período</label>
               <input value={form.periodo} onChange={e=>setForm(p=>({...p,periodo:e.target.value}))}
                 placeholder="Ej: Abril 2026, Q1 2026..."

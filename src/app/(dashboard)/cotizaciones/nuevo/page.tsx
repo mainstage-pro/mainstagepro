@@ -10,6 +10,7 @@ import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
 import SearchableSelect from "@/components/ui/SearchableSelect";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -143,19 +144,6 @@ function Input({ label, ...props }: { label: string } & React.InputHTMLAttribute
   );
 }
 
-function Select({ label, children, ...props }: { label: string } & React.SelectHTMLAttributes<HTMLSelectElement> & { children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs text-gray-400 mb-1">{label}</label>
-      <select
-        {...props}
-        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-      >
-        {children}
-      </select>
-    </div>
-  );
-}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 function CotizadorForm() {
@@ -1019,16 +1007,24 @@ function CotizadorForm() {
               <div className="col-span-2">
                 <Input label="Nombre del evento" value={evento.nombreEvento} onChange={e => setEvento(p => ({ ...p, nombreEvento: e.target.value }))} placeholder="Boda García, Concierto XYZ..." />
               </div>
-              <Select label="Tipo de evento" value={evento.tipoEvento} onChange={e => setEvento(p => ({ ...p, tipoEvento: e.target.value }))}>
-                <option value="MUSICAL">Musical</option><option value="SOCIAL">Social</option>
-                <option value="EMPRESARIAL">Empresarial</option><option value="OTRO">Otro</option>
-              </Select>
-              <Select label="Tipo de servicio" value={evento.tipoServicio} onChange={e => setEvento(p => ({ ...p, tipoServicio: e.target.value }))}>
-                <option value="">— Sin especificar —</option>
-                <option value="RENTA">Renta de Equipo</option>
-                <option value="PRODUCCION_TECNICA">Producción Técnica</option>
-                <option value="DIRECCION_TECNICA">Dirección Técnica</option>
-              </Select>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
+                <Combobox
+                  value={evento.tipoEvento}
+                  onChange={v => setEvento(p => ({ ...p, tipoEvento: v }))}
+                  options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
+                <Combobox
+                  value={evento.tipoServicio}
+                  onChange={v => setEvento(p => ({ ...p, tipoServicio: v }))}
+                  options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
               <Input label="Fecha del evento" type="date" value={evento.fechaEvento} onChange={e => setEvento(p => ({ ...p, fechaEvento: e.target.value }))} />
               <div>
                 <VenuePicker label="Lugar del evento" value={evento.lugarEvento} onChange={(v) => setEvento(p => ({ ...p, lugarEvento: v }))} placeholder="Venue, ciudad..." />
@@ -1328,11 +1324,12 @@ function CotizadorForm() {
                   <input value={nuevoEqForm.marca} onChange={e => setNuevoEqForm(p => ({ ...p, marca: e.target.value }))}
                     placeholder="Marca / modelo"
                     className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  <select value={nuevoEqForm.categoriaId} onChange={e => setNuevoEqForm(p => ({ ...p, categoriaId: e.target.value }))}
-                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Categoría *</option>
-                    {categoriasList.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={nuevoEqForm.categoriaId}
+                    onChange={v => setNuevoEqForm(p => ({ ...p, categoriaId: v }))}
+                    options={[{ value: "", label: "— Categoría *" }, ...categoriasList.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                   <input type="number" min="0" value={nuevoEqForm.precioRenta} onChange={e => setNuevoEqForm(p => ({ ...p, precioRenta: e.target.value }))}
                     placeholder="Precio al cliente"
                     className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
@@ -1342,11 +1339,12 @@ function CotizadorForm() {
                   <input type="number" min="1" value={nuevoEqForm.cantidadTotal} onChange={e => setNuevoEqForm(p => ({ ...p, cantidadTotal: e.target.value }))}
                     placeholder="Cantidad en catálogo"
                     className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  <select value={nuevoEqForm.proveedorId} onChange={e => setNuevoEqForm(p => ({ ...p, proveedorId: e.target.value }))}
-                    className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Proveedor (opcional)</option>
-                    {proveedores.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
+                  <Combobox
+                    value={nuevoEqForm.proveedorId}
+                    onChange={v => setNuevoEqForm(p => ({ ...p, proveedorId: v }))}
+                    options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
                 <div className="flex gap-2">
                   <button onClick={crearEquipoProveedor} disabled={guardandoEq || !nuevoEqForm.descripcion || !nuevoEqForm.categoriaId}
@@ -1563,12 +1561,18 @@ function CotizadorForm() {
                 options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
                 className="flex-1"
               />
-              <select value={selRolNivel} onChange={e => setSelRolNivel(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none">
-                <option value="AAA">AAA</option><option value="AA">AA</option><option value="A">A</option>
-              </select>
-              <select value={selRolJornada} onChange={e => setSelRolJornada(e.target.value)} className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none">
-                <option value="CORTA">0–8 hrs</option><option value="MEDIA">8–12 hrs</option><option value="LARGA">12+ hrs</option>
-              </select>
+              <Combobox
+                value={selRolNivel}
+                onChange={v => setSelRolNivel(v)}
+                options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+              />
+              <Combobox
+                value={selRolJornada}
+                onChange={v => setSelRolJornada(v)}
+                options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+              />
               <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
@@ -1588,11 +1592,12 @@ function CotizadorForm() {
           {/* ── Servicio de DJ ── */}
           <Seccion titulo="Servicio de DJ" hint="cobro por hora · sin descuento">
             <div className="flex gap-2 mb-3">
-              <select value={selDJNivel} onChange={e => setSelDJNivel(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="AAA">AAA — {formatCurrency(DJ_TARIFAS.AAA)}/hr</option>
-                <option value="AA">AA — {formatCurrency(DJ_TARIFAS.AA)}/hr</option>
-                <option value="A">A — {formatCurrency(DJ_TARIFAS.A)}/hr</option>
-              </select>
+              <Combobox
+                value={selDJNivel}
+                onChange={v => setSelDJNivel(v)}
+                options={[{ value: "AAA", label: `AAA — ${formatCurrency(DJ_TARIFAS.AAA)}/hr` }, { value: "AA", label: `AA — ${formatCurrency(DJ_TARIFAS.AA)}/hr` }, { value: "A", label: `A — ${formatCurrency(DJ_TARIFAS.A)}/hr` }]}
+                className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
               <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
               <div className="flex-1 flex items-center text-gray-400 text-sm">
                 Total: {formatCurrency((DJ_TARIFAS[selDJNivel] ?? 0) * (parseFloat(selDJHoras) || 0))}
@@ -1623,13 +1628,16 @@ function CotizadorForm() {
                 <div key={tipo} className="mb-4 last:mb-0">
                   <p className="text-xs font-semibold text-[#888] mb-2 uppercase tracking-wider">{icon} {label}</p>
                   <div className="flex gap-2 mb-2 flex-wrap items-end">
-                    <select value={logConcepto[tipo]} onChange={e => {
-                      const precio = conceptos.find(c => c.label === e.target.value)?.precio ?? 0;
-                      setLogConcepto(p => ({ ...p, [tipo]: e.target.value }));
-                      setLogPrecio(p => ({ ...p, [tipo]: String(precio) }));
-                    }} className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                      {conceptos.map(c => <option key={c.label} value={c.label}>{c.label}</option>)}
-                    </select>
+                    <Combobox
+                      value={logConcepto[tipo]}
+                      onChange={v => {
+                        const precio = conceptos.find(c => c.label === v)?.precio ?? 0;
+                        setLogConcepto(p => ({ ...p, [tipo]: v }));
+                        setLogPrecio(p => ({ ...p, [tipo]: String(precio) }));
+                      }}
+                      options={conceptos.map(c => ({ value: c.label, label: c.label }))}
+                      className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
                     <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                     <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={20} className="w-16 py-2" title="Cantidad" />
                     <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />

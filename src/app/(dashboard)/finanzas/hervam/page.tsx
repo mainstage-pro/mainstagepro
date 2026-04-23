@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
@@ -380,10 +381,12 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
                   <Inp label="Monto pagado" value={editPagoForm.montoPagado} onChange={v => setEditPagoForm(f => ({...f, montoPagado: v}))} type="number" prefix="$" />
                   <div>
                     <label className="text-[11px] text-gray-500 mb-1 block">Estado</label>
-                    <select value={editPagoForm.estado} onChange={e => setEditPagoForm(f => ({...f, estado: e.target.value}))}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                      {["PENDIENTE","PARCIAL","PAGADO","DIFERIDO"].map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
+                    <Combobox
+                      value={editPagoForm.estado}
+                      onChange={v => setEditPagoForm(f => ({...f, estado: v}))}
+                      options={["PENDIENTE","PARCIAL","PAGADO","DIFERIDO"].map(e => ({ value: e, label: e }))}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                    />
                   </div>
                   <Inp label="Notas" value={editPagoForm.notas} onChange={v => setEditPagoForm(f => ({...f, notas: v}))} />
                 </div>
@@ -595,10 +598,12 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
             </div>
             <div>
               <label className="text-[11px] text-gray-500 mb-1 block">Categoría</label>
-              <select value={form.categoria} onChange={e => s("categoria", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
+              <Combobox
+                value={form.categoria}
+                onChange={v => s("categoria", v)}
+                options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <Inp label="Fecha de adquisición" value={form.fechaAdquisicion} onChange={v => s("fechaAdquisicion", v)} type="date" />
             <Inp label="Valor de adquisición" hint="Cuánto costó originalmente" value={form.valorAdquisicion} onChange={v => s("valorAdquisicion", v)} type="number" prefix="$" />
@@ -939,10 +944,12 @@ function HistorialTab({ pagos, configData, onRefresh }: {
                           <Inp label="Monto pagado" value={editForm.montoPagado} onChange={v => setEditForm(f => ({...f, montoPagado: v}))} type="number" prefix="$" />
                           <div>
                             <label className="text-[11px] text-gray-500 mb-1 block">Estado</label>
-                            <select value={editForm.estado} onChange={e => setEditForm(f => ({...f, estado: e.target.value}))}
-                              className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]">
-                              {["PENDIENTE","PARCIAL","PAGADO","DIFERIDO"].map(e => <option key={e} value={e}>{e}</option>)}
-                            </select>
+                            <Combobox
+                              value={editForm.estado}
+                              onChange={v => setEditForm(f => ({...f, estado: v}))}
+                              options={["PENDIENTE","PARCIAL","PAGADO","DIFERIDO"].map(e => ({ value: e, label: e }))}
+                              className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                            />
                           </div>
                           <Inp label="Notas" value={editForm.notas} onChange={v => setEditForm(f => ({...f, notas: v}))} />
                         </div>

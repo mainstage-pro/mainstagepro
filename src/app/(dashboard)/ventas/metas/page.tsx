@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 interface DiaData { fecha: string; dia: string; count: number }
 interface HistoricoItem { mes: string; label: string; prospectados: number; cierres: number }
@@ -491,15 +492,12 @@ export default function MetasPage() {
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500 block mb-1">Avanzar a etapa</label>
-                                <select
+                                <Combobox
                                   value={cForm.nextEtapa || etapaSugerida}
-                                  onChange={e => setCForm(p => ({ ...p, nextEtapa: e.target.value }))}
+                                  onChange={v => setCForm(p => ({ ...p, nextEtapa: v }))}
+                                  options={Object.entries(NURTURING_ETAPAS).map(([k, v]) => ({ value: k, label: `${v}${k === etapaSugerida ? " (sugerida)" : ""}` }))}
                                   className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                                >
-                                  {Object.entries(NURTURING_ETAPAS).map(([k, v]) => (
-                                    <option key={k} value={k}>{v}{k === etapaSugerida ? " (sugerida)" : ""}</option>
-                                  ))}
-                                </select>
+                                />
                               </div>
                               <div>
                                 <label className="text-[10px] text-gray-500 block mb-1">Próximo seguimiento (motivo)</label>

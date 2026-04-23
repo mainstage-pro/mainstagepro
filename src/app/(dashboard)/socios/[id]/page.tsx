@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -103,13 +104,11 @@ const DarkInput = ({ value, onChange, placeholder, type = "text", readOnly, requ
     className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-50" />
 );
 
-const DarkSelect = ({ value, onChange, children }: {
-  value: string; onChange: (v: string) => void; children: React.ReactNode;
+const DarkSelect = ({ value, onChange, options }: {
+  value: string; onChange: (v: string) => void; options: { value: string; label: string }[];
 }) => (
-  <select value={value} onChange={(e) => onChange(e.target.value)}
-    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-    {children}
-  </select>
+  <Combobox value={value} onChange={onChange} options={options}
+    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
 );
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
@@ -166,12 +165,8 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           <FieldLabel>Estado:</FieldLabel>
           {edit ? (
             <div className="w-48">
-              <DarkSelect value={form.status} onChange={(v) => f("status", v)}>
-                <option value="EN_REVISION">En revisión</option>
-                <option value="ACTIVO">Activo</option>
-                <option value="SUSPENDIDO">Suspendido</option>
-                <option value="INACTIVO">Inactivo</option>
-              </DarkSelect>
+              <DarkSelect value={form.status} onChange={(v) => f("status", v)}
+                options={[{ value: "EN_REVISION", label: "En revisión" }, { value: "ACTIVO", label: "Activo" }, { value: "SUSPENDIDO", label: "Suspendido" }, { value: "INACTIVO", label: "Inactivo" }]} />
             </div>
           ) : (
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_COLORS[socio.status]}`}>
@@ -197,9 +192,8 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
             <FieldLabel>{label}</FieldLabel>
             {edit ? (
               sel ? (
-                <DarkSelect value={(form[key] as string) || ""} onChange={(v) => f(key, v)}>
-                  {sel.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </DarkSelect>
+                <DarkSelect value={(form[key] as string) || ""} onChange={(v) => f(key, v)}
+                  options={sel.map(([v, l]) => ({ value: v, label: l }))} />
               ) : (
                 <DarkInput value={(form[key] as string) || ""} onChange={(v) => f(key, v)} />
               )
@@ -365,9 +359,8 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
             <div key={key} className={span ? `col-span-${span}` : ""}>
               <FieldLabel>{label}</FieldLabel>
               {sel ? (
-                <DarkSelect value={(form as Record<string,string>)[key]} onChange={(v) => f(key, v)}>
-                  {sel.map((v) => <option key={v} value={v}>{v}</option>)}
-                </DarkSelect>
+                <DarkSelect value={(form as Record<string,string>)[key]} onChange={(v) => f(key, v)}
+                  options={sel.map((v) => ({ value: v, label: v }))} />
               ) : (
                 <DarkInput value={(form as Record<string,string>)[key]} type={type || "text"}
                   onChange={(v) => f(key, v)}
@@ -507,14 +500,18 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Rentas</p>
-          <select value={filMes} onChange={(e) => setFilMes(parseInt(e.target.value))}
-            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-            {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-          </select>
-          <select value={filAnio} onChange={(e) => setFilAnio(parseInt(e.target.value))}
-            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-            {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
-          </select>
+          <Combobox
+            value={String(filMes)}
+            onChange={v => setFilMes(parseInt(v))}
+            options={MESES.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))}
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+          />
+          <Combobox
+            value={String(filAnio)}
+            onChange={v => setFilAnio(parseInt(v))}
+            options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))}
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+          />
         </div>
         {!showForm && activos.length > 0 && (
           <button onClick={() => setShowForm(true)}
@@ -540,9 +537,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
           </div>
           <div>
             <FieldLabel>Equipo *</FieldLabel>
-            <DarkSelect value={form.activoId} onChange={(v) => setForm((p) => ({ ...p, activoId: v }))}>
-              {activos.map((a) => <option key={a.id} value={a.id}>{a.codigoInventario} — {a.nombre}</option>)}
-            </DarkSelect>
+            <DarkSelect value={form.activoId} onChange={(v) => setForm((p) => ({ ...p, activoId: v }))}
+              options={activos.map(a => ({ value: a.id, label: `${a.codigoInventario} — ${a.nombre}` }))} />
           </div>
           <div>
             <FieldLabel>Días</FieldLabel>
@@ -551,15 +547,13 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
           </div>
           <div>
             <FieldLabel>Mes</FieldLabel>
-            <DarkSelect value={String(form.mes)} onChange={(v) => setForm((p) => ({ ...p, mes: parseInt(v) }))}>
-              {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-            </DarkSelect>
+            <DarkSelect value={String(form.mes)} onChange={(v) => setForm((p) => ({ ...p, mes: parseInt(v) }))}
+              options={MESES.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))} />
           </div>
           <div>
             <FieldLabel>Año</FieldLabel>
-            <DarkSelect value={String(form.anio)} onChange={(v) => setForm((p) => ({ ...p, anio: parseInt(v) }))}>
-              {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
-            </DarkSelect>
+            <DarkSelect value={String(form.anio)} onChange={(v) => setForm((p) => ({ ...p, anio: parseInt(v) }))}
+              options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))} />
           </div>
           {preview && (
             <div className="col-span-3 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-3 flex gap-6 text-sm">
@@ -656,14 +650,18 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
       <div className="flex items-center justify-between mb-5">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reportes mensuales</p>
         <div className="flex items-center gap-2">
-          <select value={genMes} onChange={(e) => setGenMes(parseInt(e.target.value))}
-            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-            {MESES.slice(1).map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-          </select>
-          <select value={genAnio} onChange={(e) => setGenAnio(parseInt(e.target.value))}
-            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]">
-            {[2024,2025,2026,2027].map((y) => <option key={y}>{y}</option>)}
-          </select>
+          <Combobox
+            value={String(genMes)}
+            onChange={v => setGenMes(parseInt(v))}
+            options={MESES.slice(1).map((m, i) => ({ value: String(i + 1), label: m }))}
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+          />
+          <Combobox
+            value={String(genAnio)}
+            onChange={v => setGenAnio(parseInt(v))}
+            options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))}
+            className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+          />
           <button onClick={generar} disabled={generating}
             className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             {generating ? "Generando..." : "Generar / Actualizar"}
@@ -778,17 +776,13 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
           <p className="col-span-2 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo registro</p>
           <div>
             <FieldLabel>Equipo *</FieldLabel>
-            <DarkSelect value={form.activoId} onChange={(v) => f("activoId", v)}>
-              {activos.map((a) => <option key={a.id} value={a.id}>{a.codigoInventario} — {a.nombre}</option>)}
-            </DarkSelect>
+            <DarkSelect value={form.activoId} onChange={(v) => f("activoId", v)}
+              options={activos.map(a => ({ value: a.id, label: `${a.codigoInventario} — ${a.nombre}` }))} />
           </div>
           <div>
             <FieldLabel>Tipo</FieldLabel>
-            <DarkSelect value={form.tipo} onChange={(v) => f("tipo", v)}>
-              <option value="PREVENTIVO">Preventivo</option>
-              <option value="CORRECTIVO">Correctivo</option>
-              <option value="INSPECCION">Inspección</option>
-            </DarkSelect>
+            <DarkSelect value={form.tipo} onChange={(v) => f("tipo", v)}
+              options={[{ value: "PREVENTIVO", label: "Preventivo" }, { value: "CORRECTIVO", label: "Correctivo" }, { value: "INSPECCION", label: "Inspección" }]} />
           </div>
           <div className="col-span-2">
             <FieldLabel>Descripción *</FieldLabel>
