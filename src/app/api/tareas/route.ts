@@ -64,10 +64,9 @@ export async function GET(req: NextRequest) {
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
   } else if (vista === "bandeja") {
-    where.proyectoTareaId  = null;
-    where.iniciativaId     = null;
-    where.proyectoEventoId = null;
-    where.parentId         = null;
+    where.proyectoTareaId = null;
+    where.iniciativaId    = null;
+    where.parentId        = null;
     where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   }
 
@@ -95,24 +94,24 @@ export async function POST(req: NextRequest) {
 
   const tarea = await prisma.tarea.create({
     data: {
-      titulo:           titulo.trim(),
-      descripcion:      descripcion       || null,
-      prioridad:        prioridad         || "MEDIA",
-      area:             area              || "GENERAL",
-      asignadoAId:      asignadoAId       || null,
-      creadoPorId:      session.id,
-      iniciativaId:     iniciativaId      || null,
-      proyectoTareaId:  proyectoTareaId   || null,
-      proyectoEventoId: proyectoEventoId  || null,
-      seccionId:        seccionId         || null,
-      carpetaId:        carpetaId         || null,
-      parentId:         parentId          || null,
-      fecha:            fecha             ? new Date(fecha) : null,
-      fechaVencimiento: fechaVencimiento  ? new Date(fechaVencimiento) : null,
-      recurrencia:      recurrencia       || null,
-      notas:            notas             || null,
-      etiquetas:        etiquetas         ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
-      orden:            orden             ?? 0,
+      titulo:          titulo.trim(),
+      descripcion:     descripcion      || null,
+      prioridad:       prioridad        || "MEDIA",
+      area:            area             || "GENERAL",
+      asignadoAId:     asignadoAId      || null,
+      creadoPorId:     session.id,
+      iniciativaId:    iniciativaId     || null,
+      proyectoTareaId: proyectoTareaId  || null,
+      seccionId:       seccionId        || null,
+      carpetaId:       carpetaId        || null,
+      parentId:        parentId         || null,
+      fecha:           fecha            ? new Date(fecha) : null,
+      fechaVencimiento:fechaVencimiento ? new Date(fechaVencimiento) : null,
+      recurrencia:     recurrencia      || null,
+      notas:           notas            || null,
+      etiquetas:       etiquetas        ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
+      orden:           orden            ?? 0,
+      ...(proyectoEventoId ? { proyectoEventoId } : {}),
     },
     include: INCLUDE,
   });

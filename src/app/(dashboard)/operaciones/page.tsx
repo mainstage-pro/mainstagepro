@@ -118,11 +118,11 @@ export default function OperacionesPage() {
   // ── Load nav ────────────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
-      fetch("/api/operaciones/carpetas").then(r => r.json()),
-      fetch("/api/operaciones/proyectos").then(r => r.json()),
-      fetch("/api/iniciativas").then(r => r.json()),
-      fetch("/api/usuarios").then(r => r.json()),
-      fetch("/api/me").then(r => r.json()),
+      fetch("/api/operaciones/carpetas").then(r => r.json()).catch(() => ({ carpetas: [] })),
+      fetch("/api/operaciones/proyectos").then(r => r.json()).catch(() => ({ proyectos: [] })),
+      fetch("/api/iniciativas").then(r => r.json()).catch(() => ({ iniciativas: [] })),
+      fetch("/api/usuarios").then(r => r.json()).catch(() => ({ usuarios: [] })),
+      fetch("/api/me").then(r => r.json()).catch(() => ({})),
     ]).then(([carp, proy, init, usr, me]) => {
       setCarpetas(carp.carpetas ?? []);
       setProyectosNav(proy.proyectos ?? []);
@@ -140,18 +140,24 @@ export default function OperacionesPage() {
     if (vista === "integrada") {
       fetch("/api/tareas/integradas")
         .then(r => r.json())
-        .then(d => { setIntegradas(d.tareas ?? []); setLoadingMain(false); });
+        .then(d => { setIntegradas(d.tareas ?? []); })
+        .catch(() => {})
+        .finally(() => setLoadingMain(false));
       return;
     }
     if (vista === "proyectos-evento") {
       fetch("/api/tareas/por-proyecto")
         .then(r => r.json())
-        .then(d => { setProyectosEvento(d.proyectos ?? []); setLoadingMain(false); });
+        .then(d => { setProyectosEvento(d.proyectos ?? []); })
+        .catch(() => {})
+        .finally(() => setLoadingMain(false));
       return;
     }
     fetch(`/api/tareas?vista=${vista}`)
       .then(r => r.json())
-      .then(d => { setTareas(d.tareas ?? []); setLoadingMain(false); });
+      .then(d => { setTareas(d.tareas ?? []); })
+      .catch(() => {})
+      .finally(() => setLoadingMain(false));
   }, [vista]);
 
   useEffect(() => {
@@ -159,7 +165,9 @@ export default function OperacionesPage() {
     setLoadingMain(true);
     fetch(`/api/operaciones/proyectos/${vista.id}`)
       .then(r => r.json())
-      .then(d => { setProyectoDetalle(d.proyecto ?? null); setLoadingMain(false); });
+      .then(d => { setProyectoDetalle(d.proyecto ?? null); })
+      .catch(() => {})
+      .finally(() => setLoadingMain(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [typeof vista === "object" ? (vista as {id:string}).id : null]);
 

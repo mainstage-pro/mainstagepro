@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const allowed = [
     "titulo", "descripcion", "prioridad", "area", "estado",
-    "asignadoAId", "iniciativaId", "proyectoTareaId", "proyectoEventoId", "seccionId", "carpetaId", "parentId",
+    "asignadoAId", "iniciativaId", "proyectoTareaId", "seccionId", "carpetaId", "parentId",
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
   ];
 
@@ -86,23 +86,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       nextTarea = await prisma.tarea.create({
         data: {
-          titulo:           tarea.titulo,
-          descripcion:      tarea.descripcion,
-          prioridad:        tarea.prioridad,
-          area:             tarea.area,
-          asignadoAId:      tarea.asignadoAId,
-          creadoPorId:      tarea.creadoPorId,
-          iniciativaId:     tarea.iniciativaId,
-          proyectoTareaId:  tarea.proyectoTareaId,
-          proyectoEventoId: tarea.proyectoEventoId,
-          seccionId:        tarea.seccionId,
-          carpetaId:        tarea.carpetaId,
-          fecha:            proximaFecha,
-          fechaVencimiento: tarea.fechaVencimiento,
-          recurrencia:      tarea.recurrencia,
-          notas:            tarea.notas,
-          etiquetas:        tarea.etiquetas,
-          orden:            tarea.orden,
+          titulo:          tarea.titulo,
+          descripcion:     tarea.descripcion,
+          prioridad:       tarea.prioridad,
+          area:            tarea.area,
+          asignadoAId:     tarea.asignadoAId,
+          creadoPorId:     tarea.creadoPorId,
+          iniciativaId:    tarea.iniciativaId,
+          proyectoTareaId: tarea.proyectoTareaId,
+          seccionId:       tarea.seccionId,
+          carpetaId:       tarea.carpetaId,
+          fecha:           proximaFecha,
+          fechaVencimiento:tarea.fechaVencimiento,
+          recurrencia:     tarea.recurrencia,
+          notas:           tarea.notas,
+          etiquetas:       tarea.etiquetas,
+          orden:           tarea.orden,
+          ...(tarea.proyectoEventoId ? { proyectoEventoId: tarea.proyectoEventoId } : {}),
         },
         include: INCLUDE,
       });
