@@ -1,7 +1,7 @@
 // Mainstage Pro — Service Worker
 // Estrategia: Network-first para todo (datos siempre frescos) + cola offline para mutaciones
 
-const CACHE_SHELL = "msp-shell-v4";
+const CACHE_SHELL = "msp-shell-v5";
 const DB_NAME     = "msp-offline-queue";
 const DB_VERSION  = 1;
 const SYNC_TAG    = "msp-sync";
@@ -69,7 +69,9 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_SHELL).then((cache) =>
       cache.addAll([
         "/offline",
-        "/logo-icon.png",
+        "/pwa-icon-192.png",
+        "/pwa-icon-512.png",
+        "/pwa-apple-touch-icon.png",
         "/manifest.json",
       ]).catch(() => {})
     ).then(() => self.skipWaiting())
@@ -103,8 +105,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Archivos estáticos (imágenes, íconos, manifest) → cache-first
-  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|json|woff2?)$/)) {
+  // Manifest → siempre desde red para que los íconos se actualicen
+  if (url.pathname === "/manifest.json") {
+    event.respondWith(networkFirstNoCache(req));
+    return;
+  }
+
+  // Archivos estáticos (imágenes, íconos) → cache-first
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|woff2?)$/)) {
     event.respondWith(cacheFirst(req));
     return;
   }
