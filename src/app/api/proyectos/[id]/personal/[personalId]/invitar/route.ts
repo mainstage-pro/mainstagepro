@@ -10,15 +10,15 @@ function formatPhone(raw: string): string {
 
 export async function POST(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string; pId: string }> }
+  { params }: { params: Promise<{ id: string; personalId: string }> }
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { id: proyectoId, pId } = await params;
+  const { id: proyectoId, personalId } = await params;
 
   const personal = await prisma.proyectoPersonal.findUnique({
-    where: { id: pId },
+    where: { id: personalId },
     include: {
       tecnico: { select: { nombre: true, celular: true } },
       rolTecnico: { select: { nombre: true } },
@@ -33,7 +33,7 @@ export async function POST(
   const token = crypto.randomUUID();
 
   await prisma.proyectoPersonal.update({
-    where: { id: pId },
+    where: { id: personalId },
     data: {
       confirmToken: token,
       confirmado: false,
