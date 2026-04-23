@@ -4,14 +4,13 @@ import { getSession } from "@/lib/auth";
 import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
 
 const INCLUDE = {
-  asignadoA:      { select: { id: true, name: true } },
-  creadoPor:      { select: { id: true, name: true } },
-  iniciativa:     { select: { id: true, nombre: true, color: true } },
-  proyectoTarea:  { select: { id: true, nombre: true, color: true } },
-  proyectoEvento: { select: { id: true, nombre: true, fechaEvento: true, tipoEvento: true } },
-  seccion:        { select: { id: true, nombre: true } },
-  carpeta:        { select: { id: true, nombre: true } },
-  _count:         { select: { subtareas: true, comentarios: true, archivos: true } },
+  asignadoA:     { select: { id: true, name: true } },
+  creadoPor:     { select: { id: true, name: true } },
+  iniciativa:    { select: { id: true, nombre: true, color: true } },
+  proyectoTarea: { select: { id: true, nombre: true, color: true } },
+  seccion:       { select: { id: true, nombre: true } },
+  carpeta:       { select: { id: true, nombre: true } },
+  _count:        { select: { subtareas: true, comentarios: true, archivos: true } },
 };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
