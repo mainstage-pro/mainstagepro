@@ -3,13 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 const INCLUDE = {
-  asignadoA:    { select: { id: true, name: true } },
-  creadoPor:    { select: { id: true, name: true } },
-  iniciativa:   { select: { id: true, nombre: true, color: true } },
-  proyectoTarea:{ select: { id: true, nombre: true, color: true } },
-  seccion:      { select: { id: true, nombre: true } },
-  carpeta:      { select: { id: true, nombre: true } },
-  _count:       { select: { subtareas: true, comentarios: true, archivos: true } },
+  asignadoA:      { select: { id: true, name: true } },
+  creadoPor:      { select: { id: true, name: true } },
+  iniciativa:     { select: { id: true, nombre: true, color: true } },
+  proyectoTarea:  { select: { id: true, nombre: true, color: true } },
+  proyectoEvento: { select: { id: true, nombre: true, fechaEvento: true, tipoEvento: true } },
+  seccion:        { select: { id: true, nombre: true } },
+  carpeta:        { select: { id: true, nombre: true } },
+  _count:         { select: { subtareas: true, comentarios: true, archivos: true } },
 };
 
 export async function GET(req: NextRequest) {
@@ -17,21 +18,23 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const vista        = searchParams.get("vista");
-  const proyectoId   = searchParams.get("proyectoId");
-  const area         = searchParams.get("area");
-  const estado       = searchParams.get("estado");
-  const asignadoAId  = searchParams.get("asignadoAId");
-  const iniciativaId = searchParams.get("iniciativaId");
-  const parentId     = searchParams.get("parentId");
+  const vista             = searchParams.get("vista");
+  const proyectoId        = searchParams.get("proyectoId");
+  const proyectoEventoId  = searchParams.get("proyectoEventoId");
+  const area              = searchParams.get("area");
+  const estado            = searchParams.get("estado");
+  const asignadoAId       = searchParams.get("asignadoAId");
+  const iniciativaId      = searchParams.get("iniciativaId");
+  const parentId          = searchParams.get("parentId");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
 
-  if (area)         where.area         = area;
-  if (asignadoAId)  where.asignadoAId  = asignadoAId;
-  if (iniciativaId) where.iniciativaId = iniciativaId;
-  if (proyectoId)   where.proyectoTareaId = proyectoId;
+  if (area)              where.area              = area;
+  if (asignadoAId)       where.asignadoAId       = asignadoAId;
+  if (iniciativaId)      where.iniciativaId      = iniciativaId;
+  if (proyectoId)        where.proyectoTareaId   = proyectoId;
+  if (proyectoEventoId)  where.proyectoEventoId  = proyectoEventoId;
 
   // parentId: null string = top-level only, actual id = subtareas of that task
   if (parentId === "null") where.parentId = null;
@@ -62,9 +65,10 @@ export async function GET(req: NextRequest) {
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
   } else if (vista === "bandeja") {
-    where.proyectoTareaId = null;
-    where.iniciativaId    = null;
-    where.parentId        = null;
+    where.proyectoTareaId  = null;
+    where.iniciativaId     = null;
+    where.proyectoEventoId = null;
+    where.parentId         = null;
     where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   }
 
@@ -84,7 +88,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
-    iniciativaId, proyectoTareaId, seccionId, carpetaId,
+    iniciativaId, proyectoTareaId, proyectoEventoId, seccionId, carpetaId,
     parentId, fecha, fechaVencimiento, recurrencia, orden,
   } = body;
 
@@ -92,23 +96,24 @@ export async function POST(req: NextRequest) {
 
   const tarea = await prisma.tarea.create({
     data: {
-      titulo:          titulo.trim(),
-      descripcion:     descripcion      || null,
-      prioridad:       prioridad        || "MEDIA",
-      area:            area             || "GENERAL",
-      asignadoAId:     asignadoAId      || null,
-      creadoPorId:     session.id,
-      iniciativaId:    iniciativaId     || null,
-      proyectoTareaId: proyectoTareaId  || null,
-      seccionId:       seccionId        || null,
-      carpetaId:       carpetaId        || null,
-      parentId:        parentId         || null,
-      fecha:           fecha            ? new Date(fecha) : null,
-      fechaVencimiento:fechaVencimiento ? new Date(fechaVencimiento) : null,
-      recurrencia:     recurrencia      || null,
-      notas:           notas            || null,
-      etiquetas:       etiquetas        ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
-      orden:           orden            ?? 0,
+      titulo:           titulo.trim(),
+      descripcion:      descripcion       || null,
+      prioridad:        prioridad         || "MEDIA",
+      area:             area              || "GENERAL",
+      asignadoAId:      asignadoAId       || null,
+      creadoPorId:      session.id,
+      iniciativaId:     iniciativaId      || null,
+      proyectoTareaId:  proyectoTareaId   || null,
+      proyectoEventoId: proyectoEventoId  || null,
+      seccionId:        seccionId         || null,
+      carpetaId:        carpetaId         || null,
+      parentId:         parentId          || null,
+      fecha:            fecha             ? new Date(fecha) : null,
+      fechaVencimiento: fechaVencimiento  ? new Date(fechaVencimiento) : null,
+      recurrencia:      recurrencia       || null,
+      notas:            notas             || null,
+      etiquetas:        etiquetas         ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
+      orden:            orden             ?? 0,
     },
     include: INCLUDE,
   });

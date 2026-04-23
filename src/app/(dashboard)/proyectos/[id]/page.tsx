@@ -11,6 +11,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
+import ProyectoTareas from "./ProyectoTareas";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -239,7 +240,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
+  const [tab, setTab] = useState<"resumen" | "operacion" | "tareas" | "finanzas" | "extras">("resumen");
   const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
@@ -1912,12 +1913,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
-        {(["resumen", "operacion", "finanzas", "extras"] as const).map(t => (
+        {(["resumen", "operacion", "tareas", "finanzas", "extras"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
               tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
             }`}>
-            {t === "resumen" ? "Resumen" : t === "operacion" ? "Operación" : t === "finanzas" ? "Finanzas" : "Operativo"}
+            {t === "resumen" ? "Resumen"
+              : t === "operacion" ? "Operación"
+              : t === "tareas" ? "Tareas"
+              : t === "finanzas" ? "Finanzas"
+              : "Operativo"}
           </button>
         ))}
       </div>
@@ -3763,6 +3768,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
+
+      {/* ────── TAB: TAREAS ────── */}
+      {tab === "tareas" && (
+        <ProyectoTareas proyectoId={proyecto.id} />
+      )}
 
       {/* ────── TAB: FINANZAS ────── */}
       {tab === "finanzas" && (() => {

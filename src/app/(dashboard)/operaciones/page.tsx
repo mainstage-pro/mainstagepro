@@ -32,7 +32,18 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | { tipo: "proyecto"; id: string };
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | { tipo: "proyecto"; id: string };
+
+interface ProyectoEventoConTareas {
+  id: string;
+  nombre: string;
+  tipoEvento: string;
+  fechaEvento: string;
+  estado: string;
+  lugarEvento: string | null;
+  encargado: { id: string; name: string } | null;
+  tareas: TareaItem[];
+}
 
 const SORT_OPTIONS = ["Sin agrupar", "Por proyecto", "Por prioridad", "Por área", "Por fecha"];
 const PROJECT_COLORS = [
@@ -64,11 +75,12 @@ export default function OperacionesPage() {
   const [usuarios, setUsuarios]                 = useState<Usuario[]>([]);
   const [sessionId, setSessionId]               = useState<string>("");
 
-  const [vista, setVista]                       = useState<VistaKey>("bandeja");
-  const [tareas, setTareas]                     = useState<TareaItem[]>([]);
-  const [integradas, setIntegradas]             = useState<TareaIntegrada[]>([]);
-  const [proyectoDetalle, setProyectoDetalle]   = useState<ProyectoDetalle | null>(null);
-  const [loadingMain, setLoadingMain]           = useState(false);
+  const [vista, setVista]                             = useState<VistaKey>("bandeja");
+  const [tareas, setTareas]                           = useState<TareaItem[]>([]);
+  const [integradas, setIntegradas]                   = useState<TareaIntegrada[]>([]);
+  const [proyectoDetalle, setProyectoDetalle]         = useState<ProyectoDetalle | null>(null);
+  const [proyectosEvento, setProyectosEvento]         = useState<ProyectoEventoConTareas[]>([]);
+  const [loadingMain, setLoadingMain]                 = useState(false);
 
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId]             = useState<string | null>(() => searchParams.get("open"));
@@ -129,6 +141,12 @@ export default function OperacionesPage() {
       fetch("/api/tareas/integradas")
         .then(r => r.json())
         .then(d => { setIntegradas(d.tareas ?? []); setLoadingMain(false); });
+      return;
+    }
+    if (vista === "proyectos-evento") {
+      fetch("/api/tareas/por-proyecto")
+        .then(r => r.json())
+        .then(d => { setProyectosEvento(d.proyectos ?? []); setLoadingMain(false); });
       return;
     }
     fetch(`/api/tareas?vista=${vista}`)
@@ -451,10 +469,11 @@ export default function OperacionesPage() {
 
   const vistaKey    = typeof vista === "string" ? vista : vista.id;
   const vistaLabel  =
-    vista === "bandeja"   ? "Bandeja de entrada" :
-    vista === "hoy"       ? "Hoy" :
-    vista === "proximas"  ? "Próximas" :
-    vista === "integrada" ? "Alertas" :
+    vista === "bandeja"          ? "Bandeja de entrada" :
+    vista === "hoy"              ? "Hoy" :
+    vista === "proximas"         ? "Próximas" :
+    vista === "integrada"        ? "Alertas" :
+    vista === "proyectos-evento" ? "Proyectos / Eventos" :
     proyectoDetalle?.nombre ?? "Proyecto";
 
   // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
@@ -554,6 +573,10 @@ export default function OperacionesPage() {
           <SideItem
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>}
             label="Alertas" isActive={vistaKey === "integrada"} onClick={() => setVista("integrada")}
+          />
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>}
+            label="Proyectos" isActive={vistaKey === "proyectos-evento"} onClick={() => setVista("proyectos-evento")}
           />
         </nav>
 
@@ -752,6 +775,30 @@ export default function OperacionesPage() {
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
             </div>
+
+          ) : vista === "proyectos-evento" ? (
+            <ProyectosEventoView
+              proyectos={proyectosEvento}
+              onSelectTarea={setSelectedId}
+              selectedId={selectedId}
+              onCompleteTarea={async (id) => {
+                setProyectosEvento(prev => prev.map(p => ({
+                  ...p,
+                  tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t),
+                })));
+                await fetch(`/api/tareas/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ estado: "COMPLETADA" }),
+                });
+              }}
+              onRefresh={() => {
+                setLoadingMain(true);
+                fetch("/api/tareas/por-proyecto")
+                  .then(r => r.json())
+                  .then(d => { setProyectosEvento(d.proyectos ?? []); setLoadingMain(false); });
+              }}
+            />
 
           ) : vista === "integrada" ? (
             <div className="max-w-2xl mx-auto px-4 py-5 space-y-2">
@@ -1144,6 +1191,240 @@ export default function OperacionesPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── ProyectosEventoView ──────────────────────────────────────────────────────
+
+const PRIO_DOT: Record<string, string> = {
+  URGENTE: "bg-red-500",
+  ALTA:    "bg-orange-500",
+  MEDIA:   "bg-[#B3985B]",
+  BAJA:    "bg-[#444]",
+};
+const ESTADO_ICON: Record<string, string> = {
+  PENDIENTE:   "○",
+  EN_PROGRESO: "◑",
+  COMPLETADA:  "●",
+};
+const TIPO_EVENTO_COLOR: Record<string, string> = {
+  MUSICAL:      "bg-purple-950/40 text-purple-400",
+  SOCIAL:       "bg-pink-950/40 text-pink-400",
+  EMPRESARIAL:  "bg-blue-950/40 text-blue-400",
+  OTRO:         "bg-gray-800 text-gray-400",
+};
+
+interface ProyectosEventoViewProps {
+  proyectos: ProyectoEventoConTareas[];
+  selectedId: string | null;
+  onSelectTarea: (id: string) => void;
+  onCompleteTarea: (id: string) => void;
+  onRefresh: () => void;
+}
+
+function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteTarea, onRefresh }: ProyectosEventoViewProps) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleCollapse(id: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  if (proyectos.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <span className="text-4xl mb-4 opacity-60">📋</span>
+        <p className="text-sm font-medium text-[#444]">Sin proyectos con tareas</p>
+        <p className="text-xs text-[#333] mt-1">Agrega tareas a tus proyectos desde el módulo de Proyectos</p>
+        <Link href="/proyectos" className="mt-4 text-xs text-[#B3985B] hover:underline">
+          Ir a Proyectos →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+      {/* Header info */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#444]">
+          {proyectos.length} proyecto{proyectos.length !== 1 ? "s" : ""} con tareas activas
+        </p>
+        <button onClick={onRefresh} className="text-xs text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Actualizar
+        </button>
+      </div>
+
+      {proyectos.map(proyecto => {
+        const isCollapsed = collapsed.has(proyecto.id);
+        const total       = proyecto.tareas.length;
+        const completadas = proyecto.tareas.filter(t => t.estado === "COMPLETADA").length;
+        const pct         = total > 0 ? Math.round((completadas / total) * 100) : 0;
+        const activas     = proyecto.tareas.filter(t => t.estado !== "COMPLETADA" && t.estado !== "CANCELADA");
+        const fechaEvento = new Date(proyecto.fechaEvento);
+        const hoy         = new Date(); hoy.setHours(0,0,0,0);
+        const diffDias    = Math.ceil((fechaEvento.getTime() - hoy.getTime()) / 86400000);
+        const tipoColor   = TIPO_EVENTO_COLOR[proyecto.tipoEvento?.toUpperCase()] ?? TIPO_EVENTO_COLOR.OTRO;
+
+        return (
+          <div key={proyecto.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+            {/* Sección header — nombre del proyecto */}
+            <button
+              onClick={() => toggleCollapse(proyecto.id)}
+              className="w-full flex items-start gap-3 px-5 py-4 hover:bg-[#111] transition-colors text-left group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tipoColor}`}>
+                    {proyecto.tipoEvento}
+                  </span>
+                  {diffDias <= 7 && diffDias >= 0 && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                      diffDias === 0 ? "bg-red-950/50 text-red-400" :
+                      diffDias <= 2 ? "bg-orange-950/40 text-orange-400" :
+                      "bg-yellow-950/30 text-yellow-500"
+                    }`}>
+                      {diffDias === 0 ? "¡Hoy!" : diffDias === 1 ? "Mañana" : `En ${diffDias}d`}
+                    </span>
+                  )}
+                  {diffDias < 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-900 text-gray-600">
+                      Hace {Math.abs(diffDias)}d
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-white font-semibold text-sm mt-1.5 group-hover:text-[#B3985B] transition-colors">
+                  {proyecto.nombre}
+                </h3>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-xs text-[#555]">
+                    📅 {fechaEvento.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                  </span>
+                  {proyecto.lugarEvento && (
+                    <span className="text-xs text-[#444] truncate max-w-[180px]">📍 {proyecto.lugarEvento}</span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Progress */}
+                <div className="text-right">
+                  <p className={`text-xs font-semibold ${pct === 100 ? "text-green-400" : "text-[#B3985B]"}`}>{pct}%</p>
+                  <p className="text-[10px] text-[#444]">{completadas}/{total}</p>
+                </div>
+                {/* Chevron */}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" strokeLinecap="round"
+                  className={`transition-transform duration-200 ${isCollapsed ? "rotate-0" : "rotate-180"}`}>
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </div>
+            </button>
+
+            {/* Progress bar */}
+            {!isCollapsed && total > 0 && (
+              <div className="px-5 pb-1">
+                <div className="w-full h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-green-500" : "bg-[#B3985B]"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Tareas list */}
+            {!isCollapsed && (
+              <div className="px-3 pb-3 space-y-1 mt-1">
+                {activas.length === 0 && completadas === total && total > 0 ? (
+                  <div className="text-center py-4">
+                    <span className="text-green-400 text-sm">✓ Todas las tareas completadas</span>
+                  </div>
+                ) : activas.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-[#444]">Sin tareas activas</p>
+                  </div>
+                ) : (
+                  activas.map(t => {
+                    const dot  = PRIO_DOT[t.prioridad] ?? PRIO_DOT.MEDIA;
+                    const icon = ESTADO_ICON[t.estado]  ?? "○";
+                    const isSelected = selectedId === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                          isSelected
+                            ? "bg-[#1a1a1a] border border-[#B3985B]/30"
+                            : "hover:bg-[#111] border border-transparent"
+                        }`}
+                        onClick={() => onSelectTarea(t.id)}
+                      >
+                        {/* Complete button */}
+                        <button
+                          onClick={e => { e.stopPropagation(); onCompleteTarea(t.id); }}
+                          title="Marcar como completada"
+                          className="mt-0.5 w-4 h-4 rounded-full border border-[#2a2a2a] hover:border-green-500 flex items-center justify-center text-[8px] text-transparent hover:text-green-400 transition-all flex-shrink-0"
+                        >
+                          ✓
+                        </button>
+                        {/* Priority dot */}
+                        <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white leading-snug">{t.titulo}</p>
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <span className="text-[10px] text-[#555]">
+                              {icon} {t.estado === "EN_PROGRESO" ? "En progreso" : "Pendiente"}
+                            </span>
+                            {t.fecha && (() => {
+                              const d = new Date(t.fecha.substring(0, 10) + "T00:00:00");
+                              const hoyD = new Date(); hoyD.setHours(0,0,0,0);
+                              const diff = Math.ceil((d.getTime() - hoyD.getTime()) / 86400000);
+                              return (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  diff < 0  ? "bg-red-950/30 text-red-400" :
+                                  diff === 0 ? "bg-emerald-950/30 text-emerald-400" :
+                                  "bg-[#111] text-[#555]"
+                                }`}>
+                                  📅 {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                                </span>
+                              );
+                            })()}
+                            {(t as { asignadoA?: { name: string } | null }).asignadoA && (
+                              <span className="text-[10px] text-[#444]">
+                                👤 {(t as { asignadoA?: { name: string } | null }).asignadoA!.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {/* Footer: link to project */}
+                <div className="pt-1 px-1">
+                  <Link
+                    href={`/proyectos/${proyecto.id}?tab=tareas`}
+                    onClick={e => e.stopPropagation()}
+                    className="text-[11px] text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1"
+                  >
+                    Ver todas las tareas en el proyecto
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

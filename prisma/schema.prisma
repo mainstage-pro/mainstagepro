@@ -427,6 +427,7 @@ model Proyecto {
   gastosOperativos  GastoOperativo[]
   ordenesCompra     OrdenCompra[]
   cierreFinanciero  CierreFinanciero?
+  tareas            Tarea[]            @relation("TareasDeProyecto")
 
   @@map("proyectos")
 }
@@ -1396,6 +1397,9 @@ model Tarea {
   parentId         String?
   parent           Tarea?             @relation("TareaSubtareas", fields: [parentId], references: [id], onDelete: Cascade)
   subtareas        Tarea[]            @relation("TareaSubtareas")
+  // ── Proyecto Evento ──────────────────────────────────────────────────────────
+  proyectoEventoId String?
+  proyectoEvento   Proyecto?          @relation("TareasDeProyecto", fields: [proyectoEventoId], references: [id], onDelete: SetNull)
   // ── Scheduling ──────────────────────────────────────────────────────────────
   fecha            DateTime?  // When to work on it (shows in Hoy)
   fechaVencimiento DateTime?

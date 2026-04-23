@@ -4,13 +4,14 @@ import { getSession } from "@/lib/auth";
 import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
 
 const INCLUDE = {
-  asignadoA:    { select: { id: true, name: true } },
-  creadoPor:    { select: { id: true, name: true } },
-  iniciativa:   { select: { id: true, nombre: true, color: true } },
-  proyectoTarea:{ select: { id: true, nombre: true, color: true } },
-  seccion:      { select: { id: true, nombre: true } },
-  carpeta:      { select: { id: true, nombre: true } },
-  _count:       { select: { subtareas: true, comentarios: true, archivos: true } },
+  asignadoA:      { select: { id: true, name: true } },
+  creadoPor:      { select: { id: true, name: true } },
+  iniciativa:     { select: { id: true, nombre: true, color: true } },
+  proyectoTarea:  { select: { id: true, nombre: true, color: true } },
+  proyectoEvento: { select: { id: true, nombre: true, fechaEvento: true, tipoEvento: true } },
+  seccion:        { select: { id: true, nombre: true } },
+  carpeta:        { select: { id: true, nombre: true } },
+  _count:         { select: { subtareas: true, comentarios: true, archivos: true } },
 };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -54,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const allowed = [
     "titulo", "descripcion", "prioridad", "area", "estado",
-    "asignadoAId", "iniciativaId", "proyectoTareaId", "seccionId", "carpetaId", "parentId",
+    "asignadoAId", "iniciativaId", "proyectoTareaId", "proyectoEventoId", "seccionId", "carpetaId", "parentId",
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
   ];
 
@@ -86,22 +87,23 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       nextTarea = await prisma.tarea.create({
         data: {
-          titulo:          tarea.titulo,
-          descripcion:     tarea.descripcion,
-          prioridad:       tarea.prioridad,
-          area:            tarea.area,
-          asignadoAId:     tarea.asignadoAId,
-          creadoPorId:     tarea.creadoPorId,
-          iniciativaId:    tarea.iniciativaId,
-          proyectoTareaId: tarea.proyectoTareaId,
-          seccionId:       tarea.seccionId,
-          carpetaId:       tarea.carpetaId,
-          fecha:           proximaFecha,
-          fechaVencimiento:tarea.fechaVencimiento,
-          recurrencia:     tarea.recurrencia,
-          notas:           tarea.notas,
-          etiquetas:       tarea.etiquetas,
-          orden:           tarea.orden,
+          titulo:           tarea.titulo,
+          descripcion:      tarea.descripcion,
+          prioridad:        tarea.prioridad,
+          area:             tarea.area,
+          asignadoAId:      tarea.asignadoAId,
+          creadoPorId:      tarea.creadoPorId,
+          iniciativaId:     tarea.iniciativaId,
+          proyectoTareaId:  tarea.proyectoTareaId,
+          proyectoEventoId: tarea.proyectoEventoId,
+          seccionId:        tarea.seccionId,
+          carpetaId:        tarea.carpetaId,
+          fecha:            proximaFecha,
+          fechaVencimiento: tarea.fechaVencimiento,
+          recurrencia:      tarea.recurrencia,
+          notas:            tarea.notas,
+          etiquetas:        tarea.etiquetas,
+          orden:            tarea.orden,
         },
         include: INCLUDE,
       });
