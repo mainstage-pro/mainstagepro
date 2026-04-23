@@ -424,7 +424,9 @@ function fmtMXN(n: number) {
 
 function fmtDate(s: string | Date | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  const iso = s instanceof Date ? s.toISOString() : s;
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function pct(n: number) {

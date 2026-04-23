@@ -73,7 +73,8 @@ function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 }
 
 // ── Gauge circular ───────────────────────────────────────────────────────────

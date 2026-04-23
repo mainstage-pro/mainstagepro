@@ -98,7 +98,12 @@ export default async function DashboardVentasPage() {
   const valorPipeline = (etapasMap.DESCUBRIMIENTO?.sum ?? 0) + (etapasMap.OPORTUNIDAD?.sum ?? 0);
   const valorAprobado = valorAprobadas._sum.granTotal ?? 0;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = s instanceof Date ? s.toISOString() : s;
+    const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+  };
   const diasSinRespuesta = (s: string | Date) => Math.floor((ahora.getTime() - new Date(s).getTime()) / 86400000);
 
   return (
