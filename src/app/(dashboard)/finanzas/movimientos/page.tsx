@@ -58,21 +58,26 @@ export default function MovimientosPage() {
   const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "" });
   const [guardando, setGuardando] = useState(false);
 
+  const loadMovimientos = useCallback(async (cuentaId: string | null) => {
+    const url = cuentaId ? `/api/movimientos?cuentaId=${cuentaId}` : "/api/movimientos";
+    const rm = await fetch(url, { cache: "no-store" }).then(r => r.json());
+    setMovimientos(rm.movimientos ?? []);
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rm, rc, rcu] = await Promise.all([
-        fetch("/api/movimientos", { cache: "no-store" }).then(r => r.json()),
+      const [rc, rcu] = await Promise.all([
         fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
       ]);
-      setMovimientos(rm.movimientos ?? []);
       setCategorias(rc.categorias ?? []);
       setCuentas(rcu.cuentas ?? []);
+      await loadMovimientos(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadMovimientos]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -101,7 +106,7 @@ export default function MovimientosPage() {
       if (!res.ok) { toast.error("Error al guardar"); return; }
       toast.success("Movimiento actualizado");
       setEditando(null);
-      await load();
+      await loadMovimientos(cuentaFiltro);
     } finally {
       setGuardando(false);
     }
@@ -112,16 +117,15 @@ export default function MovimientosPage() {
     const res = await fetch(`/api/movimientos/${mov.id}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Movimiento eliminado");
-      await load();
+      await loadMovimientos(cuentaFiltro);
     } else {
       const d = await res.json();
       toast.error(d.error ?? "No se pudo eliminar");
     }
   }
 
-  const movimientosFiltrados = cuentaFiltro
-    ? movimientos.filter(m => m.cuentaOrigen?.id === cuentaFiltro || m.cuentaDestino?.id === cuentaFiltro)
-    : movimientos;
+  // Cuando hay filtro, la API ya devuelve solo los de esa cuenta (server-side)
+  const movimientosFiltrados = movimientos;
 
   // Cuando hay filtro de cuenta: entradas/salidas por flujo real en esa cuenta (incluye transferencias)
   // Sin filtro: visión general ingresos vs gastos del negocio
@@ -153,7 +157,7 @@ export default function MovimientosPage() {
       {cuentas.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap mb-6">
           <button
-            onClick={() => setCuentaFiltro(null)}
+            onClick={async () => { setCuentaFiltro(null); setLoading(true); await loadMovimientos(null); setLoading(false); }}
             className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               cuentaFiltro === null
                 ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
@@ -165,7 +169,13 @@ export default function MovimientosPage() {
           {cuentas.map(c => (
             <button
               key={c.id}
-              onClick={() => setCuentaFiltro(c.id === cuentaFiltro ? null : c.id)}
+              onClick={async () => {
+                const next = c.id === cuentaFiltro ? null : c.id;
+                setCuentaFiltro(next);
+                setLoading(true);
+                await loadMovimientos(next);
+                setLoading(false);
+              }}
               className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                 cuentaFiltro === c.id
                   ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"

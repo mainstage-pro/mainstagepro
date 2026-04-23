@@ -7,9 +7,16 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const directos = req.nextUrl.searchParams.get("directos") === "true";
+  const cuentaId = req.nextUrl.searchParams.get("cuentaId");
+
+  // Cuando se filtra por cuenta se traen todos sus movimientos (sin límite).
+  // Sin filtro se limita a 500 para no sobrecargar la vista global.
+  const where = cuentaId
+    ? { OR: [{ cuentaOrigenId: cuentaId }, { cuentaDestinoId: cuentaId }] }
+    : directos ? { cuentaCobrar: null, cuentaPagar: null } : undefined;
 
   const movimientos = await prisma.movimientoFinanciero.findMany({
-    where: directos ? { cuentaCobrar: null, cuentaPagar: null } : undefined,
+    where,
     include: {
       cliente: { select: { id: true, nombre: true } },
       proveedor: { select: { id: true, nombre: true } },
@@ -19,7 +26,7 @@ export async function GET(req: NextRequest) {
       cuentaDestino: { select: { id: true, nombre: true, banco: true } },
     },
     orderBy: { fecha: "desc" },
-    take: 200,
+    ...(cuentaId ? {} : { take: 500 }),
   });
 
   return NextResponse.json({ movimientos });
