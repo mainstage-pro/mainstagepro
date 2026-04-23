@@ -242,6 +242,11 @@ function CotizadorForm() {
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
   const [observaciones, setObservaciones] = useState("");
+  // Descuentos que no tienen control de UI — se preservan al editar (especial, patrocinio)
+  const [dEspecialPreservado, setDEspecialPreservado] = useState(0);
+  const [dPatrocinioPreservado, setDPatrocinioPreservado] = useState(0);
+  const [dEspecialNotaPreservada, setDEspecialNotaPreservada] = useState<string | null>(null);
+  const [dPatrocinioNotaPreservada, setDPatrocinioNotaPreservada] = useState<string | null>(null);
 
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
@@ -314,6 +319,9 @@ function CotizadorForm() {
         if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
         if ((cot.descuentoMultidiaPct ?? 0) > 0) { setMultidiaActivo(true); }
         if ((cot.descuentoFamilyFriendsPct ?? 0) > 0) { setEspecialActivo(true); setDFamilyFriends(String(Math.round(cot.descuentoFamilyFriendsPct * 100))); }
+        // Preservar descuentos sin control de UI (especial, patrocinio)
+        if ((cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
+        if ((cot.descuentoPatrocinioPct ?? 0) > 0) { setDPatrocinioPreservado(cot.descuentoPatrocinioPct); setDPatrocinioNotaPreservada(cot.descuentoPatrocinioNota ?? null); }
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -680,7 +688,7 @@ function CotizadorForm() {
     const dMultidia = multidiaActivo ? (dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia) : 0;
     const dFF = especialActivo ? (dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0.10) : 0;
 
-    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF;
+    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF + dEspecialPreservado + dPatrocinioPreservado;
     const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
@@ -724,7 +732,8 @@ function CotizadorForm() {
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo,
     b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
-    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
+    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
+    dEspecialPreservado, dPatrocinioPreservado]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -778,16 +787,16 @@ function CotizadorForm() {
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
-      descuentoPatrocinioNota: null,
-      descuentoEspecialNota: null,
+      descuentoPatrocinioNota: dPatrocinioNotaPreservada,
+      descuentoEspecialNota: dEspecialNotaPreservada,
       observaciones,
       lineas: todasLineas,
       subtotalEquiposBruto: resumen.subtotalEquiposBruto,
       descuentoB2bPct: resumen.dB2B,
       descuentoVolumenPct: resumen.dVolumen,
       descuentoMultidiaPct: resumen.dMultidia,
-      descuentoPatrocinioPct: 0,
-      descuentoEspecialPct: 0,
+      descuentoPatrocinioPct: dPatrocinioPreservado,
+      descuentoEspecialPct: dEspecialPreservado,
       descuentoFamilyFriendsPct: resumen.dFF,
       descuentoTotalPct: resumen.descuentoTotalPct,
       montoDescuento: resumen.montoDescuento,
