@@ -123,8 +123,14 @@ export default function MovimientosPage() {
     ? movimientos.filter(m => m.cuentaOrigen?.id === cuentaFiltro || m.cuentaDestino?.id === cuentaFiltro)
     : movimientos;
 
-  const ingresos = movimientosFiltrados.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
-  const gastos = movimientosFiltrados.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
+  // Cuando hay filtro de cuenta: entradas/salidas por flujo real en esa cuenta (incluye transferencias)
+  // Sin filtro: visión general ingresos vs gastos del negocio
+  const ingresos = cuentaFiltro
+    ? movimientosFiltrados.filter(m => m.cuentaDestino?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
+    : movimientosFiltrados.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
+  const gastos = cuentaFiltro
+    ? movimientosFiltrados.filter(m => m.cuentaOrigen?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
+    : movimientosFiltrados.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
 
   const categoriasFiltradas = categorias.filter(c =>
     editando ? (editando.tipo === "INGRESO" ? c.tipo === "INGRESO" : c.tipo === "GASTO") : true
@@ -175,15 +181,15 @@ export default function MovimientosPage() {
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Ingresos</p>
+          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Entradas" : "Ingresos"}</p>
           <p className="text-green-400 text-xl font-semibold">{formatCurrency(ingresos)}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Gastos</p>
+          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Salidas" : "Gastos"}</p>
           <p className="text-red-400 text-xl font-semibold">{formatCurrency(gastos)}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Balance</p>
+          <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Saldo neto" : "Balance"}</p>
           <p className={`text-xl font-semibold ${ingresos - gastos >= 0 ? "text-white" : "text-red-400"}`}>
             {formatCurrency(ingresos - gastos)}
           </p>
@@ -219,16 +225,30 @@ export default function MovimientosPage() {
                     {mov.referencia && <span className="text-[#555] text-[10px]">Ref: {mov.referencia}</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{mov.categoria?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">{mov.cuentaDestino?.nombre ?? mov.cuentaOrigen?.nombre ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[#6b7280]">
+                    {mov.tipo === "TRANSFERENCIA" && mov.cuentaOrigen && mov.cuentaDestino
+                      ? <span>{mov.cuentaOrigen.nombre} <span className="text-[#555]">→</span> {mov.cuentaDestino.nombre}</span>
+                      : mov.cuentaDestino?.nombre ?? mov.cuentaOrigen?.nombre ?? "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[mov.tipo] ?? "bg-gray-800 text-gray-400"}`}>
                       {TIPO_LABELS[mov.tipo] ?? mov.tipo}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-right whitespace-nowrap">
-                    <span className={mov.tipo === "INGRESO" ? "text-green-400" : mov.tipo === "GASTO" ? "text-red-400" : "text-white"}>
-                      {mov.tipo === "GASTO" ? "-" : "+"}{formatCurrency(mov.monto)}
-                    </span>
+                    {(() => {
+                      const esEntrada = cuentaFiltro
+                        ? mov.cuentaDestino?.id === cuentaFiltro
+                        : mov.tipo === "INGRESO";
+                      const esSalida = cuentaFiltro
+                        ? mov.cuentaOrigen?.id === cuentaFiltro
+                        : mov.tipo === "GASTO";
+                      return (
+                        <span className={esEntrada ? "text-green-400" : esSalida ? "text-red-400" : "text-white"}>
+                          {esSalida ? "-" : "+"}{formatCurrency(mov.monto)}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
