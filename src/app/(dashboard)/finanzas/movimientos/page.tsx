@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
+interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Movimiento {
   id: string;
   fecha: string;
@@ -50,6 +51,8 @@ export default function MovimientosPage() {
   const confirm = useConfirm();
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+  const [cuentaFiltro, setCuentaFiltro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editando, setEditando] = useState<Movimiento | null>(null);
   const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "" });
@@ -58,12 +61,14 @@ export default function MovimientosPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rm, rc] = await Promise.all([
+      const [rm, rc, rcu] = await Promise.all([
         fetch("/api/movimientos", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
       ]);
       setMovimientos(rm.movimientos ?? []);
       setCategorias(rc.categorias ?? []);
+      setCuentas(rcu.cuentas ?? []);
     } finally {
       setLoading(false);
     }
@@ -114,8 +119,12 @@ export default function MovimientosPage() {
     }
   }
 
-  const ingresos = movimientos.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
-  const gastos = movimientos.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
+  const movimientosFiltrados = cuentaFiltro
+    ? movimientos.filter(m => m.cuentaOrigen?.id === cuentaFiltro || m.cuentaDestino?.id === cuentaFiltro)
+    : movimientos;
+
+  const ingresos = movimientosFiltrados.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
+  const gastos = movimientosFiltrados.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
 
   const categoriasFiltradas = categorias.filter(c =>
     editando ? (editando.tipo === "INGRESO" ? c.tipo === "INGRESO" : c.tipo === "GASTO") : true
@@ -123,16 +132,45 @@ export default function MovimientosPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-semibold text-white">Movimientos</h1>
-          <p className="text-[#6b7280] text-sm">{movimientos.length} movimientos recientes</p>
+          <p className="text-[#6b7280] text-sm">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
         </div>
         <a href="/finanzas/movimientos/nuevo"
           className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
           + Registrar movimiento
         </a>
       </div>
+
+      {/* Filtros por cuenta */}
+      {cuentas.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap mb-6">
+          <button
+            onClick={() => setCuentaFiltro(null)}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+              cuentaFiltro === null
+                ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
+                : "border-[#333] text-[#6b7280] hover:border-[#555] hover:text-white"
+            }`}
+          >
+            Todas
+          </button>
+          {cuentas.map(c => (
+            <button
+              key={c.id}
+              onClick={() => setCuentaFiltro(c.id === cuentaFiltro ? null : c.id)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                cuentaFiltro === c.id
+                  ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
+                  : "border-[#333] text-[#6b7280] hover:border-[#555] hover:text-white"
+              }`}
+            >
+              {c.nombre}{c.banco ? ` · ${c.banco}` : ""}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -155,9 +193,9 @@ export default function MovimientosPage() {
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {loading ? (
           <div className="py-16 text-center text-[#6b7280] text-sm">Cargando...</div>
-        ) : movimientos.length === 0 ? (
+        ) : movimientosFiltrados.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-[#6b7280] text-sm">Sin movimientos registrados</p>
+            <p className="text-[#6b7280] text-sm">Sin movimientos{cuentaFiltro ? " en esta cuenta" : " registrados"}</p>
           </div>
         ) : (
           <table className="w-full min-w-[700px]">
@@ -171,7 +209,7 @@ export default function MovimientosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
-              {movimientos.map(mov => (
+              {movimientosFiltrados.map(mov => (
                 <tr key={mov.id} className="hover:bg-[#1a1a1a] transition-colors group">
                   <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">{fmtDate(mov.fecha)}</td>
                   <td className="px-4 py-3">
