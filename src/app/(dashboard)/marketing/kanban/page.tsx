@@ -65,8 +65,8 @@ function nextMes(mes: string) {
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 }
 
 export default function KanbanPage() {
