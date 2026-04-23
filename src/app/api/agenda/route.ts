@@ -61,10 +61,16 @@ export async function GET() {
   type Alerta = { tipo: string; prioridad: "ALTA" | "MEDIA"; titulo: string; detalle: string; href: string; icono: string };
   const alertas: Alerta[] = [];
 
+  const hoyCST = ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  function diasHastaEvento(fechaEvento: Date) {
+    const evStr = fechaEvento.toISOString().substring(0, 10);
+    return Math.round((new Date(evStr).getTime() - new Date(hoyCST).getTime()) / 86400000);
+  }
+
   // Proyectos sin personal en los próximos 14 días
   const sinPersonal = proyectosActivos.filter(p => {
     if (!p.fechaEvento) return false;
-    const d = Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000);
+    const d = diasHastaEvento(p.fechaEvento);
     return d >= 0 && d <= 14 && p.personal.length === 0;
   });
   for (const p of sinPersonal) {
@@ -72,7 +78,7 @@ export async function GET() {
       tipo: "sin_personal",
       prioridad: "ALTA",
       titulo: `${p.nombre} sin personal asignado`,
-      detalle: `Evento en ${Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000)}d · ${p.cliente.nombre}`,
+      detalle: `Evento en ${diasHastaEvento(p.fechaEvento)}d · ${p.cliente.nombre}`,
       href: `/proyectos/${p.id}`,
       icono: "⚠️",
     });
@@ -110,7 +116,7 @@ export async function GET() {
   // Proyectos con evento esta semana y staff sin confirmar
   const sinConfirmar = proyectosActivos.filter(p => {
     if (!p.fechaEvento) return false;
-    const d = Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000);
+    const d = diasHastaEvento(p.fechaEvento);
     return d >= 0 && d <= 7 && p.personal.some(x => !x.confirmado);
   });
   if (sinConfirmar.length > 0) {
@@ -127,8 +133,7 @@ export async function GET() {
   // Proyecto vence hoy
   const hoy = proyectosActivos.filter(p => {
     if (!p.fechaEvento) return false;
-    const d = Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000);
-    return d === 0;
+    return diasHastaEvento(p.fechaEvento) === 0;
   });
   for (const p of hoy) {
     alertas.push({

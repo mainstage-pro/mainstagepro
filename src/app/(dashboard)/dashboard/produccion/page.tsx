@@ -77,7 +77,7 @@ export default async function DashboardProduccionPage() {
 
   const hoyStrProd = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const diasHasta = proximoEvento?.fechaEvento
-    ? Math.max(0, Math.round((new Date(new Date(proximoEvento.fechaEvento).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" })).getTime() - new Date(hoyStrProd).getTime()) / 86400000))
+    ? Math.max(0, Math.round((new Date(new Date(proximoEvento.fechaEvento).toISOString().substring(0, 10)).getTime() - new Date(hoyStrProd).getTime()) / 86400000))
     : null;
 
   const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" }) : "—";
@@ -135,7 +135,7 @@ export default async function DashboardProduccionPage() {
                 const confirmados = p.personal.filter(x => x.confirmado).length;
                 const checkOk = p.checklist.filter(x => x.completado).length;
                 const checkTotal = p.checklist.length;
-                const evStrProd = new Date(p.fechaEvento).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrProd = new Date(p.fechaEvento).toISOString().substring(0, 10);
                 const dias = Math.max(0, Math.round((new Date(evStrProd).getTime() - new Date(hoyStrProd).getTime()) / 86400000));
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`} className="contents">

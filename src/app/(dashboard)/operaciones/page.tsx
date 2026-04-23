@@ -1277,9 +1277,8 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
         const completadas = proyecto.tareas.filter(t => t.estado === "COMPLETADA").length;
         const pct         = total > 0 ? Math.round((completadas / total) * 100) : 0;
         const activas     = proyecto.tareas.filter(t => t.estado !== "COMPLETADA" && t.estado !== "CANCELADA");
-        const fechaEvento = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z");
-        const hoy         = new Date(); hoy.setHours(0,0,0,0);
-        const diffDias    = Math.ceil((fechaEvento.getTime() - hoy.getTime()) / 86400000);
+        const hoyStr   = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+        const diffDias = Math.round((new Date(proyecto.fechaEvento.substring(0, 10)).getTime() - new Date(hoyStr).getTime()) / 86400000);
         const tipoColor   = TIPO_EVENTO_COLOR[proyecto.tipoEvento?.toUpperCase()] ?? TIPO_EVENTO_COLOR.OTRO;
 
         return (
@@ -1314,7 +1313,7 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                 </h3>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-xs text-[#555]">
-                    📅 {fechaEvento.toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
+                    📅 {new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                   {proyecto.lugarEvento && (
                     <span className="text-xs text-[#444] truncate max-w-[180px]">📍 {proyecto.lugarEvento}</span>
@@ -1391,9 +1390,8 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                               {icon} {t.estado === "EN_PROGRESO" ? "En progreso" : "Pendiente"}
                             </span>
                             {t.fecha && (() => {
-                              const d = new Date(t.fecha.substring(0, 10) + "T00:00:00");
-                              const hoyD = new Date(); hoyD.setHours(0,0,0,0);
-                              const diff = Math.ceil((d.getTime() - hoyD.getTime()) / 86400000);
+                              const hoyTarea = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                              const diff = Math.round((new Date(t.fecha.substring(0, 10)).getTime() - new Date(hoyTarea).getTime()) / 86400000);
                               return (
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                                   diff < 0  ? "bg-red-950/30 text-red-400" :

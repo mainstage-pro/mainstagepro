@@ -273,7 +273,7 @@ export default async function DashboardPage() {
                 <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
               ) : proyectosEstaSemana.map(p => {
                 const hoyStrEvt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
-                const evStrEvt = new Date(p.fechaEvento!).toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrEvt = p.fechaEvento!.toISOString().substring(0, 10);
                 const dias = Math.round((new Date(evStrEvt).getTime() - new Date(hoyStrEvt).getTime()) / 86400000);
                 const sinConfirmar = p.personal.length;
                 return (
@@ -667,7 +667,9 @@ export default async function DashboardPage() {
               {proyectosProximos.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-6">Sin eventos próximos</p>
               ) : proyectosProximos.map(p => {
-                const dias = Math.ceil((new Date(new Date(p.fechaEvento).toISOString().substring(0, 10) + "T12:00:00Z").getTime() - ahora.getTime()) / 86400000);
+                const hoyStrPrx = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrPrx = p.fechaEvento.toISOString().substring(0, 10);
+                const dias = Math.round((new Date(evStrPrx).getTime() - new Date(hoyStrPrx).getTime()) / 86400000);
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`}
                     className="flex items-center justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
