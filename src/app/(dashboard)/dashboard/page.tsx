@@ -65,11 +65,6 @@ export default async function DashboardPage() {
     pubsProximas,
     // ── COTIZACIONES SIN RESPUESTA ───────────────
     cotizacionesSinRespuesta,
-    // ── CAPITAL ─────────────────────────────────
-    hervamPagoMes,
-    hervamConfig,
-    sociosReporteMes,
-    sociosReportesPendientes,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -199,19 +194,6 @@ export default async function DashboardPage() {
       take: 8,
     }),
 
-    // ── CAPITAL ─────────────────────────────────
-    prisma.hervamPago.findFirst({
-      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
-    }),
-    prisma.hervamConfig.findFirst(),
-    prisma.socioReporte.aggregate({
-      _sum: { totalFacturado: true, totalSocio: true, totalMainstage: true },
-      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
-    }),
-    prisma.socioReporte.count({
-      where: { estado: { not: "PAGADO" } },
-    }),
-
   ]);
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
@@ -269,72 +251,6 @@ export default async function DashboardPage() {
           + Nuevo trato
         </Link>
       </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          CAPITAL
-      ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="CAPITAL" href="/socios">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* HERVAM */}
-          <Link href="/hervam" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Pulso HERVAM</p>
-              {hervamPagoMes ? (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  hervamPagoMes.estado === "PAGADO"   ? "text-green-400 bg-green-900/20 border-green-700/40" :
-                  hervamPagoMes.estado === "PARCIAL"  ? "text-yellow-400 bg-yellow-900/20 border-yellow-700/40" :
-                  hervamPagoMes.estado === "DIFERIDO" ? "text-orange-400 bg-orange-900/20 border-orange-700/40" :
-                                                        "text-red-400 bg-red-900/20 border-red-700/40"
-                }`}>{hervamPagoMes.estado}</span>
-              ) : (
-                <span className="text-[10px] text-gray-600">Sin registro</span>
-              )}
-            </div>
-            <div className="px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-xs mb-0.5">Pago acordado {mes}</p>
-                <p className="text-2xl font-semibold text-white group-hover:text-[#B3985B] transition-colors">
-                  {hervamPagoMes ? formatCurrency(hervamPagoMes.montoAcordado) : "—"}
-                </p>
-              </div>
-              {hervamPagoMes && hervamPagoMes.montoPagado > 0 && hervamPagoMes.estado !== "PAGADO" && (
-                <div className="text-right">
-                  <p className="text-gray-600 text-[10px]">Pagado</p>
-                  <p className="text-green-400 text-sm font-semibold">{formatCurrency(hervamPagoMes.montoPagado)}</p>
-                </div>
-              )}
-            </div>
-          </Link>
-
-          {/* Socios de Activos */}
-          <Link href="/socios" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Socios de Activos</p>
-              {sociosReportesPendientes > 0 && (
-                <span className="text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-700/40 px-2 py-0.5 rounded font-bold">
-                  {sociosReportesPendientes} pendiente{sociosReportesPendientes !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-            <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Facturado</p>
-                <p className="text-white font-semibold text-lg group-hover:text-[#B3985B] transition-colors">
-                  {formatCurrency(sociosReporteMes._sum.totalFacturado ?? 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">A socios</p>
-                <p className="text-white font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalSocio ?? 0)}</p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Mainstage</p>
-                <p className="text-[#B3985B] font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalMainstage ?? 0)}</p>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
