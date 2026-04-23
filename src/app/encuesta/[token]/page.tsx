@@ -134,7 +134,7 @@ export default function EncuestaPage({ params }: { params: Promise<{ token: stri
             <div className="mt-2">
               <p className="text-[#B3985B] text-sm font-medium">{data.proyecto.nombre}</p>
               <p className="text-white/25 text-xs mt-0.5">
-                {data.proyecto.cliente.nombre} · {new Date(data.proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                {data.proyecto.cliente.nombre} · {new Date(data.proyecto.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "long", year: "numeric" })}
               </p>
             </div>
           )}

@@ -106,7 +106,7 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(s.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 }
 function fmtDateTime(s: string) {
   return new Date(s).toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -1026,7 +1026,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       // Si el campo es clave (fecha/hora/lugar), construir panel de notificaciones
       if (field in KEY_CAMPOS && (updated.personal.length > 0 || updated.equipos.some(e => e.tipo === "EXTERNO"))) {
         const campoLabel = KEY_CAMPOS[field];
-        const fechaStr = new Date(updated.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const fechaStr = new Date(updated.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
         const buildMsg = (nombre: string, extra: string) =>
           `Hola ${nombre.split(" ")[0]}, hay una actualización en el proyecto *${updated.nombre}*:\n\n📋 *${campoLabel}:* ${value || "—"}\n\n📅 ${fechaStr}${updated.horaInicioEvento ? `\n⏰ ${updated.horaInicioEvento}${updated.horaFinEvento ? `–${updated.horaFinEvento}` : ""}` : ""}${updated.lugarEvento ? `\n📍 ${updated.lugarEvento}` : ""}${extra}\n\nPor favor confirma que todo sigue en orden.`;
@@ -1167,7 +1167,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (!catering.contactoTelefono) return;
     const tel = catering.contactoTelefono.replace(/\D/g, "");
     const num = tel.startsWith("52") ? tel : `52${tel}`;
-    const fechaStr = new Date(proyecto!.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const fechaStr = new Date(proyecto!.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
     const personas = catering.personasCrew || "—";
     const dias = proyecto!.cotizacion?.diasComidas ?? 1;
     const porDia = catering.comidasPorDia || "1";
@@ -1691,7 +1691,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const checkDone = checkOp.filter(c => c.completado).length;
   const checkPct = checkTotal > 0 ? (checkDone / checkTotal) * 100 : 0;
   const personalConfirmado = proyecto.personal.filter(p => p.confirmado).length;
-  const diasRestantes = Math.ceil((new Date(proyecto.fechaEvento).getTime() - Date.now()) / 86400000);
+  const diasRestantes = Math.ceil((new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").getTime() - Date.now()) / 86400000);
   const totalCxC = proyecto.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
 
@@ -2427,7 +2427,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
               {showBroadcast && (() => {
-                const fecha = new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+                const fecha = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
                 const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
                 const hora = proyecto.horaInicioEvento ? ` a las ${proyecto.horaInicioEvento}` : "";
                 const msg = `Hola, te confirmamos tu participación en el evento *${proyecto.nombre}* del cliente *${proyecto.cliente.nombre}*.\n\n📅 Fecha: ${fecha}${hora}\n📍 Lugar: ${lugar}\n\nPor favor confirma tu asistencia. ¡Gracias!`;

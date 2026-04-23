@@ -170,7 +170,7 @@ export default function EquipoFichaPage() {
                   </div>
                   {pe.proyecto.fechaEvento && (
                     <span className="text-[#555] shrink-0 ml-3">
-                      {new Date(pe.proyecto.fechaEvento).toLocaleDateString("es-MX", { month: "short", day: "numeric", year: "2-digit" })}
+                      {new Date(pe.proyecto.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", month: "short", day: "numeric", year: "2-digit" })}
                     </span>
                   )}
                 </Link>

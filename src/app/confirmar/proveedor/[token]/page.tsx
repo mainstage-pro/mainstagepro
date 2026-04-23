@@ -62,8 +62,8 @@ export default function ConfirmarProveedorPage() {
   }
 
   const fechaFormateada = equipo?.proyecto?.fechaEvento
-    ? new Date(equipo.proyecto.fechaEvento).toLocaleDateString("es-MX", {
-        weekday: "long", day: "numeric", month: "long", year: "numeric",
+    ? new Date(equipo.proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", {
+        timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric",
       })
     : null;
 

@@ -583,7 +583,7 @@ export default function TecnicosPage() {
                             <p className="text-gray-600 text-xs">{pp.proyecto.numeroProyecto}</p>
                           </div>
                           <div className="text-right">
-                            {pp.proyecto.fechaEvento && <p className="text-gray-400 text-xs">{new Date(pp.proyecto.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</p>}
+                            {pp.proyecto.fechaEvento && <p className="text-gray-400 text-xs">{new Date(pp.proyecto.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })}</p>}
                             <span className={`text-[10px] ${pp.proyecto.estado === "COMPLETADO" ? "text-green-400" : pp.proyecto.estado === "EN_CURSO" ? "text-yellow-400" : "text-gray-500"}`}>{pp.proyecto.estado}</span>
                           </div>
                         </a>

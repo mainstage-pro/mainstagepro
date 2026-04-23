@@ -60,7 +60,8 @@ const ETAPA_LABEL: Record<string, string> = {
 
 function formatDate(d: string | null, opts?: Intl.DateTimeFormatOptions) {
   if (!d) return "—";
-  return new Date(d).toLocaleDateString("es-MX", opts ?? { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const base = opts ?? { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+  return new Date(d.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", ...base });
 }
 function formatMXN(n: number) {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0 });
@@ -114,7 +115,7 @@ export default function PortalCliente() {
   );
 
   const ahora = new Date();
-  const fechaEvento = proyecto.fechaEvento ? new Date(proyecto.fechaEvento) : null;
+  const fechaEvento = proyecto.fechaEvento ? new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z") : null;
   const diasRestantes = fechaEvento
     ? Math.ceil((fechaEvento.getTime() - ahora.getTime()) / 86400000)
     : null;

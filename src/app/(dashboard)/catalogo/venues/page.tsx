@@ -385,7 +385,7 @@ export default function VenuesPage() {
                                 <p className="text-gray-600 text-[10px]">{p.numeroProyecto} · {p.cliente?.nombre}</p>
                               </div>
                               <div className="text-right ml-3 shrink-0">
-                                {p.fechaEvento && <p className="text-gray-400 text-xs">{new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</p>}
+                                {p.fechaEvento && <p className="text-gray-400 text-xs">{new Date(p.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })}</p>}
                                 <span className={`text-[10px] ${p.estado === "COMPLETADO" ? "text-green-400" : "text-yellow-400"}`}>{p.estado}</span>
                               </div>
                             </a>

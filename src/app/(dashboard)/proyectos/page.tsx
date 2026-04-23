@@ -88,15 +88,15 @@ export default function ProyectosPage() {
         // Proyectos con fecha en este mes
         const proyectosMes = proyectos.filter(p => {
           if (!p.fechaEvento) return false;
-          const f = new Date(p.fechaEvento);
-          return f.getFullYear() === year && f.getMonth() === month;
+          const f = new Date(p.fechaEvento.substring(0, 10) + "T12:00:00Z");
+          return f.getUTCFullYear() === year && f.getUTCMonth() === month;
         });
 
         // Map day → proyectos
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const diaMap: Record<number, any[]> = {};
         for (const p of proyectosMes) {
-          const d = new Date(p.fechaEvento).getDate();
+          const d = new Date(p.fechaEvento.substring(0, 10) + "T12:00:00Z").getUTCDate();
           if (!diaMap[d]) diaMap[d] = [];
           diaMap[d].push(p);
         }
@@ -156,7 +156,7 @@ export default function ProyectosPage() {
                       <p className="text-gray-600 text-xs">{p.cliente?.nombre}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-white text-xs">{new Date(p.fechaEvento).toLocaleDateString("es-MX", { weekday: "short", day: "numeric" })}</p>
+                      <p className="text-white text-xs">{new Date(p.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric" })}</p>
                       <span className={`text-[10px] ${ESTADO_PROYECTO_COLORS[p.estado] ?? "text-gray-500"}`}>{ESTADO_PROYECTO_LABELS[p.estado] ?? p.estado}</span>
                     </div>
                   </Link>
@@ -259,6 +259,7 @@ export default function ProyectosPage() {
                     <div className="text-right shrink-0">
                       <p className="text-white text-sm font-medium">
                         {new Date(proyecto.fechaEvento).toLocaleDateString("es-MX", {
+                          timeZone: "UTC",
                           weekday: "short",
                           day: "numeric",
                           month: "short",

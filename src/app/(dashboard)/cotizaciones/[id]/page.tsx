@@ -434,7 +434,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       ``,
       `📋 *Evento:* ${cot.nombreEvento ?? "Sin nombre"} · ${cot.tipoEvento ?? cot.trato.tipoEvento ?? ""}`,
       `📍 *Venue:* ${cot.lugarEvento ?? cot.trato.lugarEstimado ?? "Por confirmar"}`,
-      cot.fechaEvento ? `📅 *Fecha de evento:* ${new Date(cot.fechaEvento).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : null,
+      cot.fechaEvento ? `📅 *Fecha de evento:* ${new Date(cot.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : null,
       renderFecha ? `⏰ *Render necesario para:* ${new Date(renderFecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}` : null,
       ``,
       `🎛️ *Rider de equipos:*`,

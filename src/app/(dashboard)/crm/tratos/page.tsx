@@ -37,7 +37,7 @@ function waUrl(trato: Trato): string | null {
   const nombre = trato.cliente.nombre.split(" ")[0];
   const evento = trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || "tu evento";
   const fecha = trato.fechaEventoEstimada
-    ? new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { day: "numeric", month: "long" })
+    ? new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "long" })
     : null;
   const msg = `Hola ${nombre}, te contacto de Mainstage Pro para dar seguimiento a ${evento}${fecha ? ` estimado para el ${fecha}` : ""}. ¿Tienes un momento para platicar?`;
   return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
@@ -277,7 +277,7 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
         <div className="flex items-center gap-2 flex-wrap">
           {trato.fechaEventoEstimada && (
             <span className="text-[10px] text-[#555]">
-              {new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+              {new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })}
             </span>
           )}
           {trato.presupuestoEstimado && (
@@ -501,7 +501,7 @@ export default function TratosPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">
                           {trato.fechaEventoEstimada
-                            ? new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
+                            ? new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-xs text-[#B3985B]">

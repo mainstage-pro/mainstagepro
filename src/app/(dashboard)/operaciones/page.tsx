@@ -1277,7 +1277,7 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
         const completadas = proyecto.tareas.filter(t => t.estado === "COMPLETADA").length;
         const pct         = total > 0 ? Math.round((completadas / total) * 100) : 0;
         const activas     = proyecto.tareas.filter(t => t.estado !== "COMPLETADA" && t.estado !== "CANCELADA");
-        const fechaEvento = new Date(proyecto.fechaEvento);
+        const fechaEvento = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z");
         const hoy         = new Date(); hoy.setHours(0,0,0,0);
         const diffDias    = Math.ceil((fechaEvento.getTime() - hoy.getTime()) / 86400000);
         const tipoColor   = TIPO_EVENTO_COLOR[proyecto.tipoEvento?.toUpperCase()] ?? TIPO_EVENTO_COLOR.OTRO;
@@ -1314,7 +1314,7 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                 </h3>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-xs text-[#555]">
-                    📅 {fechaEvento.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                    📅 {fechaEvento.toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                   {proyecto.lugarEvento && (
                     <span className="text-xs text-[#444] truncate max-w-[180px]">📍 {proyecto.lugarEvento}</span>

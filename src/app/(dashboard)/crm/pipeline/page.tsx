@@ -115,7 +115,7 @@ export default function PipelinePage() {
                             </span>
                             {trato.fechaEventoEstimada && (
                               <span className="text-[#555] text-[10px] shrink-0">
-                                {new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                                {new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
                               </span>
                             )}
                           </div>

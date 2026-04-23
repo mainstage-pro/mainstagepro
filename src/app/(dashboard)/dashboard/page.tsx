@@ -356,7 +356,7 @@ export default async function DashboardPage() {
               {proyectosEstaSemana.length === 0 ? (
                 <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
               ) : proyectosEstaSemana.map(p => {
-                const dias = Math.ceil((new Date(p.fechaEvento!).getTime() - ahora.getTime()) / 86400000);
+                const dias = Math.ceil((new Date(new Date(p.fechaEvento!).toISOString().substring(0, 10) + "T12:00:00Z").getTime() - ahora.getTime()) / 86400000);
                 const sinConfirmar = p.personal.length;
                 return (
                   <a key={p.id} href={`/proyectos/${p.id}`} className="block px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
@@ -386,7 +386,7 @@ export default async function DashboardPage() {
                 <a key={i} href="/finanzas/cobros-pagos" className="flex items-center justify-between px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
                   <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                   <p className="text-yellow-400 text-[10px] font-semibold ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
                   </p>
                 </a>
               ))}
@@ -403,7 +403,7 @@ export default async function DashboardPage() {
                 <a key={i} href="/finanzas/cobros-pagos" className="flex items-center justify-between px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
                   <p className="text-white text-xs truncate">{c.concepto ?? "Pago"}</p>
                   <p className="text-orange-400 text-[10px] font-semibold ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
                   </p>
                 </a>
               ))}
@@ -479,7 +479,7 @@ export default async function DashboardPage() {
                 <div key={i} className="flex items-center justify-between px-5 py-2.5">
                   <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                   <p className="text-yellow-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
                   </p>
                 </div>
               ))}
@@ -503,7 +503,7 @@ export default async function DashboardPage() {
                 <div key={i} className="flex items-center justify-between px-5 py-2.5">
                   <p className="text-white text-xs truncate">{c.concepto ?? "Pago"}</p>
                   <p className="text-orange-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
                   </p>
                 </div>
               ))}
@@ -749,7 +749,7 @@ export default async function DashboardPage() {
               {proyectosProximos.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-6">Sin eventos próximos</p>
               ) : proyectosProximos.map(p => {
-                const dias = Math.ceil((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000);
+                const dias = Math.ceil((new Date(new Date(p.fechaEvento).toISOString().substring(0, 10) + "T12:00:00Z").getTime() - ahora.getTime()) / 86400000);
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`}
                     className="flex items-center justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">

@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
   for (const p of proyectos) {
     eventos.push({
       id: `evt-${p.id}`,
-      dia: new Date(p.fechaEvento).getDate(),
+      dia: new Date(p.fechaEvento.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
       tipo: "EVENTO",
       titulo: p.nombre,
       subtitulo: p.cliente.nombre,
@@ -77,11 +77,11 @@ export async function GET(req: NextRequest) {
   }
   for (const p of montajes) {
     if (!p.fechaMontaje) continue;
-    const alreadyAsEvento = proyectos.some(x => x.id === p.id && new Date(x.fechaEvento).getDate() === new Date(p.fechaMontaje!).getDate());
+    const alreadyAsEvento = proyectos.some(x => x.id === p.id && new Date(x.fechaEvento.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate() === new Date(p.fechaMontaje!.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate());
     if (alreadyAsEvento) continue;
     eventos.push({
       id: `mnt-${p.id}`,
-      dia: new Date(p.fechaMontaje).getDate(),
+      dia: new Date(p.fechaMontaje.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
       tipo: "MONTAJE",
       titulo: p.nombre,
       subtitulo: `Montaje · ${p.cliente.nombre}`,
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     const monto = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(c.monto);
     eventos.push({
       id: `cxc-${c.id}`,
-      dia: new Date(c.fechaCompromiso).getDate(),
+      dia: new Date(c.fechaCompromiso.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
       tipo: "CXC",
       titulo: c.proyecto?.nombre ? `Cobro: ${c.proyecto.nombre}` : c.concepto,
       subtitulo: `${c.empresa?.nombre ?? c.cliente?.nombre ?? "—"} · ${monto}`,
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
     if (!t.fechaProximaAccion) continue;
     eventos.push({
       id: `seg-${t.id}`,
-      dia: new Date(t.fechaProximaAccion).getDate(),
+      dia: new Date(t.fechaProximaAccion.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
       tipo: "SEGUIMIENTO",
       titulo: t.nombreEvento || "Seguimiento",
       subtitulo: `${t.cliente.nombre}${t.responsable?.name ? ` · ${t.responsable.name}` : ""}`,
@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
   for (const pub of publicaciones) {
     eventos.push({
       id: `pub-${pub.id}`,
-      dia: new Date(pub.fecha).getDate(),
+      dia: new Date(pub.fecha.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
       tipo: "MARKETING",
       titulo: pub.tipo?.nombre ?? "Publicación",
       subtitulo: pub.descripcion?.slice(0, 50) ?? pub.estado,

@@ -16,12 +16,12 @@ interface AgendaData {
 }
 
 function diasHasta(fecha: string) {
-  const d = Math.ceil((new Date(fecha).getTime() - Date.now()) / 86400000);
+  const d = Math.ceil((new Date(fecha.substring(0, 10) + "T12:00:00Z").getTime() - Date.now()) / 86400000);
   return d;
 }
 
 function fmtFecha(f: string) {
-  return new Date(f).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+  return new Date(f.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
 }
 
 export default function AgendaPage() {
