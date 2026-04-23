@@ -508,6 +508,7 @@ interface CotizacionData {
   lineas: Linea[];
   tradeCalificado?: boolean;
   mainstageTradeData?: string | null;
+  planPagos?: string | null;
 }
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
@@ -686,8 +687,23 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 
 // ─── Documento principal ─────────────────────────────────────────────────────
 export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: CotizacionData; logoSrc?: string | null }) {
-  const anticipo    = c.granTotal * 0.5;
-  const liquidacion = c.granTotal * 0.5;
+  // Leer plan de pagos configurado; si no hay, usar 50/50 por defecto
+  type PagoPlanItem = { concepto: string; porcentaje: number; monto?: number; tipoPago: string };
+  let parsedPlan: { pagos?: PagoPlanItem[] } | null = null;
+  try { parsedPlan = c.planPagos ? JSON.parse(c.planPagos) : null; } catch { /* noop */ }
+  const pagosArr = parsedPlan?.pagos;
+  const pagoAnticipo = pagosArr?.find(p => p.tipoPago === "ANTICIPO") ?? pagosArr?.[0];
+  const pagoLiquidacion = pagosArr?.find(p => p.tipoPago === "LIQUIDACION") ?? (pagosArr && pagosArr.length > 1 ? pagosArr[pagosArr.length - 1] : undefined);
+
+  const anticipo = pagoAnticipo
+    ? (pagoAnticipo.monto && pagoAnticipo.monto > 0 ? pagoAnticipo.monto : Math.round(c.granTotal * pagoAnticipo.porcentaje / 100 * 100) / 100)
+    : c.granTotal * 0.5;
+  const liquidacion = pagoLiquidacion
+    ? (pagoLiquidacion.monto && pagoLiquidacion.monto > 0 ? pagoLiquidacion.monto : Math.round(c.granTotal * pagoLiquidacion.porcentaje / 100 * 100) / 100)
+    : c.granTotal * 0.5;
+  const anticipoPct = pagoAnticipo ? Math.round(pagoAnticipo.porcentaje) : 50;
+  const liquidacionPct = pagoLiquidacion ? Math.round(pagoLiquidacion.porcentaje) : 50;
+
   const tieneDescuento = c.montoDescuento > 0;
 
   // External equipment subtotal (merged into the equipment table, still needs its own totals line)
@@ -723,7 +739,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
 
   const TERMINOS = [
-    `Se solicita un mínimo del 50% de anticipo ($${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) para reservar la fecha.`,
+    `Se solicita un anticipo del ${anticipoPct}% ($${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) para reservar la fecha.`,
     `El saldo restante ($${liquidacion.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) se debe liquidar como máximo 1 día antes del evento.`,
     `Esta cotización tiene una vigencia de ${c.vigenciaDias} días (vence el ${fmtDate(vigenciaDate)}).`,
     "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
@@ -854,11 +870,11 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── ANTICIPOS ── */}
         <View style={s.anticipo}>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>ANTICIPO SUGERIDO (50%)</Text>
+            <Text style={s.anticipoLabel}>ANTICIPO ({anticipoPct}%)</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(anticipo)}</Text>
           </View>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>SALDO A LIQUIDAR (50%)</Text>
+            <Text style={s.anticipoLabel}>SALDO A LIQUIDAR ({liquidacionPct}%)</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(liquidacion)}</Text>
           </View>
         </View>
