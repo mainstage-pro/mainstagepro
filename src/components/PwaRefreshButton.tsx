@@ -18,7 +18,8 @@ export default function PwaRefreshButton() {
     <button
       onClick={() => window.location.reload()}
       aria-label="Actualizar"
-      className="fixed bottom-5 right-4 z-50 w-11 h-11 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center text-[#B3985B] shadow-lg hover:bg-[#1a1a1a] hover:border-[#B3985B]/40 active:scale-90 transition-all duration-150"
+      className="fixed bottom-24 right-4 z-[10000] w-11 h-11 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center text-[#B3985B] shadow-xl hover:bg-[#1a1a1a] hover:border-[#B3985B]/40 active:scale-90 transition-all duration-150"
+      style={{ bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))" }}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
