@@ -16,6 +16,7 @@ interface Cotizacion {
   descuentoB2bPct: number; descuentoVolumenPct: number; descuentoMultidiaPct: number;
   descuentoFamilyFriendsPct: number; descuentoEspecialPct: number; descuentoPatrocinioPct: number;
   descuentoPatrocinioNota: string | null; mainstageTradeData: string | null; tradeToken: string | null;
+  tratoId: string | null;
   observaciones: string | null; terminosComerciales: string | null;
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   trato: { tipoEvento: string } | null; lineas: Linea[];
@@ -351,37 +352,34 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
   );
 }
 
-// ─── Contract default ─────────────────────────────────────────────────────────
-const DEFAULT_CONTRATO = `TÉRMINOS Y CONDICIONES DE SERVICIO
+// ─── Trade niveles ────────────────────────────────────────────────────────────
+const TRADE_NIVELES = [
+  { nivel: 1, nombre: "Base",       pct: 5,  tagline: "Presencia de marca esencial",   destacado: false,
+    beneficios: ["Logo de Mainstage Pro en flyer y/o backdrop", "1 mención del animador durante el evento", "Material básico de foto y video para redes", "2 a 4 accesos al evento para el equipo Mainstage"] },
+  { nivel: 2, nombre: "Estratégico", pct: 10, tagline: "Alianza visible con contenido", destacado: true,
+    beneficios: ["Todo lo de Nivel Base", "Logo en cartel principal y mesa de control", "1 publicación o reel en Instagram etiquetando @mainstage.pro", "Material profesional para nuestro portafolio", "4 a 8 accesos al evento"] },
+  { nivel: 3, nombre: "Premium",    pct: 12, tagline: "Partner técnico oficial",        destacado: false,
+    beneficios: ["Todo lo de Nivel Estratégico", "Mainstage Pro como partner técnico oficial", "Reel o video corto enfocado en producción técnica", "Material premium sin restricciones", "6 a 12 accesos al evento"] },
+];
 
-1. VIGENCIA DE LA PROPUESTA
-La presente propuesta tiene una vigencia de 30 días naturales a partir de su fecha de emisión.
-
-2. CONDICIONES DE PAGO
-• 50% del monto total para confirmar y reservar la fecha.
-• 50% restante liquidado 72 horas antes del evento.
-• Formas de pago aceptadas: transferencia bancaria, depósito o SPEI.
-
-3. CANCELACIÓN Y REPROGRAMACIÓN
-• Cancelación con más de 30 días: reembolso del 80% del anticipo.
-• Cancelación entre 15 y 30 días: reembolso del 50% del anticipo.
-• Cancelación con menos de 15 días: el anticipo no es reembolsable.
-• Reprogramaciones sujeto a disponibilidad, sin penalización con aviso mínimo de 30 días.
-
-4. RESPONSABILIDADES
-Mainstage Pro garantiza la operación correcta del equipo descrito. No se hace responsable por condiciones del venue, fuerza mayor, o modificaciones en el programa no comunicadas con al menos 48 horas de anticipación.`;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizacion }) {
-  const [scrollY, setScrollY]       = useState(0);
-  const [contractOpen, setContract] = useState(false);
-  const [heroIdx, setHeroIdx]       = useState(0);
+  const [scrollY, setScrollY] = useState(0);
+  const [heroIdx, setHeroIdx] = useState(0);
 
   let tradeData: { pct?: number; nivelSeleccionado?: number | null; nivelAplicado?: number | null; activo?: boolean } = {};
   try { if (cotizacion.mainstageTradeData) tradeData = JSON.parse(cotizacion.mainstageTradeData); } catch { /* noop */ }
-  const tradePct      = tradeData.pct ?? 0;
-  const tradeElegido  = (tradeData.nivelSeleccionado ?? 0) > 0;
-  const tradeAplicado = tradeElegido && tradeData.activo;
+  const tradeYaConfirmado = (tradeData.nivelSeleccionado ?? 0) > 0;
+
+  const [tradeConfirmado, setTradeConfirmado] = useState(tradeYaConfirmado);
+  const [tradeNivelElegido, setTradeNivelElegido] = useState<number | null>(tradeData.nivelSeleccionado ?? null);
+  const [tradePctActual, setTradePctActual] = useState(tradeData.pct ?? 0);
+  const [tradeConfirmando, setTradeConfirmando] = useState<number | null>(null);
+  const [tradeSaving, setTradeSaving] = useState(false);
+  const [tradeActionError, setTradeActionError] = useState<string | null>(null);
+  const [granTotalActual, setGranTotalActual] = useState(cotizacion.granTotal);
+
   const NIVEL_LABEL: Record<number, string> = { 1: "Base", 2: "Estratégico", 3: "Premium" };
 
   useEffect(() => {
@@ -389,6 +387,32 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
     window.addEventListener("scroll", fn, { passive: true });
     return () => window.removeEventListener("scroll", fn);
   }, []);
+
+  async function confirmarTrade() {
+    if (!tradeConfirmando || tradeSaving || !cotizacion.tradeToken) return;
+    setTradeSaving(true);
+    setTradeActionError(null);
+    try {
+      const res = await fetch(`/api/trade/${cotizacion.tradeToken}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nivel: tradeConfirmando }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        const n = TRADE_NIVELES[tradeConfirmando - 1];
+        setTradeNivelElegido(tradeConfirmando);
+        setTradePctActual(n.pct);
+        setTradeConfirmado(true);
+        setTradeConfirmando(null);
+        if (d.granTotal) setGranTotalActual(d.granTotal);
+      } else {
+        setTradeActionError(d.error ?? "Error al registrar selección");
+      }
+    } finally {
+      setTradeSaving(false);
+    }
+  }
 
   const { audio, ilum, dj, video, staff, otros } = groupLineas(cotizacion.lineas);
   const tipoEvento   = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
@@ -700,9 +724,9 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             )}
             <p className="text-white font-bold leading-none mb-5"
                style={{ fontSize: "clamp(3.5rem,13vw,8rem)", letterSpacing: "-0.038em" }}>
-              {fmt(cotizacion.granTotal)}
+              {fmt(granTotalActual)}
             </p>
-            {cotizacion.montoDescuento > 0 && (() => {
+            {(cotizacion.montoDescuento > 0 || tradeConfirmado) && (() => {
               const sb = cotizacion.subtotalEquiposBruto;
               const items: { label: string; monto: number }[] = [];
               if ((cotizacion.descuentoB2bPct ?? 0) > 0)
@@ -713,8 +737,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                 items.push({ label: `Descuento multi-día (${Math.round(cotizacion.descuentoMultidiaPct * 100)}%)`, monto: sb * cotizacion.descuentoMultidiaPct });
               if ((cotizacion.descuentoFamilyFriendsPct ?? 0) > 0)
                 items.push({ label: `Descuento especial (${Math.round(cotizacion.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * cotizacion.descuentoFamilyFriendsPct });
-              if (tradeAplicado)
-                items.push({ label: `Mainstage Trade (${tradePct}%)`, monto: sb * (tradePct / 100) });
+              if (tradeConfirmado)
+                items.push({ label: `Mainstage Trade (${tradePctActual}%)`, monto: sb * (tradePctActual / 100) });
               return items.length > 0 ? (
                 <div className="flex flex-col items-center gap-1 mb-4">
                   {items.map(it => (
@@ -758,7 +782,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             </div>
             <h2 className="text-white font-bold leading-tight mb-4"
                 style={{ fontSize: "clamp(1.8rem,4.5vw,3.2rem)", letterSpacing: "-0.025em" }}>
-              {tradeAplicado ? (
+              {tradeConfirmado ? (
                 <>Colaboración activada.<br /><span className="text-[#B3985B]">Tu descuento ya está incluido.</span></>
               ) : (
                 <>Colabora y ahorra.<br /><span className="text-[#B3985B]">Tú ahorras. Nosotros crecemos.</span></>
@@ -769,13 +793,13 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             </p>
           </R>
 
-          {tradeAplicado ? (
+          {tradeConfirmado ? (
             <R delay={70} className="flex justify-center">
               <div className="grid grid-cols-3 gap-4 w-full max-w-xl">
                 {[
-                  { label: "Nivel elegido",       value: NIVEL_LABEL[tradeData.nivelSeleccionado ?? 1] ?? "—" },
-                  { label: "Descuento aplicado",  value: `${tradePct}%` },
-                  { label: "Tu ahorro",           value: fmt(cotizacion.montoDescuento) },
+                  { label: "Nivel elegido",      value: NIVEL_LABEL[tradeNivelElegido ?? 1] ?? "—" },
+                  { label: "Descuento aplicado", value: `${tradePctActual}%` },
+                  { label: "Tu ahorro",          value: fmt(cotizacion.subtotalEquiposBruto * (tradePctActual / 100)) },
                 ].map(k => (
                   <div key={k.label} className="text-center bg-white/[0.03] border border-[#B3985B]/20 rounded-2xl py-5 px-3">
                     <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-2">{k.label}</p>
@@ -784,31 +808,59 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
                 ))}
               </div>
             </R>
-          ) : (
-            <R delay={70} className="flex justify-center">
-              <div className="text-center max-w-sm w-full">
-                <div className="grid grid-cols-3 gap-2.5 mb-8">
-                  {[{ nivel:1, nombre:"Base", pct:5 }, { nivel:2, nombre:"Estratégico", pct:10 }, { nivel:3, nombre:"Premium", pct:12 }].map(n => (
-                    <div key={n.nivel} className="bg-white/[0.03] border border-white/8 rounded-xl py-4 text-center">
-                      <p className="text-white/35 text-[10px] uppercase tracking-wider mb-1">{n.nombre}</p>
-                      <p className="text-[#B3985B] text-3xl font-black">{n.pct}%</p>
-                      <p className="text-white/20 text-[10px] mt-1">descuento</p>
-                    </div>
-                  ))}
+          ) : cotizacion.tradeToken ? (
+            <R delay={70}>
+              <div className="max-w-2xl mx-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                  {TRADE_NIVELES.map(n => {
+                    const ahorro = Math.round(cotizacion.subtotalEquiposBruto * (n.pct / 100) * (cotizacion.aplicaIva ? 1.16 : 1) * 100) / 100;
+                    const totalConTrade = granTotalActual - ahorro;
+                    return (
+                      <button
+                        key={n.nivel}
+                        onClick={() => setTradeConfirmando(n.nivel)}
+                        className={`relative text-left rounded-2xl border p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
+                          n.destacado
+                            ? "border-[#B3985B] bg-[rgba(179,152,91,0.06)] hover:border-[#c4aa6b]"
+                            : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                        }`}
+                      >
+                        {n.destacado && (
+                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#B3985B] text-black text-[9px] font-black px-3 py-0.5 rounded-full uppercase tracking-widest">
+                            Más popular
+                          </span>
+                        )}
+                        <p className="text-white/40 text-[10px] uppercase tracking-wider mb-0.5">{n.nombre}</p>
+                        <p className={`text-4xl font-black mb-1 ${n.destacado ? "text-[#B3985B]" : "text-white"}`}>{n.pct}%</p>
+                        <p className="text-white/20 text-[10px] mb-3">descuento</p>
+                        <div className="border-t border-white/8 pt-3 space-y-1">
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-white/30">Tu ahorro</span>
+                            <span className={n.destacado ? "text-[#B3985B] font-bold" : "text-white/50"}>{fmt(ahorro)}</span>
+                          </div>
+                          <div className="flex justify-between text-[11px]">
+                            <span className="text-white/30">Nuevo total</span>
+                            <span className="text-white font-bold">{fmt(totalConTrade)}</span>
+                          </div>
+                        </div>
+                        <ul className="mt-3 space-y-1">
+                          {n.beneficios.map((b, i) => (
+                            <li key={i} className="text-[10px] text-white/25 flex gap-1.5">
+                              <span className={n.destacado ? "text-[#B3985B]" : "text-white/30"}>·</span>
+                              {b}
+                            </li>
+                          ))}
+                        </ul>
+                      </button>
+                    );
+                  })}
                 </div>
-                {cotizacion.tradeToken ? (
-                  <>
-                    <a href={`/trade/${cotizacion.tradeToken}`}
-                       className="inline-flex items-center gap-3 px-7 py-3.5 rounded-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-sm transition-all hover:scale-[1.02] active:scale-95">
-                      <span>Elegir mi nivel de colaboración</span>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
-                    <p className="text-white/15 text-xs mt-4">Sin compromiso · Elige el nivel que mejor se adapte</p>
-                  </>
-                ) : (
-                  <p className="text-white/20 text-sm">¿Te interesa colaborar? Pregúntanos sobre Mainstage Trade.</p>
-                )}
+                <p className="text-center text-white/15 text-xs">Toca un nivel para ver el resumen y confirmar</p>
               </div>
+            </R>
+          ) : (
+            <R delay={70} className="text-center">
+              <p className="text-white/20 text-sm">¿Te interesa colaborar? Pregúntanos sobre Mainstage Trade.</p>
             </R>
           )}
         </div>
@@ -857,28 +909,20 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
               <a href={`/api/cotizaciones/${cotizacion.id}/pdf`} target="_blank" rel="noreferrer"
                  className="flex items-center gap-2 text-white/25 hover:text-white/50 text-xs transition-colors">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                Descargar cotización PDF · {cotizacion.numeroCotizacion}
+                Cotización PDF · {cotizacion.numeroCotizacion}
               </a>
-              <span className="text-white/10 hidden sm:block">·</span>
-              <button onClick={() => setContract(o => !o)}
-                      className="flex items-center gap-2 text-white/25 hover:text-white/50 text-xs transition-colors">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-                {contractOpen ? "Ocultar términos" : "Ver términos y condiciones"}
-              </button>
+              {cotizacion.tratoId && (
+                <>
+                  <span className="text-white/10 hidden sm:block">·</span>
+                  <a href={`/api/contratos/${cotizacion.tratoId}/pdf`} target="_blank" rel="noreferrer"
+                     className="flex items-center gap-2 text-white/25 hover:text-white/50 text-xs transition-colors">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    Descargar Contrato
+                  </a>
+                </>
+              )}
             </div>
           </R>
-
-          <div className={`overflow-hidden transition-all duration-500 ${contractOpen ? "max-h-[1600px] opacity-100 mt-8" : "max-h-0 opacity-0 mt-0"}`}>
-            <div className="border border-white/8 rounded-2xl p-6 text-left bg-white/[0.02]">
-              <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-4">Términos y Condiciones · Borrador</p>
-              <pre className="text-white/35 text-xs leading-relaxed whitespace-pre-wrap font-sans">
-                {cotizacion.terminosComerciales || DEFAULT_CONTRATO}
-              </pre>
-              <p className="text-white/12 text-xs mt-5 border-t border-white/5 pt-4">
-                Este es un borrador de referencia. El contrato final será formalizado entre las partes previo al inicio del servicio.
-              </p>
-            </div>
-          </div>
 
           <R delay={300}>
             <p className="text-white/12 text-[11px] mt-10">
@@ -887,6 +931,55 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
           </R>
         </div>
       </section>
+
+      {/* ── TRADE CONFIRMATION MODAL ── */}
+      {tradeConfirmando && !tradeConfirmado && (() => {
+        const n = TRADE_NIVELES[tradeConfirmando - 1];
+        const ahorro = Math.round(cotizacion.subtotalEquiposBruto * (n.pct / 100) * (cotizacion.aplicaIva ? 1.16 : 1) * 100) / 100;
+        const totalFinal = granTotalActual - ahorro;
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4 pb-4 sm:pb-0">
+            <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={() => !tradeSaving && setTradeConfirmando(null)} />
+            <div className="relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-sm p-6 space-y-5 shadow-2xl">
+              <div className="text-center space-y-1">
+                <p className="text-white font-bold text-lg">Confirmar colaboración</p>
+                <p className="text-gray-500 text-sm">
+                  Nivel {n.nivel} — <span className="text-[#B3985B] font-semibold">{n.nombre} · {n.pct}% descuento</span>
+                </p>
+              </div>
+              <div className="bg-black/50 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-xs text-gray-600">
+                  <span>Total original</span><span>{fmt(granTotalActual)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-[#B3985B]">
+                  <span>Tu ahorro con Trade</span><span>− {fmt(ahorro)}</span>
+                </div>
+                <div className="flex justify-between text-white font-bold border-t border-[#2a2a2a] pt-2">
+                  <span>Tu total final</span><span className="text-xl">{fmt(totalFinal)}</span>
+                </div>
+              </div>
+              <p className="text-gray-600 text-xs text-center leading-relaxed">
+                Esta selección queda registrada como acuerdo formal. El equipo de Mainstage Pro se pondrá en contacto para coordinar los detalles de la colaboración.
+              </p>
+              {tradeActionError && <p className="text-red-400 text-xs text-center">{tradeActionError}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setTradeConfirmando(null)}
+                  disabled={tradeSaving}
+                  className="py-3 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmarTrade}
+                  disabled={tradeSaving}
+                  className="py-3 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-sm transition-all disabled:opacity-50">
+                  {tradeSaving ? "Confirmando…" : "Confirmar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── FOOTER ── */}
       <footer className="border-t border-white/[0.05] py-8 px-8">

@@ -348,14 +348,11 @@ const s = StyleSheet.create({
     textAlign: "right",
   },
   confidencial: {
-    position: "absolute",
-    bottom: 46,
-    left: 40,
-    right: 40,
     fontSize: 7,
     color: "#555",
     textAlign: "center",
     fontFamily: "Helvetica-Oblique",
+    marginTop: 5,
   },
   // ── Nota de alerta ───────────────────────────────────────────────────────────
   nota: {
@@ -535,6 +532,9 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
   const subtotalLogistica = lineasAll
     .filter(l => TIPOS_LOGISTICA.includes(l.tipo) && !l.esIncluido)
     .reduce((sum, l) => sum + l.subtotal, 0);
+  const totalBruto = lineasAll
+    .filter(l => !l.esIncluido)
+    .reduce((sum, l) => sum + l.subtotal, 0);
 
   const linkCot = cotizacion ? `${appUrl}/cotizaciones/${cotizacion.numeroCotizacion}` : "";
 
@@ -685,28 +685,16 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
             {/* Resumen financiero */}
             <View style={s.resumenBloque}>
               <View style={s.resumenTabla}>
+                {totalBruto > 0 && (
+                  <View style={s.resFila}>
+                    <Text style={s.resLabel}>Subtotal</Text>
+                    <Text style={s.resMonto}>{fmtMXN(totalBruto)}</Text>
+                  </View>
+                )}
                 {cotizacion!.descuentoTotalPct > 0 && (
                   <View style={s.resFila}>
                     <Text style={s.resLabel}>Descuento ({cotizacion!.descuentoTotalPct.toFixed(1)}%)</Text>
                     <Text style={{ ...s.resMonto, ...s.resDescuento }}>−{fmtMXN(cotizacion!.montoDescuento)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalTransporte > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Transporte</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalTransporte)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalHospedaje > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Hospedaje</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalHospedaje)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalComidas > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Alimentación</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalComidas)}</Text>
                   </View>
                 )}
                 {cotizacion!.aplicaIva && (
@@ -897,12 +885,12 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
             Este contrato es válido únicamente con la firma autógrafa de ambas partes y el pago del anticipo correspondiente. La cotización de referencia ({cotizacion?.numeroCotizacion ?? "—"}) forma parte integral del mismo.
             {linkCot ? `  Consulta en línea: ${linkCot}` : ""}
           </Text>
+          <Text style={s.confidencial}>
+            Documento confidencial · Uso exclusivo de las partes firmantes · Generado por Mainstage Pro
+          </Text>
         </View>
 
         {/* Footer pág 2 */}
-        <Text style={s.confidencial}>
-          Documento confidencial generado por Mainstage Pro · Uso exclusivo de las partes firmantes
-        </Text>
         <View style={s.footer}>
           <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerCenter}>Producción técnica profesional · Audio · Iluminación · Video</Text>
