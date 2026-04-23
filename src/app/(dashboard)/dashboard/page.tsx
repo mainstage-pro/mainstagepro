@@ -497,7 +497,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-white text-sm truncate">{p.tipo?.nombre ?? p.formato ?? "Sin tipo"}</p>
                     <p className="text-gray-500 text-xs">
-                      {new Date(p.fecha).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })}
+                      {(() => { const [y, m, d] = p.fecha.toISOString().substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }); })()}
                     </p>
                   </div>
                   <span className={`shrink-0 ml-3 text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_PUB_COLORS[p.estado] ?? "bg-gray-800 text-gray-400"}`}>

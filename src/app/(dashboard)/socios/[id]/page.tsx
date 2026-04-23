@@ -225,7 +225,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           {edit ? (
             <DarkInput type="date" value={form.contratoInicio ? form.contratoInicio.split("T")[0] : ""}
               onChange={(v) => f("contratoInicio", v)} />
-          ) : <p className="text-sm text-white">{socio.contratoInicio ? new Date(socio.contratoInicio).toLocaleDateString("es-MX") : "—"}</p>}
+          ) : <p className="text-sm text-white">{socio.contratoInicio ? (() => { const iso = typeof socio.contratoInicio === "string" ? socio.contratoInicio : (socio.contratoInicio as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}</p>}
         </div>
         <div>
           <FieldLabel>Vencimiento de contrato</FieldLabel>
@@ -237,7 +237,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
               socio.contratoFin && (new Date(socio.contratoFin).getTime() - Date.now()) / 86400000 < 30
                 ? "text-red-400" : "text-white"
             }`}>
-              {socio.contratoFin ? new Date(socio.contratoFin).toLocaleDateString("es-MX") : "—"}
+              {socio.contratoFin ? (() => { const iso = typeof socio.contratoFin === "string" ? socio.contratoFin : (socio.contratoFin as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
             </p>
           )}
         </div>
@@ -839,7 +839,7 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
                 <p className="text-[#555] text-xs mt-0.5">
                   {m.activo.codigoInventario} — {m.activo.nombre}
                   {m.realizadoPor && ` · ${m.realizadoPor}`}
-                  {m.fechaEjecucion && ` · ${new Date(m.fechaEjecucion).toLocaleDateString("es-MX")}`}
+                  {m.fechaEjecucion && ` · ${(() => { const iso = typeof m.fechaEjecucion === "string" ? m.fechaEjecucion : (m.fechaEjecucion as Date).toISOString(); const [y, mo, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, mo - 1, d).toLocaleDateString("es-MX"); })()}`}
                 </p>
               </div>
               {m.costoTotal > 0 && (
@@ -957,7 +957,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
             {config.creditoFechaInicio && (
               <div className="flex justify-between">
                 <span className="text-[#555]">Inicio</span>
-                <span className="text-white font-semibold">{new Date(config.creditoFechaInicio).toLocaleDateString("es-MX")}</span>
+                <span className="text-white font-semibold">{(() => { const iso = typeof config.creditoFechaInicio === "string" ? config.creditoFechaInicio : (config.creditoFechaInicio as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })()}</span>
               </div>
             )}
           </div>
@@ -1034,7 +1034,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
                   <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorAdquisicion)}</td>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
                   <td className="px-4 py-3 text-[#555] text-xs">
-                    {a.fechaAdquisicion ? new Date(a.fechaAdquisicion).toLocaleDateString("es-MX") : "—"}
+                    {a.fechaAdquisicion ? (() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span className={`text-[10px] ${a.activo ? "text-green-400" : "text-gray-600"}`}>

@@ -257,7 +257,7 @@ function VehiculoCard({ v, onEdit, onToggle, onDelete }: {
           <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 flex-wrap">
             {v.kilometraje && <span>🛣 {v.kilometraje.toLocaleString("es-MX")} km</span>}
             {ultimoMant && (
-              <span>🔧 Último mant: {new Date(ultimoMant.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })} — {ultimoMant.tipo}</span>
+              <span>🔧 Último mant: {(() => { const iso = typeof ultimoMant.fecha === "string" ? ultimoMant.fecha : (ultimoMant.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }); })()} — {ultimoMant.tipo}</span>
             )}
           </div>
           {v.notas && <p className="text-gray-600 text-xs mt-2">{v.notas}</p>}

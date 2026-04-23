@@ -189,14 +189,14 @@ export default function EquipoFichaPage() {
               {equipo.mantenimientos.map(m => (
                 <div key={m.id} className="flex items-start gap-4 text-xs p-3 bg-[#0d0d0d] rounded-lg">
                   <div className="shrink-0 text-[#555] w-20 pt-0.5">
-                    {new Date(m.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" })}
+                    {(() => { const iso = typeof m.fecha === "string" ? m.fecha : (m.fecha as Date).toISOString(); const [y, mo, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, mo - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" }); })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white">{m.accionRealizada}</p>
                     {m.comentarios && <p className="text-[#6b7280] mt-0.5">{m.comentarios}</p>}
                     {m.proximoMantenimiento && (
                       <p className="text-yellow-600/70 mt-0.5">
-                        Próximo: {new Date(m.proximoMantenimiento).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" })}
+                        Próximo: {(() => { const iso = typeof m.proximoMantenimiento === "string" ? m.proximoMantenimiento : (m.proximoMantenimiento as Date).toISOString(); const [y, mo, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, mo - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit" }); })()}
                       </p>
                     )}
                   </div>

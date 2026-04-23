@@ -95,10 +95,13 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     items: checklist.items.filter(i => i.categoria === cat).sort((a, b) => a.orden - b.orden),
   }));
 
-  const fechaLabel = new Date(checklist.fechaInicio).toLocaleDateString("es-MX", {
+  const _fechaInicioIso = typeof checklist.fechaInicio === "string" ? checklist.fechaInicio : (checklist.fechaInicio as Date).toISOString();
+  const [_fiy, _fim, _fid] = _fechaInicioIso.substring(0, 10).split("-").map(Number);
+  const _fechaInicioLocal = new Date(_fiy, _fim - 1, _fid);
+  const fechaLabel = _fechaInicioLocal.toLocaleDateString("es-MX", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
-  const fechaCorta = new Date(checklist.fechaInicio).toLocaleDateString("es-MX", {
+  const fechaCorta = _fechaInicioLocal.toLocaleDateString("es-MX", {
     day: "numeric", month: "long", year: "numeric",
   });
 

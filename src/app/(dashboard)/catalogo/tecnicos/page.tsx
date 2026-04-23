@@ -491,7 +491,7 @@ export default function TecnicosPage() {
                       <td className="px-4 py-3">
                         {r.ultimaFecha ? (
                           <div>
-                            <p className="text-gray-300 text-xs">{new Date(r.ultimaFecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" })}</p>
+                            <p className="text-gray-300 text-xs">{(() => { const iso = typeof r.ultimaFecha === "string" ? r.ultimaFecha : (r.ultimaFecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" }); })()}</p>
                             {r.diasSinTrabajar !== null && (
                               <p className={`text-[10px] ${r.diasSinTrabajar > 60 ? "text-red-400" : r.diasSinTrabajar > 30 ? "text-yellow-400" : "text-gray-600"}`}>
                                 hace {r.diasSinTrabajar}d

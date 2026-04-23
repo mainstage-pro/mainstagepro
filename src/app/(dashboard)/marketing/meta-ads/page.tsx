@@ -438,7 +438,7 @@ export default function MetaAdsPage() {
                     <tbody className="divide-y divide-[#111]">
                       {selected.resultados.map(r => (
                         <tr key={r.id} className="hover:bg-[#0d0d0d]">
-                          <td className="px-3 py-2 text-gray-400">{new Date(r.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</td>
+                          <td className="px-3 py-2 text-gray-400">{(() => { const iso = typeof r.fecha === "string" ? r.fecha : (r.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }); })()}</td>
                           <td className="px-3 py-2 text-white font-medium">{fmt(r.gastado)}</td>
                           <td className="px-3 py-2 text-white">{r.leads}</td>
                           <td className="px-3 py-2 text-gray-400">{r.cpl != null ? fmt(r.cpl) : "—"}</td>

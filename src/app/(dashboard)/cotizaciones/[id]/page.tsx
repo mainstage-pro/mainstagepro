@@ -109,7 +109,8 @@ const TIPO_LINEA_LABELS: Record<string, string> = {
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function CotizacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -435,7 +436,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       `📋 *Evento:* ${cot.nombreEvento ?? "Sin nombre"} · ${cot.tipoEvento ?? cot.trato.tipoEvento ?? ""}`,
       `📍 *Venue:* ${cot.lugarEvento ?? cot.trato.lugarEstimado ?? "Por confirmar"}`,
       cot.fechaEvento ? `📅 *Fecha de evento:* ${new Date(cot.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : null,
-      renderFecha ? `⏰ *Render necesario para:* ${new Date(renderFecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}` : null,
+      renderFecha ? `⏰ *Render necesario para:* ${(() => { const [y, m, d] = renderFecha.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); })()}` : null,
       ``,
       `🎛️ *Rider de equipos:*`,
       renderEquipos || "Ver cotización adjunta",

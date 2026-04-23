@@ -646,7 +646,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
                       <td className="px-4 py-3">
                         <p className="text-white text-sm font-medium">{a.nombre}</p>
                         {a.descripcion && <p className="text-gray-500 text-xs">{a.descripcion}</p>}
-                        {a.fechaAdquisicion && <p className="text-gray-600 text-[10px]">{new Date(a.fechaAdquisicion).toLocaleDateString("es-MX")}</p>}
+                        {a.fechaAdquisicion && <p className="text-gray-600 text-[10px]">{(() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })()}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded">{CAT_LABELS[a.categoria] ?? a.categoria}</span>

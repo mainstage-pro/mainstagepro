@@ -50,7 +50,8 @@ const ESTADO_COLORS: Record<string, string> = {
 
 function fmtDate(s: string | null) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 function diasDesde(s: string | null): number | null {
   if (!s) return null;

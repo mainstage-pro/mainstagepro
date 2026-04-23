@@ -28,7 +28,8 @@ function isoWeek(date: Date): string {
 }
 
 function fechaLabel(fechaInicio: string) {
-  return new Date(fechaInicio).toLocaleDateString("es-MX", {
+  const [y, m, d] = fechaInicio.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 }

@@ -6,7 +6,9 @@ const fmt = (n: number) =>
 
 const fmtDate = (d: Date | null | string | undefined) => {
   if (!d) return "_______________";
-  return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const iso = typeof d === "string" ? d : (d as Date).toISOString();
+  const [y, m, day] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 };
 
 const CAT_LABEL: Record<string, string> = {

@@ -71,7 +71,12 @@ export default async function DashboardMarketingPage() {
   const listos = pubsMap.LISTO ?? 0;
   const pctCumplimiento = totalPubs > 0 ? Math.round((publicadas / totalPubs) * 100) : 0;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = typeof s === "string" ? s : s.toISOString();
+    const [y, mo, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, mo - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" });
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">

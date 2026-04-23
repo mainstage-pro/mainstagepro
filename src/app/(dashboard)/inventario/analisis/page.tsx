@@ -49,7 +49,8 @@ function fmtMXN(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 function getMeses() {
   const list: { value: string; label: string }[] = [];

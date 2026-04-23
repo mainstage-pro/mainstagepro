@@ -2367,7 +2367,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <div>
                       <p className="text-gray-500 text-xs mb-0.5">Recolectado el</p>
                       <p className="text-green-400 text-sm font-medium">
-                        {new Date(proyecto.recoleccionFechaReal).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                        {(() => { const iso = typeof proyecto.recoleccionFechaReal === "string" ? proyecto.recoleccionFechaReal : (proyecto.recoleccionFechaReal as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); })()}
                       </p>
                     </div>
                   )}
@@ -4108,7 +4108,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="space-y-1.5">
                             {ajustesEntradas.map((a, i) => (
                               <div key={i} className="flex items-start gap-2 text-xs">
-                                <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{(() => { const iso = typeof a.fecha === "string" ? a.fecha : (a.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }); })()}</span>
                                 <div className="flex-1">
                                   <span className="text-red-400 line-through">{fmt(a.de)}</span>
                                   <span className="text-gray-600 mx-1">→</span>
@@ -4306,7 +4306,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <div className="space-y-1.5">
                           {ajustesEntradas.map((a, i) => (
                             <div key={i} className="flex items-start gap-2 text-xs">
-                              <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                              <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{(() => { const iso = typeof a.fecha === "string" ? a.fecha : (a.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }); })()}</span>
                               <div className="flex-1">
                                 <span className="text-red-400 line-through">{fmt(a.de)}</span>
                                 <span className="text-gray-600 mx-1">→</span>
