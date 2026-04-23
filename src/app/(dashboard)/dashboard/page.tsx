@@ -124,7 +124,7 @@ export default async function DashboardPage() {
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       include: { cliente: { select: { nombre: true } }, empresa: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
       take: 4,
@@ -134,7 +134,7 @@ export default async function DashboardPage() {
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
     prisma.cuentaPagar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       orderBy: { fechaCompromiso: "asc" },
       take: 4,
     }),

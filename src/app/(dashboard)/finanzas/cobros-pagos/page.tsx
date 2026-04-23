@@ -83,7 +83,7 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 }
 
 function waMsgCobro(nombre: string, monto: number, concepto: string): string {

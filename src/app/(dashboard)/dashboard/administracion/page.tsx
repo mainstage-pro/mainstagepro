@@ -64,7 +64,7 @@ export default async function DashboardAdminPage() {
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       include: { cliente: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
       take: 6,
@@ -74,7 +74,7 @@ export default async function DashboardAdminPage() {
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
     prisma.cuentaPagar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       orderBy: { fechaCompromiso: "asc" },
       take: 6,
     }),
@@ -104,7 +104,11 @@ export default async function DashboardAdminPage() {
   const cxpTotal = cxpPendiente._sum.monto ?? 0;
   const nominaTotal = nominaPendiente._sum.monto ?? 0;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = s instanceof Date ? s.toISOString() : s;
+    return new Date(iso.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short" });
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
