@@ -81,7 +81,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   //   > 0  → días ANTES del evento  (ej: 3 = 3 días antes)
   //   = 0  → día del evento
   //   < 0  → días DESPUÉS del evento (ej: -1 = 1 día después = día siguiente)
-  type PagoPlan = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
+  type PagoPlan = { concepto: string; porcentaje: number; monto?: number; diasAntes: number; tipoPago: string };
   let cuotas: PagoPlan[];
   try {
     const plan = cot.planPagos ? JSON.parse(cot.planPagos) : null;
@@ -273,7 +273,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       const esUltima = i === cuotas.length - 1;
       const monto = esUltima
         ? Math.round((cot.granTotal - acumulado) * 100) / 100
-        : Math.round(cot.granTotal * (cuota.porcentaje / 100) * 100) / 100;
+        : (cuota.monto && cuota.monto > 0)
+          ? cuota.monto
+          : Math.round(cot.granTotal * (cuota.porcentaje / 100) * 100) / 100;
       acumulado += monto;
       const concepto = cuota.concepto.endsWith(" — ")
         ? `${cuota.concepto}${proy.nombre}`

@@ -135,6 +135,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [renderNotas, setRenderNotas] = useState("");
   const [editingPlan, setEditingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [montoAnticipo, setMontoAnticipo] = useState<string>("");
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
@@ -931,7 +932,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* ── Plan de pagos ── */}
           {cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (() => {
-            type Cuota = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
+            type Cuota = { concepto: string; porcentaje: number; monto?: number; diasAntes: number; tipoPago: string };
             const ESQUEMAS: { label: string; key: string; pagos: Cuota[] }[] = [
               { label: "50% + 50%", key: "50_50", pagos: [
                 { concepto: "Anticipo 50% — ", porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
@@ -944,17 +945,30 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               { label: "100% adelanto", key: "100_ADELANTO", pagos: [
                 { concepto: "Pago total — ", porcentaje: 100, diasAntes: -3, tipoPago: "ANTICIPO" },
               ]},
-              { label: "3 pagos (30/40/30)", key: "3_PAGOS", pagos: [
-                { concepto: "Anticipo 30% — ", porcentaje: 30, diasAntes: -7, tipoPago: "ANTICIPO" },
-                { concepto: "Segundo pago 40% — ", porcentaje: 40, diasAntes: -3, tipoPago: "LIQUIDACION" },
-                { concepto: "Liquidación 30% — ", porcentaje: 30, diasAntes: 1, tipoPago: "LIQUIDACION" },
-              ]},
             ];
 
-            let currentPlan: { esquema?: string; pagos?: Cuota[] } | null = null;
+            let currentPlan: { esquema?: string; pagos?: Cuota[]; montoAnticipo?: number } | null = null;
             try { currentPlan = cot.planPagos ? JSON.parse(cot.planPagos) : null; } catch { /* noop */ }
             const activeKey = currentPlan?.esquema ?? "50_50";
             const activePagos = currentPlan?.pagos ?? ESQUEMAS[0].pagos;
+
+            // Monto anticipo input value — use local state or fall back to stored value
+            const montoAnticipoVal = montoAnticipo !== ""
+              ? Number(montoAnticipo)
+              : (activeKey === "MONTO_MANUAL" && currentPlan?.montoAnticipo ? currentPlan.montoAnticipo : Math.round(cot.granTotal * 0.5));
+            const montoLiquidacion = Math.max(0, Math.round((cot.granTotal - montoAnticipoVal) * 100) / 100);
+
+            const saveManual = (monto: number) => {
+              const liq = Math.max(0, Math.round((cot.granTotal - monto) * 100) / 100);
+              savePlan({
+                esquema: "MONTO_MANUAL",
+                montoAnticipo: monto,
+                pagos: [
+                  { concepto: "Anticipo — ", monto, porcentaje: Math.round(monto / cot.granTotal * 100), diasAntes: -3, tipoPago: "ANTICIPO" },
+                  { concepto: "Liquidación — ", monto: liq, porcentaje: Math.round(liq / cot.granTotal * 100), diasAntes: 1, tipoPago: "LIQUIDACION" },
+                ],
+              });
+            };
 
             return (
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
@@ -971,29 +985,42 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
                 {!editingPlan ? (
                   <div className="px-4 py-3 space-y-1.5">
-                    {activePagos.map((p, i) => {
-                      const pct = `${p.porcentaje}%`;
-                      const fechaDesc = p.diasAntes <= 0
-                        ? `${Math.abs(p.diasAntes)} días tras aprobar`
-                        : p.diasAntes === 1 ? "1 día antes del evento"
-                        : `${p.diasAntes} días antes del evento`;
-                      const monto = Math.round(cot.granTotal * (p.porcentaje / 100));
-                      return (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-400">
-                            {p.concepto.replace(" — ", "") || `Pago ${i+1}`}
-                            <span className="text-gray-700 ml-2">· {fechaDesc}</span>
-                          </span>
-                          <span className="text-white font-medium">{pct} · {formatCurrency(monto)}</span>
+                    {activeKey === "MONTO_MANUAL" ? (
+                      <>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Anticipo <span className="text-gray-700 ml-2">· 3 días tras aprobar</span></span>
+                          <span className="text-white font-medium">{formatCurrency(montoAnticipoVal)}</span>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Liquidación <span className="text-gray-700 ml-2">· 1 día antes del evento</span></span>
+                          <span className="text-white font-medium">{formatCurrency(montoLiquidacion)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      activePagos.map((p, i) => {
+                        const fechaDesc = p.diasAntes <= 0
+                          ? `${Math.abs(p.diasAntes)} días tras aprobar`
+                          : p.diasAntes === 1 ? "1 día antes del evento"
+                          : `${p.diasAntes} días antes del evento`;
+                        const monto = Math.round(cot.granTotal * (p.porcentaje / 100));
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">
+                              {p.concepto.replace(" — ", "") || `Pago ${i+1}`}
+                              <span className="text-gray-700 ml-2">· {fechaDesc}</span>
+                            </span>
+                            <span className="text-white font-medium">{p.porcentaje}% · {formatCurrency(monto)}</span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 ) : (
                   <div className="px-4 py-4 space-y-4">
+                    {/* Esquemas predefinidos + monto manual */}
                     <div className="flex gap-2 flex-wrap">
                       {ESQUEMAS.map(s => (
-                        <button key={s.key} onClick={() => savePlan({ esquema: s.key, pagos: s.pagos })}
+                        <button key={s.key} onClick={() => { setMontoAnticipo(""); savePlan({ esquema: s.key, pagos: s.pagos }); }}
                           disabled={savingPlan}
                           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                             activeKey === s.key
@@ -1003,42 +1030,93 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                           {s.label}
                         </button>
                       ))}
+                      <button
+                        disabled={savingPlan}
+                        onClick={() => {
+                          const inicial = currentPlan?.esquema === "MONTO_MANUAL" && currentPlan?.montoAnticipo
+                            ? currentPlan.montoAnticipo
+                            : Math.round(cot.granTotal * 0.5);
+                          setMontoAnticipo(String(inicial));
+                          saveManual(inicial);
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                          activeKey === "MONTO_MANUAL"
+                            ? "bg-[#B3985B]/15 border-[#B3985B]/50 text-[#B3985B]"
+                            : "border-[#333] text-gray-500 hover:text-white hover:border-[#444]"
+                        }`}>
+                        Monto manual
+                      </button>
                     </div>
-                    <div className="space-y-2">
-                      {activePagos.map((p, i) => (
-                        <div key={i} className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_80px_120px]">
-                          <input
-                            defaultValue={p.concepto.replace(" — ", "")}
-                            onBlur={e => {
-                              const updated = activePagos.map((q, j) => j === i ? { ...q, concepto: `${e.target.value} — ` } : q);
-                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
-                            }}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
-                          />
-                          <div className="relative">
-                            <input type="number" min="1" max="100"
-                              defaultValue={p.porcentaje}
+
+                    {/* Editor según esquema activo */}
+                    {activeKey === "MONTO_MANUAL" ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Anticipo</p>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max={cot.granTotal}
+                                value={montoAnticipo !== "" ? montoAnticipo : montoAnticipoVal}
+                                onChange={e => setMontoAnticipo(e.target.value)}
+                                onBlur={e => {
+                                  const val = Math.max(0, Math.min(Number(e.target.value) || 0, cot.granTotal));
+                                  setMontoAnticipo(String(val));
+                                  saveManual(val);
+                                }}
+                                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg pl-6 pr-2.5 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Liquidación (automático)</p>
+                            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2.5 py-2 text-xs text-gray-400">
+                              {formatCurrency(montoLiquidacion)}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-700">Anticipo: 3 días tras aprobar · Liquidación: 1 día antes del evento</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activePagos.map((p, i) => (
+                          <div key={i} className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_80px_120px]">
+                            <input
+                              defaultValue={p.concepto.replace(" — ", "")}
                               onBlur={e => {
-                                const updated = activePagos.map((q, j) => j === i ? { ...q, porcentaje: parseInt(e.target.value) || q.porcentaje } : q);
+                                const updated = activePagos.map((q, j) => j === i ? { ...q, concepto: `${e.target.value} — ` } : q);
                                 savePlan({ esquema: "PERSONALIZADO", pagos: updated });
                               }}
-                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                              className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
                             />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
+                            <div className="relative">
+                              <input type="number" min="1" max="100"
+                                defaultValue={p.porcentaje}
+                                onBlur={e => {
+                                  const updated = activePagos.map((q, j) => j === i ? { ...q, porcentaje: parseInt(e.target.value) || q.porcentaje } : q);
+                                  savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                                }}
+                                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
+                            </div>
+                            <Combobox
+                              value={String(p.diasAntes)}
+                              onChange={v => {
+                                const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(v) } : q);
+                                savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                              }}
+                              options={[{ value: "-3", label: "3d tras aprobar" }, { value: "-7", label: "7d tras aprobar" }, { value: "-14", label: "14d tras aprobar" }, { value: "30", label: "30d antes evento" }, { value: "15", label: "15d antes evento" }, { value: "7", label: "7d antes evento" }, { value: "1", label: "1d antes evento" }]}
+                              className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                            />
                           </div>
-                          <Combobox
-                            value={String(p.diasAntes)}
-                            onChange={v => {
-                              const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(v) } : q);
-                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
-                            }}
-                            options={[{ value: "-3", label: "3d tras aprobar" }, { value: "-7", label: "7d tras aprobar" }, { value: "-14", label: "14d tras aprobar" }, { value: "30", label: "30d antes evento" }, { value: "15", label: "15d antes evento" }, { value: "7", label: "7d antes evento" }, { value: "1", label: "1d antes evento" }]}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-gray-700">Los montos se calculan automáticamente sobre el gran total al aprobar</p>
+                        ))}
+                        <p className="text-[10px] text-gray-700">Los montos se calculan automáticamente sobre el gran total al aprobar</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
