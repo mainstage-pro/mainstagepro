@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function diaSiguienteEvento(fecha: Date): Date {
+function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
   return d;
 }
 
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     const equipoNombre = item.equipo.descripcion;
     const proveedorNombre = item.proveedor?.nombre ?? "Proveedor";
-    const fechaCompromiso = diaSiguienteEvento(proyecto?.fechaEvento ?? new Date());
+    const fechaCompromiso = proximoMiercolesTraEvento(proyecto?.fechaEvento ?? new Date());
 
     await prisma.cuentaPagar.create({
       data: {

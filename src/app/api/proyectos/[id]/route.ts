@@ -5,6 +5,15 @@ import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken } from "@/lib/tokens";
 
+function proximoMiercolesTraEvento(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
+  return d;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -194,8 +203,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         where: { proyectoId: id, concepto: { contains: "Chofer" }, tipoAcreedor: "OTRO" },
       });
       const fechaEvento = proyecto.fechaEvento ?? new Date();
-      const fechaCompromiso = new Date(fechaEvento);
-      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1); // día siguiente al evento
+      const fechaCompromiso = proximoMiercolesTraEvento(fechaEvento);
       if (cxpExistente) {
         await prisma.cuentaPagar.update({
           where: { id: cxpExistente.id },
@@ -235,9 +243,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
 
     if (personalPendiente.length > 0) {
-      // Fecha compromiso: día siguiente al evento
-      const fechaCompromiso = new Date(proyecto.fechaEvento ?? new Date());
-      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1);
+        const fechaCompromiso = proximoMiercolesTraEvento(proyecto.fechaEvento ?? new Date());
 
       await prisma.cuentaPagar.createMany({
         data: personalPendiente.map(p => ({

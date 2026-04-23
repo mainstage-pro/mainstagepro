@@ -511,6 +511,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [ajustando, setAjustando] = useState<string | null>(null);    // id de la cuenta en edición
   const [ajusteMonto, setAjusteMonto] = useState("");
   const [ajusteMotivo, setAjusteMotivo] = useState("");
+  const [ajusteFecha, setAjusteFecha] = useState("");
   const [ajusteHistorial, setAjusteHistorial] = useState<string | null>(null); // id cuyo historial está expandido
 
   // Estados para asignar técnico a fila sin asignar
@@ -1604,35 +1605,43 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  // ── Ajustar monto CxC ──
-  async function ajustarMontoCxC(cxcId: string) {
+  // ── Ajustar monto/fecha CxC ──
+  async function ajustarMontoCxC(cxcId: string, montoActual: number) {
     const monto = parseFloat(ajusteMonto);
-    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
-    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const montoChanged = !isNaN(monto) && monto > 0 && monto !== montoActual;
+    if (montoChanged && (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5)) { toast.error("El motivo es obligatorio al ajustar el monto"); return; }
+    const payload: Record<string, unknown> = {};
+    if (montoChanged) { payload.monto = monto; payload.motivo = ajusteMotivo.trim(); }
+    if (ajusteFecha) payload.fechaCompromiso = ajusteFecha;
+    if (Object.keys(payload).length === 0) { toast.error("Sin cambios"); return; }
     const res = await fetch(`/api/cuentas-cobrar/${cxcId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
-    toast.success("Monto ajustado correctamente");
-    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
+    if (!res.ok) { toast.error(data.error ?? "Error al guardar"); return; }
+    toast.success("Guardado correctamente");
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo(""); setAjusteFecha("");
     await load();
   }
 
-  // ── Ajustar monto CxP ──
-  async function ajustarMontoCxP(cxpId: string) {
+  // ── Ajustar monto/fecha CxP ──
+  async function ajustarMontoCxP(cxpId: string, montoActual: number) {
     const monto = parseFloat(ajusteMonto);
-    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
-    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const montoChanged = !isNaN(monto) && monto > 0 && monto !== montoActual;
+    if (montoChanged && (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5)) { toast.error("El motivo es obligatorio al ajustar el monto"); return; }
+    const payload: Record<string, unknown> = {};
+    if (montoChanged) { payload.monto = monto; payload.motivo = ajusteMotivo.trim(); }
+    if (ajusteFecha) payload.fechaCompromiso = ajusteFecha;
+    if (Object.keys(payload).length === 0) { toast.error("Sin cambios"); return; }
     const res = await fetch(`/api/cuentas-pagar/${cxpId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
-    toast.success("Monto ajustado correctamente");
-    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
+    if (!res.ok) { toast.error(data.error ?? "Error al guardar"); return; }
+    toast.success("Guardado correctamente");
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo(""); setAjusteFecha("");
     await load();
   }
 
@@ -4043,10 +4052,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           {c.estado !== "LIQUIDADO" && (
                             <>
                               <button
-                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
-                                title="Ajustar monto"
+                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
+                                title="Editar"
                                 className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                                ✏ Ajustar
+                                ✏ Editar
                               </button>
                               {esEsquema && (
                                 <button onClick={() => eliminarCxC(c.id)}
@@ -4071,32 +4080,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
                       )}
 
-                      {/* Inline: ajustar monto */}
+                      {/* Inline: editar */}
                       {ajustando === c.id && (
                         <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                          <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
+                          <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar cobro</p>
                           <div className="flex gap-2 flex-wrap items-start">
                             <div>
-                              <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
+                              <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
                               <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
                                 placeholder="0.00" min="0" step="0.01"
                                 className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
                             </div>
-                            <div className="flex-1 min-w-[200px]">
-                              <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                              <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                                placeholder="Explica brevemente por qué se ajusta este monto..."
-                                rows={2}
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                            <div>
+                              <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
+                              <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
                             </div>
+                            {parseFloat(ajusteMonto) !== c.monto && (
+                              <div className="flex-1 min-w-[200px]">
+                                <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                                <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                                  placeholder="Explica brevemente por qué se ajusta este monto..."
+                                  rows={2}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => ajustarMontoCxC(c.id)}
-                              disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
-                              className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                              Confirmar ajuste
+                            <button onClick={() => ajustarMontoCxC(c.id, c.monto)}
+                              className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                              Guardar
                             </button>
-                            <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         </div>
                       )}
@@ -4255,9 +4270,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="flex items-center gap-2">
                         {c.estado !== "LIQUIDADO" && (
                           <button
-                            onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
+                            onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
                             className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                            ✏ Ajustar
+                            ✏ Editar
                           </button>
                         )}
                         <span className="text-white font-semibold">{fmt(c.monto)}</span>
@@ -4269,32 +4284,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                     </div>
 
-                    {/* Inline: ajustar monto */}
+                    {/* Inline: editar */}
                     {ajustando === c.id && (
                       <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                        <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
+                        <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar pago</p>
                         <div className="flex gap-2 flex-wrap items-start">
                           <div>
-                            <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
+                            <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
                             <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
                               placeholder="0.00" min="0" step="0.01"
                               className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
                           </div>
-                          <div className="flex-1 min-w-[200px]">
-                            <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                            <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                              placeholder="Explica brevemente por qué se ajusta este monto..."
-                              rows={2}
-                              className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                          <div>
+                            <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
+                            <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
+                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
                           </div>
+                          {parseFloat(ajusteMonto) !== c.monto && (
+                            <div className="flex-1 min-w-[200px]">
+                              <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                              <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                                placeholder="Explica brevemente por qué se ajusta este monto..."
+                                rows={2}
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => ajustarMontoCxP(c.id)}
-                            disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
-                            className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                            Confirmar ajuste
+                          <button onClick={() => ajustarMontoCxP(c.id, c.monto)}
+                            className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                            Guardar
                           </button>
-                          <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                          <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                         </div>
                       </div>
                     )}

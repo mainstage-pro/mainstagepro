@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function diaSiguienteEvento(fecha: Date): Date {
+function proximoLunesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (8 - dow) % 7);
+  return d;
+}
+
+function proximoMiercolesTraEvento(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
   return d;
 }
 
@@ -99,7 +110,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   }
 
   function fechaPago(diasAntes: number): Date {
-    // Siempre relativo al evento: positivo = antes, negativo = después
+    // Post-event or same-day → next Monday; pre-event → plan-based date
+    if (diasAntes <= 0) return proximoLunesTraEvento(fechaEvento);
     return new Date(fechaEvento.getTime() - diasAntes * 24 * 60 * 60 * 1000);
   }
 
@@ -211,7 +223,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0
     );
     if (lineasExternas.length > 0) {
-      const fechaCxP = diaSiguienteEvento(fechaEvento);
+      const fechaCxP = proximoMiercolesTraEvento(fechaEvento);
       await tx.cuentaPagar.createMany({
         data: lineasExternas.map((l) => ({
           tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",
