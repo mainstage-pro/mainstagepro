@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
+import { Combobox } from "@/components/Combobox";
 
 interface Vendedor { id: string; name: string }
 
@@ -72,18 +73,16 @@ function VendedorSelect({ clienteId, vendedor, usuarios, onChange }: {
   }
 
   return (
-    <select
-      value={vendedor?.id ?? ""}
-      onChange={e => asignar(e.target.value)}
-      disabled={saving}
-      onClick={e => e.stopPropagation()}
-      className="bg-transparent border-0 text-xs text-[#9ca3af] focus:outline-none focus:ring-0 cursor-pointer hover:text-white disabled:opacity-50 max-w-[130px] truncate"
-    >
-      <option value="">Sin asignar</option>
-      {usuarios.map(u => (
-        <option key={u.id} value={u.id}>{u.name.split(" ")[0]} {u.name.split(" ")[1] ?? ""}</option>
-      ))}
-    </select>
+    <div onClick={e => e.stopPropagation()} className="max-w-[140px]">
+      <Combobox
+        value={vendedor?.id ?? ""}
+        onChange={asignar}
+        disabled={saving}
+        options={[{ value: "", label: "Sin asignar" }, ...usuarios.map(u => ({ value: u.id, label: `${u.name.split(" ")[0]} ${u.name.split(" ")[1] ?? ""}`.trim() }))]}
+        placeholder="Sin asignar"
+        className="bg-transparent border-0 text-xs text-[#9ca3af] focus:outline-none focus:ring-0 cursor-pointer hover:text-white disabled:opacity-50 w-full truncate"
+      />
+    </div>
   );
 }
 
@@ -95,28 +94,17 @@ function FilterSelect({ label, value, onChange, options }: {
 }) {
   const active = value !== "";
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={`appearance-none pl-3 pr-7 py-1.5 rounded-lg text-xs border transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#B3985B]/40
-          ${active
-            ? "bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]"
-            : "bg-[#111] border-[#2a2a2a] text-[#777] hover:border-[#3a3a3a] hover:text-[#aaa]"
-          }`}
-      >
-        <option value="">{label}</option>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <svg
-        className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 ${active ? "text-[#B3985B]" : "text-[#555]"}`}
-        width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-      >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </div>
+    <Combobox
+      value={value}
+      onChange={onChange}
+      options={[{ value: "", label: label }, ...options]}
+      placeholder={label}
+      className={`pl-3 pr-3 py-1.5 rounded-lg text-xs border transition-colors focus:outline-none focus:ring-1 focus:ring-[#B3985B]/40
+        ${active
+          ? "bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]"
+          : "bg-[#111] border-[#2a2a2a] text-[#777] hover:border-[#3a3a3a] hover:text-[#aaa]"
+        }`}
+    />
   );
 }
 

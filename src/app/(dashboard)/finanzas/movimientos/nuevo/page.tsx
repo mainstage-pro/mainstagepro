@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Combobox } from "@/components/Combobox";
 
 interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Categoria { id: string; nombre: string; tipo: string; }
@@ -180,29 +181,20 @@ export default function NuevoMovimientoPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className={labelCls}>{form.tipo === "ENTRE_CUENTAS" ? "Cuenta origen" : "Cuenta"}</label>
-                <select name="cuentaId" value={form.cuentaId} onChange={handleChange} className={selectCls}>
-                  <option value="">— Selecciona —</option>
-                  {cuentas.map(c => (
-                    <option key={c.id} value={c.id}>{c.nombre}{c.banco ? ` · ${c.banco}` : ""}</option>
-                  ))}
-                </select>
+                <Combobox value={form.cuentaId} onChange={v => setForm(p => ({ ...p, cuentaId: v }))}
+                  options={[{ value: "", label: "— Selecciona —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]} />
               </div>
               {form.tipo === "ENTRE_CUENTAS" ? (
                 <div>
                   <label className={labelCls}>Cuenta destino</label>
-                  <select name="cuentaDestinoId" value={form.cuentaDestinoId} onChange={handleChange} className={selectCls}>
-                    <option value="">— Selecciona —</option>
-                    {cuentas.filter(c => c.id !== form.cuentaId).map(c => (
-                      <option key={c.id} value={c.id}>{c.nombre}{c.banco ? ` · ${c.banco}` : ""}</option>
-                    ))}
-                  </select>
+                  <Combobox value={form.cuentaDestinoId} onChange={v => setForm(p => ({ ...p, cuentaDestinoId: v }))}
+                    options={[{ value: "", label: "— Selecciona —" }, ...cuentas.filter(c => c.id !== form.cuentaId).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]} />
                 </div>
               ) : (
                 <div>
                   <label className={labelCls}>Método de pago</label>
-                  <select name="metodoPago" value={form.metodoPago} onChange={handleChange} className={selectCls}>
-                    {METODO_PAGO_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
+                  <Combobox value={form.metodoPago} onChange={v => setForm(p => ({ ...p, metodoPago: v }))}
+                    options={METODO_PAGO_OPTIONS} />
                 </div>
               )}
             </div>
@@ -210,10 +202,8 @@ export default function NuevoMovimientoPage() {
             {form.tipo !== "ENTRE_CUENTAS" && (
               <div>
                 <label className={labelCls}>Categoría</label>
-                <select name="categoriaId" value={form.categoriaId} onChange={handleChange} className={selectCls}>
-                  <option value="">— Sin categoría —</option>
-                  {categoriasFiltradas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
+                <Combobox value={form.categoriaId} onChange={v => setForm(p => ({ ...p, categoriaId: v }))}
+                  options={[{ value: "", label: "— Sin categoría —" }, ...categoriasFiltradas.map(c => ({ value: c.id, label: c.nombre }))]} />
               </div>
             )}
           </div>
@@ -229,24 +219,16 @@ export default function NuevoMovimientoPage() {
                 {form.tipo === "INGRESO" && (
                   <div>
                     <label className={labelCls}>Cliente (opcional)</label>
-                    <select name="clienteId" value={form.clienteId} onChange={handleChange} className={selectCls}>
-                      <option value="">— Sin cliente —</option>
-                      {clientes.map(c => (
-                        <option key={c.id} value={c.id}>{c.nombre}{c.empresa ? ` · ${c.empresa}` : ""}</option>
-                      ))}
-                    </select>
+                    <Combobox value={form.clienteId} onChange={v => setForm(p => ({ ...p, clienteId: v }))}
+                      options={[{ value: "", label: "— Sin cliente —" }, ...clientes.map(c => ({ value: c.id, label: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") }))]} />
                   </div>
                 )}
                 {/* GASTO → proveedor */}
                 {form.tipo === "GASTO" && (
                   <div>
                     <label className={labelCls}>Proveedor (opcional)</label>
-                    <select name="proveedorId" value={form.proveedorId} onChange={handleChange} className={selectCls}>
-                      <option value="">— Sin proveedor —</option>
-                      {proveedores.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>
-                      ))}
-                    </select>
+                    <Combobox value={form.proveedorId} onChange={v => setForm(p => ({ ...p, proveedorId: v }))}
+                      options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre + (p.empresa ? ` · ${p.empresa}` : "") }))]} />
                   </div>
                 )}
                 <div>
@@ -259,12 +241,8 @@ export default function NuevoMovimientoPage() {
               {/* Proyecto */}
               <div>
                 <label className={labelCls}>Proyecto (opcional)</label>
-                <select name="proyectoId" value={form.proyectoId} onChange={handleChange} className={selectCls}>
-                  <option value="">— Sin proyecto —</option>
-                  {proyectos.map(p => (
-                    <option key={p.id} value={p.id}>{p.numeroProyecto} · {p.nombre}</option>
-                  ))}
-                </select>
+                <Combobox value={form.proyectoId} onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
+                  options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))]} />
               </div>
 
               <div>

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Combobox } from "@/components/Combobox";
 
 interface Puesto {
   id: string; titulo: string; area: string;
@@ -290,9 +291,8 @@ export default function PuestosPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Área *</label>
-                    <select {...f("area")} className={inputCls}>
-                      {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-                    </select>
+                    <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
+                      options={AREAS.map(a => ({ value: a, label: a }))} className={inputCls} />
                   </div>
                 </div>
                 <div className="mt-3">
@@ -319,9 +319,8 @@ export default function PuestosPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Nivel estudios</label>
-                    <select {...f("nivelEstudios")} className={inputCls}>
-                      {ESTUDIOS.map(e => <option key={e} value={e}>{e}</option>)}
-                    </select>
+                    <Combobox value={form.nivelEstudios} onChange={v => setForm(p => ({ ...p, nivelEstudios: v }))}
+                      options={ESTUDIOS.map(e => ({ value: e, label: e }))} className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Ciudades (separadas por coma)</label>
@@ -369,15 +368,13 @@ export default function PuestosPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Tipo contrato</label>
-                    <select {...f("tipoContrato")} className={inputCls}>
-                      {CONTRATOS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <Combobox value={form.tipoContrato} onChange={v => setForm(p => ({ ...p, tipoContrato: v }))}
+                      options={CONTRATOS.map(c => ({ value: c, label: c }))} className={inputCls} />
                   </div>
                   <div>
                     <label className={labelCls}>Modalidad</label>
-                    <select {...f("modalidad")} className={inputCls}>
-                      {MODALIDADES.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
+                    <Combobox value={form.modalidad} onChange={v => setForm(p => ({ ...p, modalidad: v }))}
+                      options={MODALIDADES.map(m => ({ value: m, label: m }))} className={inputCls} />
                   </div>
                 </div>
                 <div className="mt-3">

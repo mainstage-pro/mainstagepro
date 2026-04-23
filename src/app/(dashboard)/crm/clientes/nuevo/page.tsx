@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
+import { Combobox } from "@/components/Combobox";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -117,45 +118,27 @@ export default function NuevoClientePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Tipo de cliente</label>
-              <select
-                name="tipoCliente"
+              <Combobox
                 value={form.tipoCliente}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="POR_DESCUBRIR">Por Descubrir</option>
-                <option value="B2B">B2B</option>
-                <option value="B2C">B2C</option>
-              </select>
+                onChange={v => setForm(p => ({ ...p, tipoCliente: v }))}
+                options={[{ value: "POR_DESCUBRIR", label: "Por Descubrir" }, { value: "B2B", label: "B2B" }, { value: "B2C", label: "B2C" }]}
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-              <select
-                name="clasificacion"
+              <Combobox
                 value={form.clasificacion}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="PROSPECTO">Prospecto</option>
-                <option value="NUEVO">Nuevo</option>
-                <option value="REGULAR">Regular</option>
-                <option value="PRIORITY">Priority</option>
-              </select>
+                onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
+                options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "NUEVO", label: "Nuevo" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Servicio usual</label>
-              <select
-                name="servicioUsual"
+              <Combobox
                 value={form.servicioUsual}
-                onChange={handleChange}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="">— Sin especificar —</option>
-                <option value="RENTA">Renta de Equipo</option>
-                <option value="PRODUCCION_TECNICA">Producción Técnica</option>
-                <option value="DIRECCION_TECNICA">Dirección Técnica</option>
-                <option value="MULTISERVICIO">Multiservicio</option>
-              </select>
+                onChange={v => setForm(p => ({ ...p, servicioUsual: v }))}
+                options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }, { value: "MULTISERVICIO", label: "Multiservicio" }]}
+              />
             </div>
           </div>
         </div>

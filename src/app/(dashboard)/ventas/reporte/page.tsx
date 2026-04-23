@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 interface Vendedor { id: string; name: string }
 interface DetalleComision {
@@ -150,14 +151,12 @@ export default function ReporteComisionesPage() {
         {session?.role === "ADMIN" && (
           <div>
             <label className="text-xs text-gray-500 block mb-1">Vendedor</label>
-            <select
+            <Combobox
               value={vendedorId}
-              onChange={e => setVendedorId(e.target.value)}
+              onChange={setVendedorId}
+              options={[{ value: "", label: "— Selecciona vendedor —" }, ...vendedores.map(v => ({ value: v.id, label: v.name }))]}
               className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-            >
-              <option value="">— Selecciona vendedor —</option>
-              {vendedores.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
-            </select>
+            />
           </div>
         )}
       </div>

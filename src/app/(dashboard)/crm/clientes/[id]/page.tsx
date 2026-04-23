@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
+import { Combobox } from "@/components/Combobox";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -343,41 +344,23 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo cliente</label>
-                  <select value={form.tipoCliente || ""} onChange={(e) => setForm((p) => ({ ...p, tipoCliente: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="POR_DESCUBRIR">Por Descubrir</option>
-                    <option value="B2B">B2B</option>
-                    <option value="B2C">B2C</option>
-                  </select>
+                  <Combobox value={form.tipoCliente || ""} onChange={v => setForm(p => ({ ...p, tipoCliente: v }))}
+                    options={[{ value: "POR_DESCUBRIR", label: "Por Descubrir" }, { value: "B2B", label: "B2B" }, { value: "B2C", label: "B2C" }]} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-                  <select value={form.clasificacion || ""} onChange={(e) => setForm((p) => ({ ...p, clasificacion: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="PROSPECTO">Prospecto</option>
-                    <option value="NUEVO">Nuevo</option>
-                    <option value="REGULAR">Regular</option>
-                    <option value="PRIORITY">Priority</option>
-                  </select>
+                  <Combobox value={form.clasificacion || ""} onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
+                    options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "NUEVO", label: "Nuevo" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Servicio usual</label>
-                  <select value={form.servicioUsual || ""} onChange={(e) => setForm((p) => ({ ...p, servicioUsual: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin especificar —</option>
-                    <option value="RENTA">Renta de Equipo</option>
-                    <option value="PRODUCCION_TECNICA">Producción Técnica</option>
-                    <option value="DIRECCION_TECNICA">Dirección Técnica</option>
-                    <option value="MULTISERVICIO">Multiservicio</option>
-                  </select>
+                  <Combobox value={form.servicioUsual || ""} onChange={v => setForm(p => ({ ...p, servicioUsual: v || null }))}
+                    options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }, { value: "MULTISERVICIO", label: "Multiservicio" }]} />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Responsable / Vendedor</label>
-                  <select value={form.vendedorId || ""} onChange={(e) => setForm((p) => ({ ...p, vendedorId: e.target.value || null }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="">— Sin asignar —</option>
-                    {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
+                  <Combobox value={form.vendedorId || ""} onChange={v => setForm(p => ({ ...p, vendedorId: v || null }))}
+                    options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]} />
                 </div>
               </div>
               <div>

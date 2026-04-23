@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SkeletonCards } from "@/components/Skeleton";
 import Link from "next/link";
+import { Combobox } from "@/components/Combobox";
 
 interface PersonalInterno {
   id: string; nombre: string; puesto: string; departamento: string;
@@ -109,11 +110,9 @@ export default function PersonalPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
-              <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                <option value="EMPLEADO">Empleado</option>
-                <option value="FREELANCE_RECURRENTE">Freelance recurrente</option>
-              </select>
+              <Combobox value={form.tipo} onChange={v => setForm(p => ({ ...p, tipo: v }))}
+                options={[{ value: "EMPLEADO", label: "Empleado" }, { value: "FREELANCE_RECURRENTE", label: "Freelance recurrente" }]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Puesto *</label>
@@ -122,10 +121,9 @@ export default function PersonalPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
-              <select value={form.departamento} onChange={e => setForm(p => ({ ...p, departamento: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {DEPARTAMENTOS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+              <Combobox value={form.departamento} onChange={v => setForm(p => ({ ...p, departamento: v }))}
+                options={DEPARTAMENTOS.map(d => ({ value: d, label: d }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Ingreso</label>
@@ -149,10 +147,9 @@ export default function PersonalPage() {
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Periodo de pago</label>
-              <select value={form.periodoPago} onChange={e => setForm(p => ({ ...p, periodoPago: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                {TIPOS_PERIODO.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <Combobox value={form.periodoPago} onChange={v => setForm(p => ({ ...p, periodoPago: v }))}
+                options={TIPOS_PERIODO.map(t => ({ value: t, label: t }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
             <div className="col-span-3">
               <label className="text-xs text-gray-500 mb-1 block">Cuenta bancaria</label>
