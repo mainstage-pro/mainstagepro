@@ -1398,7 +1398,7 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                                   diff === 0 ? "bg-emerald-950/30 text-emerald-400" :
                                   "bg-[#111] text-[#555]"
                                 }`}>
-                                  📅 {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}
+                                  📅 {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : new Date(t.fecha.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short" })}
                                 </span>
                               );
                             })()}

@@ -16,14 +16,15 @@ export async function GET(req: NextRequest) {
   };
 
   if (vista === "hoy_equipo") {
-    const ahora = new Date();
-    ahora.setHours(23, 59, 59, 999);
-    where.fecha = { lte: ahora };
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const manana = new Date(hoyCST);
+    manana.setUTCDate(manana.getUTCDate() + 1);
+    where.fecha = { lt: manana };
   } else if (vista === "proximas_equipo") {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const en7 = new Date(hoy);
-    en7.setDate(hoy.getDate() + 7);
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const hoy = new Date(hoyCST);
+    const en7 = new Date(hoyCST);
+    en7.setUTCDate(en7.getUTCDate() + 7);
     where.fecha = { gte: hoy, lte: en7 };
   }
 

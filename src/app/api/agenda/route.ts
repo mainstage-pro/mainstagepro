@@ -7,7 +7,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const ahora       = new Date();
-  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const en30 = new Date(ahora.getTime() + 30 * 86400000);
   const en7  = new Date(ahora.getTime() + 7  * 86400000);
   const en14 = new Date(ahora.getTime() + 14 * 86400000);

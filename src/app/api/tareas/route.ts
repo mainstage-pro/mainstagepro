@@ -67,17 +67,19 @@ export async function GET(req: NextRequest) {
   }
 
   if (vista === "hoy") {
-    const ahora = new Date();
-    ahora.setHours(23, 59, 59, 999);
-    where.fecha    = { lte: ahora };
+    // End of today in CST: get tomorrow's date in CST, use midnight UTC as exclusive upper bound
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const mananaCST = new Date(hoyCST);
+    mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
+    where.fecha    = { lt: mananaCST };
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
   } else if (vista === "proximas") {
-    const manana = new Date();
-    manana.setHours(0, 0, 0, 0);
-    manana.setDate(manana.getDate() + 1);
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const manana = new Date(hoyCST);
+    manana.setUTCDate(manana.getUTCDate() + 1);
     const en30 = new Date(manana);
-    en30.setDate(manana.getDate() + 30);
+    en30.setUTCDate(manana.getUTCDate() + 30);
     where.fecha  = { gte: manana, lte: en30 };
     where.estado = { not: "COMPLETADA" };
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];

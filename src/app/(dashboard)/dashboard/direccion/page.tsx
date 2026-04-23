@@ -30,7 +30,7 @@ function StatCard({ label, value, sub, color = "text-white", href }: {
 export default async function DashboardDireccionPage() {
   const session = await getSession();
   const ahora       = new Date();
-  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const inicioMes   = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes      = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const finDeHoy    = new Date(ahora); finDeHoy.setHours(23, 59, 59, 999);

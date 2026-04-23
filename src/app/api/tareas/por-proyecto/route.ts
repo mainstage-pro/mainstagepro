@@ -8,14 +8,13 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const hoy = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
 
   // Projects within the last 7 days and next 90 days (active window)
   const desde = new Date(hoy);
-  desde.setDate(hoy.getDate() - 7);
+  desde.setUTCDate(hoy.getUTCDate() - 7);
   const hasta = new Date(hoy);
-  hasta.setDate(hoy.getDate() + 90);
+  hasta.setUTCDate(hoy.getUTCDate() + 90);
 
   const proyectos = await prisma.proyecto.findMany({
     where: {

@@ -28,7 +28,7 @@ export default async function DashboardPage() {
   }
 
   const ahora = new Date();
-  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const en7dias   = new Date(ahora.getTime() + 7 * 86400000);
