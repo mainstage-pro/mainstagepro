@@ -3,7 +3,30 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
 
-const INCLUDE = {
+// Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
+const SELECT = {
+  id: true,
+  titulo: true,
+  descripcion: true,
+  prioridad: true,
+  area: true,
+  estado: true,
+  fecha: true,
+  fechaVencimiento: true,
+  fechaCompletada: true,
+  recurrencia: true,
+  notas: true,
+  etiquetas: true,
+  orden: true,
+  parentId: true,
+  createdAt: true,
+  updatedAt: true,
+  asignadoAId: true,
+  creadoPorId: true,
+  iniciativaId: true,
+  proyectoTareaId: true,
+  seccionId: true,
+  carpetaId: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
@@ -20,22 +43,30 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const tarea = await prisma.tarea.findUnique({
     where: { id },
-    include: {
-      ...INCLUDE,
+    select: {
+      ...SELECT,
       subtareas: {
         where: { estado: { not: "CANCELADA" } },
-        include: {
+        select: {
+          id: true, titulo: true, estado: true, prioridad: true,
+          fecha: true, fechaVencimiento: true,
           asignadoA: { select: { id: true, name: true } },
           _count: { select: { subtareas: true } },
         },
         orderBy: { orden: "asc" },
       },
       comentarios: {
-        include: { autor: { select: { id: true, name: true } } },
+        select: {
+          id: true, contenido: true, createdAt: true,
+          autor: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: "asc" },
       },
       archivos: {
-        include: { subidoPor: { select: { id: true, name: true } } },
+        select: {
+          id: true, nombre: true, url: true, tipo: true, tamano: true, createdAt: true,
+          subidoPor: { select: { id: true, name: true } },
+        },
         orderBy: { createdAt: "desc" },
       },
     },
@@ -74,7 +105,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.fechaCompletada = data.estado === "COMPLETADA" ? new Date() : null;
   }
 
-  const tarea = await prisma.tarea.update({ where: { id }, data, include: INCLUDE });
+  const tarea = await prisma.tarea.update({ where: { id }, data, select: SELECT });
 
   // ── Recurrence: when completing a recurring task, spawn next occurrence ──
   let nextTarea = null;
@@ -102,9 +133,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           notas:           tarea.notas,
           etiquetas:       tarea.etiquetas,
           orden:           tarea.orden,
-          ...(tarea.proyectoEventoId ? { proyectoEventoId: tarea.proyectoEventoId } : {}),
         },
-        include: INCLUDE,
+        select: SELECT,
       });
     } catch {
       // Invalid recurrencia JSON — ignore

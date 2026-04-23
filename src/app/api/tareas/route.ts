@@ -2,7 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-const INCLUDE = {
+// Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
+const SELECT = {
+  id: true,
+  titulo: true,
+  descripcion: true,
+  prioridad: true,
+  area: true,
+  estado: true,
+  fecha: true,
+  fechaVencimiento: true,
+  recurrencia: true,
+  notas: true,
+  etiquetas: true,
+  orden: true,
+  parentId: true,
+  createdAt: true,
+  updatedAt: true,
+  asignadoAId: true,
+  creadoPorId: true,
+  iniciativaId: true,
+  proyectoTareaId: true,
+  seccionId: true,
+  carpetaId: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
@@ -19,7 +41,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const vista             = searchParams.get("vista");
   const proyectoId        = searchParams.get("proyectoId");
-  const proyectoEventoId  = searchParams.get("proyectoEventoId");
   const area              = searchParams.get("area");
   const estado            = searchParams.get("estado");
   const asignadoAId       = searchParams.get("asignadoAId");
@@ -29,11 +50,10 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
 
-  if (area)              where.area              = area;
-  if (asignadoAId)       where.asignadoAId       = asignadoAId;
-  if (iniciativaId)      where.iniciativaId      = iniciativaId;
-  if (proyectoId)        where.proyectoTareaId   = proyectoId;
-  if (proyectoEventoId)  where.proyectoEventoId  = proyectoEventoId;
+  if (area)         where.area            = area;
+  if (asignadoAId)  where.asignadoAId     = asignadoAId;
+  if (iniciativaId) where.iniciativaId    = iniciativaId;
+  if (proyectoId)   where.proyectoTareaId = proyectoId;
 
   // parentId: null string = top-level only, actual id = subtareas of that task
   if (parentId === "null") where.parentId = null;
@@ -52,7 +72,6 @@ export async function GET(req: NextRequest) {
     where.fecha    = { lte: ahora };
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
-    // sin filtro de usuario — muestra todas las áreas y todo el equipo
   } else if (vista === "proximas") {
     const manana = new Date();
     manana.setHours(0, 0, 0, 0);
@@ -72,7 +91,7 @@ export async function GET(req: NextRequest) {
 
   const tareas = await prisma.tarea.findMany({
     where,
-    include: INCLUDE,
+    select: SELECT,
     orderBy: [{ fecha: "asc" }, { orden: "asc" }, { createdAt: "asc" }],
   });
 
@@ -86,7 +105,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
-    iniciativaId, proyectoTareaId, proyectoEventoId, seccionId, carpetaId,
+    iniciativaId, proyectoTareaId, seccionId, carpetaId,
     parentId, fecha, fechaVencimiento, recurrencia, orden,
   } = body;
 
@@ -111,9 +130,8 @@ export async function POST(req: NextRequest) {
       notas:           notas            || null,
       etiquetas:       etiquetas        ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
       orden:           orden            ?? 0,
-      ...(proyectoEventoId ? { proyectoEventoId } : {}),
     },
-    include: INCLUDE,
+    select: SELECT,
   });
 
   return NextResponse.json({ tarea }, { status: 201 });
