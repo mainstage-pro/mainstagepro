@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: "Sistema operativo Mainstage Pro",
   manifest: "/manifest.json",
   icons: {
-    icon: "/logo-icon.png",
-    apple: "/logo-icon.png",
+    icon: "/pwa-icon-192.png",
+    apple: "/pwa-apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
