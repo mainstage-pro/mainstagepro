@@ -528,6 +528,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [gastoCategoria, setGastoCategoria] = useState("");
   const [gastoReferencia, setGastoReferencia] = useState("");
   const [gastoProveedor, setGastoProveedor] = useState("");
+  const [gastoCuenta, setGastoCuenta] = useState("");
   const [addingGasto, setAddingGasto] = useState(false);
 
   // Estado para confirmación de borrado
@@ -1517,12 +1518,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         metodoPago: gastoMetodo,
         categoriaId: gastoCategoria || null,
         proveedorId: gastoProveedor || null,
+        cuentaOrigenId: gastoCuenta || null,
         referencia: gastoReferencia || null,
       }),
     });
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
-    setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setShowGastoForm(false);
+    setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
     setAddingGasto(false);
   }
 
@@ -4530,6 +4532,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     value={gastoMetodo}
                     onChange={v => setGastoMetodo(v)}
                     options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                  <Combobox
+                    value={gastoCuenta}
+                    onChange={v => setGastoCuenta(v)}
+                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>

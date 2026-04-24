@@ -7,7 +7,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { concepto, monto, fecha, notas, metodoPago, categoriaId, referencia, proveedorId } = await req.json();
+  const { concepto, monto, fecha, notas, metodoPago, categoriaId, referencia, proveedorId, cuentaOrigenId } = await req.json();
 
   if (!concepto || !monto) {
     return NextResponse.json({ error: "concepto y monto requeridos" }, { status: 400 });
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       metodoPago: metodoPago || "TRANSFERENCIA",
       categoriaId: categoriaId || null,
       proveedorId: proveedorId || null,
+      cuentaOrigenId: cuentaOrigenId || null,
       referencia: referencia || null,
       notas: notas || null,
       creadoPor: session.id,
