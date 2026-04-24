@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
     where.fecha    = { lt: mananaCST };
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
+    where.OR       = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   } else if (vista === "proximas") {
     const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
     const manana = new Date(hoyCST);
