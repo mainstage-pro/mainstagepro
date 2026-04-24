@@ -8,7 +8,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { monto, motivo, concepto, fechaCompromiso } = body;
+  const { monto, motivo, concepto, fechaCompromiso, clienteId, cuentaDestinoId } = body;
 
   if (monto !== undefined && (typeof monto !== "number" || monto < 0))
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
@@ -36,6 +36,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (concepto !== undefined) updateData.concepto = concepto;
   if (fechaCompromiso !== undefined) updateData.fechaCompromiso = new Date(fechaCompromiso);
+  if (clienteId !== undefined) updateData.clienteId = clienteId || null;
+  if (cuentaDestinoId !== undefined) updateData.cuentaDestinoId = cuentaDestinoId || null;
 
   const updated = await prisma.cuentaCobrar.update({ where: { id }, data: updateData });
 

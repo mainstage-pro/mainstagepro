@@ -36,6 +36,7 @@ interface CxCItem {
   empresa: { id: string; nombre: string; telefono: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
   cotizacion: { id: string; numeroCotizacion: string } | null;
+  cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
 }
 
 interface CxPItem {
@@ -50,6 +51,7 @@ interface CxPItem {
   empresa: { id: string; nombre: string; telefono: string | null } | null;
   socio: { id: string; nombre: string; email: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
 }
 
 interface MovDirecto {
@@ -240,6 +242,8 @@ export default function CobrosPagosPage() {
   const [editConcepto, setEditConcepto] = useState("");
   const [editFecha, setEditFecha] = useState("");
   const [editMotivo, setEditMotivo] = useState("");
+  const [editClienteId, setEditClienteId] = useState("");
+  const [editCuentaId, setEditCuentaId] = useState("");
   const [guardandoEdit, setGuardandoEdit] = useState(false);
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
@@ -402,6 +406,15 @@ export default function CobrosPagosPage() {
     setEditConcepto(item.concepto);
     setEditFecha(item.fechaCompromiso.slice(0, 10));
     setEditMotivo("");
+    if (tipo === "cxc") {
+      const cxcItem = item as CxCItem;
+      setEditClienteId(cxcItem.cliente?.id ?? "");
+      setEditCuentaId(cxcItem.cuentaDestino?.id ?? "");
+    } else {
+      const cxpItem = item as CxPItem;
+      setEditClienteId("");
+      setEditCuentaId(cxpItem.cuentaOrigen?.id ?? "");
+    }
   }
 
   async function guardarEdit() {
@@ -417,6 +430,12 @@ export default function CobrosPagosPage() {
     if (editConcepto !== editModal.concepto) body.concepto = editConcepto;
     if (editFecha !== editModal.fechaCompromiso) body.fechaCompromiso = editFecha;
     if (montoChanged) { body.monto = nuevoMonto; body.motivo = editMotivo.trim(); }
+    if (editModal.tipo === "cxc") {
+      body.clienteId = editClienteId || null;
+      body.cuentaDestinoId = editCuentaId || null;
+    } else {
+      body.cuentaOrigenId = editCuentaId || null;
+    }
     const endpoint = editModal.tipo === "cxc"
       ? `/api/cuentas-cobrar/${editModal.id}`
       : `/api/cuentas-pagar/${editModal.id}`;
@@ -1139,6 +1158,26 @@ export default function CobrosPagosPage() {
                 <label className="text-xs text-gray-500 mb-1 block">Fecha compromiso</label>
                 <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              {editModal.tipo === "cxc" && (
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Cliente</label>
+                  <Combobox
+                    value={editClienteId}
+                    onChange={setEditClienteId}
+                    options={[{ value: "", label: "— Sin cliente —" }, ...clientes.map(c => ({ value: c.id, label: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">{editModal.tipo === "cxc" ? "Cuenta destino (cobro)" : "Cuenta origen (pago)"}</label>
+                <Combobox
+                  value={editCuentaId}
+                  onChange={setEditCuentaId}
+                  options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                />
               </div>
               {parseFloat(editMonto) !== editModal.monto && (
                 <div>

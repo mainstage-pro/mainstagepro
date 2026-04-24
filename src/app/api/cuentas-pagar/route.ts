@@ -55,6 +55,7 @@ export async function GET() {
       empresa: { select: { id: true, nombre: true, telefono: true } },
       socio: { select: { id: true, nombre: true, email: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
+      cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
     },
     orderBy: { fechaCompromiso: "asc" },
   });

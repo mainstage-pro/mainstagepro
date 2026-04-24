@@ -44,6 +44,7 @@ export async function GET() {
       empresa: { select: { id: true, nombre: true, telefono: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       cotizacion: { select: { id: true, numeroCotizacion: true } },
+      cuentaDestino: { select: { id: true, nombre: true, banco: true } },
     },
     orderBy: { fechaCompromiso: "asc" },
   });
