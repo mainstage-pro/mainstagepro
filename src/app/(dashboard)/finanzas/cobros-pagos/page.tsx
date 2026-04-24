@@ -244,6 +244,8 @@ export default function CobrosPagosPage() {
   const [editMotivo, setEditMotivo] = useState("");
   const [editClienteId, setEditClienteId] = useState("");
   const [editCuentaId, setEditCuentaId] = useState("");
+  const [editProveedorId, setEditProveedorId] = useState("");
+  const [editTecnicoId, setEditTecnicoId] = useState("");
   const [guardandoEdit, setGuardandoEdit] = useState(false);
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
@@ -410,10 +412,14 @@ export default function CobrosPagosPage() {
       const cxcItem = item as CxCItem;
       setEditClienteId(cxcItem.cliente?.id ?? "");
       setEditCuentaId(cxcItem.cuentaDestino?.id ?? "");
+      setEditProveedorId("");
+      setEditTecnicoId("");
     } else {
       const cxpItem = item as CxPItem;
       setEditClienteId("");
       setEditCuentaId(cxpItem.cuentaOrigen?.id ?? "");
+      setEditProveedorId(cxpItem.proveedor?.id ?? "");
+      setEditTecnicoId(cxpItem.tecnico?.id ?? "");
     }
   }
 
@@ -435,6 +441,8 @@ export default function CobrosPagosPage() {
       body.cuentaDestinoId = editCuentaId || null;
     } else {
       body.cuentaOrigenId = editCuentaId || null;
+      body.proveedorId = editProveedorId || null;
+      body.tecnicoId = editTecnicoId || null;
     }
     const endpoint = editModal.tipo === "cxc"
       ? `/api/cuentas-cobrar/${editModal.id}`
@@ -1179,6 +1187,28 @@ export default function CobrosPagosPage() {
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
                 />
               </div>
+              {editModal.tipo === "cxp" && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
+                    <Combobox
+                      value={editProveedorId}
+                      onChange={v => { setEditProveedorId(v); if (v) setEditTecnicoId(""); }}
+                      options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre + (p.empresa ? ` · ${p.empresa}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Técnico</label>
+                    <Combobox
+                      value={editTecnicoId}
+                      onChange={v => { setEditTecnicoId(v); if (v) setEditProveedorId(""); }}
+                      options={[{ value: "", label: "— Sin técnico —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre + (t.celular ? ` · ${t.celular}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                </>
+              )}
               {parseFloat(editMonto) !== editModal.monto && (
                 <div>
                   <label className="text-xs text-[#B3985B] mb-1 block">Motivo del ajuste de monto (requerido)</label>

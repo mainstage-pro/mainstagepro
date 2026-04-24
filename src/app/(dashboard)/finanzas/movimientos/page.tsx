@@ -54,6 +54,7 @@ export default function MovimientosPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentaFiltro, setCuentaFiltro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detalle, setDetalle] = useState<Movimiento | null>(null);
   const [editando, setEditando] = useState<Movimiento | null>(null);
   const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "" });
   const [guardando, setGuardando] = useState(false);
@@ -226,7 +227,7 @@ export default function MovimientosPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {movimientosFiltrados.map(mov => (
-                <tr key={mov.id} className="hover:bg-[#1a1a1a] transition-colors group">
+                <tr key={mov.id} onClick={() => setDetalle(mov)} className="hover:bg-[#1a1a1a] transition-colors group cursor-pointer">
                   <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">{fmtDate(mov.fecha)}</td>
                   <td className="px-4 py-3">
                     <p className="text-white text-sm">{mov.concepto}</p>
@@ -262,14 +263,14 @@ export default function MovimientosPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => abrirEditar(mov)}
+                      <button onClick={e => { e.stopPropagation(); abrirEditar(mov); }}
                         className="p-1.5 rounded text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
                         title="Editar">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
-                      <button onClick={() => eliminar(mov)}
+                      <button onClick={e => { e.stopPropagation(); eliminar(mov); }}
                         className="p-1.5 rounded text-[#555] hover:text-red-400 hover:bg-red-900/20 transition-colors"
                         title="Eliminar">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -284,6 +285,102 @@ export default function MovimientosPage() {
           </table>
         )}
       </div>
+
+      {/* Modal detalle */}
+      {detalle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setDetalle(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[detalle.tipo] ?? "bg-gray-800 text-gray-400"}`}>
+                  {TIPO_LABELS[detalle.tipo] ?? detalle.tipo}
+                </span>
+                <span className="text-[#6b7280] text-xs">{fmtDate(detalle.fecha)}</span>
+              </div>
+              <button onClick={() => setDetalle(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+
+            <p className="text-white font-semibold text-base mb-1">{detalle.concepto}</p>
+            <p className={`text-2xl font-bold mb-5 ${
+              cuentaFiltro
+                ? detalle.cuentaDestino?.id === cuentaFiltro ? "text-green-400"
+                  : detalle.cuentaOrigen?.id === cuentaFiltro ? "text-red-400" : "text-white"
+                : detalle.tipo === "INGRESO" ? "text-green-400" : detalle.tipo === "GASTO" ? "text-red-400" : "text-white"
+            }`}>
+              {formatCurrency(detalle.monto)}
+            </p>
+
+            <div className="space-y-2 text-sm">
+              {/* Cuenta origen / destino */}
+              {detalle.tipo === "TRANSFERENCIA" && detalle.cuentaOrigen && detalle.cuentaDestino ? (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Cuenta</span>
+                  <span className="text-white text-right">{detalle.cuentaOrigen.nombre} → {detalle.cuentaDestino.nombre}</span>
+                </div>
+              ) : (detalle.cuentaDestino || detalle.cuentaOrigen) && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Cuenta</span>
+                  <span className="text-white">{detalle.cuentaDestino?.nombre ?? detalle.cuentaOrigen?.nombre}</span>
+                </div>
+              )}
+              {detalle.metodoPago && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Método de pago</span>
+                  <span className="text-white">{detalle.metodoPago.charAt(0) + detalle.metodoPago.slice(1).toLowerCase()}</span>
+                </div>
+              )}
+              {detalle.categoria && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Categoría</span>
+                  <span className="text-white">{detalle.categoria.nombre}</span>
+                </div>
+              )}
+              {detalle.cliente && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Cliente</span>
+                  <Link href={`/crm/clientes/${detalle.cliente.id}`} onClick={() => setDetalle(null)} className="text-[#B3985B] hover:underline">{detalle.cliente.nombre}</Link>
+                </div>
+              )}
+              {detalle.proveedor && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Proveedor</span>
+                  <span className="text-white">{detalle.proveedor.nombre}</span>
+                </div>
+              )}
+              {detalle.proyecto && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Proyecto</span>
+                  <Link href={`/proyectos/${detalle.proyecto.id}`} onClick={() => setDetalle(null)} className="text-[#B3985B] hover:underline">{detalle.proyecto.nombre}</Link>
+                </div>
+              )}
+              {detalle.referencia && (
+                <div className="flex justify-between">
+                  <span className="text-[#6b7280]">Referencia</span>
+                  <span className="text-white">{detalle.referencia}</span>
+                </div>
+              )}
+              {detalle.notas && (
+                <div className="pt-2 border-t border-[#1e1e1e]">
+                  <p className="text-[#6b7280] text-xs mb-1">Notas</p>
+                  <p className="text-white text-sm whitespace-pre-wrap">{detalle.notas}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setDetalle(null)} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cerrar
+              </button>
+              <button onClick={() => { abrirEditar(detalle); setDetalle(null); }}
+                className="flex-1 py-2.5 rounded-xl bg-[#1a1a1a] border border-[#333] text-white text-sm hover:border-[#B3985B] transition-colors">
+                Editar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal editar */}
       {editando && (
