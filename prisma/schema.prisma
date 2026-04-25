@@ -24,6 +24,7 @@ model User {
 
   tratos          Trato[]
   tratosOrigen    Trato[]            @relation("TratoVendedorOrigen")
+  tratosVendedor  Trato[]            @relation("TratoVendedor")
   proyectos       Proyecto[]
   cotizaciones    Cotizacion[]
   bitacoras       ProyectoBitacora[]
@@ -213,6 +214,8 @@ model Trato {
   origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO
   vendedorOrigenId    String?
   vendedorOrigen      User?    @relation("TratoVendedorOrigen", fields: [vendedorOrigenId], references: [id])
+  vendedorId          String?
+  vendedor            User?    @relation("TratoVendedor", fields: [vendedorId], references: [id])
   fechaCierre         DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

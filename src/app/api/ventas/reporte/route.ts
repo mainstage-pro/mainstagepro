@@ -56,9 +56,13 @@ export async function GET(request: NextRequest) {
 
   const tratos = await prisma.trato.findMany({
     where: {
-      responsableId: vendedorId,
       etapa: "VENTA_CERRADA",
       fechaCierre: { gte: mesStart, lt: mesEnd },
+      // vendedorId introduced later: fall back to responsableId for older tratos
+      OR: [
+        { vendedorId: vendedorId },
+        { vendedorId: null, responsableId: vendedorId },
+      ],
     },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true } },

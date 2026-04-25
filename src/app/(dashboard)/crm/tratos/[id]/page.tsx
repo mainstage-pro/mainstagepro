@@ -76,7 +76,10 @@ interface Trato {
     tipoCliente: string; clasificacion: string;
     telefono: string | null; correo: string | null;
   };
+  responsableId: string | null;
   responsable: { id: string; name: string } | null;
+  vendedorId: string | null;
+  vendedor: { id: string; name: string } | null;
   cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string; proyecto: { id: string } | null }>;
   archivos: TratoArchivo[];
 }
@@ -527,6 +530,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const confirm = useConfirm();
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const [trato, setTrato] = useState<Trato | null>(null);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -693,6 +697,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`trato-paso-${id}`, String(pasoActivo));
   }, [pasoActivo, id]);
+
+  useEffect(() => {
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -2668,6 +2676,25 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       setTrato(prev => prev ? { ...prev, origenVenta: v } : prev);
                     }}
                     options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10%)" }, { value: "PUBLICIDAD", label: "Publicidad (5%)" }, { value: "ASIGNADO", label: "Asignado empresa (5%+5%)" }]}
+                    className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Comisión para</p>
+                <div className="flex items-center gap-2">
+                  <Combobox
+                    value={trato.vendedorId ?? trato.responsableId ?? ""}
+                    onChange={async (v) => {
+                      await fetch(`/api/tratos/${trato.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ vendedorId: v || null }),
+                      });
+                      const vendedor = usuarios.find(u => u.id === v) ?? null;
+                      setTrato(prev => prev ? { ...prev, vendedorId: v || null, vendedor } : prev);
+                    }}
+                    options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
                     className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>

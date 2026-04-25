@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+// Add vendedorId column lazily on first request (safe to run multiple times)
+let _vendedorColReady = false;
+async function ensureVendedorId() {
+  if (_vendedorColReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
+    );
+  } catch { /* column already exists */ }
+  _vendedorColReady = true;
+}
+
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -33,6 +45,8 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureVendedorId();
+
   try {
     const body = await request.json();
 
@@ -61,6 +75,7 @@ export async function POST(request: NextRequest) {
       data: {
         clienteId,
         responsableId: body.responsableId || session.id,
+        vendedorId: body.vendedorId || session.id,
         tipoEvento: body.tipoEvento || "OTRO",
         tipoLead: body.tipoLead || "INBOUND",
         origenLead: body.origenLead || "ORGANICO",

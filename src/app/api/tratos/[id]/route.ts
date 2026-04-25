@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+let _vendedorColReady = false;
+async function ensureVendedorId() {
+  if (_vendedorColReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
+    );
+  } catch { /* already exists */ }
+  _vendedorColReady = true;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureVendedorId();
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({
@@ -13,6 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, telefono: true, correo: true } },
       responsable: { select: { id: true, name: true } },
+      vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
       cotizaciones: {
         select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true, proyecto: { select: { id: true } } },
@@ -31,6 +44,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureVendedorId();
   const { id } = await params;
   const body = await request.json();
 
@@ -38,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "etapa", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
-    "origenVenta", "vendedorOrigenId", "responsableId",
+    "origenVenta", "vendedorOrigenId", "responsableId", "vendedorId",
     // Scouting
     "scoutingData",
     // Nurturing

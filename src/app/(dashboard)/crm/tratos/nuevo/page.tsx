@@ -63,6 +63,7 @@ export default function NuevoTratoPage() {
   const [step, setStep] = useState<0|1|2>(0);
   const [tipoProspecto, setTipoProspecto] = useState<"ACTIVO"|"NURTURING"|"">("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
   const [clienteQuery, setClienteQuery] = useState("");
   const [clienteDropdown, setClienteDropdown] = useState(false);
@@ -75,11 +76,15 @@ export default function NuevoTratoPage() {
     rutaEntrada: "DESCUBRIR",
     canalAtencion: "WHATSAPP",
     origenLead: "ORGANICO", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
+    vendedorId: "",  // "" = yo (el usuario logueado)
   });
   const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
   const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", nombreEvento:"", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
 
-  useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
+  useEffect(() => {
+    fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[]));
+    fetch("/api/usuarios-activos").then(r=>r.json()).then(d=>setUsuarios(d.usuarios||[]));
+  }, []);
 
   function validarCliente() {
     if (modoCliente==="existente" && !s1.clienteId) { setError("Selecciona un cliente"); return false; }
@@ -92,6 +97,7 @@ export default function NuevoTratoPage() {
     setLoading(true); setError("");
     const payload: Record<string,unknown> = {
       ...s1,
+      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
       tipoProspecto: "NURTURING",
       canalAtencion: null,
     };
@@ -110,6 +116,7 @@ export default function NuevoTratoPage() {
     const payload: Record<string,unknown> = {
       ...s1,
       ...(sinDetalles ? {} : s2),
+      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
       tipoProspecto: "ACTIVO",
       asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
     };
@@ -321,6 +328,18 @@ export default function NuevoTratoPage() {
                   options={ORIGEN_VENTA_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500 mb-1 block">Comisión para</label>
+                <Combobox
+                  value={s1.vendedorId}
+                  onChange={v => setS1(p => ({ ...p, vendedorId: v }))}
+                  options={[{ value: "", label: "Yo (quien captura)" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                {s1.vendedorId && (
+                  <p className="text-xs text-[#B3985B] mt-1">La comisión irá a {usuarios.find(u => u.id === s1.vendedorId)?.name} — tú sigues como responsable de gestionar el trato.</p>
+                )}
               </div>
             </div>
           </div>
