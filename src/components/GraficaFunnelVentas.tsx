@@ -38,7 +38,7 @@ export function GraficaFunnelVentas({ etapasMap, tratosSeguimientoVencido }: Pro
       <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-4">
         Funnel de ventas
       </p>
-      <ResponsiveContainer width="100%" height={160}>
+      <ResponsiveContainer width="100%" height={220}>
         <BarChart
           data={data}
           layout="vertical"

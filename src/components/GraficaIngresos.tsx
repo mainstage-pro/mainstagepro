@@ -67,7 +67,7 @@ export function GraficaIngresos() {
           Ver reporte →
         </a>
       </div>
-      <ResponsiveContainer width="100%" height={180}>
+      <ResponsiveContainer width="100%" height={240}>
         <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={3}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
           <XAxis

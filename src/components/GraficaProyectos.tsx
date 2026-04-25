@@ -22,8 +22,6 @@ interface Props {
 }
 
 export function GraficaProyectos({ estadosMap, proyectosSinPersonal }: Props) {
-  // Recharts RadialBarChart: barras más externas = primeras en el array
-  // Orden: más activos primero (EN_CURSO > CONFIRMADO > PLANEACION > COMPLETADO)
   const raw = [
     { name: "Completado", count: estadosMap.COMPLETADO ?? 0, fill: "#4b5563" },
     { name: "Planeación", count: estadosMap.PLANEACION ?? 0, fill: "#3b82f6" },
@@ -35,7 +33,6 @@ export function GraficaProyectos({ estadosMap, proyectosSinPersonal }: Props) {
   if (total === 0) return null;
 
   const maxCount = Math.max(...raw.map(d => d.count), 1);
-  // Normalizar a 0-100 para que el arco sea proporcional
   const data = raw.map(d => ({ ...d, value: Math.round((d.count / maxCount) * 100) }));
 
   return (
@@ -44,26 +41,20 @@ export function GraficaProyectos({ estadosMap, proyectosSinPersonal }: Props) {
         Proyectos por estado
       </p>
       <div className="flex items-center gap-4">
-        {/* Radial */}
-        <div className="shrink-0" style={{ width: 130, height: 130 }}>
-          <ResponsiveContainer width={130} height={130}>
+        <div className="shrink-0" style={{ width: 170, height: 170 }}>
+          <ResponsiveContainer width={170} height={170}>
             <RadialBarChart
               cx="50%" cy="50%"
-              innerRadius={18} outerRadius={62}
-              barSize={13}
+              innerRadius={22} outerRadius={80}
+              barSize={16}
               data={data}
               startAngle={90} endAngle={-270}
             >
-              <RadialBar
-                dataKey="value"
-                cornerRadius={4}
-                background={{ fill: "#1a1a1a" }}
-              />
+              <RadialBar dataKey="value" cornerRadius={4} background={{ fill: "#1a1a1a" }} />
               <Tooltip content={<CustomTooltip />} />
             </RadialBarChart>
           </ResponsiveContainer>
         </div>
-        {/* Leyenda */}
         <div className="flex-1 space-y-2">
           {raw.slice().reverse().map(d => (
             <div key={d.name} className="flex items-center justify-between">
