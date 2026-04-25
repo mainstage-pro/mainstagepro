@@ -323,18 +323,18 @@ export default function ConfiguracionPage() {
         <h2 className="text-white font-semibold text-sm">Migraciones de datos</h2>
         <div className="flex items-center gap-4">
           <div>
-            <p className="text-gray-400 text-sm">Mover todas las CxC pendientes al lunes 28 de abril 2026</p>
+            <p className="text-gray-400 text-sm">Mover todas las CxC pendientes al lunes 27 de abril 2026</p>
             <p className="text-gray-600 text-xs mt-0.5">Operación única — no se puede deshacer</p>
           </div>
           <button
             onClick={async () => {
-              if (!confirm("¿Mover todas las CxC pendientes al 28 de abril?")) return;
+              if (!confirm("¿Mover todas las CxC pendientes al 27 de abril?")) return;
               setMigrando(true); setMigMsg(null);
               try {
                 const r = await fetch("/api/admin/migrate-cxc-fechas", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ fecha: "2026-04-28" }),
+                  body: JSON.stringify({ fecha: "2026-04-27" }),
                 });
                 const d = await r.json();
                 setMigMsg(r.ok ? `Listo — ${d.actualizadas} CxC actualizadas` : (d.error ?? "Error"));
