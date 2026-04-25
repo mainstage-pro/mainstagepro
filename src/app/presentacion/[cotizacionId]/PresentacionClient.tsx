@@ -353,19 +353,16 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
   );
 }
 
-// ─── Trade niveles ────────────────────────────────────────────────────────────
-const TRADE_NIVELES = [
-  { nivel: 1, nombre: "Base",       pct: 5,  tagline: "Presencia de marca esencial",   destacado: false,
-    beneficios: ["Logo de Mainstage Pro en flyer y/o backdrop", "1 mención del animador durante el evento", "Material básico de foto y video para redes", "2 a 4 accesos al evento para el equipo Mainstage"] },
-  { nivel: 2, nombre: "Estratégico", pct: 10, tagline: "Alianza visible con contenido", destacado: true,
-    beneficios: ["Todo lo de Nivel Base", "Logo en cartel principal y mesa de control", "1 publicación o reel en Instagram etiquetando @mainstage.pro", "Material profesional para nuestro portafolio", "4 a 8 accesos al evento"] },
-  { nivel: 3, nombre: "Premium",    pct: 12, tagline: "Partner técnico oficial",        destacado: false,
-    beneficios: ["Todo lo de Nivel Estratégico", "Mainstage Pro como partner técnico oficial", "Reel o video corto enfocado en producción técnica", "Material premium sin restricciones", "6 a 12 accesos al evento"] },
-];
-
+// ─── Trade nivel type ─────────────────────────────────────────────────────────
+interface TradeNivel { nivel: number; nombre: string; tagline: string; pct: number; destacado: boolean; beneficios: string[]; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizacion }) {
+export default function PresentacionClient({ cotizacion, tradeNiveles }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] }) {
+  const TRADE_NIVELES: TradeNivel[] = tradeNiveles ?? [
+    { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
+    { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
+    { nivel: 3, nombre: "Premium",     tagline: "Presencia total",       pct: 12, destacado: false, beneficios: ["Logo destacado en todos los materiales","Cobertura completa en redes sociales","6 a 12 accesos al evento","Video recap con branding","Reporte ejecutivo de impacto"] },
+  ];
   const [scrollY, setScrollY] = useState(0);
   const [heroIdx, setHeroIdx] = useState(0);
 

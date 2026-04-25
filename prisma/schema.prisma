@@ -1268,9 +1268,15 @@ model Publicacion {
 // ─── CONFIGURACIÓN DE LA APP ─────────────────────────────────────────────────
 
 model AppConfig {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
+  id           String  @id @default(cuid())
+  key          String  @unique
+  value        String
+  section      String  @default("general")
+  label        String  @default("")
+  description  String?
+  type         String  @default("text")
+  defaultValue String?
+  orden        Int     @default(0)
   @@map("app_config")
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getConfig } from "@/lib/config";
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -53,7 +54,8 @@ export async function POST(
       })
     : "por confirmar";
 
-  const confirmUrl = `https://mainstagepro.vercel.app/confirmar/tecnico/${token}`;
+  const appUrl = await getConfig("empresa.appUrl", "https://mainstagepro.vercel.app");
+  const confirmUrl = `${appUrl}/confirmar/tecnico/${token}`;
 
   let mensaje = `Hola ${tecnico?.nombre ?? ""},\n\n`;
   mensaje += `Te invitamos a participar en el siguiente proyecto:\n\n`;

@@ -4705,7 +4705,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {proyecto.portalToken && (() => {
-              const portalUrl = `https://mainstagepro.vercel.app/portal/${proyecto.portalToken}`;
+              const portalUrl = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/portal/${proyecto.portalToken}`;
               return (
                 <div className="space-y-2 mt-4">
                   <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">

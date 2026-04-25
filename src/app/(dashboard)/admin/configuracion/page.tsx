@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
 
-// ─── Definición de módulos configurables ─────────────────────────────────────
+// ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
 const MODULOS = [
   { key: "finanzas",          label: "Finanzas",           seccion: "Administración" },
@@ -59,10 +59,32 @@ const ETIQUETAS = [
   ]},
 ];
 
+const SECCION_LABELS: Record<string, string> = {
+  empresa:    "Empresa",
+  banco:      "Datos bancarios",
+  precios:    "Precios y descuentos",
+  trade:      "Mainstage Trade",
+  proyectos:  "Proyectos",
+  alertas:    "Alertas y notificaciones",
+  inventario: "Inventario",
+  plantillas: "Plantillas de mensajes",
+  contratos:  "Contratos",
+  general:    "General",
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface User { id: string; name: string; email: string; role: string; }
 interface Acceso { moduloKey: string; userId: string; user: User; }
+interface ConfigEntry {
+  id: string; key: string; value: string; section: string;
+  label: string; description?: string | null; type: string;
+  defaultValue?: string | null; orden: number;
+}
 
-type Tab = "accesos" | "etiquetas";
+type Tab = "accesos" | "etiquetas" | "configuracion";
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConfiguracionPage() {
   const [tab, setTab] = useState<Tab>("accesos");
@@ -72,7 +94,7 @@ export default function ConfiguracionPage() {
   const [accesos, setAccesos] = useState<Acceso[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [expandedModule, setExpandedModule] = useState<string | null>(null);
-  const [addingUser, setAddingUser] = useState<string | null>(null); // moduloKey
+  const [addingUser, setAddingUser] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -81,6 +103,14 @@ export default function ConfiguracionPage() {
   const [labelsDraft, setLabelsDraft] = useState<Record<string, string>>({});
   const [savingLabels, setSavingLabels] = useState(false);
   const [labelsSaved, setLabelsSaved] = useState(false);
+
+  // ── Configuración general ─────────────────────────────────────────────────
+  const [configEntries, setConfigEntries] = useState<ConfigEntry[]>([]);
+  const [configDraft, setConfigDraft] = useState<Record<string, string>>({});
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configSaved, setConfigSaved] = useState(false);
+  const [seeding, setSeeding] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   // ── Migraciones ──────────────────────────────────────────────────────────
   const [migrando, setMigrando] = useState(false);
@@ -94,12 +124,18 @@ export default function ConfiguracionPage() {
     const [modulosData, configData] = await Promise.all([modulosRes.json(), configRes.json()]);
     setAccesos(modulosData.accesos ?? []);
     setUsers(modulosData.users ?? []);
-    const cfg = configData.config ?? {};
+    const entries: ConfigEntry[] = configData.entries ?? [];
+    const cfg: Record<string, string> = {};
+    for (const e of entries) cfg[e.key] = e.value;
     const priv: string[] = cfg["nav.private"] ? JSON.parse(cfg["nav.private"]) : [];
     const lbls: Record<string, string> = cfg["nav.labels"] ? JSON.parse(cfg["nav.labels"]) : {};
     setPrivateModules(priv);
     setLabels(lbls);
     setLabelsDraft(lbls);
+    setConfigEntries(entries);
+    const draft: Record<string, string> = {};
+    for (const e of entries) draft[e.key] = e.value;
+    setConfigDraft(draft);
   }, []);
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
@@ -110,7 +146,7 @@ export default function ConfiguracionPage() {
       ? privateModules.filter(k => k !== key)
       : [...privateModules, key];
     await fetch("/api/admin/config", {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "nav.private", value: JSON.stringify(next) }),
     });
@@ -135,13 +171,12 @@ export default function ConfiguracionPage() {
 
   async function saveLabels() {
     setSavingLabels(true);
-    // Only save non-empty overrides
     const clean: Record<string, string> = {};
     for (const [k, v] of Object.entries(labelsDraft)) {
       if (v.trim()) clean[k] = v.trim();
     }
     await fetch("/api/admin/config", {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "nav.labels", value: JSON.stringify(clean) }),
     });
@@ -155,24 +190,124 @@ export default function ConfiguracionPage() {
     setLabelsDraft(d => { const n = { ...d }; delete n[key]; return n; });
   }
 
-  // Users that don't already have access to a module
   function availableUsers(moduloKey: string) {
     const granted = accesos.filter(a => a.moduloKey === moduloKey).map(a => a.userId);
     return users.filter(u => u.role !== "ADMIN" && !granted.includes(u.id));
   }
 
+  async function saveConfigChanges() {
+    setSavingConfig(true);
+    const updates = configEntries
+      .filter(e => configDraft[e.key] !== e.value)
+      .map(e => ({ key: e.key, value: configDraft[e.key] ?? e.value }));
+    if (updates.length > 0) {
+      await fetch("/api/admin/config", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+    }
+    setSavingConfig(false);
+    setConfigSaved(true);
+    setTimeout(() => setConfigSaved(false), 2500);
+    await loadConfig();
+  }
+
+  async function runSeed() {
+    setSeeding(true);
+    setSeedMsg(null);
+    try {
+      const r = await fetch("/api/admin/config/seed", { method: "POST" });
+      const d = await r.json();
+      setSeedMsg(r.ok ? `Listo — ${d.upserted} entradas inicializadas` : (d.error ?? "Error"));
+      if (r.ok) await loadConfig();
+    } catch { setSeedMsg("Error de conexión"); }
+    finally { setSeeding(false); }
+  }
+
+  // Group entries by section
+  const configBySections = () => {
+    const map = new Map<string, ConfigEntry[]>();
+    for (const e of configEntries) {
+      if (!map.has(e.section)) map.set(e.section, []);
+      map.get(e.section)!.push(e);
+    }
+    return map;
+  };
+
+  function ConfigInput({ entry }: { entry: ConfigEntry }) {
+    const val = configDraft[entry.key] ?? entry.value;
+    const onChange = (v: string) => setConfigDraft(d => ({ ...d, [entry.key]: v }));
+    const isDirty = val !== entry.value;
+    const base = `w-full bg-[#0d0d0d] border rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none transition-colors ${isDirty ? "border-[#B3985B]" : "border-[#2a2a2a] focus:border-[#B3985B]"}`;
+
+    if (entry.type === "boolean") {
+      const isOn = val === "true";
+      return (
+        <button
+          onClick={() => onChange(isOn ? "false" : "true")}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+            isOn
+              ? "bg-green-900/20 border-green-500/30 text-green-400"
+              : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-500"
+          } ${isDirty ? "ring-1 ring-[#B3985B]" : ""}`}
+        >
+          <span className={`w-2.5 h-2.5 rounded-full ${isOn ? "bg-green-400" : "bg-gray-600"}`} />
+          {isOn ? "Activado" : "Desactivado"}
+        </button>
+      );
+    }
+
+    if (entry.type === "textarea" || entry.type === "json") {
+      return (
+        <textarea
+          value={val}
+          onChange={e => onChange(e.target.value)}
+          rows={entry.type === "json" ? 5 : 3}
+          className={`${base} font-mono text-xs resize-y`}
+        />
+      );
+    }
+
+    if (entry.type === "color") {
+      return (
+        <div className="flex items-center gap-2">
+          <input type="color" value={val} onChange={e => onChange(e.target.value)}
+            className="h-8 w-12 rounded cursor-pointer border border-[#2a2a2a] bg-transparent" />
+          <input value={val} onChange={e => onChange(e.target.value)} className={`${base} flex-1`} />
+        </div>
+      );
+    }
+
+    return (
+      <input
+        type={entry.type === "number" ? "number" : entry.type === "email" ? "email" : "text"}
+        value={val}
+        onChange={e => onChange(e.target.value)}
+        className={base}
+      />
+    );
+  }
+
+  const sections = configBySections();
+  const hasDirty = configEntries.some(e => configDraft[e.key] !== e.value);
+
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-white">Configuración</h1>
-        <p className="text-[#6b7280] text-sm">Accesos por módulo y personalización del sistema</p>
+        <p className="text-[#6b7280] text-sm">Accesos, personalización y parámetros del sistema</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit">
-        {([["accesos","Accesos por módulo"],["etiquetas","Etiquetas"]] as [Tab,string][]).map(([t, l]) => (
+      <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit flex-wrap">
+        {([
+          ["accesos", "Accesos por módulo"],
+          ["etiquetas", "Etiquetas"],
+          ["configuracion", "Configuración general"],
+        ] as [Tab, string][]).map(([t, l]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`text-sm px-4 py-1.5 rounded transition-colors ${tab===t?"bg-[#B3985B] text-black font-semibold":"text-gray-500 hover:text-white"}`}>
+            className={`text-sm px-4 py-1.5 rounded transition-colors ${tab === t ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
             {l}
           </button>
         ))}
@@ -202,7 +337,6 @@ export default function ConfiguracionPage() {
                     {isPrivate && moduloAccesos.length > 0 && (
                       <span className="text-[10px] text-gray-500">{moduloAccesos.length} con acceso</span>
                     )}
-                    {/* Toggle público/privado */}
                     <button onClick={() => togglePrivate(modulo.key)} disabled={saving}
                       className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                         isPrivate
@@ -241,8 +375,6 @@ export default function ConfiguracionPage() {
                         ))}
                       </div>
                     )}
-
-                    {/* Agregar usuario */}
                     {available.length > 0 && (
                       addingUser === modulo.key ? (
                         <div className="flex items-center gap-2 mt-2">
@@ -314,10 +446,79 @@ export default function ConfiguracionPage() {
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {savingLabels ? "Guardando..." : "Guardar etiquetas"}
             </button>
-            {labelsSaved && <span className="text-green-400 text-sm">Guardado. Recarga la página para ver los cambios.</span>}
+            {labelsSaved && <span className="text-green-400 text-sm">Guardado. Recarga para ver cambios.</span>}
           </div>
         </div>
       )}
+
+      {/* ── Tab: Configuración general ───────────────────────────────────── */}
+      {tab === "configuracion" && (
+        <div className="space-y-5">
+          {/* Seed button */}
+          <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div>
+              <p className="text-white text-sm font-medium">Inicializar configuración</p>
+              <p className="text-gray-600 text-xs mt-0.5">Carga todos los parámetros de la plataforma. Los valores existentes no se sobreescriben.</p>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {seedMsg && <span className={`text-xs ${seedMsg.startsWith("Listo") ? "text-green-400" : "text-red-400"}`}>{seedMsg}</span>}
+              <button onClick={runSeed} disabled={seeding}
+                className="bg-[#1a1a1a] hover:bg-[#222] disabled:opacity-40 border border-[#2a2a2a] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">
+                {seeding ? "Inicializando..." : "Inicializar"}
+              </button>
+            </div>
+          </div>
+
+          {sections.size === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-sm">No hay entradas de configuración.</p>
+              <p className="text-gray-700 text-xs mt-1">Haz clic en "Inicializar" para cargar los parámetros.</p>
+            </div>
+          ) : (
+            Array.from(sections.entries()).map(([section, entries]) => (
+              <div key={section} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-[#1a1a1a]">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+                    {SECCION_LABELS[section] ?? section}
+                  </p>
+                </div>
+                <div className="p-5 space-y-5">
+                  {entries.map(entry => (
+                    <div key={entry.key}>
+                      <div className="flex items-baseline justify-between gap-2 mb-1">
+                        <label className="text-sm text-white font-medium">{entry.label}</label>
+                        {configDraft[entry.key] !== entry.value && (
+                          <span className="text-[10px] text-[#B3985B]">modificado</span>
+                        )}
+                      </div>
+                      {entry.description && (
+                        <p className="text-xs text-gray-600 mb-1.5">{entry.description}</p>
+                      )}
+                      <ConfigInput entry={entry} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+
+          {sections.size > 0 && (
+            <div className="flex items-center gap-3 pt-2 pb-4 sticky bottom-0 bg-[#0a0a0a] py-4 border-t border-[#1a1a1a]">
+              <button
+                onClick={saveConfigChanges}
+                disabled={savingConfig || !hasDirty}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
+                {savingConfig ? "Guardando..." : "Guardar cambios"}
+              </button>
+              {configSaved && <span className="text-green-400 text-sm">Guardado correctamente</span>}
+              {hasDirty && !configSaved && (
+                <span className="text-[#B3985B] text-xs">Hay cambios sin guardar</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Migraciones ── */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
         <h2 className="text-white font-semibold text-sm">Migraciones de datos</h2>
@@ -349,7 +550,6 @@ export default function ConfiguracionPage() {
         </div>
         {migMsg && <p className={`text-sm ${migMsg.startsWith("Listo") ? "text-green-400" : "text-red-400"}`}>{migMsg}</p>}
       </div>
-
     </div>
   );
 }

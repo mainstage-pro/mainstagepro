@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const BASE_URL = "https://mainstagepro.vercel.app";
+const BASE_URL = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
 
 const PRESENTACIONES = [
   {

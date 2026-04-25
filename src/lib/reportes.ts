@@ -438,7 +438,7 @@ export function fmtMXN(n: number): string {
 }
 
 // Genera el mensaje de WhatsApp con el resumen del reporte
-export function generarMensajeWhatsApp(data: ReporteData): string {
+export function generarMensajeWhatsApp(data: ReporteData, appUrl = "https://mainstagepro.vercel.app"): string {
   const score = data.score.total;
   const emoji = score >= 80 ? "🟢" : score >= 60 ? "🟡" : "🔴";
 
@@ -467,6 +467,6 @@ export function generarMensajeWhatsApp(data: ReporteData): string {
     `💰 *Finanzas:* Flujo neto ${fmtMXN(data.finanzas.ingresosMes - data.finanzas.gastosMes)} · CxC ${fmtMXN(data.finanzas.cxcTotal)}`,
     `🎪 *Producción:* ${data.produccion.proyectosActivos} proyectos activos · ${data.produccion.eventosSemana} eventos esta semana`,
     ``,
-    `Ver reporte completo en Mainstage Pro 👉 https://mainstagepro.vercel.app/reportes`,
+    `Ver reporte completo en Mainstage Pro 👉 ${appUrl}/reportes`,
   ].join("\n");
 }
