@@ -4,6 +4,9 @@ import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
+import { GraficaFunnelVentas } from "@/components/GraficaFunnelVentas";
+import { GraficaPublicaciones } from "@/components/GraficaPublicaciones";
+import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
@@ -449,39 +452,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Barra de estados del mes */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-4">Estado del mes</p>
-            {totalPubsMes === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-gray-600 text-sm">Sin publicaciones este mes</p>
-                <Link href="/marketing/calendario" className="text-[#B3985B] text-xs hover:underline mt-1 block">Agregar →</Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  { estado: "PUBLICADO",  label: "Publicado",  color: "bg-green-500" },
-                  { estado: "LISTO",      label: "Listo",      color: "bg-yellow-500" },
-                  { estado: "EN_PROCESO", label: "En proceso", color: "bg-blue-500" },
-                  { estado: "PENDIENTE",  label: "Pendiente",  color: "bg-gray-600" },
-                  { estado: "CANCELADO",  label: "Cancelado",  color: "bg-red-700" },
-                ].filter(e => pubsMap[e.estado] > 0).map(({ estado, label, color }) => {
-                  const count = pubsMap[estado] ?? 0;
-                  return (
-                    <div key={estado}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-gray-400 text-xs">{label}</span>
-                        <span className="text-white text-xs font-semibold">{count}</span>
-                      </div>
-                      <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div className={`h-full ${color} rounded-full`} style={{ width: `${(count / totalPubsMes) * 100}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <GraficaPublicaciones pubsMap={pubsMap} total={totalPubsMes} />
 
           {/* Próximas publicaciones */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
@@ -583,36 +554,7 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Funnel */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
-          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Funnel</p>
-          {[
-            { etapa: "DESCUBRIMIENTO", label: "Descubrimiento", color: "bg-blue-500" },
-            { etapa: "OPORTUNIDAD",    label: "Oportunidad",    color: "bg-[#B3985B]" },
-            { etapa: "VENTA_CERRADA",  label: "Cerradas",       color: "bg-green-500" },
-            { etapa: "VENTA_PERDIDA",  label: "Perdidas",       color: "bg-red-600" },
-          ].map(({ etapa, label, color }) => {
-            const count    = etapasMap[etapa] ?? 0;
-            const maxCount = Math.max(...Object.values(etapasMap), 1);
-            return (
-              <div key={etapa}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-gray-400 text-xs">{label}</span>
-                  <span className="text-white text-sm font-semibold">{count}</span>
-                </div>
-                <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                  <div className={`h-full ${color} rounded-full`} style={{ width: `${(count / maxCount) * 100}%` }} />
-                </div>
-              </div>
-            );
-          })}
-          {tratosSeguimientoVencido > 0 && (
-            <Link href="/crm/tratos" className="flex items-center gap-2 mt-2 pt-3 border-t border-[#1a1a1a] text-xs text-yellow-400 hover:text-yellow-300 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
-              {tratosSeguimientoVencido} trato{tratosSeguimientoVencido !== 1 ? "s" : ""} con seguimiento vencido
-            </Link>
-          )}
-        </div>
+        <GraficaFunnelVentas etapasMap={etapasMap} tratosSeguimientoVencido={tratosSeguimientoVencido} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -633,29 +575,7 @@ export default async function DashboardPage() {
 
         {/* Estados + próximos eventos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Estados */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-4">Por estado</p>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { estado: "PLANEACION", label: "Planeación",  color: "text-blue-400" },
-                { estado: "CONFIRMADO", label: "Confirmado",  color: "text-green-400" },
-                { estado: "EN_CURSO",   label: "En curso",    color: "text-yellow-400" },
-                { estado: "COMPLETADO", label: "Completados", color: "text-gray-400" },
-              ].map(({ estado, label, color }) => (
-                <Link key={estado} href="/proyectos" className="text-center bg-[#0d0d0d] rounded-lg py-3 hover:bg-[#151515] transition-colors block">
-                  <p className={`text-2xl font-bold ${color}`}>{estadosMap[estado] ?? 0}</p>
-                  <p className="text-gray-600 text-xs mt-0.5">{label}</p>
-                </Link>
-              ))}
-            </div>
-            {proyectosSinPersonal > 0 && (
-              <Link href="/proyectos" className="flex items-center gap-2 mt-4 pt-3 border-t border-[#1a1a1a] text-xs text-red-400 hover:text-red-300 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                {proyectosSinPersonal} proyecto{proyectosSinPersonal !== 1 ? "s" : ""} próximo{proyectosSinPersonal !== 1 ? "s" : ""} sin personal
-              </Link>
-            )}
-          </div>
+          <GraficaProyectos estadosMap={estadosMap} proyectosSinPersonal={proyectosSinPersonal} />
 
           {/* Próximos eventos */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
