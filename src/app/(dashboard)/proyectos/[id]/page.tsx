@@ -104,6 +104,13 @@ const NIVEL_COLORS: Record<string, string> = {
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
+function proximoLunesTraEvento(fechaStr: string): string {
+  const d = new Date(fechaStr.substring(0, 10) + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() + (8 - dow) % 7);
+  return d.toISOString().substring(0, 10);
+}
 function fmtDate(s: string | null) {
   if (!s) return "—";
   return new Date(s.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
@@ -861,6 +868,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     if (existeLiq) {
       setEsquemaLiqFecha(existeLiq.fechaCompromiso.slice(0, 10));
+    } else if (proyecto.fechaEvento) {
+      setEsquemaLiqFecha(proximoLunesTraEvento(proyecto.fechaEvento));
     }
   }, [editandoEsquema]);
 
