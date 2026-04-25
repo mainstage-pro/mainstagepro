@@ -395,9 +395,6 @@ export default function TratosPage() {
     fetch("/api/tratos").then(r => r.json()).then(data => {
       const list: Trato[] = data.tratos ?? [];
       setTratos(list);
-      // Auto-expand tratos that already have cotizaciones
-      const withCots = new Set(list.filter(t => t.cotizaciones?.length > 0).map(t => t.id));
-      setExpandedIds(withCots);
     }).finally(() => setLoading(false));
   }, []);
 
