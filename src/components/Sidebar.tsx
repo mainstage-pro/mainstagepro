@@ -143,7 +143,6 @@ const NAV: NavSection[] = [
     items: [
       { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
       { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
-      { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
       { key: "cotizaciones-plantillas", label: "Plantillas", href: "/cotizaciones/plantillas" },
       {
         key: "comisiones",

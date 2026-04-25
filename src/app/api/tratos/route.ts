@@ -34,6 +34,14 @@ export async function GET(request: NextRequest) {
       origenLead: true, fechaProximaAccion: true, createdAt: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
+      cotizaciones: {
+        select: {
+          id: true, numeroCotizacion: true, estado: true, granTotal: true,
+          fechaEvento: true, createdAt: true, opcionLetra: true, grupoId: true,
+          proyecto: { select: { id: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
