@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { invalidateConfigCache } from "@/lib/config";
 
 // Definición completa de todas las entradas de configuración de la plataforma.
 // Cada vez que se agrega un valor configurable nuevo, se registra aquí.
@@ -123,13 +125,24 @@ export async function POST() {
   const auth = await requireAdmin();
   if (!auth) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const res = await fetch(`${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/admin/config`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Cookie: "" },
-    body: JSON.stringify({ entries: CONFIG_SEED }),
-  });
+  // Lazy migration
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "section" TEXT NOT NULL DEFAULT 'general'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "label" TEXT NOT NULL DEFAULT ''`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "description" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'text'`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "defaultValue" TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE app_config ADD COLUMN IF NOT EXISTS "orden" INTEGER NOT NULL DEFAULT 0`);
 
-  if (!res.ok) return NextResponse.json({ error: "Error al ejecutar seed" }, { status: 500 });
-  const data = await res.json();
-  return NextResponse.json({ ok: true, ...data });
+  let upserted = 0;
+  for (const e of CONFIG_SEED) {
+    await prisma.appConfig.upsert({
+      where: { key: e.key },
+      update: { section: e.section, label: e.label, description: e.description ?? null, type: e.type, defaultValue: e.value, orden: e.orden },
+      create: { key: e.key, value: e.value, section: e.section, label: e.label, description: e.description ?? null, type: e.type, defaultValue: e.value, orden: e.orden },
+    });
+    upserted++;
+  }
+
+  invalidateConfigCache();
+  return NextResponse.json({ ok: true, upserted });
 }
