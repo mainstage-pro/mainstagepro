@@ -99,12 +99,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     cuotas = (plan?.pagos && plan.pagos.length > 0)
       ? plan.pagos
       : [
-          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
+          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "ANTICIPO" },
           { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
         ];
   } catch {
     cuotas = [
-      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
+      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "ANTICIPO" },
       { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
     ];
   }

@@ -92,8 +92,9 @@ function lunesDeSemana(isoDate: string): string {
   return d.toISOString().slice(0, 10);
 }
 function esVencido(item: CxP) {
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  return item.estado !== "LIQUIDADO" && new Date(item.fechaCompromiso) < hoy;
+  const d = new Date();
+  const hoyStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return item.estado !== "LIQUIDADO" && item.fechaCompromiso.substring(0, 10) < hoyStr;
 }
 
 const WA_ICON = (
