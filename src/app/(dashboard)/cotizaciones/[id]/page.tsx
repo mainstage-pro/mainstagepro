@@ -1142,6 +1142,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🤝</span>
                     <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                    {tradeUrl && (
+                      <a href={tradeUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1 rounded-lg transition-colors">
+                        Ver planes
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
                   {tradeNivel && (
                     <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full font-medium">

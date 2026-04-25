@@ -24,7 +24,7 @@ export default async function PresentacionPage({
       cliente: {
         select: { nombre: true, empresa: true, telefono: true, correo: true },
       },
-      trato: { select: { tipoEvento: true, ideasReferencias: true } },
+      trato: { select: { tipoEvento: true, ideasReferencias: true, tradeCalificado: true } },
       lineas: {
         orderBy: { orden: "asc" },
         include: {

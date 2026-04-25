@@ -19,7 +19,7 @@ interface Cotizacion {
   tratoId: string | null;
   observaciones: string | null; terminosComerciales: string | null;
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
-  trato: { tipoEvento: string } | null; lineas: Linea[];
+  trato: { tipoEvento: string; tradeCalificado: boolean } | null; lineas: Linea[];
 }
 
 // ─── Equipment Image Mapping ──────────────────────────────────────────────────
@@ -766,8 +766,8 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
         </div>
       </section>
 
-      {/* ── MAINSTAGE TRADE ── */}
-      <section className="relative overflow-hidden py-28 px-6"
+      {/* ── MAINSTAGE TRADE — solo si el trato está calificado ── */}
+      {cotizacion.trato?.tradeCalificado && <section className="relative overflow-hidden py-28 px-6"
                style={{ background: "linear-gradient(180deg,#050505 0%,#080808 55%,#050505 100%)" }}>
         <div className="absolute inset-0 pointer-events-none"
              style={{ background: "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(179,152,91,0.06) 0%, transparent 70%)" }} />
@@ -865,7 +865,7 @@ export default function PresentacionClient({ cotizacion }: { cotizacion: Cotizac
             </R>
           )}
         </div>
-      </section>
+      </section>}
 
       {/* ── CTA ── */}
       <section className="relative bg-[#040404] overflow-hidden">
