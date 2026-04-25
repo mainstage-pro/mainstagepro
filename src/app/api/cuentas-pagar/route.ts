@@ -54,10 +54,13 @@ export async function GET() {
       proveedor: { select: { id: true, nombre: true, telefono: true } },
       empresa: { select: { id: true, nombre: true, telefono: true } },
       socio: { select: { id: true, nombre: true, email: true } },
-      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true } },
       cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
     },
-    orderBy: { fechaCompromiso: "asc" },
+    orderBy: [
+      { proyecto: { fechaEvento: "asc" } },
+      { fechaCompromiso: "asc" },
+    ],
   });
 
   return NextResponse.json(cuentas);

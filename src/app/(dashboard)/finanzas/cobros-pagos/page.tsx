@@ -34,7 +34,7 @@ interface CxCItem {
   tipoPago: string;
   cliente: { id: string; nombre: string; telefono: string | null } | null;
   empresa: { id: string; nombre: string; telefono: string | null } | null;
-  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cotizacion: { id: string; numeroCotizacion: string } | null;
   cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
 }
@@ -50,7 +50,7 @@ interface CxPItem {
   proveedor: { id: string; nombre: string; telefono: string | null } | null;
   empresa: { id: string; nombre: string; telefono: string | null } | null;
   socio: { id: string; nombre: string; email: string | null } | null;
-  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
 }
 
@@ -69,6 +69,35 @@ interface MovDirecto {
   categoria: { id: string; nombre: string } | null;
   cuentaOrigen: { nombre: string } | null;
   cuentaDestino: { nombre: string } | null;
+}
+
+type ProyGrupo<T> = {
+  proyectoId: string | null;
+  proyectoNombre: string | null;
+  numeroProyecto: string | null;
+  fechaEvento: string | null;
+  items: T[];
+};
+function groupByProject<T extends { proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null }>(items: T[]): ProyGrupo<T>[] {
+  const map = new Map<string, ProyGrupo<T>>();
+  for (const item of items) {
+    const key = item.proyecto?.id ?? "__sin_proyecto__";
+    if (!map.has(key)) {
+      map.set(key, {
+        proyectoId: item.proyecto?.id ?? null,
+        proyectoNombre: item.proyecto?.nombre ?? null,
+        numeroProyecto: item.proyecto?.numeroProyecto ?? null,
+        fechaEvento: item.proyecto?.fechaEvento ?? null,
+        items: [],
+      });
+    }
+    map.get(key)!.items.push(item);
+  }
+  const grupos = Array.from(map.values());
+  // Con proyecto primero (ordenados por fechaEvento), sin proyecto al final
+  const conProyecto = grupos.filter(g => g.proyectoId !== null);
+  const sinProyecto = grupos.filter(g => g.proyectoId === null);
+  return [...conProyecto, ...sinProyecto];
 }
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -805,12 +834,27 @@ export default function CobrosPagosPage() {
         </div>
       ) : tab === "cobrar" ? (
         // ── CxC Cards ──
-        <div className="space-y-2">
+        <div className="space-y-4">
           {cxcList.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por cobrar</p>
             </div>
-          ) : cxcList.map(c => (
+          ) : groupByProject(cxcList).map(grupo => (
+            <div key={grupo.proyectoId ?? "__sin__"}>
+              {grupo.proyectoId ? (
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                    {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                  </Link>
+                  {grupo.fechaEvento && (
+                    <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 px-1">Sin proyecto</p>
+              )}
+              <div className="space-y-2">
+                {grupo.items.map(c => (
             <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
               <div className="flex items-start gap-3">
                 {/* Info principal */}
@@ -839,12 +883,6 @@ export default function CobrosPagosPage() {
                   </div>
                   <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    {c.proyecto && (
-                      <Link href={`/proyectos/${c.proyecto.id}`}
-                        className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-                        {c.proyecto.numeroProyecto} · {c.proyecto.nombre}
-                      </Link>
-                    )}
                     {c.cotizacion && (
                       <Link href={`/cotizaciones/${c.cotizacion.id}`}
                         className="text-[10px] font-mono text-[#555] hover:text-[#B3985B] transition-colors">
@@ -925,15 +963,33 @@ export default function CobrosPagosPage() {
               </div>
             </div>
           ))}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         // ── CxP Cards ──
-        <div className="space-y-2">
+        <div className="space-y-4">
           {cxpList.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
-          ) : cxpList.map(c => {
+          ) : groupByProject(cxpList).map(grupo => (
+            <div key={grupo.proyectoId ?? "__sin__"}>
+              {grupo.proyectoId ? (
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                    {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                  </Link>
+                  {grupo.fechaEvento && (
+                    <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 px-1">Sin proyecto</p>
+              )}
+              <div className="space-y-2">
+                {grupo.items.map(c => {
             const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
@@ -952,12 +1008,6 @@ export default function CobrosPagosPage() {
                     </div>
                     <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
                     <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                      {c.proyecto && (
-                        <Link href={`/proyectos/${c.proyecto.id}`}
-                          className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-                          {c.proyecto.numeroProyecto} · {c.proyecto.nombre}
-                        </Link>
-                      )}
                       <span className={`text-[10px] ${c.esVencida ? "text-red-400" : "text-[#555]"}`}>
                         Vence: {fmtDate(c.fechaCompromiso)}
                       </span>
@@ -1023,6 +1073,9 @@ export default function CobrosPagosPage() {
               </div>
             );
           })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
