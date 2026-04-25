@@ -542,6 +542,19 @@ export default function OperacionesPage() {
   const mobileQARef = useRef<MobileQuickAddHandle>(null);
   const [quickAddTrigger, setQuickAddTrigger] = useState(0);
 
+  // Abrir captura rápida si la URL trae ?nueva=1 (acceso directo desde pantalla bloqueada)
+  useEffect(() => {
+    if (searchParams.get("nueva") !== "1") return;
+    window.history.replaceState(null, "", "/operaciones");
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      setMobileQuickAdd(true);
+    } else {
+      setVista("bandeja");
+      setQuickAddTrigger(n => n + 1);
+    }
+  }, []);
+
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
 
