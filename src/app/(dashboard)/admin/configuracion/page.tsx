@@ -82,6 +82,10 @@ export default function ConfiguracionPage() {
   const [savingLabels, setSavingLabels] = useState(false);
   const [labelsSaved, setLabelsSaved] = useState(false);
 
+  // ── Migraciones ──────────────────────────────────────────────────────────
+  const [migrando, setMigrando] = useState(false);
+  const [migMsg, setMigMsg] = useState<string | null>(null);
+
   const loadConfig = useCallback(async () => {
     const [modulosRes, configRes] = await Promise.all([
       fetch("/api/admin/modulos"),
@@ -314,6 +318,38 @@ export default function ConfiguracionPage() {
           </div>
         </div>
       )}
+      {/* ── Migraciones ── */}
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+        <h2 className="text-white font-semibold text-sm">Migraciones de datos</h2>
+        <div className="flex items-center gap-4">
+          <div>
+            <p className="text-gray-400 text-sm">Mover todas las CxC pendientes al lunes 28 de abril 2026</p>
+            <p className="text-gray-600 text-xs mt-0.5">Operación única — no se puede deshacer</p>
+          </div>
+          <button
+            onClick={async () => {
+              if (!confirm("¿Mover todas las CxC pendientes al 28 de abril?")) return;
+              setMigrando(true); setMigMsg(null);
+              try {
+                const r = await fetch("/api/admin/migrate-cxc-fechas", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ fecha: "2026-04-28" }),
+                });
+                const d = await r.json();
+                setMigMsg(r.ok ? `Listo — ${d.actualizadas} CxC actualizadas` : (d.error ?? "Error"));
+              } catch { setMigMsg("Error de conexión"); }
+              finally { setMigrando(false); }
+            }}
+            disabled={migrando}
+            className="shrink-0 bg-red-900/40 hover:bg-red-800/60 disabled:opacity-40 text-red-300 text-sm font-medium px-4 py-2 rounded-lg border border-red-800/50 transition-colors"
+          >
+            {migrando ? "Ejecutando..." : "Ejecutar"}
+          </button>
+        </div>
+        {migMsg && <p className={`text-sm ${migMsg.startsWith("Listo") ? "text-green-400" : "text-red-400"}`}>{migMsg}</p>}
+      </div>
+
     </div>
   );
 }
