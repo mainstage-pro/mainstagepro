@@ -879,6 +879,8 @@ export default function OperacionesPage() {
                         onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                         onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                         onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                        onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                        projects={proyectosNav}
                         users={usuarios}
                         showProject draggable
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
@@ -1644,7 +1646,7 @@ function SectionBlock({
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop,
-  onPriorityChange, onAssign, users,
+  onPriorityChange, onAssign, onProjectChange, users, projects,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -1663,9 +1665,11 @@ function SectionBlock({
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onDrop: (targetId: string) => void;
-  onPriorityChange?: (id: string, prioridad: string) => void;
-  onAssign?:         (id: string, userId: string | null) => void;
-  users?:            { id: string; name: string }[];
+  onPriorityChange?:  (id: string, prioridad: string) => void;
+  onAssign?:          (id: string, userId: string | null) => void;
+  onProjectChange?:   (id: string, proyectoId: string | null) => void;
+  users?:             { id: string; name: string }[];
+  projects?:          { id: string; nombre: string; color: string | null }[];
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1697,7 +1701,9 @@ function SectionBlock({
               onDateChange={(id, field, val) => { fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val || null }) }); }}
               onPriorityChange={onPriorityChange}
               onAssign={onAssign}
+              onProjectChange={onProjectChange}
               users={users}
+              projects={projects}
               draggable={!!draggingId || true}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}

@@ -54,7 +54,9 @@ interface Props {
   onDateChange?:     (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
   onPriorityChange?: (id: string, prioridad: string) => void;
   onAssign?:         (id: string, userId: string | null) => void;
+  onProjectChange?:  (id: string, proyectoId: string | null) => void;
   users?:            { id: string; name: string }[];
+  projects?:         { id: string; nombre: string; color: string | null }[];
   isSelected:        boolean;
   showProject?:      boolean;
   depth?:            number;
@@ -87,7 +89,7 @@ function ActionBtn({ title, onClick, children, active }: {
 
 export default function TaskItem({
   tarea, onComplete, onSelect, onDelete, onDateChange,
-  onPriorityChange, onAssign, users = [],
+  onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
   onDragStart, onDragEnd, onDrop, isDragOver = false,
@@ -103,23 +105,26 @@ export default function TaskItem({
   const [loadingExp,    setLoadingExp]    = useState(false);
   const [showMore,      setShowMore]      = useState(false);
   const [showAssign,    setShowAssign]    = useState(false);
+  const [showProyecto,  setShowProyecto]  = useState(false);
 
-  const moreRef   = useRef<HTMLDivElement>(null);
-  const assignRef = useRef<HTMLDivElement>(null);
+  const moreRef     = useRef<HTMLDivElement>(null);
+  const assignRef   = useRef<HTMLDivElement>(null);
+  const proyectoRef = useRef<HTMLDivElement>(null);
 
   const isCompleted = tarea.estado === "COMPLETADA";
-  const actionsVisible = hovered || isSelected || showMore || showAssign || !!editingDate;
+  const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
 
   // Cerrar dropdowns al hacer click fuera
   useEffect(() => {
-    if (!showMore && !showAssign) return;
+    if (!showMore && !showAssign && !showProyecto) return;
     function handle(e: MouseEvent) {
-      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
-      if (assignRef.current && !assignRef.current.contains(e.target as Node)) setShowAssign(false);
+      if (moreRef.current     && !moreRef.current.contains(e.target as Node))     setShowMore(false);
+      if (assignRef.current   && !assignRef.current.contains(e.target as Node))   setShowAssign(false);
+      if (proyectoRef.current && !proyectoRef.current.contains(e.target as Node)) setShowProyecto(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, [showMore, showAssign]);
+  }, [showMore, showAssign, showProyecto]);
 
   async function toggleSubtareas(e: React.MouseEvent) {
     e.stopPropagation();
@@ -404,6 +409,56 @@ export default function TaskItem({
           )}
         </span>
 
+        {/* ── Proyecto ───────────────────────────────────────── */}
+        <span className="relative" ref={proyectoRef}>
+          <ActionBtn
+            title={tarea.proyectoTarea ? tarea.proyectoTarea.nombre : "Asignar proyecto"}
+            active={!!tarea.proyectoTarea}
+            onClick={e => { e.stopPropagation(); setShowProyecto(v => !v); setShowMore(false); setShowAssign(false); }}
+          >
+            {tarea.proyectoTarea ? (
+              <span className="w-3 h-3 rounded-sm shrink-0"
+                style={{ backgroundColor: tarea.proyectoTarea.color ?? "#555" }} />
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            )}
+          </ActionBtn>
+
+          {showProyecto && (
+            <div className="absolute right-0 top-7 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
+              <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Proyecto</p>
+              <button
+                onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
+                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${!tarea.proyectoTarea ? "text-[#B3985B]" : "text-[#555] hover:text-[#bbb]"}`}
+              >
+                <span className="w-3 h-3 rounded-sm bg-[#2a2a2a] shrink-0" />
+                Bandeja de entrada
+                {!tarea.proyectoTarea && (
+                  <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M20 6L9 17l-5-5"/>
+                  </svg>
+                )}
+              </button>
+              {projects.map(p => (
+                <button key={p.id}
+                  onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.proyectoTarea?.id === p.id ? "text-[#B3985B]" : "text-[#ccc] hover:text-white"}`}
+                >
+                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                  {p.nombre}
+                  {tarea.proyectoTarea?.id === p.id && (
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+
         {/* ── Comentar ───────────────────────────────────────── */}
         <ActionBtn
           title={tarea._count.comentarios > 0 ? `${tarea._count.comentarios} comentario${tarea._count.comentarios !== 1 ? "s" : ""}` : "Comentar"}
@@ -515,7 +570,9 @@ export default function TaskItem({
             onDateChange={onDateChange}
             onPriorityChange={onPriorityChange}
             onAssign={onAssign}
+            onProjectChange={onProjectChange}
             users={users}
+            projects={projects}
           />
         ))}
       </div>
