@@ -4599,15 +4599,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <Combobox
-                    value={gastoMetodo}
-                    onChange={v => setGastoMetodo(v)}
-                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
                   <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
                   <Combobox
                     value={gastoCuenta}
@@ -4831,19 +4822,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <Combobox value={editGastoForm.metodoPago} onChange={v => setEditGastoForm(p => ({ ...p, metodoPago: v }))}
-                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
-                  <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
-                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
+                  options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

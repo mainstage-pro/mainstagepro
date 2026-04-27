@@ -418,25 +418,14 @@ export default function MovimientosPage() {
                   <input type="date" value={editForm.fecha} onChange={e => setEditForm(p => ({ ...p, fecha: e.target.value }))} className={inputCls} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <Combobox
-                    value={editForm.metodoPago}
-                    onChange={v => setEditForm(p => ({ ...p, metodoPago: v }))}
-                    options={["TRANSFERENCIA", "EFECTIVO", "CHEQUE", "TARJETA"].map(m => ({ value: m, label: m.charAt(0) + m.slice(1).toLowerCase() }))}
-                    className={inputCls}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
-                  <Combobox
-                    value={editForm.categoriaId}
-                    onChange={v => setEditForm(p => ({ ...p, categoriaId: v }))}
-                    options={[{ value: "", label: "— Sin categoría —" }, ...categoriasFiltradas.map(c => ({ value: c.id, label: c.nombre }))]}
-                    className={inputCls}
-                  />
-                </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                <Combobox
+                  value={editForm.categoriaId}
+                  onChange={v => setEditForm(p => ({ ...p, categoriaId: v }))}
+                  options={[{ value: "", label: "— Sin categoría —" }, ...categoriasFiltradas.map(c => ({ value: c.id, label: c.nombre }))]}
+                  className={inputCls}
+                />
               </div>
               {/* Cuenta — solo para movimientos no-TRANSFERENCIA */}
               {editando && editando.tipo !== "TRANSFERENCIA" && cuentas.length > 0 && (
