@@ -89,6 +89,7 @@ interface Props {
   triggerOpen?: number;
   onAdd: (tarea: {
     titulo: string;
+    descripcion: string | null;
     fecha: string | null;
     fechaVencimiento: string | null;
     prioridad: string;
@@ -132,6 +133,7 @@ export default function QuickAdd({
 }: Props) {
   const [open, setOpen]               = useState(false);
   const [titulo, setTitulo]           = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [fecha, setFecha]             = useState("");
   const [fechaVen, setFechaVen]       = useState("");
   const [prioridad, setPrioridad]     = useState<Prioridad>("MEDIA");
@@ -144,6 +146,7 @@ export default function QuickAdd({
   const [panel, setPanel]             = useState<ActivePanel>(null);
   const [detIgnorada, setDetIgnorada] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const descRef  = useRef<HTMLTextAreaElement>(null);
 
   // Open and focus when parent triggers (e.g. sidebar "Nueva tarea" button)
   useEffect(() => {
@@ -168,7 +171,7 @@ export default function QuickAdd({
   const usuarioInfo  = usuarios.find(u => u.id === asignadoSel);
 
   function resetFields() {
-    setTitulo(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
+    setTitulo(""); setDescripcion(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
     setProyectoSel(proyectoTareaId); setAsignadoSel(null);
     setRecTexto(""); setRecurrencia(null); setRecError("");
     setPanel(null); setDetIgnorada(false);
@@ -187,6 +190,7 @@ export default function QuickAdd({
     const recFinal    = recurrencia ?? (fecha ? null : (deteccion?.recurrencia ?? null));
     onAdd({
       titulo:           tituloFinal,
+      descripcion:      descripcion.trim() || null,
       fecha:            fechaFinal,
       fechaVencimiento: fechaVen || null,
       prioridad,
@@ -230,14 +234,34 @@ export default function QuickAdd({
     <div className="mx-1 my-2 rounded-xl border border-[#1e1e1e] bg-[#080808] shadow-2xl shadow-black/70 overflow-hidden ring-1 ring-[#B3985B]/8">
 
       {/* ── Title input ──────────────────────────────────────────────────── */}
-      <div className="px-4 pt-3.5 pb-2.5">
+      <div className="px-4 pt-3.5 pb-1">
         <input
           ref={titleRef}
           value={titulo}
           onChange={e => setTitulo(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) submit(); if (e.key === "Escape") reset(); }}
+          onKeyDown={e => {
+            if (e.key === "Enter" && !e.shiftKey) submit();
+            if (e.key === "Escape") reset();
+            if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+              e.preventDefault();
+              descRef.current?.focus();
+            }
+          }}
           placeholder={placeholder}
           className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug"
+        />
+      </div>
+
+      {/* ── Description input ────────────────────────────────────────────── */}
+      <div className="px-4 pb-2.5">
+        <textarea
+          ref={descRef}
+          value={descripcion}
+          onChange={e => { setDescripcion(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+          onKeyDown={e => { if (e.key === "Escape") reset(); }}
+          placeholder="Descripción (opcional)"
+          rows={1}
+          className="w-full bg-transparent text-[13px] text-[#666] placeholder-[#252525] focus:outline-none leading-snug resize-none overflow-hidden"
         />
       </div>
 

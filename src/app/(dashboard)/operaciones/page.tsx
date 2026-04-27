@@ -247,7 +247,7 @@ export default function OperacionesPage() {
   ];
 
   const addTarea = useCallback(async (data: {
-    titulo: string; fecha: string | null; fechaVencimiento: string | null;
+    titulo: string; descripcion?: string | null; fecha: string | null; fechaVencimiento: string | null;
     prioridad: string; area?: string; recurrencia: string | null;
     proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
     asignadoAId?: string | null;
