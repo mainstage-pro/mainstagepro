@@ -9,7 +9,6 @@ import { GraficaPublicaciones } from "@/components/GraficaPublicaciones";
 import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
-import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import GestionTareasWidget from "@/components/GestionTareasWidget";
 
 export default async function DashboardPage() {
@@ -625,12 +624,6 @@ export default async function DashboardPage() {
         <GestionTareasWidget />
       </Section>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          OPERACIONES
-      ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="OPERACIONES" href="/operaciones/equipo">
-        <TareasPendientesWidget />
-      </Section>
     </div>
   );
 }

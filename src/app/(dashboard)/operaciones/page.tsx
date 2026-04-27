@@ -701,7 +701,7 @@ export default function OperacionesPage() {
         {/* ── Proyectos section ──────────────────────────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
-            <span className="text-[12px] text-[#555] font-semibold tracking-wide select-none">Proyectos</span>
+            <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Proyectos</span>
             <button
               onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
               className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
@@ -1788,10 +1788,11 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
   return (
     <div className="relative group/proy" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
       <button onClick={onSelect}
-        className={`w-full flex items-center gap-2 py-1.5 rounded-lg text-[13px] transition-colors ${
-          isActive ? "bg-[#1a1a1a] text-white" : "text-[#666] hover:text-[#bbb] hover:bg-[#0f0f0f]"
-        }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov ? "56px" : "8px" }}>
-        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proyecto.color ?? "#555" }} />
+        className={`w-full flex items-center gap-2.5 py-2 rounded-xl text-sm font-medium transition-all ${
+          isActive ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d]"
+        }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov ? "56px" : "12px" }}>
+        <span className={`w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10 ${isActive ? "ring-white/20" : ""}`}
+          style={{ backgroundColor: proyecto.color ?? "#555" }} />
         <span className="truncate">{proyecto.nombre}</span>
       </button>
       {hov && (
@@ -1853,10 +1854,12 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
           </div>
         ) : (
           <button onClick={onToggle}
-            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[13px] text-[#666] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors"
-            style={{ paddingRight: hov ? "56px" : "8px" }}>
-            <span className="text-[10px] transition-transform inline-block shrink-0" style={{ transform: open ? "rotate(90deg)" : "" }}>▶</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d] transition-all"
+            style={{ paddingRight: hov ? "56px" : "12px" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 transition-transform" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="shrink-0">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             </svg>
             <span className="truncate">{carpeta.nombre}</span>
