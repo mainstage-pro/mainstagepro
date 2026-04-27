@@ -286,6 +286,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [esquemaAnticipoFecha, setEsquemaAnticipoFecha] = useState("");
   const [esquemaLiqFecha, setEsquemaLiqFecha] = useState("");
   const [savingEsquema, setSavingEsquema] = useState(false);
+  const [syncingCxC, setSyncingCxC] = useState(false);
 
   // Score foto/video
   const [scoreFotoVideo, setScoreFotoVideo] = useState<number>(0);
@@ -1670,6 +1671,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       await load();
     }
     setSavingEsquema(false);
+  }
+
+  // ── Sincronizar CxC desde cotización ──
+  async function sincronizarCxC() {
+    if (!proyecto) return;
+    setSyncingCxC(true);
+    const res = await fetch(`/api/proyectos/${id}/sincronizar-cxc`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      if (data.actualizadas > 0) {
+        toast.success(`${data.actualizadas} cuenta(s) actualizadas desde la cotización`);
+        await load();
+      } else {
+        toast.success(data.mensaje ?? "Las cuentas ya están sincronizadas");
+      }
+    } else {
+      toast.error(data.error ?? "Error al sincronizar");
+    }
+    setSyncingCxC(false);
   }
 
   // ── Eliminar CxC individual ──
@@ -3984,10 +4004,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
                   {!editandoEsquema && (
-                    <button onClick={() => setEditandoEsquema(true)}
-                      className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                      {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const pendientes = proyecto.cuentasCobrar.filter(c => c.estado !== "LIQUIDADO");
+                        const liquidadas = proyecto.cuentasCobrar.filter(c => c.estado === "LIQUIDADO");
+                        const sumPend = pendientes.reduce((s, c) => s + c.monto, 0);
+                        const sumLiq  = liquidadas.reduce((s, c) => s + c.monto, 0);
+                        const desfase = granTotal > 0 && pendientes.length > 0 && Math.abs(sumPend - (granTotal - sumLiq)) > 0.01;
+                        return desfase ? (
+                          <button onClick={sincronizarCxC} disabled={syncingCxC}
+                            className="text-xs text-yellow-400 border border-yellow-400/40 hover:bg-yellow-400/10 hover:border-yellow-400 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
+                            {syncingCxC ? "Actualizando..." : "⚠ Sincronizar desde cotización"}
+                          </button>
+                        ) : null;
+                      })()}
+                      <button onClick={() => setEditandoEsquema(true)}
+                        className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                        {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
+                      </button>
+                    </div>
                   )}
                 </div>
 
