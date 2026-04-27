@@ -228,27 +228,32 @@ self.addEventListener("sync", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SYNC_NOW") {
-    syncQueue().then(() => {
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((c) => c.postMessage({ type: "SYNC_DONE" }));
-      });
-    });
+    syncQueue();
   }
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+}
+
 async function syncQueue() {
   const items = await dequeueAll();
-  if (items.length === 0) return;
 
   for (const item of items) {
     try {
       const headers = { ...item.headers };
       delete headers["content-length"];
 
-      const res = await fetch(item.url, {
+      const res = await fetchWithTimeout(item.url, {
         method: item.method,
         headers,
         body: item.body || undefined,
@@ -258,7 +263,7 @@ async function syncQueue() {
         await removeFromQueue(item.id);
       }
     } catch {
-      // Dejar en cola para el próximo intento
+      // Timeout o error de red — dejar en cola para el próximo intento
     }
   }
 

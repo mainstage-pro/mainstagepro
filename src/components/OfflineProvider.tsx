@@ -72,10 +72,20 @@ export function useOnlineStatus() {
     };
   }, [refreshQueue]);
 
+  const syncWatchdog = useCallback(() => {
+    const t = setTimeout(() => {
+      setSyncing(false);
+      refreshQueue();
+    }, 30_000);
+    return t;
+  }, [refreshQueue]);
+
   function retry() {
     if (syncing) return;
     setSyncing(true);
     requestSync();
+    const t = syncWatchdog();
+    return () => clearTimeout(t);
   }
 
   return { online, queueSize, syncing, justSynced, retry };
