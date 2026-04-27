@@ -160,8 +160,9 @@ export default function TaskItem({
   <>
     <div
       role="button" tabIndex={0} aria-selected={isSelected}
+      draggable={isDraggable}
       className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
-        isBeingDragged ? "opacity-30 scale-[0.98] pointer-events-none" : ""
+        isBeingDragged ? "opacity-30 scale-[0.98]" : ""
       } ${
         showDrop
           ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
@@ -173,17 +174,16 @@ export default function TaskItem({
       onMouseLeave={() => setHovered(false)}
       onClick={() => onSelect(tarea.id)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
-      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+      onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(tarea.id); } : undefined}
+      onDragEnd={isDraggable ? () => { onDragEnd?.(); setDragOver(false); } : undefined}
+      onDragOver={e => { if (!onDrop) return; e.preventDefault(); e.stopPropagation(); if (!isBeingDragged) setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onDrop?.(tarea.id); }}
     >
-      {/* ── Drag handle ───────────────────────────────────────────────── */}
+      {/* ── Drag handle (visual indicator only) ───────────────────────── */}
       {isDraggable && (
         <div
-          draggable
-          onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
-          onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
-          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
+          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 transition-opacity cursor-grab -ml-1"
           onClick={e => e.stopPropagation()}
         >
           {[0,1,2].map(i => (
