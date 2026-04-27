@@ -247,9 +247,36 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
+  const storageKey = `sidebar-state-${user.id}`;
+
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
+  const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Restore persisted state on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const stored = JSON.parse(raw) as { openGroups?: string[]; openSections?: string[] };
+        if (stored.openGroups)   setOpenGroups(new Set(stored.openGroups));
+        if (stored.openSections) setOpenSections(new Set(stored.openSections));
+      }
+    } catch {}
+    setStateLoaded(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist whenever state changes (after initial load)
+  useEffect(() => {
+    if (!stateLoaded) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        openGroups:   [...openGroups],
+        openSections: [...openSections],
+      }));
+    } catch {}
+  }, [openGroups, openSections, stateLoaded, storageKey]);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
