@@ -58,6 +58,7 @@ export default function InventarioMaestroPage() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroInactivos, setFiltroInactivos] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [eliminando, setEliminando] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -76,6 +77,16 @@ export default function InventarioMaestroPage() {
         setLoading(false);
       });
   }, [filtroTipo, filtroEstado, filtroCategoria, filtroInactivos]);
+
+  async function eliminarEquipo(e: Equipo) {
+    if (!confirm(`¿Eliminar permanentemente "${e.descripcion}"? Esta acción no se puede deshacer.`)) return;
+    setEliminando(e.id);
+    const res = await fetch(`/api/equipos/${e.id}`, { method: "DELETE" });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error ?? "No se pudo eliminar"); setEliminando(null); return; }
+    setEquipos(prev => prev.filter(x => x.id !== e.id));
+    setEliminando(null);
+  }
 
   const equiposFiltrados = useMemo(() => {
     if (!busqueda.trim()) return equipos;
@@ -256,10 +267,18 @@ export default function InventarioMaestroPage() {
                         )}
                       </td>
                       <td className="px-3 py-3">
-                        <Link href={`/inventario/equipos/${e.id}`}
-                          className="opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#B3985B] transition-all text-[10px]">
-                          Ver →
-                        </Link>
+                        <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-3">
+                          <Link href={`/inventario/equipos/${e.id}`}
+                            className="text-[#555] hover:text-[#B3985B] transition-colors text-[10px]">
+                            Ver →
+                          </Link>
+                          <button
+                            onClick={() => eliminarEquipo(e)}
+                            disabled={eliminando === e.id}
+                            className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
+                            {eliminando === e.id ? "..." : "Eliminar"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

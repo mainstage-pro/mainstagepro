@@ -234,6 +234,14 @@ export default function InventarioEquiposPage() {
     await load();
   }
 
+  async function eliminarEquipo(e: Equipo) {
+    if (!confirm(`¿Eliminar permanentemente "${e.descripcion}"? Esta acción no se puede deshacer.`)) return;
+    const res = await fetch(`/api/equipos/${e.id}`, { method: "DELETE" });
+    const d = await res.json();
+    if (!res.ok) { alert(d.error ?? "No se pudo eliminar"); return; }
+    await load();
+  }
+
   const filtered = equipos.filter(e => {
     if (search && !(
       e.descripcion.toLowerCase().includes(search.toLowerCase()) ||
@@ -650,6 +658,10 @@ export default function InventarioEquiposPage() {
                             <button onClick={ev => { ev.stopPropagation(); toggleActivo(e); }}
                               className={`text-[10px] transition-colors ${e.activo ? "text-[#444] hover:text-[#6b7280]" : "text-orange-400 hover:text-orange-300 font-semibold opacity-100"}`}>
                               {e.activo ? "Desactivar" : "✓ Activar"}
+                            </button>
+                            <button onClick={ev => { ev.stopPropagation(); eliminarEquipo(e); }}
+                              className="text-[10px] text-[#333] hover:text-red-400 transition-colors">
+                              Eliminar
                             </button>
                           </div>
                         </td>

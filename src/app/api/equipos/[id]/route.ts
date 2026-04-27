@@ -72,6 +72,24 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.equipo.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+
+  // Verificar si tiene registros relacionados antes de eliminar
+  const [enProyectos, enCotizaciones, enPlantillas] = await Promise.all([
+    prisma.proyectoEquipo.count({ where: { equipoId: id } }),
+    prisma.cotizacionLinea.count({ where: { equipoId: id } }),
+    prisma.plantillaEquipoItem.count({ where: { equipoId: id } }).catch(() => 0),
+  ]);
+
+  if (enProyectos > 0 || enCotizaciones > 0) {
+    return NextResponse.json({
+      error: `No se puede eliminar: este equipo está usado en ${enProyectos > 0 ? `${enProyectos} proyecto(s)` : ""}${enProyectos > 0 && enCotizaciones > 0 ? " y " : ""}${enCotizaciones > 0 ? `${enCotizaciones} cotización(es)` : ""}. Usa "Desactivar" para ocultarlo.`,
+    }, { status: 409 });
+  }
+
+  try {
+    await prisma.equipo.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "No se pudo eliminar el equipo." }, { status: 500 });
+  }
 }
