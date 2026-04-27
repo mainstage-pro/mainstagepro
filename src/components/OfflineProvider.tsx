@@ -72,12 +72,18 @@ export function useOnlineStatus() {
     };
   }, [refreshQueue]);
 
-  return { online, queueSize, syncing, justSynced };
+  function retry() {
+    if (syncing) return;
+    setSyncing(true);
+    requestSync();
+  }
+
+  return { online, queueSize, syncing, justSynced, retry };
 }
 
 // ── Banner visual ─────────────────────────────────────────────────────────────
 export default function OfflineProvider() {
-  const { online, queueSize, syncing, justSynced } = useOnlineStatus();
+  const { online, queueSize, syncing, justSynced, retry } = useOnlineStatus();
 
   // Registrar el SW
   useEffect(() => {
@@ -146,6 +152,12 @@ export default function OfflineProvider() {
           <>
             <span className="text-base">⏳</span>
             <span>{queueSize} cambio{queueSize !== 1 ? "s" : ""} pendiente{queueSize !== 1 ? "s" : ""} de sincronizar</span>
+            <button
+              onClick={retry}
+              className="ml-1 px-2 py-0.5 rounded-full bg-orange-200/20 hover:bg-orange-200/40 text-orange-200 text-xs font-semibold transition-colors"
+            >
+              Reintentar
+            </button>
           </>
         )}
       </div>
