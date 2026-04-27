@@ -4005,19 +4005,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
                   {!editandoEsquema && (
                     <div className="flex items-center gap-2">
-                      {(() => {
-                        const pendientes = proyecto.cuentasCobrar.filter(c => c.estado !== "LIQUIDADO");
-                        const liquidadas = proyecto.cuentasCobrar.filter(c => c.estado === "LIQUIDADO");
-                        const sumPend = pendientes.reduce((s, c) => s + c.monto, 0);
-                        const sumLiq  = liquidadas.reduce((s, c) => s + c.monto, 0);
-                        const desfase = granTotal > 0 && pendientes.length > 0 && Math.abs(sumPend - (granTotal - sumLiq)) > 0.01;
-                        return desfase ? (
-                          <button onClick={sincronizarCxC} disabled={syncingCxC}
-                            className="text-xs text-yellow-400 border border-yellow-400/40 hover:bg-yellow-400/10 hover:border-yellow-400 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
-                            {syncingCxC ? "Actualizando..." : "⚠ Sincronizar desde cotización"}
-                          </button>
-                        ) : null;
-                      })()}
+                      {proyecto.cotizacion && proyecto.cuentasCobrar.some(c => c.estado !== "LIQUIDADO") && (
+                        <button onClick={sincronizarCxC} disabled={syncingCxC}
+                          className="text-xs text-gray-500 border border-[#333] hover:text-yellow-400 hover:border-yellow-400/40 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
+                          {syncingCxC ? "Actualizando..." : "↺ Sincronizar"}
+                        </button>
+                      )}
                       <button onClick={() => setEditandoEsquema(true)}
                         className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
                         {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
