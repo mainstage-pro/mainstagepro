@@ -114,6 +114,7 @@ export default function OperacionesPage() {
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [proyViewOpts, setProyViewOpts]         = useState<ProyViewOpts>(() => {
     if (typeof window === "undefined") return PROY_VIEW_DEFAULT;
     try { const r = localStorage.getItem("op_proy_view"); if (r) return { ...PROY_VIEW_DEFAULT, ...JSON.parse(r) }; } catch {}
@@ -226,7 +227,14 @@ export default function OperacionesPage() {
     if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
     if (proyViewOpts.sortBy === "prioridad") r = [...r].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
-    if (proyViewOpts.sortBy === "fecha")     r = [...r].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+    if (proyViewOpts.sortBy === "fecha") {
+      r = [...r].sort((a, b) => {
+        const da = a.fecha ?? a.fechaVencimiento ?? null;
+        const db = b.fecha ?? b.fechaVencimiento ?? null;
+        if (!da) return 1; if (!db) return -1;
+        return da.localeCompare(db);
+      });
+    }
     if (proyViewOpts.sortBy === "nombre")    r = [...r].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
     return r;
   }
@@ -570,7 +578,14 @@ export default function OperacionesPage() {
 
     function applySort(arr: TareaItem[]): TareaItem[] {
       if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
-      if (vistaOpts.sortBy === "fecha")     return [...arr].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+      if (vistaOpts.sortBy === "fecha") {
+        return [...arr].sort((a, b) => {
+          const da = a.fecha ?? a.fechaVencimiento ?? null;
+          const db = b.fecha ?? b.fechaVencimiento ?? null;
+          if (!da) return 1; if (!db) return -1;
+          return da.localeCompare(db);
+        });
+      }
       if (vistaOpts.sortBy === "nombre")    return [...arr].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
       return sortCronoPrio(arr);
     }
@@ -1148,7 +1163,7 @@ export default function OperacionesPage() {
                     </div>
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                         onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                         onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                         onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -1156,9 +1171,9 @@ export default function OperacionesPage() {
                         projects={proyectosNav}
                         users={usuarios}
                         showProject draggable
+                        isBeingDragged={draggingId === t.id}
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
-                        isDragOver={false}
                       />
                     ))}
                   </div>
@@ -1166,7 +1181,7 @@ export default function OperacionesPage() {
               ) : (
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                     onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                     onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                     onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -1174,9 +1189,9 @@ export default function OperacionesPage() {
                     projects={proyectosNav}
                     users={usuarios}
                     showProject draggable
+                    isBeingDragged={draggingId === t.id}
                     onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                     onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
-                    isDragOver={false}
                   />
                 ))
               )}
@@ -1229,7 +1244,7 @@ export default function OperacionesPage() {
                       )}
                       {group.items.map(t => (
                         <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                           onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                           onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                           onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -1250,7 +1265,7 @@ export default function OperacionesPage() {
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
@@ -1291,9 +1306,51 @@ export default function OperacionesPage() {
           tarea={selectedTask} loading={loadingPanel}
           usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId}
           onClose={() => setSelectedId(null)} onSave={saveTarea}
-          onComplete={completeTarea} onDelete={deleteTarea}
-          onAddSubtarea={addSubtarea} onCompleteSubtarea={completeTarea} onDeleteSubtarea={deleteTarea}
+          onComplete={completeTarea} onDelete={setConfirmDeleteId}
+          onAddSubtarea={addSubtarea} onCompleteSubtarea={completeTarea} onDeleteSubtarea={setConfirmDeleteId}
         />
+      )}
+
+      {/* ── CONFIRM DELETE MODAL ────────────────────────────────────────────── */}
+      {confirmDeleteId && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setConfirmDeleteId(null)}
+        >
+          <div
+            className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-950/50 flex items-center justify-center shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">¿Eliminar esta tarea?</p>
+                <p className="text-xs text-[#555] mt-1 leading-relaxed">
+                  Esta acción no se puede deshacer. La tarea y sus subtareas serán eliminadas permanentemente.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm text-[#777] hover:text-white border border-[#2a2a2a] hover:border-[#444] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { deleteTarea(confirmDeleteId); setConfirmDeleteId(null); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600/90 hover:bg-red-500 transition-all"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── UNDO TOAST ──────────────────────────────────────────────────────── */}
