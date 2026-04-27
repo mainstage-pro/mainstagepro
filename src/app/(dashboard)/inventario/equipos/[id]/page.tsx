@@ -62,11 +62,6 @@ type Equipo = {
   }>;
 };
 
-function fmt(n: number) {
-  if (n === 0) return "INCLUYE";
-  return `$${n.toLocaleString("es-MX")}`;
-}
-
 function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: Accesorio[] }) {
   const [accesorios, setAccesorios] = useState<Accesorio[]>(initial);
   const [adding, setAdding] = useState(false);
@@ -349,10 +344,6 @@ export default function EquipoFichaPage() {
         <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">Datos del equipo</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
-            <dt className="text-[#6b7280] text-xs mb-0.5">Precio al cliente</dt>
-            <dd className="text-white font-medium">{fmt(equipo.precioRenta)}</dd>
-          </div>
-          <div>
             <dt className="text-[#6b7280] text-xs mb-0.5">Cantidad</dt>
             <dd className="text-white">{equipo.cantidadTotal}</dd>
           </div>
@@ -364,12 +355,6 @@ export default function EquipoFichaPage() {
                 {equipo.amperajeRequerido != null && equipo.voltajeRequerido != null ? " · " : ""}
                 {equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : ""}
               </dd>
-            </div>
-          )}
-          {equipo.tipo === "EXTERNO" && equipo.costoProveedor != null && (
-            <div>
-              <dt className="text-[#6b7280] text-xs mb-0.5">Costo proveedor</dt>
-              <dd className="text-white">{fmt(equipo.costoProveedor)}</dd>
             </div>
           )}
           {equipo.proveedorDefault && (

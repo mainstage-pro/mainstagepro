@@ -159,8 +159,6 @@ export default function InventarioEquiposPage() {
         marca: nuevoForm.marca || null,
         modelo: nuevoForm.modelo || null,
         tipo: nuevoForm.tipo,
-        precioRenta: nuevoForm.precioRenta,
-        costoProveedor: nuevoForm.costoProveedor !== "" ? nuevoForm.costoProveedor : null,
         cantidadTotal: nuevoForm.cantidadTotal,
         proveedorDefaultId: nuevoForm.proveedorDefaultId || null,
         notas: nuevoForm.notas || null,
@@ -210,8 +208,6 @@ export default function InventarioEquiposPage() {
       marca: form.marca || null,
       modelo: form.modelo || null,
       tipo: form.tipo,
-      precioRenta: parseFloat(form.precioRenta) || 0,
-      costoProveedor: form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       cantidadTotal: parseInt(form.cantidadTotal) || 1,
       proveedorDefaultId: form.proveedorDefaultId || null,
       notas: form.notas || null,
@@ -351,28 +347,16 @@ export default function InventarioEquiposPage() {
               <input type="number" min="1" value={nuevoForm.cantidadTotal} onChange={e => setNuevoForm(f => ({ ...f, cantidadTotal: e.target.value }))}
                 className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
             </div>
-            <div>
-              <label className="text-xs text-[#6b7280] block mb-1">Precio al cliente ($)</label>
-              <input type="number" min="0" value={nuevoForm.precioRenta} onChange={e => setNuevoForm(f => ({ ...f, precioRenta: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
-            </div>
             {nuevoForm.tipo === "EXTERNO" && (
-              <>
-                <div>
-                  <label className="text-xs text-[#6b7280] block mb-1">Costo proveedor ($)</label>
-                  <input type="number" min="0" value={nuevoForm.costoProveedor} onChange={e => setNuevoForm(f => ({ ...f, costoProveedor: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
-                  <Combobox
-                    value={nuevoForm.proveedorDefaultId}
-                    onChange={v => setNuevoForm(f => ({ ...f, proveedorDefaultId: v }))}
-                    options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
+                <Combobox
+                  value={nuevoForm.proveedorDefaultId}
+                  onChange={v => setNuevoForm(f => ({ ...f, proveedorDefaultId: v }))}
+                  options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
             )}
             <div>
               <label className="text-xs text-[#6b7280] block mb-1">Amperaje (A)</label>
@@ -488,7 +472,7 @@ export default function InventarioEquiposPage() {
               <table className="w-full min-w-[600px]">
                 <thead>
                   <tr className="border-b border-[#0d0d0d]">
-                    {["Descripción", "Marca/Modelo", "Cant", "Estado", "Precio cliente", "Costo proveedor", "Proveedor", ""].map(h => (
+                    {["Descripción", "Marca/Modelo", "Cant", "Estado", "Proveedor", ""].map(h => (
                       <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
@@ -497,7 +481,7 @@ export default function InventarioEquiposPage() {
                   {eqs.map(e => (
                     editingId === e.id && form ? (
                       <tr key={e.id} className="bg-[#1a1a1a]">
-                        <td colSpan={8} className="px-4 py-4">
+                        <td colSpan={6} className="px-4 py-4">
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                             <div className="col-span-2">
                               <label className="text-xs text-[#6b7280] block mb-1">Descripción</label>
@@ -520,11 +504,6 @@ export default function InventarioEquiposPage() {
                                 className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
                             </div>
                             <div>
-                              <label className="text-xs text-[#6b7280] block mb-1">Precio al cliente ($)</label>
-                              <input type="number" value={form.precioRenta} onChange={ev => setForm(f => f ? { ...f, precioRenta: ev.target.value } : f)}
-                                className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
-                            </div>
-                            <div>
                               <label className="text-xs text-[#6b7280] block mb-1">Tipo</label>
                               <Combobox
                                 value={form.tipo}
@@ -534,22 +513,15 @@ export default function InventarioEquiposPage() {
                               />
                             </div>
                             {form.tipo === "EXTERNO" && (
-                              <>
-                                <div>
-                                  <label className="text-xs text-[#6b7280] block mb-1">Costo proveedor ($)</label>
-                                  <input type="number" value={form.costoProveedor} onChange={ev => setForm(f => f ? { ...f, costoProveedor: ev.target.value } : f)}
-                                    className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
-                                </div>
-                                <div className="col-span-2">
-                                  <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
-                                  <Combobox
-                                    value={form.proveedorDefaultId}
-                                    onChange={v => setForm(f => f ? { ...f, proveedorDefaultId: v } : f)}
-                                    options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                                    className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
-                                  />
-                                </div>
-                              </>
+                              <div className="col-span-2">
+                                <label className="text-xs text-[#6b7280] block mb-1">Proveedor</label>
+                                <Combobox
+                                  value={form.proveedorDefaultId}
+                                  onChange={v => setForm(f => f ? { ...f, proveedorDefaultId: v } : f)}
+                                  options={[{ value: "", label: "Sin proveedor" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                                  className="w-full bg-[#222] border border-[#333] text-white text-sm rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
+                                />
+                              </div>
                             )}
                             <div>
                               <label className="text-xs text-[#6b7280] block mb-1">Amperaje (A)</label>
@@ -652,12 +624,6 @@ export default function InventarioEquiposPage() {
                             </span>
                           ) : (
                             <span className="text-[10px] text-[#555]">Externo</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-white font-medium whitespace-nowrap">{fmt(e.precioRenta)}</td>
-                        <td className="px-4 py-3 text-sm text-[#6b7280] whitespace-nowrap">
-                          {e.tipo === "EXTERNO" && e.costoProveedor != null ? fmt(e.costoProveedor) : (
-                            e.tipo === "PROPIO" ? <span className="text-[#333] text-xs">Propio</span> : "—"
                           )}
                         </td>
                         <td className="px-4 py-3 text-xs text-[#6b7280]">
