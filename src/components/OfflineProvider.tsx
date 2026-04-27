@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getQueueSize, requestSync } from "@/lib/offline-queue";
+import { getQueueSize, requestSync, clearQueue } from "@/lib/offline-queue";
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useOnlineStatus() {
@@ -88,12 +88,18 @@ export function useOnlineStatus() {
     return () => clearTimeout(t);
   }
 
-  return { online, queueSize, syncing, justSynced, retry };
+  async function discard() {
+    await clearQueue();
+    setSyncing(false);
+    setQueueSize(0);
+  }
+
+  return { online, queueSize, syncing, justSynced, retry, discard };
 }
 
 // ── Banner visual ─────────────────────────────────────────────────────────────
 export default function OfflineProvider() {
-  const { online, queueSize, syncing, justSynced, retry } = useOnlineStatus();
+  const { online, queueSize, syncing, justSynced, retry, discard } = useOnlineStatus();
 
   // Registrar el SW
   useEffect(() => {
@@ -150,6 +156,12 @@ export default function OfflineProvider() {
           <>
             <span className="text-base animate-spin inline-block">↻</span>
             <span>Sincronizando cambios…</span>
+            <button
+              onClick={discard}
+              className="ml-1 px-2 py-0.5 rounded-full bg-yellow-200/20 hover:bg-yellow-200/40 text-yellow-200 text-xs font-semibold transition-colors"
+            >
+              Descartar
+            </button>
           </>
         )}
         {online && !syncing && justSynced && (
@@ -167,6 +179,12 @@ export default function OfflineProvider() {
               className="ml-1 px-2 py-0.5 rounded-full bg-orange-200/20 hover:bg-orange-200/40 text-orange-200 text-xs font-semibold transition-colors"
             >
               Reintentar
+            </button>
+            <button
+              onClick={discard}
+              className="px-2 py-0.5 rounded-full bg-orange-200/10 hover:bg-orange-200/30 text-orange-300/70 text-xs font-semibold transition-colors"
+            >
+              Descartar
             </button>
           </>
         )}
