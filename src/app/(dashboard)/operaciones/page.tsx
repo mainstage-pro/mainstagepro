@@ -46,6 +46,15 @@ interface ProyectoEventoConTareas {
 }
 
 const SORT_OPTIONS = ["Sin agrupar", "Por proyecto", "Por prioridad", "Por área", "Por fecha"];
+
+interface ProyViewOpts {
+  showCompleted: boolean;
+  sortBy:        "none" | "prioridad" | "fecha" | "nombre";
+  groupBy:       "none" | "prioridad" | "area";
+  filterPrio:    string[];
+}
+const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
+const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
 const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
 ];
@@ -97,10 +106,24 @@ export default function OperacionesPage() {
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
+  const [proyViewOpts, setProyViewOpts]         = useState<ProyViewOpts>(() => {
+    if (typeof window === "undefined") return PROY_VIEW_DEFAULT;
+    try { const r = localStorage.getItem("op_proy_view"); if (r) return { ...PROY_VIEW_DEFAULT, ...JSON.parse(r) }; } catch {}
+    return PROY_VIEW_DEFAULT;
+  });
+  const [showViewPanel, setShowViewPanel]       = useState(false);
+  const viewPanelRef = useRef<HTMLDivElement>(null);
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(showCompleted);
   useEffect(() => { showCompletedRef.current = showCompleted; }, [showCompleted]);
+  useEffect(() => { try { localStorage.setItem("op_proy_view", JSON.stringify(proyViewOpts)); } catch {} }, [proyViewOpts]);
+  useEffect(() => {
+    if (!showViewPanel) return;
+    function h(e: MouseEvent) { if (viewPanelRef.current && !viewPanelRef.current.contains(e.target as Node)) setShowViewPanel(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [showViewPanel]);
 
   const [carpetasOpen, setCarpetasOpen]         = useState<Set<string>>(new Set());
   const [proyectosSueltos, setProyectosSueltos] = useState(true);
@@ -182,6 +205,38 @@ export default function OperacionesPage() {
   }, [selectedId]);
 
   // ── Mutations ────────────────────────────────────────────────────────────
+
+  function applyProyFilter(tareas: TareaItem[]): TareaItem[] {
+    let r = tareas;
+    if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
+    if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
+    if (proyViewOpts.sortBy === "prioridad") r = [...r].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
+    if (proyViewOpts.sortBy === "fecha")     r = [...r].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+    if (proyViewOpts.sortBy === "nombre")    r = [...r].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
+    return r;
+  }
+
+  const AREA_LABELS_MAP: Record<string, string> = { VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción", MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General" };
+
+  function groupProyTareas(tareas: TareaItem[]): { label: string; color?: string; items: TareaItem[] }[] {
+    if (proyViewOpts.groupBy === "prioridad") {
+      return [
+        { label: "Urgente",        color: "#f87171", items: tareas.filter(t => t.prioridad === "URGENTE") },
+        { label: "Alta",           color: "#fb923c", items: tareas.filter(t => t.prioridad === "ALTA") },
+        { label: "Media",          color: "#B3985B", items: tareas.filter(t => t.prioridad === "MEDIA") },
+        { label: "Sin prioridad",  color: "#4b5563", items: tareas.filter(t => t.prioridad === "BAJA") },
+      ].filter(g => g.items.length > 0);
+    }
+    if (proyViewOpts.groupBy === "area") {
+      return [...new Set(tareas.map(t => t.area))].map(area => ({
+        label: AREA_LABELS_MAP[area] ?? area,
+        items: tareas.filter(t => t.area === area),
+      }));
+    }
+    return [{ label: "", items: tareas }];
+  }
+
+  const hasActiveProyOpts = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted;
 
   const ADD_MSGS = [
     "Tarea registrada",
@@ -793,15 +848,103 @@ export default function OperacionesPage() {
             </button>
           )}
 
-          {/* Add section (project view) */}
+          {/* View options (project view) */}
           {typeof vista !== "string" && proyectoDetalle && (
-            <button
-              onClick={() => setShowNuevaSeccion(true)}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#111] text-xs text-[#666] rounded-lg hover:bg-[#1a1a1a] hover:text-white transition-all"
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Sección
-            </button>
+            <div className="relative ml-auto" ref={viewPanelRef}>
+              <button
+                onClick={() => setShowViewPanel(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                  showViewPanel || hasActiveProyOpts
+                    ? "bg-[#B3985B]/12 text-[#B3985B] border border-[#B3985B]/30"
+                    : "bg-[#111] text-[#555] hover:bg-[#1a1a1a] hover:text-white"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+                </svg>
+                Vista
+                {hasActiveProyOpts && <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />}
+              </button>
+
+              {showViewPanel && (
+                <div className="absolute right-0 top-9 z-50 w-64 bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[11px] text-[#555] uppercase tracking-widest font-semibold">Opciones de vista</p>
+                  </div>
+
+                  {/* Mostrar completadas */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <button
+                      onClick={() => setProyViewOpts(o => ({ ...o, showCompleted: !o.showCompleted }))}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <span className="text-sm text-[#ccc]">Mostrar completadas</span>
+                      <span className={`w-8 h-4 rounded-full transition-colors relative ${proyViewOpts.showCompleted ? "bg-[#B3985B]" : "bg-[#2a2a2a]"}`}>
+                        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${proyViewOpts.showCompleted ? "left-4" : "left-0.5"}`} />
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Ordenar por */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Ordenar por</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha"],["nombre","Nombre"]] as const).map(([val, label]) => (
+                        <button key={val} onClick={() => setProyViewOpts(o => ({ ...o, sortBy: val }))}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${proyViewOpts.sortBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Agrupar por */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Agrupar por</p>
+                    <div className="flex gap-1">
+                      {([["none","Ninguno"],["prioridad","Prioridad"],["area","Área"]] as const).map(([val, label]) => (
+                        <button key={val} onClick={() => setProyViewOpts(o => ({ ...o, groupBy: val }))}
+                          className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${proyViewOpts.groupBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filtrar por prioridad */}
+                  <div className="px-4 py-3">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Filtrar por prioridad</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {([["URGENTE","Urgente","#f87171"],["ALTA","Alta","#fb923c"],["MEDIA","Media","#B3985B"],["BAJA","Baja","#4b5563"]] as const).map(([key, label, color]) => {
+                        const active = proyViewOpts.filterPrio.includes(key);
+                        return (
+                          <button key={key}
+                            onClick={() => setProyViewOpts(o => ({ ...o, filterPrio: active ? o.filterPrio.filter(p => p !== key) : [...o.filterPrio, key] }))}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all border"
+                            style={{ borderColor: active ? color + "60" : "#1e1e1e", backgroundColor: active ? color + "18" : "transparent", color: active ? color : "#555" }}
+                          >
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={color} strokeWidth="2">
+                              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+                            </svg>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Reset */}
+                  {hasActiveProyOpts && (
+                    <div className="px-4 pb-3">
+                      <button onClick={() => setProyViewOpts(PROY_VIEW_DEFAULT)}
+                        className="w-full text-center text-xs text-[#444] hover:text-red-400 transition-colors py-1.5 border-t border-[#161616] mt-1 pt-3">
+                        Restablecer opciones
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -958,19 +1101,30 @@ export default function OperacionesPage() {
                   </div>
 
                   {/* ── Tareas sin sección ── */}
-                  {proyectoDetalle.tareas.map(t => (
-                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
-                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
-                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
-                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
-                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
-                      projects={proyectosNav}
-                      users={usuarios}
-                      draggable
-                      onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
-                      onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
-                    />
+                  {groupProyTareas(applyProyFilter(proyectoDetalle.tareas)).map(group => (
+                    <div key={group.label}>
+                      {group.label && (
+                        <div className="flex items-center gap-2 px-3 py-2 mt-3 mb-1">
+                          {group.color && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: group.color }} />}
+                          <span className="text-xs font-semibold text-[#555] uppercase tracking-widest">{group.label}</span>
+                          <span className="text-[11px] text-[#333]">{group.items.length}</span>
+                        </div>
+                      )}
+                      {group.items.map(t => (
+                        <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
+                          onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                          onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                          onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                          onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                          projects={proyectosNav}
+                          users={usuarios}
+                          draggable
+                          onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
+                          onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                        />
+                      ))}
+                    </div>
                   ))}
 
                   {/* ── Secciones ── */}
@@ -987,6 +1141,7 @@ export default function OperacionesPage() {
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
                       users={usuarios}
                       projects={proyectosNav}
+                      viewFilter={applyProyFilter}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -1684,7 +1839,7 @@ function SectionBlock({
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop,
-  onPriorityChange, onAssign, onProjectChange, users, projects,
+  onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -1708,6 +1863,7 @@ function SectionBlock({
   onProjectChange?:   (id: string, proyectoId: string | null) => void;
   users?:             { id: string; name: string }[];
   projects?:          { id: string; nombre: string; color: string | null }[];
+  viewFilter?:        (tareas: TareaItem[]) => TareaItem[];
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1733,7 +1889,7 @@ function SectionBlock({
       </div>
       {!seccion.colapsada && (
         <>
-          {seccion.tareas.map(t => (
+          {(viewFilter ? viewFilter(seccion.tareas) : seccion.tareas).map(t => (
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
               onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
               onDateChange={(id, field, val) => { fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val || null }) }); }}
