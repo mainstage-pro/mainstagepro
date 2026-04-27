@@ -65,6 +65,7 @@ interface Props {
   onDragEnd?:        () => void;
   onDrop?:           (targetId: string) => void;
   isDragOver?:       boolean;
+  isBeingDragged?:   boolean;
 }
 
 // ── Pequeño botón de acción ─────────────────────────────────────────────────
@@ -92,7 +93,7 @@ export default function TaskItem({
   onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
-  onDragStart, onDragEnd, onDrop, isDragOver = false,
+  onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -159,10 +160,13 @@ export default function TaskItem({
   <>
     <div
       role="button" tabIndex={0} aria-selected={isSelected}
-      className={`group flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
-        showDrop ? "bg-[#B3985B]/8 ring-1 ring-[#B3985B]/30"
-        : isSelected ? "bg-[#111] ring-1 ring-[#B3985B]/20"
-        : hovered  ? "bg-[#0d0d0d]" : ""
+      className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
+        isBeingDragged ? "opacity-30 scale-[0.98] pointer-events-none" : ""
+      } ${
+        showDrop
+          ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
+          : isSelected ? "bg-[#111] ring-1 ring-[#B3985B]/20"
+          : hovered  ? "bg-[#0d0d0d]" : ""
       }`}
       style={{ paddingLeft: depth > 0 ? `${12 + depth * 22}px` : undefined }}
       onMouseEnter={() => setHovered(true)}
@@ -179,16 +183,23 @@ export default function TaskItem({
           draggable
           onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
           onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
-          className="mt-[4px] shrink-0 w-3 flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
+          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 hover:!opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
           onClick={e => e.stopPropagation()}
         >
           {[0,1,2].map(i => (
             <span key={i} className="flex gap-[3px]">
-              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
-              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
+              <span className="w-[3.5px] h-[3.5px] rounded-full bg-[#666]" />
+              <span className="w-[3.5px] h-[3.5px] rounded-full bg-[#666]" />
             </span>
           ))}
         </div>
+      )}
+
+      {/* ── Subtarea drop indicator ────────────────────────────────────── */}
+      {showDrop && !isCompleted && (
+        <span className="absolute top-1.5 right-2 flex items-center gap-1 text-[10px] font-semibold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-full px-2 py-0.5 pointer-events-none z-10 select-none">
+          ↳ subtarea
+        </span>
       )}
 
       {/* ── Circle checkbox ───────────────────────────────────────────── */}

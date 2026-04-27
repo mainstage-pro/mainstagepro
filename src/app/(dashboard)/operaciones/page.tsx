@@ -456,6 +456,45 @@ export default function OperacionesPage() {
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const moveToSection = useCallback((taskId: string, seccionId: string) => {
+    setProyectoDetalle(prev => {
+      if (!prev) return null;
+      // Find task in unsectioned list or any section
+      let task = prev.tareas.find(t => t.id === taskId);
+      const fromUnsectioned = !!task;
+      if (!task) task = prev.secciones.flatMap(s => s.tareas).find(t => t.id === taskId);
+      if (!task) return prev;
+      const targetSec = prev.secciones.find(s => s.id === seccionId);
+      if (!targetSec) return prev;
+      return {
+        ...prev,
+        tareas: fromUnsectioned ? prev.tareas.filter(t => t.id !== taskId) : prev.tareas,
+        secciones: prev.secciones.map(s => {
+          if (s.id === seccionId) return { ...s, tareas: [...s.tareas, { ...task!, seccion: { id: s.id, nombre: s.nombre } }] };
+          if (!fromUnsectioned) return { ...s, tareas: s.tareas.filter(t => t.id !== taskId) };
+          return s;
+        }),
+      };
+    });
+    fetch(`/api/tareas/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seccionId }),
+    });
+    setDraggingId(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const moveToProject = useCallback((taskId: string, proyectoId: string, proyectoNombre: string) => {
+    const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== taskId);
+    setTareas(rm);
+    setDraggingId(null);
+    fetch(`/api/tareas/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proyectoTareaId: proyectoId, seccionId: null }),
+    });
+    setAddToast({ msg: `Movida a ${proyectoNombre}`, visible: true });
+    setTimeout(() => setAddToast(null), 2000);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const addSeccion = useCallback(async () => {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string") return;
     const res = await fetch("/api/operaciones/secciones", {
@@ -729,6 +768,8 @@ export default function OperacionesPage() {
                 onSelect={() => setVista({ tipo: "proyecto", id: p.id })}
                 onRename={n => renameProyecto(p.id, n)}
                 onDelete={() => deleteProyecto(p.id)}
+                draggingTask={!!draggingId}
+                onDropTask={() => moveToProject(draggingId!, p.id, p.nombre)}
               />
             ))}
 
@@ -745,6 +786,8 @@ export default function OperacionesPage() {
                 onDeleteCarpeta={deleteCarpeta}
                 onRenameProyecto={renameProyecto}
                 onDeleteProyecto={deleteProyecto}
+                draggingTask={!!draggingId}
+                onDropTask={(id, nombre) => moveToProject(draggingId!, id, nombre)}
               />
             ))}
 
@@ -1194,6 +1237,7 @@ export default function OperacionesPage() {
                           projects={proyectosNav}
                           users={usuarios}
                           draggable
+                          isBeingDragged={draggingId === t.id}
                           onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                           onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                         />
@@ -1210,6 +1254,7 @@ export default function OperacionesPage() {
                       onAddTarea={addTarea} draggingId={draggingId}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                      onDropSection={() => { if (draggingId) moveToSection(draggingId, seccion.id); }}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1768,15 +1813,18 @@ function EmptyState({ icon, title, sub }: { icon: string; title: string; sub?: s
 
 // ── NavProyecto ─────────────────────────────────────────────────────────────
 
-function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDelete }: {
+function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDelete, draggingTask = false, onDropTask }: {
   proyecto: ProyectoNav;
   isActive: boolean;
   indent?: number;
   onSelect: () => void;
   onRename: (nombre: string) => Promise<void>;
   onDelete: () => Promise<void>;
+  draggingTask?: boolean;
+  onDropTask?: () => void;
 }) {
-  const [hov, setHov]       = useState(false);
+  const [hov,      setHov]     = useState(false);
+  const [taskOver, setTaskOver] = useState(false);
   const [editing, setEditing] = useState(false);
   const [nombre, setNombre] = useState(proyecto.nombre);
 
@@ -1797,14 +1845,24 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
   );
 
   return (
-    <div className="relative group/proy" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
+    <div className="relative group/proy"
+      onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
+      onDragOver={e => { if (!draggingTask) return; e.preventDefault(); setTaskOver(true); }}
+      onDragLeave={() => setTaskOver(false)}
+      onDrop={e => { e.preventDefault(); setTaskOver(false); onDropTask?.(); }}
+    >
       <button onClick={onSelect}
         className={`w-full flex items-center gap-2.5 py-2 rounded-xl text-sm font-medium transition-all ${
-          isActive ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d]"
-        }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov ? "56px" : "12px" }}>
+          taskOver
+            ? "bg-[#B3985B]/15 text-[#B3985B] ring-1 ring-[#B3985B]/40 scale-[1.01]"
+            : isActive ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d]"
+        }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov && !taskOver ? "56px" : "12px" }}>
         <span className={`w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10 ${isActive ? "ring-white/20" : ""}`}
           style={{ backgroundColor: proyecto.color ?? "#555" }} />
         <span className="truncate">{proyecto.nombre}</span>
+        {taskOver && (
+          <span className="ml-auto text-[10px] font-medium opacity-70 shrink-0">← soltar</span>
+        )}
       </button>
       {hov && (
         <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
@@ -1829,7 +1887,7 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
 
 // ── NavCarpeta ──────────────────────────────────────────────────────────────
 
-function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRenameCarpeta, onDeleteCarpeta, onRenameProyecto, onDeleteProyecto }: {
+function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRenameCarpeta, onDeleteCarpeta, onRenameProyecto, onDeleteProyecto, draggingTask = false, onDropTask }: {
   carpeta: Carpeta;
   open: boolean;
   vistaKey: string;
@@ -1839,6 +1897,8 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
   onDeleteCarpeta: (id: string) => Promise<void>;
   onRenameProyecto: (id: string, nombre: string) => Promise<void>;
   onDeleteProyecto: (id: string) => Promise<void>;
+  draggingTask?: boolean;
+  onDropTask?: (id: string, nombre: string) => void;
 }) {
   const [hov, setHov]       = useState(false);
   const [editing, setEditing] = useState(false);
@@ -1901,6 +1961,8 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
               onSelect={() => onSelectProyecto(p.id)}
               onRename={nombre => onRenameProyecto(p.id, nombre)}
               onDelete={() => onDeleteProyecto(p.id)}
+              draggingTask={draggingTask}
+              onDropTask={() => onDropTask?.(p.id, p.nombre)}
             />
           ))}
         </div>
@@ -1915,7 +1977,7 @@ function SectionBlock({
   seccion, proyectoId, selectedId,
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection,
-  draggingId, onDragStart, onDragEnd, onDrop,
+  draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
 }: {
   seccion: SeccionDetalle;
@@ -1935,6 +1997,7 @@ function SectionBlock({
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onDrop: (targetId: string) => void;
+  onDropSection?: () => void;
   onPriorityChange?:  (id: string, prioridad: string) => void;
   onAssign?:          (id: string, userId: string | null) => void;
   onProjectChange?:   (id: string, proyectoId: string | null) => void;
@@ -1942,19 +2005,33 @@ function SectionBlock({
   projects?:          { id: string; nombre: string; color: string | null }[];
   viewFilter?:        (tareas: TareaItem[]) => TareaItem[];
 }) {
-  const [hov, setHov] = useState(false);
+  const [hov,        setHov]        = useState(false);
+  const [headerOver, setHeaderOver] = useState(false);
+  const [bottomOver, setBottomOver] = useState(false);
+
   return (
     <div className="mt-5">
-      <div className="flex items-center gap-2 group cursor-pointer mb-1"
+      {/* Section header — also a drop target */}
+      <div
+        className={`flex items-center gap-2 group cursor-pointer mb-1 px-2 py-1 rounded-lg transition-all ${
+          headerOver ? "bg-[#B3985B]/10 ring-1 ring-[#B3985B]/40" : ""
+        }`}
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
-        onClick={() => onToggleCollapse(seccion.id, !seccion.colapsada)}>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2"
+        onClick={() => onToggleCollapse(seccion.id, !seccion.colapsada)}
+        onDragOver={e => { if (!draggingId) return; e.preventDefault(); e.stopPropagation(); setHeaderOver(true); }}
+        onDragLeave={() => setHeaderOver(false)}
+        onDrop={e => { e.preventDefault(); e.stopPropagation(); setHeaderOver(false); onDropSection?.(); }}
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={headerOver ? "#B3985B" : "#444"} strokeWidth="2"
           style={{ transform: seccion.colapsada ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
-        <span className="text-xs font-semibold text-[#666] hover:text-white transition-colors">{seccion.nombre}</span>
-        {seccion.tareas.length > 0 && <span className="text-[11px] text-[#333]">({seccion.tareas.length})</span>}
-        {hov && (
+        <span className={`text-xs font-semibold transition-colors ${headerOver ? "text-[#B3985B]" : "text-[#666] hover:text-white"}`}>
+          {seccion.nombre}
+          {headerOver && <span className="ml-2 text-[10px] font-normal opacity-70">← soltar aquí</span>}
+        </span>
+        {!headerOver && seccion.tareas.length > 0 && <span className="text-[11px] text-[#333]">({seccion.tareas.length})</span>}
+        {hov && !headerOver && (
           <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
             className="ml-auto text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -1976,10 +2053,28 @@ function SectionBlock({
               users={users}
               projects={projects}
               draggable={!!draggingId || true}
+              isBeingDragged={draggingId === t.id}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
             />
           ))}
+          {/* Bottom drop zone — visible only when dragging */}
+          {draggingId && (
+            <div
+              className={`flex items-center justify-center h-9 rounded-xl border-2 border-dashed transition-all mb-1 ${
+                bottomOver
+                  ? "border-[#B3985B]/60 bg-[#B3985B]/[0.06] text-[#B3985B]"
+                  : "border-[#1e1e1e] text-[#2a2a2a]"
+              }`}
+              onDragOver={e => { e.preventDefault(); e.stopPropagation(); setBottomOver(true); }}
+              onDragLeave={() => setBottomOver(false)}
+              onDrop={e => { e.preventDefault(); e.stopPropagation(); setBottomOver(false); onDropSection?.(); }}
+            >
+              <span className="text-[11px] font-medium select-none">
+                {bottomOver ? `→ Mover a "${seccion.nombre}"` : `Soltar en ${seccion.nombre}`}
+              </span>
+            </div>
+          )}
           <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
             placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea} />
         </>
