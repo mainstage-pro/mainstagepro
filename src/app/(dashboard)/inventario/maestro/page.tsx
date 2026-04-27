@@ -191,16 +191,16 @@ export default function InventarioMaestroPage() {
                   <th className="text-center px-3 py-3 text-[#6b7280] font-medium hidden sm:table-cell">Estado</th>
                   <th className="text-right px-3 py-3 text-[#6b7280] font-medium">Cant.</th>
                   <th className="text-right px-4 py-3 text-[#6b7280] font-medium">Precio renta</th>
-                  <th className="text-right px-4 py-3 text-[#6b7280] font-medium hidden lg:table-cell">Costo activo</th>
-                  <th className="text-right px-4 py-3 text-[#6b7280] font-medium hidden lg:table-cell">Valor total</th>
+                  <th className="text-right px-4 py-3 text-[#6b7280] font-medium hidden lg:table-cell">Valor del activo</th>
+                  <th className="text-right px-4 py-3 text-[#6b7280] font-medium hidden lg:table-cell">Valor total (cant. × activo)</th>
                   <th className="text-center px-3 py-3 text-[#6b7280] font-medium hidden xl:table-cell">Acc.</th>
                   <th className="px-3 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#161616]">
                 {equiposFiltrados.map(e => {
-                  const costo = e.tipo === "PROPIO" ? (e.costoInternoEstimado ?? null) : (e.costoProveedor ?? null);
-                  const valorTotal = costo != null ? costo * e.cantidadTotal : null;
+                  const valorActivo = e.costoInternoEstimado ?? null;
+                  const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
                   return (
                     <tr key={e.id} className="hover:bg-[#0d0d0d] transition-colors group">
                       <td className="px-4 py-3">
@@ -235,15 +235,15 @@ export default function InventarioMaestroPage() {
                         {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
                       </td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {costo != null ? (
-                          <span className="text-[#9ca3af]">{fmx(costo)}</span>
+                        {valorActivo != null ? (
+                          <span className="text-[#9ca3af]">{fmx(valorActivo)}</span>
                         ) : (
                           <span className="text-[#333]">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {valorTotal != null ? (
-                          <span className={`font-medium ${e.tipo === "PROPIO" ? "text-white" : "text-[#6b7280]"}`}>{fmx(valorTotal)}</span>
+                        {valorFilaTotal != null ? (
+                          <span className="text-white font-medium">{fmx(valorFilaTotal)}</span>
                         ) : (
                           <span className="text-[#333]">—</span>
                         )}
@@ -273,8 +273,10 @@ export default function InventarioMaestroPage() {
             <p className="text-[#555] text-xs">{equiposFiltrados.length} equipos mostrados</p>
             <div className="flex items-center gap-6 text-xs">
               <div className="text-right hidden lg:block">
-                <p className="text-[#555]">Valor activo total (propios)</p>
-                <p className="text-[#B3985B] font-semibold">{fmx(valorTotal)}</p>
+                <p className="text-[#555]">Total valor del activo (vista)</p>
+                <p className="text-[#B3985B] font-semibold">
+                  {fmx(equiposFiltrados.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0))}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-[#555]">Renta potencial (vista)</p>
