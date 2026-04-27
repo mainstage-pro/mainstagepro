@@ -379,37 +379,48 @@ export default function OperacionesPage() {
     setUndoState(null);
   }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveTarea = useCallback(async (id: string, patch: Record<string, unknown>) => {
-    await fetch(`/api/tareas/${id}`, {
+  const saveTarea = useCallback((id: string, patch: Record<string, unknown>) => {
+    // Fire-and-forget — optimistic update happens first
+    fetch(`/api/tareas/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    // When a project is assigned to a bandeja task, move it out of the bandeja list
+
+    // When a project is assigned to a bandeja task, remove it from the list immediately
     if ("proyectoTareaId" in patch && patch.proyectoTareaId && vista === "bandeja") {
       const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
       setTareas(rm);
       if (selectedId === id) setSelectedId(null);
       return;
     }
-    // Update list items with any changed scalar fields
+
     const upd = (arr: TareaItem[]) => arr.map(t => {
       if (t.id !== id) return t;
-      return {
-        ...t,
-        ...(patch.titulo        != null ? { titulo:    patch.titulo    as string } : {}),
-        ...(patch.prioridad     != null ? { prioridad: patch.prioridad as string } : {}),
-        ...(patch.area          != null ? { area:      patch.area      as string } : {}),
-        ...(patch.estado        != null ? { estado:    patch.estado    as string } : {}),
-        ...(patch.fecha         !== undefined ? { fecha:            patch.fecha            as string | null } : {}),
-        ...(patch.fechaVencimiento !== undefined ? { fechaVencimiento: patch.fechaVencimiento as string | null } : {}),
-      };
+      const next = { ...t };
+      if (patch.titulo       != null) next.titulo    = patch.titulo    as string;
+      if (patch.prioridad    != null) next.prioridad = patch.prioridad as string;
+      if (patch.area         != null) next.area      = patch.area      as string;
+      if (patch.estado       != null) next.estado    = patch.estado    as string;
+      if ("fecha"            in patch) next.fecha            = patch.fecha            as string | null;
+      if ("fechaVencimiento" in patch) next.fechaVencimiento = patch.fechaVencimiento as string | null;
+      if ("asignadoAId"      in patch) {
+        const uid = patch.asignadoAId as string | null;
+        next.asignadoA = uid ? (usuarios.find(u => u.id === uid) ?? null) : null;
+      }
+      if ("proyectoTareaId"  in patch) {
+        const pid = patch.proyectoTareaId as string | null;
+        const proj = pid ? proyectosNav.find(p => p.id === pid) : null;
+        next.proyectoTarea = proj ? { id: proj.id, nombre: proj.nombre, color: proj.color } : null;
+      }
+      return next;
     });
+
     setTareas(upd);
     setProyectoDetalle(prev => prev ? {
       ...prev, tareas: upd(prev.tareas),
       secciones: prev.secciones.map(s => ({ ...s, tareas: upd(s.tareas) })),
     } : null);
-  }, [vista, selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [vista, selectedId, usuarios, proyectosNav]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteTarea = useCallback(async (id: string) => {
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
