@@ -116,6 +116,13 @@ export default function TaskModal({
   const [saving, setSaving]           = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const descRef  = useRef<HTMLTextAreaElement>(null);
+
+  function autoResize(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
 
   // Reset state when task changes
   useEffect(() => {
@@ -139,6 +146,9 @@ export default function TaskModal({
     setArchivosLocal(tarea.archivos ?? []);
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [tarea?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { autoResize(titleRef.current); }, [titulo]);
+  useEffect(() => { autoResize(descRef.current);  }, [descripcion]);
 
   // Keyboard: Escape closes
   useEffect(() => {
@@ -342,19 +352,20 @@ export default function TaskModal({
               <textarea
                 ref={titleRef}
                 value={titulo}
-                onChange={e => { setTitulo(e.target.value); mark(); }}
+                onChange={e => { setTitulo(e.target.value); mark(); autoResize(e.target); }}
                 placeholder="Título de la tarea"
-                className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder-[#2a2a2a] leading-snug"
-                rows={titulo.split("\n").length || 1}
+                className="w-full bg-transparent text-white text-xl font-semibold resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-snug"
+                rows={1}
               />
 
               {/* Description */}
               <textarea
+                ref={descRef}
                 value={descripcion}
-                onChange={e => { setDescripcion(e.target.value); mark(); }}
+                onChange={e => { setDescripcion(e.target.value); mark(); autoResize(e.target); }}
                 placeholder="Añade una descripción…"
-                className="w-full bg-transparent text-sm text-[#777] resize-none focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
-                rows={3}
+                className="w-full bg-transparent text-sm text-[#777] resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
+                rows={1}
               />
 
               {/* ── Subtareas ── */}
