@@ -1116,6 +1116,8 @@ export default function OperacionesPage() {
                     onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                     onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                     onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                    onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                    projects={proyectosNav}
                     users={usuarios}
                     showProject draggable
                     onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
