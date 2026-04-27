@@ -497,6 +497,30 @@ export default function OperacionesPage() {
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const moveToNoSection = useCallback((taskId: string) => {
+    setProyectoDetalle(prev => {
+      if (!prev) return null;
+      let task: TareaItem | undefined;
+      let fromSeccionId: string | null = null;
+      for (const s of prev.secciones) {
+        const found = s.tareas.find(t => t.id === taskId);
+        if (found) { task = found; fromSeccionId = s.id; break; }
+      }
+      if (!task || !fromSeccionId) return prev;
+      return {
+        ...prev,
+        tareas: [...prev.tareas, { ...task, seccion: null }],
+        secciones: prev.secciones.map(s =>
+          s.id === fromSeccionId ? { ...s, tareas: s.tareas.filter(t => t.id !== taskId) } : s
+        ),
+      };
+    });
+    fetch(`/api/tareas/${taskId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seccionId: null }),
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const moveToProject = useCallback((taskId: string, proyectoId: string, proyectoNombre: string) => {
     const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== taskId);
     setTareas(rm);
@@ -1372,6 +1396,7 @@ export default function OperacionesPage() {
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                       onDropSection={() => { if (draggingId) moveToSection(draggingId, seccion.id); }}
+                      onMoveToNoSection={moveToNoSection}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -2201,7 +2226,7 @@ function SectionBlock({
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
-  selectedIds, onMultiSelect, onExtractChild,
+  selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2230,6 +2255,7 @@ function SectionBlock({
   selectedIds?:       Set<string>;
   onMultiSelect?:     (id: string) => void;
   onExtractChild?:    (tarea: TareaItem) => void;
+  onMoveToNoSection?: (id: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2284,6 +2310,7 @@ function SectionBlock({
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
               multiSelected={selectedIds?.has(t.id)} onMultiSelect={onMultiSelect}
               onExtractChild={onExtractChild}
+              onMoveToNoSection={onMoveToNoSection}
             />
           ))}
           {/* Bottom drop zone — visible only when dragging */}

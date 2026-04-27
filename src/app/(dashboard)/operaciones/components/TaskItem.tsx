@@ -70,6 +70,7 @@ interface Props {
   onMultiSelect?:    (id: string) => void;
   onExtract?:        () => void;
   onExtractChild?:   (tarea: TareaItem) => void;
+  onMoveToNoSection?: (id: string) => void;
 }
 
 // ── Pequeño botón de acción ─────────────────────────────────────────────────
@@ -99,7 +100,7 @@ export default function TaskItem({
   draggable: isDraggable = false,
   onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
   multiSelected = false, onMultiSelect,
-  onExtract, onExtractChild,
+  onExtract, onExtractChild, onMoveToNoSection,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -658,6 +659,21 @@ export default function TaskItem({
                       <path d="M5 20h14"/>
                     </svg>
                     Convertir en tarea independiente
+                  </button>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+
+              {onMoveToNoSection && tarea.seccion && (
+                <>
+                  <button
+                    onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
+                    </svg>
+                    Quitar de sección
                   </button>
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
