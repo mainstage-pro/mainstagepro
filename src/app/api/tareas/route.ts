@@ -137,5 +137,18 @@ export async function POST(req: NextRequest) {
     select: SELECT,
   });
 
+  // ── Notify assignee when task is created with an assignee ───────────────
+  if (asignadoAId && asignadoAId !== session.id) {
+    await prisma.notificacion.create({
+      data: {
+        usuarioId: asignadoAId,
+        tipo:      "TAREA",
+        titulo:    tarea.titulo,
+        mensaje:   `${session.name} te asignó esta tarea`,
+        url:       `/operaciones?open=${tarea.id}`,
+      },
+    });
+  }
+
   return NextResponse.json({ tarea }, { status: 201 });
 }
