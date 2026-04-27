@@ -56,7 +56,7 @@ export default function MovimientosPage() {
   const [loading, setLoading] = useState(true);
   const [detalle, setDetalle] = useState<Movimiento | null>(null);
   const [editando, setEditando] = useState<Movimiento | null>(null);
-  const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "" });
+  const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "" });
   const [guardando, setGuardando] = useState(false);
 
   const loadMovimientos = useCallback(async (cuentaId: string | null) => {
@@ -92,6 +92,8 @@ export default function MovimientosPage() {
       referencia: mov.referencia ?? "",
       metodoPago: mov.metodoPago,
       categoriaId: mov.categoriaId ?? "",
+      cuentaOrigenId: mov.cuentaOrigen?.id ?? "",
+      cuentaDestinoId: mov.cuentaDestino?.id ?? "",
     });
   }
 
@@ -99,10 +101,17 @@ export default function MovimientosPage() {
     if (!editando) return;
     setGuardando(true);
     try {
+      const payload: Record<string, unknown> = { ...editForm, monto: parseFloat(editForm.monto) };
+      // Solo enviar los campos de cuenta relevantes según el tipo
+      if (editando.tipo === "GASTO" || editando.tipo === "RETIRO") {
+        delete payload.cuentaDestinoId;
+      } else if (editando.tipo === "INGRESO" || editando.tipo === "INVERSION") {
+        delete payload.cuentaOrigenId;
+      }
       const res = await fetch(`/api/movimientos/${editando.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...editForm, monto: parseFloat(editForm.monto) }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) { toast.error("Error al guardar"); return; }
       toast.success("Movimiento actualizado");
@@ -429,6 +438,26 @@ export default function MovimientosPage() {
                   />
                 </div>
               </div>
+              {/* Cuenta — solo para movimientos no-TRANSFERENCIA */}
+              {editando && editando.tipo !== "TRANSFERENCIA" && cuentas.length > 0 && (
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">
+                    {editando.tipo === "INGRESO" || editando.tipo === "INVERSION" ? "Cuenta destino (ingresa a)" : "Cuenta origen (sale de)"}
+                  </label>
+                  <Combobox
+                    value={editando.tipo === "INGRESO" || editando.tipo === "INVERSION" ? editForm.cuentaDestinoId : editForm.cuentaOrigenId}
+                    onChange={v => {
+                      if (editando.tipo === "INGRESO" || editando.tipo === "INVERSION") {
+                        setEditForm(p => ({ ...p, cuentaDestinoId: v }));
+                      } else {
+                        setEditForm(p => ({ ...p, cuentaOrigenId: v }));
+                      }
+                    }}
+                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                    className={inputCls}
+                  />
+                </div>
+              )}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
                 <input value={editForm.referencia} onChange={e => setEditForm(p => ({ ...p, referencia: e.target.value }))} className={inputCls} placeholder="Núm. transferencia, folio..." />

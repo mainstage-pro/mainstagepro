@@ -20,6 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("referencia" in body) data.referencia = body.referencia || null;
   if ("metodoPago" in body) data.metodoPago = body.metodoPago;
   if ("categoriaId" in body) data.categoriaId = body.categoriaId || null;
+  if ("cuentaOrigenId" in body) data.cuentaOrigenId = body.cuentaOrigenId || null;
+  if ("cuentaDestinoId" in body) data.cuentaDestinoId = body.cuentaDestinoId || null;
 
   const updated = await prisma.movimientoFinanciero.update({ where: { id }, data });
   return NextResponse.json({ movimiento: updated });
