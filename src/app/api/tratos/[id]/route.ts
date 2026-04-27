@@ -113,6 +113,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
 
+  // Snapshot del trato antes de eliminar (para el log)
+  const tratoSnap = await prisma.trato.findUnique({
+    where: { id },
+    select: { nombreEvento: true, cliente: { select: { nombre: true } }, etapa: true },
+  });
+
   // Eliminar en orden para respetar foreign keys:
   // 1. Archivos del trato (ya tienen Cascade pero por si acaso)
   // 2. Líneas y cuentas de cotizaciones del trato
@@ -161,6 +167,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       // 5. Borrar el trato (archivos tienen Cascade en DB)
       await tx.trato.delete({ where: { id } });
     });
+
+    // Log de auditoría post-eliminación
+    const desc = tratoSnap
+      ? `Trato eliminado — Cliente: ${tratoSnap.cliente?.nombre ?? "?"}, Evento: ${tratoSnap.nombreEvento ?? "sin nombre"}, Etapa: ${tratoSnap.etapa}`
+      : `Trato eliminado (id: ${id})`;
+    await prisma.actividadUsuario.create({
+      data: { userId: session.id, accion: "ELIMINAR", entidad: "trato", entidadId: id, descripcion: desc },
+    }).catch(() => {});
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[DELETE /api/tratos]", msg);
