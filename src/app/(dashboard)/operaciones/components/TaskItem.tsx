@@ -108,9 +108,10 @@ export default function TaskItem({
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
 
-  const moreRef     = useRef<HTMLDivElement>(null);
-  const assignRef   = useRef<HTMLDivElement>(null);
-  const proyectoRef = useRef<HTMLDivElement>(null);
+  const moreRef          = useRef<HTMLDivElement>(null);
+  const assignRef        = useRef<HTMLDivElement>(null);
+  const mobileAssignRef  = useRef<HTMLDivElement>(null);
+  const proyectoRef      = useRef<HTMLDivElement>(null);
 
   const isCompleted = tarea.estado === "COMPLETADA";
   const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
@@ -119,8 +120,11 @@ export default function TaskItem({
   useEffect(() => {
     if (!showMore && !showAssign && !showProyecto) return;
     function handle(e: MouseEvent) {
-      if (moreRef.current     && !moreRef.current.contains(e.target as Node))     setShowMore(false);
-      if (assignRef.current   && !assignRef.current.contains(e.target as Node))   setShowAssign(false);
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
+      if (
+        assignRef.current && !assignRef.current.contains(e.target as Node) &&
+        (!mobileAssignRef.current || !mobileAssignRef.current.contains(e.target as Node))
+      ) setShowAssign(false);
       if (proyectoRef.current && !proyectoRef.current.contains(e.target as Node)) setShowProyecto(false);
     }
     document.addEventListener("mousedown", handle);
@@ -346,9 +350,65 @@ export default function TaskItem({
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
-          BARRA DE ACCIONES (estilo Todoist)
+          MÓVIL: solo avatar del asignado
       ══════════════════════════════════════════════════════════════════ */}
-      <div className={`flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
+      <div className="flex md:hidden items-center shrink-0" ref={mobileAssignRef} onClick={e => e.stopPropagation()}>
+        <div className="relative">
+          <button
+            onClick={() => setShowAssign(v => !v)}
+            className="w-7 h-7 rounded-full flex items-center justify-center"
+            title={tarea.asignadoA ? tarea.asignadoA.name : "Asignar"}
+          >
+            {tarea.asignadoA ? (
+              <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold">
+                {tarea.asignadoA.name.charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <span className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[#444] flex items-center justify-center">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+            )}
+          </button>
+          {showAssign && (
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+              <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
+              {tarea.asignadoA && (
+                <button onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                  Sin asignar
+                </button>
+              )}
+              {users.length === 0 && !tarea.asignadoA && (
+                <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>
+              )}
+              {users.map(u => (
+                <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
+                  <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </span>
+                  {u.name}
+                  {tarea.asignadoA?.id === u.id && (
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ESCRITORIO: barra de acciones completa (estilo Todoist)
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className={`hidden md:flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
         onClick={e => e.stopPropagation()}>
 
         {/* ── Calendario ─────────────────────────────────────── */}
