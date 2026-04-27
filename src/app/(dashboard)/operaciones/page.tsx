@@ -877,6 +877,9 @@ export default function OperacionesPage() {
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                         onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
                         onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                        onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                        onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                        users={usuarios}
                         showProject draggable
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
@@ -890,6 +893,9 @@ export default function OperacionesPage() {
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
                     onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                    onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                    onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                    users={usuarios}
                     showProject draggable
                     onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                     onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
@@ -907,6 +913,9 @@ export default function OperacionesPage() {
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
                       onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      users={usuarios}
                       draggable
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
@@ -925,6 +934,9 @@ export default function OperacionesPage() {
                       onAddTarea={addTarea} draggingId={draggingId}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      users={usuarios}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -1632,6 +1644,7 @@ function SectionBlock({
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop,
+  onPriorityChange, onAssign, users,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -1650,6 +1663,9 @@ function SectionBlock({
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   onDrop: (targetId: string) => void;
+  onPriorityChange?: (id: string, prioridad: string) => void;
+  onAssign?:         (id: string, userId: string | null) => void;
+  users?:            { id: string; name: string }[];
 }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1679,6 +1695,9 @@ function SectionBlock({
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
               onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
               onDateChange={(id, field, val) => { fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val || null }) }); }}
+              onPriorityChange={onPriorityChange}
+              onAssign={onAssign}
+              users={users}
               draggable={!!draggingId || true}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
