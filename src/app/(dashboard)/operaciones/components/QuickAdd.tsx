@@ -167,11 +167,16 @@ export default function QuickAdd({
   const proyectoInfo = proyectos.find(p => p.id === proyectoSel);
   const usuarioInfo  = usuarios.find(u => u.id === asignadoSel);
 
-  function reset() {
+  function resetFields() {
     setTitulo(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
     setProyectoSel(proyectoTareaId); setAsignadoSel(null);
     setRecTexto(""); setRecurrencia(null); setRecError("");
-    setPanel(null); setDetIgnorada(false); setOpen(false);
+    setPanel(null); setDetIgnorada(false);
+  }
+
+  function reset() {
+    resetFields();
+    setOpen(false);
   }
 
   function submit() {
@@ -192,7 +197,8 @@ export default function QuickAdd({
       parentId,
       asignadoAId:      asignadoSel,
     });
-    reset();
+    resetFields();
+    setTimeout(() => titleRef.current?.focus(), 10);
   }
 
   function togglePanel(p: ActivePanel) { setPanel(prev => prev === p ? null : p); }
