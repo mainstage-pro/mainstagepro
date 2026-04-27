@@ -45,7 +45,6 @@ interface ProyectoEventoConTareas {
   tareas: TareaItem[];
 }
 
-const SORT_OPTIONS = ["Sin agrupar", "Por proyecto", "Por prioridad", "Por área", "Por fecha"];
 
 interface ProyViewOpts {
   showCompleted: boolean;
@@ -54,6 +53,14 @@ interface ProyViewOpts {
   filterPrio:    string[];
 }
 const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
+
+interface VistaOpts {
+  showCompleted: boolean;
+  sortBy:   "none" | "prioridad" | "fecha" | "nombre";
+  groupBy:  "none" | "proyecto" | "prioridad" | "area" | "fecha";
+  filterPrio: string[];
+}
+const VISTA_DEFAULT: VistaOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
 const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
 const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
@@ -96,12 +103,13 @@ export default function OperacionesPage() {
   const [selectedTask, setSelectedTask]         = useState<TareaDetalle | null>(null);
   const [loadingPanel, setLoadingPanel]         = useState(false);
 
-  const [sortHoy, setSortHoy]                   = useState(() => {
-    if (typeof window === "undefined") return SORT_OPTIONS[0];
-    return localStorage.getItem("op_sort_hoy") ?? SORT_OPTIONS[0];
+  const [vistaOpts, setVistaOpts]               = useState<VistaOpts>(() => {
+    if (typeof window === "undefined") return VISTA_DEFAULT;
+    try { const r = localStorage.getItem("op_vista_opts"); if (r) return { ...VISTA_DEFAULT, ...JSON.parse(r) }; } catch {}
+    return VISTA_DEFAULT;
   });
-  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
-  const [showCompleted, setShowCompleted]       = useState(false);
+  const [showVistaPanel, setShowVistaPanel]     = useState(false);
+  const vistaPanelRef                           = useRef<HTMLDivElement>(null);
   const [busqueda, setBusqueda]                 = useState("");
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
@@ -115,8 +123,8 @@ export default function OperacionesPage() {
   const viewPanelRef = useRef<HTMLDivElement>(null);
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const showCompletedRef = useRef(showCompleted);
-  useEffect(() => { showCompletedRef.current = showCompleted; }, [showCompleted]);
+  const showCompletedRef = useRef(vistaOpts.showCompleted);
+  useEffect(() => { showCompletedRef.current = vistaOpts.showCompleted; }, [vistaOpts.showCompleted]);
   useEffect(() => { try { localStorage.setItem("op_proy_view", JSON.stringify(proyViewOpts)); } catch {} }, [proyViewOpts]);
   useEffect(() => {
     if (!showViewPanel) return;
@@ -124,6 +132,13 @@ export default function OperacionesPage() {
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [showViewPanel]);
+  useEffect(() => { try { localStorage.setItem("op_vista_opts", JSON.stringify(vistaOpts)); } catch {} }, [vistaOpts]);
+  useEffect(() => {
+    if (!showVistaPanel) return;
+    function h(e: MouseEvent) { if (vistaPanelRef.current && !vistaPanelRef.current.contains(e.target as Node)) setShowVistaPanel(false); }
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [showVistaPanel]);
 
   const [carpetasOpen, setCarpetasOpen]         = useState<Set<string>>(new Set());
   const [proyectosSueltos, setProyectosSueltos] = useState(true);
@@ -236,7 +251,8 @@ export default function OperacionesPage() {
     return [{ label: "", items: tareas }];
   }
 
-  const hasActiveProyOpts = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted;
+  const hasActiveProyOpts  = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted;
+  const hasActiveVistaOpts = vistaOpts.filterPrio.length > 0 || vistaOpts.sortBy !== "none" || vistaOpts.groupBy !== "none" || vistaOpts.showCompleted;
 
   const ADD_MSGS = [
     "Tarea registrada",
@@ -497,30 +513,37 @@ export default function OperacionesPage() {
   };
 
   const hoyGrouped = useMemo(() => {
-    if (typeof vista !== "string" || (vista !== "hoy" && vista !== "proximas")) return null;
+    if (typeof vista !== "string" || vista === "integrada" || vista === "proyectos-evento") return null;
 
-    const base = applyBusqueda(showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
+    let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
+    if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
 
-    // Manual sort options (from the sort buttons)
-    if (sortHoy !== SORT_OPTIONS[0]) {
+    function applySort(arr: TareaItem[]): TareaItem[] {
+      if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
+      if (vistaOpts.sortBy === "fecha")     return [...arr].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+      if (vistaOpts.sortBy === "nombre")    return [...arr].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
+      return sortCronoPrio(arr);
+    }
+
+    if (vistaOpts.groupBy !== "none") {
       const grouped: Record<string, TareaItem[]> = {};
       for (const t of base) {
         let key = "";
-        if (sortHoy === "Por proyecto")   key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
-        else if (sortHoy === "Por prioridad") key = t.prioridad;
-        else if (sortHoy === "Por área")  key = areaLabel(t.area);
-        else if (sortHoy === "Por fecha") key = t.fecha ? new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
+        if (vistaOpts.groupBy === "proyecto")  key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+        else if (vistaOpts.groupBy === "prioridad") key = t.prioridad;
+        else if (vistaOpts.groupBy === "area") key = areaLabel(t.area);
+        else if (vistaOpts.groupBy === "fecha") key = t.fecha ? new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(t);
       }
-      const keys = sortHoy === "Por prioridad"
+      const keys = vistaOpts.groupBy === "prioridad"
         ? ["URGENTE","ALTA","MEDIA","BAJA"].filter(k => grouped[k])
         : Object.keys(grouped).sort();
-      return keys.map(label => ({ label, tareas: sortCronoPrio(grouped[label]) }));
+      return keys.map(label => ({ label, tareas: applySort(grouped[label]) }));
     }
 
-    // Vista "hoy": siempre agrupa por área
-    // Vista "proximas": agrupa solo si hay múltiples áreas
+    // Natural grouping: bandeja stays flat, hoy groups by area, proximas groups if >1 area
+    if (vista === "bandeja") return null;
     const areas = [...new Set(base.map(t => t.area))];
     if (vista !== "hoy" && areas.length <= 1) return null;
 
@@ -532,14 +555,18 @@ export default function OperacionesPage() {
     const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH","DIRECCION"];
     const extra = Object.keys(grouped).filter(k => !AREA_ORD.includes(k)).sort();
     const keys = [...AREA_ORD.filter(k => grouped[k]), ...extra.filter(k => grouped[k])];
-    return keys.map(key => ({ label: areaLabel(key), tareas: sortCronoPrio(grouped[key]) }));
-  }, [tareas, sortHoy, vista, showCompleted, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
+    return keys.map(key => ({ label: areaLabel(key), tareas: applySort(grouped[key]) }));
+  }, [tareas, vistaOpts, vista, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flat sorted list (used when no grouping)
   const tareasOrdenadas = useMemo(() => {
-    const base = applyBusqueda(showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
+    let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
+    if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
+    if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
+    if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+    if (vistaOpts.sortBy === "nombre")    return [...base].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
     return sortCronoPrio(base);
-  }, [tareas, showCompleted, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tareas, vistaOpts, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proyectosSinCarpeta = useMemo(() =>
     proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
@@ -783,69 +810,103 @@ export default function OperacionesPage() {
             )}
           </div>
 
-          {/* Sort dropdown (Hoy / Próximas) */}
-          {(vista === "hoy" || vista === "proximas") && (
-            <div className="ml-auto relative">
+          {/* Vista button + panel (all string views) */}
+          {typeof vista === "string" && (
+            <div className="ml-auto relative" ref={vistaPanelRef}>
               <button
-                onClick={() => setSortDropdownOpen(v => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs border transition-all ${
-                  sortHoy !== SORT_OPTIONS[0]
-                    ? "bg-[#1a1a1a] text-white border-[#2a2a2a]"
-                    : "text-[#444] border-[#1a1a1a] hover:text-[#777] hover:bg-[#111]"
+                onClick={() => setShowVistaPanel(v => !v)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all ${
+                  showVistaPanel || hasActiveVistaOpts
+                    ? "bg-[#B3985B]/12 text-[#B3985B] border border-[#B3985B]/30"
+                    : "bg-[#111] text-[#555] hover:bg-[#1a1a1a] hover:text-white"
                 }`}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/>
-                  <line x1="21" y1="14" x2="7" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/>
+                  <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
                 </svg>
-                {sortHoy === SORT_OPTIONS[0] ? "Agrupar" : sortHoy.replace("Por ", "")}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <polyline points={sortDropdownOpen ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
-                </svg>
+                Vista
+                {hasActiveVistaOpts && <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />}
               </button>
-              {sortDropdownOpen && (
-                <>
-                  <div className="fixed inset-0 z-[9990]" onClick={() => setSortDropdownOpen(false)} />
-                  <div className="absolute right-0 top-9 z-[9991] bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl shadow-2xl py-1 min-w-[160px]">
-                    {SORT_OPTIONS.map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => {
-                          setSortHoy(opt);
-                          localStorage.setItem("op_sort_hoy", opt);
-                          setSortDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-[#151515] ${
-                          sortHoy === opt ? "text-[#B3985B]" : "text-[#666] hover:text-white"
-                        }`}
-                      >
-                        {opt}
-                        {sortHoy === opt && (
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
-                        )}
-                      </button>
-                    ))}
+
+              {showVistaPanel && (
+                <div className="absolute right-0 top-9 z-50 w-64 bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[11px] text-[#555] uppercase tracking-widest font-semibold">Opciones de vista</p>
                   </div>
-                </>
+
+                  {/* Mostrar completadas */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <button
+                      onClick={() => setVistaOpts(o => ({ ...o, showCompleted: !o.showCompleted }))}
+                      className="w-full flex items-center justify-between"
+                    >
+                      <span className="text-sm text-[#ccc]">Mostrar completadas</span>
+                      <span className={`w-8 h-4 rounded-full transition-colors relative ${vistaOpts.showCompleted ? "bg-[#B3985B]" : "bg-[#2a2a2a]"}`}>
+                        <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${vistaOpts.showCompleted ? "left-4" : "left-0.5"}`} />
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Ordenar por */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Ordenar por</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha"],["nombre","Nombre"]] as const).map(([val, label]) => (
+                        <button key={val} onClick={() => setVistaOpts(o => ({ ...o, sortBy: val }))}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${vistaOpts.sortBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Agrupar por */}
+                  <div className="px-4 py-3 border-b border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Agrupar por</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {([["none","Ninguno"],["proyecto","Proyecto"],["prioridad","Prioridad"],["area","Área"],["fecha","Fecha"]] as const).map(([val, label]) => (
+                        <button key={val} onClick={() => setVistaOpts(o => ({ ...o, groupBy: val }))}
+                          className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${vistaOpts.groupBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Filtrar por prioridad */}
+                  <div className="px-4 py-3">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Filtrar por prioridad</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {([["URGENTE","Urgente","#f87171"],["ALTA","Alta","#fb923c"],["MEDIA","Media","#B3985B"],["BAJA","Baja","#4b5563"]] as const).map(([key, label, color]) => {
+                        const active = vistaOpts.filterPrio.includes(key);
+                        return (
+                          <button key={key}
+                            onClick={() => setVistaOpts(o => ({ ...o, filterPrio: active ? o.filterPrio.filter(p => p !== key) : [...o.filterPrio, key] }))}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all border"
+                            style={{ borderColor: active ? color + "60" : "#1e1e1e", backgroundColor: active ? color + "18" : "transparent", color: active ? color : "#555" }}
+                          >
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={color} strokeWidth="2">
+                              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+                            </svg>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Reset */}
+                  {hasActiveVistaOpts && (
+                    <div className="px-4 pb-3">
+                      <button onClick={() => setVistaOpts(VISTA_DEFAULT)}
+                        className="w-full text-center text-xs text-[#444] hover:text-red-400 transition-colors py-1.5 border-t border-[#161616] mt-1 pt-3">
+                        Restablecer opciones
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-
-          {/* Show completed toggle */}
-          {typeof vista === "string" && vista !== "integrada" && (
-            <button
-              onClick={() => setShowCompleted(v => !v)}
-              className={`${(vista === "hoy" || vista === "proximas") ? "ml-2" : "ml-auto"} flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-all ${
-                showCompleted ? "text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20" : "text-[#333] hover:text-[#666] hover:bg-[#111]"
-              }`}
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
-              Completadas
-            </button>
           )}
 
           {/* View options (project view) */}
