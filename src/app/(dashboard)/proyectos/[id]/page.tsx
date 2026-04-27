@@ -34,7 +34,7 @@ interface CxC { id: string; concepto: string; tipoPago: string; monto: number; m
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
-interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
+interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
@@ -537,6 +537,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [gastoProveedor, setGastoProveedor] = useState("");
   const [gastoCuenta, setGastoCuenta] = useState("");
   const [addingGasto, setAddingGasto] = useState(false);
+  const [editGasto, setEditGasto] = useState<Gasto | null>(null);
+  const [editGastoForm, setEditGastoForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "TRANSFERENCIA", categoriaId: "", proveedorId: "", cuentaOrigenId: "" });
+  const [savingGasto, setSavingGasto] = useState(false);
 
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
@@ -1535,6 +1538,66 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
     setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
     setAddingGasto(false);
+  }
+
+  // ── Editar gasto directo ──
+  function abrirEditarGasto(g: Gasto) {
+    setEditGasto(g);
+    setEditGastoForm({
+      concepto: g.concepto,
+      monto: String(g.monto),
+      fecha: g.fecha.slice(0, 10),
+      notas: g.notas ?? "",
+      referencia: g.referencia ?? "",
+      metodoPago: g.metodoPago,
+      categoriaId: g.categoria?.id ?? "",
+      proveedorId: g.proveedor?.id ?? "",
+      cuentaOrigenId: g.cuentaOrigen?.id ?? "",
+    });
+  }
+
+  async function guardarEdicionGasto() {
+    if (!editGasto) return;
+    setSavingGasto(true);
+    const res = await fetch(`/api/movimientos/${editGasto.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: editGastoForm.concepto,
+        monto: parseFloat(editGastoForm.monto),
+        fecha: editGastoForm.fecha,
+        notas: editGastoForm.notas || null,
+        referencia: editGastoForm.referencia || null,
+        metodoPago: editGastoForm.metodoPago,
+        categoriaId: editGastoForm.categoriaId || null,
+        proveedorId: editGastoForm.proveedorId || null,
+        cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+      }),
+    });
+    if (res.ok) {
+      const cuentaSeleccionada = cuentasBancarias.find(c => c.id === editGastoForm.cuentaOrigenId) ?? null;
+      const catSeleccionada = categorias.find(c => c.id === editGastoForm.categoriaId) ?? null;
+      const provSeleccionado = proveedores.find(p => p.id === editGastoForm.proveedorId) ?? null;
+      setProyecto(prev => prev ? {
+        ...prev,
+        movimientos: prev.movimientos.map(m => m.id !== editGasto.id ? m : {
+          ...m,
+          concepto: editGastoForm.concepto,
+          monto: parseFloat(editGastoForm.monto),
+          fecha: editGastoForm.fecha,
+          notas: editGastoForm.notas || null,
+          referencia: editGastoForm.referencia || null,
+          metodoPago: editGastoForm.metodoPago,
+          categoriaId: editGastoForm.categoriaId || null,
+          categoria: catSeleccionada ? { id: catSeleccionada.id, nombre: catSeleccionada.nombre } : null,
+          proveedorId: editGastoForm.proveedorId || null,
+          proveedor: provSeleccionado ? { id: provSeleccionado.id, nombre: provSeleccionado.nombre } : null,
+          cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+          cuentaOrigen: cuentaSeleccionada ? { id: cuentaSeleccionada.id, nombre: cuentaSeleccionada.nombre, banco: cuentaSeleccionada.banco } : null,
+        }),
+      } : prev);
+    }
+    setEditGasto(null);
+    setSavingGasto(false);
   }
 
   // ── Eliminar proyecto ──
@@ -4578,7 +4641,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-gray-500 text-sm text-center py-6">Sin gastos adicionales registrados</p>
             ) : (
               proyecto.movimientos.map(g => (
-                <div key={g.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
+                <div key={g.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between group">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-white text-sm">{g.concepto}</p>
@@ -4588,6 +4651,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {g.proveedor && (
                         <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>
                       )}
+                      {g.cuentaOrigen && (
+                        <span className="text-xs px-1.5 py-0.5 bg-[#1a2a1a] text-green-600 rounded">{g.cuentaOrigen.nombre}</span>
+                      )}
                     </div>
                     <p className="text-gray-500 text-xs">
                       {fmtDate(g.fecha)} · {g.metodoPago}
@@ -4595,7 +4661,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {g.notas ? ` · ${g.notas}` : ""}
                     </p>
                   </div>
-                  <span className="text-red-400 font-semibold text-sm shrink-0">−{fmt(g.monto)}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      onClick={() => abrirEditarGasto(g)}
+                      className="opacity-0 group-hover:opacity-100 text-xs text-gray-500 hover:text-[#B3985B] transition-all"
+                    >
+                      Editar
+                    </button>
+                    <span className="text-red-400 font-semibold text-sm">−{fmt(g.monto)}</span>
+                  </div>
                 </div>
               ))
             )}
@@ -4726,6 +4800,89 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
         );
       })()}
+
+      {/* ── Modal editar gasto ── */}
+      {editGasto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setEditGasto(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-white font-semibold">Editar gasto</h3>
+              <button onClick={() => setEditGasto(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                <input value={editGastoForm.concepto} onChange={e => setEditGastoForm(p => ({ ...p, concepto: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto *</label>
+                  <input type="number" step="0.01" min="0" value={editGastoForm.monto}
+                    onChange={e => setEditGastoForm(p => ({ ...p, monto: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Fecha</label>
+                  <input type="date" value={editGastoForm.fecha}
+                    onChange={e => setEditGastoForm(p => ({ ...p, fecha: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                  <Combobox value={editGastoForm.metodoPago} onChange={v => setEditGastoForm(p => ({ ...p, metodoPago: v }))}
+                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                  <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
+                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                  <Combobox value={editGastoForm.categoriaId} onChange={v => setEditGastoForm(p => ({ ...p, categoriaId: v }))}
+                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
+                  <Combobox value={editGastoForm.proveedorId} onChange={v => setEditGastoForm(p => ({ ...p, proveedorId: v }))}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                <input value={editGastoForm.referencia} onChange={e => setEditGastoForm(p => ({ ...p, referencia: e.target.value }))}
+                  placeholder="Núm. transferencia, folio..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                <input value={editGastoForm.notas} onChange={e => setEditGastoForm(p => ({ ...p, notas: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditGasto(null)} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarEdicionGasto} disabled={savingGasto || !editGastoForm.concepto || !editGastoForm.monto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {savingGasto ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal cierre financiero ── */}
       {showCierreModal && cierreData && (

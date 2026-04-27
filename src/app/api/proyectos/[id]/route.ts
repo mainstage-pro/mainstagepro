@@ -71,8 +71,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
           include: {
-            categoria: { select: { nombre: true } },
-            proveedor: { select: { nombre: true } },
+            categoria: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true } },
+            cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true } },
@@ -113,8 +114,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
           include: {
-            categoria: { select: { nombre: true } },
-            proveedor: { select: { nombre: true } },
+            categoria: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true } },
+            cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true } },
