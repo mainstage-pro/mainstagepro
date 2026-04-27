@@ -21,9 +21,27 @@ const GRUPO_SERVICIOS: Record<string, string[]> = {
   "Streaming":       ["STREAMING", "GRABACION"],
 };
 
-/** Devuelve grupos de equipo sugerido según tipo de evento y número de asistentes.
- *  Pasa `servicios` (IDs de serviciosInteres del trato) para filtrar grupos relevantes.
- *  Guía comercial de arranque — no reemplaza revisión técnica en eventos grandes. */
+/**
+ * Capacidades máximas por sistema según GUÍA BASE EQUIPOS Mainstage Pro 2026:
+ *
+ * EV EKX 12P + EV EKX 18SP
+ *   2 EKX12P                          →  Musical: 30   | Social: 50
+ *   2 EKX12P + 2 EKX18SP              →  Musical: 60   | Social: 100
+ *   2 EKX12P + 4 EKX18SP              →  Musical: 100  | Social: 200
+ *   4 EKX12P + 4 EKX18SP              →  Musical: 150  | Social: 250
+ *
+ * RCF HDL 6A + RCF SUB 8006 AS
+ *   6 HDL6A + 2 EKX18SP               →  Musical: 180  | Social: 200  | Empresarial: 200
+ *   8 HDL6A + 2 SUB8006               →  Musical: 250  | Social: 400  | Empresarial: 400
+ *  12 HDL6A + 3 SUB8006               →  Musical: 500  | Social: 600  | Empresarial: 600
+ *  16 HDL6A + 4 SUB8006               →  Musical: 800  | Social: 1000 | Empresarial: 1000
+ *
+ * RCF HDL 30A + RCF SUB 8006 AS
+ *   8 HDL30A + 4 SUB8006              →  Musical: 1000 | Social: 1200 | Empresarial: 1200
+ *  12 HDL30A + 6 SUB8006              →  Musical: 1500 | Social: N/A  | Empresarial: 1800
+ *  16 HDL30A + 8 SUB8006              →  Musical: 2000 | Social: N/A  | Empresarial: 2500
+ *  20 HDL30A + 10 SUB8006             →  Musical: 3000 | Social: N/A  | Empresarial: 4000
+ */
 export function getSugerencias(tipoEvento: string, asistentes: number, servicios?: string[]): SugGroup[] {
   if (asistentes <= 0) return [];
   const tipo = tipoEvento.toUpperCase();
@@ -31,37 +49,57 @@ export function getSugerencias(tipoEvento: string, asistentes: number, servicios
   let grupos: SugGroup[] = [];
 
   if (tipo === "SOCIAL") {
-    if (asistentes <= 100) grupos = socialPequeno();
-    else if (asistentes <= 200) grupos = socialMediano();
-    else if (asistentes <= 400) grupos = socialGrande();
-    else if (asistentes <= 800) grupos = socialMuyGrande();
-    else return aviso("800");
-    if (servicios?.includes("CHISPEROS")) grupos.push(extraChisperos());
-    if (servicios?.includes("HUMO_FRIO")) grupos.push(extraHumoFrio());
-    if (servicios?.includes("CONFETI")) grupos.push(extraConfeti());
-    if (servicios?.includes("ILUM_ARQ")) grupos.push(extraIlumArq());
-    if (servicios?.includes("KARAOKE")) grupos.push(extraKaraoke());
-  } else if (tipo === "EMPRESARIAL") {
-    if (asistentes <= 100) grupos = empresarialPequeno();
-    else if (asistentes <= 250) grupos = empresarialMediano();
-    else if (asistentes <= 500) grupos = empresarialGrande();
-    else if (asistentes <= 1200) grupos = empresarialMuyGrande();
+    if (asistentes <= 50)    grupos = socialMini();
+    else if (asistentes <= 100)  grupos = socialPequeno();
+    else if (asistentes <= 250)  grupos = socialMediano();
+    else if (asistentes <= 400)  grupos = socialGrande();
+    else if (asistentes <= 600)  grupos = socialMuyGrande();
+    else if (asistentes <= 1000) grupos = socialXxl();
+    else if (asistentes <= 1200) grupos = socialMega();
     else return aviso("1200");
-    if (servicios?.includes("STREAMING")) grupos.push(extraStreaming());
-    if (servicios?.includes("GRABACION")) grupos.push(extraGrabacion());
+
+    if (servicios?.includes("CHISPEROS")) grupos.push(extraChisperos());
+    if (servicios?.includes("HUMO_FRIO"))  grupos.push(extraHumoFrio());
+    if (servicios?.includes("CONFETI"))    grupos.push(extraConfeti());
+    if (servicios?.includes("ILUM_ARQ"))   grupos.push(extraIlumArq());
+    if (servicios?.includes("KARAOKE"))    grupos.push(extraKaraoke());
+
+  } else if (tipo === "EMPRESARIAL") {
+    if (asistentes <= 50)    grupos = empresarialMini();
+    else if (asistentes <= 100)  grupos = empresarialPequeno();
+    else if (asistentes <= 200)  grupos = empresarialMediano();
+    else if (asistentes <= 400)  grupos = empresarialGrande();
+    else if (asistentes <= 600)  grupos = empresarialMuyGrande();
+    else if (asistentes <= 1000) grupos = empresarialXxl();
+    else if (asistentes <= 1200) grupos = empresarialMega();
+    else if (asistentes <= 1800) grupos = empresarialMega12();
+    else if (asistentes <= 2500) grupos = empresarialMega16();
+    else if (asistentes <= 4000) grupos = empresarialMega20();
+    else return aviso("4000");
+
+    if (servicios?.includes("STREAMING"))    grupos.push(extraStreaming());
+    if (servicios?.includes("GRABACION"))    grupos.push(extraGrabacion());
     if (servicios?.includes("ESCENOGRAFIA")) grupos.push(extraEscenografia());
+
   } else if (tipo === "MUSICAL") {
-    if (asistentes <= 150) grupos = musicalPequeno();
-    else if (asistentes <= 400) grupos = musicalMediano();
-    else if (asistentes <= 700) grupos = musicalGrande();
-    else if (asistentes <= 1000) grupos = musicalMuyGrande();
-    else return aviso("1000");
+    if (asistentes <= 30)    grupos = musicalMini();
+    else if (asistentes <= 60)   grupos = musicalMicro();
+    else if (asistentes <= 100)  grupos = musicalPequeno();
+    else if (asistentes <= 150)  grupos = musicalMediano();
+    else if (asistentes <= 250)  grupos = musicalGrande();
+    else if (asistentes <= 500)  grupos = musicalMuyGrande();
+    else if (asistentes <= 800)  grupos = musicalXxl();
+    else if (asistentes <= 1000) grupos = musicalMega8();
+    else if (asistentes <= 1500) grupos = musicalMega12();
+    else if (asistentes <= 2000) grupos = musicalMega16();
+    else if (asistentes <= 3000) grupos = musicalMega20();
+    else return aviso("3000");
+
     if (servicios?.includes("ESTRUCTURAS")) grupos.push(extraEstructuras());
   } else {
     return [];
   }
 
-  // Si se pasaron servicios, filtrar grupos que no tienen relación
   if (servicios && servicios.length > 0) {
     return grupos.filter(g => {
       const relacionados = GRUPO_SERVICIOS[g.cat];
@@ -77,71 +115,79 @@ function aviso(limite: string): SugGroup[] {
   return [{
     cat: "Aviso",
     items: [{
-      desc: `Más de ${limite} personas — esta guía es solo referencia comercial. Validar con producción antes de cotizar.`,
+      desc: `Más de ${limite} personas — validar con producción antes de cotizar.`,
       cant: 0, esOpcional: false,
     }],
   }];
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// SOCIAL
+// SOCIAL  (máximos PDF: EKX→250, HDL6A→1000, HDL30A→1200)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── SOCIAL PEQUEÑO ≤100 ───────────────────────────────────────────────────────
-function socialPequeno(): SugGroup[] {
+function socialMini(): SugGroup[] {          // ≤50
   return [
     { cat: "Audio", items: [
-      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "1 por lado" },
-      { desc: "EKX 18P", cant: 1, esOpcional: false, nota: "2 si hay pista de baile" },
+      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "EV — cubre hasta 50 pers. social" },
+      { desc: "inalámbrico", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led inalámbrico", cant: 8, esOpcional: false, nota: "6-10 piezas" },
+      { desc: "barra led", cant: 2, esOpcional: true },
+    ]},
+  ];
+}
+
+function socialPequeno(): SugGroup[] {       // ≤100
+  return [
+    { cat: "Audio", items: [
+      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "EV — cubre hasta 100 pers. social" },
+      { desc: "EKX 18P", cant: 2, esOpcional: false },
       { desc: "inalámbrico", cant: 2, esOpcional: false, nota: "brindis o protocolo" },
       { desc: "SQ5", cant: 1, esOpcional: true, nota: "si hay múltiples micrófonos" },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led inalámbrico", cant: 10, esOpcional: false, nota: "8-12 para ambientación" },
-      { desc: "par led", cant: 6, esOpcional: false, nota: "baño de color" },
-      { desc: "barra led", cant: 3, esOpcional: true, nota: "mesa principal o detalles" },
-      { desc: "haze", cant: 1, esOpcional: true, nota: "si quieren ambiente de fiesta" },
+      { desc: "par led inalámbrico", cant: 10, esOpcional: false, nota: "8-12 piezas" },
+      { desc: "par led", cant: 6, esOpcional: false },
+      { desc: "barra led", cant: 3, esOpcional: true },
+      { desc: "haze", cant: 1, esOpcional: true },
     ]},
     { cat: "DJ / Consola", items: [
-      { desc: "CDJ 3000", cant: 2, esOpcional: true, nota: "si hay DJ profesional" },
+      { desc: "CDJ 3000", cant: 2, esOpcional: true },
       { desc: "DJM A9", cant: 1, esOpcional: true, nota: "mixer DJ" },
       { desc: "booth", cant: 1, esOpcional: true },
     ]},
   ];
 }
 
-// ── SOCIAL MEDIANO 101-200 ────────────────────────────────────────────────────
-function socialMediano(): SugGroup[] {
+function socialMediano(): SugGroup[] {       // ≤250
   return [
     { cat: "Audio", items: [
-      { desc: "EKX 12P", cant: 4, esOpcional: false, nota: "o 6-8 HDL 6A para más presión" },
-      { desc: "EKX 18P", cant: 3, esOpcional: false, nota: "2-4 según pista" },
-      { desc: "SQ5", cant: 1, esOpcional: false, nota: "protocolo + DJ + mezcla completa" },
+      { desc: "EKX 12P", cant: 4, esOpcional: false, nota: "EV — cubre hasta 250 pers. social" },
+      { desc: "EKX 18P", cant: 4, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
       { desc: "inalámbrico", cant: 2, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
       { desc: "par led inalámbrico", cant: 14, esOpcional: false, nota: "12-16 piezas" },
       { desc: "spot", cant: 5, esOpcional: false },
-      { desc: "barra led", cant: 4, esOpcional: false, nota: "apoyo decorativo" },
-      { desc: "blinder", cant: 4, esOpcional: true, nota: "más energía en pista" },
+      { desc: "barra led", cant: 4, esOpcional: false },
+      { desc: "blinder", cant: 4, esOpcional: true },
       { desc: "haze", cant: 1, esOpcional: true },
     ]},
     { cat: "DJ / Consola", items: [
       { desc: "CDJ 3000", cant: 2, esOpcional: false },
-      { desc: "DJM A9", cant: 1, esOpcional: false, nota: "mixer DJ" },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
       { desc: "booth", cant: 1, esOpcional: false },
-      { desc: "tarima DJ", cant: 1, esOpcional: true },
     ]},
   ];
 }
 
-// ── SOCIAL GRANDE 201-400 ─────────────────────────────────────────────────────
-// RCF HDL 6A: 8 módulos cubre hasta ~400 sociales (interior)
-function socialGrande(): SugGroup[] {
+function socialGrande(): SugGroup[] {        // ≤400
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 6A", cant: 8, esOpcional: false, nota: "RCF — 4 por lado; hasta ~400 pers. interior" },
-      { desc: "SUB 8006 AS", cant: 4, esOpcional: false, nota: "2-4 subs RCF según intensidad de pista" },
+      { desc: "HDL 6A", cant: 8, esOpcional: false, nota: "RCF — cubre hasta 400 pers. social" },
+      { desc: "SUB 8006 AS", cant: 2, esOpcional: false, nota: "subs RCF" },
       { desc: "SQ5", cant: 1, esOpcional: false },
       { desc: "inalámbrico", cant: 3, esOpcional: false },
     ]},
@@ -150,34 +196,82 @@ function socialGrande(): SugGroup[] {
       { desc: "spot", cant: 7, esOpcional: false },
       { desc: "beam", cant: 7, esOpcional: false },
       { desc: "blinder", cant: 6, esOpcional: false },
-      { desc: "strobe", cant: 10, esOpcional: false },
+      { desc: "strobe", cant: 8, esOpcional: false },
       { desc: "haze", cant: 2, esOpcional: false },
       { desc: "torre truss", cant: 2, esOpcional: false },
     ]},
     { cat: "DJ / Consola", items: [
-      { desc: "CDJ 3000", cant: 3, esOpcional: false, nota: "2-4 según evento" },
+      { desc: "CDJ 3000", cant: 2, esOpcional: false },
       { desc: "DJM A9", cant: 1, esOpcional: false },
-      { desc: "booth", cant: 1, esOpcional: false, nota: "premium o riser" },
+      { desc: "booth", cant: 1, esOpcional: false },
     ]},
   ];
 }
 
-// ── SOCIAL MUY GRANDE 401-800 ─────────────────────────────────────────────────
-// RCF HDL 30A: 10 módulos hasta ~800 sociales / 12 módulos hasta ~1200 sociales
-function socialMuyGrande(): SugGroup[] {
+function socialMuyGrande(): SugGroup[] {     // ≤600
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 30A", cant: 10, esOpcional: false, nota: "RCF line array — 5 por lado; cubre hasta ~800 pers." },
-      { desc: "SUB 8006 AS", cant: 6, esOpcional: false, nota: "4-8 subs RCF según recinto y pista" },
+      { desc: "HDL 6A", cant: 12, esOpcional: false, nota: "RCF — cubre hasta 600 pers. social" },
+      { desc: "SUB 8006 AS", cant: 3, esOpcional: false },
       { desc: "SQ5", cant: 1, esOpcional: false },
       { desc: "inalámbrico", cant: 4, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led inalámbrico", cant: 24, esOpcional: false, nota: "20-28 piezas" },
+      { desc: "par led inalámbrico", cant: 20, esOpcional: false },
+      { desc: "spot", cant: 9, esOpcional: false },
+      { desc: "beam", cant: 9, esOpcional: false },
+      { desc: "blinder", cant: 8, esOpcional: false },
+      { desc: "strobe", cant: 12, esOpcional: false },
+      { desc: "haze", cant: 2, esOpcional: false },
+      { desc: "torre truss", cant: 2, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 3, esOpcional: false },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function socialXxl(): SugGroup[] {           // ≤1000
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 6A", cant: 16, esOpcional: false, nota: "RCF — cubre hasta 1000 pers. social" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 4, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led inalámbrico", cant: 26, esOpcional: false },
       { desc: "spot", cant: 10, esOpcional: false },
       { desc: "beam", cant: 10, esOpcional: false },
-      { desc: "blinder", cant: 8, esOpcional: false },
-      { desc: "strobe", cant: 14, esOpcional: false },
+      { desc: "blinder", cant: 10, esOpcional: false },
+      { desc: "strobe", cant: 16, esOpcional: false },
+      { desc: "haze", cant: 3, esOpcional: false },
+      { desc: "torre truss", cant: 4, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 4, esOpcional: false },
+      { desc: "DJM V10", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function socialMega(): SugGroup[] {          // ≤1200
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 8, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 1200 pers. social" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 5, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led inalámbrico", cant: 30, esOpcional: false },
+      { desc: "spot", cant: 12, esOpcional: false },
+      { desc: "beam", cant: 12, esOpcional: false },
+      { desc: "blinder", cant: 10, esOpcional: false },
+      { desc: "strobe", cant: 18, esOpcional: false },
       { desc: "haze", cant: 3, esOpcional: false },
       { desc: "torre truss", cant: 4, esOpcional: false },
     ]},
@@ -185,78 +279,114 @@ function socialMuyGrande(): SugGroup[] {
       { desc: "CDJ 3000", cant: 4, esOpcional: false },
       { desc: "DJM V10", cant: 1, esOpcional: false },
       { desc: "RMX 1000", cant: 1, esOpcional: true },
-      { desc: "booth", cant: 1, esOpcional: false, nota: "premium" },
+      { desc: "booth", cant: 1, esOpcional: false },
     ]},
   ];
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// EMPRESARIAL
+// EMPRESARIAL  (máximos PDF: EKX→~100, HDL6A→1000, HDL30A→4000)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── EMPRESARIAL PEQUEÑO ≤100 ──────────────────────────────────────────────────
-function empresarialPequeno(): SugGroup[] {
+function empresarialMini(): SugGroup[] {     // ≤50
   return [
     { cat: "Audio", items: [
       { desc: "EKX 12P", cant: 2, esOpcional: false },
-      { desc: "EKX 18P", cant: 1, esOpcional: true, nota: "si hay video o entrada musical" },
-      { desc: "SQ5", cant: 1, esOpcional: false, nota: "o MG10XUF para setup más simple" },
       { desc: "inalámbrico", cant: 2, esOpcional: false },
-      { desc: "diadema", cant: 1, esOpcional: true, nota: "si hay presentador o conferenciante" },
+      { desc: "diadema", cant: 1, esOpcional: true },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led", cant: 8, esOpcional: false, nota: "6-10 para ambientación" },
-      { desc: "barra led", cant: 3, esOpcional: false, nota: "RGBW para escenario o back" },
-      { desc: "pinspot", cant: 4, esOpcional: true, nota: "branding o decoración puntual" },
+      { desc: "par led", cant: 6, esOpcional: false },
+      { desc: "barra led", cant: 2, esOpcional: false },
     ]},
     { cat: "Video", items: [
-      { desc: "pantalla LED", cant: 1, esOpcional: true, nota: "3-6 m² según venue" },
-      { desc: "Novastar", cant: 1, esOpcional: true, nota: "si hay pantalla LED" },
-      { desc: "Atem Mini Pro", cant: 1, esOpcional: true, nota: "si hay cambio de fuentes" },
+      { desc: "pantalla LED", cant: 1, esOpcional: true, nota: "3-4 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: true },
     ]},
   ];
 }
 
-// ── EMPRESARIAL MEDIANO 101-250 ───────────────────────────────────────────────
-// RCF HDL 6A: 8-10 módulos para empresariales hasta ~250 pers.
-function empresarialMediano(): SugGroup[] {
+function empresarialPequeno(): SugGroup[] {  // ≤100
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 6A", cant: 8, esOpcional: false, nota: "RCF — 4 por lado; o 4 EKX 12P si setup más simple" },
-      { desc: "SUB 8006 AS", cant: 2, esOpcional: false, nota: "o 2 EKX 18P" },
+      { desc: "EKX 12P", cant: 2, esOpcional: false },
+      { desc: "EKX 18P", cant: 2, esOpcional: false },
       { desc: "SQ5", cant: 1, esOpcional: false },
-      { desc: "inalámbrico", cant: 3, esOpcional: false },
-      { desc: "diadema", cant: 1, esOpcional: true, nota: "conductor principal" },
+      { desc: "inalámbrico", cant: 2, esOpcional: false },
+      { desc: "diadema", cant: 1, esOpcional: true },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led", cant: 13, esOpcional: false, nota: "10-16 piezas" },
-      { desc: "barra led", cant: 5, esOpcional: false, nota: "RGBW / lineales para escenario" },
-      { desc: "spot", cant: 3, esOpcional: true, nota: "más presencia visual" },
-      { desc: "haze", cant: 1, esOpcional: true, nota: "solo si hay show, no conferencia" },
+      { desc: "par led", cant: 8, esOpcional: false },
+      { desc: "barra led", cant: 3, esOpcional: false },
+      { desc: "pinspot", cant: 4, esOpcional: true },
     ]},
     { cat: "Video", items: [
-      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "6-9 m²" },
+      { desc: "pantalla LED", cant: 1, esOpcional: true, nota: "3-6 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: true },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: true },
+    ]},
+  ];
+}
+
+function empresarialMediano(): SugGroup[] {  // ≤200
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 6A", cant: 6, esOpcional: false, nota: "RCF — cubre hasta 200 pers. empresarial" },
+      { desc: "EKX 18P", cant: 2, esOpcional: false, nota: "subs EV como complemento" },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 3, esOpcional: false },
+      { desc: "diadema", cant: 1, esOpcional: true },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 12, esOpcional: false },
+      { desc: "barra led", cant: 4, esOpcional: false },
+      { desc: "spot", cant: 3, esOpcional: true },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "6 m²" },
       { desc: "Novastar", cant: 1, esOpcional: false },
       { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
     ]},
   ];
 }
 
-// ── EMPRESARIAL GRANDE 251-500 ────────────────────────────────────────────────
-// RCF HDL 6A: 10-12 módulos para empresariales hasta ~500 pers.
-function empresarialGrande(): SugGroup[] {
+function empresarialGrande(): SugGroup[] {   // ≤400
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 6A", cant: 10, esOpcional: false, nota: "RCF — 5 por lado; cubre hasta ~500 pers." },
-      { desc: "SUB 8006 AS", cant: 4, esOpcional: false, nota: "2-4 subs según contenido musical" },
+      { desc: "HDL 6A", cant: 8, esOpcional: false, nota: "RCF — cubre hasta 400 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 2, esOpcional: false },
       { desc: "SQ5", cant: 1, esOpcional: false },
       { desc: "inalámbrico", cant: 4, esOpcional: false },
-      { desc: "IEM G4", cant: 1, esOpcional: true, nota: "si hay panel, músicos o playback" },
+      { desc: "diadema", cant: 1, esOpcional: true },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led", cant: 20, esOpcional: false, nota: "16-24 piezas" },
-      { desc: "spot", cant: 7, esOpcional: false },
-      { desc: "beam", cant: 7, esOpcional: true, nota: "si hay show de apertura" },
+      { desc: "par led", cant: 16, esOpcional: false },
+      { desc: "spot", cant: 6, esOpcional: false },
+      { desc: "barra led", cant: 5, esOpcional: false },
+      { desc: "haze", cant: 1, esOpcional: true },
+      { desc: "torre truss", cant: 2, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "9 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function empresarialMuyGrande(): SugGroup[] { // ≤600
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 6A", cant: 12, esOpcional: false, nota: "RCF — cubre hasta 600 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 3, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 4, esOpcional: false },
+      { desc: "IEM G4", cant: 1, esOpcional: true },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 20, esOpcional: false },
+      { desc: "spot", cant: 8, esOpcional: false },
+      { desc: "beam", cant: 6, esOpcional: true },
       { desc: "blinder", cant: 4, esOpcional: false },
       { desc: "haze", cant: 2, esOpcional: false },
       { desc: "torre truss", cant: 2, esOpcional: false },
@@ -269,27 +399,122 @@ function empresarialGrande(): SugGroup[] {
   ];
 }
 
-// ── EMPRESARIAL MUY GRANDE 501-1200 ──────────────────────────────────────────
-// RCF HDL 30A: 8 módulos hasta ~1200 empresariales
-function empresarialMuyGrande(): SugGroup[] {
+function empresarialXxl(): SugGroup[] {      // ≤1000
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 30A", cant: 8, esOpcional: false, nota: "RCF line array — 4 por lado; cubre hasta ~1200 pers. empresarial" },
-      { desc: "SUB 8006 AS", cant: 6, esOpcional: false, nota: "4-8 subs RCF" },
+      { desc: "HDL 6A", cant: 16, esOpcional: false, nota: "RCF — cubre hasta 1000 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
       { desc: "SQ5", cant: 1, esOpcional: false },
       { desc: "inalámbrico", cant: 5, esOpcional: false },
-      { desc: "IEM G4", cant: 1, esOpcional: true, nota: "si hay presentadores con in-ear" },
+      { desc: "IEM G4", cant: 1, esOpcional: true },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "par led", cant: 28, esOpcional: false, nota: "24-32 piezas" },
+      { desc: "par led", cant: 26, esOpcional: false },
       { desc: "spot", cant: 10, esOpcional: false },
-      { desc: "beam", cant: 10, esOpcional: false },
+      { desc: "beam", cant: 8, esOpcional: false },
       { desc: "blinder", cant: 6, esOpcional: false },
+      { desc: "haze", cant: 2, esOpcional: false },
+      { desc: "torre truss", cant: 4, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "12-15 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function empresarialMega(): SugGroup[] {     // ≤1200
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 8, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 1200 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 5, esOpcional: false },
+      { desc: "IEM G4", cant: 1, esOpcional: true },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 30, esOpcional: false },
+      { desc: "spot", cant: 12, esOpcional: false },
+      { desc: "beam", cant: 10, esOpcional: false },
+      { desc: "blinder", cant: 8, esOpcional: false },
       { desc: "haze", cant: 3, esOpcional: false },
       { desc: "torre truss", cant: 4, esOpcional: false },
     ]},
     { cat: "Video", items: [
-      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "12-18 m² en una o dos pantallas" },
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "15-18 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function empresarialMega12(): SugGroup[] {   // ≤1800
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 12, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 1800 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 6, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 6, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 36, esOpcional: false },
+      { desc: "spot", cant: 14, esOpcional: false },
+      { desc: "beam", cant: 12, esOpcional: false },
+      { desc: "blinder", cant: 10, esOpcional: false },
+      { desc: "haze", cant: 4, esOpcional: false },
+      { desc: "torre truss", cant: 6, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "18-24 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function empresarialMega16(): SugGroup[] {   // ≤2500
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 16, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 2500 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 8, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 6, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 44, esOpcional: false },
+      { desc: "spot", cant: 16, esOpcional: false },
+      { desc: "beam", cant: 16, esOpcional: false },
+      { desc: "blinder", cant: 12, esOpcional: false },
+      { desc: "haze", cant: 4, esOpcional: false },
+      { desc: "torre truss", cant: 8, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "24-30 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
+    ]},
+  ];
+}
+
+function empresarialMega20(): SugGroup[] {   // ≤4000
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 20, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 4000 pers. empresarial" },
+      { desc: "SUB 8006 AS", cant: 10, esOpcional: false },
+      { desc: "SQ5", cant: 1, esOpcional: false },
+      { desc: "inalámbrico", cant: 6, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 50, esOpcional: false },
+      { desc: "spot", cant: 20, esOpcional: false },
+      { desc: "beam", cant: 20, esOpcional: false },
+      { desc: "blinder", cant: 14, esOpcional: false },
+      { desc: "haze", cant: 5, esOpcional: false },
+      { desc: "torre truss", cant: 8, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "30-40 m²" },
       { desc: "Novastar", cant: 1, esOpcional: false },
       { desc: "Atem Mini Pro", cant: 1, esOpcional: false },
     ]},
@@ -297,20 +522,53 @@ function empresarialMuyGrande(): SugGroup[] {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MUSICAL
+// MUSICAL  (máximos PDF: EKX→150, HDL6A→800, HDL30A→3000)
 // ══════════════════════════════════════════════════════════════════════════════
 
-// ── MUSICAL PEQUEÑO ≤150 ──────────────────────────────────────────────────────
-// EV EKX cubre bien hasta ~150 personas en musicales (recinto o semi-exterior)
-function musicalPequeno(): SugGroup[] {
+function musicalMini(): SugGroup[] {         // ≤30
   return [
     { cat: "Audio", items: [
-      { desc: "EKX 12P", cant: 4, esOpcional: false, nota: "EV — 2 por lado; o 6-8 HDL 6A para más presión" },
-      { desc: "EKX 18P", cant: 3, esOpcional: false, nota: "2-4 subs EV — o 2 SUB 8006 AS para más punch" },
+      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "EV — cubre hasta 30 pers. musical" },
     ]},
     { cat: "DJ / Consola", items: [
       { desc: "CDJ 3000", cant: 2, esOpcional: false },
-      { desc: "DJM A9", cant: 1, esOpcional: false, nota: "o 900 NXS2 / V10" },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 6, esOpcional: false },
+      { desc: "beam", cant: 2, esOpcional: true },
+    ]},
+  ];
+}
+
+function musicalMicro(): SugGroup[] {        // ≤60
+  return [
+    { cat: "Audio", items: [
+      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "EV — cubre hasta 60 pers. musical" },
+      { desc: "EKX 18P", cant: 2, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 2, esOpcional: false },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "par led", cant: 8, esOpcional: false },
+      { desc: "beam", cant: 3, esOpcional: false },
+      { desc: "strobe", cant: 2, esOpcional: true },
+      { desc: "haze", cant: 1, esOpcional: true },
+    ]},
+  ];
+}
+
+function musicalPequeno(): SugGroup[] {      // ≤100
+  return [
+    { cat: "Audio", items: [
+      { desc: "EKX 12P", cant: 2, esOpcional: false, nota: "EV — cubre hasta 100 pers. musical" },
+      { desc: "EKX 18P", cant: 4, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 2, esOpcional: false },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
       { desc: "booth", cant: 1, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
@@ -319,64 +577,126 @@ function musicalPequeno(): SugGroup[] {
       { desc: "strobe", cant: 4, esOpcional: false },
       { desc: "blinder", cant: 2, esOpcional: false },
       { desc: "haze", cant: 1, esOpcional: false },
-      { desc: "barra led", cant: 2, esOpcional: true },
+    ]},
+  ];
+}
+
+function musicalMediano(): SugGroup[] {      // ≤150
+  return [
+    { cat: "Audio", items: [
+      { desc: "EKX 12P", cant: 4, esOpcional: false, nota: "EV — cubre hasta 150 pers. musical" },
+      { desc: "EKX 18P", cant: 4, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 2, esOpcional: false },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "spot", cant: 4, esOpcional: false },
+      { desc: "beam", cant: 5, esOpcional: false },
+      { desc: "strobe", cant: 6, esOpcional: false },
+      { desc: "blinder", cant: 3, esOpcional: false },
+      { desc: "haze", cant: 1, esOpcional: false },
       { desc: "láser", cant: 1, esOpcional: true },
     ]},
   ];
 }
 
-// ── MUSICAL MEDIANO 151-400 ───────────────────────────────────────────────────
-// RCF HDL 6A: 8-12 módulos cubre bien musicales hasta ~400 pers.
-function musicalMediano(): SugGroup[] {
+function musicalGrande(): SugGroup[] {       // ≤250
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 6A", cant: 10, esOpcional: false, nota: "RCF — 5 por lado; 12 si exterior o mayor presión" },
-      { desc: "SUB 8006 AS", cant: 4, esOpcional: false, nota: "2-6 subs RCF según intensidad" },
+      { desc: "HDL 6A", cant: 8, esOpcional: false, nota: "RCF — cubre hasta 250 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 2, esOpcional: false },
     ]},
     { cat: "DJ / Consola", items: [
-      { desc: "CDJ 3000", cant: 3, esOpcional: false, nota: "3-4" },
-      { desc: "DJM V10", cant: 1, esOpcional: false, nota: "o A9" },
-      { desc: "RMX 1000", cant: 1, esOpcional: true },
-      { desc: "booth", cant: 1, esOpcional: false, nota: "premium o riser" },
+      { desc: "CDJ 3000", cant: 3, esOpcional: false },
+      { desc: "DJM A9", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "beam", cant: 7, esOpcional: false, nota: "6-8" },
-      { desc: "spot", cant: 5, esOpcional: false, nota: "4-6" },
-      { desc: "strobe", cant: 10, esOpcional: false, nota: "8-12" },
+      { desc: "spot", cant: 5, esOpcional: false },
+      { desc: "beam", cant: 6, esOpcional: false },
+      { desc: "strobe", cant: 8, esOpcional: false },
       { desc: "blinder", cant: 4, esOpcional: false },
+      { desc: "haze", cant: 2, esOpcional: false },
+      { desc: "torre truss", cant: 2, esOpcional: false },
+      { desc: "láser", cant: 2, esOpcional: true },
+    ]},
+  ];
+}
+
+function musicalMuyGrande(): SugGroup[] {    // ≤500
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 6A", cant: 12, esOpcional: false, nota: "RCF — cubre hasta 500 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 3, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 3, esOpcional: false },
+      { desc: "DJM V10", cant: 1, esOpcional: false },
+      { desc: "RMX 1000", cant: 1, esOpcional: true },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "beam", cant: 8, esOpcional: false },
+      { desc: "spot", cant: 6, esOpcional: false },
+      { desc: "strobe", cant: 10, esOpcional: false },
+      { desc: "blinder", cant: 5, esOpcional: false },
       { desc: "haze", cant: 2, esOpcional: false },
       { desc: "torre truss", cant: 2, esOpcional: false },
       { desc: "láser", cant: 3, esOpcional: true },
     ]},
+  ];
+}
+
+function musicalXxl(): SugGroup[] {          // ≤800
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 6A", cant: 16, esOpcional: false, nota: "RCF — cubre hasta 800 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 4, esOpcional: false },
+      { desc: "DJM V10", cant: 1, esOpcional: false },
+      { desc: "RMX 1000", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "beam", cant: 10, esOpcional: false },
+      { desc: "spot", cant: 8, esOpcional: false },
+      { desc: "strobe", cant: 14, esOpcional: false },
+      { desc: "blinder", cant: 7, esOpcional: false },
+      { desc: "haze", cant: 2, esOpcional: false },
+      { desc: "torre truss", cant: 2, esOpcional: false },
+      { desc: "láser", cant: 4, esOpcional: true },
+    ]},
     { cat: "Video", items: [
-      { desc: "pantalla LED", cant: 1, esOpcional: true, nota: "6-12 m² si el evento lo requiere" },
+      { desc: "pantalla LED", cant: 1, esOpcional: true, nota: "si el evento lo requiere" },
       { desc: "Novastar", cant: 1, esOpcional: true },
     ]},
   ];
 }
 
-// ── MUSICAL GRANDE 401-700 ────────────────────────────────────────────────────
-// RCF HDL 30A: 8 módulos hasta ~1000 musicales (guía PDF: 8 medios = 1000 máx musicales)
-function musicalGrande(): SugGroup[] {
+function musicalMega8(): SugGroup[] {        // ≤1000
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 30A", cant: 8, esOpcional: false, nota: "RCF line array — 4 por lado; hasta ~700 pers. (8 medios = máx 1000 musicales)" },
-      { desc: "SUB 8006 AS", cant: 6, esOpcional: false, nota: "4-8 subs RCF" },
-      { desc: "SQ5", cant: 1, esOpcional: true, nota: "si hay voces, instrumentos o playback" },
+      { desc: "HDL 30A", cant: 8, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 1000 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 4, esOpcional: false },
     ]},
     { cat: "DJ / Consola", items: [
       { desc: "CDJ 3000", cant: 4, esOpcional: false },
       { desc: "DJM V10", cant: 1, esOpcional: false },
-      { desc: "RMX 1000", cant: 1, esOpcional: true },
-      { desc: "booth", cant: 1, esOpcional: false, nota: "premium" },
+      { desc: "RMX 1000", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "beam", cant: 10, esOpcional: false, nota: "8-12" },
-      { desc: "spot", cant: 7, esOpcional: false, nota: "6-8" },
-      { desc: "strobe", cant: 14, esOpcional: false, nota: "12-18" },
-      { desc: "blinder", cant: 7, esOpcional: false, nota: "6-8" },
-      { desc: "haze", cant: 2, esOpcional: false },
-      { desc: "torre truss", cant: 2, esOpcional: false },
+      { desc: "beam", cant: 12, esOpcional: false },
+      { desc: "spot", cant: 10, esOpcional: false },
+      { desc: "strobe", cant: 16, esOpcional: false },
+      { desc: "blinder", cant: 8, esOpcional: false },
+      { desc: "haze", cant: 3, esOpcional: false },
+      { desc: "torre truss", cant: 4, esOpcional: false },
       { desc: "láser", cant: 4, esOpcional: true },
     ]},
     { cat: "Video", items: [
@@ -386,35 +706,86 @@ function musicalGrande(): SugGroup[] {
   ];
 }
 
-// ── MUSICAL MUY GRANDE 701-1000 ───────────────────────────────────────────────
-// RCF HDL 30A: 10-12 módulos para musicales 700-1000 pers.
-function musicalMuyGrande(): SugGroup[] {
+function musicalMega12(): SugGroup[] {       // ≤1500
   return [
     { cat: "Audio", items: [
-      { desc: "HDL 30A", cant: 12, esOpcional: false, nota: "RCF line array — 6 por lado; hasta 1000 pers. musicales" },
-      { desc: "SUB 8006 AS", cant: 8, esOpcional: false, nota: "6-10 subs RCF — considerar doble apilado" },
-      { desc: "SQ5", cant: 1, esOpcional: false },
-      { desc: "IEM G4", cant: 1, esOpcional: true, nota: "show híbrido o playback" },
+      { desc: "HDL 30A", cant: 12, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 1500 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 6, esOpcional: false },
     ]},
     { cat: "DJ / Consola", items: [
       { desc: "CDJ 3000", cant: 4, esOpcional: false },
       { desc: "DJM V10", cant: 1, esOpcional: false },
       { desc: "RMX 1000", cant: 1, esOpcional: false },
-      { desc: "booth", cant: 1, esOpcional: false, nota: "premium" },
+      { desc: "booth", cant: 1, esOpcional: false },
     ]},
     { cat: "Iluminación", items: [
-      { desc: "beam", cant: 14, esOpcional: false, nota: "12-16" },
-      { desc: "spot", cant: 10, esOpcional: false, nota: "8-12" },
-      { desc: "strobe", cant: 18, esOpcional: false, nota: "16-24" },
-      { desc: "blinder", cant: 10, esOpcional: false, nota: "8-12" },
+      { desc: "beam", cant: 14, esOpcional: false },
+      { desc: "spot", cant: 12, esOpcional: false },
+      { desc: "strobe", cant: 20, esOpcional: false },
+      { desc: "blinder", cant: 10, esOpcional: false },
       { desc: "haze", cant: 3, esOpcional: false },
-      { desc: "torre truss", cant: 4, esOpcional: false, nota: "más torres según venue — nodo DMX adicional" },
+      { desc: "torre truss", cant: 6, esOpcional: false },
       { desc: "láser", cant: 6, esOpcional: true },
     ]},
     { cat: "Video", items: [
-      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "12-20 m² — considerar 2 pantallas laterales" },
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "12-15 m²" },
       { desc: "Novastar", cant: 1, esOpcional: false },
-      { desc: "Atem Mini Pro", cant: 1, esOpcional: true, nota: "si hay cambio de cámaras o streaming" },
+    ]},
+  ];
+}
+
+function musicalMega16(): SugGroup[] {       // ≤2000
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 16, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 2000 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 8, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 4, esOpcional: false },
+      { desc: "DJM V10", cant: 1, esOpcional: false },
+      { desc: "RMX 1000", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "beam", cant: 16, esOpcional: false },
+      { desc: "spot", cant: 14, esOpcional: false },
+      { desc: "strobe", cant: 24, esOpcional: false },
+      { desc: "blinder", cant: 12, esOpcional: false },
+      { desc: "haze", cant: 4, esOpcional: false },
+      { desc: "torre truss", cant: 8, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "15-20 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: true },
+    ]},
+  ];
+}
+
+function musicalMega20(): SugGroup[] {       // ≤3000
+  return [
+    { cat: "Audio", items: [
+      { desc: "HDL 30A", cant: 20, esOpcional: false, nota: "RCF HDL 30A — cubre hasta 3000 pers. musical" },
+      { desc: "SUB 8006 AS", cant: 10, esOpcional: false },
+    ]},
+    { cat: "DJ / Consola", items: [
+      { desc: "CDJ 3000", cant: 4, esOpcional: false },
+      { desc: "DJM V10", cant: 1, esOpcional: false },
+      { desc: "RMX 1000", cant: 1, esOpcional: false },
+      { desc: "booth", cant: 1, esOpcional: false },
+    ]},
+    { cat: "Iluminación", items: [
+      { desc: "beam", cant: 20, esOpcional: false },
+      { desc: "spot", cant: 16, esOpcional: false },
+      { desc: "strobe", cant: 28, esOpcional: false },
+      { desc: "blinder", cant: 14, esOpcional: false },
+      { desc: "haze", cant: 5, esOpcional: false },
+      { desc: "torre truss", cant: 10, esOpcional: false },
+    ]},
+    { cat: "Video", items: [
+      { desc: "pantalla LED", cant: 1, esOpcional: false, nota: "20-30 m²" },
+      { desc: "Novastar", cant: 1, esOpcional: false },
+      { desc: "Atem Mini Pro", cant: 1, esOpcional: true },
     ]},
   ];
 }
