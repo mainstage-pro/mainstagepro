@@ -17,7 +17,7 @@ type Equipo = {
   costoProveedor: number | null;
   cantidadTotal: number;
   proveedorDefaultId: string | null;
-  proveedorDefault: { id: string; nombre: string } | null;
+  proveedorDefault: { id: string; nombre: string; empresa: string | null } | null;
   categoria: { id: string; nombre: string; orden: number };
   notas: string | null;
   activo: boolean;
@@ -628,7 +628,9 @@ export default function InventarioEquiposPage() {
                         </td>
                         <td className="px-4 py-3 text-xs text-[#6b7280]">
                           {e.tipo === "EXTERNO"
-                            ? (e.proveedorDefault?.nombre ?? <span className="text-[#444]">Sin asignar</span>)
+                            ? (e.proveedorDefault
+                                ? (e.proveedorDefault.empresa ?? e.proveedorDefault.nombre)
+                                : <span className="text-[#444]">Sin asignar</span>)
                             : <span className="text-[#333]">—</span>}
                         </td>
                         <td className="px-4 py-3">

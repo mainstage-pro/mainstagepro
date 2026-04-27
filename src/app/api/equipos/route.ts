@@ -13,7 +13,7 @@ const EQUIPO_SELECT = {
   cantidadTotal: true,
   estado: true,
   proveedorDefaultId: true,
-  proveedorDefault: { select: { id: true, nombre: true } },
+  proveedorDefault: { select: { id: true, nombre: true, empresa: true } },
   categoria: { select: { id: true, nombre: true, orden: true } },
   notas: true,
   activo: true,

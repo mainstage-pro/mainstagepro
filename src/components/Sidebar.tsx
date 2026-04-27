@@ -105,6 +105,7 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
+      { key: "inv-maestro", label: "Inventario maestro", href: "/inventario/maestro", adminOnly: true },
     ],
   },
 
@@ -177,7 +178,6 @@ const NAV: NavSection[] = [
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
           { key: "inv-vehiculos", label: "Vehículos", href: "/catalogo/vehiculos" },
           { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
-          { key: "inv-maestro", label: "Inventario maestro", href: "/inventario/maestro", adminOnly: true },
         ],
       },
       {

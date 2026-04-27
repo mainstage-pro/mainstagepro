@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
         costoProveedor: true,
         costoInternoEstimado: true,
         categoria: { select: { id: true, nombre: true } },
-        proveedorDefault: { select: { id: true, nombre: true } },
+        proveedorDefault: { select: { id: true, nombre: true, empresa: true } },
         imagenUrl: true,
         _count: { select: { accesorios: true } },
       },

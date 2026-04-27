@@ -16,7 +16,7 @@ type Equipo = {
   costoProveedor: number | null;
   costoInternoEstimado: number | null;
   categoria: { id: string; nombre: string };
-  proveedorDefault: { id: string; nombre: string } | null;
+  proveedorDefault: { id: string; nombre: string; empresa: string | null } | null;
   imagenUrl: string | null;
   _count: { accesorios: number };
 };
