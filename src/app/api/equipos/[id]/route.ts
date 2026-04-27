@@ -22,6 +22,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         take: 20,
       },
       unidades: { orderBy: { id: "asc" } },
+      accesorios: { orderBy: [{ categoria: "asc" }, { nombre: "asc" }] },
     },
   });
   if (!equipo) return NextResponse.json({ error: "No encontrado" }, { status: 404 });

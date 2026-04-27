@@ -11,6 +11,7 @@ interface NavChild {
   key?: string;
   label: string;
   href: string;
+  adminOnly?: boolean;
 }
 
 interface NavItem {
@@ -176,6 +177,7 @@ const NAV: NavSection[] = [
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
           { key: "inv-vehiculos", label: "Vehículos", href: "/catalogo/vehiculos" },
           { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
+          { key: "inv-maestro", label: "Inventario maestro", href: "/inventario/maestro", adminOnly: true },
         ],
       },
       {
@@ -374,7 +376,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.map((child) => {
+                            {item.children.filter(c => !c.adminOnly || isAdmin).map((child) => {
                               const childLabel = resolveLabel(child.key, child.label, labels);
                               return (
                                 <Link
