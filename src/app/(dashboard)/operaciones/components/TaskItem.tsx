@@ -76,7 +76,7 @@ function ActionBtn({ title, onClick, children, active }: {
     <button
       title={title}
       onClick={onClick}
-      className={`w-6 h-6 flex items-center justify-center rounded-md transition-all
+      className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all
         ${active
           ? "bg-[#B3985B]/15 text-[#B3985B]"
           : "text-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a]"
@@ -337,7 +337,7 @@ export default function TaskItem({
       {/* ══════════════════════════════════════════════════════════════════
           BARRA DE ACCIONES (estilo Todoist)
       ══════════════════════════════════════════════════════════════════ */}
-      <div className={`flex items-center gap-0.5 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
+      <div className={`flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
         onClick={e => e.stopPropagation()}>
 
         {/* ── Calendario ─────────────────────────────────────── */}
@@ -348,7 +348,7 @@ export default function TaskItem({
               onChange={val => { setLocalFechaVen(val); onDateChange(tarea.id, "fechaVencimiento", val); }}
               onClose={() => setEditingDate(null)}
               autoOpen hideTrigger showClear
-              className="absolute right-0 top-7 z-50"
+              className="absolute right-0 top-8 z-50"
             />
           )}
           <ActionBtn
@@ -356,7 +356,7 @@ export default function TaskItem({
             active={!!tarea.fechaVencimiento}
             onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
               <line x1="3" y1="10" x2="21" y2="10"/>
@@ -372,11 +372,11 @@ export default function TaskItem({
             onClick={e => { e.stopPropagation(); setShowAssign(v => !v); setShowMore(false); }}
           >
             {tarea.asignadoA ? (
-              <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 text-[10px] text-[#B3985B] flex items-center justify-center font-semibold leading-none">
+              <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 text-[11px] text-[#B3985B] flex items-center justify-center font-semibold leading-none">
                 {tarea.asignadoA.name.charAt(0).toUpperCase()}
               </span>
             ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>
@@ -384,7 +384,7 @@ export default function TaskItem({
           </ActionBtn>
 
           {showAssign && (
-            <div className="absolute right-0 top-7 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
               {tarea.asignadoA && (
                 <button
@@ -428,17 +428,17 @@ export default function TaskItem({
             onClick={e => { e.stopPropagation(); setShowProyecto(v => !v); setShowMore(false); setShowAssign(false); }}
           >
             {tarea.proyectoTarea ? (
-              <span className="w-3 h-3 rounded-sm shrink-0"
+              <span className="w-4 h-4 rounded-sm shrink-0"
                 style={{ backgroundColor: tarea.proyectoTarea.color ?? "#555" }} />
             ) : (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
             )}
           </ActionBtn>
 
           {showProyecto && (
-            <div className="absolute right-0 top-7 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Proyecto</p>
               <button
                 onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
@@ -477,7 +477,7 @@ export default function TaskItem({
           onClick={() => onSelect(tarea.id)}
         >
           <span className="relative flex items-center justify-center">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             {tarea._count.comentarios > 0 && (
@@ -490,7 +490,7 @@ export default function TaskItem({
 
         {/* ── Editar ─────────────────────────────────────────── */}
         <ActionBtn title="Editar tarea" onClick={() => onSelect(tarea.id)}>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
@@ -503,7 +503,7 @@ export default function TaskItem({
             active={showMore}
             onClick={e => { e.stopPropagation(); setShowMore(v => !v); setShowAssign(false); }}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="5"  r="1" fill="currentColor"/>
               <circle cx="12" cy="12" r="1" fill="currentColor"/>
               <circle cx="12" cy="19" r="1" fill="currentColor"/>
@@ -511,7 +511,7 @@ export default function TaskItem({
           </ActionBtn>
 
           {showMore && (
-            <div className="absolute right-0 top-7 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1.5 min-w-[180px]">
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1.5 min-w-[180px]">
 
               {/* Prioridad */}
               {onPriorityChange && (
