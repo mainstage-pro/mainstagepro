@@ -96,6 +96,7 @@ export default function OperacionesPage() {
   const [busqueda, setBusqueda]                 = useState("");
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
+  const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(showCompleted);
@@ -182,6 +183,14 @@ export default function OperacionesPage() {
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
+  const ADD_MSGS = [
+    "Tarea registrada · ¡a por ella!",
+    "Registrada · suma al equipo",
+    "¡Lista! Un paso más adelante",
+    "Tarea añadida · sigue así",
+    "Registrada · construyendo el futuro",
+  ];
+
   const addTarea = useCallback(async (data: {
     titulo: string; fecha: string | null; fechaVencimiento: string | null;
     prioridad: string; area?: string; recurrencia: string | null;
@@ -195,6 +204,12 @@ export default function OperacionesPage() {
     if (!res.ok) return;
     const { tarea } = await res.json();
     if (data.parentId) return;
+
+    // Brief success toast
+    const msg = ADD_MSGS[Math.floor(Math.random() * ADD_MSGS.length)];
+    setAddToast({ msg, visible: true });
+    setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 1800);
+    setTimeout(() => setAddToast(null), 2150);
     // Si la tarea tiene proyecto y estamos en bandeja, no la agregamos a la lista plana
     if (typeof vista === "string" && vista !== "integrada") {
       if (vista === "bandeja" && data.proyectoTareaId) return; // se fue al proyecto
@@ -999,6 +1014,18 @@ export default function OperacionesPage() {
       {/* ── UNDO TOAST ──────────────────────────────────────────────────────── */}
       <UndoToast undo={undoState} onUndo={handleUndo} onDismiss={handleDismissUndo} />
       {CelebrationToastEl}
+
+      {/* Add-task toast */}
+      {addToast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] pointer-events-none transition-all duration-300 ${
+          addToast.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+        }`}>
+          <div className="flex items-center gap-2.5 bg-[#141414] border border-[#2a2a2a] rounded-full px-4 py-2 shadow-2xl shadow-black/60 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+            <span className="text-sm text-white/80">{addToast.msg}</span>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MOBILE: FAB + Bottom Tab Bar

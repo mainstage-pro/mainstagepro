@@ -406,18 +406,6 @@ export default function TaskModal({
                 />
               </div>
 
-              {/* ── Notas ── */}
-              <div>
-                <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-2">Notas</p>
-                <textarea
-                  value={notas}
-                  onChange={e => { setNotas(e.target.value); mark(); }}
-                  placeholder="Notas adicionales…"
-                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2.5 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a] leading-relaxed"
-                  rows={4}
-                />
-              </div>
-
               {/* ── Archivos ── */}
               <div>
                 <div className="flex items-center justify-between mb-2">
