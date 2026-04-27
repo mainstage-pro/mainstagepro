@@ -72,6 +72,18 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     } = body;
 
     try {
+      // Capture current granTotal before overwriting, so we can cascade later
+      const prev = await prisma.cotizacion.findUnique({
+        where: { id },
+        select: {
+          granTotal: true,
+          numeroCotizacion: true,
+          proyecto: { select: { id: true } },
+        },
+      });
+      const prevGranTotal = prev?.granTotal ?? 0;
+      const newGranTotal  = granTotal ?? 0;
+
       // Borrar lineas y actualizar cotización en una sola transacción
       const cotizacion = await prisma.$transaction(async (tx) => {
         await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: id } });
@@ -139,6 +151,52 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           },
         });
       });
+
+      // ── Cascade: sync CuentaCobrar when granTotal changes on a project-linked cotización ──
+      if (prev?.proyecto?.id && newGranTotal !== prevGranTotal) {
+        const proyectoId = prev.proyecto.id;
+        const cxcAll = await prisma.cuentaCobrar.findMany({
+          where: { proyectoId },
+          orderBy: { createdAt: "asc" },
+        });
+        const liquidadas  = cxcAll.filter(c => c.estado === "LIQUIDADO");
+        const pendientes  = cxcAll.filter(c => c.estado !== "LIQUIDADO");
+
+        if (pendientes.length > 0) {
+          const sumLiquidadas    = liquidadas.reduce((s, c) => s + c.monto, 0);
+          const remainingNew     = newGranTotal - sumLiquidadas;
+          const oldPendientesSum = pendientes.reduce((s, c) => s + c.monto, 0);
+
+          const ahora = new Date().toISOString();
+          await Promise.all(pendientes.map(cxc => {
+            let nuevoMonto: number;
+            if (oldPendientesSum > 0) {
+              nuevoMonto = (cxc.monto / oldPendientesSum) * remainingNew;
+            } else {
+              nuevoMonto = remainingNew / pendientes.length;
+            }
+            // Never go below what has already been collected
+            nuevoMonto = Math.max(nuevoMonto, cxc.montoCobrado);
+            nuevoMonto = Math.round(nuevoMonto * 100) / 100;
+
+            const log = cxc.ajustesLog ? (JSON.parse(cxc.ajustesLog) as unknown[]) : [];
+            log.push({
+              fecha:   ahora,
+              de:      cxc.monto,
+              a:       nuevoMonto,
+              motivo:  `Cotización ${prev.numeroCotizacion} actualizada: total ${prevGranTotal} → ${newGranTotal}`,
+              usuario: session.name,
+            });
+
+            return prisma.cuentaCobrar.update({
+              where: { id: cxc.id },
+              data:  { monto: nuevoMonto, ajustesLog: JSON.stringify(log) },
+            });
+          }));
+        }
+      }
+      // ─────────────────────────────────────────────────────────────────────────
+
       await logActividad(session.id, "EDITAR", "cotizacion", id, `Cotización editada: ${nombreEvento ?? id}`);
       await guardarVersion(session.id, "cotizacion", id, { nombreEvento, granTotal, lineas: lineas.length });
       return NextResponse.json({ cotizacion });

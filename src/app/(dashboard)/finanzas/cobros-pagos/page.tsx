@@ -249,6 +249,8 @@ export default function CobrosPagosPage() {
   const [confirmando, setConfirmando] = useState(false);
   const [anulando, setAnulando] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
+  const [sortBy, setSortBy] = useState<"fecha_asc" | "fecha_desc" | "monto_desc" | "monto_asc" | "nombre_asc">("fecha_asc");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [cuentas, setCuentas] = useState<Array<{ id: string; nombre: string; banco: string | null }>>([]);
   // Nuevo registro
   const [showNuevo, setShowNuevo] = useState(false);
@@ -399,16 +401,37 @@ export default function CobrosPagosPage() {
   const enrichCxC = (c: CxCItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
   const enrichCxP = (c: CxPItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
 
-  const cxcList = cxc.map(enrichCxC).filter(c => {
-    if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-    if (filtro === "liquidados") return c.estado === "LIQUIDADO";
-    return true;
-  });
-  const cxpList = cxp.map(enrichCxP).filter(c => {
-    if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-    if (filtro === "liquidados") return c.estado === "LIQUIDADO";
-    return true;
-  });
+  function applySort<T extends { fechaCompromiso: string; monto: number }>(
+    items: T[],
+    getNombre: (item: T) => string,
+  ): T[] {
+    const arr = [...items];
+    switch (sortBy) {
+      case "fecha_asc":  return arr.sort((a, b) => a.fechaCompromiso.localeCompare(b.fechaCompromiso));
+      case "fecha_desc": return arr.sort((a, b) => b.fechaCompromiso.localeCompare(a.fechaCompromiso));
+      case "monto_desc": return arr.sort((a, b) => b.monto - a.monto);
+      case "monto_asc":  return arr.sort((a, b) => a.monto - b.monto);
+      case "nombre_asc": return arr.sort((a, b) => getNombre(a).localeCompare(getNombre(b)));
+      default: return arr;
+    }
+  }
+
+  const cxcList = applySort(
+    cxc.map(enrichCxC).filter(c => {
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO";
+      return true;
+    }),
+    c => c.empresa?.nombre ?? c.cliente?.nombre ?? "",
+  );
+  const cxpList = applySort(
+    cxp.map(enrichCxP).filter(c => {
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO";
+      return true;
+    }),
+    c => c.empresa?.nombre ?? c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.socio?.nombre ?? "",
+  );
 
   // Metrics
   const cxcPend = cxc.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
@@ -814,7 +837,7 @@ export default function CobrosPagosPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-1 pb-2">
+        <div className="flex items-center gap-2 pb-2">
           {([["pendientes", "Pendientes"], ["liquidados", "Liquidados"], ["todos", "Todos"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setFiltro(key)}
               className={`text-xs px-3 py-1 rounded-lg transition-colors ${
@@ -823,6 +846,37 @@ export default function CobrosPagosPage() {
               {label}
             </button>
           ))}
+          {/* Sort button — only for CxC / CxP tabs */}
+          {tab !== "directos" && (
+            <div className="relative">
+              <button
+                onClick={() => setShowSortMenu(v => !v)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition-colors ${showSortMenu ? "border-[#B3985B]/50 text-[#B3985B]" : "border-[#333] text-[#555] hover:text-white"}`}>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                Ordenar
+              </button>
+              {showSortMenu && (
+                <div className="absolute right-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
+                  onMouseLeave={() => setShowSortMenu(false)}>
+                  {([
+                    ["fecha_asc",  "Fecha: más cercana primero"],
+                    ["fecha_desc", "Fecha: más lejana primero"],
+                    ["monto_desc", "Monto: mayor a menor"],
+                    ["monto_asc",  "Monto: menor a mayor"],
+                    ["nombre_asc", "Nombre: A → Z"],
+                  ] as const).map(([key, label]) => (
+                    <button key={key}
+                      onClick={() => { setSortBy(key); setShowSortMenu(false); }}
+                      className={`w-full text-left px-4 py-2 text-xs transition-colors ${sortBy === key ? "text-[#B3985B]" : "text-gray-400 hover:text-white"}`}>
+                      {sortBy === key && <span className="mr-1.5">✓</span>}{label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
