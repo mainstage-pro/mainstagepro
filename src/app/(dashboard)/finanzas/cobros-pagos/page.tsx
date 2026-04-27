@@ -861,8 +861,8 @@ export default function CobrosPagosPage() {
                 <div className="absolute right-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
                   onMouseLeave={() => setShowSortMenu(false)}>
                   {([
-                    ["fecha_asc",  "Fecha: más cercana primero"],
-                    ["fecha_desc", "Fecha: más lejana primero"],
+                    ["fecha_asc",  "Fecha de cobro: más cercana"],
+                    ["fecha_desc", "Fecha de cobro: más lejana"],
                     ["monto_desc", "Monto: mayor a menor"],
                     ["monto_asc",  "Monto: menor a mayor"],
                     ["nombre_asc", "Nombre: A → Z"],
