@@ -152,11 +152,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         });
       });
 
-      // ── Cascade: sync CuentaCobrar when granTotal changes on a project-linked cotización ──
-      if (prev?.proyecto?.id && newGranTotal !== prevGranTotal) {
+      // ── Cascade: sync CuentaCobrar when cotización total changes or CxC are out of sync ──
+      if (prev?.proyecto?.id) {
         const proyectoId = prev.proyecto.id;
+        // Cast by proyectoId OR cotizacionId so we never miss records
         const cxcAll = await prisma.cuentaCobrar.findMany({
-          where: { proyectoId },
+          where: { OR: [{ proyectoId }, { cotizacionId: id }] },
           orderBy: { createdAt: "asc" },
         });
         const liquidadas  = cxcAll.filter(c => c.estado === "LIQUIDADO");
@@ -167,32 +168,37 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           const remainingNew     = newGranTotal - sumLiquidadas;
           const oldPendientesSum = pendientes.reduce((s, c) => s + c.monto, 0);
 
-          const ahora = new Date().toISOString();
-          await Promise.all(pendientes.map(cxc => {
-            let nuevoMonto: number;
-            if (oldPendientesSum > 0) {
-              nuevoMonto = (cxc.monto / oldPendientesSum) * remainingNew;
-            } else {
-              nuevoMonto = remainingNew / pendientes.length;
-            }
-            // Never go below what has already been collected
-            nuevoMonto = Math.max(nuevoMonto, cxc.montoCobrado);
-            nuevoMonto = Math.round(nuevoMonto * 100) / 100;
+          // Run if total changed OR if CxC sum is already out of sync with the new total
+          const outOfSync = Math.abs(oldPendientesSum - remainingNew) > 0.01;
+          const totalChanged = Math.abs(newGranTotal - prevGranTotal) > 0.01;
 
-            const log = cxc.ajustesLog ? (JSON.parse(cxc.ajustesLog) as unknown[]) : [];
-            log.push({
-              fecha:   ahora,
-              de:      cxc.monto,
-              a:       nuevoMonto,
-              motivo:  `Cotización ${prev.numeroCotizacion} actualizada: total ${prevGranTotal} → ${newGranTotal}`,
-              usuario: session.name,
-            });
+          if (totalChanged || outOfSync) {
+            const ahora = new Date().toISOString();
+            await Promise.all(pendientes.map(cxc => {
+              let nuevoMonto: number;
+              if (oldPendientesSum > 0) {
+                nuevoMonto = (cxc.monto / oldPendientesSum) * remainingNew;
+              } else {
+                nuevoMonto = remainingNew / pendientes.length;
+              }
+              nuevoMonto = Math.max(nuevoMonto, cxc.montoCobrado);
+              nuevoMonto = Math.round(nuevoMonto * 100) / 100;
 
-            return prisma.cuentaCobrar.update({
-              where: { id: cxc.id },
-              data:  { monto: nuevoMonto, ajustesLog: JSON.stringify(log) },
-            });
-          }));
+              const log = cxc.ajustesLog ? (JSON.parse(cxc.ajustesLog) as unknown[]) : [];
+              log.push({
+                fecha:   ahora,
+                de:      cxc.monto,
+                a:       nuevoMonto,
+                motivo:  `Cotización ${prev.numeroCotizacion} actualizada: total ${prevGranTotal} → ${newGranTotal}`,
+                usuario: session.name,
+              });
+
+              return prisma.cuentaCobrar.update({
+                where: { id: cxc.id },
+                data:  { monto: nuevoMonto, ajustesLog: JSON.stringify(log) },
+              });
+            }));
+          }
         }
       }
       // ─────────────────────────────────────────────────────────────────────────
