@@ -41,7 +41,7 @@ const NAV: NavSection[] = [
   // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
   {
     key: "seccion-direccion",
-    section: "DIRECCIÓN",
+    section: "Dirección",
     items: [
       { key: "reportes", label: "Reportes semanales", href: "/reportes" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
@@ -61,7 +61,7 @@ const NAV: NavSection[] = [
   // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
   {
     key: "seccion-administracion",
-    section: "ADMINISTRACIÓN",
+    section: "Administración",
     items: [
       {
         key: "finanzas",
@@ -110,7 +110,7 @@ const NAV: NavSection[] = [
   // ── MARKETING ──────────────────────────────────────────────────────────────
   {
     key: "seccion-marketing",
-    section: "MARKETING",
+    section: "Marketing",
     items: [
       {
         key: "contenido-organico",
@@ -139,7 +139,7 @@ const NAV: NavSection[] = [
   // ── VENTAS ─────────────────────────────────────────────────────────────────
   {
     key: "seccion-ventas",
-    section: "VENTAS",
+    section: "Ventas",
     items: [
       { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
       { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
@@ -161,7 +161,7 @@ const NAV: NavSection[] = [
   // ── PRODUCCIÓN ─────────────────────────────────────────────────────────────
   {
     key: "seccion-produccion",
-    section: "PRODUCCIÓN",
+    section: "Producción",
     items: [
       { key: "proyectos", label: "Proyectos", href: "/proyectos" },
       { key: "ordenes-compra", label: "Órdenes de compra", href: "/operaciones/ordenes-compra" },
@@ -332,15 +332,15 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
               {section.section && (
                 <button
                   onClick={() => toggleSection(section.key)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
                 >
-                  <span className={`text-[13px] font-bold uppercase tracking-widest transition-colors ${
+                  <span className={`text-sm font-semibold tracking-wide transition-colors ${
                     isSectionActive && !isSectionOpen ? "text-white" : "text-white/50 group-hover:text-white/80"
                   }`}>
                     {sectionLabel}
                   </span>
                   <svg
-                    className={`w-4 h-4 text-white/40 group-hover:text-white/70 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
+                    className={`w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
                     fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />

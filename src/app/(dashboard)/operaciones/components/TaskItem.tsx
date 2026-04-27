@@ -227,7 +227,7 @@ export default function TaskItem({
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {showProject && tarea.proyectoTarea && (
-              <span className="flex items-center gap-1 text-[12px] text-[#444] font-medium">
+              <span className="flex items-center gap-1 text-[13px] text-[#444] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0"
                   style={{ backgroundColor: tarea.proyectoTarea.color ?? "#444" }} />
                 {tarea.proyectoTarea.nombre}
@@ -244,7 +244,7 @@ export default function TaskItem({
                 )}
                 <button
                   onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
-                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -266,7 +266,7 @@ export default function TaskItem({
                 )}
                 <button
                   onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
-                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -277,8 +277,8 @@ export default function TaskItem({
             )}
 
             {recurrenciaDisplay && (
-              <span className="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-1 text-[13px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                   <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
@@ -288,14 +288,14 @@ export default function TaskItem({
 
             {tarea._count.subtareas > 0 && (
               <button onClick={toggleSubtareas}
-                className="inline-flex items-center gap-1 text-[12px] text-[#444] hover:text-[#B3985B] transition-colors">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                className="inline-flex items-center gap-1 text-[13px] text-[#444] hover:text-[#B3985B] transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
                   <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
                   <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
                 </svg>
                 {tarea._count.subtareas}
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
                   style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
@@ -303,8 +303,8 @@ export default function TaskItem({
             )}
 
             {tarea._count.comentarios > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
                 {tarea._count.comentarios}
@@ -312,11 +312,22 @@ export default function TaskItem({
             )}
 
             {tarea._count.archivos > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
                 {tarea._count.archivos}
+              </span>
+            )}
+
+            {tarea.asignadoA && !isCompleted && (
+              <span className="group/av relative inline-flex items-center cursor-default">
+                <span className="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold shrink-0 select-none">
+                  {tarea.asignadoA.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[12px] text-white whitespace-nowrap opacity-0 group-hover/av:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
+                  {tarea.asignadoA.name}
+                </span>
               </span>
             )}
           </div>

@@ -676,7 +676,7 @@ export default function OperacionesPage() {
         {/* ── Fixed nav items ────────────────────────────────────────────── */}
         <nav className="px-2 space-y-0.5 shrink-0">
           <SideItem
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>}
+            icon={<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>}
             label="Bandeja" isActive={vistaKey === "bandeja"} onClick={() => setVista("bandeja")}
           />
           <SideItem
@@ -701,7 +701,7 @@ export default function OperacionesPage() {
         {/* ── Proyectos section ──────────────────────────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
-            <span className="text-[10px] text-[#333] uppercase tracking-widest font-semibold select-none">Proyectos</span>
+            <span className="text-[12px] text-[#555] font-semibold tracking-wide select-none">Proyectos</span>
             <button
               onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
               className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
@@ -1419,7 +1419,7 @@ export default function OperacionesPage() {
                     <div key={c.id}>
                       <div className="flex items-center gap-2 px-4 py-2">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                        <span className="text-[11px] text-[#444] font-semibold uppercase tracking-widest">{c.nombre}</span>
+                        <span className="text-[12px] text-[#555] font-semibold tracking-wide">{c.nombre}</span>
                       </div>
                       {c.proyectos.map(p => (
                         <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
@@ -1786,8 +1786,8 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
   return (
     <div className="relative group/proy" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
       <button onClick={onSelect}
-        className={`w-full flex items-center gap-2 py-1 rounded text-sm transition-colors ${
-          isActive ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f]"
+        className={`w-full flex items-center gap-2 py-1.5 rounded-lg text-[13px] transition-colors ${
+          isActive ? "bg-[#1a1a1a] text-white" : "text-[#666] hover:text-[#bbb] hover:bg-[#0f0f0f]"
         }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov ? "56px" : "8px" }}>
         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proyecto.color ?? "#555" }} />
         <span className="truncate">{proyecto.nombre}</span>
@@ -1851,7 +1851,7 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
           </div>
         ) : (
           <button onClick={onToggle}
-            className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-[#555] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors"
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[13px] text-[#666] hover:text-[#bbb] hover:bg-[#0f0f0f] transition-colors"
             style={{ paddingRight: hov ? "56px" : "8px" }}>
             <span className="text-[10px] transition-transform inline-block shrink-0" style={{ transform: open ? "rotate(90deg)" : "" }}>▶</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
