@@ -10,6 +10,7 @@ import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import GestionTareasWidget from "@/components/GestionTareasWidget";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -615,6 +616,13 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
+      </Section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          GESTIÓN DE TAREAS POR ÁREA
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="GESTIÓN DE TAREAS" href="/operaciones">
+        <GestionTareasWidget />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
