@@ -184,11 +184,11 @@ export default function OperacionesPage() {
   // ── Mutations ────────────────────────────────────────────────────────────
 
   const ADD_MSGS = [
-    "Tarea registrada · ¡a por ella!",
-    "Registrada · suma al equipo",
-    "¡Lista! Un paso más adelante",
-    "Tarea añadida · sigue así",
-    "Registrada · construyendo el futuro",
+    "¡Órale! Tarea registrada",
+    "¡Sale! Un paso más",
+    "Registrada · ¡échale ganas!",
+    "¡Va! Sumando al equipo",
+    "Tarea registrada · ¡ándale!",
   ];
 
   const addTarea = useCallback(async (data: {
