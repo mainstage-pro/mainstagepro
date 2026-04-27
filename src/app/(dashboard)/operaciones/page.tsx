@@ -926,23 +926,54 @@ export default function OperacionesPage() {
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {proyectoDetalle && (
                 <>
+                  {/* ── Agregar tarea (siempre arriba) ── */}
+                  <QuickAdd
+                    proyectoTareaId={proyectoDetalle.id} onAdd={addTarea}
+                    placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios}
+                  />
+
+                  {/* ── Agregar sección (solo aquí) ── */}
+                  <div className="mb-4">
+                    {showNuevaSeccion ? (
+                      <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
+                        <input autoFocus value={nuevaSeccionNombre}
+                          onChange={e => setNuevaSeccionNombre(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") addSeccion(); if (e.key === "Escape") setShowNuevaSeccion(false); }}
+                          placeholder="Nombre de la sección…"
+                          className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
+                        <div className="flex gap-3">
+                          <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
+                          <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowNuevaSeccion(true)}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#222] text-[#444] hover:border-[#B3985B]/40 hover:text-[#B3985B]/70 transition-all text-xs font-medium">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Agregar sección
+                      </button>
+                    )}
+                  </div>
+
+                  {/* ── Tareas sin sección ── */}
                   {proyectoDetalle.tareas.map(t => (
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={deleteTarea}
                       onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                      projects={proyectosNav}
                       users={usuarios}
                       draggable
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                     />
                   ))}
-                  <QuickAdd
-                    proyectoTareaId={proyectoDetalle.id} onAdd={addTarea}
-                    placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios}
-                  />
 
+                  {/* ── Secciones ── */}
                   {proyectoDetalle.secciones.map(seccion => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
@@ -953,7 +984,9 @@ export default function OperacionesPage() {
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
                       users={usuarios}
+                      projects={proyectosNav}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -971,28 +1004,6 @@ export default function OperacionesPage() {
                       }}
                     />
                   ))}
-
-                  {showNuevaSeccion ? (
-                    <div className="mt-5 px-3 py-3 border border-dashed border-[#1e1e1e] rounded-xl space-y-2">
-                      <input autoFocus value={nuevaSeccionNombre}
-                        onChange={e => setNuevaSeccionNombre(e.target.value)}
-                        onKeyDown={e => { if (e.key === "Enter") addSeccion(); if (e.key === "Escape") setShowNuevaSeccion(false); }}
-                        placeholder="Nombre de la sección"
-                        className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
-                      <div className="flex gap-3">
-                        <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
-                        <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowNuevaSeccion(true)}
-                      className="mt-5 flex items-center gap-2 text-xs text-[#2a2a2a] hover:text-[#555] px-3 py-2 rounded-lg transition-colors">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      Agregar sección
-                    </button>
-                  )}
                 </>
               )}
             </div>
