@@ -32,7 +32,7 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | { tipo: "proyecto"; id: string };
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo" | { tipo: "proyecto"; id: string };
 
 interface ProyectoEventoConTareas {
   id: string;
@@ -90,6 +90,7 @@ export default function OperacionesPage() {
   const [iniciativas, setIniciativas]           = useState<Iniciativa[]>([]);
   const [usuarios, setUsuarios]                 = useState<Usuario[]>([]);
   const [sessionId, setSessionId]               = useState<string>("");
+  const [sessionRole, setSessionRole]           = useState<string>("");
 
   const [vista, setVista]                             = useState<VistaKey>("bandeja");
   const [tareas, setTareas]                           = useState<TareaItem[]>([]);
@@ -172,6 +173,7 @@ export default function OperacionesPage() {
       setIniciativas(init.iniciativas ?? []);
       setUsuarios(usr.usuarios ?? []);
       if (me?.id) setSessionId(me.id);
+      if (me?.role) setSessionRole(me.role);
     });
   }, []);
 
@@ -728,6 +730,7 @@ export default function OperacionesPage() {
     vista === "proximas"         ? "Próximas" :
     vista === "integrada"        ? "Alertas" :
     vista === "proyectos-evento" ? "Proyectos / Eventos" :
+    vista === "equipo"         ? "Vista equipo" :
     proyectoDetalle?.nombre ?? "Proyecto";
 
   // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
@@ -759,6 +762,19 @@ export default function OperacionesPage() {
     await fetch(`/api/operaciones/carpetas/${id}`, { method: "DELETE" });
     setCarpetas(prev => prev.filter(c => c.id !== id));
   }
+
+  // Equipo view: tareas agrupadas por usuario asignado
+  const equipoGroups = useMemo(() => {
+    if (vista !== "equipo") return [];
+    const map = new Map<string, { nombre: string; tareas: typeof tareas }>();
+    for (const t of tareas) {
+      const uid  = t.asignadoA?.id  ?? "__sin_asignar";
+      const name = t.asignadoA?.name ?? "Sin asignar";
+      if (!map.has(uid)) map.set(uid, { nombre: name, tareas: [] });
+      map.get(uid)!.tareas.push(t);
+    }
+    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+  }, [vista, tareas]);
 
   // Today count for badge
   const hoyCount = useMemo(() => {
@@ -845,6 +861,12 @@ export default function OperacionesPage() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>}
             label="Proyectos" isActive={vistaKey === "proyectos-evento"} onClick={() => setVista("proyectos-evento")}
           />
+          {sessionRole === "ADMIN" && (
+            <SideItem
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+              label="Equipo" isActive={vistaKey === "equipo"} onClick={() => setVista("equipo")}
+            />
+          )}
         </nav>
 
         {/* ── Proyectos section ──────────────────────────────────────────── */}
@@ -1229,6 +1251,37 @@ export default function OperacionesPage() {
                   .then(d => { setProyectosEvento(d.proyectos ?? []); setLoadingMain(false); });
               }}
             />
+
+          ) : vista === "equipo" ? (
+            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+              {equipoGroups.length === 0 ? (
+                <EmptyState icon="👥" title="Sin tareas de equipo" sub="No hay tareas personales asignadas a ningún usuario" />
+              ) : equipoGroups.map(group => (
+                <div key={group.nombre} className="mb-6">
+                  <div className="flex items-center gap-2 px-3 py-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-[#B3985B]/20 flex items-center justify-center shrink-0">
+                      <span className="text-[10px] font-bold text-[#B3985B]">
+                        {group.nombre.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-xs text-[#aaa] font-semibold">{group.nombre}</span>
+                    <span className="text-[11px] text-[#333] font-medium">{group.tareas.length}</span>
+                  </div>
+                  {group.tareas.map(t => (
+                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                      projects={proyectosNav}
+                      users={usuarios}
+                      showProject
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
 
           ) : vista === "integrada" ? (
             <div className="max-w-2xl mx-auto px-4 py-5 space-y-2">

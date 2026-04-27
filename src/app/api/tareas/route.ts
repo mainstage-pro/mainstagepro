@@ -90,6 +90,12 @@ export async function GET(req: NextRequest) {
     where.iniciativaId    = null;
     where.parentId        = null;
     where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+  } else if (vista === "equipo") {
+    if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    where.proyectoTareaId = null;
+    where.iniciativaId    = null;
+    where.parentId        = null;
+    where.asignadoAId     = { not: null };
   }
 
   const tareas = await prisma.tarea.findMany({
