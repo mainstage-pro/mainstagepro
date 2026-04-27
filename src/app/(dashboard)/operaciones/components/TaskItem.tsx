@@ -66,6 +66,8 @@ interface Props {
   onDrop?:           (targetId: string) => void;
   isDragOver?:       boolean;
   isBeingDragged?:   boolean;
+  multiSelected?:    boolean;
+  onMultiSelect?:    (id: string) => void;
 }
 
 // ── Pequeño botón de acción ─────────────────────────────────────────────────
@@ -94,6 +96,7 @@ export default function TaskItem({
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
   onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
+  multiSelected = false, onMultiSelect,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -170,13 +173,17 @@ export default function TaskItem({
       } ${
         showDrop
           ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
+          : multiSelected ? "bg-[#B3985B]/[0.07] ring-1 ring-[#B3985B]/30 border-l-2 border-[#B3985B]/50"
           : isSelected ? "bg-[#111] ring-1 ring-[#B3985B]/20"
           : hovered  ? "bg-[#0d0d0d]" : ""
       }`}
       style={{ paddingLeft: depth > 0 ? `${12 + depth * 22}px` : undefined }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => onSelect(tarea.id)}
+      onClick={e => {
+        if ((e.metaKey || e.ctrlKey) && onMultiSelect) { onMultiSelect(tarea.id); return; }
+        onSelect(tarea.id);
+      }}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
       onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(tarea.id); } : undefined}
       onDragEnd={isDraggable ? () => { onDragEnd?.(); setDragOver(false); } : undefined}
@@ -207,24 +214,35 @@ export default function TaskItem({
       )}
 
       {/* ── Circle checkbox ───────────────────────────────────────────── */}
-      <button
-        onClick={handleComplete}
-        className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
-          isCompleted  ? "border-[#333] bg-[#1f1f1f]"
-          : completing ? `${prio.ring} bg-[#B3985B]/10 animate-pulse`
-          : `${prio.ring} hover:bg-[#111] ${(hovered || isSelected) ? "shadow-md " + prio.glow : ""}`
-        }`}
-        aria-label="Completar"
-      >
-        {isCompleted && (
-          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
+      {multiSelected ? (
+        <div
+          onClick={e => { e.stopPropagation(); onMultiSelect?.(tarea.id); }}
+          className="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full bg-[#B3985B] border-2 border-[#B3985B] flex items-center justify-center cursor-pointer"
+        >
+          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5">
             <path d="M2 6l3 3 5-5"/>
           </svg>
-        )}
-        {!isCompleted && !completing && (hovered || isSelected) && (
-          <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-50`} />
-        )}
-      </button>
+        </div>
+      ) : (
+        <button
+          onClick={handleComplete}
+          className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+            isCompleted  ? "border-[#333] bg-[#1f1f1f]"
+            : completing ? `${prio.ring} bg-[#B3985B]/10 animate-pulse`
+            : `${prio.ring} hover:bg-[#111] ${(hovered || isSelected) ? "shadow-md " + prio.glow : ""}`
+          }`}
+          aria-label="Completar"
+        >
+          {isCompleted && (
+            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
+              <path d="M2 6l3 3 5-5"/>
+            </svg>
+          )}
+          {!isCompleted && !completing && (hovered || isSelected) && (
+            <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-50`} />
+          )}
+        </button>
+      )}
 
       {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0">

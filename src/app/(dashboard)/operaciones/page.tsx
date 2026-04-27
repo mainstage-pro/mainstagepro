@@ -115,6 +115,8 @@ export default function OperacionesPage() {
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+  const [selectedIds, setSelectedIds]           = useState<Set<string>>(new Set());
+  const [confirmBulk, setConfirmBulk]           = useState(false);
   const [proyViewOpts, setProyViewOpts]         = useState<ProyViewOpts>(() => {
     if (typeof window === "undefined") return PROY_VIEW_DEFAULT;
     try { const r = localStorage.getItem("op_proy_view"); if (r) return { ...PROY_VIEW_DEFAULT, ...JSON.parse(r) }; } catch {}
@@ -506,6 +508,52 @@ export default function OperacionesPage() {
     setAddToast({ msg: `Movida a ${proyectoNombre}`, visible: true });
     setTimeout(() => setAddToast(null), 2000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleMultiSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearMultiSelect = useCallback(() => setSelectedIds(new Set()), []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") clearMultiSelect();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [clearMultiSelect]);
+
+  const bulkComplete = useCallback(async () => {
+    const ids = [...selectedIds];
+    const mark = (arr: TareaItem[]) => arr.map(t => selectedIds.has(t.id) ? { ...t, estado: "COMPLETADA" } : t);
+    setTareas(mark);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: mark(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: mark(s.tareas) })),
+    } : null);
+    clearMultiSelect();
+    await Promise.all(ids.map(id => fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    })));
+  }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const bulkDelete = useCallback(async () => {
+    const ids = [...selectedIds];
+    const rm = (arr: TareaItem[]) => arr.filter(t => !selectedIds.has(t.id));
+    setTareas(rm);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: rm(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: rm(s.tareas) })),
+    } : null);
+    clearMultiSelect();
+    setConfirmBulk(false);
+    await Promise.all(ids.map(id => fetch(`/api/tareas/${id}`, { method: "DELETE" })));
+  }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addSeccion = useCallback(async () => {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string") return;
@@ -1215,6 +1263,7 @@ export default function OperacionesPage() {
                         isBeingDragged={draggingId === t.id}
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                        multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                       />
                     ))}
                   </div>
@@ -1233,6 +1282,7 @@ export default function OperacionesPage() {
                     isBeingDragged={draggingId === t.id}
                     onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                     onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                    multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                   />
                 ))
               )}
@@ -1296,6 +1346,7 @@ export default function OperacionesPage() {
                           isBeingDragged={draggingId === t.id}
                           onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                           onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                          multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                         />
                       ))}
                     </div>
@@ -1317,6 +1368,7 @@ export default function OperacionesPage() {
                       users={usuarios}
                       projects={proyectosNav}
                       viewFilter={applyProyFilter}
+                      selectedIds={selectedIds} onMultiSelect={toggleMultiSelect}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -1387,6 +1439,67 @@ export default function OperacionesPage() {
                 onClick={() => { deleteTarea(confirmDeleteId); setConfirmDeleteId(null); }}
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600/90 hover:bg-red-500 transition-all"
               >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MULTI-SELECT TOOLBAR ────────────────────────────────────────────── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] hidden md:flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl px-2 py-1.5 shadow-2xl shadow-black/70 select-none">
+          <button onClick={clearMultiSelect}
+            className="w-7 h-7 flex items-center justify-center text-[#555] hover:text-white transition-colors rounded-lg hover:bg-[#2a2a2a]">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          <span className="text-xs text-[#666] font-medium px-2 border-r border-[#2a2a2a] mr-1">
+            {selectedIds.size} {selectedIds.size === 1 ? "tarea" : "tareas"}
+          </span>
+          <button onClick={bulkComplete}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white hover:bg-[#2a2a2a] transition-colors">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Completar
+          </button>
+          <button onClick={() => setConfirmBulk(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-red-400 hover:bg-red-950/30 transition-colors">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+            </svg>
+            Eliminar
+          </button>
+        </div>
+      )}
+
+      {/* ── CONFIRM BULK DELETE ──────────────────────────────────────────────── */}
+      {confirmBulk && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setConfirmBulk(false)}>
+          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-950/50 flex items-center justify-center shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">¿Eliminar {selectedIds.size} {selectedIds.size === 1 ? "tarea" : "tareas"}?</p>
+                <p className="text-xs text-[#555] mt-1 leading-relaxed">Esta acción no se puede deshacer.</p>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <button onClick={() => setConfirmBulk(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm text-[#777] hover:text-white border border-[#2a2a2a] hover:border-[#444] transition-all">
+                Cancelar
+              </button>
+              <button onClick={bulkDelete}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600/90 hover:bg-red-500 transition-all">
                 Eliminar
               </button>
             </div>
@@ -2077,6 +2190,7 @@ function SectionBlock({
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
+  selectedIds, onMultiSelect,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2102,6 +2216,8 @@ function SectionBlock({
   users?:             { id: string; name: string }[];
   projects?:          { id: string; nombre: string; color: string | null }[];
   viewFilter?:        (tareas: TareaItem[]) => TareaItem[];
+  selectedIds?:       Set<string>;
+  onMultiSelect?:     (id: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2154,6 +2270,7 @@ function SectionBlock({
               isBeingDragged={draggingId === t.id}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
+              multiSelected={selectedIds?.has(t.id)} onMultiSelect={onMultiSelect}
             />
           ))}
           {/* Bottom drop zone — visible only when dragging */}
