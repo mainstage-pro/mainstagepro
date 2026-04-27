@@ -542,6 +542,14 @@ export default function OperacionesPage() {
     })));
   }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleExtractChild = useCallback((extracted: TareaItem) => {
+    if (typeof vista !== "string") {
+      setProyectoDetalle(prev => prev ? { ...prev, tareas: [extracted, ...prev.tareas] } : null);
+    } else {
+      setTareas(prev => [extracted, ...prev]);
+    }
+  }, [vista]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const bulkDelete = useCallback(async () => {
     const ids = [...selectedIds];
     const rm = (arr: TareaItem[]) => arr.filter(t => !selectedIds.has(t.id));
@@ -1264,6 +1272,7 @@ export default function OperacionesPage() {
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                         multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
+                        onExtractChild={handleExtractChild}
                       />
                     ))}
                   </div>
@@ -1347,6 +1356,7 @@ export default function OperacionesPage() {
                           onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                           onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                           multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
+                          onExtractChild={handleExtractChild}
                         />
                       ))}
                     </div>
@@ -1369,6 +1379,7 @@ export default function OperacionesPage() {
                       projects={proyectosNav}
                       viewFilter={applyProyFilter}
                       selectedIds={selectedIds} onMultiSelect={toggleMultiSelect}
+                      onExtractChild={handleExtractChild}
                       onToggleCollapse={async (id, colapsada) => {
                         await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -2190,7 +2201,7 @@ function SectionBlock({
   onToggleCollapse, onDeleteSection,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
-  selectedIds, onMultiSelect,
+  selectedIds, onMultiSelect, onExtractChild,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2218,6 +2229,7 @@ function SectionBlock({
   viewFilter?:        (tareas: TareaItem[]) => TareaItem[];
   selectedIds?:       Set<string>;
   onMultiSelect?:     (id: string) => void;
+  onExtractChild?:    (tarea: TareaItem) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2271,6 +2283,7 @@ function SectionBlock({
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
               multiSelected={selectedIds?.has(t.id)} onMultiSelect={onMultiSelect}
+              onExtractChild={onExtractChild}
             />
           ))}
           {/* Bottom drop zone — visible only when dragging */}

@@ -68,6 +68,8 @@ interface Props {
   isBeingDragged?:   boolean;
   multiSelected?:    boolean;
   onMultiSelect?:    (id: string) => void;
+  onExtract?:        () => void;
+  onExtractChild?:   (tarea: TareaItem) => void;
 }
 
 // ── Pequeño botón de acción ─────────────────────────────────────────────────
@@ -97,6 +99,7 @@ export default function TaskItem({
   draggable: isDraggable = false,
   onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
   multiSelected = false, onMultiSelect,
+  onExtract, onExtractChild,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -107,6 +110,7 @@ export default function TaskItem({
   const [expanded,      setExpanded]      = useState(false);
   const [subtareasExp,  setSubtareasExp]  = useState<TareaItem[]>([]);
   const [loadingExp,    setLoadingExp]    = useState(false);
+  const [subtaskCount,  setSubtaskCount]  = useState(tarea._count.subtareas);
   const [showMore,      setShowMore]      = useState(false);
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
@@ -319,21 +323,6 @@ export default function TaskItem({
               </span>
             )}
 
-            {tarea._count.subtareas > 0 && (
-              <button onClick={toggleSubtareas}
-                className="inline-flex items-center gap-1 text-[13px] text-[#444] hover:text-[#B3985B] transition-colors">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
-                {tarea._count.subtareas}
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-            )}
 
             {tarea._count.comentarios > 0 && (
               <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
@@ -364,6 +353,22 @@ export default function TaskItem({
               </span>
             )}
           </div>
+        )}
+
+        {/* ── Expandir subtareas ────────────────────────────────────────── */}
+        {subtaskCount > 0 && (
+          <button
+            onClick={toggleSubtareas}
+            className={`flex items-center gap-1.5 mt-1.5 text-[12px] font-medium transition-colors ${
+              expanded ? "text-[#B3985B]" : "text-[#3a3a3a] hover:text-[#B3985B]"
+            }`}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            {subtaskCount} subtarea{subtaskCount !== 1 ? "s" : ""}
+          </button>
         )}
       </div>
 
@@ -642,6 +647,22 @@ export default function TaskItem({
 
               <div className="border-t border-[#1f1f1f] my-1" />
 
+              {onExtract && (
+                <>
+                  <button
+                    onClick={() => { onExtract(); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
+                      <path d="M5 20h14"/>
+                    </svg>
+                    Convertir en tarea independiente
+                  </button>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+
               <button
                 onClick={() => { onDelete(tarea.id); setShowMore(false); }}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors"
@@ -660,19 +681,28 @@ export default function TaskItem({
 
     {/* ── Subtareas expandidas ──────────────────────────────────────── */}
     {expanded && (
-      <div>
+      <div className="ml-6 border-l border-[#1a1a1a] pl-2 mt-0.5">
         {loadingExp && <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>}
         {subtareasExp.map(sub => (
           <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1}
             isSelected={false}
             onComplete={onComplete} onSelect={onSelect}
-            onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); }}
+            onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); setSubtaskCount(c => Math.max(0, c - 1)); }}
             onDateChange={onDateChange}
             onPriorityChange={onPriorityChange}
             onAssign={onAssign}
             onProjectChange={onProjectChange}
             users={users}
             projects={projects}
+            onExtract={async () => {
+              await fetch(`/api/tareas/${sub.id}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentId: null }),
+              });
+              setSubtareasExp(prev => prev.filter(s => s.id !== sub.id));
+              setSubtaskCount(c => Math.max(0, c - 1));
+              onExtractChild?.(sub);
+            }}
           />
         ))}
       </div>
