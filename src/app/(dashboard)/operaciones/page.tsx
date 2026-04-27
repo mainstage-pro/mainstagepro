@@ -122,6 +122,7 @@ export default function OperacionesPage() {
   });
   const [showViewPanel, setShowViewPanel]       = useState(false);
   const viewPanelRef = useRef<HTMLDivElement>(null);
+  const [filterUserProy, setFilterUserProy]     = useState<string | null>(null);
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(vistaOpts.showCompleted);
@@ -177,6 +178,7 @@ export default function OperacionesPage() {
     if (typeof vista !== "string") return;
     setLoadingMain(true);
     setProyectoDetalle(null);
+    setFilterUserProy(null);
     if (vista === "integrada") {
       fetch("/api/tareas/integradas")
         .then(r => r.json())
@@ -203,6 +205,7 @@ export default function OperacionesPage() {
   useEffect(() => {
     if (typeof vista === "string") return;
     setLoadingMain(true);
+    setFilterUserProy(null);
     fetch(`/api/operaciones/proyectos/${vista.id}`)
       .then(r => r.json())
       .then(d => { setProyectoDetalle(d.proyecto ?? null); })
@@ -225,6 +228,7 @@ export default function OperacionesPage() {
   function applyProyFilter(tareas: TareaItem[]): TareaItem[] {
     let r = tareas;
     if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
+    if (filterUserProy) r = r.filter(t => t.asignadoA?.id === filterUserProy);
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
     if (proyViewOpts.sortBy === "prioridad") r = [...r].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (proyViewOpts.sortBy === "fecha") {
@@ -259,7 +263,7 @@ export default function OperacionesPage() {
     return [{ label: "", items: tareas }];
   }
 
-  const hasActiveProyOpts  = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted;
+  const hasActiveProyOpts  = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted || !!filterUserProy;
   const hasActiveVistaOpts = vistaOpts.filterPrio.length > 0 || vistaOpts.sortBy !== "none" || vistaOpts.groupBy !== "none" || vistaOpts.showCompleted;
 
   const ADD_MSGS = [
@@ -980,7 +984,43 @@ export default function OperacionesPage() {
 
           {/* View options (project view) */}
           {typeof vista !== "string" && proyectoDetalle && (
-            <div className="relative ml-auto" ref={viewPanelRef}>
+            <div className="ml-auto flex items-center gap-2">
+
+              {/* User filter avatars */}
+              {usuarios.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setFilterUserProy(null)}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium transition-all border ${
+                      !filterUserProy
+                        ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30"
+                        : "bg-transparent text-[#555] border-transparent hover:text-white"
+                    }`}
+                  >
+                    Todos
+                  </button>
+                  {usuarios.map(u => {
+                    const initials = u.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                    const isActive = filterUserProy === u.id;
+                    return (
+                      <button
+                        key={u.id}
+                        onClick={() => setFilterUserProy(isActive ? null : u.id)}
+                        title={u.name}
+                        className={`w-7 h-7 rounded-full text-[10px] font-bold transition-all flex items-center justify-center shrink-0 ${
+                          isActive
+                            ? "ring-2 ring-[#B3985B] bg-[#B3985B]/20 text-[#B3985B]"
+                            : "bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222]"
+                        }`}
+                      >
+                        {initials}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="relative" ref={viewPanelRef}>
               <button
                 onClick={() => setShowViewPanel(v => !v)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all ${
@@ -1066,7 +1106,7 @@ export default function OperacionesPage() {
                   {/* Reset */}
                   {hasActiveProyOpts && (
                     <div className="px-4 pb-3">
-                      <button onClick={() => setProyViewOpts(PROY_VIEW_DEFAULT)}
+                      <button onClick={() => { setProyViewOpts(PROY_VIEW_DEFAULT); setFilterUserProy(null); }}
                         className="w-full text-center text-xs text-[#444] hover:text-red-400 transition-colors py-1.5 border-t border-[#161616] mt-1 pt-3">
                         Restablecer opciones
                       </button>
@@ -1074,6 +1114,7 @@ export default function OperacionesPage() {
                   )}
                 </div>
               )}
+              </div>
             </div>
           )}
         </div>

@@ -2,30 +2,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
-// ── Constantes ────────────────────────────────────────────────────────────────
-
-const AREA_META = {
-  ADMINISTRACION: { label: "Administración", color: "#3b82f6" },
-  MARKETING:      { label: "Marketing",      color: "#ec4899" },
-  VENTAS:         { label: "Ventas",          color: "#10b981" },
-  PRODUCCION:     { label: "Producción",      color: "#f59e0b" },
-} as const;
-
-type AreaKey = keyof typeof AREA_META;
-
-const PRIO_DOT: Record<string, string> = {
-  URGENTE: "bg-red-500",
-  ALTA:    "bg-orange-500",
-  MEDIA:   "bg-[#B3985B]",
-  BAJA:    "bg-[#444]",
-};
-
-function getStatus(p: number) {
-  if (p >= 60) return { label: "Excelente",   textCls: "text-emerald-400", barClr: "#10b981" };
-  if (p >= 30) return { label: "Regular",     textCls: "text-yellow-400",  barClr: "#eab308" };
-  return              { label: "En peligro",  textCls: "text-red-400",     barClr: "#ef4444" };
-}
-
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface TareaR {
@@ -37,8 +13,11 @@ interface TareaR {
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
 }
 
-interface AreaData {
-  area: string;
+interface ProyData {
+  id: string;
+  nombre: string;
+  color: string | null;
+  carpeta: { id: string; nombre: string } | null;
   counts: {
     hoy: number; vencidas: number; proximas: number;
     sinFecha: number; totalActivas: number; completadasMes: number;
@@ -47,7 +26,19 @@ interface AreaData {
   tareas: { hoy: TareaR[]; vencidas: TareaR[]; proximas: TareaR[]; sinFecha: TareaR[] };
 }
 
+interface Usuario { id: string; name: string }
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+const PRIO_DOT: Record<string, string> = {
+  URGENTE: "bg-red-500", ALTA: "bg-orange-500", MEDIA: "bg-[#B3985B]", BAJA: "bg-[#444]",
+};
+
+function getStatus(p: number) {
+  if (p >= 60) return { label: "Excelente",  textCls: "text-emerald-400", barClr: "#10b981" };
+  if (p >= 30) return { label: "Regular",    textCls: "text-yellow-400",  barClr: "#eab308" };
+  return              { label: "En peligro", textCls: "text-red-400",     barClr: "#ef4444" };
+}
 
 function fechaCorta(iso: string) {
   return new Date(iso.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", {
@@ -68,13 +59,6 @@ function TareaRow({ t }: { t: TareaR }) {
         {t.titulo}
       </span>
       <div className="flex items-center gap-2.5 shrink-0">
-        {t.proyectoTarea && (
-          <span className="hidden md:inline-flex items-center gap-1 text-[11px] text-[#444] truncate max-w-[120px]">
-            <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block"
-              style={{ backgroundColor: t.proyectoTarea.color ?? "#555" }} />
-            {t.proyectoTarea.nombre}
-          </span>
-        )}
         {t.asignadoA && (
           <span className="group/av relative inline-flex">
             <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold select-none">
@@ -95,34 +79,21 @@ function TareaRow({ t }: { t: TareaR }) {
 
 // ── TaskSection ───────────────────────────────────────────────────────────────
 
-function TaskSection({
-  icon, label, count, tasks, badgeCls, emptyMsg,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  count: number;
-  tasks: TareaR[];
-  badgeCls: string;
-  emptyMsg: string;
+function TaskSection({ icon, label, count, tasks, badgeCls, emptyMsg }: {
+  icon: React.ReactNode; label: string; count: number;
+  tasks: TareaR[]; badgeCls: string; emptyMsg: string;
 }) {
   const [expanded, setExpanded] = useState(true);
   return (
     <div>
-      <button
-        onClick={() => setExpanded(v => !v)}
-        className="flex items-center gap-2 mb-2 w-full group"
-      >
+      <button onClick={() => setExpanded(v => !v)} className="flex items-center gap-2 mb-2 w-full group">
         <span className="text-[#444] group-hover:text-[#666] transition-colors">{icon}</span>
         <span className="text-xs text-[#555] uppercase tracking-widest font-semibold group-hover:text-[#888] transition-colors">
           {label}
         </span>
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeCls}`}>
-          {count}
-        </span>
-        <svg
-          className={`w-3.5 h-3.5 text-[#333] ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
-          fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
-        >
+        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeCls}`}>{count}</span>
+        <svg className={`w-3.5 h-3.5 text-[#333] ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -135,13 +106,16 @@ function TaskSection({
   );
 }
 
-// ── Loading skeleton ──────────────────────────────────────────────────────────
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 
 function Skeleton() {
   return (
     <div className="space-y-5">
+      <div className="flex gap-2">
+        {[0,1,2,3].map(i => <div key={i} className="h-7 w-20 bg-[#1a1a1a] rounded-full animate-pulse" />)}
+      </div>
       <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-5 space-y-4">
-        {[0, 1, 2, 3].map(i => (
+        {[0,1,2,3].map(i => (
           <div key={i} className="flex items-center gap-3">
             <div className="h-3 w-28 bg-[#1a1a1a] rounded animate-pulse" />
             <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full animate-pulse" />
@@ -150,226 +124,262 @@ function Skeleton() {
         ))}
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[0, 1, 2, 3].map(i => (
-          <div key={i} className="h-36 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl animate-pulse" />
-        ))}
+        {[0,1,2,3].map(i => <div key={i} className="h-36 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl animate-pulse" />)}
       </div>
     </div>
   );
 }
 
+// ── SVG icons ─────────────────────────────────────────────────────────────────
+
+const IconSun = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <circle cx="12" cy="12" r="5"/>
+    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+);
+const IconAlert = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+const IconCal = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <rect x="3" y="4" width="18" height="18" rx="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+  </svg>
+);
+const IconDots = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+);
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function GestionTareasWidget() {
-  const [data, setData]         = useState<AreaData[] | null>(null);
-  const [selected, setSelected] = useState<AreaKey>("ADMINISTRACION");
+  const [proyectos, setProyectos] = useState<ProyData[] | null>(null);
+  const [usuarios,  setUsuarios]  = useState<Usuario[]>([]);
+  const [selUser,   setSelUser]   = useState<string | null>(null);
+  const [selected,  setSelected]  = useState<string | null>(null);
+  const [loading,   setLoading]   = useState(false);
 
+  // Fetch users once
   useEffect(() => {
-    fetch("/api/dashboard/tareas-areas")
-      .then(r => r.json())
-      .then(d => { if (d.areas) setData(d.areas); });
+    fetch("/api/usuarios").then(r => r.json()).then(d => { if (d.usuarios) setUsuarios(d.usuarios); });
   }, []);
 
-  if (!data) return <Skeleton />;
+  // Fetch projects whenever user filter changes
+  useEffect(() => {
+    setLoading(true);
+    const url = selUser
+      ? `/api/dashboard/tareas-proyectos?usuarioId=${selUser}`
+      : "/api/dashboard/tareas-proyectos";
+    fetch(url)
+      .then(r => r.json())
+      .then(d => {
+        if (d.proyectos) {
+          setProyectos(d.proyectos);
+          setSelected(prev => {
+            if (!prev && d.proyectos.length > 0) return d.proyectos[0].id;
+            const stillExists = d.proyectos.find((p: ProyData) => p.id === prev);
+            return stillExists ? prev : (d.proyectos[0]?.id ?? null);
+          });
+        }
+        setLoading(false);
+      });
+  }, [selUser]);
 
-  const selData = data.find(d => d.area === selected);
-  const selMeta = AREA_META[selected];
+  if (!proyectos) return <Skeleton />;
+
+  const selData = proyectos.find(p => p.id === selected);
 
   return (
     <div className="space-y-5">
 
-      {/* ── Barras de progreso comparativo ─────────────────────────────── */}
-      <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-5 space-y-4">
-        <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-4">
-          Avance este mes — tareas completadas
-        </p>
-        {data.map(d => {
-          const meta   = AREA_META[d.area as AreaKey];
-          const status = getStatus(d.progress);
-          return (
+      {/* ── Filtro por usuario ──────────────────────────────────────────── */}
+      {usuarios.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[11px] text-[#444] uppercase tracking-widest font-semibold shrink-0">Ver por:</span>
+          <button
+            onClick={() => setSelUser(null)}
+            className={`text-xs px-3 py-1 rounded-full border transition-all ${
+              !selUser
+                ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30"
+                : "text-[#555] border-[#1e1e1e] hover:text-white hover:border-[#333]"
+            }`}
+          >
+            Todos
+          </button>
+          {usuarios.map(u => (
             <button
-              key={d.area}
-              onClick={() => setSelected(d.area as AreaKey)}
-              className="w-full flex items-center gap-4 group"
-            >
-              <span className="text-sm text-[#666] group-hover:text-white transition-colors w-32 text-left shrink-0 truncate">
-                {meta.label}
-              </span>
-              <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${d.progress}%`, backgroundColor: status.barClr }}
-                />
-              </div>
-              <span className="text-sm font-semibold text-white w-10 text-right shrink-0 tabular-nums">
-                {d.progress}%
-              </span>
-              <span className={`text-xs font-medium w-20 text-left shrink-0 ${status.textCls}`}>
-                {status.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── 4 tarjetas indicadoras ──────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {data.map(d => {
-          const meta    = AREA_META[d.area as AreaKey];
-          const status  = getStatus(d.progress);
-          const isSel   = selected === d.area;
-          return (
-            <button
-              key={d.area}
-              onClick={() => setSelected(d.area as AreaKey)}
-              className={`text-left p-4 rounded-2xl border transition-all duration-150 ${
-                isSel
-                  ? "bg-[#111] border-[#2a2a2a] shadow-lg"
-                  : "bg-[#0a0a0a] border-[#161616] hover:border-[#242424] hover:bg-[#0d0d0d]"
+              key={u.id}
+              onClick={() => setSelUser(selUser === u.id ? null : u.id)}
+              className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all ${
+                selUser === u.id
+                  ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30"
+                  : "text-[#555] border-[#1e1e1e] hover:text-white hover:border-[#333]"
               }`}
-              style={isSel ? { borderColor: meta.color + "40" } : undefined}
             >
-              {/* Area header */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: meta.color }} />
-                <span className="text-[13px] font-semibold text-white truncate">{meta.label}</span>
-              </div>
-
-              {/* Progress + status */}
-              <p className={`text-3xl font-bold leading-none mb-1 ${status.textCls}`}>
-                {d.progress}%
-              </p>
-              <p className={`text-xs font-medium mb-4 ${status.textCls}`}>{status.label}</p>
-
-              {/* Counts */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-[#444]">Completadas mes</span>
-                  <span className="text-[11px] font-semibold text-white">{d.counts.completadasMes}</span>
-                </div>
-                {d.counts.hoy > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#444]">Para hoy</span>
-                    <span className="text-[11px] font-semibold text-emerald-400">{d.counts.hoy}</span>
-                  </div>
-                )}
-                {d.counts.vencidas > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#444]">Vencidas</span>
-                    <span className="text-[11px] font-semibold text-red-400">{d.counts.vencidas}</span>
-                  </div>
-                )}
-                {d.counts.proximas > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-[#444]">Próximas</span>
-                    <span className="text-[11px] font-semibold text-[#888]">{d.counts.proximas}</span>
-                  </div>
-                )}
-                {d.counts.hoy === 0 && d.counts.vencidas === 0 && d.counts.proximas === 0 && (
-                  <span className="text-[11px] text-[#2a2a2a]">Sin tareas programadas</span>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Detalle de área seleccionada ────────────────────────────────── */}
-      {selData && (
-        <div
-          key={selected}
-          className="bg-[#0a0a0a] border rounded-2xl overflow-hidden"
-          style={{ borderColor: selMeta.color + "30" }}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-[#141414]">
-            <div className="flex items-center gap-3">
-              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: selMeta.color }} />
-              <span className="font-semibold text-white">{selMeta.label}</span>
-              <span className="text-[#3a3a3a] text-sm">
-                {selData.counts.totalActivas} activas · {selData.counts.completadasMes} completadas este mes
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                selUser === u.id ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-[#1a1a1a] text-[#444]"
+              }`}>
+                {u.name.charAt(0).toUpperCase()}
               </span>
-            </div>
-            <Link
-              href="/operaciones"
-              className="text-xs text-[#B3985B] hover:underline shrink-0"
-            >
-              Ver en Gestión operativa →
-            </Link>
-          </div>
-
-          {/* Task sections */}
-          <div className="px-6 py-5 space-y-7">
-
-            {/* Hoy */}
-            <TaskSection
-              icon={
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="5"/>
-                  <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                  <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-                </svg>
-              }
-              label="Para hoy"
-              count={selData.counts.hoy}
-              tasks={selData.tareas.hoy}
-              badgeCls="bg-emerald-950/40 text-emerald-400"
-              emptyMsg="Sin tareas para hoy"
-            />
-
-            {/* Vencidas */}
-            <TaskSection
-              icon={
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-              }
-              label="Vencidas"
-              count={selData.counts.vencidas}
-              tasks={selData.tareas.vencidas}
-              badgeCls="bg-red-950/40 text-red-400"
-              emptyMsg="Sin tareas vencidas ✓"
-            />
-
-            {/* Próximas */}
-            <TaskSection
-              icon={
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-              }
-              label="Próximas 14 días"
-              count={selData.counts.proximas}
-              tasks={selData.tareas.proximas}
-              badgeCls="bg-[#1a1a1a] text-[#888]"
-              emptyMsg="Sin tareas programadas en los próximos 14 días"
-            />
-
-            {/* Sin fecha */}
-            {selData.counts.sinFecha > 0 && (
-              <TaskSection
-                icon={
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                }
-                label="Sin programar"
-                count={selData.counts.sinFecha}
-                tasks={selData.tareas.sinFecha}
-                badgeCls="bg-[#1a1a1a] text-[#555]"
-                emptyMsg=""
-              />
-            )}
-          </div>
+              {u.name.split(" ")[0]}
+            </button>
+          ))}
+          {loading && (
+            <span className="w-4 h-4 border border-[#222] border-t-[#B3985B] rounded-full animate-spin ml-1" />
+          )}
         </div>
+      )}
+
+      {proyectos.length === 0 ? (
+        <div className="text-center py-10 text-[#444] text-sm">
+          {selUser ? "Sin tareas asignadas a este usuario en proyectos activos" : "Sin proyectos activos"}
+        </div>
+      ) : (
+        <>
+          {/* ── Barras de progreso ────────────────────────────────────────── */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-5">
+            <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-4">
+              Avance este mes — tareas completadas
+            </p>
+            <div className="space-y-3.5 max-h-52 overflow-y-auto pr-1" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(179,152,91,0.2) transparent" }}>
+              {proyectos.map(p => {
+                const status = getStatus(p.progress);
+                const isSel  = selected === p.id;
+                return (
+                  <button key={p.id} onClick={() => setSelected(p.id)}
+                    className="w-full flex items-center gap-4 group"
+                  >
+                    <span className={`text-sm transition-colors w-36 text-left shrink-0 truncate ${isSel ? "text-white font-medium" : "text-[#666] group-hover:text-white"}`}>
+                      {p.nombre}
+                    </span>
+                    <div className="flex-1 h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${p.progress}%`, backgroundColor: p.color ?? status.barClr }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold text-white w-10 text-right shrink-0 tabular-nums">
+                      {p.progress}%
+                    </span>
+                    <span className={`text-xs font-medium w-20 text-left shrink-0 ${status.textCls}`}>
+                      {status.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ── Tarjetas por proyecto ─────────────────────────────────────── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {proyectos.map(p => {
+              const status = getStatus(p.progress);
+              const isSel  = selected === p.id;
+              return (
+                <button key={p.id} onClick={() => setSelected(p.id)}
+                  className={`text-left p-4 rounded-2xl border transition-all duration-150 ${
+                    isSel
+                      ? "bg-[#111] border-[#2a2a2a] shadow-lg"
+                      : "bg-[#0a0a0a] border-[#161616] hover:border-[#242424] hover:bg-[#0d0d0d]"
+                  }`}
+                  style={isSel && p.color ? { borderColor: p.color + "40" } : undefined}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                    <span className="text-[13px] font-semibold text-white truncate">{p.nombre}</span>
+                  </div>
+                  {p.carpeta && (
+                    <p className="text-[10px] text-[#333] mb-2 truncate pl-[18px]">{p.carpeta.nombre}</p>
+                  )}
+                  <p className={`text-3xl font-bold leading-none mb-1 mt-3 ${status.textCls}`}>{p.progress}%</p>
+                  <p className={`text-xs font-medium mb-3 ${status.textCls}`}>{status.label}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-[#444]">Completadas</span>
+                      <span className="text-[11px] font-semibold text-white">{p.counts.completadasMes}</span>
+                    </div>
+                    {p.counts.vencidas > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[#444]">Vencidas</span>
+                        <span className="text-[11px] font-semibold text-red-400">{p.counts.vencidas}</span>
+                      </div>
+                    )}
+                    {p.counts.hoy > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[#444]">Hoy</span>
+                        <span className="text-[11px] font-semibold text-emerald-400">{p.counts.hoy}</span>
+                      </div>
+                    )}
+                    {p.counts.totalActivas > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-[#333]">Activas</span>
+                        <span className="text-[11px] text-[#555]">{p.counts.totalActivas}</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Detalle del proyecto seleccionado ────────────────────────── */}
+          {selData && (
+            <div
+              key={selected}
+              className="bg-[#0a0a0a] border rounded-2xl overflow-hidden"
+              style={{ borderColor: (selData.color ?? "#2a2a2a") + "30" }}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-[#141414]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: selData.color ?? "#555" }} />
+                  <span className="font-semibold text-white truncate">{selData.nombre}</span>
+                  {selData.carpeta && (
+                    <span className="text-[10px] text-[#444] bg-[#111] px-2 py-0.5 rounded-full shrink-0">
+                      {selData.carpeta.nombre}
+                    </span>
+                  )}
+                  <span className="text-[#3a3a3a] text-sm shrink-0 hidden md:inline">
+                    {selData.counts.totalActivas} activas · {selData.counts.completadasMes} completadas este mes
+                  </span>
+                </div>
+                <Link href="/operaciones" className="text-xs text-[#B3985B] hover:underline shrink-0 ml-4">
+                  Ver en Gestión →
+                </Link>
+              </div>
+
+              <div className="px-6 py-5 space-y-7">
+                <TaskSection icon={IconSun} label="Para hoy"
+                  count={selData.counts.hoy} tasks={selData.tareas.hoy}
+                  badgeCls="bg-emerald-950/40 text-emerald-400" emptyMsg="Sin tareas para hoy" />
+
+                <TaskSection icon={IconAlert} label="Vencidas"
+                  count={selData.counts.vencidas} tasks={selData.tareas.vencidas}
+                  badgeCls="bg-red-950/40 text-red-400" emptyMsg="Sin tareas vencidas ✓" />
+
+                <TaskSection icon={IconCal} label="Próximas 14 días"
+                  count={selData.counts.proximas} tasks={selData.tareas.proximas}
+                  badgeCls="bg-[#1a1a1a] text-[#888]" emptyMsg="Sin tareas programadas en los próximos 14 días" />
+
+                {selData.counts.sinFecha > 0 && (
+                  <TaskSection icon={IconDots} label="Sin programar"
+                    count={selData.counts.sinFecha} tasks={selData.tareas.sinFecha}
+                    badgeCls="bg-[#1a1a1a] text-[#555]" emptyMsg="" />
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
