@@ -25,7 +25,7 @@ export function Combobox({
   className = "",
   disabled = false,
 }: Props) {
-  const selectedLabel = options.find(o => o.value === value)?.label ?? "";
+  const selectedLabel = value ? (options.find(o => o.value === value)?.label ?? "") : "";
   const [query, setQuery] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
   const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});
@@ -34,7 +34,7 @@ export function Combobox({
 
   // Keep display text in sync when value changes externally
   useEffect(() => {
-    setQuery(options.find(o => o.value === value)?.label ?? "");
+    setQuery(value ? (options.find(o => o.value === value)?.label ?? "") : "");
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isFiltering = query !== selectedLabel;

@@ -554,6 +554,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
   const [selAsignar, setSelAsignar] = useState("");
+  const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
   // Estado para editar tarifa inline
   const [editandoTarifaId, setEditandoTarifaId] = useState<string | null>(null);
   const [editTarifaVal, setEditTarifaVal] = useState("");
@@ -1507,6 +1508,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
     setEditandoTarifaId(null);
     setEditTarifaVal("");
+  }
+
+  // ── Desasignar técnico de slot (mantiene la fila) ──
+  async function desasignarTecnico(pId: string) {
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tecnicoId: null }),
+    });
+    const d = await res.json();
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => p.id === pId ? d.personal : p),
+    } : prev);
+  }
+
+  // ── Agregar slot vacío a un grupo ──
+  async function agregarSlotVacio(participacion: string, fechaJornada: string | null) {
+    const res = await fetch(`/api/proyectos/${id}/personal`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participacion, fechaJornada: fechaJornada || null }),
+    });
+    const d = await res.json();
+    if (d.personal) {
+      setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
+    }
+  }
+
+  // ── Crear técnico nuevo y asignarlo directamente al slot ──
+  async function crearTecnicoYAsignar() {
+    if (!nuevoTecNombre.trim() || !crearParaSlotId) return;
+    setCreandoTecnico(true);
+    const res = await fetch("/api/tecnicos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nuevoTecNombre.trim(),
+        celular: nuevoTecCelular.trim() || null,
+        rolId: nuevoTecRolId || null,
+        nivel: nuevoTecNivel,
+      }),
+    });
+    const d = await res.json();
+    if (d.tecnico) {
+      setTecnicos(prev => [...prev, d.tecnico].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      await asignarTecnico(crearParaSlotId, d.tecnico.id);
+    }
+    setCrearParaSlotId(null);
+    setAsignandoId(null);
+    setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A");
+    setCreandoTecnico(false);
   }
 
   // ── Registrar gasto directo ──
@@ -2647,6 +2697,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             Confirmar todos
                           </button>
                         )}
+                        <button
+                          onClick={() => agregarSlotVacio(tipo, grupo[0]?.fechaJornada ?? null)}
+                          title="Agregar técnico a este grupo"
+                          className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] hover:border-[#B3985B]/50 px-2 py-0.5 rounded transition-colors">
+                          + Agregar
+                        </button>
                       </div>
                     </div>
                     {grupo.map(p => (
@@ -2656,21 +2712,60 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="flex-1 min-w-0">
                             {!p.tecnico ? (
                               asignandoId === p.id ? (
-                                <div className="flex items-center gap-2">
-                                  <Combobox
-                                    value=""
-                                    onChange={v => { if (v) asignarTecnico(p.id, v); }}
-                                    options={[{ value: "", label: "— Seleccionar técnico —" }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` }))]}
-                                    className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
-                                  />
-                                  <button onClick={() => { setAsignandoId(null); setSelAsignar(""); }}
-                                    className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Combobox
+                                      value=""
+                                      placeholder="Buscar técnico..."
+                                      onChange={v => {
+                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                        else if (v) { asignarTecnico(p.id, v); }
+                                      }}
+                                      options={[
+                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                      ]}
+                                      className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                    />
+                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                  </div>
+                                  {/* Mini-form nuevo técnico inline para asignar */}
+                                  {crearParaSlotId === p.id && (
+                                    <div className="p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
+                                      <p className="text-[#B3985B] text-xs font-semibold">Registrar nuevo técnico</p>
+                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                                        placeholder="Nombre completo *" autoFocus
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                                        placeholder="Celular (WhatsApp)"
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                                      <div className="flex gap-2">
+                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
+                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
+                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                      </div>
+                                      <div className="flex gap-2 pt-1">
+                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                                          className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
+                                        </button>
+                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-yellow-500 text-sm italic">Sin asignar</span>
                                   {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); }}
+                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }}
                                     className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors">
                                     Asignar técnico
                                   </button>
@@ -2689,7 +2784,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
-                          <button onClick={() => eliminarPersonal(p.id)}
+                          <button
+                            onClick={() => p.tecnico ? desasignarTecnico(p.id) : eliminarPersonal(p.id)}
+                            title={p.tecnico ? "Quitar técnico (mantiene el slot)" : "Eliminar slot"}
                             className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors shrink-0">×</button>
                         </div>
                         {/* Actions row — wraps cleanly on mobile */}

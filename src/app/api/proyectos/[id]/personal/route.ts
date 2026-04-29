@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { tecnicoId, rolTecnicoId, nivel, jornada, responsabilidad, tarifaAcordada, notas, participacion } = await req.json();
+  const { tecnicoId, rolTecnicoId, nivel, jornada, responsabilidad, tarifaAcordada, notas, participacion, fechaJornada } = await req.json();
 
   const tarifa = tarifaAcordada ? parseFloat(tarifaAcordada) : null;
 
@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       tecnicoId: tecnicoId || null,
       rolTecnicoId: rolTecnicoId || null,
       participacion: participacion || null,
+      fechaJornada: fechaJornada || null,
       nivel: nivel || null,
       jornada: jornada || null,
       responsabilidad: responsabilidad || null,
