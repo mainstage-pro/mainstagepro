@@ -181,9 +181,15 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false }
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean }) {
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync external value changes (e.g. after load)
   useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
+
+  useEffect(() => {
+    if (!multiline || !textareaRef.current) return;
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+  }, [val, multiline]);
 
   function handleBlur() {
     if (dirty) { onSave(field, val); setDirty(false); }
@@ -195,7 +201,7 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false }
     <div>
       <label className="text-gray-500 text-xs mb-1 block">{label}</label>
       {multiline ? (
-        <textarea value={val} rows={3} className={inputCls + " resize-none"}
+        <textarea ref={textareaRef} value={val} rows={2} className={inputCls + " resize-none overflow-hidden"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
           onBlur={handleBlur} />
       ) : (
