@@ -72,5 +72,37 @@ export async function GET() {
     };
   }));
 
-  return NextResponse.json({ areas });
+  // Efectividad por usuario (mes actual)
+  const [asignadasGrp, completadasGrp, activeUsers] = await Promise.all([
+    prisma.tarea.groupBy({
+      by: ["asignadoAId"],
+      where: { asignadoAId: { not: null }, parentId: null, estado: { notIn: ["CANCELADA"] }, createdAt: { gte: inicioMes } },
+      _count: { id: true },
+    }),
+    prisma.tarea.groupBy({
+      by: ["asignadoAId"],
+      where: { asignadoAId: { not: null }, parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } },
+      _count: { id: true },
+    }),
+    prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+
+  const asignadasMap  = Object.fromEntries(asignadasGrp.map(r => [r.asignadoAId!, r._count.id]));
+  const completadasMap = Object.fromEntries(completadasGrp.map(r => [r.asignadoAId!, r._count.id]));
+
+  const usuarios = activeUsers
+    .map(u => ({
+      id: u.id,
+      name: u.name,
+      asignadas:   asignadasMap[u.id]  ?? 0,
+      completadas: completadasMap[u.id] ?? 0,
+    }))
+    .filter(u => u.asignadas > 0)
+    .sort((a, b) => {
+      const ea = a.asignadas > 0 ? a.completadas / a.asignadas : 0;
+      const eb = b.asignadas > 0 ? b.completadas / b.asignadas : 0;
+      return eb - ea;
+    });
+
+  return NextResponse.json({ areas, usuarios });
 }

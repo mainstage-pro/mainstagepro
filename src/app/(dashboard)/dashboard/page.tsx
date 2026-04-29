@@ -9,7 +9,7 @@ import { GraficaPublicaciones } from "@/components/GraficaPublicaciones";
 import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
-import GestionTareasWidget from "@/components/GestionTareasWidget";
+import TareasHoyWidget from "@/components/TareasHoyWidget";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -627,7 +627,7 @@ export default async function DashboardPage() {
           GESTIÓN DE TAREAS POR ÁREA
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="GESTIÓN DE TAREAS" href="/operaciones">
-        <GestionTareasWidget />
+        <TareasHoyWidget />
       </Section>
 
     </div>
