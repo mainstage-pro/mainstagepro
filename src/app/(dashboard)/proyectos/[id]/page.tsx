@@ -253,12 +253,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
   const [tareasOpen, setTareasOpen] = useState(false);
-  function scrollToSection(id: string) {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setTab(id.replace("section-", "") as typeof tab);
-  }
 
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
@@ -1016,7 +1011,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       if (d.evaluacion) {
         setEvalCliente(d.evaluacion);
         setEvalClienteLoaded(true);
-        scrollToSection("section-extras");
+        document.getElementById("section-extras")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
       await load(); // recargar para mostrar el cierre generado
     }
@@ -2073,31 +2068,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ── Navegación de secciones ── */}
-      {(() => {
-        const fichaOk = !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento && !!proyecto.lugarEvento;
-        const operOk  = proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO");
-        const finOk   = !!proyecto.cotizacion;
-        const SECS = [
-          { id: "section-resumen",   label: "Resumen",   warn: !fichaOk },
-          { id: "section-operacion", label: "Operativo", warn: !operOk },
-          { id: "section-extras",    label: "Docs",      warn: false },
-          { id: "section-finanzas",  label: "Finanzas",  warn: !finOk },
-        ] as const;
-        return (
-          <div className="sticky top-0 z-20 flex gap-1 bg-[#0a0a0a]/95 backdrop-blur border border-[#1a1a1a] rounded-xl p-1 flex-wrap">
-            {SECS.map(s => (
-              <button key={s.id} onClick={() => scrollToSection(s.id)}
-                className={`relative flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                  tab === s.id.replace("section-","") ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
-                }`}>
-                {s.label}
-                {s.warn && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />}
-              </button>
-            ))}
-          </div>
-        );
-      })()}
 
       {/* ────── SECCIÓN: RESUMEN ────── */}
       <div id="section-resumen" className="scroll-mt-4">
