@@ -49,6 +49,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
 
   const allowed = [
+    "clienteId",
     "etapa", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",

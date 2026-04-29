@@ -627,6 +627,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [savingTrade, setSavingTrade] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [skipGate, setSkipGate] = useState(false);
+  // Cambiar cliente del trato
+  const [cambiarCliente, setCambiarCliente] = useState(false);
+  const [clientesOpciones, setClientesOpciones] = useState<{ value: string; label: string }[]>([]);
+  const [savingCliente, setSavingCliente] = useState(false);
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
@@ -1031,6 +1035,45 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       setEditando(false);
     }
     setSaving(false);
+  }
+
+  async function abrirCambiarCliente() {
+    if (clientesOpciones.length === 0) {
+      const r = await fetch("/api/clientes");
+      const d = await r.json();
+      setClientesOpciones(
+        (d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({
+          value: c.id,
+          label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
+        }))
+      );
+    }
+    setCambiarCliente(true);
+  }
+
+  async function confirmarCambioCliente(nuevoClienteId: string) {
+    if (!nuevoClienteId || nuevoClienteId === trato?.cliente.id) {
+      setCambiarCliente(false);
+      return;
+    }
+    setSavingCliente(true);
+    const res = await fetch(`/api/tratos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clienteId: nuevoClienteId }),
+    });
+    if (res.ok) {
+      // Reload full trato to get updated cliente object
+      const r2 = await fetch(`/api/tratos/${id}`);
+      const d2 = await r2.json();
+      if (d2.trato) setTrato(d2.trato);
+      toast.success("Cliente actualizado");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al cambiar cliente");
+    }
+    setSavingCliente(false);
+    setCambiarCliente(false);
   }
 
   async function generarFormToken() {
@@ -2768,17 +2811,47 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         {/* Sidebar cliente */}
         <div className="space-y-4">
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Cliente</h2>
-            <Link href={`/crm/clientes/${trato.cliente.id}`} className="block hover:opacity-80 transition-opacity">
-              <p className="text-white font-medium text-sm">{trato.cliente.nombre}</p>
-              {trato.cliente.empresa && <p className="text-gray-400 text-xs">{trato.cliente.empresa}</p>}
-            </Link>
-            {trato.cliente.telefono && <p className="text-gray-300 text-xs mt-2">{trato.cliente.telefono}</p>}
-            {trato.cliente.correo && <p className="text-gray-300 text-xs">{trato.cliente.correo}</p>}
-            <div className="flex gap-2 mt-3">
-              <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.tipoCliente}</span>
-              <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.clasificacion}</span>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Cliente</h2>
+              {!cambiarCliente && (
+                <button
+                  onClick={abrirCambiarCliente}
+                  className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                >
+                  Cambiar
+                </button>
+              )}
             </div>
+            {cambiarCliente ? (
+              <div className="space-y-2">
+                <Combobox
+                  value={trato.cliente.id}
+                  onChange={confirmarCambioCliente}
+                  options={clientesOpciones}
+                  placeholder="Buscar cliente..."
+                  disabled={savingCliente}
+                />
+                <button
+                  onClick={() => setCambiarCliente(false)}
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href={`/crm/clientes/${trato.cliente.id}`} className="block hover:opacity-80 transition-opacity">
+                  <p className="text-white font-medium text-sm">{trato.cliente.nombre}</p>
+                  {trato.cliente.empresa && <p className="text-gray-400 text-xs">{trato.cliente.empresa}</p>}
+                </Link>
+                {trato.cliente.telefono && <p className="text-gray-300 text-xs mt-2">{trato.cliente.telefono}</p>}
+                {trato.cliente.correo && <p className="text-gray-300 text-xs">{trato.cliente.correo}</p>}
+                <div className="flex gap-2 mt-3">
+                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.tipoCliente}</span>
+                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.clasificacion}</span>
+                </div>
+              </>
+            )}
           </div>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <p className="text-xs text-gray-500 mb-1">Creado el</p>
