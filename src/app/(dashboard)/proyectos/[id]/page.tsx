@@ -599,6 +599,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     contactos: Array<{ nombre: string; tipo: "tecnico" | "proveedor"; waUrl: string | null }>;
   };
   const [pendingNotif, setPendingNotif] = useState<CambioNotif | null>(null);
+  const [directorioOpen, setDirectorioOpen] = useState(false);
 
   const KEY_CAMPOS: Record<string, string> = {
     fechaEvento: "Fecha del evento",
@@ -2296,14 +2297,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175" },
                 { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195" },
               ];
-              const [open, setOpen] = React.useState(false);
               return (
                 <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                  <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
                     <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
-                    <svg className={`w-4 h-4 text-gray-600 transition-transform ${open ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                   </button>
-                  {open && (
+                  {directorioOpen && (
                     <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
                       {DIRECTORIO.map(p => (
                         <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
