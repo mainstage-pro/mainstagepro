@@ -50,7 +50,7 @@ interface ProyectoEventoConTareas {
 interface ProyViewOpts {
   showCompleted: boolean;
   sortBy:        "none" | "prioridad" | "fecha" | "nombre";
-  groupBy:       "none" | "prioridad" | "area";
+  groupBy:       "none" | "prioridad";
   filterPrio:    string[];
 }
 const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
@@ -58,7 +58,7 @@ const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", 
 interface VistaOpts {
   showCompleted: boolean;
   sortBy:   "none" | "prioridad" | "fecha" | "nombre";
-  groupBy:  "none" | "proyecto" | "prioridad" | "area" | "fecha";
+  groupBy:  "none" | "proyecto" | "prioridad" | "fecha";
   filterPrio: string[];
 }
 const VISTA_DEFAULT: VistaOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
@@ -73,14 +73,6 @@ function severityColor(s: string) {
   if (s === "URGENTE") return "border-red-500";
   if (s === "ALTA")    return "border-orange-500";
   return "border-yellow-600";
-}
-
-function areaLabel(a: string) {
-  const M: Record<string,string> = {
-    VENTAS:"Ventas", ADMINISTRACION:"Adm.", PRODUCCION:"Producción",
-    MARKETING:"Marketing", RRHH:"RR.HH.", GENERAL:"General", DIRECCION:"Dirección",
-  };
-  return M[a] ?? a;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -249,7 +241,6 @@ export default function OperacionesPage() {
     return r;
   }
 
-  const AREA_LABELS_MAP: Record<string, string> = { VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción", MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General" };
 
   function groupProyTareas(tareas: TareaItem[]): { label: string; color?: string; items: TareaItem[] }[] {
     if (proyViewOpts.groupBy === "prioridad") {
@@ -259,12 +250,6 @@ export default function OperacionesPage() {
         { label: "Media",          color: "#B3985B", items: tareas.filter(t => t.prioridad === "MEDIA") },
         { label: "Sin prioridad",  color: "#4b5563", items: tareas.filter(t => t.prioridad === "BAJA") },
       ].filter(g => g.items.length > 0);
-    }
-    if (proyViewOpts.groupBy === "area") {
-      return [...new Set(tareas.map(t => t.area))].map(area => ({
-        label: AREA_LABELS_MAP[area] ?? area,
-        items: tareas.filter(t => t.area === area),
-      }));
     }
     return [{ label: "", items: tareas }];
   }
@@ -698,7 +683,6 @@ export default function OperacionesPage() {
         let key = "";
         if (vistaOpts.groupBy === "proyecto")  key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
         else if (vistaOpts.groupBy === "prioridad") key = t.prioridad;
-        else if (vistaOpts.groupBy === "area") key = areaLabel(t.area);
         else if (vistaOpts.groupBy === "fecha") key = t.fecha ? new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(t);
@@ -709,20 +693,19 @@ export default function OperacionesPage() {
       return keys.map(label => ({ label, tareas: applySort(grouped[label]) }));
     }
 
-    // Natural grouping: bandeja stays flat, hoy groups by area, proximas groups if >1 area
+    // Natural grouping: bandeja stays flat, hoy groups by project
     if (vista === "bandeja") return null;
-    const areas = [...new Set(base.map(t => t.area))];
-    if (vista !== "hoy" && areas.length <= 1) return null;
+    const proyNames = [...new Set(base.map(t => t.proyectoTarea?.nombre ?? "Bandeja de entrada"))];
+    if (vista !== "hoy" && proyNames.length <= 1) return null;
 
     const grouped: Record<string, TareaItem[]> = {};
     for (const t of base) {
-      if (!grouped[t.area]) grouped[t.area] = [];
-      grouped[t.area].push(t);
+      const key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(t);
     }
-    const AREA_ORD = ["GENERAL","VENTAS","ADMINISTRACION","PRODUCCION","MARKETING","RRHH","DIRECCION"];
-    const extra = Object.keys(grouped).filter(k => !AREA_ORD.includes(k)).sort();
-    const keys = [...AREA_ORD.filter(k => grouped[k]), ...extra.filter(k => grouped[k])];
-    return keys.map(key => ({ label: areaLabel(key), tareas: applySort(grouped[key]) }));
+    const keys = Object.keys(grouped).sort((a, b) => a === "Bandeja de entrada" ? 1 : b === "Bandeja de entrada" ? -1 : a.localeCompare(b));
+    return keys.map(key => ({ label: key, tareas: applySort(grouped[key]) }));
   }, [tareas, vistaOpts, vista, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flat sorted list (used when no grouping)
@@ -1075,7 +1058,7 @@ export default function OperacionesPage() {
                   <div className="px-4 py-3 border-b border-[#161616]">
                     <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Agrupar por</p>
                     <div className="grid grid-cols-2 gap-1">
-                      {([["none","Ninguno"],["proyecto","Proyecto"],["prioridad","Prioridad"],["area","Área"],["fecha","Fecha"]] as const).map(([val, label]) => (
+                      {([["none","Ninguno"],["proyecto","Proyecto"],["prioridad","Prioridad"],["fecha","Fecha"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setVistaOpts(o => ({ ...o, groupBy: val }))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${vistaOpts.groupBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
                           {label}
@@ -1210,7 +1193,7 @@ export default function OperacionesPage() {
                   <div className="px-4 py-3 border-b border-[#161616]">
                     <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Agrupar por</p>
                     <div className="flex gap-1">
-                      {([["none","Ninguno"],["prioridad","Prioridad"],["area","Área"]] as const).map(([val, label]) => (
+                      {([["none","Ninguno"],["prioridad","Prioridad"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setProyViewOpts(o => ({ ...o, groupBy: val }))}
                           className={`flex-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${proyViewOpts.groupBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
                           {label}
@@ -1808,7 +1791,7 @@ export default function OperacionesPage() {
                     <div className="min-w-0 flex-1">
                       <p className="text-white text-sm font-medium truncate">{t.titulo}</p>
                       <p className="text-[#555] text-xs mt-0.5">
-                        {t.proyectoTarea?.nombre ?? "Bandeja"} · {t.area}
+                        {t.proyectoTarea?.nombre ?? "Bandeja de entrada"}
                         {t.fecha && <> · {new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}</>}
                       </p>
                     </div>

@@ -73,10 +73,6 @@ const PRIOS: { key: string; label: string; color: string }[] = [
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
 ];
 
-const AREA_LABELS: Record<string, string> = {
-  VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
-  MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General",
-};
 
 function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
   return (
@@ -97,7 +93,6 @@ export default function TaskModal({
   const [descripcion, setDescripcion] = useState("");
   const [notas, setNotas]             = useState("");
   const [prioridad, setPrioridad]     = useState("MEDIA");
-  const [area, setArea]               = useState("GENERAL");
   const [asignadoAId, setAsignadoAId] = useState("");
   const [proyectoId, setProyectoId]   = useState("");
   const [iniciativaId, setIniciativaId] = useState("");
@@ -133,7 +128,6 @@ export default function TaskModal({
     setDescripcion(tarea.descripcion ?? "");
     setNotas(tarea.notas ?? "");
     setPrioridad(tarea.prioridad);
-    setArea(tarea.area);
     setAsignadoAId(tarea.asignadoA?.id ?? "");
     setProyectoId(tarea.proyectoTarea?.id ?? "");
     setIniciativaId(tarea.iniciativa?.id ?? "");
