@@ -343,7 +343,7 @@ export default function CobrosPagosPage() {
     try {
       if (nuevoForm.tipo === "cxc") {
         if (!nuevoForm.empresaId && !nuevoForm.clienteId) { toast.error("Selecciona una empresa o cliente"); setGuardandoNuevo(false); return; }
-        await fetch("/api/cuentas-cobrar", {
+        const r = await fetch("/api/cuentas-cobrar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -357,8 +357,9 @@ export default function CobrosPagosPage() {
             notas: nuevoForm.notas || null,
           }),
         });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxC"); return; }
       } else {
-        await fetch("/api/cuentas-pagar", {
+        const r = await fetch("/api/cuentas-pagar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -374,6 +375,7 @@ export default function CobrosPagosPage() {
             proyectoId: nuevoForm.proyectoId || null,
           }),
         });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxP"); return; }
       }
       setShowNuevo(false);
       setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
@@ -434,8 +436,8 @@ export default function CobrosPagosPage() {
   );
 
   // Metrics
-  const cxcPend = cxc.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxcVenc = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxcPend = cxc.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcVenc = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxcCobr = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxpPend = cxp.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
   const cxpVenc = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
@@ -447,7 +449,8 @@ export default function CobrosPagosPage() {
       ? (cxcItem.empresa?.nombre ?? cxcItem.cliente?.nombre ?? "Cliente")
       : ((item as CxPItem).socio?.nombre ?? (item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
     setModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, nombre });
-    setModalMonto(String(item.monto));
+    const saldo = tipo === "cobro" ? item.monto - ((item as CxCItem).montoCobrado ?? 0) : item.monto;
+    setModalMonto(String(saldo));
     setModalNotas("");
     setModalFecha(new Date().toISOString().split("T")[0]);
     setModalCuentaId("");
@@ -517,7 +520,7 @@ export default function CobrosPagosPage() {
     const endpoint = modal.tipo === "cobro"
       ? `/api/cuentas-cobrar/${modal.id}/pagar`
       : `/api/cuentas-pagar/${modal.id}/pagar`;
-    await fetch(endpoint, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -528,6 +531,12 @@ export default function CobrosPagosPage() {
         metodoPago: modalMetodoPago,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setConfirmando(false);
+      return;
+    }
     await load();
     setModal(null);
     setConfirmando(false);
@@ -893,15 +902,24 @@ export default function CobrosPagosPage() {
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por cobrar</p>
             </div>
-          ) : groupByProject(cxcList).map(grupo => (
+          ) : groupByProject(cxcList).map(grupo => {
+            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+            return (
             <div key={grupo.proyectoId ?? "__sin__"}>
               {grupo.proyectoId ? (
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
-                    {grupo.numeroProyecto} · {grupo.proyectoNombre}
-                  </Link>
-                  {grupo.fechaEvento && (
-                    <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                      {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                    </Link>
+                    {grupo.fechaEvento && (
+                      <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                    )}
+                  </div>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-yellow-400 shrink-0">
+                      {formatCurrency(totalGrupo)} pendiente
+                    </span>
                   )}
                 </div>
               ) : (
@@ -951,12 +969,32 @@ export default function CobrosPagosPage() {
                         Abonado: {formatCurrency(c.montoCobrado)}
                       </span>
                     )}
+                    {(() => {
+                      const cid = c.cliente?.id;
+                      const eid = c.empresa?.id;
+                      const total = cxc
+                        .filter(x => x.estado !== "LIQUIDADO" && ((cid && x.cliente?.id === cid) || (eid && x.empresa?.id === eid)))
+                        .reduce((s, x) => s + (x.monto - x.montoCobrado), 0);
+                      if (total <= 0) return null;
+                      return (
+                        <span className="text-[10px] text-orange-400 bg-orange-950/25 border border-orange-900/40 px-2 py-0.5 rounded-full font-medium">
+                          Adeudo total: {formatCurrency(total)}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
 
                 {/* Monto */}
                 <div className="text-right shrink-0">
-                  <p className="text-white font-semibold text-base">{formatCurrency(c.monto)}</p>
+                  {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" ? (
+                    <>
+                      <p className="text-yellow-400 font-semibold text-base">{formatCurrency(c.monto - c.montoCobrado)}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">de {formatCurrency(c.monto)}</p>
+                    </>
+                  ) : (
+                    <p className="text-white font-semibold text-base">{formatCurrency(c.monto)}</p>
+                  )}
                 </div>
               </div>
 
@@ -978,6 +1016,24 @@ export default function CobrosPagosPage() {
                       </svg>
                       Editar
                     </button>
+                  </>
+                )}
+                {c.cotizacion && (
+                  <>
+                    <Link href={`/cotizaciones/${c.cotizacion.id}`}
+                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Ver cotización
+                    </Link>
+                    <a href={`/api/cotizaciones/${c.cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Cotización PDF
+                    </a>
                   </>
                 )}
                 {(() => {
@@ -1019,7 +1075,7 @@ export default function CobrosPagosPage() {
           ))}
               </div>
             </div>
-          ))}
+          );})}
         </div>
       ) : (
         // ── CxP Cards ──
@@ -1028,15 +1084,24 @@ export default function CobrosPagosPage() {
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
-          ) : groupByProject(cxpList).map(grupo => (
+          ) : groupByProject(cxpList).map(grupo => {
+            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+            return (
             <div key={grupo.proyectoId ?? "__sin__"}>
               {grupo.proyectoId ? (
-                <div className="flex items-center gap-2 mb-2 px-1">
-                  <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
-                    {grupo.numeroProyecto} · {grupo.proyectoNombre}
-                  </Link>
-                  {grupo.fechaEvento && (
-                    <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                      {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                    </Link>
+                    {grupo.fechaEvento && (
+                      <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                    )}
+                  </div>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-red-400 shrink-0">
+                      {formatCurrency(totalGrupo)} por pagar
+                    </span>
                   )}
                 </div>
               ) : (
@@ -1129,7 +1194,8 @@ export default function CobrosPagosPage() {
           })}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 

@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Template { id: string; descripcion: string; categoria: string; orden: number; activo: boolean }
 
 const CATEGORIAS = ["AUDIO", "ILUMINACION", "VIDEO", "CABLES", "HERRAMIENTAS", "TRANSPORTES", "GENERAL"];
 
 export default function TemplatesPage() {
+  const toast = useToast();
   const confirm = useConfirm();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +44,21 @@ export default function TemplatesPage() {
     if (!form.descripcion.trim()) return;
     setSaving(true);
     if (editId) {
-      await fetch(`/api/bodega/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(`/api/bodega/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
-      await fetch("/api/bodega/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch("/api/bodega/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     }
     await load();
     cancelForm();
@@ -52,13 +66,23 @@ export default function TemplatesPage() {
   }
 
   async function toggleActivo(t: Template) {
-    await fetch(`/api/bodega/templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    const res = await fetch(`/api/bodega/templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function deleteTemplate(id: string) {
     if (!await confirm({ message: "¿Eliminar este item del catálogo?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/bodega/templates/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/bodega/templates/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await load();
   }
 

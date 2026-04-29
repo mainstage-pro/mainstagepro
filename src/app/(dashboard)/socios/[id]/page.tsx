@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -117,6 +118,7 @@ const FieldLabel = ({ children }: { children: React.ReactNode }) => (
 
 // ─── Tab: Perfil ──────────────────────────────────────────────────────────────
 function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
+  const toast = useToast();
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ ...socio });
   const [saving, setSaving] = useState(false);
@@ -125,7 +127,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}`, {
+    const res = await fetch(`/api/socios/${socio.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre: form.nombre, tipo: form.tipo, rfc: form.rfc, curp: form.curp,
@@ -135,6 +137,12 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
         pctMainstage: form.pctMainstage, contratoInicio: form.contratoInicio, contratoFin: form.contratoFin,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setEdit(false);
     reload();
@@ -259,10 +267,15 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
             <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
               <input type="checkbox" checked={r.completado}
                 onChange={async (e) => {
-                  await fetch(`/api/socios/${socio.id}/requisitos`, {
+                  const res = await fetch(`/api/socios/${socio.id}/requisitos`, {
                     method: "PATCH", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id: r.id, completado: e.target.checked }),
                   });
+                  if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    toast.error(d.error ?? "Error al guardar");
+                    return;
+                  }
                   reload();
                 }}
                 className="w-4 h-4 accent-[#B3985B]" />
@@ -290,6 +303,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
 // ─── Tab: Activos ─────────────────────────────────────────────────────────────
 function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const toast = useToast();
   const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -302,13 +316,24 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
     e.preventDefault();
     setSaving(true);
     const url = editId ? `/api/socios/${socio.id}/activos/${editId}` : `/api/socios/${socio.id}/activos`;
-    await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setForm(EMPTY_A); setShowForm(false); setEditId(null); setSaving(false); reload();
   };
 
   const eliminar = async (id: string) => {
     if (!await confirm({ message: "¿Dar de baja este activo?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/socios/${socio.id}/activos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/socios/${socio.id}/activos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     reload();
   };
 
@@ -448,6 +473,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
 
 // ─── Tab: Rentas ──────────────────────────────────────────────────────────────
 function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const toast = useToast();
   const confirm = useConfirm();
   const [rentas, setRentas] = useState<Renta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -480,13 +506,24 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/rentas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(`/api/socios/${socio.id}/rentas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setShowForm(false); setSaving(false); cargar();
   };
 
   const eliminar = async (id: string) => {
     if (!await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     cargar();
   };
 
@@ -624,24 +661,36 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
 
 // ─── Tab: Reportes ────────────────────────────────────────────────────────────
 function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
+  const toast = useToast();
   const [genMes, setGenMes] = useState(now.getMonth() + 1);
   const [genAnio, setGenAnio] = useState(now.getFullYear());
   const [generating, setGenerating] = useState(false);
 
   const generar = async () => {
     setGenerating(true);
-    await fetch(`/api/socios/${socio.id}/reportes`, {
+    const res = await fetch(`/api/socios/${socio.id}/reportes`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: genMes, anio: genAnio }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGenerating(false);
+      return;
+    }
     setGenerating(false);
     reload();
   };
 
   const cambiarEstado = async (id: string, estado: string) => {
-    await fetch(`/api/socios/${socio.id}/reportes/${id}`, {
+    const res = await fetch(`/api/socios/${socio.id}/reportes/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     reload();
   };
 
@@ -728,6 +777,7 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
 
 // ─── Tab: Mantenimiento ───────────────────────────────────────────────────────
 function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] }) {
+  const toast = useToast();
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -749,7 +799,13 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/mantenimientos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(`/api/socios/${socio.id}/mantenimientos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setForm(EMPTY_M); setShowForm(false); setSaving(false); cargar();
   };
 

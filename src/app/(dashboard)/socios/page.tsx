@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 type Socio = {
   id: string;
@@ -36,6 +37,7 @@ const EMPTY = { nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "",
 
 export default function SociosPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [socios, setSocios] = useState<Socio[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("TODOS");
@@ -67,15 +69,25 @@ export default function SociosPage() {
   const eliminarSocio = async (s: Socio) => {
     if (!await confirm({ message: `¿Eliminar el socio "${s.nombre}"? Esta acción eliminará también sus activos y registros asociados.`, danger: true, confirmText: "Eliminar" })) return;
     setDeletingId(s.id);
-    await fetch(`/api/socios/${s.id}`, { method: "DELETE" });
-    setSocios(prev => prev.filter(x => x.id !== s.id));
+    const dr = await fetch(`/api/socios/${s.id}`, { method: "DELETE" });
+    if (dr.ok) {
+      setSocios(prev => prev.filter(x => x.id !== s.id));
+    } else {
+      toast.error("Error al eliminar socio");
+    }
     setDeletingId(null);
   };
 
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/socios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const r = await fetch("/api/socios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al crear socio");
+      setSaving(false);
+      return;
+    }
     setForm(EMPTY);
     setShowForm(false);
     setSaving(false);

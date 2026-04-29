@@ -38,12 +38,16 @@ export default function PipelinePage() {
 
   async function moverEtapa(id: string, etapa: string) {
     setMoving(id);
-    await fetch(`/api/tratos/${id}`, {
+    const res = await fetch(`/api/tratos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ etapa }),
     });
-    setTratos(prev => prev.map(t => t.id === id ? { ...t, etapa } : t));
+    if (res.ok) {
+      setTratos(prev => prev.map(t => t.id === id ? { ...t, etapa } : t));
+    } else {
+      await load();
+    }
     setMoving(null);
   }
 

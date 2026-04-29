@@ -711,10 +711,11 @@ export default function TaskItem({
             users={users}
             projects={projects}
             onExtract={async () => {
-              await fetch(`/api/tareas/${sub.id}`, {
+              const res = await fetch(`/api/tareas/${sub.id}`, {
                 method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ parentId: null }),
               });
+              if (!res.ok) return;
               setSubtareasExp(prev => prev.filter(s => s.id !== sub.id));
               setSubtaskCount(c => Math.max(0, c - 1));
               onExtractChild?.(sub);

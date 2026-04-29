@@ -73,7 +73,12 @@ export default function EvaluacionDetailPage() {
 
   async function deleteEval() {
     if (!await confirm({ message: "¿Eliminar esta evaluación?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/rrhh/evaluaciones/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/rrhh/evaluaciones/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Evaluación eliminada");
     router.push("/rrhh/evaluaciones");
   }

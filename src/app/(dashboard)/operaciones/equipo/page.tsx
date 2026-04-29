@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
 
 interface TareaEquipo {
   id: string;
@@ -170,6 +171,7 @@ function TareaCard({ t, showArea, onDateChange }: {
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function EquipoPage() {
+  const toast = useToast();
   const [usuarios, setUsuarios]         = useState<Usuario[]>([]);
   const [tareas, setTareas]             = useState<TareaEquipo[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -195,11 +197,16 @@ export default function EquipoPage() {
   }, [filtroFecha]);
 
   async function handleDateChange(id: string, fecha: string) {
-    await fetch(`/api/tareas/${id}`, {
+    const res = await fetch(`/api/tareas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fecha }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setTareas(prev => prev.map(t => t.id === id ? { ...t, fecha } : t));
   }
 

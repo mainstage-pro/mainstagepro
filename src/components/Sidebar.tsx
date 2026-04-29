@@ -34,7 +34,7 @@ const NAV: NavSection[] = [
     key: "seccion-top",
     section: "",
     items: [
-      { key: "dashboard", label: "CEO Dashboard", href: "/dashboard" },
+      { label: "Mi Dashboard", href: "/dashboard" },
       { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
     ],
   },
@@ -361,15 +361,18 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                       <div key={groupKey}>
                         <button
                           onClick={() => toggleGroup(groupKey)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                             isGroupActive
                               ? "text-white font-semibold"
                               : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                           }`}
                         >
-                          <span>{itemLabel}</span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <span className="flex-1 text-left">{itemLabel}</span>
                           <svg
-                            className={`w-3.5 h-3.5 transition-transform shrink-0 opacity-50 ${isOpen ? "rotate-90" : ""} ${isGroupActive ? "opacity-80" : ""}`}
+                            className={`w-3 h-3 transition-transform shrink-0 opacity-40 ${isOpen ? "rotate-90" : ""}`}
                             fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -402,12 +405,13 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     <Link
                       key={item.href}
                       href={item.href!}
-                      className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive(item.href!)
                           ? "bg-[#1a1a1a] text-white font-semibold"
                           : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                       }`}
                     >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
                       {itemLabel}
                     </Link>
                   );
@@ -463,9 +467,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
         {navContent}
         <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0 space-y-1">
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-full-task"))}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black font-semibold text-sm transition-all"
-            title="Nueva tarea (⌘K)"
+            title="Nueva tarea"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -501,10 +505,10 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
         </Link>
         <button
-          onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
+          onClick={() => window.dispatchEvent(new CustomEvent("open-full-task"))}
           className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black transition-all shrink-0"
           aria-label="Nueva tarea"
-          title="Nueva tarea (⌘K)"
+          title="Nueva tarea"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>

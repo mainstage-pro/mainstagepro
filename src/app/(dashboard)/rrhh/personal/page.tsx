@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SkeletonCards } from "@/components/Skeleton";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface PersonalInterno {
   id: string; nombre: string; puesto: string; departamento: string;
@@ -24,6 +25,7 @@ const DEPTO_COLORS: Record<string, string> = {
 function fmt(n: number) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n); }
 
 export default function PersonalPage() {
+  const toast = useToast();
   const [personal, setPersonal] = useState<PersonalInterno[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -43,7 +45,13 @@ export default function PersonalPage() {
   async function crear() {
     if (!form.nombre || !form.puesto) return;
     setSaving(true);
-    await fetch("/api/rrhh/personal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch("/api/rrhh/personal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al crear registro");
+      setSaving(false);
+      return;
+    }
     await load();
     setForm({ nombre: "", puesto: "", departamento: "GENERAL", tipo: "EMPLEADO", telefono: "", correo: "", salario: "", periodoPago: "MENSUAL", fechaIngreso: "", cuentaBancaria: "", datosFiscales: "", notas: "" });
     setShowForm(false);

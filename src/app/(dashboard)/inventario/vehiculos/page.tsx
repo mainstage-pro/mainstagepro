@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Mantenimiento {
   id: string;
@@ -92,6 +93,7 @@ function fmtKm(n: number | null) {
 }
 
 export default function VehiculosPage() {
+  const toast = useToast();
   const confirm = useConfirm();
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,11 +156,17 @@ export default function VehiculosPage() {
   async function saveMantenimiento() {
     if (!selectedId || !mantForm.servicio.trim()) return;
     setSavingMant(true);
-    await fetch(`/api/vehiculos/${selectedId}/mantenimiento`, {
+    const res = await fetch(`/api/vehiculos/${selectedId}/mantenimiento`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mantForm),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingMant(false);
+      return;
+    }
     setSavingMant(false);
     setMantForm(EMPTY_MANT);
     setShowMantForm(false);
@@ -168,17 +176,28 @@ export default function VehiculosPage() {
   async function deleteMantenimiento(mantId: string) {
     if (!selectedId || !await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
     setDeletingMant(mantId);
-    await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, { method: "DELETE" });
+    const res = await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      setDeletingMant(null);
+      return;
+    }
     setDeletingMant(null);
     await load();
   }
 
   async function toggleActivo(v: Vehiculo) {
-    await fetch(`/api/vehiculos/${v.id}`, {
+    const res = await fetch(`/api/vehiculos/${v.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !v.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 

@@ -120,7 +120,7 @@ export default async function DashboardPage() {
 
     // ── ADMINISTRACIÓN ──────────────────────────
     prisma.cuentaCobrar.aggregate({
-      _sum: { monto: true },
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
     prisma.cuentaCobrar.count({
@@ -373,6 +373,12 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                 ))}
+                <div className="flex items-center justify-between px-5 py-3 bg-[#0d0d0d]">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Total disponible</p>
+                  <p className={`text-sm font-bold ${totalDisponible >= 0 ? "text-[#B3985B]" : "text-red-400"}`}>
+                    {formatCurrency(totalDisponible)}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -385,7 +391,7 @@ export default async function DashboardPage() {
             </div>
             <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-gray-500 text-xs">Total pendiente</p>
-              <p className="text-white font-bold">{formatCurrency(cxcPendiente._sum.monto ?? 0)}</p>
+              <p className="text-white font-bold">{formatCurrency((cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0))}</p>
             </div>
             {cxcVencidas > 0 && (
               <Link href="/finanzas/cxc" className="px-5 py-3 flex items-center justify-between bg-red-900/10 hover:bg-red-900/20 transition-colors">

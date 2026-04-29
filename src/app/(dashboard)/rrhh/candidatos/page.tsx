@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
 
@@ -44,6 +45,7 @@ function fmt(n: number) {
 
 export default function CandidatosPage() {
   const router = useRouter();
+  const toast = useToast();
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban"|"lista">("kanban");
@@ -76,6 +78,7 @@ export default function CandidatosPage() {
     });
     const d = await r.json();
     setSaving(false);
+    if (!r.ok) { toast.error(d.error ?? "Error al crear candidato"); return; }
     setShowNew(false);
     if (d.candidato?.id) router.push(`/rrhh/candidatos/${d.candidato.id}`);
   }

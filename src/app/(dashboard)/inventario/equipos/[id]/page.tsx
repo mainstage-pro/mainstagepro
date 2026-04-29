@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
 
 const CATEGORIAS_ACC = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
 type CategoriaAcc = typeof CATEGORIAS_ACC[number] | null;
@@ -63,6 +64,7 @@ type Equipo = {
 };
 
 function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: Accesorio[] }) {
+  const toast = useToast();
   const [accesorios, setAccesorios] = useState<Accesorio[]>(initial);
   const [adding, setAdding] = useState(false);
   const [newNombre, setNewNombre] = useState("");
@@ -83,6 +85,12 @@ function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: A
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre: newNombre.trim(), categoria: newCat }),
     });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     const d = await r.json();
     if (d.accesorio) {
       setAccesorios(prev => {
@@ -103,6 +111,11 @@ function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: A
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre: editNombre.trim(), categoria: editCat }),
     });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     const d = await r.json();
     if (d.accesorio) {
       setAccesorios(prev => prev.map(a => a.id === id ? d.accesorio : a));
@@ -112,7 +125,17 @@ function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: A
 
   async function deleteAccesorio(id: string) {
     setAccesorios(prev => prev.filter(a => a.id !== id));
-    await fetch(`/api/equipos/${equipoId}/accesorios/${id}`, { method: "DELETE" });
+    const r = await fetch(`/api/equipos/${equipoId}/accesorios/${id}`, { method: "DELETE" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      // Reload to restore the item
+      const reload = await fetch(`/api/equipos/${equipoId}/accesorios`, { cache: "no-store" }).catch(() => null);
+      if (reload?.ok) {
+        const data = await reload.json();
+        if (data.accesorios) setAccesorios(data.accesorios);
+      }
+    }
   }
 
   const grouped = CATEGORIAS_ACC.reduce<Record<string, Accesorio[]>>((acc, cat) => {

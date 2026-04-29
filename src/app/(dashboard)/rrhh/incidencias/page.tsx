@@ -63,8 +63,10 @@ export default function IncidenciasPage() {
     if (!tipoForm.nombre.trim()) return;
     setSaving(true);
     const payload = { ...tipoForm, valor: parseFloat(tipoForm.valor)||0 };
-    if (editTipoId) await fetch(`/api/rrhh/tipos-incidencia/${editTipoId}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
-    else await fetch("/api/rrhh/tipos-incidencia",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    const rTipo = editTipoId
+      ? await fetch(`/api/rrhh/tipos-incidencia/${editTipoId}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) })
+      : await fetch("/api/rrhh/tipos-incidencia",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    if (!rTipo.ok) { const d = await rTipo.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     await loadAll(); setShowTipoForm(false); setEditTipoId(null); setTipoForm(TIPO_EMPTY); setSaving(false);
   }
 
@@ -78,7 +80,8 @@ export default function IncidenciasPage() {
   async function saveInc() {
     if (!incForm.personalId || !incForm.tipoId || !incForm.fecha) return;
     setSaving(true);
-    await fetch("/api/rrhh/incidencias",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(incForm) });
+    const rInc = await fetch("/api/rrhh/incidencias",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(incForm) });
+    if (!rInc.ok) { const d = await rInc.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar"); setSaving(false); return; }
     await loadAll(); setShowIncForm(false); setIncForm(INC_EMPTY); setSaving(false);
   }
 

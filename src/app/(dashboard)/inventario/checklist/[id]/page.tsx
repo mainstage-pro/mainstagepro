@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
 
 interface EquipoInfo {
   id: string; descripcion: string; cantidadTotal: number; estado: string;
@@ -36,6 +37,7 @@ const ESTADO_CURRENT: Record<string, string> = {
 export default function ChecklistDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const confirm = useConfirm();
+  const toast = useToast();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -56,25 +58,41 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
     const nuevoEstado = estadoActual === estado ? "PENDIENTE" : estado;
     if (nuevoEstado === "PERDIDO" && !await confirm({ message: "¿Marcar como PERDIDO?\n\nEsto actualizará el equipo en el inventario como perdido y lo quitará de disponibilidad.", danger: true, confirmText: "Marcar perdido" })) return;
     setUpdating(itemId);
-    await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
+    const res = await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: nuevoEstado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setUpdating(null);
+      return;
+    }
     await load();
     setUpdating(null);
   }
 
   async function eliminarChecklist() {
     if (!await confirm({ message: "¿Eliminar este checklist? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/bodega/checklist/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/bodega/checklist/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     window.location.href = "/inventario/checklist";
   }
 
   async function saveNotas(itemId: string) {
-    await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
+    const res = await fetch(`/api/bodega/checklist/${id}/items/${itemId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notas: notasVal }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setEditNotas(null);
     await load();
   }

@@ -128,7 +128,7 @@ export default function TecnicosPage() {
       cuentaBancaria: t.cuentaBancaria ?? "",
       datosFiscales: t.datosFiscales ?? "",
       comentarios: t.comentarios ?? "",
-      habilidades: t.habilidades ? (JSON.parse(t.habilidades) as string[]).join(", ") : "",
+      habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades) as string[]).join(", "); } catch { return t.habilidades; } })() : "",
     });
     setCreating(false);
   }

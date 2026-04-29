@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { type ReporteData, generarMensajeWhatsApp, fmtMXN } from "@/lib/reportes";
+import { useToast } from "@/components/Toast";
 
 const CEO_WHATSAPP = "524461432565";
 
@@ -60,6 +61,7 @@ function SectionHeader({ label, emoji }: { label: string; emoji: string }) {
 
 export default function ReporteDetallePage() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const [reporte, setReporte] = useState<Reporte | null>(null);
   const [loading, setLoading] = useState(true);
   const [notas, setNotas] = useState("");
@@ -79,11 +81,17 @@ export default function ReporteDetallePage() {
   const guardarNotas = async () => {
     if (!reporte) return;
     setSavingNotas(true);
-    await fetch(`/api/reportes/${id}`, {
+    const res = await fetch(`/api/reportes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notas }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingNotas(false);
+      return;
+    }
     setSavingNotas(false);
     setNotasSaved(true);
     setTimeout(() => setNotasSaved(false), 2000);

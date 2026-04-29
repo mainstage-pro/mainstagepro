@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface DiaData { fecha: string; dia: string; count: number }
 interface HistoricoItem { mes: string; label: string; prospectados: number; cierres: number }
@@ -158,6 +159,7 @@ function LineChart({ datos, meta }: { datos: HistoricoItem[]; meta: number }) {
 }
 
 export default function MetasPage() {
+  const toast = useToast();
   const [data, setData] = useState<MetasData | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"hoy" | "nurturing" | "leads" | "mes">("hoy");
@@ -200,7 +202,7 @@ export default function MetasPage() {
     const log = Array.isArray(nData.log) ? [...nData.log, logEntry] : [logEntry];
     const updatedNurturing = { ...nData, etapa: nextEtapa, temperatura: nextTemp, log };
 
-    await fetch(`/api/tratos/${tratoId}`, {
+    const patchRes = await fetch(`/api/tratos/${tratoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -211,6 +213,11 @@ export default function MetasPage() {
       }),
     });
     setSavingContacto(false);
+    if (!patchRes.ok) {
+      const d = await patchRes.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar seguimiento");
+      return;
+    }
     setContactando(null);
     setCForm({ nota: "", nextFecha: "", nextMotivo: "", nextEtapa: "" });
     reload();

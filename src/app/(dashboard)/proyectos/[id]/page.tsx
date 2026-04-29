@@ -336,11 +336,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function guardarCierre() {
     if (!cierreData) return;
     setSavingCierre(true);
-    await fetch(`/api/proyectos/${id}/cierre`, {
+    const res = await fetch(`/api/proyectos/${id}/cierre`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...cierreData.real, ...cierreData.estimado, desgloseCostos: cierreData.desgloseCostos, notas: cierreNotas }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingCierre(false);
+      return;
+    }
     setSavingCierre(false);
     setShowCierreModal(false);
     toast.success("Cierre financiero guardado");
@@ -355,7 +361,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function generarPortalToken() {
     setGenerandoToken(true);
-    await fetch(`/api/proyectos/${id}/portal-token`, { method: "POST" });
+    const res = await fetch(`/api/proyectos/${id}/portal-token`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar enlace");
+      setGenerandoToken(false);
+      return;
+    }
     setGenerandoToken(false);
     toast.success("Enlace de portal generado");
     await load();
@@ -365,7 +377,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const ok = await confirm({ message: "¿Revocar el enlace del portal? El cliente ya no podrá acceder con el enlace anterior.", danger: true, confirmText: "Revocar" });
     if (!ok) return;
     setRevocandoToken(true);
-    await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
+    const res = await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al revocar");
+      setRevocandoToken(false);
+      return;
+    }
     setRevocandoToken(false);
     toast.success("Enlace revocado");
     await load();
@@ -373,11 +391,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function guardarNotasPortal() {
     setSavingNotasPortal(true);
-    await fetch(`/api/proyectos/${id}`, {
+    const res = await fetch(`/api/proyectos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notasPortal: notasPortal || null }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingNotasPortal(false);
+      return;
+    }
     setSavingNotasPortal(false);
     toast.success("Notas del portal guardadas");
     await load();
@@ -521,6 +545,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [ajusteMotivo, setAjusteMotivo] = useState("");
   const [ajusteFecha, setAjusteFecha] = useState("");
   const [ajusteHistorial, setAjusteHistorial] = useState<string | null>(null); // id cuyo historial está expandido
+  // Extra como gasto operativo al subir monto CxC
+  const [ajusteRegistrarExtra, setAjusteRegistrarExtra] = useState(false);
+  const [ajusteExtraTipo, setAjusteExtraTipo] = useState("OTRO");
+  const [ajusteExtraConcepto, setAjusteExtraConcepto] = useState("");
 
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
@@ -623,30 +651,44 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) || 1 }),
     });
-    if (r.ok) {
-      setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-      setShowGastoOpForm(false);
-      loadGastosOp();
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
     }
+    setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+    setShowGastoOpForm(false);
+    loadGastosOp();
   }
 
   async function toggleEntregadoOp(g: GastoOp) {
     setTogglingGasto(g.id);
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setTogglingGasto(null);
+      return;
+    }
     await loadGastosOp();
     setTogglingGasto(null);
   }
 
   async function eliminarGastoOp(gId: string) {
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: gId }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     loadGastosOp();
   }
 
@@ -1460,6 +1502,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         responsabilidad: selResp || null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAddingPersonal(false);
+      return;
+    }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
     setSelTecnico(""); setSelRol(""); setSelTarifa(""); setSelResp("");
@@ -1535,6 +1583,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         referencia: gastoReferencia || null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAddingGasto(false);
+      return;
+    }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
     setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
@@ -1704,6 +1758,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const monto = parseFloat(ajusteMonto);
     const montoChanged = !isNaN(monto) && monto > 0 && monto !== montoActual;
     if (montoChanged && (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5)) { toast.error("El motivo es obligatorio al ajustar el monto"); return; }
+    if (ajusteRegistrarExtra && !ajusteExtraConcepto.trim()) { toast.error("Escribe el concepto del gasto extra"); return; }
     const payload: Record<string, unknown> = {};
     if (montoChanged) { payload.monto = monto; payload.motivo = ajusteMotivo.trim(); }
     if (ajusteFecha) payload.fechaCompromiso = ajusteFecha;
@@ -1714,8 +1769,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
     const data = await res.json();
     if (!res.ok) { toast.error(data.error ?? "Error al guardar"); return; }
-    toast.success("Guardado correctamente");
+    // Registrar el excedente como gasto operativo si el usuario lo eligió
+    if (montoChanged && ajusteRegistrarExtra && monto > montoActual) {
+      const delta = Math.round((monto - montoActual) * 100) / 100;
+      await fetch("/api/proyectos/gastos-operativos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proyectoId: id,
+          tipo: ajusteExtraTipo,
+          concepto: ajusteExtraConcepto.trim(),
+          monto: delta,
+          cantidad: 1,
+          notas: `Extra registrado desde ajuste CxC — motivo: ${ajusteMotivo.trim()}`,
+        }),
+      });
+      toast.success(`Guardado + gasto extra de ${fmt(delta)} registrado`);
+    } else {
+      toast.success("Guardado correctamente");
+    }
     setAjustando(null); setAjusteMonto(""); setAjusteMotivo(""); setAjusteFecha("");
+    setAjusteRegistrarExtra(false); setAjusteExtraTipo("OTRO"); setAjusteExtraConcepto("");
     await load();
   }
 
@@ -4167,7 +4241,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               )}
                             </>
                           )}
-                          <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                          {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" ? (
+                            <div className="text-right">
+                              <span className="text-yellow-400 font-semibold">{fmt(c.monto - c.montoCobrado)}</span>
+                              <span className="text-gray-500 text-[10px] block">restante de {fmt(c.monto)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                          )}
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
                             c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
@@ -4179,7 +4260,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                       {/* Cobrado parcial */}
                       {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                        <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
+                        <p className="text-green-600 text-xs mb-2">✓ Cobrado: {fmt(c.montoCobrado)}</p>
                       )}
 
                       {/* Inline: editar */}
@@ -4189,7 +4270,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="flex gap-2 flex-wrap items-start">
                             <div>
                               <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
-                              <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
+                              <input type="number" value={ajusteMonto} onChange={e => { setAjusteMonto(e.target.value); setAjusteRegistrarExtra(false); }}
                                 placeholder="0.00" min="0" step="0.01"
                                 className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
                             </div>
@@ -4208,12 +4289,46 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               </div>
                             )}
                           </div>
+
+                          {/* Extra como gasto operativo — solo si el monto sube */}
+                          {parseFloat(ajusteMonto) > c.monto && (
+                            <div className="border border-[#2a2a2a] rounded-lg p-2.5 space-y-2 bg-[#111]">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={ajusteRegistrarExtra} onChange={e => setAjusteRegistrarExtra(e.target.checked)}
+                                  className="w-3.5 h-3.5 accent-orange-500" />
+                                <span className="text-xs text-gray-300">
+                                  Registrar excedente de <span className="text-orange-400 font-semibold">{fmt(parseFloat(ajusteMonto) - c.monto)}</span> como gasto operativo
+                                </span>
+                              </label>
+                              {ajusteRegistrarExtra && (
+                                <div className="flex gap-2 flex-wrap ml-5">
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
+                                    <select value={ajusteExtraTipo} onChange={e => setAjusteExtraTipo(e.target.value)}
+                                      className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600">
+                                      <option value="OTRO">Otro / Extra</option>
+                                      <option value="TRANSPORTE">Transporte</option>
+                                      <option value="COMIDA">Comida</option>
+                                      <option value="HOSPEDAJE">Hospedaje</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex-1 min-w-[180px]">
+                                    <label className="text-[10px] text-gray-500 block mb-1">Concepto del gasto <span className="text-red-500">*</span></label>
+                                    <input type="text" value={ajusteExtraConcepto} onChange={e => setAjusteExtraConcepto(e.target.value)}
+                                      placeholder="Ej: Honorarios extra técnico / Material imprevistos..."
+                                      className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex gap-2">
                             <button onClick={() => ajustarMontoCxC(c.id, c.monto)}
                               className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
                               Guardar
                             </button>
-                            <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            <button onClick={() => { setAjustando(null); setAjusteFecha(""); setAjusteRegistrarExtra(false); setAjusteExtraConcepto(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         </div>
                       )}
@@ -4244,7 +4359,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         pagando === c.id ? (
                           <div className="flex gap-2 mt-2 flex-wrap">
                             <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                              placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              placeholder={String(c.monto - c.montoCobrado)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                             <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                               className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
                             <Combobox
@@ -4264,7 +4379,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         ) : (
-                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
+                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto - c.montoCobrado)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
                             className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
                             + Registrar cobro
                           </button>

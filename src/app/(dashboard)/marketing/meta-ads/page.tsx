@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface MetaResultado {
   id: string;
@@ -62,6 +63,7 @@ const EMPTY_RESULTADO = {
 
 export default function MetaAdsPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [campanas, setCampanas] = useState<MetaCampana[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<MetaCampana | null>(null);
@@ -99,20 +101,28 @@ export default function MetaAdsPage() {
   }
 
   async function guardarEstado(campanaId: string, estado: string) {
-    await fetch(`/api/meta-ads/campanas/${campanaId}`, {
+    const r = await fetch(`/api/meta-ads/campanas/${campanaId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
-    const updated = campanas.map(c => c.id === campanaId ? { ...c, estado } : c);
-    setCampanas(updated);
-    if (selected?.id === campanaId) setSelected(s => s ? { ...s, estado } : s);
+    if (r.ok) {
+      const updated = campanas.map(c => c.id === campanaId ? { ...c, estado } : c);
+      setCampanas(updated);
+      if (selected?.id === campanaId) setSelected(s => s ? { ...s, estado } : s);
+    } else {
+      toast.error("Error al actualizar estado");
+    }
   }
 
   async function eliminarCampana(campanaId: string) {
     if (!await confirm({ message: "¿Eliminar esta campaña y todos sus resultados?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/meta-ads/campanas/${campanaId}`, { method: "DELETE" });
-    setCampanas(p => p.filter(c => c.id !== campanaId));
-    if (selected?.id === campanaId) setSelected(null);
+    const r = await fetch(`/api/meta-ads/campanas/${campanaId}`, { method: "DELETE" });
+    if (r.ok) {
+      setCampanas(p => p.filter(c => c.id !== campanaId));
+      if (selected?.id === campanaId) setSelected(null);
+    } else {
+      toast.error("Error al eliminar campaña");
+    }
   }
 
   async function agregarResultado() {
@@ -135,13 +145,17 @@ export default function MetaAdsPage() {
 
   async function eliminarResultado(resultadoId: string) {
     if (!selected) return;
-    await fetch(`/api/meta-ads/campanas/${selected.id}/resultados`, {
+    const r = await fetch(`/api/meta-ads/campanas/${selected.id}/resultados`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ resultadoId }),
     });
-    const updatedSelected = { ...selected, resultados: selected.resultados.filter(r => r.id !== resultadoId) };
-    setSelected(updatedSelected);
-    setCampanas(p => p.map(c => c.id === selected.id ? updatedSelected : c));
+    if (r.ok) {
+      const updatedSelected = { ...selected, resultados: selected.resultados.filter(res => res.id !== resultadoId) };
+      setSelected(updatedSelected);
+      setCampanas(p => p.map(c => c.id === selected.id ? updatedSelected : c));
+    } else {
+      toast.error("Error al eliminar resultado");
+    }
   }
 
   // Métricas acumuladas de una campaña

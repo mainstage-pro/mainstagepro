@@ -94,17 +94,27 @@ export default function VehiculosPage() {
   }
 
   async function toggleActivo(v: Vehiculo) {
-    await fetch(`/api/vehiculos/${v.id}`, {
+    const r = await fetch(`/api/vehiculos/${v.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !v.activo }),
     });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     load();
   }
 
   async function eliminar(v: Vehiculo) {
     const ok = await confirm({ message: `¿Eliminar "${v.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
-    await fetch(`/api/vehiculos/${v.id}`, { method: "DELETE" });
+    const r = await fetch(`/api/vehiculos/${v.id}`, { method: "DELETE" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Vehículo eliminado");
     load();
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
 
 type ReporteResumen = {
   id: string;
@@ -26,6 +27,7 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 export default function ReportesPage() {
+  const toast = useToast();
   const [reportes, setReportes] = useState<ReporteResumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -42,7 +44,13 @@ export default function ReportesPage() {
 
   const generar = async () => {
     setGenerating(true);
-    await fetch("/api/reportes/generar", { method: "POST" });
+    const r = await fetch("/api/reportes/generar", { method: "POST" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar reporte");
+      setGenerating(false);
+      return;
+    }
     await cargar();
     setGenerating(false);
   };

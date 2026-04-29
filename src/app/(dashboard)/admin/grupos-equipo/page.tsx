@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoRef {
@@ -95,6 +96,7 @@ const ITEM_BLANK = {
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function GruposEquipoPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [equipos, setEquipos] = useState<EquipoOpt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,18 +182,25 @@ export default function GruposEquipoPage() {
       capacidadMax: parseInt(form.capacidadMax) || 9999,
       descripcion: form.descripcion.trim() || null,
     };
+    let res: Response;
     if (editId) {
-      await fetch(`/api/admin/plantillas-equipo/${editId}`, {
+      res = await fetch(`/api/admin/plantillas-equipo/${editId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
     } else {
-      await fetch("/api/admin/plantillas-equipo", {
+      res = await fetch("/api/admin/plantillas-equipo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+    }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
     }
     await load();
     setShowForm(false);
@@ -201,17 +210,27 @@ export default function GruposEquipoPage() {
 
   async function deleteGrupo(g: Grupo) {
     if (!await confirm({ message: `¿Eliminar el grupo "${g.nombre}"? Se borrarán todos sus items.`, danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/admin/plantillas-equipo/${g.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/plantillas-equipo/${g.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await load();
     if (expandedId === g.id) setExpandedId(null);
   }
 
   async function toggleActivo(g: Grupo) {
-    await fetch(`/api/admin/plantillas-equipo/${g.id}`, {
+    const res = await fetch(`/api/admin/plantillas-equipo/${g.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !g.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
@@ -226,7 +245,7 @@ export default function GruposEquipoPage() {
     if (!itemForm.descripcion.trim() && !itemForm.equipoId) return;
     setAddingItem(true);
     const selectedEq = itemForm.equipoId ? equipos.find(e => e.id === itemForm.equipoId) : null;
-    await fetch(`/api/admin/plantillas-equipo/${grupoId}`, {
+    const res = await fetch(`/api/admin/plantillas-equipo/${grupoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -239,6 +258,12 @@ export default function GruposEquipoPage() {
         orden: parseInt(itemForm.orden) || 0,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAddingItem(false);
+      return;
+    }
     await load();
     setItemForm(ITEM_BLANK);
     setEquipoBusqueda("");
@@ -247,11 +272,16 @@ export default function GruposEquipoPage() {
 
   async function removeItem(grupoId: string, itemId: string) {
     if (!await confirm({ message: "¿Quitar este equipo del grupo?", danger: true, confirmText: "Quitar" })) return;
-    await fetch(`/api/admin/plantillas-equipo/${grupoId}`, {
+    const res = await fetch(`/api/admin/plantillas-equipo/${grupoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "removeItem", itemId }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await load();
   }
 

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -68,6 +69,7 @@ const FORM_EMPTY = {
 
 export default function CalendarioCampanasPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [mes, setMes]               = useState(toMes(new Date()));
   const [ejecuciones, setEjecuciones] = useState<EjecucionCampana[]>([]);
   const [tipos, setTipos]           = useState<TipoCampana[]>([]);
@@ -168,20 +170,36 @@ export default function CalendarioCampanasPage() {
     };
     const url    = editId ? `/api/marketing/ejecuciones/${editId}` : "/api/marketing/ejecuciones";
     const method = editId ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     cancelForm(); await load(); setSaving(false);
   }
 
   async function patchEstado(id: string, estado: string) {
-    await fetch(`/api/marketing/ejecuciones/${id}`, {
+    const res = await fetch(`/api/marketing/ejecuciones/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setEjecuciones(prev => prev.map(e => e.id === id ? { ...e, estado } : e));
   }
 
   async function del(e: EjecucionCampana) {
     if (!await confirm({ message: `¿Eliminar "${e.nombre}"?`, danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/marketing/ejecuciones/${e.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/marketing/ejecuciones/${e.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setEjecuciones(prev => prev.filter(x => x.id !== e.id));
   }
 

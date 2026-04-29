@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ type Tab = "accesos" | "etiquetas" | "configuracion";
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConfiguracionPage() {
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>("accesos");
 
   // ── Accesos ──────────────────────────────────────────────────────────────
@@ -145,27 +147,43 @@ export default function ConfiguracionPage() {
     const next = privateModules.includes(key)
       ? privateModules.filter(k => k !== key)
       : [...privateModules, key];
-    await fetch("/api/admin/config", {
+    const res = await fetch("/api/admin/config", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "nav.private", value: JSON.stringify(next) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setPrivateModules(next);
     setSaving(false);
   }
 
   async function grantAccess(moduloKey: string, userId: string) {
-    await fetch(`/api/admin/modulos/${moduloKey}/accesos`, {
+    const res = await fetch(`/api/admin/modulos/${moduloKey}/accesos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await loadConfig();
     setAddingUser(null);
   }
 
   async function revokeAccess(moduloKey: string, userId: string) {
-    await fetch(`/api/admin/modulos/${moduloKey}/accesos/${userId}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/modulos/${moduloKey}/accesos/${userId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await loadConfig();
   }
 
@@ -175,11 +193,17 @@ export default function ConfiguracionPage() {
     for (const [k, v] of Object.entries(labelsDraft)) {
       if (v.trim()) clean[k] = v.trim();
     }
-    await fetch("/api/admin/config", {
+    const res = await fetch("/api/admin/config", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key: "nav.labels", value: JSON.stringify(clean) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingLabels(false);
+      return;
+    }
     setLabels(clean);
     setSavingLabels(false);
     setLabelsSaved(true);
@@ -201,11 +225,17 @@ export default function ConfiguracionPage() {
       .filter(e => configDraft[e.key] !== e.value)
       .map(e => ({ key: e.key, value: configDraft[e.key] ?? e.value }));
     if (updates.length > 0) {
-      await fetch("/api/admin/config", {
+      const res = await fetch("/api/admin/config", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSavingConfig(false);
+        return;
+      }
     }
     setSavingConfig(false);
     setConfigSaved(true);

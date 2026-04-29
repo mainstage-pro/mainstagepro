@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { proyectoEquipoId, nombre, categoria } = body;
+  const { proyectoEquipoId, nombre, categoria, guardarEnBiblioteca = true } = body;
 
   if (!proyectoEquipoId || !nombre?.trim()) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
@@ -33,14 +33,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   });
 
-  // Sync automático a biblioteca permanente del equipo (upsert por nombre+equipoId)
-  const exists = await prisma.equipoAccesorio.findFirst({
-    where: { equipoId: pe.equipoId, nombre: nombre.trim() },
-  });
-  if (!exists) {
-    await prisma.equipoAccesorio.create({
-      data: { equipoId: pe.equipoId, nombre: nombre.trim(), categoria: categoria ?? null },
+  // Sync a biblioteca permanente del equipo solo si el usuario lo eligió
+  if (guardarEnBiblioteca) {
+    const exists = await prisma.equipoAccesorio.findFirst({
+      where: { equipoId: pe.equipoId, nombre: nombre.trim() },
     });
+    if (!exists) {
+      await prisma.equipoAccesorio.create({
+        data: { equipoId: pe.equipoId, nombre: nombre.trim(), categoria: categoria ?? null },
+      });
+    }
   }
 
   return NextResponse.json({ accesorio });

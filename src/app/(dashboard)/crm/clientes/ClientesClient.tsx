@@ -7,6 +7,7 @@ import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from 
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Vendedor { id: string; name: string }
 
@@ -62,13 +63,15 @@ function VendedorSelect({ clienteId, vendedor, usuarios, onChange }: {
 
   async function asignar(vendedorId: string) {
     setSaving(true);
-    await fetch(`/api/clientes/${clienteId}`, {
+    const r = await fetch(`/api/clientes/${clienteId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vendedorId: vendedorId || null }),
     });
-    const found = usuarios.find(u => u.id === vendedorId) ?? null;
-    onChange(found);
+    if (r.ok) {
+      const found = usuarios.find(u => u.id === vendedorId) ?? null;
+      onChange(found);
+    }
     setSaving(false);
   }
 
@@ -110,6 +113,7 @@ function FilterSelect({ label, value, onChange, options }: {
 
 export default function ClientesClient({ clientes: initial, usuarios }: { clientes: Cliente[]; usuarios: Vendedor[] }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [view, setView] = useState<"list" | "card">("list");
   const [clientes, setClientes] = useState<Cliente[]>(initial);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -155,10 +159,15 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
   async function eliminar(c: Cliente) {
     if (!await confirm({ message: `¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
     setDeletingId(c.id);
-    await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
-    setClientes(prev => prev.filter(x => x.id !== c.id));
+    const r = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
+    if (r.ok) {
+      setClientes(prev => prev.filter(x => x.id !== c.id));
+      router.refresh();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar cliente");
+    }
     setDeletingId(null);
-    router.refresh();
   }
 
   const vendedorOptions = [

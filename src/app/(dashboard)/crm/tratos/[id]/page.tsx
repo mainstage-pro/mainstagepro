@@ -825,20 +825,25 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return null;
+    }
     return res.json();
   }
 
   async function seleccionarCanal(canal: string) {
     setSaving(true);
     const d = await patch({ canalAtencion: canal });
-    setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
+    if (d) setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
     setSaving(false);
   }
 
   async function guardarNurturing(data: NurturingData, extra?: Record<string, unknown>) {
     setSavingNurturing(true);
-    await patch({ nurturingData: JSON.stringify(data), ...extra });
-    setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data), ...extra } : prev);
+    const d = await patch({ nurturingData: JSON.stringify(data), ...extra });
+    if (d) setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data), ...extra } : prev);
     setSavingNurturing(false);
   }
 
@@ -907,14 +912,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       payload.etapa = "OPORTUNIDAD";
     }
     const d = await patch(payload);
-    setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+    if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
     setSaving(false);
   }
 
   async function saveScouting() {
     setSavingScouting(true);
-    await patch({ scoutingData: JSON.stringify(scoutingForm) });
-    setTrato(prev => prev ? { ...prev, scoutingData: JSON.stringify(scoutingForm) } : prev);
+    const d = await patch({ scoutingData: JSON.stringify(scoutingForm) });
+    if (d) setTrato(prev => prev ? { ...prev, scoutingData: JSON.stringify(scoutingForm) } : prev);
     setSavingScouting(false);
   }
 
@@ -976,7 +981,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   async function saveBrief() {
     setSavingBrief(true);
-    await fetch(`/api/levantamiento-contenido/${id}`, {
+    const res = await fetch(`/api/levantamiento-contenido/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -984,6 +989,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         colaboradoresCamara: briefForm.colaboradoresCamara === "SI" ? true : briefForm.colaboradoresCamara === "NO" ? false : null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingBrief(false);
+      return;
+    }
     setBriefGuardado(true);
     setSavingBrief(false);
   }
@@ -992,8 +1003,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     if (etapa === "VENTA_PERDIDA") { setModalPerdida(true); return; }
     setSaving(true);
     const d = await patch({ etapa });
-    setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
-    if (etapa === "VENTA_CERRADA") celebrate("venta");
+    if (d) {
+      setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+      if (etapa === "VENTA_CERRADA") celebrate("venta");
+    }
     setSaving(false);
   }
 
@@ -1001,31 +1014,46 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(true);
     const motivoPerdida = [razonPerdida, notasPerdida].filter(Boolean).join(" — ");
     const d = await patch({ etapa: "VENTA_PERDIDA", motivoPerdida: motivoPerdida || null });
-    setTrato(prev => prev ? { ...prev, etapa: "VENTA_PERDIDA", motivoPerdida: d.trato.motivoPerdida, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
-    setModalPerdida(false);
-    setRazonPerdida("");
-    setNotasPerdida("");
+    if (d) {
+      setTrato(prev => prev ? { ...prev, etapa: "VENTA_PERDIDA", motivoPerdida: d.trato.motivoPerdida, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+      setModalPerdida(false);
+      setRazonPerdida("");
+      setNotasPerdida("");
+    }
     setSaving(false);
   }
 
   async function guardar() {
     setSaving(true);
     const d = await patch(form as Record<string, unknown>);
-    setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
-    setEditando(false);
+    if (d) {
+      setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+      setEditando(false);
+    }
     setSaving(false);
   }
 
   async function generarFormToken() {
     setGenerandoToken(true);
     const res = await fetch(`/api/tratos/${id}/form-token`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Error al guardar");
+      setGenerandoToken(false);
+      return;
+    }
     const data = await res.json();
     setTrato(prev => prev ? { ...prev, formToken: data.token, formEstado: "NO_ENVIADO" } : prev);
     setGenerandoToken(false);
   }
 
   async function marcarFormEnviado() {
-    await fetch(`/api/tratos/${id}/form-token`, { method: "PATCH" });
+    const res = await fetch(`/api/tratos/${id}/form-token`, { method: "PATCH" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setTrato(prev => prev ? { ...prev, formEstado: "ENVIADO" } : prev);
   }
 
@@ -1062,7 +1090,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function eliminarArchivo(archivoId: string) {
-    await fetch(`/api/tratos/${id}/archivos/${archivoId}`, { method: "DELETE" });
+    const res = await fetch(`/api/tratos/${id}/archivos/${archivoId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setArchivos(prev => prev.filter(a => a.id !== archivoId));
   }
 
@@ -1177,7 +1210,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <button
                   onClick={async () => {
                     const d = await patch({ tipoProspecto: "NURTURING", tipoLead: "OUTBOUND", origenLead: "PROSPECCION" });
-                    setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto, tipoLead: "OUTBOUND", origenLead: "PROSPECCION" } : prev);
+                    if (d) setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto, tipoLead: "OUTBOUND", origenLead: "PROSPECCION" } : prev);
                   }}
                   disabled={saving}
                   className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
@@ -1237,7 +1270,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={async () => {
               const next = trato.tipoProspecto === "NURTURING" ? "ACTIVO" : "NURTURING";
               const d = await patch({ tipoProspecto: next });
-              setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
+              if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
             }}
             className="ml-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
           >
@@ -1321,7 +1354,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <p className="text-gray-500 text-xs">Construye confianza, comparte valor, sé paciente</p>
                 </div>
               </div>
-              <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+              <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
                 className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
                 Cambiar a activo
               </button>
@@ -1342,7 +1375,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       { id: "OTRO",        icon: "🎵", label: "General",     desc: "Mixto / otro" },
                     ].map(te => (
                       <button key={te.id}
-                        onClick={async () => { const d = await patch({ tipoEvento: te.id }); setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
+                        onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
                         className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#333] text-gray-400 hover:border-emerald-700 hover:text-white text-left transition-colors">
                         <span>{te.icon}</span>
                         <div>
@@ -1370,7 +1403,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="flex gap-1">
                     {["MUSICAL","SOCIAL","EMPRESARIAL","OTRO"].filter(t => t !== trato.tipoEvento).map(te => (
                       <button key={te}
-                        onClick={async () => { const d = await patch({ tipoEvento: te }); setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
+                        onClick={async () => { const d = await patch({ tipoEvento: te }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
                         className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors px-1.5 py-1">
                         {te === "MUSICAL" ? "🎸" : te === "SOCIAL" ? "🎊" : te === "EMPRESARIAL" ? "🏢" : "🎵"}
                       </button>
@@ -1609,12 +1642,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">¿El prospecto ya está listo para avanzar?</p>
                 <p className="text-gray-600 text-xs mb-4">Cuando el prospecto tenga una necesidad concreta, pásalo al flujo de venta activo.</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
+                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
                     className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors">
                     <p className="font-semibold">🔍 Iniciar descubrimiento</p>
                     <p className="text-xs text-[#B3985B]/60 mt-0.5">Tienen necesidad, hay que calificarla</p>
                   </button>
-                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" }); setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
+                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
                     className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors">
                     <p className="font-semibold">📋 Tienen rider técnico</p>
                     <p className="text-xs text-blue-300/60 mt-0.5">Saben lo que necesitan, cotizar directo</p>
@@ -2668,11 +2701,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <Combobox
                     value={trato.origenVenta}
                     onChange={async (v) => {
-                      await fetch(`/api/tratos/${trato.id}`, {
+                      const res = await fetch(`/api/tratos/${trato.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ origenVenta: v }),
                       });
+                      if (!res.ok) {
+                        const d = await res.json().catch(() => ({}));
+                        toast.error(d.error ?? "Error al guardar");
+                        return;
+                      }
                       setTrato(prev => prev ? { ...prev, origenVenta: v } : prev);
                     }}
                     options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10%)" }, { value: "PUBLICIDAD", label: "Publicidad (5%)" }, { value: "ASIGNADO", label: "Asignado empresa (5%+5%)" }]}
@@ -2686,11 +2724,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <Combobox
                     value={trato.vendedorId ?? trato.responsableId ?? ""}
                     onChange={async (v) => {
-                      await fetch(`/api/tratos/${trato.id}`, {
+                      const res = await fetch(`/api/tratos/${trato.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ vendedorId: v || null }),
                       });
+                      if (!res.ok) {
+                        const d = await res.json().catch(() => ({}));
+                        toast.error(d.error ?? "Error al guardar");
+                        return;
+                      }
                       const vendedor = usuarios.find(u => u.id === v) ?? null;
                       setTrato(prev => prev ? { ...prev, vendedorId: v || null, vendedor } : prev);
                     }}

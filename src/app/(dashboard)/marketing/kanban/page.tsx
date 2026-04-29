@@ -89,11 +89,12 @@ export default function KanbanPage() {
 
   async function changeEstado(id: string, estado: string) {
     setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
-    await fetch(`/api/marketing/publicaciones/${id}`, {
+    const r = await fetch(`/api/marketing/publicaciones/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    if (!r.ok) await load();
   }
 
   function onDragStart(e: React.DragEvent, pub: Publicacion) {

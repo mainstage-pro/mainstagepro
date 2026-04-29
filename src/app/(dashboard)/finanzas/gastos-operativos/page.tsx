@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonTable } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface GastoRow {
   id: string;
@@ -65,6 +66,7 @@ function groupByWeek(gastos: GastoRow[]) {
 }
 
 export default function GastosOperativosPage() {
+  const toast = useToast();
   const [gastos, setGastos] = useState<GastoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -82,11 +84,17 @@ export default function GastosOperativosPage() {
 
   async function toggleEntregado(g: GastoRow) {
     setToggling(g.id);
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setToggling(null);
+      return;
+    }
     await load();
     setToggling(null);
   }

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
-import GlobalQuickTask from "@/components/GlobalQuickTask";
+import GlobalNewTaskPanel from "@/components/GlobalNewTaskPanel";
 import PwaRefreshButton from "@/components/PwaRefreshButton";
 import { Providers } from "@/components/Providers";
 
@@ -19,10 +19,11 @@ export default async function DashboardLayout({
   let userModuleKeys: string[] | null = null;
 
   const AREA_MODULES: Record<string, string[]> = {
-    ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador"],
-    MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas"],
+    ADMINISTRACION: ["crm-clientes", "crm-tratos", "finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador"],
+    MARKETING: ["crm-clientes", "crm-tratos", "contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas"],
     VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones"],
-    PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario"],
+    PRODUCCION: ["crm-clientes", "crm-tratos", "proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario"],
+    GENERAL: ["crm-clientes", "crm-tratos", "cotizaciones", "calendario", "operaciones"],
   };
 
   try {
@@ -58,7 +59,7 @@ export default async function DashboardLayout({
         <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 md:pt-0 min-w-0">
           {children}
         </main>
-        <GlobalQuickTask />
+        <GlobalNewTaskPanel />
         <PwaRefreshButton />
       </div>
     </Providers>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 type Proveedor = { id: string; nombre: string };
 type Categoria = { id: string; nombre: string; orden: number };
@@ -71,6 +72,7 @@ async function compressImage(file: File, maxPx = 1200): Promise<string> {
 }
 
 export default function InventarioEquiposPage() {
+  const toast = useToast();
   const [equipos, setEquipos]     = useState<Equipo[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -150,7 +152,7 @@ export default function InventarioEquiposPage() {
   async function crearEquipo() {
     if (!nuevoForm.descripcion || !nuevoForm.categoriaId) return;
     setCreando(true);
-    await fetch("/api/equipos", {
+    const res = await fetch("/api/equipos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -167,6 +169,12 @@ export default function InventarioEquiposPage() {
         imagenUrl: nuevoImagen || null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setCreando(false);
+      return;
+    }
     await load();
     setNuevoForm(EMPTY_FORM);
     setNuevoImagen(null);
@@ -190,11 +198,16 @@ export default function InventarioEquiposPage() {
   async function handleQuickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; if (!file || !quickImgId) return;
     const base64 = await compressImage(file);
-    await fetch(`/api/equipos/${quickImgId}`, {
+    const res = await fetch(`/api/equipos/${quickImgId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imagenUrl: base64 }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setQuickImgId(null);
     if (quickImgRef.current) quickImgRef.current.value = "";
     await load();
@@ -215,30 +228,44 @@ export default function InventarioEquiposPage() {
       voltajeRequerido: form.voltajeRequerido !== "" ? parseInt(form.voltajeRequerido) : null,
     };
     if (editImagen !== null) body.imagenUrl = editImagen;
-    await fetch(`/api/equipos/${id}`, {
+    const res = await fetch(`/api/equipos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load();
     cancelEdit();
     setSaving(false);
   }
 
   async function toggleActivo(e: Equipo) {
-    await fetch(`/api/equipos/${e.id}`, {
+    const res = await fetch(`/api/equipos/${e.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !e.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function eliminarEquipo(e: Equipo) {
     if (!confirm(`¿Eliminar permanentemente "${e.descripcion}"? Esta acción no se puede deshacer.`)) return;
     const res = await fetch(`/api/equipos/${e.id}`, { method: "DELETE" });
-    const d = await res.json();
-    if (!res.ok) { alert(d.error ?? "No se pudo eliminar"); return; }
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await load();
   }
 
@@ -642,12 +669,13 @@ export default function InventarioEquiposPage() {
                             : <span className="text-[#333]">—</span>}
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center gap-2">
                             <Link href={`/inventario/equipos/${e.id}`}
                               onClick={ev => ev.stopPropagation()}
-                              className="text-[10px] text-[#6b7280] hover:text-[#B3985B] transition-colors whitespace-nowrap">
-                              Ver historial
+                              className="text-[10px] text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-2 py-1 rounded-md transition-colors whitespace-nowrap">
+                              Ficha / Accesorios
                             </Link>
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             {e.tipo === "PROPIO" && (
                               <Link href={`/inventario/mantenimiento?equipoId=${e.id}`}
                                 onClick={ev => ev.stopPropagation()}
@@ -663,6 +691,7 @@ export default function InventarioEquiposPage() {
                               className="text-[10px] text-[#333] hover:text-red-400 transition-colors">
                               Eliminar
                             </button>
+                            </div>
                           </div>
                         </td>
                       </tr>

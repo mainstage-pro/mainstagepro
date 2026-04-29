@@ -169,20 +169,30 @@ export default function MarketingCalendarioPage() {
       setCancelRazon("");
       return;
     }
-    await fetch(`/api/marketing/publicaciones/${id}`, {
+    const res = await fetch(`/api/marketing/publicaciones/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
   }
 
   async function confirmarCancelacion() {
     if (!cancelandoId) return;
     const razon = cancelRazon.trim();
-    await fetch(`/api/marketing/publicaciones/${cancelandoId}`, {
+    const res = await fetch(`/api/marketing/publicaciones/${cancelandoId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "CANCELADO", ...(razon ? { comentarios: razon } : {}) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setPublicaciones(prev => prev.map(p =>
       p.id === cancelandoId ? { ...p, estado: "CANCELADO", comentarios: razon || p.comentarios } : p
     ));
@@ -192,7 +202,12 @@ export default function MarketingCalendarioPage() {
 
   async function deletePub(id: string) {
     if (!await confirm({ message: "¿Eliminar esta publicación?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/marketing/publicaciones/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/marketing/publicaciones/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setPublicaciones(prev => prev.filter(p => p.id !== id));
     setExpandedId(null);
     setEditId(null);
@@ -201,10 +216,14 @@ export default function MarketingCalendarioPage() {
   /** Drag-to-reschedule: update fecha optimistically */
   async function handleDateChange(id: string, fecha: string) {
     setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, fecha } : p));
-    await fetch(`/api/marketing/publicaciones/${id}`, {
+    const res = await fetch(`/api/marketing/publicaciones/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fecha }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+    }
   }
 
   async function eliminarMes() {
@@ -233,6 +252,12 @@ export default function MarketingCalendarioPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: targetMes }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar");
+      setGenerating(false);
+      return;
+    }
     const d = await res.json();
     setGenerating(false);
 

@@ -134,7 +134,13 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   async function saveCandidato() {
     if (editTimer.current) clearTimeout(editTimer.current);
     setSaving(true);
-    await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load(); setEdit({}); editLoaded.current = false; setSaving(false);
   }
 
@@ -144,20 +150,31 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     const post = candidato?.postulaciones[0];
     if (!post) { setSaving(false); return; }
     const bens = propEdit.beneficios.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
-    await fetch(`/api/rrhh/candidatos/${id}`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id, salarioPropuesto: propEdit.salarioPropuesto ? parseFloat(propEdit.salarioPropuesto) : null, fechaIngresoEstimada: propEdit.fechaIngresoEstimada || null, beneficios: bens, observaciones: propEdit.observaciones || null, notasEvaluacion: propEdit.notasEvaluacion || null }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load(); setSaving(false);
   }
 
   async function cambiarEtapa(etapa: string) {
     const post = candidato?.postulaciones[0];
     if (!post) return;
-    await fetch(`/api/rrhh/candidatos/${id}`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id, etapa }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
@@ -166,10 +183,16 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     if (!post) return;
     if (!await confirm({ message: `¿Confirmar contratación de ${candidato?.nombre}? Se creará su expediente en Personal.`, confirmText: "Contratar", danger: false })) return;
     setSaving(true);
-    await fetch(`/api/rrhh/candidatos/${id}/contratar`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}/contratar`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     toast.success("Candidato contratado — expediente creado en Personal");
     await load(); setSaving(false);
   }

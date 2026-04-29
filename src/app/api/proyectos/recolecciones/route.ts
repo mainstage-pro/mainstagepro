@@ -21,6 +21,8 @@ export async function GET() {
         recoleccionStatus: true,
         recoleccionNotas: true,
         recoleccionFechaReal: true,
+        protocoloSalida: true,
+        protocoloEntrada: true,
         choferNombre: true,
         choferExterno: true,
         tipoServicio: true,

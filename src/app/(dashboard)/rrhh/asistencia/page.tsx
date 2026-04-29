@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
@@ -85,6 +86,7 @@ export default function AsistenciaPage() {
 // TAB: CAPTURA DIARIA
 // ══════════════════════════════════════════════════════════════════════════════
 function TabHoy({ personal }: { personal: Personal[] }) {
+  const toast = useToast();
   const [fecha, setFecha] = useState(toDateStr(new Date()));
   const [asistencias, setAsistencias] = useState<Record<string, Asistencia>>({});
   const [saving, setSaving] = useState<string | null>(null);
@@ -119,10 +121,11 @@ function TabHoy({ personal }: { personal: Personal[] }) {
       minutosRetardo: estado === "RETARDO" ? (parseInt(retardoMin[personalId] || "0") || null) : null,
       notas: notas[personalId] || null,
     };
-    await fetch("/api/rrhh/asistencia", {
+    const res = await fetch("/api/rrhh/asistencia", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar asistencia"); setSaving(null); return; }
     await cargar(fecha);
     setSaving(null);
   }
@@ -131,12 +134,13 @@ function TabHoy({ personal }: { personal: Personal[] }) {
     const diasSemana = new Date(fecha + "T12:00:00").getDay();
     if (diasSemana === 0 || diasSemana === 6) return;
     setSaving("TODOS");
-    await Promise.all(personal.map(p =>
+    const results = await Promise.all(personal.map(p =>
       fetch("/api/rrhh/asistencia", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ personalId: p.id, fecha, estado }),
       })
     ));
+    if (results.some(r => !r.ok)) toast.error("Algunos registros no se guardaron");
     await cargar(fecha);
     setSaving(null);
   }
@@ -296,6 +300,7 @@ function TabHoy({ personal }: { personal: Personal[] }) {
 // TAB: HISTORIAL (calendario por empleado)
 // ══════════════════════════════════════════════════════════════════════════════
 function TabHistorial({ personal }: { personal: Personal[] }) {
+  const toast = useToast();
   const [selId, setSelId] = useState<string | null>(null);
   const [mes, setMes] = useState(toMes(new Date()));
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
@@ -331,10 +336,11 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
   async function marcar(fecha: string, estado: EstadoAsist) {
     if (!selId) return;
     setSaving(fecha);
-    await fetch("/api/rrhh/asistencia", {
+    const res = await fetch("/api/rrhh/asistencia", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ personalId: selId, fecha, estado }),
     });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar"); setSaving(null); return; }
     const r = await fetch(`/api/rrhh/asistencia?personalId=${selId}&mes=${mes}`, { cache: "no-store" });
     const d = await r.json();
     setAsistencias(d.asistencias ?? []);

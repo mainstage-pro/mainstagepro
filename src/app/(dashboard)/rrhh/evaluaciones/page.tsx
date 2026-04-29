@@ -82,9 +82,10 @@ export default function EvaluacionesPage() {
   async function save() {
     if (!form.personalId || !form.periodo) return;
     setSaving(true);
-    await fetch("/api/rrhh/evaluaciones", {
+    const r = await fetch("/api/rrhh/evaluaciones", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
     });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     await load();
     setShowForm(false);
     setForm(EMPTY_FORM());

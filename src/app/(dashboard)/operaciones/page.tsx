@@ -10,6 +10,7 @@ import UndoToast, { type UndoState } from "./components/UndoToast";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +86,7 @@ function areaLabel(a: string) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function OperacionesPage() {
+  const toast = useToast();
   const [carpetas, setCarpetas]                 = useState<Carpeta[]>([]);
   const [proyectosNav, setProyectosNav]         = useState<ProyectoNav[]>([]);
   const [iniciativas, setIniciativas]           = useState<Iniciativa[]>([]);
@@ -367,10 +369,15 @@ export default function OperacionesPage() {
   const handleUndo = useCallback(async () => {
     if (!undoState) return;
     clearTimeout(undoTimer.current);
-    await fetch(`/api/tareas/${undoState.id}`, {
+    const res = await fetch(`/api/tareas/${undoState.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "PENDIENTE" }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     const restore = (arr: TareaItem[]) =>
       arr.map(t => t.id === undoState.id ? { ...t, estado: "PENDIENTE" } : t);
     setTareas(restore);
@@ -439,7 +446,12 @@ export default function OperacionesPage() {
   }, [vista, selectedId, usuarios, proyectosNav]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const deleteTarea = useCallback(async (id: string) => {
-    await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
     setTareas(rm);
     setProyectoDetalle(prev => prev ? {
@@ -450,11 +462,15 @@ export default function OperacionesPage() {
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addSubtarea = useCallback(async (parentId: string, data: { titulo: string; fecha: string | null; prioridad: string }) => {
-    await fetch("/api/tareas", {
+    const res = await fetch("/api/tareas", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...data, parentId }),
     });
-  }, []);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moveToSubtask = useCallback(async (childId: string, parentId: string) => {
     if (childId === parentId) return;
@@ -735,31 +751,51 @@ export default function OperacionesPage() {
 
   // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
   async function renameProyecto(id: string, nombre: string) {
-    await fetch(`/api/operaciones/proyectos/${id}`, {
+    const res = await fetch(`/api/operaciones/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setProyectosNav(prev => prev.map(p => p.id === id ? { ...p, nombre } : p));
     setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.map(p => p.id === id ? { ...p, nombre } : p) })));
   }
 
   async function deleteProyecto(id: string) {
-    await fetch(`/api/operaciones/proyectos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/operaciones/proyectos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setProyectosNav(prev => prev.filter(p => p.id !== id));
     setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.filter(p => p.id !== id) })));
     if (typeof vista !== "string" && vista.id === id) setVista("bandeja");
   }
 
   async function renameCarpeta(id: string, nombre: string) {
-    await fetch(`/api/operaciones/carpetas/${id}`, {
+    const res = await fetch(`/api/operaciones/carpetas/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nombre }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setCarpetas(prev => prev.map(c => c.id === id ? { ...c, nombre } : c));
   }
 
   async function deleteCarpeta(id: string) {
-    await fetch(`/api/operaciones/carpetas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/operaciones/carpetas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setCarpetas(prev => prev.filter(c => c.id !== id));
   }
 
@@ -1238,11 +1274,15 @@ export default function OperacionesPage() {
                   ...p,
                   tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t),
                 })));
-                await fetch(`/api/tareas/${id}`, {
+                const res = await fetch(`/api/tareas/${id}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ estado: "COMPLETADA" }),
                 });
+                if (!res.ok) {
+                  const d = await res.json().catch(() => ({}));
+                  toast.error(d.error ?? "Error al guardar");
+                }
               }}
               onRefresh={() => {
                 setLoadingMain(true);
@@ -1459,16 +1499,26 @@ export default function OperacionesPage() {
                       selectedIds={selectedIds} onMultiSelect={toggleMultiSelect}
                       onExtractChild={handleExtractChild}
                       onToggleCollapse={async (id, colapsada) => {
-                        await fetch(`/api/operaciones/secciones/${id}`, {
+                        const res = await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ colapsada }),
                         });
+                        if (!res.ok) {
+                          const d = await res.json().catch(() => ({}));
+                          toast.error(d.error ?? "Error al guardar");
+                          return;
+                        }
                         setProyectoDetalle(prev => prev ? {
                           ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, colapsada } : s),
                         } : null);
                       }}
                       onDeleteSection={async (id) => {
-                        await fetch(`/api/operaciones/secciones/${id}`, { method: "DELETE" });
+                        const res = await fetch(`/api/operaciones/secciones/${id}`, { method: "DELETE" });
+                        if (!res.ok) {
+                          const d = await res.json().catch(() => ({}));
+                          toast.error(d.error ?? "Error al eliminar");
+                          return;
+                        }
                         setProyectoDetalle(prev => prev ? {
                           ...prev, secciones: prev.secciones.filter(s => s.id !== id),
                         } : null);
@@ -2212,42 +2262,40 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
   }
 
   return (
-    <div>
+    <div className="mt-3">
       <div className="relative" onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}>
         {editing ? (
-          <div className="flex items-center gap-1 px-2 py-1">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5" strokeLinecap="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
+          <div className="flex items-center gap-1.5 px-3 py-1">
             <input autoFocus value={nombre} onChange={e => setNombre(e.target.value)}
               onBlur={save} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setNombre(carpeta.nombre); setEditing(false); } }}
-              className="flex-1 bg-[#1a1a1a] border border-[#B3985B]/40 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none" />
+              className="flex-1 bg-[#1a1a1a] border border-[#B3985B]/40 rounded px-1.5 py-0.5 text-[10px] text-white focus:outline-none" />
           </div>
         ) : (
           <button onClick={onToggle}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm font-medium text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d] transition-all"
-            style={{ paddingRight: hov ? "56px" : "12px" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="shrink-0 transition-transform" style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
+            className="w-full flex items-center gap-1.5 px-3 py-1 group/folder transition-all"
+            style={{ paddingRight: hov ? "52px" : "12px" }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              className="shrink-0 text-[#7a6535] group-hover/folder:text-[#B3985B] transition-all"
+              style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)" }}>
               <polyline points="9 18 15 12 9 6"/>
             </svg>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="shrink-0">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            <span className="truncate">{carpeta.nombre}</span>
+            <span className={`truncate text-[10px] font-semibold tracking-[0.12em] uppercase transition-colors ${open ? "text-[#B3985B]" : "text-[#7a6535] group-hover/folder:text-[#B3985B]"}`}>
+              {carpeta.nombre}
+            </span>
           </button>
         )}
         {hov && !editing && (
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
             <button onClick={e => { e.stopPropagation(); setEditing(true); }}
-              className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-[#B3985B] hover:bg-[#1a1a1a] transition-all">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#1a1a1a] transition-all">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
             <button onClick={e => { e.stopPropagation(); onDeleteCarpeta(carpeta.id); }}
-              className="w-5 h-5 flex items-center justify-center rounded text-[#444] hover:text-red-400 hover:bg-red-950/20 transition-all">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-red-400 hover:bg-red-950/20 transition-all">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 6V4h6v2"/>
               </svg>
             </button>
@@ -2255,9 +2303,9 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
         )}
       </div>
       {open && (
-        <div className="ml-4 space-y-0.5">
+        <div className="mt-0.5 space-y-0.5">
           {carpeta.proyectos.map(p => (
-            <NavProyecto key={p.id} proyecto={p} isActive={vistaKey === p.id} indent={2}
+            <NavProyecto key={p.id} proyecto={p} isActive={vistaKey === p.id} indent={5}
               onSelect={() => onSelectProyecto(p.id)}
               onRename={nombre => onRenameProyecto(p.id, nombre)}
               onDelete={() => onDeleteProyecto(p.id)}

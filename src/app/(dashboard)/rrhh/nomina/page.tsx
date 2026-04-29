@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface PagoNomina {
   id: string;
@@ -48,6 +49,7 @@ const DEPTO_COLORS: Record<string, string> = {
 };
 
 export default function NominaPage() {
+  const toast = useToast();
   const [pendientes, setPendientes] = useState<PagoNomina[]>([]);
   const [historial, setHistorial] = useState<PagoNomina[]>([]);
   const [personal, setPersonal] = useState<PersonalRow[]>([]);
@@ -81,7 +83,7 @@ export default function NominaPage() {
   async function confirmarPago(pago: PagoNomina) {
     setConfirmando(pago.id);
     const data = getPagoData(pago.id);
-    await fetch(`/api/rrhh/personal/${pago.personal.id}/pagos/${pago.id}`, {
+    const r = await fetch(`/api/rrhh/personal/${pago.personal.id}/pagos/${pago.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -92,6 +94,8 @@ export default function NominaPage() {
       }),
     });
     setConfirmando(null);
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al confirmar pago"); return; }
+    toast.success("Pago confirmado");
     await load();
   }
 

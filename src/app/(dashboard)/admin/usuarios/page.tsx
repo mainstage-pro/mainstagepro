@@ -145,7 +145,13 @@ export default function UsuariosPage() {
   async function deleteUser(u: User) {
     if (!confirm(`¿Eliminar a ${u.name}? Esta acción no se puede deshacer.`)) return;
     setDeletingId(u.id);
-    await fetch(`/api/admin/usuarios/${u.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/admin/usuarios/${u.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      setDeletingId(null);
+      return;
+    }
     setUsers(prev => prev.filter(x => x.id !== u.id));
     setDeletingId(null);
     if (expandedPermisos === u.id) setExpandedPermisos(null);
@@ -255,22 +261,32 @@ export default function UsuariosPage() {
   }
 
   async function toggleActive(u: User) {
-    await fetch(`/api/admin/usuarios/${u.id}`, {
+    const res = await fetch(`/api/admin/usuarios/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ active: !u.active }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function resetPassword(u: User) {
     const newPass = prompt(`Nueva contraseña para ${u.name}:`);
     if (!newPass || newPass.length < 6) { toast.error("Mínimo 6 caracteres"); return; }
-    await fetch(`/api/admin/usuarios/${u.id}`, {
+    const res = await fetch(`/api/admin/usuarios/${u.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: newPass }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     toast.success("Contraseña actualizada");
   }
 

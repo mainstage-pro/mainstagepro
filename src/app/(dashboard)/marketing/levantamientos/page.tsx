@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 const GOLD = "#B3985B";
 const PLANES: Record<string, { label: string; color: string }> = {
@@ -57,6 +58,7 @@ function diasRestantes(fecha: string | null) {
 }
 
 export default function LevantamientosPage() {
+  const toast = useToast();
   const [mes, setMes] = useState(mesActual());
   const [levantamientos, setLevantamientos] = useState<Levantamiento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,16 +108,26 @@ export default function LevantamientosPage() {
   }
 
   async function patchActivo(id: string, estado: string) {
-    await fetch(`/api/activos-evento/${id}`, {
+    const res = await fetch(`/api/activos-evento/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setActivos(prev => prev.map(a => a.id === id ? { ...a, estado } : a));
   }
 
   async function deleteActivo(id: string) {
-    await fetch(`/api/activos-evento/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/activos-evento/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setActivos(prev => prev.filter(a => a.id !== id));
   }
 

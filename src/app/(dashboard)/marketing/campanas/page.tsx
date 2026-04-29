@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -226,6 +227,7 @@ function UbicTag({ k }: { k: string }) {
 
 export default function TiposCampanaPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [tipos, setTipos] = useState<TipoCampana[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -304,7 +306,8 @@ export default function TiposCampanaPage() {
     };
     const url = editId ? `/api/marketing/tipos-campana/${editId}` : "/api/marketing/tipos-campana";
     const method = editId ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     cancelForm();
     await load();
     setSaving(false);

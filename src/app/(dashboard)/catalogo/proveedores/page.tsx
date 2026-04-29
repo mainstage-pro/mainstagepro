@@ -5,6 +5,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 type Proveedor = {
   id: string;
@@ -61,6 +62,7 @@ type SortKey = "nombre" | "giro" | "empresa";
 
 export default function ProveedoresPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [editing, setEditing] = useState<Proveedor | null>(null);
   const [creating, setCreating] = useState(false);
@@ -129,6 +131,12 @@ export default function ProveedoresPage() {
     }
     setGenerandoToken(p.id);
     const res = await fetch(`/api/proveedores/${p.id}/portal-token`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGenerandoToken(null);
+      return;
+    }
     const d = await res.json();
     setProveedores(prev => prev.map(x => x.id === p.id ? { ...x, portalToken: d.portalToken } : x));
     setGenerandoToken(null);
@@ -137,7 +145,12 @@ export default function ProveedoresPage() {
   async function revocarPortalToken(p: Proveedor) {
     const ok = await confirm({ message: "¿Revocar el link del portal? El proveedor perderá acceso.", danger: true, confirmText: "Revocar" });
     if (!ok) return;
-    await fetch(`/api/proveedores/${p.id}/portal-token`, { method: "DELETE" });
+    const res = await fetch(`/api/proveedores/${p.id}/portal-token`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setProveedores(prev => prev.map(x => x.id === p.id ? { ...x, portalToken: null } : x));
   }
 
@@ -157,6 +170,12 @@ export default function ProveedoresPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId, aprobado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAprobando(null);
+      return;
+    }
     const d = await res.json();
     const importadoEquipoId = d.equipo?.importadoEquipoId ?? null;
     setEquiposPanel(prev => prev ? {
@@ -219,18 +238,29 @@ export default function ProveedoresPage() {
     };
     const url = editing ? `/api/proveedores/${editing.id}` : "/api/proveedores";
     const method = editing ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load();
     cancel();
     setSaving(false);
   }
 
   async function toggleActivo(p: Proveedor) {
-    await fetch(`/api/proveedores/${p.id}`, {
+    const res = await fetch(`/api/proveedores/${p.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !p.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 

@@ -125,9 +125,8 @@ function MantenimientoContent() {
       fetch("/api/equipos?todos=true&tipo=PROPIO"),
       fetch("/api/mantenimiento"),
     ]);
-    const [eqData, regData] = await Promise.all([eqRes.json(), regRes.json()]);
-    setEquipos(eqData.equipos ?? []);
-    setAllRegistros(regData.registros ?? []);
+    if (eqRes.ok) { const d = await eqRes.json(); setEquipos(d.equipos ?? []); }
+    if (regRes.ok) { const d = await regRes.json(); setAllRegistros(d.registros ?? []); }
     setLoading(false);
   }, []);
 

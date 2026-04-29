@@ -5,6 +5,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -91,6 +92,7 @@ export default function TaskModal({
   tarea, loading, usuarios, proyectos, iniciativas, sessionId,
   onClose, onSave, onComplete, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
+  const toast = useToast();
   const [titulo, setTitulo]           = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [notas, setNotas]             = useState("");
@@ -216,7 +218,12 @@ export default function TaskModal({
 
   async function eliminarComentario(cid: string) {
     if (!tarea) return;
-    await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setComentariosLocal(prev => prev.filter(c => c.id !== cid));
   }
 
@@ -255,7 +262,12 @@ export default function TaskModal({
 
   async function eliminarArchivo(aid: string) {
     if (!tarea) return;
-    await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setArchivosLocal(prev => prev.filter(a => a.id !== aid));
   }
 

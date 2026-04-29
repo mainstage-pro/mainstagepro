@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 type Rol = {
   id: string;
@@ -39,6 +40,7 @@ const EMPTY: Omit<Rol, "id"> = {
 };
 
 export default function RolesPage() {
+  const toast = useToast();
   const [roles, setRoles] = useState<Rol[]>([]);
   const [editing, setEditing] = useState<Rol | null>(null);
   const [creating, setCreating] = useState(false);
@@ -100,18 +102,29 @@ export default function RolesPage() {
     setSaving(true);
     const url = editing ? `/api/roles-tecnicos/${editing.id}` : "/api/roles-tecnicos";
     const method = editing ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load();
     cancel();
     setSaving(false);
   }
 
   async function toggleActivo(r: Rol) {
-    await fetch(`/api/roles-tecnicos/${r.id}`, {
+    const res = await fetch(`/api/roles-tecnicos/${r.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !r.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 

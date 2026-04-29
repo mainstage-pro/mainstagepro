@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -33,6 +33,8 @@ interface Usuario { id: string; name: string }
 const PRIO_DOT: Record<string, string> = {
   URGENTE: "bg-red-500", ALTA: "bg-orange-500", MEDIA: "bg-[#B3985B]", BAJA: "bg-[#444]",
 };
+const PRIO_OPTS = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
+const PRIO_LABEL: Record<string, string> = { URGENTE: "Urgente", ALTA: "Alta", MEDIA: "Media", BAJA: "Baja" };
 
 function getStatus(p: number) {
   if (p >= 60) return { label: "Excelente",  textCls: "text-emerald-400", barClr: "#10b981" };
@@ -48,51 +50,67 @@ function fechaCorta(iso: string) {
 
 // ── TareaRow ──────────────────────────────────────────────────────────────────
 
-function TareaRow({ t }: { t: TareaR }) {
+function TareaRow({ t, onEdit, onReschedule }: {
+  t: TareaR;
+  onEdit: (t: TareaR) => void;
+  onReschedule: (id: string, fecha: string) => void;
+}) {
+  const dateRef = useRef<HTMLInputElement>(null);
+
   return (
-    <Link
-      href={`/operaciones?open=${t.id}`}
-      className="flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-xl hover:bg-[#111] transition-colors group"
+    <div
+      onClick={() => onEdit(t)}
+      className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-xl hover:bg-[#111] transition-colors group cursor-pointer"
     >
       <span className={`w-2 h-2 rounded-full shrink-0 ${PRIO_DOT[t.prioridad] ?? PRIO_DOT.BAJA}`} />
       <span className="flex-1 text-sm text-[#bbb] group-hover:text-white truncate leading-snug">
         {t.titulo}
       </span>
-      <div className="flex items-center gap-2.5 shrink-0">
+      <div className="flex items-center gap-2 shrink-0">
         {t.asignadoA && (
-          <span className="group/av relative inline-flex">
-            <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold select-none">
-              {t.asignadoA.name.charAt(0).toUpperCase()}
-            </span>
-            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[11px] text-white whitespace-nowrap opacity-0 group-hover/av:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl">
-              {t.asignadoA.name}
-            </span>
+          <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold select-none">
+            {t.asignadoA.name.charAt(0).toUpperCase()}
           </span>
         )}
-        {t.fecha && (
-          <span className="text-[11px] text-[#555] tabular-nums">{fechaCorta(t.fecha)}</span>
-        )}
+        {/* Fecha clickeable */}
+        <span
+          onClick={e => { e.stopPropagation(); dateRef.current?.showPicker?.(); dateRef.current?.click(); }}
+          className="relative text-[11px] text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 px-1.5 py-0.5 rounded transition-colors cursor-pointer"
+          title="Reagendar"
+        >
+          {t.fecha ? fechaCorta(t.fecha) : <span className="text-[#333] hover:text-[#B3985B]">+ fecha</span>}
+          <input
+            ref={dateRef}
+            type="date"
+            defaultValue={t.fecha ? t.fecha.substring(0, 10) : ""}
+            onChange={e => { if (e.target.value) onReschedule(t.id, e.target.value); }}
+            className="absolute inset-0 opacity-0 w-full cursor-pointer"
+            style={{ colorScheme: "dark" }}
+          />
+        </span>
       </div>
-    </Link>
+    </div>
   );
 }
 
 // ── TaskSection ───────────────────────────────────────────────────────────────
 
-function TaskSection({ icon, label, count, tasks, badgeCls, emptyMsg }: {
+function TaskSection({ icon, label, count, tasks, badgeCls, emptyMsg, onEdit, onReschedule }: {
   icon: React.ReactNode; label: string; count: number;
   tasks: TareaR[]; badgeCls: string; emptyMsg: string;
+  onEdit: (t: TareaR) => void;
+  onReschedule: (id: string, fecha: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   return (
     <div>
-      <button onClick={() => setExpanded(v => !v)} className="flex items-center gap-2 mb-2 w-full group">
+      <button onClick={() => setExpanded(v => !v)} className="flex items-center gap-2 mb-1.5 w-full group">
         <span className="text-[#444] group-hover:text-[#666] transition-colors">{icon}</span>
         <span className="text-xs text-[#555] uppercase tracking-widest font-semibold group-hover:text-[#888] transition-colors">
           {label}
         </span>
         <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeCls}`}>{count}</span>
-        <svg className={`w-3.5 h-3.5 text-[#333] ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
+        <svg className={`w-3 h-3 text-[#333] ml-auto transition-transform ${expanded ? "rotate-180" : ""}`}
           fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -100,8 +118,87 @@ function TaskSection({ icon, label, count, tasks, badgeCls, emptyMsg }: {
       {expanded && (
         count === 0
           ? <p className="text-sm text-[#2a2a2a] pl-1 pb-1">{emptyMsg}</p>
-          : tasks.map(t => <TareaRow key={t.id} t={t} />)
+          : tasks.map(t => <TareaRow key={t.id} t={t} onEdit={onEdit} onReschedule={onReschedule} />)
       )}
+    </div>
+  );
+}
+
+// ── EditModal ─────────────────────────────────────────────────────────────────
+
+function EditModal({ tarea, onClose, onSave }: {
+  tarea: TareaR;
+  onClose: () => void;
+  onSave: (id: string, titulo: string, fecha: string, prioridad: string) => Promise<void>;
+}) {
+  const [titulo,    setTitulo]    = useState(tarea.titulo);
+  const [fecha,     setFecha]     = useState(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
+  const [prioridad, setPrioridad] = useState(tarea.prioridad);
+  const [saving,    setSaving]    = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave(tarea.id, titulo.trim() || tarea.titulo, fecha, prioridad);
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-5 w-full max-w-md space-y-4 shadow-2xl"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-semibold text-sm">Editar tarea</h3>
+          <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div>
+          <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1">Título</label>
+          <input
+            value={titulo} onChange={e => setTitulo(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onClose(); }}
+            autoFocus
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1">Fecha</label>
+            <input
+              type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+              style={{ colorScheme: "dark" }}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1">Prioridad</label>
+            <div className="flex flex-col gap-1">
+              {PRIO_OPTS.map(p => (
+                <button key={p} onClick={() => setPrioridad(p)}
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs transition-colors ${prioridad === p ? "bg-[#1e1e1e] text-white" : "text-[#555] hover:text-white"}`}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${PRIO_DOT[p]}`} />
+                  {PRIO_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 py-2 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors disabled:opacity-50">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+          <Link href={`/operaciones?open=${tarea.id}`}
+            className="px-3 py-2 border border-[#333] text-[#666] hover:text-white text-xs rounded-xl transition-colors flex items-center">
+            Abrir →
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -123,8 +220,8 @@ function Skeleton() {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[0,1,2,3].map(i => <div key={i} className="h-36 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl animate-pulse" />)}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {[0,1,2,3].map(i => <div key={i} className="h-28 bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl animate-pulse" />)}
       </div>
     </div>
   );
@@ -169,13 +266,12 @@ export default function GestionTareasWidget() {
   const [selUser,   setSelUser]   = useState<string | null>(null);
   const [selected,  setSelected]  = useState<string | null>(null);
   const [loading,   setLoading]   = useState(false);
+  const [editTask,  setEditTask]  = useState<TareaR | null>(null);
 
-  // Fetch users once
   useEffect(() => {
     fetch("/api/usuarios").then(r => r.json()).then(d => { if (d.usuarios) setUsuarios(d.usuarios); });
   }, []);
 
-  // Fetch projects whenever user filter changes
   useEffect(() => {
     setLoading(true);
     const url = selUser
@@ -195,6 +291,30 @@ export default function GestionTareasWidget() {
         setLoading(false);
       });
   }, [selUser]);
+
+  function updateTareaLocal(id: string, changes: Partial<TareaR>) {
+    setProyectos(prev => prev ? prev.map(p => {
+      const upd = (arr: TareaR[]) => arr.map(t => t.id === id ? { ...t, ...changes } : t);
+      return { ...p, tareas: { hoy: upd(p.tareas.hoy), vencidas: upd(p.tareas.vencidas), proximas: upd(p.tareas.proximas), sinFecha: upd(p.tareas.sinFecha) } };
+    }) : null);
+  }
+
+  async function saveEdit(id: string, titulo: string, fecha: string, prioridad: string) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo, fecha: fecha || null, prioridad }),
+    });
+    updateTareaLocal(id, { titulo, fecha: fecha || null, prioridad });
+    setEditTask(null);
+  }
+
+  async function reschedule(id: string, fecha: string) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha }),
+    });
+    updateTareaLocal(id, { fecha });
+  }
 
   if (!proyectos) return <Skeleton />;
 
@@ -281,51 +401,40 @@ export default function GestionTareasWidget() {
             </div>
           </div>
 
-          {/* ── Tarjetas por proyecto ─────────────────────────────────────── */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          {/* ── Tarjetas por proyecto (compactas) ────────────────────────── */}
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {proyectos.map(p => {
               const status = getStatus(p.progress);
               const isSel  = selected === p.id;
               return (
                 <button key={p.id} onClick={() => setSelected(p.id)}
-                  className={`text-left p-4 rounded-2xl border transition-all duration-150 ${
+                  className={`text-left px-3 py-2.5 rounded-xl border transition-all duration-150 ${
                     isSel
                       ? "bg-[#111] border-[#2a2a2a] shadow-lg"
                       : "bg-[#0a0a0a] border-[#161616] hover:border-[#242424] hover:bg-[#0d0d0d]"
                   }`}
                   style={isSel && p.color ? { borderColor: p.color + "40" } : undefined}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
-                    <span className="text-[13px] font-semibold text-white truncate">{p.nombre}</span>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                    <span className="text-[12px] font-semibold text-white truncate">{p.nombre}</span>
                   </div>
                   {p.carpeta && (
-                    <p className="text-[10px] text-[#333] mb-2 truncate pl-[18px]">{p.carpeta.nombre}</p>
+                    <p className="text-[10px] text-[#333] mb-1 truncate pl-[14px]">{p.carpeta.nombre}</p>
                   )}
-                  <p className={`text-3xl font-bold leading-none mb-1 mt-3 ${status.textCls}`}>{p.progress}%</p>
-                  <p className={`text-xs font-medium mb-3 ${status.textCls}`}>{status.label}</p>
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-[#444]">Completadas</span>
-                      <span className="text-[11px] font-semibold text-white">{p.counts.completadasMes}</span>
-                    </div>
+                  <div className="flex items-baseline gap-1.5 mt-1.5 mb-1">
+                    <span className={`text-xl font-bold leading-none ${status.textCls}`}>{p.progress}%</span>
+                    <span className={`text-[10px] font-medium ${status.textCls}`}>{status.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {p.counts.completadasMes > 0 && (
+                      <span className="text-[10px] text-[#444]">{p.counts.completadasMes} listas</span>
+                    )}
                     {p.counts.vencidas > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-[#444]">Vencidas</span>
-                        <span className="text-[11px] font-semibold text-red-400">{p.counts.vencidas}</span>
-                      </div>
+                      <span className="text-[10px] text-red-400 font-semibold">{p.counts.vencidas} venc.</span>
                     )}
                     {p.counts.hoy > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-[#444]">Hoy</span>
-                        <span className="text-[11px] font-semibold text-emerald-400">{p.counts.hoy}</span>
-                      </div>
-                    )}
-                    {p.counts.totalActivas > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] text-[#333]">Activas</span>
-                        <span className="text-[11px] text-[#555]">{p.counts.totalActivas}</span>
-                      </div>
+                      <span className="text-[10px] text-emerald-400">{p.counts.hoy} hoy</span>
                     )}
                   </div>
                 </button>
@@ -358,28 +467,41 @@ export default function GestionTareasWidget() {
                 </Link>
               </div>
 
-              <div className="px-6 py-5 space-y-7">
+              <div className="px-6 py-5 space-y-6">
                 <TaskSection icon={IconSun} label="Para hoy"
                   count={selData.counts.hoy} tasks={selData.tareas.hoy}
-                  badgeCls="bg-emerald-950/40 text-emerald-400" emptyMsg="Sin tareas para hoy" />
+                  badgeCls="bg-emerald-950/40 text-emerald-400" emptyMsg="Sin tareas para hoy"
+                  onEdit={setEditTask} onReschedule={reschedule} />
 
                 <TaskSection icon={IconAlert} label="Vencidas"
                   count={selData.counts.vencidas} tasks={selData.tareas.vencidas}
-                  badgeCls="bg-red-950/40 text-red-400" emptyMsg="Sin tareas vencidas ✓" />
+                  badgeCls="bg-red-950/40 text-red-400" emptyMsg="Sin tareas vencidas ✓"
+                  onEdit={setEditTask} onReschedule={reschedule} />
 
                 <TaskSection icon={IconCal} label="Próximas 14 días"
                   count={selData.counts.proximas} tasks={selData.tareas.proximas}
-                  badgeCls="bg-[#1a1a1a] text-[#888]" emptyMsg="Sin tareas programadas en los próximos 14 días" />
+                  badgeCls="bg-[#1a1a1a] text-[#888]" emptyMsg="Sin tareas programadas en los próximos 14 días"
+                  onEdit={setEditTask} onReschedule={reschedule} />
 
                 {selData.counts.sinFecha > 0 && (
                   <TaskSection icon={IconDots} label="Sin programar"
                     count={selData.counts.sinFecha} tasks={selData.tareas.sinFecha}
-                    badgeCls="bg-[#1a1a1a] text-[#555]" emptyMsg="" />
+                    badgeCls="bg-[#1a1a1a] text-[#555]" emptyMsg=""
+                    onEdit={setEditTask} onReschedule={reschedule} />
                 )}
               </div>
             </div>
           )}
         </>
+      )}
+
+      {/* ── Modal de edición ─────────────────────────────────────────────── */}
+      {editTask && (
+        <EditModal
+          tarea={editTask}
+          onClose={() => setEditTask(null)}
+          onSave={saveEdit}
+        />
       )}
     </div>
   );

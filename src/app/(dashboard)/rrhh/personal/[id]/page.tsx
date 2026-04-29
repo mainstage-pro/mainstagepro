@@ -93,7 +93,13 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   async function crearPago() {
     if (!pagoForm.monto) return;
     setAddingPago(true);
-    await fetch(`/api/rrhh/personal/${id}/pagos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...pagoForm, monto: parseFloat(pagoForm.monto) }) });
+    const res = await fetch(`/api/rrhh/personal/${id}/pagos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...pagoForm, monto: parseFloat(pagoForm.monto) }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setAddingPago(false);
+      return;
+    }
     await load();
     setPagoForm({ periodo: new Date().toISOString().slice(0, 7), tipoPeriodo: "MENSUAL", monto: persona?.salario?.toString() ?? "", concepto: "", cuentaOrigenId: "", notas: "" });
     setShowPagoForm(false);
@@ -101,31 +107,51 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   }
 
   async function marcarPagado(pagoId: string) {
-    await fetch(`/api/rrhh/personal/${id}/pagos/${pagoId}`, {
+    const res = await fetch(`/api/rrhh/personal/${id}/pagos/${pagoId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "PAGADO", fechaPago: fechaPagoReal }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
     setPagandoId(null);
   }
 
   async function eliminarPago(pagoId: string) {
     if (!await confirm({ message: "¿Eliminar este registro de pago?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/rrhh/personal/${id}/pagos/${pagoId}`, { method: "DELETE" });
+    const res = await fetch(`/api/rrhh/personal/${id}/pagos/${pagoId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Pago eliminado");
     await load();
   }
 
   async function toggleActivo() {
     if (!persona) return;
-    await fetch(`/api/rrhh/personal/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !persona.activo }) });
+    const res = await fetch(`/api/rrhh/personal/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !persona.activo }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function eliminarEmpleado() {
     if (!persona) return;
     if (!await confirm({ message: `¿Eliminar permanentemente a ${persona.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/rrhh/personal/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/rrhh/personal/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     router.push("/rrhh/personal");
   }
 

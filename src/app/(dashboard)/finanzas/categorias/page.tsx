@@ -58,9 +58,21 @@ export default function CategoriasPage() {
     if (!form.nombre.trim()) return;
     setSaving(true);
     if (editId) {
-      await fetch(`/api/categorias-financieras/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(`/api/categorias-financieras/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
-      await fetch("/api/categorias-financieras", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch("/api/categorias-financieras", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     }
     await load();
     cancelForm();
@@ -69,7 +81,12 @@ export default function CategoriasPage() {
 
   async function deleteCategoria(id: string) {
     if (!await confirm({ message: "¿Eliminar esta categoría? Los movimientos vinculados perderán la categoría.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/categorias-financieras/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/categorias-financieras/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Categoría eliminada");
     await load();
   }

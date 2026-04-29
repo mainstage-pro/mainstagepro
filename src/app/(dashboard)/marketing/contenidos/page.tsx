@@ -89,9 +89,21 @@ export default function ContenidosPage() {
       enTiktok: form.enTiktok, enYoutube: form.enYoutube, enFeedIG: form.enFeedIG,
     };
     if (editId) {
-      await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(`/api/marketing/contenidos/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
       const res = await fetch("/api/marketing/contenidos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
       const d = await res.json();
       if (d.generadas > 0) {
         toast.success(`✓ Tipo creado. Se generaron ${d.generadas} publicaciones automáticamente en el calendario del mes actual.`);
@@ -103,13 +115,23 @@ export default function ContenidosPage() {
   }
 
   async function toggleActivo(t: TipoContenido) {
-    await fetch(`/api/marketing/contenidos/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    const res = await fetch(`/api/marketing/contenidos/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function deleteContenido(id: string, nombre: string) {
     if (!await confirm({ message: `¿Eliminar "${nombre}"?\n\nSe eliminarán también todas las publicaciones pendientes de este tipo en el calendario.`, danger: true, confirmText: "Eliminar" })) return;
     const res = await fetch(`/api/marketing/contenidos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     const d = await res.json();
     if (d.eliminadas > 0) toast.info(`Se eliminaron ${d.eliminadas} publicaciones del calendario.`);
     await load();

@@ -162,11 +162,17 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     if (!selEqId || !nuevoPrecio) return;
     setGuardandoPrecio(true);
     const precioOriginal = equiposCatalogo.find(e => e.id === selEqId)?.precioRenta ?? null;
-    await fetch(`/api/clientes/${id}/precios-equipos`, {
+    const resPut = await fetch(`/api/clientes/${id}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId: selEqId, precio: parseFloat(nuevoPrecio), precioOriginal, nota: nuevaNota || null }),
     });
+    if (!resPut.ok) {
+      const d = await resPut.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGuardandoPrecio(false);
+      return;
+    }
     // Recargar
     const [preciosData] = await Promise.all([
       fetch(`/api/clientes/${id}/precios-equipos`).then((r) => r.json()),
@@ -196,18 +202,28 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function eliminarPrecioEspecial(equipoId: string) {
-    await fetch(`/api/clientes/${id}/precios-equipos?equipoId=${equipoId}`, { method: "DELETE" });
+    const res = await fetch(`/api/clientes/${id}/precios-equipos?equipoId=${equipoId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setPreciosEspeciales((prev) => prev.filter((p) => p.equipoId !== equipoId));
   }
 
   async function guardarEdicionInline(equipoId: string) {
     const precio = parseFloat(editValor);
     if (isNaN(precio)) return;
-    await fetch(`/api/clientes/${id}/precios-equipos`, {
+    const res = await fetch(`/api/clientes/${id}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId, precio }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setPreciosEspeciales((prev) =>
       prev.map((p) => (p.equipoId === equipoId ? { ...p, precio } : p))
     );
@@ -221,6 +237,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     setSaving(true);
     formTimer.current = setTimeout(async () => {
       const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
       const d = await res.json();
       setCliente(prev => prev ? { ...prev, ...d.cliente } : prev);
       setAutoSaved(true); setSaving(false);
@@ -232,6 +254,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     if (formTimer.current) clearTimeout(formTimer.current);
     setSaving(true);
     const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     const d = await res.json();
     setCliente((prev) => prev ? { ...prev, ...d.cliente } : prev);
     formLoaded.current = false;

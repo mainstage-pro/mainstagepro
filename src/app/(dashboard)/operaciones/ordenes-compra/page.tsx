@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Proveedor { id: string; nombre: string; empresa: string | null; telefono: string | null }
 interface Proyecto  { id: string; nombre: string; numeroProyecto: string }
@@ -38,6 +39,7 @@ const EMPTY_FORM = {
 };
 
 export default function OrdenesCompraPage() {
+  const toast = useToast();
   const [ordenes, setOrdenes] = useState<Orden[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
@@ -76,6 +78,12 @@ export default function OrdenesCompraPage() {
         montoIva: parseFloat(form.montoIva || "0"),
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     const d = await res.json();
     if (d.orden) {
       setOrdenes(prev => [d.orden, ...prev]);
@@ -91,6 +99,11 @@ export default function OrdenesCompraPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado, ...(estado === "RECIBIDA" ? { fechaEntrega: new Date().toISOString() } : {}) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     const d = await res.json();
     if (d.orden) {
       setOrdenes(prev => prev.map(o => o.id === orden.id ? d.orden : o));
@@ -101,11 +114,16 @@ export default function OrdenesCompraPage() {
   async function guardarNotas(id: string, notas: string) {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      await fetch(`/api/ordenes-compra/${id}`, {
+      const res = await fetch(`/api/ordenes-compra/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notas }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        return;
+      }
       setAutoSaved(true);
       setTimeout(() => setAutoSaved(false), 2000);
     }, 1200);

@@ -7,22 +7,10 @@ export default function GlobalQuickTask() {
   const [saving, setSaving]   = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Cmd/Ctrl + K + custom event from sidebar button
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen(o => !o);
-      }
-      if (e.key === "Escape") setOpen(false);
-    }
     function onOpen() { setOpen(true); }
-    document.addEventListener("keydown", onKey);
     window.addEventListener("open-quick-task", onOpen);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("open-quick-task", onOpen);
-    };
+    return () => window.removeEventListener("open-quick-task", onOpen);
   }, []);
 
   useEffect(() => {

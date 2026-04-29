@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonTable } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface CxC {
@@ -106,6 +107,7 @@ const WA_ICON = (
 
 // ─── Mini-form inline para confirmar cobro (CxC) ─────────────────────────────
 function AccionesCobro({ item, onDone }: { item: CxC; onDone: () => void }) {
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [monto, setMonto] = useState(String(item.monto));
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
@@ -115,11 +117,17 @@ function AccionesCobro({ item, onDone }: { item: CxC; onDone: () => void }) {
 
   async function confirmar() {
     setSaving(true);
-    await fetch(`/api/cuentas-cobrar/${item.id}/pagar`, {
+    const res = await fetch(`/api/cuentas-cobrar/${item.id}/pagar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ monto: parseFloat(monto) || item.monto, fecha }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setOpen(false);
     const tel = (item.cliente.telefono ?? "").replace(/\D/g, "");
@@ -164,6 +172,7 @@ function AccionesCxP({
   item: CxP;
   onDone: () => void;
 }) {
+  const toast = useToast();
   const [mode, setMode] = useState<null | "pagar" | "extra">(null);
   const [pagarMonto, setPagarMonto] = useState(String(item.monto));
   const [extraConcepto, setExtraConcepto] = useState("");
@@ -173,11 +182,17 @@ function AccionesCxP({
 
   async function marcarPagado() {
     setSaving(true);
-    await fetch(`/api/cuentas-pagar/${item.id}/pagar`, {
+    const res = await fetch(`/api/cuentas-pagar/${item.id}/pagar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ monto: parseFloat(pagarMonto) || item.monto }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setMode(null);
     // Abrir WA de confirmación si hay teléfono
@@ -196,7 +211,7 @@ function AccionesCxP({
   async function guardarExtra() {
     if (!extraConcepto || !extraMonto || !item.proyecto) return;
     setSaving(true);
-    await fetch("/api/finanzas/pagos-semana/extra", {
+    const res = await fetch("/api/finanzas/pagos-semana/extra", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -211,6 +226,12 @@ function AccionesCxP({
         cxcMonto: extraMonto,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setMode(null);
     setExtraConcepto(""); setExtraMonto(""); setExtraCxC(false);
@@ -291,6 +312,7 @@ function CardElemento({
   proveedores: { id: string; nombre: string }[];
   onDone: () => void;
 }) {
+  const toast = useToast();
   const [showNoContemplado, setShowNoContemplado] = useState(false);
   const [ncProyectoId, setNcProyectoId] = useState("");
   const [ncConcepto, setNcConcepto] = useState("");
@@ -313,7 +335,7 @@ function CardElemento({
     setSavingNc(true);
     const tecnicoId = tab === "TECNICO" ? grupo.key : null;
     const proveedorId = tab === "PROVEEDOR" ? grupo.key : null;
-    await fetch("/api/finanzas/pagos-semana/extra", {
+    const res = await fetch("/api/finanzas/pagos-semana/extra", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -328,6 +350,12 @@ function CardElemento({
         cxcMonto: ncMonto,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setSavingNc(false);
+      return;
+    }
     setSavingNc(false);
     setShowNoContemplado(false);
     setNcProyectoId(""); setNcConcepto(""); setNcMonto(""); setNcCxC(false);
@@ -723,6 +751,7 @@ function FormNuevoNoContemplado({
   proveedores: { id: string; nombre: string }[];
   onGuardado: () => void;
 }) {
+  const toast = useToast();
   const [show, setShow] = useState(false);
   const [proyectoId, setProyectoId] = useState("");
   const [tecnicoId, setTecnicoId] = useState("");
@@ -736,7 +765,7 @@ function FormNuevoNoContemplado({
   async function guardar() {
     if (!proyectoId || !concepto || !monto) return;
     setSaving(true);
-    await fetch("/api/finanzas/pagos-semana/extra", {
+    const res = await fetch("/api/finanzas/pagos-semana/extra", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -749,6 +778,12 @@ function FormNuevoNoContemplado({
         crearCxC, cxcConcepto: `Cargo adicional: ${concepto}`, cxcMonto: monto,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setShow(false);
     setProyectoId(""); setTecnicoId(""); setProveedorId(""); setNombreLibre(""); setConcepto(""); setMonto(""); setCrearCxC(false);

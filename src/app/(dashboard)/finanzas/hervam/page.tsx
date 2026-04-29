@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
@@ -192,6 +193,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
   configData: ConfigData; pagos: Pago[]; activos: Activo[]; onRefresh: () => void;
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const { config, socio, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso } = configData;
   const now = new Date();
   const mesActual = now.getMonth() + 1;
@@ -215,7 +217,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 
   async function saveEditPago(id: string) {
     setSavingPago(true);
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, {
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -226,14 +228,16 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
         pagadoEn: editPagoForm.estado === "PAGADO" ? new Date().toISOString() : null,
       }),
     });
+    setSavingPago(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
     await onRefresh();
     setEditandoPago(false);
-    setSavingPago(false);
   }
 
   async function eliminarPago(id: string) {
     if (!await confirm({ message: "¿Eliminar la obligación de este mes? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar"); return; }
     await onRefresh();
   }
 
@@ -286,6 +290,8 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: mesActual, anio: anioActual, utilidadMes: utilidad || undefined }),
     });
+    setSaving(false);
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar pago"); return; }
     const data = await r.json();
 
     // Auto-crear cuenta por pagar con fecha límite = último día del mes
@@ -308,7 +314,6 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
     await onRefresh();
     setCreando(false);
     setUtilidad("");
-    setSaving(false);
   }
 
   const creditoPorcentajePagado = config.creditoSaldoInicial > 0
@@ -531,6 +536,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 // ─── ACTIVOS TAB ─────────────────────────────────────────────────────────────
 function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () => void }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -553,19 +559,21 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
   async function save() {
     setSaving(true);
     const url = editId ? `/api/finanzas/hervam/activos/${editId}` : "/api/finanzas/hervam/activos";
-    await fetch(url, {
+    const res = await fetch(url, {
       method: editId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, valorAdquisicion: parseFloat(form.valorAdquisicion) || 0, valorActual: parseFloat(form.valorActual) || 0 }),
     });
+    setSaving(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar activo"); return; }
     await onRefresh();
     cancel();
-    setSaving(false);
   }
 
   async function eliminar(id: string) {
     if (!await confirm({ message: "¿Eliminar este activo del inventario?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar activo"); return; }
     await onRefresh();
   }
 
@@ -823,6 +831,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
   pagos: Pago[]; configData: ConfigData; onRefresh: () => void;
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ montoAcordado: "", montoPagado: "", estado: "", notas: "" });
   const [saving, setSaving] = useState(false);
@@ -837,7 +846,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
 
   async function saveEdit() {
     setSaving(true);
-    await fetch(`/api/finanzas/hervam/pagos/${editId}`, {
+    const res = await fetch(`/api/finanzas/hervam/pagos/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -848,14 +857,16 @@ function HistorialTab({ pagos, configData, onRefresh }: {
         pagadoEn: editForm.estado === "PAGADO" ? new Date().toISOString() : null,
       }),
     });
+    setSaving(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
     await onRefresh();
     setEditId(null);
-    setSaving(false);
   }
 
   async function deletePago(id: string) {
     if (!await confirm({ message: "¿Eliminar este registro? No se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar"); return; }
     await onRefresh();
   }
 
