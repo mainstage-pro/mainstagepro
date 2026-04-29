@@ -23,42 +23,33 @@ export async function GET() {
   const en14dias   = new Date(hoyCST); en14dias.setUTCDate(en14dias.getUTCDate() + 15);
   const inicioMes  = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
+  // Tarea pertenece a un área si: su campo area = X, O su usuario asignado tiene area = X
+  const areaMatch = (area: string) => ({
+    OR: [
+      { area },
+      { area: "GENERAL", asignadoA: { area } },
+    ],
+  });
+
   const areas = await Promise.all(AREAS.map(async (area) => {
-    const baseWhere = {
-      area,
-      parentId: null,
-      estado: { notIn: ["COMPLETADA", "CANCELADA"] },
-    };
+    const base = { ...areaMatch(area), parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] } };
+    const w = (extra: object) => ({ AND: [areaMatch(area), { parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] }, ...extra }] });
 
     const [
       vencidas, hoy, proximas, sinFecha,
       vencidasCount, hoyCount, proximasCount, sinFechaCount,
       totalActivas, completadasMes,
     ] = await Promise.all([
-      prisma.tarea.findMany({
-        where: { ...baseWhere, OR: [{ fecha: { lt: hoyDate } }, { fecha: null, fechaVencimiento: { lt: hoyDate } }] },
-        select: SELECT_TAREA, orderBy: { fecha: "asc" }, take: 30,
-      }),
-      prisma.tarea.findMany({
-        where: { ...baseWhere, OR: [{ fecha: { gte: hoyDate, lt: manana } }, { fecha: null, fechaVencimiento: { gte: hoyDate, lt: manana } }] },
-        select: SELECT_TAREA, orderBy: [{ prioridad: "asc" }, { fecha: "asc" }], take: 30,
-      }),
-      prisma.tarea.findMany({
-        where: { ...baseWhere, OR: [{ fecha: { gte: manana, lt: en14dias } }, { fecha: null, fechaVencimiento: { gte: manana, lt: en14dias } }] },
-        select: SELECT_TAREA, orderBy: { fecha: "asc" }, take: 30,
-      }),
-      prisma.tarea.findMany({
-        where: { ...baseWhere, fecha: null, fechaVencimiento: null },
-        select: SELECT_TAREA, orderBy: [{ prioridad: "asc" }, { createdAt: "asc" }], take: 20,
-      }),
-      prisma.tarea.count({ where: { ...baseWhere, OR: [{ fecha: { lt: hoyDate } }, { fecha: null, fechaVencimiento: { lt: hoyDate } }] } }),
-      prisma.tarea.count({ where: { ...baseWhere, OR: [{ fecha: { gte: hoyDate, lt: manana } }, { fecha: null, fechaVencimiento: { gte: hoyDate, lt: manana } }] } }),
-      prisma.tarea.count({ where: { ...baseWhere, OR: [{ fecha: { gte: manana, lt: en14dias } }, { fecha: null, fechaVencimiento: { gte: manana, lt: en14dias } }] } }),
-      prisma.tarea.count({ where: { ...baseWhere, fecha: null, fechaVencimiento: null } }),
-      prisma.tarea.count({ where: baseWhere }),
-      prisma.tarea.count({
-        where: { area, parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } },
-      }),
+      prisma.tarea.findMany({ where: w({ OR: [{ fecha: { lt: hoyDate } }, { fecha: null, fechaVencimiento: { lt: hoyDate } }] }), select: SELECT_TAREA, orderBy: { fecha: "asc" }, take: 30 }),
+      prisma.tarea.findMany({ where: w({ OR: [{ fecha: { gte: hoyDate, lt: manana } }, { fecha: null, fechaVencimiento: { gte: hoyDate, lt: manana } }] }), select: SELECT_TAREA, orderBy: [{ prioridad: "asc" }, { fecha: "asc" }], take: 30 }),
+      prisma.tarea.findMany({ where: w({ OR: [{ fecha: { gte: manana, lt: en14dias } }, { fecha: null, fechaVencimiento: { gte: manana, lt: en14dias } }] }), select: SELECT_TAREA, orderBy: { fecha: "asc" }, take: 30 }),
+      prisma.tarea.findMany({ where: w({ fecha: null, fechaVencimiento: null }), select: SELECT_TAREA, orderBy: [{ prioridad: "asc" }, { createdAt: "asc" }], take: 20 }),
+      prisma.tarea.count({ where: w({ OR: [{ fecha: { lt: hoyDate } }, { fecha: null, fechaVencimiento: { lt: hoyDate } }] }) }),
+      prisma.tarea.count({ where: w({ OR: [{ fecha: { gte: hoyDate, lt: manana } }, { fecha: null, fechaVencimiento: { gte: hoyDate, lt: manana } }] }) }),
+      prisma.tarea.count({ where: w({ OR: [{ fecha: { gte: manana, lt: en14dias } }, { fecha: null, fechaVencimiento: { gte: manana, lt: en14dias } }] }) }),
+      prisma.tarea.count({ where: w({ fecha: null, fechaVencimiento: null }) }),
+      prisma.tarea.count({ where: base }),
+      prisma.tarea.count({ where: { AND: [areaMatch(area), { parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } }] } }),
     ]);
 
     const total    = totalActivas + completadasMes;
