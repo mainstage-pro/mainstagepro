@@ -37,6 +37,7 @@ export default function ProyectosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("TODOS");
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
+  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
 
   async function eliminar(id: string, nombre: string, e: React.MouseEvent) {
     e.preventDefault();
@@ -186,6 +187,11 @@ export default function ProyectosPage() {
           const matchEstado = filtroEstado === "TODOS" || p.estado === filtroEstado;
           const matchTipo = filtroTipo === "TODOS" || p.tipoEvento === filtroTipo;
           return matchBusqueda && matchEstado && matchTipo;
+        }).sort((a: Proyecto, b: Proyecto) => {
+          if (orden === "evento_asc")    return new Date(a.fechaEvento ?? "9999").getTime() - new Date(b.fechaEvento ?? "9999").getTime();
+          if (orden === "evento_desc")   return new Date(b.fechaEvento ?? "0").getTime() - new Date(a.fechaEvento ?? "0").getTime();
+          if (orden === "creacion_asc")  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // creacion_desc
         });
         return (
         <div className="space-y-3">
@@ -214,6 +220,15 @@ export default function ProyectosPage() {
                 className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-[11px] text-gray-400 focus:outline-none focus:border-[#B3985B]/50"
               />
             )}
+            <select
+              value={orden}
+              onChange={e => setOrden(e.target.value as typeof orden)}
+              className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-[11px] text-gray-400 focus:outline-none focus:border-[#B3985B]/50 cursor-pointer">
+              <option value="evento_asc">Fecha evento ↑</option>
+              <option value="evento_desc">Fecha evento ↓</option>
+              <option value="creacion_desc">Más recientes</option>
+              <option value="creacion_asc">Más antiguos</option>
+            </select>
             {(busqueda || filtroEstado !== "TODOS" || filtroTipo !== "TODOS") && (
               <button onClick={() => { setBusqueda(""); setFiltroEstado("TODOS"); setFiltroTipo("TODOS"); }}
                 className="text-[10px] text-gray-600 hover:text-white transition-colors px-2 py-1 rounded border border-[#222] bg-[#1a1a1a]">

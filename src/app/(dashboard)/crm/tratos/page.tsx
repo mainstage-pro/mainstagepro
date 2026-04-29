@@ -374,6 +374,7 @@ export default function TratosPage() {
     return "lista";
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
@@ -425,6 +426,11 @@ export default function TratosPage() {
       (t.nombreEvento ?? "").toLowerCase().includes(q) ||
       (t.lugarEstimado ?? "").toLowerCase().includes(q);
     return matchEtapa && matchBusqueda;
+  }).sort((a: Trato, b: Trato) => {
+    if (orden === "evento_asc")   return new Date(a.fechaEventoEstimada ?? "9999").getTime() - new Date(b.fechaEventoEstimada ?? "9999").getTime();
+    if (orden === "evento_desc")  return new Date(b.fechaEventoEstimada ?? "0").getTime() - new Date(a.fechaEventoEstimada ?? "0").getTime();
+    if (orden === "creacion_asc") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
   return (
@@ -481,20 +487,29 @@ export default function TratosPage() {
             )}
           </div>
           {vista === "lista" && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              <button onClick={() => setFiltroEtapa(null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!filtroEtapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
-                Todos ({tratos.length})
-              </button>
-              {ETAPAS.map(etapa => {
-                const count = tratos.filter(t => t.etapa === etapa).length;
-                return (
-                  <button key={etapa} onClick={() => setFiltroEtapa(filtroEtapa === etapa ? null : etapa)}
-                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filtroEtapa === etapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
-                    {ETAPA_LABELS[etapa]} ({count})
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
+                <button onClick={() => setFiltroEtapa(null)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!filtroEtapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
+                  Todos ({tratos.length})
+                </button>
+                {ETAPAS.map(etapa => {
+                  const count = tratos.filter(t => t.etapa === etapa).length;
+                  return (
+                    <button key={etapa} onClick={() => setFiltroEtapa(filtroEtapa === etapa ? null : etapa)}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filtroEtapa === etapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
+                      {ETAPA_LABELS[etapa]} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+              <select value={orden} onChange={e => setOrden(e.target.value as typeof orden)}
+                className="shrink-0 bg-[#1a1a1a] border border-[#2a2a2a] text-[#9ca3af] text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
+                <option value="evento_asc">Fecha evento ↑</option>
+                <option value="evento_desc">Fecha evento ↓</option>
+                <option value="creacion_desc">Más recientes</option>
+                <option value="creacion_asc">Más antiguos</option>
+              </select>
             </div>
           )}
         </div>
