@@ -72,7 +72,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   if (!cot) return NextResponse.json({ error: "Cotización no encontrada" }, { status: 404 });
   if (cot.proyecto) {
-    // Ya existe el proyecto, redirigir sin crear otro
+    // Ya existe el proyecto — asegurarse de que el trato esté en VENTA_CERRADA y redirigir
+    if (cot.trato && cot.trato.etapa !== "VENTA_CERRADA") {
+      await prisma.trato.update({ where: { id: cot.trato.id }, data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date() } });
+    }
     return NextResponse.json({ proyectoId: cot.proyecto.id, yaExistia: true });
   }
 

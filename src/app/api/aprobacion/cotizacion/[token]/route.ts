@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
 
   const cot = await prisma.cotizacion.findUnique({
     where: { aprobacionToken: token },
-    select: { id: true, estado: true, aprobacionFecha: true },
+    select: { id: true, estado: true, aprobacionFecha: true, tratoId: true },
   });
 
   if (!cot) return NextResponse.json({ error: "Link no válido" }, { status: 404 });
@@ -59,6 +59,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       aprobacionNombre: nombre,
     },
   });
+
+  if (cot.tratoId) {
+    await prisma.trato.update({
+      where: { id: cot.tratoId },
+      data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date() },
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }
