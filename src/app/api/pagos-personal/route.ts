@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   const { desde, hasta } = cicloDesde(cicloDate);
 
   const proyectos = await prisma.proyecto.findMany({
-    where: { fechaEvento: { gte: desde, lte: hasta } },
+    where: { fechaEvento: { gte: desde, lte: hasta }, personal: { some: {} } },
     include: {
       cliente: { select: { nombre: true } },
       cotizacion: { select: { subtotalOperacion: true } },
