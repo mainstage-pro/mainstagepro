@@ -247,7 +247,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"resumen" | "operacion" | "tareas" | "finanzas" | "extras">("resumen");
+  const [tab, setTab] = useState<"resumen" | "operacion" | "finanzas" | "extras">("resumen");
+  const [tareasOpen, setTareasOpen] = useState(false);
   function scrollToSection(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTab(id.replace("section-", "") as typeof tab);
@@ -2059,9 +2060,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
         </div>
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Bitácora</p>
-          <p className="text-white text-lg font-bold">{proyecto.bitacora.length}</p>
-          <p className="text-gray-600 text-xs">entradas</p>
+          <p className="text-gray-500 text-xs mb-1">Días</p>
+          <p className={`text-lg font-bold ${diasRestantes < 0 ? "text-gray-500" : diasRestantes <= 7 ? "text-red-400" : diasRestantes <= 30 ? "text-yellow-400" : "text-white"}`}>
+            {diasRestantes < 0 ? "Pasado" : diasRestantes === 0 ? "¡Hoy!" : diasRestantes}
+          </p>
+          <p className="text-gray-600 text-xs">{diasRestantes < 0 ? `hace ${Math.abs(diasRestantes)}d` : diasRestantes === 0 ? "es hoy" : "para el evento"}</p>
         </div>
       </div>
 
@@ -2130,9 +2133,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const SECS = [
           { id: "section-resumen",   label: "Resumen",   warn: !fichaOk },
           { id: "section-operacion", label: "Operativo", warn: !operOk },
-          { id: "section-tareas",    label: "Tareas",    warn: false },
-          { id: "section-finanzas",  label: "Finanzas",  warn: !finOk },
           { id: "section-extras",    label: "Docs",      warn: false },
+          { id: "section-finanzas",  label: "Finanzas",  warn: !finOk },
         ] as const;
         return (
           <div className="sticky top-0 z-20 flex gap-1 bg-[#0a0a0a]/95 backdrop-blur border border-[#1a1a1a] rounded-xl p-1 flex-wrap">
@@ -2220,82 +2222,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <Campo label="Descripción" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
             </div>
 
-            {/* ── Nota rápida (bitácora) ── */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Nota rápida</p>
-              <div className="flex gap-2">
-                <input
-                  value={notaBitacora}
-                  onChange={e => setNotaBitacora(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); agregarNota(); } }}
-                  placeholder="Escribe una nota de seguimiento... (Enter para guardar)"
-                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-gray-600"
-                />
-                <button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()}
-                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors shrink-0">
-                  {addingNota ? "..." : "Guardar"}
-                </button>
-              </div>
-              {proyecto.bitacora.length > 0 && (
-                <div className="mt-3 space-y-1.5">
-                  {proyecto.bitacora.slice(0, 3).map(b => (
-                    <div key={b.id} className="flex items-start gap-2 text-xs">
-                      <span className="text-gray-600 shrink-0">{new Date(b.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
-                      <span className="text-gray-400 truncate">{b.contenido}</span>
-                    </div>
-                  ))}
-                  {proyecto.bitacora.length > 3 && (
-                    <button onClick={() => scrollToSection("section-extras")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-                      Ver {proyecto.bitacora.length - 3} entradas más →
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Accesos rápidos */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
-              <div className="flex flex-wrap gap-3">
-                {proyecto.cotizacion && (
-                  <Link href={`/cotizaciones/${proyecto.cotizacion.id}`}
-                    className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-[#B3985B] hover:border-[#B3985B]/50 transition-colors">
-                    📄 Cotización
-                  </Link>
-                )}
-                {proyecto.cliente.telefono && (
-                  <a href={`https://wa.me/52${proyecto.cliente.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs px-3 py-2 border border-green-800/40 rounded-lg text-green-400 hover:bg-green-900/20 transition-colors">
-                    💬 WhatsApp cliente
-                  </a>
-                )}
-                <button onClick={() => scrollToSection("section-operacion")}
-                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
-                  👥 Personal y equipo →
-                </button>
-                <button onClick={() => scrollToSection("section-finanzas")}
-                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
-                  💰 Finanzas →
-                </button>
-                {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
-                  <button onClick={() => scrollToSection("section-extras")}
-                    className="text-xs px-3 py-2 border border-[#B3985B]/40 rounded-lg text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
-                    📦 Protocolo salida/entrada →
-                  </button>
-                )}
-              </div>
-            </div>
 
             {/* Directorio Mainstage Pro */}
             {(() => {
               const DIRECTORIO = [
-                { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565" },
-                { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023" },
-                { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646" },
-                { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398" },
-                { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359" },
-                { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175" },
-                { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195" },
+                { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
+                { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
+                { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
+                { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
+                { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
+                { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
+                { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
               ];
               return (
                 <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
@@ -2309,7 +2246,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
                           <div>
                             <p className="text-white text-sm font-medium">{p.nombre}</p>
-                            <p className="text-gray-500 text-xs">{p.cargo}</p>
+                            <p className="text-[#B3985B] text-xs">{p.cargo}</p>
+                            <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
                           </div>
                           <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
@@ -2354,81 +2292,60 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
 
-          {/* ── Responsables por área ── */}
-          <div className={"bg-[#111] border border-[#222] rounded-xl p-5"}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Responsables por área</p>
-              {savingResp && <span className="text-xs text-gray-600">Guardando...</span>}
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {(["produccion", "logistica", "finanzas", "marketing"] as const).map(area => (
-                <div key={area}>
-                  <label className="text-gray-500 text-xs mb-1 block capitalize">{area}</label>
-                  <Combobox
-                    value={responsables[area]}
-                    onChange={v => {
-                      const next = { ...responsables, [area]: v };
-                      setResponsables(next);
-                      guardarResponsables(next);
-                    }}
-                    options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
 
-          {/* ── Chofer ── */}
-          <div className={"bg-[#111] border border-[#222] rounded-xl p-5"}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
-              {proyecto.choferNombre && (
-                <span className={`text-xs px-2 py-0.5 rounded-full ${proyecto.choferExterno ? "bg-orange-900/30 text-orange-400" : "bg-green-900/30 text-green-400"}`}>
-                  {proyecto.choferExterno ? "Externo" : "Interno"} · {proyecto.choferNombre}
-                </span>
-              )}
+          {/* ── Traslados ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Traslados</p>
+              {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
             <div className="space-y-3">
-              <div className="flex gap-3">
-                <button onClick={() => setChoferTipo("INTERNO")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "INTERNO" ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                  Del personal del proyecto
-                </button>
-                <button onClick={() => setChoferTipo("EXTERNO")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "EXTERNO" ? "bg-orange-900/20 border-orange-700 text-orange-400" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                  Chofer externo
-                </button>
-              </div>
-              {choferTipo === "INTERNO" ? (
-                <Combobox
-                  value={choferPersonalId}
-                  onChange={v => setChoferPersonalId(v)}
-                  options={[{ value: "", label: "— Seleccionar del personal —" }, ...proyecto.personal.filter(p => p.tecnico).map(p => ({ value: p.id, label: p.tecnico!.nombre + " · " + (p.rolTecnico?.nombre ?? p.participacion ?? "Personal") }))]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              ) : (
-                <div className="space-y-2">
-                  <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
-                    placeholder="Nombre del chofer externo"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
-                    placeholder="Costo ($) — genera CxP automáticamente"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              {transporteSlots.map((slot, i) => (
+                <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-600 font-semibold">Vehículo {i + 1}</p>
+                    {transporteSlots.length > 1 && (
+                      <button onClick={() => { const n = transporteSlots.filter((_, idx) => idx !== i); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">Quitar</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
+                      <Combobox
+                        value={slot.vehiculoId}
+                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Chofer</label>
+                      <Combobox
+                        value={slot.choferId}
+                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
+                      <input type="time" value={slot.horaSalida} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, horaSalida: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                      <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Instrucciones, destino, etc."
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
                 </div>
-              )}
-              {vehiculos.length > 0 && (
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
-                  <Combobox
-                    value={vehiculoId}
-                    onChange={v => setVehiculoId(v)}
-                    options={[{ value: "", label: "— Sin vehículo específico —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              )}
-              {guardandoChofer && <p className="text-xs text-gray-600 text-center">Guardando...</p>}
+              ))}
+              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
+                className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                + Agregar vehículo
+              </button>
             </div>
           </div>
 
@@ -2907,60 +2824,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
-            {/* Transportes del evento */}
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Transportes del evento</p>
-            <div className="space-y-3 mb-5">
-              {transporteSlots.map((slot, i) => (
-                <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-gray-600 font-semibold">Vehículo {i + 1}</p>
-                    {transporteSlots.length > 1 && (
-                      <button onClick={() => { const n = transporteSlots.filter((_, idx) => idx !== i); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">Quitar</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
-                      <Combobox
-                        value={slot.vehiculoId}
-                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Chofer</label>
-                      <Combobox
-                        value={slot.choferId}
-                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
-                      <input type="time" value={slot.horaSalida} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, horaSalida: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                      <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Instrucciones, destino, etc."
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
-                className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                + Agregar vehículo
-              </button>
-              {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
-            </div>
-
             {/* Catering de producción */}
-            <div className="border-t border-[#1a1a1a] pt-4 mt-2">
+            <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Catering de producción</p>
                 <div className="flex items-center gap-2">
@@ -2973,6 +2838,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   )}
                 </div>
               </div>
+              {(proyecto.personal.length > 0 || (proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0)) && (
+                <div className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 mb-3">
+                  {proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Días cotizados</span>
+                      <span className="text-white font-semibold text-sm">{proyecto.cotizacion.diasComidas}</span>
+                    </div>
+                  )}
+                  {proyecto.personal.length > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Personal asignado</span>
+                      <span className="text-white font-semibold text-sm">{proyecto.personal.length} técnicos</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCatering(p => ({
+                      ...p,
+                      personasCrew: String(proyecto.personal.length) || p.personasCrew,
+                      comidasPorDia: proyecto.cotizacion?.diasComidas ? String(proyecto.cotizacion.diasComidas) : p.comidasPorDia,
+                    }))}
+                    className="ml-auto text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors font-medium">
+                    ↺ Auto-llenar
+                  </button>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 {/* Proveedor de catering */}
                 <div className="col-span-2">
@@ -3387,15 +3278,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {/* Propios */}
-            {equiposPropios.length > 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-[#1a1a1a]">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo propio ({equiposPropios.length})</p>
-                </div>
-                {equiposPropios.map(eq => <EquipoRow key={eq.id} eq={eq} />)}
-              </div>
-            )}
 
             {/* Externos */}
             {equiposExternos.length > 0 && (
@@ -3764,29 +3646,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
 
-            {/* Bitácora */}
-            <div className="space-y-3">
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Bitácora del proyecto</p>
-                <textarea value={notaBitacora} onChange={e => setNotaBitacora(e.target.value)} rows={3} placeholder="¿Qué pasó hoy? ¿Qué aprendimos? Cada detalle que documentes hoy le ahorra horas al equipo mañana..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-2" />
-                <div className="flex justify-end"><button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">{addingNota ? "Guardando..." : "Agregar nota"}</button></div>
-              </div>
-              {proyecto.bitacora.length === 0 ? (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">Sin entradas en la bitácora</div>
-              ) : (
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  {proyecto.bitacora.map(b => (
-                    <div key={b.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.tipo === "ACCION" ? "bg-blue-900/40 text-blue-300" : b.tipo === "CAMBIO" ? "bg-yellow-900/40 text-yellow-300" : b.tipo === "ALERTA" ? "bg-red-900/40 text-red-300" : "bg-[#222] text-gray-400"}`}>{b.tipo}</span>
-                        <span className="text-gray-600 text-xs">{fmtDateTime(b.createdAt)} · {b.usuario?.name ?? "Sistema"}</span>
-                      </div>
-                      <p className="text-gray-300 text-sm leading-relaxed">{b.contenido}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
             <SectionDivider label="Documentos del show" />
@@ -3914,23 +3773,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 );
               })()}
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
-                <div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Score foto / video</p><p className="text-gray-500 text-xs mt-0.5">Calidad del contenido fotográfico y/o audiovisual generado durante el evento</p></div>
-                <div className="flex items-center gap-4"><span className={`text-3xl font-bold w-10 ${scoreFotoVideo === 0 ? "text-gray-600" : scoreFotoVideo >= 9 ? "text-green-400" : scoreFotoVideo >= 7 ? "text-[#B3985B]" : scoreFotoVideo >= 5 ? "text-yellow-400" : "text-red-400"}`}>{scoreFotoVideo === 0 ? "—" : scoreFotoVideo}</span><div className="flex gap-1 flex-wrap">{[0,1,2,3,4,5,6,7,8,9,10].map(n => (<button key={n} onClick={() => setScoreFotoVideo(n)} className={`w-7 h-7 rounded text-xs font-bold transition-all ${scoreFotoVideo === n ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white" : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"}`}>{n === 0 ? "—" : n}</button>))}</div></div>
-                <div><label className="text-xs text-gray-500 mb-1 block">Recomendación para próximos eventos</label><textarea value={recomendacionFotoVideo} onChange={e => setRecomendacionFotoVideo(e.target.value)} rows={3} placeholder="Fotógrafo recomendado, estilo, indicaciones técnicas..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-                <div className="flex justify-end"><button onClick={guardarScore} disabled={savingScore} className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg transition-colors">{savingScore ? "Guardando..." : "Guardar score"}</button></div>
-              </div>
             </div>
 
           </div>
         );
       })()}
       </div>{/* /section-extras */}
-
-      {/* ────── SECCIÓN: TAREAS ────── */}
-      <div id="section-tareas" className="scroll-mt-4">
-        <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
-      </div>
 
       {/* ────── SECCIÓN: FINANZAS ────── */}
       <div id="section-finanzas" className="scroll-mt-4">
@@ -5135,6 +4983,33 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <VersionHistorial entidad="proyecto" entidadId={proyecto.id} />
       </div>
     </div>
+
+    {/* ── FAB: Tareas ── */}
+    <button
+      onClick={() => setTareasOpen(true)}
+      className="fixed bottom-6 left-6 z-40 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-sm px-4 py-3 rounded-full shadow-2xl transition-colors"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Tareas
+    </button>
+
+    {/* ── Drawer lateral: Tareas ── */}
+    {tareasOpen && (
+      <>
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setTareasOpen(false)} />
+        <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-[#0d0d0d] border-l border-[#1a1a1a] overflow-y-auto shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-[#1a1a1a] sticky top-0 bg-[#0d0d0d] z-10 shrink-0">
+            <h2 className="text-white font-semibold text-sm">Tareas del proyecto</h2>
+            <button onClick={() => setTareasOpen(false)} className="text-gray-500 hover:text-white transition-colors p-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="p-4 flex-1 overflow-y-auto">
+            <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
+          </div>
+        </div>
+      </>
+    )}
 
     {/* ── Panel flotante de notificación de cambios ── */}
     {pendingNotif && (
