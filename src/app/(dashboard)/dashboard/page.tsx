@@ -55,9 +55,10 @@ export default async function DashboardPage() {
     nominaPendiente,
     // ── ADMINISTRACIÓN ──────────────────────────
     cxcPendiente,
-    cxcVencidas,
+    cxcVencidaAgg,
     cxcVence7dias,
     cxpPendiente,
+    cxpVencidaAgg,
     cxpVence7dias,
     movimientosMes,
     cuentasBancarias,
@@ -123,7 +124,8 @@ export default async function DashboardPage() {
       _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
-    prisma.cuentaCobrar.count({
+    prisma.cuentaCobrar.aggregate({
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
@@ -135,6 +137,10 @@ export default async function DashboardPage() {
     prisma.cuentaPagar.aggregate({
       _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
+    }),
+    prisma.cuentaPagar.aggregate({
+      _sum: { monto: true },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaPagar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
@@ -223,7 +229,12 @@ export default async function DashboardPage() {
          - c.movimientosSalida.reduce((s, m)  => s + m.monto, 0),
   }));
   const totalDisponible = saldosPorCuenta.reduce((s, c) => s + c.saldo, 0);
+  const totalCxC        = (cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0);
+  const cxcVencMonto    = (cxcVencidaAgg._sum.monto ?? 0) - (cxcVencidaAgg._sum.montoCobrado ?? 0);
+  const cxcProxMonto    = totalCxC - cxcVencMonto;
   const totalCxP        = cxpPendiente._sum.monto ?? 0;
+  const cxpVencMonto    = cxpVencidaAgg._sum.monto ?? 0;
+  const cxpProxMonto    = totalCxP - cxpVencMonto;
   const disponibleNeto  = totalDisponible - totalCxP;
 
   const pubsMap: Record<string, number> = {};
@@ -385,29 +396,34 @@ export default async function DashboardPage() {
 
           {/* CxC */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por cobrar</p>
-              <Link href="/finanzas/cxc" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+              <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
             </div>
-            <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-gray-500 text-xs">Total pendiente</p>
-              <p className="text-white font-bold">{formatCurrency((cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0))}</p>
+            <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+                <p className={`text-sm font-bold ${cxcVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxcVencMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+                <p className="text-sm font-bold text-[#B3985B]">{formatCurrency(cxcProxMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+                <p className="text-sm font-bold text-white">{formatCurrency(totalCxC)}</p>
+              </div>
             </div>
-            {cxcVencidas > 0 && (
-              <Link href="/finanzas/cxc" className="px-5 py-3 flex items-center justify-between bg-red-900/10 hover:bg-red-900/20 transition-colors">
-                <p className="text-red-400 text-xs font-medium">Vencidas → ver detalle</p>
-                <p className="text-red-400 font-bold text-sm">{cxcVencidas}</p>
-              </Link>
-            )}
             <div className="divide-y divide-[#1a1a1a]">
               {cxcVence7dias.length === 0 ? (
-                <p className="text-gray-600 text-xs px-5 py-3">Sin vencimientos próximos</p>
+                <p className="text-gray-600 text-xs px-4 py-3">Sin vencimientos próximos</p>
               ) : cxcVence7dias.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-2.5">
-                  <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
-                  <p className="text-yellow-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
-                  </p>
+                <div key={i} className="flex items-center justify-between px-4 py-2">
+                  <p className="text-gray-300 text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <p className="text-gray-600 text-[11px]">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}</p>
+                    <p className="text-green-400 text-xs font-semibold">{formatCurrency(c.monto)}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -415,23 +431,34 @@ export default async function DashboardPage() {
 
           {/* CxP */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por pagar</p>
-              <Link href="/finanzas/cxp" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+              <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
             </div>
-            <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-gray-500 text-xs">Total pendiente</p>
-              <p className="text-white font-bold">{formatCurrency(totalCxP)}</p>
+            <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+                <p className={`text-sm font-bold ${cxpVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxpVencMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+                <p className="text-sm font-bold text-[#B3985B]">{formatCurrency(cxpProxMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+                <p className="text-sm font-bold text-white">{formatCurrency(totalCxP)}</p>
+              </div>
             </div>
             <div className="divide-y divide-[#1a1a1a]">
               {cxpVence7dias.length === 0 ? (
-                <p className="text-gray-600 text-xs px-5 py-3">Sin vencimientos próximos</p>
+                <p className="text-gray-600 text-xs px-4 py-3">Sin vencimientos próximos</p>
               ) : cxpVence7dias.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-2.5">
-                  <p className="text-white text-xs truncate">{c.concepto ?? "Pago"}</p>
-                  <p className="text-orange-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
-                  </p>
+                <div key={i} className="flex items-center justify-between px-4 py-2">
+                  <p className="text-gray-300 text-xs truncate">{c.concepto ?? "Pago"}</p>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <p className="text-gray-600 text-[11px]">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}</p>
+                    <p className="text-red-400 text-xs font-semibold">{formatCurrency(c.monto)}</p>
+                  </div>
                 </div>
               ))}
             </div>

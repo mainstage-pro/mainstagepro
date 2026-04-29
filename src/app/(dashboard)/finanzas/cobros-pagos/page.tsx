@@ -436,12 +436,18 @@ export default function CobrosPagosPage() {
   );
 
   // Metrics
-  const cxcPend = cxc.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
-  const cxcVenc = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
-  const cxcCobr = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
-  const cxpPend = cxp.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxpVenc = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
-  const cxpPagd = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxcPend  = cxc.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcVenc  = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcProx  = cxc.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcCobr  = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxcVencN = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxcProxN = cxc.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxpPend  = cxp.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxpVenc  = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxpProx  = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxpPagd  = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxpVencN = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxpProxN = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
 
   function openModal(item: CxCItem | CxPItem, tipo: "cobro" | "pago") {
     const cxcItem = item as CxCItem;
@@ -801,31 +807,53 @@ export default function CobrosPagosPage() {
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Por cobrar</p>
-          <p className="text-yellow-400 text-lg font-semibold">{formatCurrency(cxcPend)}</p>
+      {/* Resumen financiero */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        {/* CxC */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por cobrar</p>
+            {cxcCobr > 0 && <p className="text-[11px] text-gray-600">cobrado: <span className="text-green-600/80 font-medium">{formatCurrency(cxcCobr)}</span></p>}
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a]">
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Vencido</p>
+              <p className={`text-base font-bold ${cxcVenc > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxcVenc)}</p>
+              {cxcVencN > 0 && <p className="text-[10px] text-red-500/60 mt-1">{cxcVencN} {cxcVencN === 1 ? "cobro" : "cobros"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{formatCurrency(cxcProx)}</p>
+              {cxcProxN > 0 && <p className="text-[10px] text-[#B3985B]/50 mt-1">{cxcProxN} {cxcProxN === 1 ? "cobro" : "cobros"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Total pendiente</p>
+              <p className="text-base font-bold text-white">{formatCurrency(cxcPend)}</p>
+            </div>
+          </div>
         </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Cobro vencido</p>
-          <p className="text-red-400 text-lg font-semibold">{formatCurrency(cxcVenc)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Cobrado</p>
-          <p className="text-green-400 text-lg font-semibold">{formatCurrency(cxcCobr)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Por pagar</p>
-          <p className="text-yellow-400 text-lg font-semibold">{formatCurrency(cxpPend)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Pago vencido</p>
-          <p className="text-red-400 text-lg font-semibold">{formatCurrency(cxpVenc)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Pagado</p>
-          <p className="text-green-400 text-lg font-semibold">{formatCurrency(cxpPagd)}</p>
+        {/* CxP */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por pagar</p>
+            {cxpPagd > 0 && <p className="text-[11px] text-gray-600">pagado: <span className="text-green-600/80 font-medium">{formatCurrency(cxpPagd)}</span></p>}
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a]">
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Vencido</p>
+              <p className={`text-base font-bold ${cxpVenc > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxpVenc)}</p>
+              {cxpVencN > 0 && <p className="text-[10px] text-red-500/60 mt-1">{cxpVencN} {cxpVencN === 1 ? "pago" : "pagos"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{formatCurrency(cxpProx)}</p>
+              {cxpProxN > 0 && <p className="text-[10px] text-[#B3985B]/50 mt-1">{cxpProxN} {cxpProxN === 1 ? "pago" : "pagos"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Total pendiente</p>
+              <p className="text-base font-bold text-white">{formatCurrency(cxpPend)}</p>
+            </div>
+          </div>
         </div>
       </div>
 

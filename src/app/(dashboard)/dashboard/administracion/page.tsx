@@ -32,9 +32,10 @@ export default async function DashboardAdminPage() {
     movimientosMes,
     cuentasBancarias,
     cxcPendiente,
-    cxcVencidas,
+    cxcVencidaAgg,
     cxcVence7dias,
     cxpPendiente,
+    cxpVencidaAgg,
     cxpVence7dias,
     nominaPendiente,
     personalCount,
@@ -60,18 +61,23 @@ export default async function DashboardAdminPage() {
       _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
-    prisma.cuentaCobrar.count({
+    prisma.cuentaCobrar.aggregate({
+      _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
-      include: { cliente: { select: { nombre: true } } },
+      include: { cliente: { select: { nombre: true } }, empresa: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
       take: 6,
     }),
     prisma.cuentaPagar.aggregate({
       _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
+    }),
+    prisma.cuentaPagar.aggregate({
+      _sum: { monto: true },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaPagar.findMany({
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
@@ -100,9 +106,13 @@ export default async function DashboardAdminPage() {
     return s + c.movimientosEntrada.reduce((x: number, mv: { monto: number }) => x + mv.monto, 0)
              - c.movimientosSalida.reduce((x: number, mv: { monto: number }) => x + mv.monto, 0);
   }, 0);
-  const cxcTotal = cxcPendiente._sum.monto ?? 0;
-  const cxpTotal = cxpPendiente._sum.monto ?? 0;
-  const nominaTotal = nominaPendiente._sum.monto ?? 0;
+  const cxcTotal     = cxcPendiente._sum.monto ?? 0;
+  const cxcVencMonto = cxcVencidaAgg._sum.monto ?? 0;
+  const cxcProxMonto = cxcTotal - cxcVencMonto;
+  const cxpTotal     = cxpPendiente._sum.monto ?? 0;
+  const cxpVencMonto = cxpVencidaAgg._sum.monto ?? 0;
+  const cxpProxMonto = cxpTotal - cxpVencMonto;
+  const nominaTotal  = nominaPendiente._sum.monto ?? 0;
 
   const fmtDate = (s: string | Date | null) => {
     if (!s) return "—";
@@ -119,9 +129,9 @@ export default async function DashboardAdminPage() {
           <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
         <div className="flex items-center gap-2 text-[10px]">
-          {cxcVencidas > 0 && (
+          {cxcVencMonto > 0 && (
             <Link href="/finanzas/cobros-pagos" className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
-              ⚠ {cxcVencidas} cobros vencidos
+              ⚠ {fmt(cxcVencMonto)} vencido por cobrar
             </Link>
           )}
         </div>
@@ -137,56 +147,84 @@ export default async function DashboardAdminPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Cobros próximos 7 días */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cobros próximos</p>
-              <p className="text-white font-bold">{fmt(cxcTotal)} <span className="text-gray-500 text-sm font-normal">por cobrar</span></p>
-            </div>
+        {/* Cuentas por cobrar */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cuentas por cobrar</p>
             <Link href="/finanzas/cobros-pagos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
           </div>
-          {cxcVence7dias.length === 0 ? (
-            <p className="text-gray-600 text-xs italic">Sin cobros en los próximos 7 días</p>
-          ) : (
-            <div className="space-y-2">
-              {cxcVence7dias.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[#1a1a1a] last:border-0">
-                  <div>
-                    <p className="text-white text-sm font-medium">{c.cliente?.nombre ?? "—"}</p>
-                    <p className="text-gray-500 text-xs">{fmtDate(c.fechaCompromiso)}</p>
-                  </div>
-                  <span className="text-green-400 text-sm font-semibold">{fmt(c.monto)}</span>
-                </div>
-              ))}
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+              <p className={`text-base font-bold ${cxcVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{fmt(cxcVencMonto)}</p>
             </div>
-          )}
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{fmt(cxcProxMonto)}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+              <p className="text-base font-bold text-white">{fmt(cxcTotal)}</p>
+            </div>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Próximos 7 días</p>
+            {cxcVence7dias.length === 0 ? (
+              <p className="text-gray-700 text-xs italic">Sin vencimientos esta semana</p>
+            ) : (
+              <div className="space-y-1.5">
+                {cxcVence7dias.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between">
+                    <p className="text-gray-300 text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <p className="text-gray-600 text-[11px]">{fmtDate(c.fechaCompromiso)}</p>
+                      <p className="text-green-400 text-xs font-semibold">{fmt(c.monto)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Pagos próximos 7 días */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Pagos próximos</p>
-              <p className="text-white font-bold">{fmt(cxpTotal)} <span className="text-gray-500 text-sm font-normal">por pagar</span></p>
-            </div>
+        {/* Cuentas por pagar */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cuentas por pagar</p>
             <Link href="/finanzas/cobros-pagos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
           </div>
-          {cxpVence7dias.length === 0 ? (
-            <p className="text-gray-600 text-xs italic">Sin pagos en los próximos 7 días</p>
-          ) : (
-            <div className="space-y-2">
-              {cxpVence7dias.map((c) => (
-                <div key={c.id} className="flex items-center justify-between py-1.5 border-b border-[#1a1a1a] last:border-0">
-                  <p className="text-white text-sm">{c.concepto ?? "Pago"}</p>
-                  <div className="text-right">
-                    <p className="text-red-400 text-sm font-semibold">{fmt(c.monto)}</p>
-                    <p className="text-gray-600 text-xs">{fmtDate(c.fechaCompromiso)}</p>
-                  </div>
-                </div>
-              ))}
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+              <p className={`text-base font-bold ${cxpVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{fmt(cxpVencMonto)}</p>
             </div>
-          )}
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{fmt(cxpProxMonto)}</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+              <p className="text-base font-bold text-white">{fmt(cxpTotal)}</p>
+            </div>
+          </div>
+          <div className="px-4 py-3">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Próximos 7 días</p>
+            {cxpVence7dias.length === 0 ? (
+              <p className="text-gray-700 text-xs italic">Sin vencimientos esta semana</p>
+            ) : (
+              <div className="space-y-1.5">
+                {cxpVence7dias.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between">
+                    <p className="text-gray-300 text-xs truncate">{c.concepto ?? "Pago"}</p>
+                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <p className="text-gray-600 text-[11px]">{fmtDate(c.fechaCompromiso)}</p>
+                      <p className="text-red-400 text-xs font-semibold">{fmt(c.monto)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* HERVAM */}
