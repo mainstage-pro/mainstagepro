@@ -58,7 +58,7 @@ export function Combobox({
   function handleBlur() {
     closeTimer.current = setTimeout(() => {
       setOpen(false);
-      setQuery(options.find(o => o.value === value)?.label ?? "");
+      setQuery(selectedLabel);
     }, 150);
   }
 
