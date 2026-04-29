@@ -753,6 +753,57 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </button>
           ))}
         </div>
+
+        {/* Progreso de completitud */}
+        {(() => {
+          const checks = [
+            {
+              label: "Descubrimiento",
+              items: [
+                { ok: !!cot.fechaEvento, label: "Fecha" },
+                { ok: !!(cot.lugarEvento || cot.trato.lugarEstimado), label: "Lugar" },
+                { ok: !!cot.tipoServicio, label: "Tipo de servicio" },
+                { ok: !!cot.trato.notas?.trim(), label: "Notas" },
+              ],
+            },
+            {
+              label: "Cotización",
+              items: [
+                { ok: cot.lineas.length > 0, label: "Partidas" },
+                { ok: !!cot.nombreEvento, label: "Nombre" },
+                { ok: !!cot.planPagos, label: "Plan de pagos" },
+                { ok: cot.estado !== "BORRADOR", label: "Enviada" },
+              ],
+            },
+          ];
+
+          return (
+            <div className="mt-4 pt-4 border-t border-[#1a1a1a] space-y-3">
+              {checks.map(({ label, items }) => {
+                const pct = Math.round(items.filter(i => i.ok).length / items.length * 100);
+                const faltantes = items.filter(i => !i.ok).map(i => i.label);
+                const color = pct >= 80 ? "bg-green-500" : pct >= 40 ? "bg-yellow-500" : "bg-red-500";
+                const textColor = pct >= 80 ? "text-green-400" : pct >= 40 ? "text-yellow-400" : "text-red-400";
+                return (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</span>
+                      <div className="flex items-center gap-2">
+                        {faltantes.length > 0 && (
+                          <span className="text-[9px] text-gray-600">Falta: {faltantes.join(" · ")}</span>
+                        )}
+                        <span className={`text-[11px] font-semibold tabular-nums ${textColor}`}>{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-[#222] rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
