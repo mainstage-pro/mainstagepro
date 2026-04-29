@@ -1879,6 +1879,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const diasRestantes = Math.round((new Date(eventoStr).getTime() - new Date(hoyStr).getTime()) / 86400000);
   const totalCxC = proyecto.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
+  const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
+  const equiposTotal = proyecto.equipos?.length ?? 0;
+  const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
 
   return (
     <>
@@ -1924,7 +1927,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Hoja de entrega — solo renta */}
-            {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") ? (
+            {esRenta ? (
               <a
                 href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
                 target="_blank"
@@ -1979,7 +1982,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento, label: "Horario" },
           { ok: !!proyecto.lugarEvento,                                   label: "Lugar" },
           { ok: !!proyecto.cotizacion,                                    label: "Cotización" },
-          { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"), label: "Personal" },
+          ...(!esRenta ? [{ ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"), label: "Personal" }] : []),
           { ok: proyecto.equipos.length > 0,                             label: "Equipo" },
           { ok: proyecto.cuentasCobrar.length > 0,                       label: "CxC" },
         ];
@@ -2049,11 +2052,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} />
           </div>
         </div>
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Personal</p>
-          <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
-          <p className="text-gray-600 text-xs">confirmados</p>
-        </div>
+        {esRenta ? (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <p className="text-gray-500 text-xs mb-1">Equipos</p>
+            <p className="text-white text-lg font-bold">{equiposConf}<span className="text-gray-500 font-normal text-sm">/{equiposTotal}</span></p>
+            <p className="text-gray-600 text-xs">confirmados</p>
+          </div>
+        ) : (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <p className="text-gray-500 text-xs mb-1">Personal</p>
+            <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
+            <p className="text-gray-600 text-xs">confirmados</p>
+          </div>
+        )}
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Cobrado</p>
           <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
@@ -2293,8 +2304,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
 
-          {/* ── Traslados ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          {/* ── Traslados (solo producción) ── */}
+          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Traslados</p>
               {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
@@ -2347,10 +2358,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 + Agregar vehículo
               </button>
             </div>
-          </div>
+          </div>}
 
           {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
-          {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
+          {esRenta && (() => {
             // Leer datos de renta: primero de logisticaRenta del proyecto, luego del trato
             let rentaData: Record<string, string> = {};
             try {
@@ -2513,8 +2524,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Personal del evento (gestión completa) ── */}
-          <div className="space-y-3">
+          {/* ── Personal del evento (gestión completa) — solo producción ── */}
+          {!esRenta && <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -2817,10 +2828,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
               })
             )}
-          </div>
+          </div>}
 
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
-          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
@@ -2945,7 +2956,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
-          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
@@ -3027,14 +3038,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Documentos operativos ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
-            {(() => {
-              const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-              const tiposDoc = esRenta
-                ? (["RIDER", "OTRO"] as const)
-                : (["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const);
-              return tiposDoc;
-            })().map(tipo => {
+            {(esRenta
+              ? (["CONTRATO_RENTA", "FOTOS_ENTREGA", "RIDER", "OTRO"] as const)
+              : (["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const)
+            ).map(tipo => {
               const labels: Record<string, string> = {
+                CONTRATO_RENTA: "Contrato de renta",
+                FOTOS_ENTREGA:  "Fotos de entrega / estado del equipo",
                 RENDER: "Render real",
                 PLOT_PATCH: "Render plot / patch",
                 INPUT_LIST: "Input list",
@@ -3311,8 +3321,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
         const esSocial = !esMusical && !esEmpresarial;
-        const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-
         type DocsData = {
           inputList: { canal: string; instrumento: string; artista: string; microfono: string; notas: string }[];
           soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
