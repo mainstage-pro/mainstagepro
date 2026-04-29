@@ -69,6 +69,7 @@ const NAV: NavSection[] = [
         label: "Finanzas",
         children: [
           { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
           { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
