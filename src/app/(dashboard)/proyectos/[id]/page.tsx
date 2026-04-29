@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, use } from "react";
+import React, { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TimePicker from "@/components/ui/TimePicker";
@@ -47,7 +47,7 @@ interface Proyecto {
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   lugarEvento: string | null; encargadoLugar: string | null; encargadoLugarContacto: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null;
-  encargadoCliente: string | null; transportes: string | null;
+  encargadoCliente: string | null; encargadoClienteContacto: string | null; transportes: string | null;
   proveedorCatering: string | null; contactosDireccion: string | null;
   reporteCatering: string | null;
   cronograma: string | null; contactosEmergencia: string | null; comentariosFinales: string | null;
@@ -2185,7 +2185,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
                 </div>
                 <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-                <div>
+                <Campo label="Contacto del encargado" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                <div className="col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
                   <Combobox
                     value={proyecto.encargado?.id ?? ""}
@@ -2200,7 +2201,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                <div className="col-span-2">
+                  <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                </div>
                 <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
                 <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                 <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
@@ -2215,65 +2218,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas del proyecto</p>
               <Campo label="Descripción" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
             </div>
-            {/* ── Cierre del evento ── */}
-            {!["COMPLETADO", "CANCELADO"].includes(proyecto.estado) && (
-              <div className="bg-[#0d0d0d] border border-[#222] rounded-xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cierre del evento</p>
-                  {!showCierreFlow && (
-                    <button onClick={() => setShowCierreFlow(true)}
-                      className="text-xs px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] rounded-lg hover:bg-[#B3985B]/20 transition-colors">
-                      Iniciar cierre →
-                    </button>
-                  )}
-                </div>
-                {!showCierreFlow ? (
-                  <p className="text-xs text-gray-600">Cuando el evento termine, usa el flujo de cierre para confirmar desmontaje, equipo en bodega y enviar evaluaciones.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Checklist */}
-                    {([
-                      { key: "desmontaje", label: "Desmontaje completado en el venue" },
-                      { key: "bodega", label: "Equipo regresó a bodega y fue revisado" },
-                      { key: "evalCliente", label: "Evaluación enviada al cliente" },
-                    ] as { key: keyof typeof cierreChecklist; label: string }[]).map(item => (
-                      <button key={item.key} onClick={() => setCierreChecklist(p => ({ ...p, [item.key]: !p[item.key] }))}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left text-xs transition-colors ${cierreChecklist[item.key] ? "border-green-700/40 bg-green-900/10 text-green-300" : "border-[#2a2a2a] text-gray-500 hover:border-[#333] hover:text-gray-400"}`}>
-                        <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${cierreChecklist[item.key] ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
-                          {cierreChecklist[item.key] ? "✓" : ""}
-                        </span>
-                        {item.label}
-                      </button>
-                    ))}
-                    {/* Cierre financiero shortcut */}
-                    <button onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
-                      disabled={loadingCierre}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors disabled:opacity-40">
-                      <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${proyecto.cierreFinanciero ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
-                        {proyecto.cierreFinanciero ? "✓" : "→"}
-                      </span>
-                      {loadingCierre ? "Calculando cierre…" : proyecto.cierreFinanciero ? "Cierre financiero registrado — ver detalle" : "Generar cierre financiero (real vs estimado)"}
-                    </button>
-                    {/* Eval interna shortcut */}
-                    <button onClick={() => scrollToSection("section-extras")}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">
-                      <span className="w-5 h-5 rounded border border-[#444] flex items-center justify-center text-[10px]">→</span>
-                      Llenar evaluación interna del evento
-                    </button>
-                    {/* Botón cerrar */}
-                    <button
-                      disabled={!Object.values(cierreChecklist).every(Boolean) || saving}
-                      onClick={() => cambiarEstado("COMPLETADO")}
-                      className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-green-700 text-white hover:bg-green-600">
-                      {saving ? "Cerrando…" : "Marcar evento como COMPLETADO"}
-                    </button>
-                    {!Object.values(cierreChecklist).every(Boolean) && (
-                      <p className="text-[11px] text-gray-600 text-center">Marca los 3 pasos para habilitar el cierre</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
 
             {/* ── Nota rápida (bitácora) ── */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
@@ -2340,6 +2284,45 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
             </div>
+
+            {/* Directorio Mainstage Pro */}
+            {(() => {
+              const DIRECTORIO = [
+                { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565" },
+                { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023" },
+                { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646" },
+                { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398" },
+                { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359" },
+                { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175" },
+                { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195" },
+              ];
+              const [open, setOpen] = React.useState(false);
+              return (
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
+                    <svg className={`w-4 h-4 text-gray-600 transition-transform ${open ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                  {open && (
+                    <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                      {DIRECTORIO.map(p => (
+                        <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
+                          <div>
+                            <p className="text-white text-sm font-medium">{p.nombre}</p>
+                            <p className="text-gray-500 text-xs">{p.cargo}</p>
+                          </div>
+                          <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                            {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         );
       })()}
@@ -3211,7 +3194,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
             <div className="grid grid-cols-1 gap-y-4 text-sm">
               <Campo label="Contactos de dirección y coordinación" value={proyecto.contactosDireccion} field="contactosDireccion" onSave={guardarCampo} multiline />
-              <Campo label="Contactos de emergencia" value={proyecto.contactosEmergencia} field="contactosEmergencia" onSave={guardarCampo} multiline />
             </div>
           </div>
 
@@ -3569,23 +3551,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         // ── Evaluación helpers ──────────────────────────────────────────
         const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
-          { key: "planeacionPrevia", label: "Preparación de la renta", desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
-          { key: "puntualidad", label: "Puntualidad en entrega", desc: "Entrega del equipo en el horario y fecha acordados con el cliente" },
-          { key: "usoEquipo", label: "Estado del equipo", desc: "Equipo entregado en buen estado, regresado completo y sin daños" },
+          { key: "puntualidad", label: "Puntualidad en entrega", desc: "Equipo entregado en el horario y fecha acordados con el cliente" },
+          { key: "usoEquipo", label: "Estado del equipo", desc: "Equipo regresado completo, sin daños y en buen estado" },
           { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Claridad en la coordinación, firma de responsiva y trato durante el proceso" },
-          { key: "resolucionOperativa", label: "Resolución de imprevistos", desc: "Manejo de situaciones no previstas: faltantes, cambios de última hora, daños" },
-          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos de logística, combustible y tiempo invertido" },
+          { key: "resolucionOperativa", label: "Resolución de imprevistos", desc: "Manejo de faltantes, cambios de última hora y situaciones no previstas" },
           { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global de la renta: ¿la repetiríamos en las mismas condiciones?" },
         ] : [
           { key: "planeacionPrevia", label: "Planeación previa", desc: "Preparación técnica, logística y coordinación antes del evento" },
           { key: "cumplimientoTecnico", label: "Cumplimiento técnico", desc: "Calidad del sonido, iluminación, video y operación en sitio" },
           { key: "puntualidad", label: "Puntualidad", desc: "Llegada, montaje y apertura en los tiempos acordados" },
           { key: "resolucionOperativa", label: "Resolución operativa", desc: "Manejo de imprevistos, problemas técnicos y decisiones en tiempo real" },
-          { key: "desempenoPersonal", label: "Desempeño del personal", desc: "Actitud, profesionalismo y efectividad del equipo técnico" },
-          { key: "comunicacionInterna", label: "Comunicación interna", desc: "Coordinación entre los miembros del equipo durante el evento" },
-          { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Trato, respuesta y satisfacción comunicada por el cliente" },
-          { key: "usoEquipo", label: "Uso del equipo", desc: "Cuidado, aprovechamiento y regreso en buen estado del material" },
-          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos reales vs. lo cobrado" },
           { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global del proyecto como equipo" },
         ];
         const evalPromedio = evalLoaded && evaluacion.promedioCalculado != null
@@ -3788,19 +3763,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               })()}
             </div>
 
-            {/* Checklist operativo */}
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                <div><span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Checklist de operación</span><span className="text-gray-600 text-xs ml-2">({checkDone}/{checkTotal})</span></div>
-                <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden"><div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} /></div>
-              </div>
-              {checkOp.length === 0 && (<div className="px-4 py-4 border-b border-[#1a1a1a] space-y-2"><p className="text-gray-500 text-xs font-medium mb-2">Aplicar plantilla:</p><div className="flex flex-wrap gap-2">{[{ key: "GENERAL", label: "General" }, { key: "MUSICAL", label: "Musical" }, { key: "CORPORATIVO", label: "Corporativo" }, { key: "SOCIAL", label: "Social" }].map(({ key, label }) => (<button key={key} onClick={() => aplicarPlantilla(key)} disabled={aplicandoPlantilla} className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B] disabled:opacity-40 transition-colors">{aplicandoPlantilla ? "Aplicando..." : `+ ${label}`}</button>))}</div></div>)}
-              {checkOp.length === 0 ? (<p className="text-gray-600 text-sm text-center py-4 italic">Sin items de operación</p>) : (checkOp.map(c => (<div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors"><input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)} className="w-4 h-4 rounded accent-[#B3985B] shrink-0" /><span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span><button onClick={() => eliminarItem(c.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button></div>)))}
-              <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-                <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarItem()} placeholder="Agregar item de operación..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">+ Agregar</button>
-              </div>
-            </div>
 
             {/* Bitácora */}
             <div className="space-y-3">
@@ -3907,7 +3869,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#1a1a1a]"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
+                <div className="px-5 py-4 border-b border-[#1a1a1a]"><div className="flex items-center justify-between flex-wrap gap-2"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">Para uso del Coordinador de Producción</span></div><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
                 <div className="divide-y divide-[#1a1a1a]">
                   {CRITERIOS.map(({ key, label, desc }) => {
                     const val = evaluacion[key] as number;
@@ -4860,29 +4822,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Cierre financiero ── */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
-                <p className="text-gray-600 text-xs mt-0.5">Comparativa real vs estimado al cerrar el proyecto</p>
+          {(() => {
+            const cierreReqs = [
+              { ok: !!proyecto.cotizacion, label: "Cotización generada" },
+              { ok: proyecto.personal.some(p => p.confirmado), label: "Personal confirmado" },
+              { ok: proyecto.cuentasCobrar.length > 0, label: "CxC configurada" },
+            ];
+            const cierreReady = cierreReqs.every(r => r.ok) || !!proyecto.cierreFinanciero;
+            return (
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
+                    <p className="text-gray-600 text-xs mt-0.5">Comparativa real vs estimado al cerrar el proyecto</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!cierreReady) {
+                        const faltantes = cierreReqs.filter(r => !r.ok).map(r => r.label).join(", ");
+                        toast.error(`Completa antes de cerrar: ${faltantes}`);
+                        return;
+                      }
+                      await loadCierre(); setShowCierreModal(true);
+                    }}
+                    disabled={loadingCierre}
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${cierreReady ? "bg-[#B3985B] text-black hover:bg-[#c9a96a]" : "bg-[#1a1a1a] text-gray-500 border border-[#333] cursor-not-allowed"}`}
+                  >
+                    {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
+                  </button>
+                </div>
+                {!proyecto.cierreFinanciero && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {cierreReqs.map(r => (
+                      <span key={r.label} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${r.ok ? "bg-green-900/30 text-green-400" : "bg-[#1a1a1a] text-gray-600"}`}>
+                        {r.ok ? "✓" : "○"} {r.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {proyecto.cierreFinanciero && (
+                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
+                    <span className="text-green-400 text-sm">✓</span>
+                    <p className="text-green-400 text-xs font-medium">
+                      Cierre registrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
-                disabled={loadingCierre}
-                className="px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-              >
-                {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
-              </button>
-            </div>
-            {proyecto.cierreFinanciero && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
-                <span className="text-green-400 text-sm">✓</span>
-                <p className="text-green-400 text-xs font-medium">
-                  Cierre registrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Portal de clientes */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
