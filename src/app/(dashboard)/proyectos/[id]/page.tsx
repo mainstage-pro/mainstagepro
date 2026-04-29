@@ -293,10 +293,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingEsquema, setSavingEsquema] = useState(false);
   const [syncingCxC, setSyncingCxC] = useState(false);
 
-  // Score foto/video
-  const [scoreFotoVideo, setScoreFotoVideo] = useState<number>(0);
-  const [recomendacionFotoVideo, setRecomendacionFotoVideo] = useState<string>("");
-  const [savingScore, setSavingScore] = useState(false);
 
   // Evaluación cliente
   type EvalClienteData = {
@@ -471,8 +467,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingCatering, setSavingCatering] = useState(false);
   const cateringLoaded = useRef(false);
   const cateringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const choferLoaded = useRef(false);
-  const choferTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estado para documentos
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -579,15 +573,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
-  // Chofer asignado
-  const [choferEditando, setChoferEditando] = useState(false);
-  const [choferTipo, setChoferTipo] = useState<"INTERNO" | "EXTERNO">("INTERNO");
-  const [choferNombreInput, setChoferNombreInput] = useState("");
-  const [choferPersonalId, setChoferPersonalId] = useState("");
-  const [choferCostoInput, setChoferCostoInput] = useState("");
-  const [guardandoChofer, setGuardandoChofer] = useState(false);
   const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
-  const [vehiculoId, setVehiculoId] = useState("");
   const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
   type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
   const [responsables, setResponsables] = useState<Responsables>({ produccion: "", logistica: "", finanzas: "", marketing: "" });
@@ -738,16 +724,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ reportePostEvento: JSON.stringify(reportePostEvento) }),
     });
     setSavingReporte(false);
-  }
-
-  async function guardarScore() {
-    setSavingScore(true);
-    await fetch(`/api/proyectos/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scoreFotoVideo: scoreFotoVideo || null, recomendacionFotoVideo: recomendacionFotoVideo || null }),
-    });
-    await load();
-    setSavingScore(false);
   }
 
   async function agregarEquipo() {
@@ -940,8 +916,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Sync JSON states when proyecto loads
   useEffect(() => {
     if (!proyecto) return;
-    setScoreFotoVideo(proyecto.scoreFotoVideo ?? 0);
-    setRecomendacionFotoVideo(proyecto.recomendacionFotoVideo ?? "");
     try {
       const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : [];
       setCronoRows(Array.isArray(parsed) ? parsed : []);
@@ -964,7 +938,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCatering({ ...CATERING_EMPTY, ...c, personasCrew: autoPersonas, comidasPorDia: autoDias });
     } catch { setCatering(CATERING_EMPTY); }
     // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
-    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; choferLoaded.current = true; }, 300);
+    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
   }, [proyecto?.id]);
 
   // Auto-save cronograma
@@ -980,34 +954,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (cateringTimer.current) clearTimeout(cateringTimer.current);
     cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
   }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-save chofer
-  useEffect(() => {
-    if (!choferLoaded.current || !proyecto) return;
-    if (choferTimer.current) clearTimeout(choferTimer.current);
-    choferTimer.current = setTimeout(async () => {
-      let nombre = "";
-      let externo = false;
-      let costo: number | null = null;
-      if (choferTipo === "INTERNO") {
-        const p = proyecto.personal.find(p => p.id === choferPersonalId);
-        nombre = p?.tecnico?.nombre ?? "";
-        externo = false;
-      } else {
-        nombre = choferNombreInput;
-        externo = true;
-        costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
-      }
-      if (!nombre) return;
-      setGuardandoChofer(true);
-      const res = await fetch(`/api/proyectos/${id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choferNombre: nombre, choferExterno: externo, choferCosto: costo }),
-      });
-      if (res.ok) setProyecto(prev => prev ? { ...prev, choferNombre: nombre, choferExterno: externo, choferCosto: costo } : prev);
-      setGuardandoChofer(false);
-    }, 1000);
-  }, [choferTipo, choferPersonalId, choferNombreInput, choferCostoInput]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -1129,35 +1075,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Guardar cronograma (auto-sort por hora) ──
-  // ── Guardar chofer ──
-  async function guardarChofer() {
-    if (!proyecto) return;
-    setGuardandoChofer(true);
-    let nombre = "";
-    let externo = false;
-    let costo: number | null = null;
-    if (choferTipo === "INTERNO") {
-      // Buscar nombre del personal seleccionado
-      const p = proyecto.personal.find(p => p.id === choferPersonalId);
-      nombre = p?.tecnico?.nombre ?? choferNombreInput;
-      externo = false;
-      costo = null;
-    } else {
-      nombre = choferNombreInput;
-      externo = true;
-      costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
-    }
-    const res = await fetch(`/api/proyectos/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ choferNombre: nombre || null, choferExterno: externo, choferCosto: costo }),
-    });
-    if (res.ok) {
-      setProyecto(prev => prev ? { ...prev, choferNombre: nombre || null, choferExterno: externo, choferCosto: costo } : prev);
-      setChoferEditando(false);
-    }
-    setGuardandoChofer(false);
-  }
-
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
     const sorted = [...rows].sort((a, b) => {
