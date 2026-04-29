@@ -1842,6 +1842,8 @@ model LevantamientoContenido {
   colaboradoresCamara         Boolean?
   colaboradoresNombres        String?
   notasAdicionales            String?
+  scoreFotoVideo              Int?
+  recomendacionFotoVideo      String?
 
   activos   ActivoEvento[]
 
