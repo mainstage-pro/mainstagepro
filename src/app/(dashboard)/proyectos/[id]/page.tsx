@@ -252,7 +252,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTab(id.replace("section-", "") as typeof tab);
   }
-  const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
+
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
@@ -2370,24 +2370,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
-          {/* ── Sub-tabs Operación ── */}
-          <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1">
-            {([
-              { key: "personal", label: "Equipo & Personal" },
-              { key: "logistica", label: "Logística" },
-              { key: "cronograma", label: "Cronograma" },
-            ] as const).map(st => (
-              <button key={st.key} onClick={() => setOperTab(st.key)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  operTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
-                }`}>
-                {st.label}
-              </button>
-            ))}
-          </div>
 
           {/* ── Responsables por área ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
+          <div className={"bg-[#111] border border-[#222] rounded-xl p-5"}>
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Responsables por área</p>
               {savingResp && <span className="text-xs text-gray-600">Guardando...</span>}
@@ -2412,7 +2397,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Chofer ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
+          <div className={"bg-[#111] border border-[#222] rounded-xl p-5"}>
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
               {proyecto.choferNombre && (
@@ -2465,7 +2450,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
-          {operTab === "logistica" && (proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
+          {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
             // Leer datos de renta: primero de logisticaRenta del proyecto, luego del trato
             let rentaData: Record<string, string> = {};
             try {
@@ -2549,7 +2534,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Recolección de equipo (solo RENTA) ── */}
-          {operTab === "logistica" && proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
+          {proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
             let rentaData: Record<string, string> = {};
             try {
               const src = proyecto.logisticaRenta || proyecto.trato?.ideasReferencias;
@@ -2629,7 +2614,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Personal del evento (gestión completa) ── */}
-          <div className={`space-y-3${operTab !== "personal" ? " hidden" : ""}`}>
+          <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -2935,7 +2920,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
-          {operTab === "logistica" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
 
@@ -3086,7 +3071,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
-          {operTab === "cronograma" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {!(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
@@ -3166,7 +3151,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Documentos operativos ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "logistica" ? " hidden" : ""}`}>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
             {(() => {
               const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
@@ -3220,17 +3205,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })}
           </div>
 
-          {/* ── Siguiente: Logística → Cronograma ── */}
-          <div className={`flex justify-end pt-2${operTab !== "logistica" ? " hidden" : ""}`}>
-            <button
-              onClick={() => setOperTab("cronograma")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
-              Cronograma →
-            </button>
-          </div>
 
           {/* ── Contactos ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "cronograma" ? " hidden" : ""}`}>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
             <div className="grid grid-cols-1 gap-y-4 text-sm">
               <Campo label="Contactos de dirección y coordinación" value={proyecto.contactosDireccion} field="contactosDireccion" onSave={guardarCampo} multiline />
@@ -3244,7 +3221,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
       {/* ── Equipos (dentro de Operación) ── */}
-      {operTab === "personal" && (() => {
+      {(() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
         const camposFaltantesEq: string[] = [];
@@ -3458,13 +3435,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setOperTab("logistica")}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
-                Logística →
-              </button>
-            </div>
           </div>
         );
       })()}
