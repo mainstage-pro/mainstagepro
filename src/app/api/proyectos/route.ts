@@ -30,9 +30,11 @@ export async function GET(req: Request) {
       include: {
         cliente: { select: { id: true, nombre: true, empresa: true } },
         encargado: { select: { name: true } },
-        checklist: { select: { completado: true } },
         personal: { select: { confirmado: true } },
         trato: { select: { responsable: { select: { name: true } } } },
+        cotizacion: { select: { id: true } },
+        equipos: { select: { id: true }, take: 1 },
+        cuentasCobrar: { select: { id: true }, take: 1 },
       },
       orderBy: { fechaEvento: "desc" },
     });

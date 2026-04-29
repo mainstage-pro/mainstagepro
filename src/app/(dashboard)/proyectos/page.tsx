@@ -227,13 +227,18 @@ export default function ProyectosPage() {
             </div>
           )}
           {proyectosFiltrados.map((proyecto: Proyecto) => {
-            const checklistTotal = proyecto.checklist?.length ?? 0;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const checklistDone = proyecto.checklist?.filter((c: any) => c.completado).length ?? 0;
-            const pct = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const personalConfirmado = proyecto.personal?.filter((p: any) => p.confirmado).length ?? 0;
             const personalTotal = proyecto.personal?.length ?? 0;
+            const checksOk = [
+              proyecto.horaInicioEvento && proyecto.horaFinEvento,
+              proyecto.lugarEvento,
+              proyecto.cotizacion,
+              proyecto.personal?.some((p: any) => p.confirmado),
+              proyecto.equipos?.length > 0,
+              proyecto.cuentasCobrar?.length > 0,
+            ].filter(Boolean).length;
+            const pct = Math.round(checksOk / 6 * 100);
 
             return (
               <Link key={proyecto.id} href={`/proyectos/${proyecto.id}`}>
@@ -277,17 +282,15 @@ export default function ProyectosPage() {
                       {ESTADO_PROYECTO_LABELS[proyecto.estado] ?? proyecto.estado}
                     </span>
 
-                    {checklistTotal > 0 && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[#B3985B] rounded-full"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-[10px] text-[#6b7280]">{pct}% checklist</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-20 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
-                    )}
+                      <span className="text-[10px] text-[#6b7280]">{pct}%</span>
+                    </div>
 
                     {personalTotal > 0 && (
                       <span className="text-[10px] text-[#6b7280]">
