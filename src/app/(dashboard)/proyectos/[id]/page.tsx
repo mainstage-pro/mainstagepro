@@ -248,6 +248,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"resumen" | "operacion" | "tareas" | "finanzas" | "extras">("resumen");
+  function scrollToSection(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTab(id.replace("section-", "") as typeof tab);
+  }
   const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
@@ -855,19 +859,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }, [id]);
 
-  // Lazy-load gastos operativos when Finanzas tab opens
+  // Lazy-load gastos operativos when proyecto loads
   useEffect(() => {
-    if (tab === "finanzas" && !gastosLoaded) loadGastosOp();
-  }, [tab]);
+    if (proyecto && !gastosLoaded) loadGastosOp();
+  }, [proyecto?.id]); // eslint-disable-line
 
-  // Lazy-load evaluación cliente when Operativo tab opens
+  // Lazy-load evaluación cliente when proyecto loads
   useEffect(() => {
-    if (tab === "extras") loadEvalCliente();
-  }, [tab]);
+    if (proyecto) loadEvalCliente();
+  }, [proyecto?.id]); // eslint-disable-line
 
-  // Auto-expand suggested docs on first open
+  // Auto-expand suggested docs on first load
   useEffect(() => {
-    if (tab !== "extras" || !proyecto || openDocs.size > 0) return;
+    if (!proyecto || openDocs.size > 0) return;
     const te = (proyecto.tipoEvento || "").toUpperCase();
     const isMusical = te.includes("MUSICAL") || te.includes("CONCIERTO") || te.includes("FESTIVAL");
     const isEmpresarial = te.includes("EMPRESARIAL") || te.includes("CORPORATIVO") || te.includes("CONGRESO") || te.includes("CONFERENCIA");
@@ -875,7 +879,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       isEmpresarial ? ["avRundown", "requerimientosAV", "setupTecnico"] :
       ["programaEvento", "indicacionesMusicales", "coordinacionProveedores"];
     setOpenDocs(new Set(suggested));
-  }, [tab, proyecto]); // eslint-disable-line
+  }, [proyecto?.id]); // eslint-disable-line
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -1058,7 +1062,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       if (d.evaluacion) {
         setEvalCliente(d.evaluacion);
         setEvalClienteLoaded(true);
-        setTab("extras");
+        scrollToSection("section-extras");
       }
       await load(); // recargar para mostrar el cierre generado
     }
@@ -1967,45 +1971,72 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      {/* ── Estado pipeline (stepper lineal) ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Estado del proyecto</p>
-        {proyecto.estado === "CANCELADO" ? (
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-900/50 text-red-300">Cancelado</span>
-            <button onClick={() => cambiarEstado("PLANEACION")} disabled={saving} className="text-xs text-gray-500 hover:text-white transition-colors">Reactivar</button>
-          </div>
-        ) : (() => {
-          const STEPPER = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "COMPLETADO"] as const;
-          const STEPPER_LABELS: Record<string, string> = { PLANEACION: "Preparación", CONFIRMADO: "Confirmado", EN_CURSO: "En evento", COMPLETADO: "Finalizado" };
-          const idx = STEPPER.indexOf(proyecto.estado as typeof STEPPER[number]);
-          return (
-            <div className="flex items-center gap-1">
-              {STEPPER.map((e, i) => (
-                <div key={e} className="flex items-center flex-1 min-w-0">
-                  <button
-                    onClick={() => !saving && e !== proyecto.estado && cambiarEstado(e)}
-                    disabled={saving || e === proyecto.estado}
-                    title={ESTADO_LABELS[e]}
-                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-medium text-center transition-colors truncate ${
-                      e === proyecto.estado ? ESTADO_COLORS[e] :
-                      i < idx ? "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#2a2a2a]" :
-                      "bg-[#0d0d0d] text-gray-600 hover:text-gray-400 border border-[#1a1a1a]"
-                    }`}>
-                    {i < idx ? "✓ " : ""}{STEPPER_LABELS[e]}
+      {/* ── Progreso del proyecto ── */}
+      {(() => {
+        const checks = [
+          { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento, label: "Horario" },
+          { ok: !!proyecto.lugarEvento,                                   label: "Lugar" },
+          { ok: !!proyecto.cotizacion,                                    label: "Cotización" },
+          { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"), label: "Personal" },
+          { ok: proyecto.equipos.length > 0,                             label: "Equipo" },
+          { ok: proyecto.cuentasCobrar.length > 0,                       label: "CxC" },
+        ];
+        const completados = checks.filter(c => c.ok).length;
+        const pct = Math.round((completados / checks.length) * 100);
+        const barColor = pct >= 80 ? "#10b981" : pct >= 50 ? "#B3985B" : "#ef4444";
+        const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO"] as const;
+        const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
+        return (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Avance del proyecto</span>
+                {proyecto.estado === "CANCELADO" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/40 text-red-400 font-medium">Cancelado</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold tabular-nums" style={{ color: barColor }}>{pct}%</span>
+                {proyecto.estado !== "CANCELADO" ? (
+                  <select
+                    value={proyecto.estado}
+                    onChange={e => cambiarEstado(e.target.value)}
+                    disabled={saving}
+                    className="text-[11px] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-gray-300 focus:outline-none focus:border-[#B3985B]">
+                    {ESTADO_OPTS.map(e => <option key={e} value={e}>{ESTADO_LABELS_SHORT[e]}</option>)}
+                  </select>
+                ) : (
+                  <button onClick={() => cambiarEstado("PLANEACION")} disabled={saving}
+                    className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] px-2 py-1 rounded-lg transition-colors">
+                    Reactivar
                   </button>
-                  {i < STEPPER.length - 1 && <span className="text-gray-700 text-xs mx-0.5 shrink-0">›</span>}
-                </div>
-              ))}
-              <button onClick={() => cambiarEstado("CANCELADO")} disabled={saving}
-                className="ml-2 text-xs text-red-800 hover:text-red-500 px-2 py-1.5 border border-red-900/30 hover:border-red-700/50 rounded-lg transition-colors shrink-0"
-                title="Cancelar proyecto">
-                ✕
-              </button>
+                )}
+                {proyecto.estado !== "CANCELADO" && (
+                  <button onClick={() => cambiarEstado("CANCELADO")} disabled={saving}
+                    className="text-xs text-red-800 hover:text-red-500 border border-red-900/30 hover:border-red-700/50 px-2 py-1 rounded-lg transition-colors"
+                    title="Cancelar proyecto">✕</button>
+                )}
+              </div>
             </div>
-          );
-        })()}
-      </div>
+            {/* Barra de progreso */}
+            <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${pct}%`, backgroundColor: barColor }} />
+            </div>
+            {/* Checklist de avance */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {checks.map(c => (
+                <span key={c.label} className={`flex items-center gap-1 text-[11px] ${c.ok ? "text-[#555]" : "text-red-500"}`}>
+                  {c.ok
+                    ? <span className="text-[#444]">✓</span>
+                    : <span className="text-red-500 font-bold">✗</span>}
+                  {c.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── KPIs rápidos ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -2090,24 +2121,36 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
-        {(["resumen", "operacion", "tareas", "finanzas", "extras"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
-            }`}>
-            {t === "resumen" ? "Resumen"
-              : t === "operacion" ? "Operación"
-              : t === "tareas" ? "Tareas"
-              : t === "finanzas" ? "Finanzas"
-              : "Operativo"}
-          </button>
-        ))}
-      </div>
+      {/* ── Navegación de secciones ── */}
+      {(() => {
+        const fichaOk = !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento && !!proyecto.lugarEvento;
+        const operOk  = proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO");
+        const finOk   = !!proyecto.cotizacion;
+        const SECS = [
+          { id: "section-resumen",   label: "Resumen",   warn: !fichaOk },
+          { id: "section-operacion", label: "Operativo", warn: !operOk },
+          { id: "section-tareas",    label: "Tareas",    warn: false },
+          { id: "section-finanzas",  label: "Finanzas",  warn: !finOk },
+          { id: "section-extras",    label: "Docs",      warn: false },
+        ] as const;
+        return (
+          <div className="sticky top-0 z-20 flex gap-1 bg-[#0a0a0a]/95 backdrop-blur border border-[#1a1a1a] rounded-xl p-1 flex-wrap">
+            {SECS.map(s => (
+              <button key={s.id} onClick={() => scrollToSection(s.id)}
+                className={`relative flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  tab === s.id.replace("section-","") ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+                }`}>
+                {s.label}
+                {s.warn && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-red-500" />}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
-      {/* ────── TAB: RESUMEN ────── */}
-      {tab === "resumen" && (() => {
+      {/* ────── SECCIÓN: RESUMEN ────── */}
+      <div id="section-resumen" className="scroll-mt-4">
+      {(() => {
         const fichaCamposFaltantes: string[] = [];
         if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
         if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
@@ -2212,7 +2255,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       {loadingCierre ? "Calculando cierre…" : proyecto.cierreFinanciero ? "Cierre financiero registrado — ver detalle" : "Generar cierre financiero (real vs estimado)"}
                     </button>
                     {/* Eval interna shortcut */}
-                    <button onClick={() => setTab("extras")}
+                    <button onClick={() => scrollToSection("section-extras")}
                       className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">
                       <span className="w-5 h-5 rounded border border-[#444] flex items-center justify-center text-[10px]">→</span>
                       Llenar evaluación interna del evento
@@ -2257,7 +2300,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   ))}
                   {proyecto.bitacora.length > 3 && (
-                    <button onClick={() => setTab("extras")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                    <button onClick={() => scrollToSection("section-extras")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
                       Ver {proyecto.bitacora.length - 3} entradas más →
                     </button>
                   )}
@@ -2281,16 +2324,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     💬 WhatsApp cliente
                   </a>
                 )}
-                <button onClick={() => setTab("operacion")}
+                <button onClick={() => scrollToSection("section-operacion")}
                   className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
                   👥 Personal y equipo →
                 </button>
-                <button onClick={() => setTab("finanzas")}
+                <button onClick={() => scrollToSection("section-finanzas")}
                   className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
                   💰 Finanzas →
                 </button>
                 {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
-                  <button onClick={() => setTab("extras")}
+                  <button onClick={() => scrollToSection("section-extras")}
                     className="text-xs px-3 py-2 border border-[#B3985B]/40 rounded-lg text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                     📦 Protocolo salida/entrada →
                   </button>
@@ -2300,9 +2343,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         );
       })()}
+      </div>{/* /section-resumen */}
 
-      {/* ────── TAB: OPERACIÓN (Info) ────── */}
-      {tab === "operacion" && (() => {
+      {/* ────── SECCIÓN: OPERACIÓN ────── */}
+      <div id="section-operacion" className="scroll-mt-4">
+      {(() => {
         // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
         const fichaCamposFaltantes: string[] = [];
         if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
@@ -3198,8 +3243,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ────── TAB: EQUIPOS (dentro de OPERACIÓN) ────── */}
-      {tab === "operacion" && operTab === "personal" && (() => {
+      {/* ── Equipos (dentro de Operación) ── */}
+      {operTab === "personal" && (() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
         const camposFaltantesEq: string[] = [];
@@ -3423,9 +3468,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         );
       })()}
+      </div>{/* /section-operacion */}
 
-      {/* ────── TAB: OPERATIVO (scroll único — Rider · Checklist · Bitácora · Docs · Cierre) ────── */}
-      {tab === "extras" && (() => {
+      {/* ────── SECCIÓN: DOCS / OPERATIVO ────── */}
+      <div id="section-extras" className="scroll-mt-4">
+      {(() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
@@ -3946,15 +3993,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         );
       })()}
+      </div>{/* /section-extras */}
 
-
-      {/* ────── TAB: TAREAS ────── */}
-      {tab === "tareas" && (
+      {/* ────── SECCIÓN: TAREAS ────── */}
+      <div id="section-tareas" className="scroll-mt-4">
         <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
-      )}
+      </div>
 
-      {/* ────── TAB: FINANZAS ────── */}
-      {tab === "finanzas" && (() => {
+      {/* ────── SECCIÓN: FINANZAS ────── */}
+      <div id="section-finanzas" className="scroll-mt-4">
+      {(() => {
         // ── P&L en tiempo real ──────────────────────────────────────────────
         const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
         const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
@@ -4934,6 +4982,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
         );
       })()}
+      </div>{/* /section-finanzas */}
 
       {/* ── Modal editar gasto ── */}
       {editGasto && (
