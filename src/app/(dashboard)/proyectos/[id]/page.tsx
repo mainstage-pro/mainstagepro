@@ -553,6 +553,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
   const [selAsignar, setSelAsignar] = useState("");
+  // Estado para editar tarifa inline
+  const [editandoTarifaId, setEditandoTarifaId] = useState<string | null>(null);
+  const [editTarifaVal, setEditTarifaVal] = useState("");
 
   // Estados para otros gastos
   const [showGastoForm, setShowGastoForm] = useState(false);
@@ -1487,6 +1490,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
     setAsignandoId(null);
     setSelAsignar("");
+  }
+
+  async function guardarTarifa(pId: string) {
+    const monto = parseFloat(editTarifaVal);
+    if (isNaN(monto)) { setEditandoTarifaId(null); return; }
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tarifaAcordada: monto }),
+    });
+    const d = await res.json();
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => p.id === pId ? d.personal : p),
+    } : prev);
+    setEditandoTarifaId(null);
+    setEditTarifaVal("");
   }
 
   // ── Registrar gasto directo ──
@@ -2673,8 +2692,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                         {/* Actions row — wraps cleanly on mobile */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {p.tarifaAcordada != null && (
-                            <span className="text-gray-300 text-sm font-medium">{fmt(p.tarifaAcordada)}</span>
+                          {editandoTarifaId === p.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                value={editTarifaVal}
+                                onChange={e => setEditTarifaVal(e.target.value)}
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") guardarTarifa(p.id);
+                                  if (e.key === "Escape") { setEditandoTarifaId(null); setEditTarifaVal(""); }
+                                }}
+                                className="w-24 bg-[#1a1a1a] border border-[#B3985B] rounded px-2 py-0.5 text-white text-sm focus:outline-none"
+                              />
+                              <button onClick={() => guardarTarifa(p.id)} className="text-xs text-green-400 hover:text-green-300">✓</button>
+                              <button onClick={() => { setEditandoTarifaId(null); setEditTarifaVal(""); }} className="text-xs text-gray-500 hover:text-white">✕</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setEditandoTarifaId(p.id); setEditTarifaVal(String(p.tarifaAcordada ?? "")); }}
+                              className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300 hover:text-white" : "text-gray-600 italic hover:text-gray-400"}`}
+                            >
+                              {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}
+                            </button>
                           )}
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"

@@ -51,6 +51,7 @@ export function Combobox({
   function handleFocus() {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     updatePosition();
+    setQuery("");
     setOpen(true);
   }
 
