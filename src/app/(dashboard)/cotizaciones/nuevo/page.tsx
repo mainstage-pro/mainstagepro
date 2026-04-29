@@ -77,6 +77,23 @@ interface LineaLogistica {
   concepto: string; precioUnitario: number; cantidad: number; dias: number; subtotal: number;
 }
 
+interface JornadaSlot {
+  id: string;
+  rolId: string;
+  rolNombre: string;
+  cantidad: number;
+  nivel: string;    // AAA | AA | A
+  jornada: string;  // CORTA | MEDIA | LARGA
+  tarifa: number;
+}
+
+interface Jornada {
+  id: string;
+  fecha: string;   // YYYY-MM-DD
+  tipo: string;    // MONTAJE | OPERACION | DESMONTAJE | OTRO
+  slots: JornadaSlot[];
+}
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const DJ_TARIFAS: Record<string, number> = { AAA: 600, AA: 500, A: 400 };
 
@@ -224,6 +241,7 @@ function CotizadorForm() {
   const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
+  const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
   const [selOcDesc, setSelOcDesc] = useState("");
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
@@ -363,6 +381,12 @@ function CotizadorForm() {
           id: uid(), descripcion: l.descripcion,
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
         })));
+        if (cot.jornadasPlan) {
+          try {
+            const jp: Jornada[] = JSON.parse(cot.jornadasPlan);
+            setJornadasPlan(jp.map(j => ({ ...j, id: j.id || uid(), slots: j.slots.map(s => ({ ...s, id: s.id || uid() })) })));
+          } catch { /* ignore */ }
+        }
         return;
       }
 
@@ -823,6 +847,7 @@ function CotizadorForm() {
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
+      jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
       descuentoPatrocinioNota: dPatrocinioNotaPreservada,
       descuentoEspecialNota: dEspecialNotaPreservada,
       observaciones,
@@ -1704,6 +1729,133 @@ function CotizadorForm() {
                 <button onClick={() => setLineasOp(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
               </div>
             ))}
+          </Seccion>
+
+          {/* ── Plan de jornadas operativas ── */}
+          <Seccion titulo="Plan de jornadas operativas" hint="operativo para el proyecto · no afecta precios">
+            <p className="text-xs text-gray-500 mb-3">Define los días de trabajo por fecha (montaje, operación, desmontaje) y cuántos técnicos de qué rol necesitas cada día. Esto pre-carga el personal en el proyecto.</p>
+            {jornadasPlan.map((jornada, ji) => (
+              <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
+                {/* Header de la jornada */}
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <input
+                    type="date"
+                    value={jornada.fecha}
+                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, fecha: e.target.value } : j))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <select
+                    value={jornada.tipo}
+                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, tipo: e.target.value } : j))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  >
+                    <option value="MONTAJE">Montaje</option>
+                    <option value="OPERACION">Operación del evento</option>
+                    <option value="DESMONTAJE">Desmontaje</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                  <button
+                    onClick={() => setJornadasPlan(p => p.filter((_, i) => i !== ji))}
+                    className="ml-auto text-gray-600 hover:text-red-400 text-sm transition-colors"
+                  >
+                    × Quitar día
+                  </button>
+                </div>
+
+                {/* Slots de técnicos */}
+                {jornada.slots.length > 0 && (
+                  <div className="mb-2 space-y-1.5">
+                    {jornada.slots.map((slot, si) => (
+                      <div key={slot.id} className="flex items-center gap-2 flex-wrap py-1.5 border-b border-[#1a1a1a] last:border-0">
+                        <div className="flex-1 min-w-[140px]">
+                          <select
+                            value={slot.rolId}
+                            onChange={e => {
+                              const rol = roles.find(r => r.id === e.target.value);
+                              setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                                ...j,
+                                slots: j.slots.map((s, k) => k === si ? { ...s, rolId: e.target.value, rolNombre: rol?.nombre ?? "" } : s)
+                              } : j));
+                            }}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="">— Rol —</option>
+                            {roles.filter(r => r.nombre !== "DJ").map(r => (
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[10px] text-gray-500 whitespace-nowrap">Cant.</label>
+                          <input
+                            type="number" min="1" max="20" value={slot.cantidad}
+                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, cantidad: parseInt(e.target.value) || 1 } : s)
+                            } : j))}
+                            className="w-12 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs text-center focus:outline-none"
+                          />
+                        </div>
+                        <select
+                          value={slot.nivel}
+                          onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                            ...j, slots: j.slots.map((s, k) => k === si ? { ...s, nivel: e.target.value } : s)
+                          } : j))}
+                          className="w-16 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs focus:outline-none"
+                        >
+                          <option value="AAA">AAA</option>
+                          <option value="AA">AA</option>
+                          <option value="A">A</option>
+                        </select>
+                        <select
+                          value={slot.jornada}
+                          onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                            ...j, slots: j.slots.map((s, k) => k === si ? { ...s, jornada: e.target.value } : s)
+                          } : j))}
+                          className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs focus:outline-none"
+                        >
+                          <option value="CORTA">0–8 hrs</option>
+                          <option value="MEDIA">8–12 hrs</option>
+                          <option value="LARGA">12+ hrs</option>
+                        </select>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-gray-500">$</span>
+                          <input
+                            type="number" min="0" value={slot.tarifa}
+                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, tarifa: parseFloat(e.target.value) || 0 } : s)
+                            } : j))}
+                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none"
+                            placeholder="Tarifa"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                            ...j, slots: j.slots.filter((_, k) => k !== si)
+                          } : j))}
+                          className="text-gray-600 hover:text-red-400 text-base leading-none"
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                    ...j, slots: [...j.slots, { id: uid(), rolId: "", rolNombre: "", cantidad: 1, nivel: "AA", jornada: "MEDIA", tarifa: 0 }]
+                  } : j))}
+                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-2 py-1 rounded-lg transition-colors"
+                >
+                  + Agregar técnico
+                </button>
+              </div>
+            ))}
+
+            <button
+              onClick={() => setJornadasPlan(p => [...p, { id: uid(), fecha: evento.fechaEvento || "", tipo: "OPERACION", slots: [] }])}
+              className="w-full py-2 border border-dashed border-[#333] hover:border-[#B3985B] rounded-xl text-gray-500 hover:text-[#B3985B] text-sm transition-colors"
+            >
+              + Agregar día
+            </button>
           </Seccion>
 
           {/* ── Servicio de DJ ── */}

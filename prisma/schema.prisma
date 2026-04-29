@@ -305,6 +305,7 @@ model Cotizacion {
   mainstageTradeData  String?  // JSON: { activo, pct, entregables[], checklist, nivelSeleccionado, nivelAplicado, bonoVariable, clienteSeleccionoEn }
   tradeToken          String?  @unique @map("trade_token")
   planPagos           String?  // JSON: esquema de pagos (porcentajes y fechas para CxC)
+  jornadasPlan        String?  // JSON: plan operativo de jornadas por fecha (JornadaPlan[])
   observaciones       String?
   terminosComerciales String?
   vigenciaDias        Int      @default(30)
@@ -445,6 +446,7 @@ model ProyectoPersonal {
   rolTecnicoId    String?
   rolTecnico      RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
   participacion   String?  // OPERACION | MONTAJE | DESMONTAJE | TRANSPORTE | OTRO
+  fechaJornada    String?  // YYYY-MM-DD — fecha específica de la jornada (del plan de jornadas)
   nivel           String?  // AAA | AA | A
   jornada         String?  // CORTA | MEDIA | LARGA
   responsabilidad String?

@@ -128,6 +128,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     (l) => l.tipo === "OPERACION_TECNICA" && l.rolTecnicoId
   );
 
+  // Plan de jornadas operativas (si existe, reemplaza lineasPersonal para crear slots)
+  type JornadaSlotPlan = { rolId: string; rolNombre: string; cantidad: number; nivel: string; jornada: string; tarifa: number };
+  type JornadaPlan = { id: string; fecha: string; tipo: string; slots: JornadaSlotPlan[] };
+  let jornadasPlan: JornadaPlan[] = [];
+  try { jornadasPlan = cot.jornadasPlan ? JSON.parse(cot.jornadasPlan) : []; } catch { jornadasPlan = []; }
+
   // Ejecutar todo en una transacción
   let proyecto;
   try {
@@ -241,8 +247,26 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    // 3. Expandir personal de la cotización: cada línea con cantidad N → N filas individuales
-    if (lineasPersonal.length > 0) {
+    // 3. Crear slots de personal
+    if (jornadasPlan.length > 0) {
+      // Plan de jornadas definido: crear slots por fecha con fechaJornada y participacion
+      const personalData = jornadasPlan.flatMap((j) =>
+        j.slots.flatMap((slot) =>
+          Array.from({ length: Math.max(1, Math.round(slot.cantidad)) }, () => ({
+            proyectoId: proy.id,
+            rolTecnicoId: slot.rolId || null,
+            participacion: j.tipo,
+            fechaJornada: j.fecha,
+            nivel: slot.nivel || null,
+            jornada: slot.jornada || null,
+            tarifaAcordada: slot.tarifa > 0 ? slot.tarifa : null,
+            confirmado: false,
+          }))
+        )
+      );
+      await tx.proyectoPersonal.createMany({ data: personalData });
+    } else if (lineasPersonal.length > 0) {
+      // Fallback: expandir desde líneas de cotización (sin fecha específica)
       const personalData = lineasPersonal.flatMap((l) =>
         Array.from({ length: Math.max(1, Math.round(l.cantidad)) }, () => ({
           proyectoId: proy.id,

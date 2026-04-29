@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
       terminosComerciales = null,
       vigenciaDias = 30,
       notasSecciones = null,
+      jornadasPlan = null,
       incluirChofer = false,
       ...campos
     } = body;
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
         terminosComerciales,
         vigenciaDias,
         notasSecciones: notasSecciones ?? null,
+        jornadasPlan: jornadasPlan ? JSON.stringify(jornadasPlan) : null,
         nombreEvento: campos.nombreEvento || null,
         tipoEvento: campos.tipoEvento || null,
         tipoServicio: campos.tipoServicio || null,

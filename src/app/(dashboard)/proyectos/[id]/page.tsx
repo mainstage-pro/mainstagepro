@@ -19,6 +19,7 @@ interface RolTecnico { id: string; nombre: string; tarifaAAMedia: number | null;
 interface Personal {
   id: string; confirmado: boolean; estadoPago: string;
   participacion: string | null;
+  fechaJornada: string | null;
   nivel: string | null; jornada: string | null; responsabilidad: string | null;
   tarifaAcordada: number | null; notas: string | null;
   confirmToken: string | null; confirmRespuesta: string | null;
@@ -2684,6 +2685,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <p className="text-gray-500 text-xs mt-0.5">
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
                               {p.jornada ? ` · ${p.jornada}` : ""}
+                              {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
@@ -4221,7 +4223,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <div key={p.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
                       <div>
                         <p className="text-white text-sm">{nombre}</p>
-                        <p className="text-gray-500 text-xs">{rol}</p>
+                        <p className="text-gray-500 text-xs">{rol}{p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         {p.tarifaAcordada != null && p.tarifaAcordada > 0 ? (
