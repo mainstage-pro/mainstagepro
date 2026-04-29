@@ -1895,13 +1895,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Progreso del proyecto ── */}
       {(() => {
+        const _transportesParsed: TransporteSlot[] = (() => { try { return proyecto.transportes ? JSON.parse(proyecto.transportes) : []; } catch { return []; } })();
+        const _cateringParsed: { proveedorId?: string } = (() => { try { return proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {}; } catch { return {}; } })();
+        const _cronoParsed: CronoRow[] = (() => { try { return proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { return []; } })();
         const checks = [
-          { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento, label: "Horario" },
-          { ok: !!proyecto.lugarEvento,                                   label: "Lugar" },
-          { ok: !!proyecto.cotizacion,                                    label: "Cotización" },
-          ...(!esRenta ? [{ ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"), label: "Personal" }] : []),
-          { ok: proyecto.equipos.length > 0,                             label: "Equipo" },
-          { ok: proyecto.cuentasCobrar.length > 0,                       label: "CxC" },
+          { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,                              label: "Horario" },
+          { ok: !!proyecto.lugarEvento,                                                               label: "Lugar" },
+          { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,                      label: "Enc. del lugar" },
+          { ok: !!proyecto.fechaMontaje,                                                              label: "Montaje" },
+          { ok: !!proyecto.encargadoCliente,                                                         label: "Enc. cliente" },
+          { ok: !!proyecto.encargadoClienteContacto,                                                 label: "Contacto cliente" },
+          { ok: !!proyecto.encargado,                                                                label: "Responsable" },
+          { ok: !!proyecto.cotizacion,                                                               label: "Cotización" },
+          { ok: proyecto.cuentasCobrar.length > 0,                                                   label: "CxC" },
+          { ok: proyecto.equipos.length > 0,                                                         label: "Equipo" },
+          { ok: !!proyecto.contactosDireccion,                                                       label: "Contactos" },
+          ...(!esRenta ? [
+            { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),                  label: "Personal" },
+            { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),                      label: "Traslados" },
+            { ok: !!_cateringParsed.proveedorId,                                                     label: "Catering" },
+            { ok: _cronoParsed.length > 0,                                                           label: "Cronograma" },
+          ] : []),
         ];
         const completados = checks.filter(c => c.ok).length;
         const pct = Math.round((completados / checks.length) * 100);
