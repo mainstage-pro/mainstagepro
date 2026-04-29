@@ -1209,7 +1209,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               Contrato
             </Link>
           )}
-          <button onClick={() => { setForm(trato); setEditando(true); }}
+          <button onClick={async () => { setForm(trato); setEditando(true); if (clientesOpciones.length === 0) { const r = await fetch("/api/clientes"); const d = await r.json(); setClientesOpciones((d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({ value: c.id, label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre }))); } }}
             className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-xs transition-colors whitespace-nowrap">
             Editar
           </button>
@@ -2633,6 +2633,35 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
+                <Combobox
+                  value={trato.cliente.id}
+                  onChange={async (nuevoId) => {
+                    if (!nuevoId || nuevoId === trato.cliente.id) return;
+                    setSavingCliente(true);
+                    const res = await fetch(`/api/tratos/${id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ clienteId: nuevoId }),
+                    });
+                    if (res.ok) {
+                      const r2 = await fetch(`/api/tratos/${id}`);
+                      const d2 = await r2.json();
+                      if (d2.trato) setTrato(d2.trato);
+                      toast.success("Cliente actualizado");
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      toast.error(d.error ?? "Error al cambiar cliente");
+                    }
+                    setSavingCliente(false);
+                  }}
+                  options={clientesOpciones}
+                  placeholder={clientesOpciones.length === 0 ? "Cargando clientes..." : "Buscar cliente..."}
+                  disabled={savingCliente}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
