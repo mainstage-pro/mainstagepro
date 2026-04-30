@@ -1944,7 +1944,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {proyecto.horaInicioEvento && (
               <p className="text-gray-400 text-sm">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
             )}
-            {proyecto.lugarEvento && <p className="text-gray-500 text-xs mt-0.5">{proyecto.lugarEvento}</p>}
+            <p className="text-gray-500 text-xs mt-0.5">{proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}</p>
             {proyecto.cotizacion && (
               <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="text-[10px] text-[#B3985B] hover:underline block mt-1">
                 {proyecto.cotizacion.numeroCotizacion} · {fmt(proyecto.cotizacion.granTotal)}
@@ -2230,10 +2230,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* Evento */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
+
+              {/* Tipo de evento + servicio — badges estáticos */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {proyecto.tipoEvento && (() => {
+                  const TE: Record<string, string> = { MUSICAL: "🎸 Musical", SOCIAL: "🎊 Social", EMPRESARIAL: "🏢 Empresarial", OTRO: "📅 Otro" };
+                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
+                })()}
+                {proyecto.tipoServicio && (() => {
+                  const TS: Record<string, string> = { PRODUCCION_TECNICA: "🎛️ Producción técnica", RENTA: "📦 Renta de equipo", DIRECCION_TECNICA: "🎬 Dirección técnica" };
+                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
+                })()}
+                <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 text-xs">
+                  {proyecto.zona === "BAJIO" ? "📍 Bajío" : proyecto.zona === "NACIONAL" ? "✈️ Nacional" : "📍 Local"}
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div className="col-span-2">
                   <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
                 </div>
+                <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                 <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
                 <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
                 <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
