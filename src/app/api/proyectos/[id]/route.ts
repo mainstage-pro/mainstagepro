@@ -154,7 +154,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
-    "notasPortal", "responsables",
+    "notasPortal", "responsables", "proveedoresRenta",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`

@@ -416,6 +416,7 @@ model Proyecto {
   portalToken            String?   @unique // Token público para portal de cliente
   notasPortal            String?   // Mensaje visible al cliente en su portal
   responsables           String?   // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
+  proveedoresRenta       String?   // JSON: [{ id, nombre, contacto, equipos: string[] }] — proveedores de subarriendo manuales
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

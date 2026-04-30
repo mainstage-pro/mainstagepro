@@ -60,6 +60,7 @@ interface Proyecto {
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
+  proveedoresRenta: string | null;
   protocoloSalida: string | null;
   protocoloEntrada: string | null;
   recoleccionStatus: string;
@@ -527,6 +528,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderAddGuardar, setRiderAddGuardar] = useState(true);
   const [riderAddSaving, setRiderAddSaving] = useState(false);
 
+  // Proveedores de subarriendo (manuales)
+  type ProveedorRenta = { id: string; nombre: string; contacto: string; equipos: string[] };
+  const [proveedoresRentaData, setProveedoresRentaData] = useState<ProveedorRenta[]>([]);
+  const [addingProvRenta, setAddingProvRenta] = useState(false);
+  const [newProvNombre, setNewProvNombre] = useState("");
+  const [newProvContacto, setNewProvContacto] = useState("");
+  const [newProvEquipos, setNewProvEquipos] = useState("");
+
+  async function saveProveedoresRenta(data: ProveedorRenta[]) {
+    setProveedoresRentaData(data);
+    const body = JSON.stringify({ proveedoresRenta: JSON.stringify(data) });
+    const res = await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+    const d = await res.json();
+    if (d.proyecto) setProyecto(prev => prev ? { ...prev, proveedoresRenta: d.proyecto.proveedoresRenta } : prev);
+  }
+
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
   const [addingNota, setAddingNota] = useState(false);
@@ -619,6 +636,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const p = d.proyecto as Proyecto;
       setProyecto(p);
       setRiderEquipos(p.equipos ?? []);
+      try { setProveedoresRentaData(p.proveedoresRenta ? JSON.parse(p.proveedoresRenta) : []); } catch { /* ignore */ }
       setNotasPortal(p.notasPortal ?? "");
       try {
         const resp = p.responsables ? JSON.parse(p.responsables) : {};
@@ -859,9 +877,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const te = (proyecto.tipoEvento || "").toUpperCase();
     const isMusical = te.includes("MUSICAL") || te.includes("CONCIERTO") || te.includes("FESTIVAL");
     const isEmpresarial = te.includes("EMPRESARIAL") || te.includes("CORPORATIVO") || te.includes("CONGRESO") || te.includes("CONFERENCIA");
-    const suggested = isMusical ? ["inputList", "soundcheck", "runningOrder"] :
-      isEmpresarial ? ["avRundown", "requerimientosAV", "setupTecnico"] :
-      ["programaEvento", "indicacionesMusicales", "coordinacionProveedores"];
+    const suggested = isMusical ? ["soundcheck"] :
+      isEmpresarial ? ["programaEvento", "coordinacionProveedores"] :
+      ["programaEvento", "coordinacionProveedores"];
     setOpenDocs(new Set(suggested));
   }, [proyecto?.id]); // eslint-disable-line
 
@@ -3332,27 +3350,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
         const esSocial = !esMusical && !esEmpresarial;
         type DocsData = {
-          inputList: { canal: string; instrumento: string; artista: string; microfono: string; notas: string }[];
           soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
-          runningOrder: { hora: string; acto: string; duracion: string; notas: string }[];
           programaEvento: { hora: string; actividad: string; responsable: string; notas: string }[];
-          indicacionesMusicales: string;
           coordinacionProveedores: { proveedor: string; contacto: string; horario: string; notas: string }[];
-          avRundown: { hora: string; actividad: string; presentador: string; av: string; notas: string }[];
-          requerimientosAV: { ponente: string; micro: string; presentacion: string; notas: string }[];
-          setupTecnico: string;
         };
 
         const defaultDocs: DocsData = {
-          inputList: [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }],
           soundcheck: [{ hora: "", artista: "", duracion: "", notas: "" }],
-          runningOrder: [{ hora: "", acto: "", duracion: "", notas: "" }],
           programaEvento: [{ hora: "", actividad: "", responsable: "", notas: "" }],
-          indicacionesMusicales: "",
           coordinacionProveedores: [{ proveedor: "", contacto: "", horario: "", notas: "" }],
-          avRundown: [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }],
-          requerimientosAV: [{ ponente: "", micro: "", presentacion: "", notas: "" }],
-          setupTecnico: "",
         };
 
         let docs: DocsData;
@@ -3668,63 +3674,133 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
 
+            {/* ═══════ ZONA 1.5: PROVEEDORES DE SUBARRIENDO ═══════ */}
+            <SectionDivider label="Proveedores de subarriendo" />
+            <div className="space-y-4">
+              <div>
+                <p className="text-white font-semibold">Proveedores de equipo rentado</p>
+                <p className="text-gray-500 text-xs mt-0.5">Empresas o personas que nos proveen equipo para este evento</p>
+              </div>
+
+              {/* Auto-agrupados desde cotización */}
+              {(() => {
+                const mapa = new Map<string, { telefono: string | null; equipos: string[] }>();
+                for (const e of riderEquipos) {
+                  if (!e.proveedor) continue;
+                  const n = e.proveedor.nombre;
+                  if (!mapa.has(n)) mapa.set(n, { telefono: e.proveedor.telefono, equipos: [] });
+                  mapa.get(n)!.equipos.push([e.equipo.marca, e.equipo.modelo, e.equipo.descripcion].filter(Boolean).join(" · "));
+                }
+                if (mapa.size === 0 && proveedoresRentaData.length === 0) return (
+                  <div className="bg-[#111] border border-[#222] rounded-xl py-8 text-center">
+                    <p className="text-gray-600 text-sm">Sin proveedores de renta registrados</p>
+                    <p className="text-gray-700 text-xs mt-1">Los proveedores asignados en equipos aparecerán aquí automáticamente</p>
+                  </div>
+                );
+                return Array.from(mapa.entries()).map(([nombre, { telefono, equipos }]) => (
+                  <div key={nombre} className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-white text-sm font-medium">{nombre}</p>
+                        {telefono && <p className="text-gray-500 text-xs mt-0.5">{telefono}</p>}
+                      </div>
+                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full shrink-0">Desde cotización</span>
+                    </div>
+                    <ul className="space-y-0.5">
+                      {equipos.map((eq, i) => (
+                        <li key={i} className="text-xs text-gray-400 flex items-start gap-1.5"><span className="text-gray-700 mt-0.5">·</span>{eq}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ));
+              })()}
+
+              {/* Proveedores manuales */}
+              {proveedoresRentaData.map(prov => (
+                <div key={prov.id} className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-white text-sm font-medium">{prov.nombre}</p>
+                      {prov.contacto && <p className="text-gray-500 text-xs mt-0.5">{prov.contacto}</p>}
+                    </div>
+                    <button onClick={() => saveProveedoresRenta(proveedoresRentaData.filter(p => p.id !== prov.id))} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+                  </div>
+                  {prov.equipos.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {prov.equipos.map((eq, i) => (
+                        <li key={i} className="text-xs text-gray-400 flex items-start gap-1.5"><span className="text-gray-700 mt-0.5">·</span>{eq}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+
+              {/* Form agregar proveedor manual */}
+              {addingProvRenta ? (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+                  <p className="text-white text-sm font-medium">Agregar proveedor</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Nombre *</label>
+                      <input value={newProvNombre} onChange={e => setNewProvNombre(e.target.value)} placeholder="Ej: Audio Pro" className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Contacto / teléfono</label>
+                      <input value={newProvContacto} onChange={e => setNewProvContacto(e.target.value)} placeholder="555-1234" className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Lista de equipos (uno por línea)</label>
+                    <textarea value={newProvEquipos} onChange={e => setNewProvEquipos(e.target.value)} rows={3} placeholder={"Sistema L-Acoustics K2\nSubwoofers SB28\nConsola DiGiCo SD10"} className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        if (!newProvNombre.trim()) return;
+                        const nuevo: ProveedorRenta = {
+                          id: crypto.randomUUID(),
+                          nombre: newProvNombre.trim(),
+                          contacto: newProvContacto.trim(),
+                          equipos: newProvEquipos.split("\n").map(l => l.trim()).filter(Boolean),
+                        };
+                        saveProveedoresRenta([...proveedoresRentaData, nuevo]);
+                        setNewProvNombre(""); setNewProvContacto(""); setNewProvEquipos(""); setAddingProvRenta(false);
+                      }}
+                      className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors"
+                    >Guardar</button>
+                    <button onClick={() => { setAddingProvRenta(false); setNewProvNombre(""); setNewProvContacto(""); setNewProvEquipos(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setAddingProvRenta(true)} className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9ac6a] transition-colors">
+                  <span className="text-base leading-none">+</span> Agregar proveedor manualmente
+                </button>
+              )}
+            </div>
+
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
             <SectionDivider label="Documentos del show" />
             <div className="space-y-3">
-              <DocAccordion docKey="inputList" title="Input List" desc="Canal por canal · micrófono, instrumento, artista" tag={esMusical ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
-                  {docs.inputList.map((row, i) => { const update = (field: string, val: string) => { const next = docs.inputList.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, inputList: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "50px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.canal} onBlur={e => update("canal", e.target.value)} placeholder="#" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white text-center placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.instrumento} onBlur={e => update("instrumento", e.target.value)} placeholder="Instrumento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.microfono} onBlur={e => update("microfono", e.target.value)} placeholder="Micrófono / DI" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.inputList.filter((_, j) => j !== i); saveDocs({ ...docs, inputList: next.length ? next : [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, inputList: [...docs.inputList, { canal: String(docs.inputList.length + 1), instrumento: "", artista: "", microfono: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar canal</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" tag={esMusical ? "Sugerido" : undefined}>
+              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido">
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
                   {docs.soundcheck.map((row, i) => { const update = (field: string, val: string) => { const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, soundcheck: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="runningOrder" title="Show Schedule / Running Order" desc="Secuencia y tiempos del show" tag={esMusical ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
-                  {docs.runningOrder.map((row, i) => { const update = (field: string, val: string) => { const next = docs.runningOrder.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, runningOrder: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.acto} onBlur={e => update("acto", e.target.value)} placeholder="Acto / Momento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="45 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Cambio de set, iluminación..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.runningOrder.filter((_, j) => j !== i); saveDocs({ ...docs, runningOrder: next.length ? next : [{ hora: "", acto: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, runningOrder: [...docs.runningOrder, { hora: "", acto: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar momento</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="programaEvento" title="Programa del evento" desc="Secuencia completa de actividades" tag={esSocial ? "Sugerido" : undefined}>
+              <DocAccordion docKey="programaEvento" title="Programa general del evento" desc="Secuencia completa de actividades">
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
                   {docs.programaEvento.map((row, i) => { const update = (field: string, val: string) => { const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, programaEvento: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="indicacionesMusicales" title="Indicaciones musicales" desc="Géneros, canciones específicas, restricciones" tag={esSocial ? "Sugerido" : undefined}>
-                <div className="p-4"><textarea defaultValue={docs.indicacionesMusicales} onBlur={e => saveDocs({ ...docs, indicacionesMusicales: e.target.value })} rows={4} placeholder="Ej: primer vals: 'A Thousand Years' · No reggaeton · Playlist de coctel: jazz suave..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
-              </DocAccordion>
-              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." tag={esSocial ? "Sugerido" : undefined}>
+              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc.">
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
                   {docs.coordinacionProveedores.map((row, i) => { const update = (field: string, val: string) => { const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, coordinacionProveedores: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}><input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
                 </div>
-              </DocAccordion>
-              <DocAccordion docKey="avRundown" title="AV Rundown" desc="Agenda técnica audiovisual por sesión" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
-                  {docs.avRundown.map((row, i) => { const update = (field: string, val: string) => { const next = docs.avRundown.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, avRundown: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Sesión / actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentador} onBlur={e => update("presentador", e.target.value)} placeholder="Ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.av} onBlur={e => update("av", e.target.value)} placeholder="Pantalla, micro, video..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.avRundown.filter((_, j) => j !== i); saveDocs({ ...docs, avRundown: next.length ? next : [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, avRundown: [...docs.avRundown, { hora: "", actividad: "", presentador: "", av: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar sesión</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="requerimientosAV" title="Requerimientos AV por ponente" desc="Necesidades técnicas individuales" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
-                  {docs.requerimientosAV.map((row, i) => { const update = (field: string, val: string) => { const next = docs.requerimientosAV.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, requerimientosAV: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.ponente} onBlur={e => update("ponente", e.target.value)} placeholder="Nombre ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.micro} onBlur={e => update("micro", e.target.value)} placeholder="Solapa / diadema / mano" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentacion} onBlur={e => update("presentacion", e.target.value)} placeholder="Laptop / HDMI / USB" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.requerimientosAV.filter((_, j) => j !== i); saveDocs({ ...docs, requerimientosAV: next.length ? next : [{ ponente: "", micro: "", presentacion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, requerimientosAV: [...docs.requerimientosAV, { ponente: "", micro: "", presentacion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar ponente</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="setupTecnico" title="Setup técnico" desc="Descripción del montaje de audio y video" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4"><textarea defaultValue={docs.setupTecnico} onBlur={e => saveDocs({ ...docs, setupTecnico: e.target.value })} rows={5} placeholder="Describe el setup: ubicación del mixer, pantallas, proyectores, cámaras, sistema de audio line array / puntual, etc." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
               </DocAccordion>
               <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
             </div>
