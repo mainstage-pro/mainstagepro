@@ -376,6 +376,7 @@ export default function TratosPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [showNueva, setShowNueva] = useState(false);
+  const [showArchivados, setShowArchivados] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -417,6 +418,8 @@ export default function TratosPage() {
     router.push(`/cotizaciones/${cotizacionId}`);
   }
 
+  const hoy = new Date().toISOString().split("T")[0];
+
   const tratosFiltrados = tratos.filter(t => {
     const matchEtapa = !filtroEtapa || t.etapa === filtroEtapa;
     const q = busqueda.toLowerCase();
@@ -433,6 +436,11 @@ export default function TratosPage() {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
 
+  // Tratos próximos: sin fecha o fecha >= hoy. Archivados: fecha pasada.
+  const tratosProximos  = tratosFiltrados.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy);
+  const tratosArchivados = tratosFiltrados.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy)
+    .sort((a, b) => new Date(b.fechaEventoEstimada!).getTime() - new Date(a.fechaEventoEstimada!).getTime());
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -440,7 +448,7 @@ export default function TratosPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Tratos</h1>
           <p className="text-[#6b7280] text-sm">
-            {loading ? "Cargando..." : `${tratosFiltrados.length} de ${tratos.length} tratos`}
+            {loading ? "Cargando..." : `${tratosProximos.length} próximos${tratosArchivados.length > 0 ? ` · ${tratosArchivados.length} archivados` : ""}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -539,9 +547,9 @@ export default function TratosPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tratosFiltrados.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center py-12 text-[#6b7280] text-sm">Sin tratos que coincidan</td></tr>
-                  ) : tratosFiltrados.map(trato => {
+                  {tratosProximos.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center py-12 text-[#6b7280] text-sm">Sin tratos próximos que coincidan</td></tr>
+                  ) : tratosProximos.map(trato => {
                     const wa = waUrl(trato);
                     const expanded = expandedIds.has(trato.id);
                     const cots = trato.cotizaciones ?? [];
@@ -645,7 +653,7 @@ export default function TratosPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {ETAPAS.map(etapa => {
-                const col = tratosFiltrados.filter(t => t.etapa === etapa);
+                const col = tratosProximos.filter(t => t.etapa === etapa);
                 const total = col.reduce((s: number, t: Trato) => s + (t.presupuestoEstimado ?? 0), 0);
                 return (
                   <div key={etapa} className="flex flex-col gap-3">
@@ -672,6 +680,137 @@ export default function TratosPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Sección Archivados (eventos pasados) ── */}
+      {!loading && tratosArchivados.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setShowArchivados(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-[#111] border border-[#1e1e1e] rounded-xl hover:border-[#2a2a2a] transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <svg className={`w-3.5 h-3.5 text-gray-600 transition-transform ${showArchivados ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+              </svg>
+              <span className="text-sm font-medium text-gray-400 group-hover:text-white transition-colors">Eventos pasados — pendientes de cerrar</span>
+              <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full font-medium">{tratosArchivados.length}</span>
+            </div>
+            <span className="text-[10px] text-gray-600">Cotizaciones abiertas, pagos o evaluaciones pendientes</span>
+          </button>
+
+          {showArchivados && (
+            <div className="mt-2 bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px]">
+                  <thead>
+                    <tr className="border-b border-[#1e1e1e]">
+                      <th className="w-8 px-3 py-3" />
+                      {["Cliente", "Evento", "Etapa", "Cotizaciones", "Fecha evento", "Hace"].map(h => (
+                        <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                      ))}
+                      <th className="px-4 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tratosArchivados.map(trato => {
+                      const wa = waUrl(trato);
+                      const expanded = expandedIds.has(trato.id);
+                      const cots = trato.cotizaciones ?? [];
+                      const aprobada = cots.find((c: Cotizacion) => c.estado === "APROBADA");
+                      const diasPasados = trato.fechaEventoEstimada
+                        ? Math.floor((new Date().getTime() - new Date(trato.fechaEventoEstimada + "T12:00:00Z").getTime()) / 86400000)
+                        : 0;
+                      return (
+                        <>
+                          <tr key={trato.id} className="hover:bg-[#161616] transition-colors border-t border-[#1a1a1a] first:border-t-0 opacity-80 hover:opacity-100">
+                            <td className="px-3 py-3 w-8">
+                              <button onClick={() => toggleExpand(trato.id)}
+                                className="text-[#444] hover:text-[#B3985B] transition-colors p-0.5 rounded">
+                                <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+                                </svg>
+                              </button>
+                            </td>
+                            <td className="px-4 py-3">
+                              <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                                {trato.cliente.nombre}
+                              </Link>
+                              {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-[#9ca3af]">
+                              {trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || trato.tipoEvento}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${ETAPA_COLORS[trato.etapa] ?? "bg-gray-800 text-gray-400"}`}>
+                                {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {cots.length === 0 ? (
+                                <span className="text-[#444] text-[10px]">—</span>
+                              ) : (
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {cots.map((c: Cotizacion) => (
+                                    <Link key={c.id} href={`/cotizaciones/${c.id}`}
+                                      onClick={e => e.stopPropagation()}
+                                      className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium hover:opacity-75 transition-opacity ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}
+                                      title={`${c.numeroCotizacion} · ${formatCurrency(c.granTotal)}`}>
+                                      {c.numeroCotizacion}
+                                    </Link>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">
+                              {trato.fechaEventoEstimada ? fmtFecha(trato.fechaEventoEstimada) : "—"}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-xs font-medium ${diasPasados > 30 ? "text-red-400" : diasPasados > 7 ? "text-amber-400" : "text-gray-500"}`}>
+                                {diasPasados === 1 ? "Ayer" : `${diasPasados}d`}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-3">
+                                {wa && (
+                                  <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                                    className="text-green-500 hover:text-green-400 transition-colors">
+                                    <WaIcon />
+                                  </a>
+                                )}
+                                {aprobada?.proyecto ? (
+                                  <Link href={`/proyectos/${aprobada.proyecto.id}`} className="text-green-400 text-xs hover:underline">
+                                    Proyecto →
+                                  </Link>
+                                ) : (
+                                  <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-xs hover:underline">
+                                    Ver →
+                                  </Link>
+                                )}
+                                <button onClick={() => eliminar(trato.id, trato.cliente.nombre)} disabled={deletingId === trato.id}
+                                  className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50">
+                                  {deletingId === trato.id ? "..." : "Eliminar"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {expanded && (
+                            <tr key={`${trato.id}-cots-arch`} className="border-t border-[#1a1a1a]">
+                              <td />
+                              <td colSpan={7} className="p-0">
+                                <CotizacionesSublista trato={trato} />
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
