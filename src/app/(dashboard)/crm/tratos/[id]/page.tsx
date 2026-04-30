@@ -1426,39 +1426,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             <div className="p-6 space-y-6">
 
-              {/* ── Origen del contacto + Tipo de evento ── */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Origen */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                  <p className="text-xs font-bold text-white mb-3">Origen del contacto</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {ORIGENES_OUTBOUND.map(o => (
-                      <button key={o.id}
-                        onClick={async () => { const d = await patch({ origenLead: o.id }); if (d) setTrato(p => p ? { ...p, origenLead: o.id } : p); }}
-                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${trato.origenLead === o.id ? "border-[#B3985B] bg-[#B3985B]/15 text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#555]"}`}>
-                        {o.icon} {o.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tipo de evento */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                  <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[
-                      { id: "MUSICAL",     icon: "🎸", label: "Musical" },
-                      { id: "SOCIAL",      icon: "🎊", label: "Social" },
-                      { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
-                      { id: "OTRO",        icon: "📅", label: "Otro" },
-                    ].map(te => (
-                      <button key={te.id}
-                        onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                        <span>{te.icon}</span><span>{te.label}</span>
-                      </button>
-                    ))}
-                  </div>
+              {/* ── Tipo de evento ── */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "MUSICAL",     icon: "🎸", label: "Musical" },
+                    { id: "SOCIAL",      icon: "🎊", label: "Social" },
+                    { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
+                    { id: "OTRO",        icon: "📅", label: "Otro" },
+                  ].map(te => (
+                    <button key={te.id}
+                      onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                      <span>{te.icon}</span><span>{te.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
