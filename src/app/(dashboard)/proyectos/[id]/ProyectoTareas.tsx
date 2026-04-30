@@ -838,7 +838,7 @@ function ProyectoTaskModal({
               {/* Create button — create mode only */}
               {!inEditMode && (
                 <button
-                  onClick={handleCreate}
+                  onClick={() => handleCreate().then(onClose)}
                   disabled={creating || !titulo.trim()}
                   className="w-full py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 text-black font-semibold text-sm transition-colors"
                 >
