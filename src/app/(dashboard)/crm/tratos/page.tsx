@@ -358,6 +358,112 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
   );
 }
 
+// ── Tabla de tratos (lista) ───────────────────────────────────────────────────
+
+interface TratoTableProps {
+  tratos: Trato[];
+  showHace: boolean;
+  expandedIds: Set<string>;
+  toggleExpand: (id: string) => void;
+  deletingId: string | null;
+  eliminar: (id: string, nombre: string) => void;
+  borderClass: string;
+  headerClass: string;
+}
+
+function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, eliminar, borderClass, headerClass }: TratoTableProps) {
+  return (
+    <div className={`rounded-xl border overflow-hidden ${borderClass}`}>
+      <div className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 border-b text-[10px] font-medium uppercase tracking-wider ${headerClass}`}>
+        <span>Cliente / Evento</span>
+        <span>Fecha</span>
+        <span>Presupuesto</span>
+        <span />
+      </div>
+      <div className="divide-y divide-[#1a1a1a]">
+        {tratos.map(t => {
+          const wa = waUrl(t);
+          const expanded = expandedIds.has(t.id);
+          const cots = t.cotizaciones ?? [];
+          const fechaLabel = t.fechaEventoEstimada
+            ? showHace
+              ? (() => {
+                  const diff = Math.floor((new Date().getTime() - new Date(t.fechaEventoEstimada + "T00:00:00").getTime()) / 86400000);
+                  return diff === 0 ? "Hoy" : diff === 1 ? "Ayer" : `Hace ${diff}d`;
+                })()
+              : fmtFecha(t.fechaEventoEstimada)
+            : null;
+
+          return (
+            <div key={t.id}>
+              <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] group">
+                <button onClick={() => toggleExpand(t.id)}
+                  className="shrink-0 text-[#444] hover:text-gray-300 transition-colors">
+                  <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/crm/tratos/${t.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                      {t.cliente.nombre}
+                    </Link>
+                    {t.cliente.empresa && <span className="text-[#555] text-xs">{t.cliente.empresa}</span>}
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ETAPA_COLORS[t.etapa] ?? "bg-[#222] text-[#888]"}`}>
+                      {ETAPA_LABELS[t.etapa] ?? t.etapa}
+                    </span>
+                  </div>
+                  <div className="text-[#555] text-xs mt-0.5">
+                    {t.nombreEvento || TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
+                    {t.lugarEstimado && <span className="ml-2 text-[#444]">· {t.lugarEstimado}</span>}
+                  </div>
+                </div>
+                {cots.length > 0 && (
+                  <span className="text-[10px] text-[#555] shrink-0">{cots.length} cot.</span>
+                )}
+                <div className="shrink-0">
+                  {fechaLabel ? (
+                    <span className={`text-xs font-medium ${showHace ? "text-amber-400" : "text-[#9ca3af]"}`}>{fechaLabel}</span>
+                  ) : (
+                    <span className="text-[#333] text-xs">—</span>
+                  )}
+                </div>
+                <div className="shrink-0 min-w-[80px] text-right">
+                  {t.presupuestoEstimado ? (
+                    <span className="text-[#B3985B] text-xs">{formatCurrency(t.presupuestoEstimado)}</span>
+                  ) : (
+                    <span className="text-[#333] text-xs">—</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                      className="text-green-500 hover:text-green-400 transition-colors">
+                      <WaIcon />
+                    </a>
+                  )}
+                  <button onClick={() => eliminar(t.id, t.cliente.nombre)} disabled={deletingId === t.id}
+                    className="text-[#333] hover:text-red-400 transition-colors disabled:opacity-40">
+                    {deletingId === t.id ? (
+                      <span className="text-[10px]">...</span>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                        <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                      </svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              {expanded && <CotizacionesSublista trato={t} />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TratosPage() {
@@ -479,294 +585,98 @@ export default function TratosPage() {
         </div>
       </div>
 
-      {/* Barra de búsqueda + filtros etapa */}
-      {!loading && (
-        <div className="flex flex-col gap-3 mb-6">
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
-            </svg>
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-              placeholder="Buscar por cliente, empresa, evento..."
-              className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
-            {busqueda && (
-              <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
-            )}
-          </div>
-          {vista === "lista" && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex gap-2 overflow-x-auto pb-1 flex-1">
-                <button onClick={() => setFiltroEtapa(null)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!filtroEtapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
-                  Todos ({tratos.length})
+      {/* ── Búsqueda ── */}
+      <div className="relative mb-4">
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
+        </svg>
+        <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+          placeholder="Buscar por cliente, empresa, evento..."
+          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+        {busqueda && (
+          <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
+        )}
+      </div>
+
+      {/* ── Vista Lista: dos columnas ── */}
+      {vista === "lista" && (
+        <div className="flex gap-4 items-start">
+
+          {/* ── Sidebar izquierdo: etapas ── */}
+          <div className="w-44 shrink-0 space-y-1">
+            {([{ key: null, label: "Todos" }, ...ETAPAS.map(e => ({ key: e, label: ETAPA_LABELS[e] }))] as { key: string | null; label: string }[]).map(({ key, label }) => {
+              const total    = tratos.filter(t => !key || t.etapa === key);
+              const proxN    = total.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy).length;
+              const archN    = total.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy).length;
+              const activo   = filtroEtapa === key;
+              const accentCls = key === null ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
+                : key === "DESCUBRIMIENTO" ? "border-blue-700/60 text-blue-300 bg-blue-950/30"
+                : key === "OPORTUNIDAD"    ? "border-yellow-600/60 text-yellow-300 bg-yellow-950/30"
+                : key === "VENTA_CERRADA"  ? "border-green-700/60 text-green-300 bg-green-950/30"
+                :                            "border-red-700/60 text-red-300 bg-red-950/30";
+              return (
+                <button key={String(key)} onClick={() => setFiltroEtapa(key)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${activo ? accentCls : "border-transparent text-gray-500 hover:text-white hover:bg-[#161616]"}`}>
+                  <div className="text-xs font-semibold">{label}</div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] text-gray-600">{proxN} próx.</span>
+                    {archN > 0 && <span className="text-[10px] text-amber-600">{archN} pend.</span>}
+                  </div>
                 </button>
-                {ETAPAS.map(etapa => {
-                  const count = tratos.filter(t => t.etapa === etapa).length;
-                  return (
-                    <button key={etapa} onClick={() => setFiltroEtapa(filtroEtapa === etapa ? null : etapa)}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${filtroEtapa === etapa ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#6b7280] hover:text-white"}`}>
-                      {ETAPA_LABELS[etapa]} ({count})
-                    </button>
-                  );
-                })}
-              </div>
+              );
+            })}
+            <div className="pt-2 border-t border-[#1a1a1a]">
               <select value={orden} onChange={e => setOrden(e.target.value as typeof orden)}
-                className="shrink-0 bg-[#1a1a1a] border border-[#2a2a2a] text-[#9ca3af] text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
-                <option value="evento_asc">Fecha evento ↑</option>
-                <option value="evento_desc">Fecha evento ↓</option>
+                className="w-full bg-[#111] border border-[#1e1e1e] text-[#555] text-[10px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
+                <option value="evento_asc">Fecha ↑</option>
+                <option value="evento_desc">Fecha ↓</option>
                 <option value="creacion_desc">Más recientes</option>
                 <option value="creacion_asc">Más antiguos</option>
               </select>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Sección: Eventos pasados (siempre visible si hay) ── */}
-      {!loading && tratosArchivados.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
-            <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full font-medium">{tratosArchivados.length}</span>
-            <span className="text-[10px] text-gray-600">Eventos pasados con pagos, evaluaciones o cierre pendiente</span>
           </div>
-          <div className="bg-[#111] border border-amber-900/30 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-amber-900/20 bg-amber-950/20">
-                    <th className="w-8 px-3 py-3" />
-                    {["Cliente", "Evento", "Etapa", "Cotizaciones", "Fecha evento", "Hace"].map(h => (
-                      <th key={h} className="text-left text-[10px] uppercase tracking-wider text-amber-900/80 px-4 py-3 font-medium">{h}</th>
-                    ))}
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {tratosArchivados.map(trato => {
-                    const wa = waUrl(trato);
-                    const expanded = expandedIds.has(trato.id);
-                    const cots = trato.cotizaciones ?? [];
-                    const aprobada = cots.find((c: Cotizacion) => c.estado === "APROBADA");
-                    const diasPasados = trato.fechaEventoEstimada
-                      ? Math.floor((new Date().getTime() - new Date(trato.fechaEventoEstimada + "T12:00:00Z").getTime()) / 86400000)
-                      : 0;
-                    return (
-                      <>
-                        <tr key={trato.id} className="hover:bg-[#161616] transition-colors border-t border-[#1a1a1a] first:border-t-0">
-                          <td className="px-3 py-3 w-8">
-                            <button onClick={() => toggleExpand(trato.id)}
-                              className="text-[#444] hover:text-[#B3985B] transition-colors p-0.5 rounded">
-                              <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                              </svg>
-                            </button>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-                              {trato.cliente.nombre}
-                            </Link>
-                            {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-[#9ca3af]">
-                            {trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || trato.tipoEvento}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${ETAPA_COLORS[trato.etapa] ?? "bg-gray-800 text-gray-400"}`}>
-                              {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {cots.length === 0 ? (
-                              <span className="text-[#444] text-[10px]">—</span>
-                            ) : (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {cots.map((c: Cotizacion) => (
-                                  <Link key={c.id} href={`/cotizaciones/${c.id}`}
-                                    onClick={e => e.stopPropagation()}
-                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium hover:opacity-75 transition-opacity ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}
-                                    title={`${c.numeroCotizacion} · ${formatCurrency(c.granTotal)}`}>
-                                    {c.numeroCotizacion}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">
-                            {trato.fechaEventoEstimada ? fmtFecha(trato.fechaEventoEstimada) : "—"}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <span className={`text-xs font-semibold ${diasPasados > 30 ? "text-red-400" : diasPasados > 7 ? "text-amber-400" : "text-gray-500"}`}>
-                              {diasPasados === 1 ? "Ayer" : `${diasPasados}d`}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-3">
-                              {wa && (
-                                <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-                                  className="text-green-500 hover:text-green-400 transition-colors">
-                                  <WaIcon />
-                                </a>
-                              )}
-                              {aprobada?.proyecto ? (
-                                <Link href={`/proyectos/${aprobada.proyecto.id}`} className="text-green-400 text-xs hover:underline">
-                                  Proyecto →
-                                </Link>
-                              ) : (
-                                <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-xs hover:underline">
-                                  Ver →
-                                </Link>
-                              )}
-                              <button onClick={() => eliminar(trato.id, trato.cliente.nombre)} disabled={deletingId === trato.id}
-                                className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50">
-                                {deletingId === trato.id ? "..." : "Eliminar"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        {expanded && (
-                          <tr key={`${trato.id}-arch-cots`} className="border-t border-[#1a1a1a]">
-                            <td />
-                            <td colSpan={7} className="p-0">
-                              <CotizacionesSublista trato={trato} />
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── Vista Lista ── */}
-      {vista === "lista" && (
-        <div>
-          {tratosProximos.length > 0 && (
-            <div className="flex items-center gap-3 mb-3">
-              <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Próximos</h2>
-              <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#2a2a2a] px-2 py-0.5 rounded-full font-medium">{tratosProximos.length}</span>
-            </div>
-          )}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          {loading ? (
-            <SkeletonPage rows={5} cols={5} />
-          ) : tratos.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>
-              <button onClick={() => setShowNueva(true)} className="inline-block mt-4 text-[#B3985B] text-sm hover:underline">
-                Crear primera oportunidad →
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-[#1e1e1e]">
-                    <th className="w-8 px-3 py-3" />
-                    {["Cliente", "Evento", "Etapa", "Cotizaciones", "Fecha est.", ""].map(h => (
-                      <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
+          {/* ── Panel derecho ── */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {loading ? (
+              <SkeletonPage rows={5} cols={5} />
+            ) : tratos.length === 0 ? (
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
+                <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>
+                <button onClick={() => setShowNueva(true)} className="inline-block mt-4 text-[#B3985B] text-sm hover:underline">
+                  Crear primera oportunidad →
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Pendientes de cerrar */}
+                {tratosArchivados.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
+                      <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full">{tratosArchivados.length}</span>
+                    </div>
+                    <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />
+                  </div>
+                )}
+
+                {/* Próximos */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Próximos</h2>
+                    <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{tratosProximos.length}</span>
+                  </div>
                   {tratosProximos.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center py-12 text-[#6b7280] text-sm">Sin tratos próximos que coincidan</td></tr>
-                  ) : tratosProximos.map(trato => {
-                    const wa = waUrl(trato);
-                    const expanded = expandedIds.has(trato.id);
-                    const cots = trato.cotizaciones ?? [];
-                    const aprobada = cots.find((c: Cotizacion) => c.estado === "APROBADA");
-                    return (
-                      <>
-                        <tr key={trato.id} className="hover:bg-[#161616] transition-colors border-t border-[#1a1a1a] first:border-t-0">
-                          {/* Expand toggle */}
-                          <td className="px-3 py-3 w-8">
-                            <button onClick={() => toggleExpand(trato.id)}
-                              className="text-[#444] hover:text-[#B3985B] transition-colors p-0.5 rounded">
-                              <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                              </svg>
-                            </button>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-                              {trato.cliente.nombre}
-                            </Link>
-                            {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-[#9ca3af]">
-                            {trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || trato.tipoEvento}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${ETAPA_COLORS[trato.etapa] ?? "bg-gray-800 text-gray-400"}`}>
-                              {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
-                            </span>
-                          </td>
-                          {/* Cotizaciones mini-chips */}
-                          <td className="px-4 py-3">
-                            {cots.length === 0 ? (
-                              <span className="text-[#444] text-[10px]">—</span>
-                            ) : (
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {cots.map((c: Cotizacion) => (
-                                  <Link key={c.id} href={`/cotizaciones/${c.id}`}
-                                    onClick={e => e.stopPropagation()}
-                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium hover:opacity-75 transition-opacity ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}
-                                    title={`${c.numeroCotizacion} · ${formatCurrency(c.granTotal)}`}>
-                                    {c.numeroCotizacion}
-                                  </Link>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">
-                            {trato.fechaEventoEstimada ? fmtFecha(trato.fechaEventoEstimada) : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-3">
-                              {wa && (
-                                <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
-                                  className="text-green-500 hover:text-green-400 transition-colors">
-                                  <WaIcon />
-                                </a>
-                              )}
-                              {aprobada?.proyecto ? (
-                                <Link href={`/proyectos/${aprobada.proyecto.id}`} className="text-green-400 text-xs hover:underline">
-                                  Proyecto →
-                                </Link>
-                              ) : (
-                                <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-xs hover:underline">
-                                  Ver →
-                                </Link>
-                              )}
-                              <button onClick={() => eliminar(trato.id, trato.cliente.nombre)} disabled={deletingId === trato.id}
-                                className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50">
-                                {deletingId === trato.id ? "..." : "Eliminar"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        {/* Sublista de cotizaciones */}
-                        {expanded && (
-                          <tr key={`${trato.id}-cots`} className="border-t border-[#1a1a1a]">
-                            <td />
-                            <td colSpan={6} className="p-0">
-                              <CotizacionesSublista trato={trato} />
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center text-[#555] text-sm">
+                      Sin tratos próximos en esta etapa
+                    </div>
+                  ) : (
+                    <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -780,7 +690,7 @@ export default function TratosPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {ETAPAS.map(etapa => {
-                const col = tratosProximos.filter(t => t.etapa === etapa);
+                const col = tratosFiltrados.filter(t => t.etapa === etapa);
                 const total = col.reduce((s: number, t: Trato) => s + (t.presupuestoEstimado ?? 0), 0);
                 return (
                   <div key={etapa} className="flex flex-col gap-3">
