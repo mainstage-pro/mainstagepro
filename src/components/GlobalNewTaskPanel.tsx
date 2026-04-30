@@ -119,10 +119,8 @@ export default function GlobalNewTaskPanel() {
       toast.error(d.error ?? "Error al crear tarea");
       return;
     }
-    const { tarea } = await res.json();
-    setTareaId(tarea.id);
-    setPhase("edit");
     toast.success("Tarea creada");
+    cerrar();
   }
 
   async function guardar() {
