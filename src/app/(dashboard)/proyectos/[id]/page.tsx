@@ -57,7 +57,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; lineas: { id: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
@@ -500,6 +500,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [addingPersonal, setAddingPersonal] = useState(false);
   const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
+  const [showSugerencias, setShowSugerencias] = useState(false);
+  const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
 
   // Estados para nuevo técnico inline
   const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
@@ -1480,6 +1482,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp("");
     setShowAddPersonal(false);
     setAddingPersonal(false);
+  }
+
+  // ── Agregar slot(s) desde sugerencia de cotización ──
+  async function agregarDesdeLinea(linea: NonNullable<NonNullable<typeof proyecto>["cotizacion"]>["lineas"][0]) {
+    setAgregandoLinea(linea.id);
+    const slots: Personal[] = [];
+    for (let i = 0; i < linea.cantidad; i++) {
+      const res = await fetch(`/api/proyectos/${id}/personal`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tecnicoId: null,
+          rolTecnicoId: linea.rolTecnicoId || null,
+          participacion: "OPERACION",
+          nivel: linea.nivel || "A",
+          jornada: linea.jornada || "MEDIA",
+          tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
+          responsabilidad: linea.descripcion || null,
+        }),
+      });
+      if (res.ok) { const d = await res.json(); slots.push(d.personal); }
+    }
+    setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, ...slots] } : prev);
+    setAgregandoLinea(null);
   }
 
   // ── Confirmar/desconfirmar personal ──
@@ -2699,6 +2724,63 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
             </div>
+
+            {/* ── Sugerencias de cotización ── */}
+            {proyecto.cotizacion && proyecto.cotizacion.lineas.length > 0 && (() => {
+              const lineas = proyecto.cotizacion!.lineas;
+              const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
+              const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              const restante = presupuestoCotizado - presupuestoAsignado;
+              return (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowSugerencias(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#161616] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Sugerencias de cotización</span>
+                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded">{lineas.length} rol{lineas.length !== 1 ? "es" : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <div className="text-[10px] text-gray-600">Presupuesto personal cotizado</div>
+                        <div className="text-xs font-semibold text-white">{fmt(presupuestoCotizado)}</div>
+                      </div>
+                      <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
+                      </div>
+                      <span className="text-gray-600 text-xs">{showSugerencias ? "▲" : "▼"}</span>
+                    </div>
+                  </button>
+                  {showSugerencias && (
+                    <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                      {lineas.map(linea => (
+                        <div key={linea.id} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
+                              {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
+                              {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
+                          </div>
+                          <button
+                            onClick={() => agregarDesdeLinea(linea)}
+                            disabled={agregandoLinea === linea.id}
+                            className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Lista personal agrupada */}
             {proyecto.personal.length === 0 ? (

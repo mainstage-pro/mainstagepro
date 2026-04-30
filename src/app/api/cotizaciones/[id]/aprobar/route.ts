@@ -247,38 +247,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    // 3. Crear slots de personal
-    if (jornadasPlan.length > 0) {
-      // Plan de jornadas definido: crear slots por fecha con fechaJornada y participacion
-      const personalData = jornadasPlan.flatMap((j) =>
-        j.slots.flatMap((slot) =>
-          Array.from({ length: Math.max(1, Math.round(slot.cantidad)) }, () => ({
-            proyectoId: proy.id,
-            rolTecnicoId: slot.rolId || null,
-            participacion: j.tipo,
-            fechaJornada: j.fecha,
-            nivel: slot.nivel || null,
-            jornada: slot.jornada || null,
-            tarifaAcordada: slot.tarifa > 0 ? slot.tarifa : null,
-            confirmado: false,
-          }))
-        )
-      );
-      await tx.proyectoPersonal.createMany({ data: personalData });
-    } else if (lineasPersonal.length > 0) {
-      // Fallback: expandir desde líneas de cotización (sin fecha específica)
-      const personalData = lineasPersonal.flatMap((l) =>
-        Array.from({ length: Math.max(1, Math.round(l.cantidad)) }, () => ({
-          proyectoId: proy.id,
-          rolTecnicoId: l.rolTecnicoId!,
-          nivel: l.nivel ?? null,
-          jornada: l.jornada ?? null,
-          tarifaAcordada: l.precioUnitario > 0 ? l.precioUnitario : null,
-          confirmado: false,
-        }))
-      );
-      await tx.proyectoPersonal.createMany({ data: personalData });
-    }
+    // 3. Personal: se deja en blanco — el coordinador lo arma desde el proyecto
+    //    usando las sugerencias y presupuesto de la cotización como referencia.
 
     // 4. Crear checklist base según tipo de servicio
     const tipoServicio = cot.tipoServicio || cot.trato.tipoServicio;

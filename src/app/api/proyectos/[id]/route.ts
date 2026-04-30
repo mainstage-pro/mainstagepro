@@ -43,7 +43,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
         encargado: { select: { id: true, name: true } },
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        cotizacion: {
+          select: {
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            lineas: {
+              where: { tipo: "OPERACION_TECNICA" },
+              select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+            },
+          },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -87,7 +95,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
         encargado: { select: { id: true, name: true } },
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        cotizacion: {
+          select: {
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            lineas: {
+              where: { tipo: "OPERACION_TECNICA" },
+              select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+            },
+          },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -126,6 +142,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     if (proyecto) {
       proyecto = {
         ...proyecto,
+        cotizacion: proyecto.cotizacion ? { ...(proyecto.cotizacion as Record<string, unknown>), lineas: [] } : null,
         equipos: proyecto.equipos.map((e: Record<string, unknown>) => ({
           ...e,
           riderAccesorios: [],
