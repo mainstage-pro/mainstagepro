@@ -56,6 +56,16 @@ export default function ProspectosPage() {
   const [prospectos, setProspectos] = useState<Prospecto[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroTemp, setFiltroTemp] = useState<string>("TODOS");
+  const [eliminando, setEliminando] = useState<string | null>(null);
+
+  async function eliminarProspecto(e: React.MouseEvent, id: string, nombre: string) {
+    e.stopPropagation();
+    if (!confirm(`¿Eliminar el prospecto "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    setEliminando(id);
+    await fetch(`/api/tratos/${id}`, { method: "DELETE" });
+    setProspectos(prev => prev.filter(p => p.id !== id));
+    setEliminando(null);
+  }
 
   useEffect(() => {
     fetch("/api/tratos?tipoProspecto=NURTURING")
@@ -140,61 +150,77 @@ export default function ProspectosPage() {
             const prox = fmtFecha(p.fechaProximaAccion);
 
             return (
-              <button key={p.id} onClick={() => router.push(`/crm/tratos/${p.id}`)}
-                className="w-full text-left bg-[#111] border border-[#1e1e1e] hover:border-emerald-900/60 rounded-xl px-4 py-3.5 transition-colors group">
-                <div className="flex items-center gap-3">
+              <div key={p.id} className="relative group">
+                <button onClick={() => router.push(`/crm/tratos/${p.id}`)}
+                  className="w-full text-left bg-[#111] border border-[#1e1e1e] hover:border-emerald-900/60 rounded-xl px-4 py-3.5 transition-colors group/row">
+                  <div className="flex items-center gap-3">
 
-                  {/* Temperatura dot */}
-                  <div className={`w-2 h-2 rounded-full shrink-0 ${temp.dot}`} />
+                    {/* Temperatura dot */}
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${temp.dot}`} />
 
-                  {/* Nombre + empresa */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-medium text-sm group-hover:text-emerald-200 transition-colors">
-                        {p.cliente.nombre}
-                      </span>
-                      {p.cliente.empresa && (
-                        <span className="text-gray-500 text-xs">{p.cliente.empresa}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      {/* Etapa */}
-                      <span className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#222] px-1.5 py-0.5 rounded">
-                        {etapa}
-                      </span>
-                      {/* Origen */}
-                      {origen && (
-                        <span className="text-[10px] text-gray-600">
-                          {origen.icon} {origen.label}
+                    {/* Nombre + empresa */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-white font-medium text-sm group-hover/row:text-emerald-200 transition-colors">
+                          {p.cliente.nombre}
                         </span>
-                      )}
-                      {/* Próxima acción */}
-                      {prox && (
-                        <span className={`text-[10px] font-medium ${prox.color}`}>
-                          🗓 {prox.label}
+                        {p.cliente.empresa && (
+                          <span className="text-gray-500 text-xs">{p.cliente.empresa}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#222] px-1.5 py-0.5 rounded">
+                          {etapa}
                         </span>
-                      )}
+                        {origen && (
+                          <span className="text-[10px] text-gray-600">
+                            {origen.icon} {origen.label}
+                          </span>
+                        )}
+                        {prox && (
+                          <span className={`text-[10px] font-medium ${prox.color}`}>
+                            🗓 {prox.label}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Temperatura badge */}
-                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium shrink-0 ${temp.cls}`}>
-                    <span>{temp.icon}</span>
-                    <span>{temp.label}</span>
-                  </div>
+                    {/* Temperatura badge */}
+                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium shrink-0 ${temp.cls}`}>
+                      <span>{temp.icon}</span>
+                      <span>{temp.label}</span>
+                    </div>
 
-                  {/* Responsable */}
-                  {p.responsable && (
-                    <span className="text-[10px] text-gray-600 shrink-0 hidden sm:block">
-                      {p.responsable.name.split(" ")[0]}
-                    </span>
+                    {/* Responsable */}
+                    {p.responsable && (
+                      <span className="text-[10px] text-gray-600 shrink-0 hidden sm:block">
+                        {p.responsable.name.split(" ")[0]}
+                      </span>
+                    )}
+
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 group-hover/row:text-gray-500 shrink-0 transition-colors">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Eliminar */}
+                <button
+                  onClick={ev => eliminarProspecto(ev, p.id, p.cliente.nombre)}
+                  disabled={eliminando === p.id}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-lg text-gray-700 hover:text-red-400 hover:bg-red-950/30 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                  title="Eliminar prospecto"
+                >
+                  {eliminando === p.id ? (
+                    <span className="text-xs">…</span>
+                  ) : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                      <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
                   )}
-
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-700 group-hover:text-gray-500 shrink-0 transition-colors">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                  </svg>
-                </div>
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
