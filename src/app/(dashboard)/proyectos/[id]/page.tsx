@@ -2879,45 +2879,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
           {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
+            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Catering de producción</p>
 
-            {/* Catering de producción */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Catering de producción</p>
-                <div className="flex items-center gap-2">
-                  {savingCatering && <span className="text-xs text-gray-600">Guardando...</span>}
-                  {catering.contactoTelefono && (
-                    <button onClick={abrirWhatsAppCatering}
-                      className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                      📲 Solicitar a proveedor
-                    </button>
-                  )}
-                </div>
-              </div>
-              {(proyecto.personal.length > 0 || (proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0)) && (
-                <div className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 mb-3">
-                  {proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0 && (
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Días cotizados</span>
-                      <span className="text-white font-semibold text-sm">{proyecto.cotizacion.diasComidas}</span>
-                    </div>
-                  )}
-                  {proyecto.personal.length > 0 && (
-                    <div className="flex flex-col">
-                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Personal asignado</span>
-                      <span className="text-white font-semibold text-sm">{proyecto.personal.length} técnicos</span>
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setCatering(p => ({
-                      ...p,
-                      personasCrew: String(proyecto.personal.length) || p.personasCrew,
-                      comidasPorDia: proyecto.cotizacion?.diasComidas ? String(proyecto.cotizacion.diasComidas) : p.comidasPorDia,
-                    }))}
-                    className="ml-auto text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors font-medium">
-                    ↺ Auto-llenar
+              {savingCatering && <p className="text-xs text-gray-600 mb-2">Guardando...</p>}
+              {catering.contactoTelefono && (
+                <div className="flex justify-end mb-3">
+                  <button onClick={abrirWhatsAppCatering}
+                    className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                    📲 Solicitar a proveedor
                   </button>
                 </div>
               )}
@@ -2949,16 +2919,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 {/* Personas */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-gray-500">Elementos a alimentar</label>
-                    {proyecto.personal.length > 0 && (
-                      <button type="button"
-                        onClick={() => setCatering(p => ({ ...p, personasCrew: String(proyecto.personal.length) }))}
-                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">
-                        ↺ {proyecto.personal.length} técnicos
-                      </button>
-                    )}
-                  </div>
+                  <label className="text-xs text-gray-500 block mb-1">Elementos a alimentar</label>
                   <input type="number" min="1" value={catering.personasCrew}
                     onChange={e => setCatering(p => ({ ...p, personasCrew: e.target.value }))}
                     placeholder="Ej: 8"
@@ -2966,14 +2927,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 {/* Servicios por día */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-gray-500">Servicios por día</label>
-                    {proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0 && (
-                      <span className="text-[10px] text-gray-600">
-                        {proyecto.cotizacion.diasComidas} día{proyecto.cotizacion.diasComidas !== 1 ? "s" : ""} cotizados
-                      </span>
-                    )}
-                  </div>
+                  <label className="text-xs text-gray-500 block mb-1">Servicios por día</label>
                   <input type="number" min="1" value={catering.comidasPorDia}
                     onChange={e => setCatering(p => ({ ...p, comidasPorDia: e.target.value }))}
                     placeholder="Ej: 2 (comida + cena)"
@@ -3083,56 +3037,37 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           {/* ── Documentos operativos ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
-            {(esRenta
-              ? (["CONTRATO_RENTA", "FOTOS_ENTREGA", "RIDER", "OTRO"] as const)
-              : (["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const)
-            ).map(tipo => {
-              const labels: Record<string, string> = {
-                CONTRATO_RENTA: "Contrato de renta",
-                FOTOS_ENTREGA:  "Fotos de entrega / estado del equipo",
-                RENDER: "Render real",
-                PLOT_PATCH: "Render plot / patch",
-                INPUT_LIST: "Input list",
-                RIDER: "Rider técnico",
-                FICHA_TECNICA: "Ficha técnica",
-                ITINERARIO: "Itinerario",
-                OTRO: "Otros documentos",
-              };
-              const archivosDelTipo = proyecto.archivos.filter(a => a.tipo === tipo);
-              return (
-                <div key={tipo} className="mb-4 last:mb-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-400 font-medium">{labels[tipo]}</p>
-                    <label className={`cursor-pointer text-xs border px-3 py-1 rounded-lg transition-colors ${
-                      uploadingTipo === tipo
-                        ? "border-gray-700 text-gray-600"
-                        : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
-                    }`}>
-                      {uploadingTipo === tipo ? "Subiendo..." : "+ Subir archivo"}
-                      <input type="file" className="hidden" disabled={uploadingTipo !== null}
-                        onChange={e => subirArchivo(e, tipo)} />
-                    </label>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Documentos operativos</p>
+              <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
+                uploadingTipo ? "border-gray-700 text-gray-600" : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
+              }`}>
+                {uploadingTipo ? "Subiendo..." : "+ Subir archivo"}
+                <input type="file" className="hidden" disabled={!!uploadingTipo}
+                  onChange={e => subirArchivo(e, "OTRO")} />
+              </label>
+            </div>
+            <p className="text-[11px] text-gray-600 mb-4">
+              {esRenta
+                ? "Contrato de renta · Fotos de entrega · Rider técnico · Otros"
+                : "Render · Plot / patch · Input list · Rider · Ficha técnica · Itinerario · Otros"}
+            </p>
+            {proyecto.archivos.length === 0 ? (
+              <p className="text-gray-700 text-xs italic">Sin archivos cargados</p>
+            ) : (
+              <div className="space-y-1">
+                {proyecto.archivos.map(a => (
+                  <div key={a.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                    <a href={a.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline truncate flex-1 mr-3">
+                      {a.nombre}
+                    </a>
+                    <button onClick={() => eliminarArchivo(a.id)}
+                      className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors shrink-0">×</button>
                   </div>
-                  {archivosDelTipo.length === 0 ? (
-                    <p className="text-gray-700 text-xs italic pl-1">Sin archivos</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {archivosDelTipo.map(a => (
-                        <div key={a.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
-                          <a href={a.url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline truncate flex-1 mr-3">
-                            {a.nombre}
-                          </a>
-                          <button onClick={() => eliminarArchivo(a.id)}
-                            className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors shrink-0">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            )}
           </div>
 
 
@@ -3227,31 +3162,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         return (
           <div className="space-y-4">
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-white text-xl font-bold">{proyecto.equipos.length}</p>
-                <p className="text-gray-500 text-xs">items totales</p>
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-white text-xl font-bold">{proyecto.equipos.filter(e => e.confirmado).length}</p>
-                <p className="text-gray-500 text-xs">confirmados</p>
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-yellow-400 text-xl font-bold">
-                  {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
-                </p>
-                <p className="text-gray-500 text-xs">costo externo</p>
-              </div>
-            </div>
-
-            {/* Botón agregar */}
-            {!showAddEquipo ? (
-              <button onClick={() => setShowAddEquipo(true)}
-                className="w-full border border-dashed border-[#333] hover:border-[#B3985B] text-gray-500 hover:text-[#B3985B] py-3 rounded-xl text-sm transition-colors">
-                + Agregar equipo
-              </button>
-            ) : (
+            {showAddEquipo && (
               <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agregar equipo</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -4774,70 +4685,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* Portal de clientes */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-white font-semibold text-sm">Portal de cliente</h3>
-                <p className="text-gray-600 text-xs mt-0.5">Enlace público con estado del proyecto, pagos y equipo</p>
-              </div>
-              {!proyecto.portalToken ? (
-                <button
-                  onClick={generarPortalToken}
-                  disabled={generandoToken}
-                  className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {generandoToken ? "Generando..." : "Generar enlace"}
-                </button>
-              ) : (
-                <button
-                  onClick={revocarPortalToken}
-                  disabled={revocandoToken}
-                  className="px-3 py-1.5 text-red-500 border border-red-900/40 text-xs font-medium rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                >
-                  {revocandoToken ? "Revocando..." : "Revocar"}
-                </button>
-              )}
-            </div>
-            {/* Notas para el cliente (siempre visible si tiene token) */}
-            {proyecto.portalToken && (
-              <div className="mt-4 pt-4 border-t border-[#1e1e1e] space-y-2">
-                <label className="text-gray-500 text-xs block">Mensaje al cliente (visible en su portal)</label>
-                <textarea
-                  value={notasPortal}
-                  onChange={e => setNotasPortal(e.target.value)}
-                  placeholder="Ej: Todo confirmado para tu evento. Estaremos en contacto 48 hrs antes para coordinar acceso al venue..."
-                  rows={3}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none"
-                />
-                <button
-                  onClick={guardarNotasPortal}
-                  disabled={savingNotasPortal}
-                  className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-                >
-                  {savingNotasPortal ? "Guardando..." : "Guardar mensaje"}
-                </button>
-              </div>
-            )}
-
-            {proyecto.portalToken && (() => {
-              const portalUrl = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/portal/${proyecto.portalToken}`;
-              return (
-                <div className="space-y-2 mt-4">
-                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-                    <span className="text-[#B3985B] text-sm">🔗</span>
-                    <p className="flex-1 text-[10px] text-gray-400 truncate font-mono">{portalUrl}</p>
-                    <CopyButton value={portalUrl} />
-                  </div>
-                  <a href={portalUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-xs font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Abrir portal del cliente
-                  </a>
-                </div>
-              );
-            })()}
-          </div>
 
         </div>
         );
