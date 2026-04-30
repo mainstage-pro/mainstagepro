@@ -37,7 +37,7 @@ interface Bitacora { id: string; tipo: string; contenido: string; createdAt: str
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
-interface RiderAccesorio { id: string; nombre: string; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
+interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
@@ -527,6 +527,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderExpandido, setRiderExpandido] = useState<Record<string, boolean>>({});
   const [riderAddOpen, setRiderAddOpen] = useState<string | null>(null); // proyectoEquipoId
   const [riderAddNombre, setRiderAddNombre] = useState("");
+  const [riderAddCantidad, setRiderAddCantidad] = useState(1);
   const [riderAddCategoria, setRiderAddCategoria] = useState("");
   const [riderAddGuardar, setRiderAddGuardar] = useState(true);
   const [riderAddSaving, setRiderAddSaving] = useState(false);
@@ -1376,6 +1377,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({
         proyectoEquipoId,
         nombre: riderAddNombre.trim(),
+        cantidad: riderAddCantidad,
         categoria: riderAddCategoria || null,
         guardarEnBiblioteca: riderAddGuardar,
       }),
@@ -1389,6 +1391,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       ));
     }
     setRiderAddNombre("");
+    setRiderAddCantidad(1);
     setRiderAddCategoria("");
     setRiderAddGuardar(true);
     setRiderAddOpen(null);
@@ -1413,6 +1416,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setRiderEquipos(prev => prev.map(e =>
       e.id === proyectoEquipoId
         ? { ...e, riderAccesorios: e.riderAccesorios.filter(a => a.id !== accesorioId) }
+        : e
+    ));
+  }
+
+  async function riderActualizarCantidad(proyectoEquipoId: string, accesorioId: string, cantidad: number) {
+    const res = await fetch(`/api/rider-accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+    const d = await res.json();
+    setRiderEquipos(prev => prev.map(e =>
+      e.id === proyectoEquipoId
+        ? { ...e, riderAccesorios: e.riderAccesorios.map(a => a.id === accesorioId ? { ...a, cantidad: d.accesorio.cantidad } : a) }
         : e
     ));
   }
@@ -3811,6 +3827,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                             <input type="checkbox" checked={a.completado} onChange={() => riderToggleAccesorio(e.id, a.id, a.completado)} className="w-3.5 h-3.5 rounded accent-[#B3985B] shrink-0 cursor-pointer" />
                                             <span className={`flex-1 text-xs ${a.completado ? "line-through text-gray-600" : "text-gray-200"}`}>{a.nombre}</span>
                                             {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
+                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">−</button>
+                                              <span className="text-[10px] text-[#B3985B] font-semibold w-5 text-center">×{a.cantidad ?? 1}</span>
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">+</button>
+                                            </div>
                                             <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
                                           </div>
                                         ))}
@@ -3854,14 +3875,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {isAddOpen ? (
                                     <div className="bg-[#111] border border-[#222] rounded-lg p-3 space-y-2">
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Agregar accesorio</p>
-                                      <input
-                                        autoFocus
-                                        value={riderAddNombre}
-                                        onChange={e => setRiderAddNombre(e.target.value)}
-                                        onKeyDown={ev => { if (ev.key === "Enter") riderAgregarAccesorio(e.id); if (ev.key === "Escape") setRiderAddOpen(null); }}
-                                        placeholder="Nombre del accesorio o herramienta..."
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
-                                      />
+                                      <div className="flex gap-2">
+                                        <input
+                                          autoFocus
+                                          value={riderAddNombre}
+                                          onChange={e => setRiderAddNombre(e.target.value)}
+                                          onKeyDown={ev => { if (ev.key === "Enter") riderAgregarAccesorio(e.id); if (ev.key === "Escape") setRiderAddOpen(null); }}
+                                          placeholder="Nombre del accesorio o herramienta..."
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
+                                        />
+                                        <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2">
+                                          <button onClick={() => setRiderAddCantidad(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                                          <span className="text-white text-sm font-semibold w-6 text-center">{riderAddCantidad}</span>
+                                          <button onClick={() => setRiderAddCantidad(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                                        </div>
+                                      </div>
                                       <div className="flex gap-2">
                                         <Combobox
                                           value={riderAddCategoria}
@@ -3878,7 +3906,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         <button onClick={() => riderAgregarAccesorio(e.id)} disabled={riderAddSaving || !riderAddNombre.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
                                           {riderAddSaving ? "Guardando..." : "Agregar"}
                                         </button>
-                                        <button onClick={() => { setRiderAddOpen(null); setRiderAddNombre(""); }} className="text-gray-500 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#333] transition-colors">
+                                        <button onClick={() => { setRiderAddOpen(null); setRiderAddNombre(""); setRiderAddCantidad(1); }} className="text-gray-500 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#333] transition-colors">
                                           Cancelar
                                         </button>
                                       </div>

@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // POST /api/proyectos/[id]/rider-accesorios
-// Body: { proyectoEquipoId, nombre, categoria? }
+// Body: { proyectoEquipoId, nombre, categoria?, cantidad? }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { proyectoEquipoId, nombre, categoria, guardarEnBiblioteca = true } = body;
+  const { proyectoEquipoId, nombre, categoria, cantidad = 1, guardarEnBiblioteca = true } = body;
 
   if (!proyectoEquipoId || !nombre?.trim()) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       proyectoEquipoId,
       nombre: nombre.trim(),
+      cantidad: Math.max(1, parseInt(cantidad) || 1),
       categoria: categoria ?? null,
       orden,
       esSugerencia: false,

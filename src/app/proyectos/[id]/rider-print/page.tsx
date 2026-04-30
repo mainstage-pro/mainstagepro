@@ -146,6 +146,9 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
                               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ width: 11, height: 11, border: "1px solid #bbb", borderRadius: 2, flexShrink: 0 }} />
                                 <span style={{ fontSize: 10.5, color: "#333" }}>{a.nombre}</span>
+                                {(a.cantidad ?? 1) > 1 && (
+                                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "#B3985B", background: "#FFF8EE", border: "1px solid #F0E0C0", padding: "0px 4px", borderRadius: 8, flexShrink: 0 }}>×{a.cantidad}</span>
+                                )}
                               </div>
                             ))}
                           </div>

@@ -488,6 +488,7 @@ model RiderAccesorio {
   proyectoEquipoId String
   proyectoEquipo   ProyectoEquipo @relation(fields: [proyectoEquipoId], references: [id], onDelete: Cascade)
   nombre           String
+  cantidad         Int            @default(1)
   categoria        String?        // cable | herramienta | consumible | soporte | otro
   completado       Boolean        @default(false)
   esSugerencia     Boolean        @default(false)
