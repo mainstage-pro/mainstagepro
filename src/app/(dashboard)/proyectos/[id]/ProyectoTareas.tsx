@@ -568,6 +568,12 @@ function ProyectoTaskModal({
                 ref={titleRef}
                 value={titulo}
                 onChange={e => { setTitulo(e.target.value); mark(); }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !inEditMode && titulo.trim()) {
+                    e.preventDefault();
+                    handleCreate().then(onClose);
+                  }
+                }}
                 placeholder="Título de la tarea"
                 className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder-[#2a2a2a] leading-snug"
                 rows={titulo.split("\n").length || 1}

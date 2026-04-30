@@ -2175,8 +2175,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white">{proyecto.cliente.telefono ?? "—"}</p>
                   {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
                 </div>
-                <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-                <Campo label="Contacto del encargado" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                <Campo label="Responsable por parte del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                <Campo label="Contacto del responsable" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
                 <div className="col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
                   <Combobox
@@ -2195,8 +2195,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="col-span-2">
                   <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
                 </div>
-                <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
-                <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                 <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
                 <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
                 <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
@@ -2315,11 +2313,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
                         className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
                       />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
-                      <input type="time" value={slot.horaSalida} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, horaSalida: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Notas</label>
@@ -2686,27 +2679,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const sinAsignar = grupo.filter(p => !p.tecnico).length;
                 return (
                   <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-[#1a1a1a] flex items-center justify-between">
-                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{labels[tipo]} ({grupo.length})</p>
+                    <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-green-500">{grupo.filter(p => p.confirmado).length} conf.</span>
-                        {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                        <p className="text-xs text-white font-semibold uppercase tracking-wider">{labels[tipo]}</p>
+                        <span className="text-xs text-gray-600">{grupo.length}</span>
+                        {sinAsignar > 0 && <span className="text-xs text-gray-500">{sinAsignar} pendiente{sinAsignar !== 1 ? "s" : ""}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
                         {grupo.some(p => !p.confirmado && p.tecnico) && (
                           <button onClick={() => confirmarGrupo(grupo)}
-                            className="text-xs text-gray-500 hover:text-green-400 border border-[#333] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
+                            className="text-xs text-gray-500 hover:text-green-400 border border-[#2a2a2a] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
                             Confirmar todos
                           </button>
                         )}
                         <button
                           onClick={() => agregarSlotVacio(tipo, grupo[0]?.fechaJornada ?? null)}
-                          title="Agregar técnico a este grupo"
-                          className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] hover:border-[#B3985B]/50 px-2 py-0.5 rounded transition-colors">
+                          className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">
                           + Agregar
                         </button>
                       </div>
                     </div>
                     {grupo.map(p => (
-                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700" : "border-l-yellow-800/60"}`}>
+                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#2a2a2a]"}`}>
                         {/* Name / info row */}
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex-1 min-w-0">
@@ -2725,21 +2719,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
                                         ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
                                       ]}
-                                      className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
                                     />
                                     <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
                                       className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
                                   </div>
-                                  {/* Mini-form nuevo técnico inline para asignar */}
                                   {crearParaSlotId === p.id && (
-                                    <div className="p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
-                                      <p className="text-[#B3985B] text-xs font-semibold">Registrar nuevo técnico</p>
+                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
                                       <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
                                         placeholder="Nombre completo *" autoFocus
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                       <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
                                         placeholder="Celular (WhatsApp)"
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
                                       <div className="flex gap-2">
                                         <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
                                           options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
@@ -2750,7 +2743,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                       </div>
                                       <div className="flex gap-2 pt-1">
                                         <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
-                                          className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
                                           {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
                                         </button>
                                         <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
@@ -2763,33 +2756,99 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-yellow-500 text-sm italic">Sin asignar</span>
-                                  {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                                  <span className="text-gray-500 text-sm">Pendiente de asignar</span>
+                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                                   <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }}
-                                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors">
-                                    Asignar técnico
+                                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">
+                                    Asignar
                                   </button>
                                 </div>
                               )
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
-                                {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                              </div>
+                              asignandoId === p.id ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Combobox
+                                      value={p.tecnico.id}
+                                      placeholder="Cambiar técnico..."
+                                      onChange={v => {
+                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                        else if (v) { asignarTecnico(p.id, v); setAsignandoId(null); }
+                                      }}
+                                      options={[
+                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                      ]}
+                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                    />
+                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); }}
+                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                  </div>
+                                  {crearParaSlotId === p.id && (
+                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
+                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                                        placeholder="Nombre completo *" autoFocus
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                                        placeholder="Celular (WhatsApp)"
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <div className="flex gap-2">
+                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
+                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
+                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                      </div>
+                                      <div className="flex gap-2 pt-1">
+                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
+                                        </button>
+                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
+                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                                </div>
+                              )
                             )}
-                            <p className="text-gray-500 text-xs mt-0.5">
+                            <p className="text-gray-600 text-xs mt-0.5">
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
                               {p.jornada ? ` · ${p.jornada}` : ""}
                               {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
-                          <button
-                            onClick={() => p.tecnico ? desasignarTecnico(p.id) : eliminarPersonal(p.id)}
-                            title={p.tecnico ? "Quitar técnico (mantiene el slot)" : "Eliminar slot"}
-                            className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors shrink-0">×</button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {p.tecnico && asignandoId !== p.id && (
+                              <button
+                                onClick={() => { setAsignandoId(p.id); setCrearParaSlotId(null); }}
+                                title="Cambiar técnico"
+                                className="text-gray-600 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#333] transition-colors">
+                                Editar
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (p.tecnico) {
+                                  desasignarTecnico(p.id);
+                                } else {
+                                  const ok = await confirm({ message: "¿Eliminar este slot de técnico? Esta acción no se puede deshacer.", confirmText: "Eliminar", danger: true });
+                                  if (ok) eliminarPersonal(p.id);
+                                }
+                              }}
+                              title={p.tecnico ? "Quitar técnico asignado" : "Eliminar slot"}
+                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
+                          </div>
                         </div>
-                        {/* Actions row — wraps cleanly on mobile */}
+                        {/* Actions row */}
                         <div className="flex items-center gap-2 flex-wrap">
                           {editandoTarifaId === p.id ? (
                             <div className="flex items-center gap-1">
@@ -2802,9 +2861,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   if (e.key === "Enter") guardarTarifa(p.id);
                                   if (e.key === "Escape") { setEditandoTarifaId(null); setEditTarifaVal(""); }
                                 }}
-                                className="w-24 bg-[#1a1a1a] border border-[#B3985B] rounded px-2 py-0.5 text-white text-sm focus:outline-none"
+                                className="w-24 bg-[#1a1a1a] border border-[#444] rounded px-2 py-0.5 text-white text-sm focus:outline-none"
                               />
-                              <button onClick={() => guardarTarifa(p.id)} className="text-xs text-green-400 hover:text-green-300">✓</button>
+                              <button onClick={() => guardarTarifa(p.id)} className="text-xs text-gray-300 hover:text-white">✓</button>
                               <button onClick={() => { setEditandoTarifaId(null); setEditTarifaVal(""); }} className="text-xs text-gray-500 hover:text-white">✕</button>
                             </div>
                           ) : (
@@ -2816,9 +2875,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </button>
                           )}
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
+                            p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"
                           }`}>
-                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
+                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}
                           </span>
                           {p.confirmRespuesta && (
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
