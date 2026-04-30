@@ -53,7 +53,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, telefono: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
           },

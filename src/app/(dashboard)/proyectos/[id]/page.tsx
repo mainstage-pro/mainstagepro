@@ -38,7 +38,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -2209,44 +2209,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
 
-            {/* Directorio Mainstage Pro */}
-            {(() => {
-              const DIRECTORIO = [
-                { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
-                { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
-                { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
-                { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
-                { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
-                { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
-                { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
-              ];
-              return (
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
-                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
-                    <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                  {directorioOpen && (
-                    <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
-                      {DIRECTORIO.map(p => (
-                        <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
-                          <div>
-                            <p className="text-white text-sm font-medium">{p.nombre}</p>
-                            <p className="text-[#B3985B] text-xs">{p.cargo}</p>
-                            <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
-                          </div>
-                          <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                            {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
           </div>
         );
       })()}
@@ -2935,6 +2897,45 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
+          {/* ── Directorio Mainstage Pro ── */}
+          {(() => {
+            const DIRECTORIO = [
+              { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
+              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
+              { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
+              { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
+              { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
+              { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
+              { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
+            ];
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                  <p className="text-xs text-white font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
+                  <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+                {directorioOpen && (
+                  <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                    {DIRECTORIO.map(p => (
+                      <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
+                        <div>
+                          <p className="text-white text-sm font-medium">{p.nombre}</p>
+                          <p className="text-gray-400 text-xs">{p.cargo}</p>
+                          <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
+                        </div>
+                        <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                          {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
           {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
@@ -3130,13 +3131,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
 
-          {/* ── Contactos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
-            <div className="grid grid-cols-1 gap-y-4 text-sm">
-              <Campo label="Contactos de dirección y coordinación" value={proyecto.contactosDireccion} field="contactosDireccion" onSave={guardarCampo} multiline />
-            </div>
-          </div>
 
 
         </div>
@@ -3549,8 +3543,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               >
                                 <svg className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
                                 <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-white">{e.equipo.descripcion}</span>
-                                  {e.equipo.marca && <span className="text-gray-500 text-xs font-normal"> · {e.equipo.marca}</span>}
+                                  <p className="text-sm font-medium text-white">
+                                    {e.equipo.marca ?? "Sin marca"}
+                                    {e.equipo.modelo && <span className="font-normal text-gray-300"> {e.equipo.modelo}</span>}
+                                  </p>
+                                  <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {totalGuardados > 0 && (
