@@ -575,9 +575,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
   const [selAsignar, setSelAsignar] = useState("");
   const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
-  // Estado para editar tarifa inline
-  const [editandoTarifaId, setEditandoTarifaId] = useState<string | null>(null);
-  const [editTarifaVal, setEditTarifaVal] = useState("");
+  // Estado para editar slot de personal completo
+  const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
+  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "" });
+  const [savingPersonal, setSavingPersonal] = useState(false);
 
   // Estados para otros gastos
   const [showGastoForm, setShowGastoForm] = useState(false);
@@ -1507,6 +1508,51 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setAgregandoLinea(null);
   }
 
+  // ── Editar slot de personal completo ──
+  function abrirEditPersonal(p: Personal) {
+    setEditandoPersonalId(p.id);
+    setEditPersonalForm({
+      tecnicoId: p.tecnico?.id ?? "",
+      rolTecnicoId: "", // se rellena abajo buscando por nombre en roles
+      nivel: p.nivel ?? "A",
+      jornada: p.jornada ?? "MEDIA",
+      tarifa: p.tarifaAcordada != null ? String(p.tarifaAcordada) : "",
+      participacion: p.participacion ?? "OPERACION",
+      responsabilidad: p.responsabilidad ?? "",
+    });
+    // Buscar rolTecnicoId desde la lista de roles por nombre
+    const rolNombre = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre;
+    if (rolNombre) {
+      const found = roles.find(r => r.nombre === rolNombre);
+      if (found) setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: found.id }));
+    }
+  }
+
+  async function guardarEditPersonal(pId: string) {
+    setSavingPersonal(true);
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tecnicoId: editPersonalForm.tecnicoId || null,
+        rolTecnicoId: editPersonalForm.rolTecnicoId || null,
+        nivel: editPersonalForm.nivel || null,
+        jornada: editPersonalForm.jornada || null,
+        tarifaAcordada: editPersonalForm.tarifa ? parseFloat(editPersonalForm.tarifa) : null,
+        participacion: editPersonalForm.participacion || null,
+        responsabilidad: editPersonalForm.responsabilidad || null,
+      }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setProyecto(prev => prev ? { ...prev, personal: prev.personal.map(p => p.id === pId ? d.personal : p) } : prev);
+      setEditandoPersonalId(null);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+    }
+    setSavingPersonal(false);
+  }
+
   // ── Confirmar/desconfirmar personal ──
   async function toggleConfirmar(pId: string, confirmado: boolean) {
     await fetch(`/api/proyectos/${id}/personal/${pId}`, {
@@ -1555,22 +1601,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
     setAsignandoId(null);
     setSelAsignar("");
-  }
-
-  async function guardarTarifa(pId: string) {
-    const monto = parseFloat(editTarifaVal);
-    if (isNaN(monto)) { setEditandoTarifaId(null); return; }
-    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tarifaAcordada: monto }),
-    });
-    const d = await res.json();
-    setProyecto(prev => prev ? {
-      ...prev,
-      personal: prev.personal.map(p => p.id === pId ? d.personal : p),
-    } : prev);
-    setEditandoTarifaId(null);
-    setEditTarifaVal("");
   }
 
   // ── Desasignar técnico de slot (mantiene la fila) ──
@@ -2949,53 +2979,113 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             </p>
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            {p.tecnico && asignandoId !== p.id && (
+                            {asignandoId !== p.id && (
                               <button
-                                onClick={() => { setAsignandoId(p.id); setCrearParaSlotId(null); }}
-                                title="Cambiar técnico"
-                                className="text-gray-600 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded border border-transparent hover:border-[#333] transition-colors">
-                                Editar
+                                onClick={() => { abrirEditPersonal(p); setAsignandoId(null); }}
+                                className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${editandoPersonalId === p.id ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333]"}`}>
+                                {editandoPersonalId === p.id ? "Editando" : "Editar"}
                               </button>
                             )}
                             <button
                               onClick={async () => {
-                                if (p.tecnico) {
-                                  desasignarTecnico(p.id);
-                                } else {
-                                  const ok = await confirm({ message: "¿Eliminar este slot de técnico? Esta acción no se puede deshacer.", confirmText: "Eliminar", danger: true });
-                                  if (ok) eliminarPersonal(p.id);
-                                }
+                                const ok = await confirm({ message: "¿Eliminar este técnico del proyecto? Se borrarán también las cuentas por pagar pendientes vinculadas.", confirmText: "Eliminar", danger: true });
+                                if (ok) eliminarPersonal(p.id);
                               }}
-                              title={p.tecnico ? "Quitar técnico asignado" : "Eliminar slot"}
+                              title="Eliminar slot"
                               className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
                           </div>
                         </div>
+
+                        {/* ── Formulario edición completa ── */}
+                        {editandoPersonalId === p.id && (
+                          <div className="mt-3 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
+                                <Combobox
+                                  value={editPersonalForm.tecnicoId}
+                                  onChange={v => {
+                                    if (v === "__nuevo__") { setShowNuevoTecnico(true); }
+                                    else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v }));
+                                  }}
+                                  options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
+                                <Combobox
+                                  value={editPersonalForm.rolTecnicoId}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))}
+                                  options={[{ value: "", label: "— Sin rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
+                                <Combobox
+                                  value={editPersonalForm.participacion}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))}
+                                  options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
+                                <Combobox
+                                  value={editPersonalForm.jornada}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, jornada: v }))}
+                                  options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Nivel</label>
+                                <Combobox
+                                  value={editPersonalForm.nivel}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, nivel: v }))}
+                                  options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
+                                <input
+                                  type="number"
+                                  value={editPersonalForm.tarifa}
+                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))}
+                                  placeholder="0"
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Responsabilidad / descripción</label>
+                              <input
+                                value={editPersonalForm.responsabilidad}
+                                onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))}
+                                placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                              />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button onClick={() => guardarEditPersonal(p.id)} disabled={savingPersonal}
+                                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                {savingPersonal ? "Guardando..." : "Guardar cambios"}
+                              </button>
+                              <button onClick={() => setEditandoPersonalId(null)}
+                                className="px-4 text-gray-500 hover:text-white text-xs transition-colors">
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Actions row */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {editandoTarifaId === p.id ? (
-                            <div className="flex items-center gap-1">
-                              <input
-                                type="number"
-                                value={editTarifaVal}
-                                onChange={e => setEditTarifaVal(e.target.value)}
-                                autoFocus
-                                onKeyDown={e => {
-                                  if (e.key === "Enter") guardarTarifa(p.id);
-                                  if (e.key === "Escape") { setEditandoTarifaId(null); setEditTarifaVal(""); }
-                                }}
-                                className="w-24 bg-[#1a1a1a] border border-[#444] rounded px-2 py-0.5 text-white text-sm focus:outline-none"
-                              />
-                              <button onClick={() => guardarTarifa(p.id)} className="text-xs text-gray-300 hover:text-white">✓</button>
-                              <button onClick={() => { setEditandoTarifaId(null); setEditTarifaVal(""); }} className="text-xs text-gray-500 hover:text-white">✕</button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => { setEditandoTarifaId(p.id); setEditTarifaVal(String(p.tarifaAcordada ?? "")); }}
-                              className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300 hover:text-white" : "text-gray-600 italic hover:text-gray-400"}`}
-                            >
-                              {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}
-                            </button>
-                          )}
+                          <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>
+                            {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}
+                          </span>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"
                           }`}>

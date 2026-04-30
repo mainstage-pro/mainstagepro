@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const data: Record<string, unknown> = {};
   if ("tecnicoId" in body) data.tecnicoId = body.tecnicoId || null;
+  if ("rolTecnicoId" in body) data.rolTecnicoId = body.rolTecnicoId || null;
   if ("participacion" in body) data.participacion = body.participacion || null;
   if ("confirmado" in body) data.confirmado = body.confirmado;
   if ("tarifaAcordada" in body) data.tarifaAcordada = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada) : null;
