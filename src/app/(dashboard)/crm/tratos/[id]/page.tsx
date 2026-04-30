@@ -107,13 +107,9 @@ const ORIGEN_LABELS: Record<string, string> = {
 };
 
 const ORIGENES_OUTBOUND = [
-  { id: "INSTAGRAM_DM",    icon: "📱", label: "Instagram DM" },
-  { id: "WHATSAPP_DIRECTO",icon: "💬", label: "WhatsApp directo" },
-  { id: "LINKEDIN",        icon: "💼", label: "LinkedIn" },
-  { id: "BASE_DATOS",      icon: "📋", label: "Base de datos" },
-  { id: "LLAMADA_FRIA",    icon: "📞", label: "Llamada fría" },
-  { id: "NETWORKING",      icon: "🤝", label: "Networking" },
-  { id: "PROSPECCION",     icon: "🔍", label: "Otro outbound" },
+  { id: "REDES_SOCIALES", icon: "📱", label: "Redes sociales",  desc: "Instagram DM, LinkedIn, WhatsApp" },
+  { id: "BASE_DATOS",     icon: "📋", label: "Base de datos",   desc: "Lista, directorio, búsqueda" },
+  { id: "NETWORKING",     icon: "🤝", label: "Networking",      desc: "Evento, referencia interna, contacto personal" },
 ];
 const ESTADO_COT_COLORS: Record<string, string> = {
   BORRADOR: "bg-gray-700 text-gray-300", ENVIADA: "bg-blue-900/50 text-blue-300",
@@ -1449,16 +1445,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {/* Tipo de evento */}
                 <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
                   <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <div className="flex flex-wrap gap-1.5">
                     {[
                       { id: "MUSICAL",     icon: "🎸", label: "Musical" },
                       { id: "SOCIAL",      icon: "🎊", label: "Social" },
                       { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
-                      { id: "OTRO",        icon: "🎵", label: "General" },
+                      { id: "OTRO",        icon: "📅", label: "Otro" },
                     ].map(te => (
                       <button key={te.id}
                         onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
                         <span>{te.icon}</span><span>{te.label}</span>
                       </button>
                     ))}
@@ -1474,7 +1470,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-sm font-bold text-white">Temperatura del lead</p>
                     <span className="text-[10px] text-gray-600">nivel de interés y apertura mostrados hasta ahora</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {[
                       { id: "FRIO",     icon: "❄️", label: "Frío",     desc: "Sin respuesta o primera interacción",  cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
                       { id: "TIBIO",    icon: "🌡️", label: "Tibio",    desc: "Respondió, mostró algo de interés",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
@@ -1483,10 +1479,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       <button key={t.id}
                         onClick={() => { const u = { ...nurturing, temperatura: t.id }; setNurturing(u); guardarNurturing(u); }}
                         title={t.desc}
-                        className={`flex-1 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors text-center ${nurturing.temperatura === t.id ? t.cls : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#555]"}`}>
-                        <span className="block text-base mb-0.5">{t.icon}</span>
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#555]"}`}>
+                        <span>{t.icon}</span>
                         <span>{t.label}</span>
-                        {nurturing.temperatura === t.id && <p className="text-[9px] opacity-70 mt-0.5 font-normal leading-tight">{t.desc}</p>}
                       </button>
                     ))}
                   </div>
@@ -1654,9 +1649,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="px-4 py-3">
                         <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
                       </div>
-                      <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1a1a1a]">
-                        <p className="text-[10px] text-gray-600 leading-relaxed">
-                          Este es el guión base recomendado. El vendedor puede adaptar el mensaje según el contexto del cliente — siempre manteniendo el objetivo de la etapa: <span className="text-gray-500 italic">{playbook?.objetivo}</span>
+                      <div className="px-4 py-3 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          Guión base — el vendedor puede adaptarlo según el contexto, siempre manteniendo el objetivo: <span className="text-gray-300 italic">{playbook?.objetivo}</span>
                         </p>
                       </div>
                     </div>
@@ -2771,6 +2766,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ── Grid: Detalles + Sidebar ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Datos del evento (editable) */}
+        {trato.tipoProspecto !== "NURTURING" && (
         <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Detalles del trato</h2>
@@ -2866,9 +2862,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
         </div>
+        )}
 
         {/* Sidebar cliente */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${trato.tipoProspecto === "NURTURING" ? "md:col-span-3 md:grid md:grid-cols-2" : ""}`}>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Cliente</h2>
