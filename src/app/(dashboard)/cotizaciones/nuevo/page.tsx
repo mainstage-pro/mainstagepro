@@ -95,7 +95,6 @@ interface Jornada {
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const DJ_TARIFAS: Record<string, number> = { AAA: 600, AA: 500, A: 400 };
 
 const CONCEPTOS_COMIDA = [
   { label: "1 comida por persona", precio: 150 },
@@ -225,8 +224,8 @@ function CotizadorForm() {
   // Selectores rápidos
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
-  const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
-  const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
+  const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
+  const [selDJHoras, setSelDJHoras] = useState("4");
   const [logConcepto, setLogConcepto] = useState({ COMIDA: CONCEPTOS_COMIDA[0].label, TRANSPORTE: CONCEPTOS_TRANSPORTE[0].label, HOSPEDAJE: CONCEPTOS_HOSPEDAJE[0].label });
   const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
   const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
@@ -565,13 +564,12 @@ function CotizadorForm() {
     const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
     if (!rol) return;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
-    // Si ya existe ese rol exacto con mismo nivel/jornada, no duplicar
-    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.nivel === selRolNivel && l.jornada === selRolJornada);
+    const tarifa = getRolTarifa(rol, "AAA", selRolJornada);
+    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada);
     if (yaExiste) return;
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad, dias,
+      nivel: "AAA", jornada: selRolJornada, cantidad, dias,
       precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
     }]);
   }
@@ -696,10 +694,10 @@ function CotizadorForm() {
     if (!rol) return;
     const cant = parseFloat(selRolCant) || 1;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
+    const tarifa = getRolTarifa(rol, "AAA", selRolJornada);
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad: cant, dias,
+      nivel: "AAA", jornada: selRolJornada, cantidad: cant, dias,
       precioUnitario: tarifa, subtotal: tarifa * cant * dias,
     }]);
     setSelRol(""); setSelRolCant("1");
@@ -717,9 +715,10 @@ function CotizadorForm() {
   // ── Agregar DJ ──
   function agregarDJ() {
     const horas = parseFloat(selDJHoras) || 1;
-    const tarifa = DJ_TARIFAS[selDJNivel] ?? 0;
+    const djRol = roles.find(r => r.nombre === "DJ");
+    const tarifa = djRol?.tarifaHoraAAA ?? 0;
     setLineasDJ(prev => [...prev, {
-      id: uid(), nivel: selDJNivel, horas, tarifa, subtotal: tarifa * horas,
+      id: uid(), nivel: "AAA", horas, tarifa, subtotal: tarifa * horas,
     }]);
   }
 
@@ -1704,12 +1703,6 @@ function CotizadorForm() {
                 className="flex-1"
               />
               <Combobox
-                value={selRolNivel}
-                onChange={v => setSelRolNivel(v)}
-                options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-              />
-              <Combobox
                 value={selRolJornada}
                 onChange={v => setSelRolJornada(v)}
                 options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
@@ -1722,7 +1715,7 @@ function CotizadorForm() {
               <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
                 <div className="flex-1">
                   <p className="text-white text-sm">{l.descripcion}</p>
-                  <p className="text-gray-500 text-xs">{l.nivel} · {JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
+                  <p className="text-gray-500 text-xs">{JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
                 </div>
                 <input type="number" value={l.precioUnitario} onChange={e => updateOp(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" />
                 <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
@@ -1796,17 +1789,6 @@ function CotizadorForm() {
                           />
                         </div>
                         <select
-                          value={slot.nivel}
-                          onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                            ...j, slots: j.slots.map((s, k) => k === si ? { ...s, nivel: e.target.value } : s)
-                          } : j))}
-                          className="w-16 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs focus:outline-none"
-                        >
-                          <option value="AAA">AAA</option>
-                          <option value="AA">AA</option>
-                          <option value="A">A</option>
-                        </select>
-                        <select
                           value={slot.jornada}
                           onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
                             ...j, slots: j.slots.map((s, k) => k === si ? { ...s, jornada: e.target.value } : s)
@@ -1860,22 +1842,22 @@ function CotizadorForm() {
 
           {/* ── Servicio de DJ ── */}
           <Seccion titulo="Servicio de DJ" hint="cobro por hora · sin descuento">
-            <div className="flex gap-2 mb-3">
-              <Combobox
-                value={selDJNivel}
-                onChange={v => setSelDJNivel(v)}
-                options={[{ value: "AAA", label: `AAA — ${formatCurrency(DJ_TARIFAS.AAA)}/hr` }, { value: "AA", label: `AA — ${formatCurrency(DJ_TARIFAS.AA)}/hr` }, { value: "A", label: `A — ${formatCurrency(DJ_TARIFAS.A)}/hr` }]}
-                className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-              <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
-              <div className="flex-1 flex items-center text-gray-400 text-sm">
-                Total: {formatCurrency((DJ_TARIFAS[selDJNivel] ?? 0) * (parseFloat(selDJHoras) || 0))}
-              </div>
-              <button onClick={agregarDJ} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm">+ Agregar</button>
-            </div>
+            {(() => {
+              const djRol = roles.find(r => r.nombre === "DJ");
+              const djTarifa = djRol?.tarifaHoraAAA ?? 0;
+              return (
+                <div className="flex gap-2 mb-3">
+                  <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
+                  <div className="flex-1 flex items-center text-gray-400 text-sm">
+                    {formatCurrency(djTarifa)}/hr · Total: {formatCurrency(djTarifa * (parseFloat(selDJHoras) || 0))}
+                  </div>
+                  <button onClick={agregarDJ} disabled={!djRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
+                </div>
+              );
+            })()}
             {lineasDJ.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin DJ agregado</p> : lineasDJ.map(l => (
               <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a]">
-                <p className="text-white text-sm">DJ {l.nivel} · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
+                <p className="text-white text-sm">DJ · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
                 <div className="flex items-center gap-3">
                   <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
                   <button onClick={() => setLineasDJ(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
