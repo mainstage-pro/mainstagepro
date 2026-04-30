@@ -2141,15 +2141,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const allOk = items.every(i => i.ok);
         const anyWarn = items.some(i => i.warn);
         return (
-          <div className={`rounded-xl border px-4 py-3 flex flex-wrap gap-4 items-center ${allOk ? "bg-green-900/10 border-green-800/40" : anyWarn ? "bg-yellow-900/10 border-yellow-800/30" : "bg-[#111] border-[#222]"}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider shrink-0 ${allOk ? "text-green-400" : anyWarn ? "text-yellow-400" : "text-gray-500"}`}>
-              {allOk ? "✓ Evento listo" : anyWarn ? "⚠ Preparación incompleta" : "Preparación"}
+          <div className={`rounded-xl border px-5 py-3.5 bg-[#0d0d0d] flex flex-wrap items-center gap-x-6 gap-y-2.5 ${allOk ? "border-white/[0.08]" : "border-[#1a1a1a]"}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-[0.14em] shrink-0 ${allOk ? "text-white" : "text-gray-600"}`}>
+              {allOk ? "✓ Listo" : "Preparación"}
             </p>
-            {items.map(item => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${item.ok ? "bg-green-500" : item.warn ? "bg-yellow-500" : "bg-gray-600"}`} />
-                <span className="text-xs text-gray-400">{item.label}:</span>
-                <span className={`text-xs font-medium ${item.ok ? "text-green-400" : item.warn ? "text-yellow-400" : "text-gray-500"}`}>{item.txt}</span>
+            <span className="w-px h-3 bg-[#252525] shrink-0" />
+            {items.map((item, idx) => (
+              <div key={item.label} className="flex items-baseline gap-1.5">
+                <span className="text-[9px] uppercase tracking-[0.12em] text-gray-700 shrink-0">{item.label}</span>
+                <span className={`text-[11px] font-medium ${item.ok ? "text-white" : item.warn ? "text-gray-400" : "text-gray-600"}`}>{item.txt}</span>
+                {item.ok && <span className="text-[9px] text-gray-600">✓</span>}
               </div>
             ))}
           </div>
