@@ -417,6 +417,7 @@ model Proyecto {
   notasPortal            String?   // Mensaje visible al cliente en su portal
   responsables           String?   // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
   proveedoresRenta       String?   // JSON: [{ id, nombre, contacto, equipos: string[] }] — proveedores de subarriendo manuales
+  zona                   String    @default("LOCAL") // LOCAL | BAJIO | NACIONAL
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 

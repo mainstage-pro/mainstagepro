@@ -15,7 +15,7 @@ import ProyectoTareas from "./ProyectoTareas";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
-interface RolTecnico { id: string; nombre: string; tarifaAAMedia: number | null; tarifaAACorta: number | null; tarifaAALarga: number | null }
+interface RolTecnico { id: string; nombre: string; tipoPago: string; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaHoraAAA: number | null }
 interface Personal {
   id: string; confirmado: boolean; estadoPago: string;
   participacion: string | null;
@@ -61,6 +61,7 @@ interface Proyecto {
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
+  zona: string;
   protocoloSalida: string | null;
   protocoloEntrada: string | null;
   recoleccionStatus: string;
@@ -491,7 +492,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showAddPersonal, setShowAddPersonal] = useState(false);
   const [selTecnico, setSelTecnico] = useState("");
   const [selRol, setSelRol] = useState("");
-  const [selNivel, setSelNivel] = useState("AA");
   const [selJornada, setSelJornada] = useState("MEDIA");
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
@@ -882,6 +882,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       ["programaEvento", "coordinacionProveedores"];
     setOpenDocs(new Set(suggested));
   }, [proyecto?.id]); // eslint-disable-line
+
+  // Auto-calcular tarifa desde tabulador cuando cambia rol o jornada
+  useEffect(() => {
+    if (!selRol || !proyecto) return;
+    const rol = roles.find(r => r.id === selRol);
+    if (!rol) return;
+    const zonaBonus = proyecto.zona === "BAJIO" ? 500 : proyecto.zona === "NACIONAL" ? 800 : 0;
+    let base: number | null = null;
+    if (rol.tipoPago === "POR_JORNADA") {
+      base = selJornada === "CORTA" ? rol.tarifaAAACorta : selJornada === "MEDIA" ? rol.tarifaAAAMedia : rol.tarifaAAALarga;
+    } else if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
+      base = rol.tarifaPlanaAAA;
+    }
+    if (base != null) setSelTarifa(String(base + zonaBonus));
+  }, [selRol, selJornada, proyecto?.zona]); // eslint-disable-line
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -1443,7 +1458,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         tecnicoId: selTecnico || null,
         rolTecnicoId: selRol || null,
         participacion: selParticipacion,
-        nivel: selNivel,
+        nivel: "AAA",
         jornada: selJornada,
         tarifaAcordada: selTarifa || null,
         responsabilidad: selResp || null,
@@ -2480,7 +2495,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                  {/* Zona de viaje */}
+                  <div className="flex items-center gap-1.5">
+                    {(["LOCAL","BAJIO","NACIONAL"] as const).map(z => (
+                      <button
+                        key={z}
+                        onClick={async () => {
+                          await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zona: z }) });
+                          setProyecto(prev => prev ? { ...prev, zona: z } : prev);
+                        }}
+                        className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border transition-colors ${proyecto.zona === z ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] text-gray-600 hover:text-gray-400"}`}
+                      >
+                        {z === "LOCAL" ? "Local" : z === "BAJIO" ? "Bajío +$500" : "Nacional +$800"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
                     <button
@@ -2496,7 +2528,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
                   </button>
                 </div>
-              </div>
+              </div>{/* /header personal */}
               {showBroadcast && (() => {
                 const fecha = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
                 const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
@@ -2532,7 +2564,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Combobox
                       value={selParticipacion}
                       onChange={v => setSelParticipacion(v)}
-                      options={[{ value: "OPERACION", label: "Operación del evento" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                      options={[{ value: "OPERACION", label: "Operación (incluye montaje)" }, { value: "MONTAJE", label: "Montaje (día previo)" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
                       className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
                     />
                   </div>
@@ -2599,15 +2631,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       onChange={v => setSelRol(v)}
                       options={[{ value: "", label: "— Rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Nivel</label>
-                    <Combobox
-                      value={selNivel}
-                      onChange={v => setSelNivel(v)}
-                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
                     />
                   </div>
                   <div>

@@ -30,7 +30,7 @@ export async function GET() {
       tarifaHoraAA: true,
       tarifaHoraA: true,
     },
-    orderBy: { nombre: "asc" },
+    orderBy: [{ orden: "asc" }, { nombre: "asc" }],
   });
 
   return NextResponse.json({ roles });
