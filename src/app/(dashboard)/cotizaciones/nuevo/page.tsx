@@ -224,8 +224,8 @@ function CotizadorForm() {
   // Selectores rápidos
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
-  const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
-  const [selDJHoras, setSelDJHoras] = useState("4");
+  const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
+  const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA");
   const [logConcepto, setLogConcepto] = useState({ COMIDA: CONCEPTOS_COMIDA[0].label, TRANSPORTE: CONCEPTOS_TRANSPORTE[0].label, HOSPEDAJE: CONCEPTOS_HOSPEDAJE[0].label });
   const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
   const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
@@ -694,10 +694,11 @@ function CotizadorForm() {
     if (!rol) return;
     const cant = parseFloat(selRolCant) || 1;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, "AAA", selRolJornada);
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: "AAA", jornada: selRolJornada, cantidad: cant, dias,
+      nivel, jornada: selRolJornada, cantidad: cant, dias,
       precioUnitario: tarifa, subtotal: tarifa * cant * dias,
     }]);
     setSelRol(""); setSelRolCant("1");
@@ -716,9 +717,10 @@ function CotizadorForm() {
   function agregarDJ() {
     const horas = parseFloat(selDJHoras) || 1;
     const djRol = roles.find(r => r.nombre === "DJ");
-    const tarifa = djRol?.tarifaHoraAAA ?? 0;
+    const tarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
+    const tarifa = djRol ? ((djRol[tarifaKey] as number | null) ?? 0) : 0;
     setLineasDJ(prev => [...prev, {
-      id: uid(), nivel: "AAA", horas, tarifa, subtotal: tarifa * horas,
+      id: uid(), nivel: selDJNivel, horas, tarifa, subtotal: tarifa * horas,
     }]);
   }
 
@@ -1702,12 +1704,27 @@ function CotizadorForm() {
                 options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
                 className="flex-1"
               />
-              <Combobox
-                value={selRolJornada}
-                onChange={v => setSelRolJornada(v)}
-                options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-              />
+              {(() => {
+                const rolSel = roles.find(r => r.id === selRol);
+                if (rolSel && rolSel.tipoPago !== "POR_JORNADA") {
+                  return (
+                    <Combobox
+                      value={selRolNivel}
+                      onChange={v => setSelRolNivel(v)}
+                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                      className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                    />
+                  );
+                }
+                return (
+                  <Combobox
+                    value={selRolJornada}
+                    onChange={v => setSelRolJornada(v)}
+                    options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                    className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                  />
+                );
+              })()}
               <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
@@ -1844,9 +1861,16 @@ function CotizadorForm() {
           <Seccion titulo="Servicio de DJ" hint="cobro por hora · sin descuento">
             {(() => {
               const djRol = roles.find(r => r.nombre === "DJ");
-              const djTarifa = djRol?.tarifaHoraAAA ?? 0;
+              const djTarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
+              const djTarifa = djRol ? ((djRol[djTarifaKey] as number | null) ?? 0) : 0;
               return (
                 <div className="flex gap-2 mb-3">
+                  <Combobox
+                    value={selDJNivel}
+                    onChange={v => setSelDJNivel(v)}
+                    options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                    className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                  />
                   <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
                   <div className="flex-1 flex items-center text-gray-400 text-sm">
                     {formatCurrency(djTarifa)}/hr · Total: {formatCurrency(djTarifa * (parseFloat(selDJHoras) || 0))}
@@ -1857,7 +1881,7 @@ function CotizadorForm() {
             })()}
             {lineasDJ.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin DJ agregado</p> : lineasDJ.map(l => (
               <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a]">
-                <p className="text-white text-sm">DJ · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
+                <p className="text-white text-sm">DJ {l.nivel} · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
                 <div className="flex items-center gap-3">
                   <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
                   <button onClick={() => setLineasDJ(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>

@@ -102,7 +102,19 @@ const TIPO_EVENTO_COLORS: Record<string, string> = {
 const ORIGEN_LABELS: Record<string, string> = {
   META_ADS: "Meta Ads", GOOGLE_ADS: "Google Ads", ORGANICO: "Orgánico",
   RECOMPRA: "Recompra", REFERIDO: "Referido", PROSPECCION: "Prospección", OTRO: "Otro",
+  INSTAGRAM_DM: "Instagram DM", LINKEDIN: "LinkedIn", BASE_DATOS: "Base de datos",
+  LLAMADA_FRIA: "Llamada fría", NETWORKING: "Networking", WHATSAPP_DIRECTO: "WhatsApp directo",
 };
+
+const ORIGENES_OUTBOUND = [
+  { id: "INSTAGRAM_DM",    icon: "📱", label: "Instagram DM" },
+  { id: "WHATSAPP_DIRECTO",icon: "💬", label: "WhatsApp directo" },
+  { id: "LINKEDIN",        icon: "💼", label: "LinkedIn" },
+  { id: "BASE_DATOS",      icon: "📋", label: "Base de datos" },
+  { id: "LLAMADA_FRIA",    icon: "📞", label: "Llamada fría" },
+  { id: "NETWORKING",      icon: "🤝", label: "Networking" },
+  { id: "PROSPECCION",     icon: "🔍", label: "Otro outbound" },
+];
 const ESTADO_COT_COLORS: Record<string, string> = {
   BORRADOR: "bg-gray-700 text-gray-300", ENVIADA: "bg-blue-900/50 text-blue-300",
   APROBADA: "bg-green-900/50 text-green-300", RECHAZADA: "bg-red-900/50 text-red-300",
@@ -555,7 +567,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Nurturing state
   type NurturingLogEntry = { fecha: string; etapa: string; templateId: string; templateLabel: string };
-  type NurturingData = { etapa: string; temperatura: string; log: NurturingLogEntry[] };
+  type NurturingData = { etapa: string; temperatura: string; log: NurturingLogEntry[]; notas?: Record<string, string> };
   const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", temperatura: "FRIO", log: [] };
   const [nurturing, setNurturing] = useState<NurturingData>(NURTURING_EMPTY);
   const [savingNurturing, setSavingNurturing] = useState(false);
@@ -1385,6 +1397,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
 
+        // Presentación principal según tipo de evento (para "Qué compartir")
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
+        const COPY_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const presentacionPrincipal: { label: string; url: string } | null =
+          trato.tipoEvento === "MUSICAL"     ? { label: "🎸 Presentación Eventos Musicales",    url: `${origin}/presentacion/evento/musical` }
+          : trato.tipoEvento === "SOCIAL"      ? { label: "🎊 Presentación Eventos Sociales",     url: `${origin}/presentacion/evento/social` }
+          : trato.tipoEvento === "EMPRESARIAL" ? { label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` }
+          : null;
+        const presentacionesSecundarias = [
+          { label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
+          { label: "🎛 Catálogo de Inventario",    url: `${origin}/presentacion/inventario` },
+        ];
+
         return (
           <div className="bg-[#0d0d0d] border-2 border-emerald-700/40 rounded-xl overflow-hidden">
 
@@ -1393,8 +1418,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-emerald-700/20 flex items-center justify-center text-lg">🌱</div>
                 <div>
-                  <p className="text-white font-semibold">Nurturing — Prospecto en frío</p>
-                  <p className="text-gray-500 text-xs">Construye confianza, comparte valor, sé paciente</p>
+                  <p className="text-white font-bold text-base">Prospección en frío</p>
+                  <p className="text-gray-500 text-xs">Outbound · construye confianza, comparte valor, sé paciente</p>
                 </div>
               </div>
               <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
@@ -1403,79 +1428,73 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-6">
 
-              {/* ── Selector de tipo de evento (si no está definido) ── */}
-              {!trato.tipoEvento || trato.tipoEvento === "OTRO" ? (
-                <div className="bg-[#111] border border-emerald-900/40 rounded-xl p-4">
-                  <p className="text-xs text-emerald-400 font-semibold mb-1">¿Qué tipo de eventos organiza este prospecto?</p>
-                  <p className="text-[10px] text-gray-500 mb-3">Esto define qué guiones y cadencia usar en el seguimiento.</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {/* ── Origen del contacto + Tipo de evento ── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Origen */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-xs font-bold text-white mb-3">Origen del contacto</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {ORIGENES_OUTBOUND.map(o => (
+                      <button key={o.id}
+                        onClick={async () => { const d = await patch({ origenLead: o.id }); if (d) setTrato(p => p ? { ...p, origenLead: o.id } : p); }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${trato.origenLead === o.id ? "border-[#B3985B] bg-[#B3985B]/15 text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#555]"}`}>
+                        {o.icon} {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Tipo de evento */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
+                  <div className="grid grid-cols-2 gap-1.5">
                     {[
-                      { id: "MUSICAL",     icon: "🎸", label: "Musical",    desc: "Conciertos, shows" },
-                      { id: "SOCIAL",      icon: "🎊", label: "Social",      desc: "Bodas, XV años" },
-                      { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial", desc: "Corporativos" },
-                      { id: "OTRO",        icon: "🎵", label: "General",     desc: "Mixto / otro" },
+                      { id: "MUSICAL",     icon: "🎸", label: "Musical" },
+                      { id: "SOCIAL",      icon: "🎊", label: "Social" },
+                      { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
+                      { id: "OTRO",        icon: "🎵", label: "General" },
                     ].map(te => (
                       <button key={te.id}
                         onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#333] text-gray-400 hover:border-emerald-700 hover:text-white text-left transition-colors">
-                        <span>{te.icon}</span>
-                        <div>
-                          <p className="text-xs font-semibold leading-none">{te.label}</p>
-                          <p className="text-[10px] text-gray-600 mt-0.5">{te.desc}</p>
-                        </div>
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                        <span>{te.icon}</span><span>{te.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
-              ) : (
-                /* Tipo de evento definido — mostrar con opción de cambiar */
-                <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-lg px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">
-                      {trato.tipoEvento === "MUSICAL" ? "🎸" : trato.tipoEvento === "SOCIAL" ? "🎊" : trato.tipoEvento === "EMPRESARIAL" ? "🏢" : "🎵"}
-                    </span>
-                    <div>
-                      <span className="text-xs text-gray-400">Tipo de evento: </span>
-                      <span className="text-xs font-semibold text-white">
-                        {trato.tipoEvento === "MUSICAL" ? "Musical" : trato.tipoEvento === "SOCIAL" ? "Social" : trato.tipoEvento === "EMPRESARIAL" ? "Empresarial" : "General"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {["MUSICAL","SOCIAL","EMPRESARIAL","OTRO"].filter(t => t !== trato.tipoEvento).map(te => (
-                      <button key={te}
-                        onClick={async () => { const d = await patch({ tipoEvento: te }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors px-1.5 py-1">
-                        {te === "MUSICAL" ? "🎸" : te === "SOCIAL" ? "🎊" : te === "EMPRESARIAL" ? "🏢" : "🎵"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
-              {/* ── Temperatura + Pipeline de etapas ── */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest shrink-0">Temperatura</label>
-                  <div className="flex gap-1.5 flex-1">
+              {/* ── Temperatura del lead + Etapa ── */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
+                {/* Temperatura */}
+                <div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <p className="text-sm font-bold text-white">Temperatura del lead</p>
+                    <span className="text-[10px] text-gray-600">nivel de interés y apertura mostrados hasta ahora</span>
+                  </div>
+                  <div className="flex gap-2">
                     {[
-                      { id: "FRIO",     icon: "❄️", label: "Frío",     cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
-                      { id: "TIBIO",    icon: "🌡️", label: "Tibio",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
-                      { id: "CALIENTE", icon: "🔥", label: "Caliente", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
+                      { id: "FRIO",     icon: "❄️", label: "Frío",     desc: "Sin respuesta o primera interacción",  cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
+                      { id: "TIBIO",    icon: "🌡️", label: "Tibio",    desc: "Respondió, mostró algo de interés",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
+                      { id: "CALIENTE", icon: "🔥", label: "Caliente", desc: "Tiene evento próximo o pidió cotizar", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
                     ].map(t => (
                       <button key={t.id}
                         onClick={() => { const u = { ...nurturing, temperatura: t.id }; setNurturing(u); guardarNurturing(u); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"}`}>
-                        {t.icon} {t.label}
+                        title={t.desc}
+                        className={`flex-1 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors text-center ${nurturing.temperatura === t.id ? t.cls : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#555]"}`}>
+                        <span className="block text-base mb-0.5">{t.icon}</span>
+                        <span>{t.label}</span>
+                        {nurturing.temperatura === t.id && <p className="text-[9px] opacity-70 mt-0.5 font-normal leading-tight">{t.desc}</p>}
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Etapa del proceso */}
                 <div>
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest block mb-2">Etapa del proceso</label>
+                  <p className="text-sm font-bold text-white mb-2">Etapa del proceso</p>
                   <div className="flex gap-1 overflow-x-auto pb-1">
                     {NURTURING_ETAPAS.map((e, idx) => {
                       const currentIdx = NURTURING_ETAPAS.findIndex(x => x.id === nurturing.etapa);
@@ -1483,8 +1502,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       const isCurrent = e.id === nurturing.etapa;
                       return (
                         <button key={e.id}
-                          onClick={() => { const u = { ...nurturing, etapa: e.id }; setNurturing(u); guardarNurturing(u, { fechaProximaAccion: calcNextContact(e.id), proximaAccion: `Enviar guión etapa "${e.label}"` }); }}
-                          className={`flex-1 min-w-20 px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${
+                          onClick={() => { const u = { ...nurturing, etapa: e.id }; setNurturing(u); guardarNurturing(u, { fechaProximaAccion: calcNextContact(e.id), proximaAccion: `Etapa "${e.label}" — enviar guión correspondiente` }); }}
+                          className={`flex-1 min-w-20 px-2 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             isCurrent ? "border-emerald-500 bg-emerald-900/40 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.12)]"
                             : isPast ? "border-emerald-900/40 bg-emerald-900/10 text-emerald-700"
                             : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#444]"
@@ -1498,20 +1517,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              {/* ── Próximo contacto auto-calculado ── */}
+              {/* ── Próximo contacto ── */}
               {trato.fechaProximaAccion && (() => {
                 const info = fmtProximoContacto(trato.fechaProximaAccion.split("T")[0]);
                 return (
-                  <div className="flex items-center gap-3 bg-[#0a1a0f] border border-emerald-900/40 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3 bg-[#0a1a0f] border border-emerald-900/40 rounded-xl px-4 py-3">
                     <span className="text-lg shrink-0">🗓️</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">Próximo contacto programado</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">Próximo contacto</p>
                       <p className={`text-sm font-semibold ${info.color}`}>{info.label}</p>
-                      {trato.proximaAccion && <p className="text-[10px] text-gray-500 mt-0.5 truncate">{trato.proximaAccion}</p>}
                     </div>
                     {trato.responsable && (
                       <div className="text-right shrink-0">
-                        <p className="text-[10px] text-gray-600">Asignado a</p>
+                        <p className="text-[10px] text-gray-600">Responsable</p>
                         <p className="text-xs text-gray-400 font-medium">{trato.responsable.name.split(" ")[0]}</p>
                       </div>
                     )}
@@ -1519,53 +1537,90 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 );
               })()}
 
-              {/* ── Plan de acción de la etapa actual ── */}
+              {/* ── Plan de acción ── */}
               {playbook && (
-                <div className="bg-[#0a1a0f] border border-emerald-900/40 rounded-xl p-4">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-7 h-7 rounded-full bg-emerald-800/40 flex items-center justify-center text-sm shrink-0 mt-0.5">
-                      {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.icon}
-                    </div>
-                    <div>
-                      <p className="text-emerald-300 text-sm font-semibold">
-                        {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}
-                        <span className="ml-2 text-[10px] text-emerald-700 font-normal">{playbook.intervalo}</span>
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1 leading-relaxed">{playbook.objetivo}</p>
-                    </div>
+                <div className="bg-[#0a1a0f] border border-emerald-900/40 rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">{NURTURING_ETAPAS.find(e => e.id === etapaKey)?.icon}</span>
+                    <p className="text-base font-bold text-white">{NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}</p>
+                    <span className="text-[10px] text-emerald-700 ml-1">{playbook.intervalo}</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <p className="text-gray-300 text-sm leading-relaxed mb-5">{playbook.objetivo}</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Qué hacer */}
                     <div>
-                      <p className="text-[10px] text-emerald-700 uppercase tracking-widest mb-2 font-semibold">Qué hacer</p>
-                      <ul className="space-y-1.5">
-                        {playbook.acciones.map((a, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
-                            <span className="text-emerald-600 mt-0.5 shrink-0">›</span><span>{a}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Qué hacer</p>
+                      {/* Acción principal */}
+                      <div className="flex items-start gap-2.5 bg-emerald-900/25 border border-emerald-900/50 rounded-xl px-3 py-2.5 mb-3">
+                        <span className="text-emerald-400 font-bold text-base shrink-0 leading-tight mt-0.5">→</span>
+                        <span className="text-sm text-white font-medium leading-snug">{playbook.acciones[0]}</span>
+                      </div>
+                      {/* Sugerencias */}
+                      {playbook.acciones.slice(1).length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">También puedes:</p>
+                          <ul className="space-y-1.5">
+                            {playbook.acciones.slice(1).map((a, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                                <span className="text-gray-700 mt-0.5 shrink-0">›</span><span>{a}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Qué compartir */}
                     <div>
-                      <p className="text-[10px] text-emerald-700 uppercase tracking-widest mb-2 font-semibold">Qué compartir</p>
-                      <ul className="space-y-1.5">
-                        {playbook.contenido.map((c, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
-                            <span className="text-[#B3985B] mt-0.5 shrink-0">◆</span><span>{c}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs font-bold text-[#B3985B] uppercase tracking-widest mb-3">Qué compartir</p>
+                      {/* Presentación principal de la plataforma */}
+                      {(presentacionPrincipal ?? presentacionesSecundarias[0]) && (() => {
+                        const pres = presentacionPrincipal ?? presentacionesSecundarias[0];
+                        return (
+                          <button
+                            onClick={() => navigator.clipboard.writeText(pres.url)}
+                            className="w-full flex items-center justify-between gap-2 bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl px-3 py-2.5 mb-3 text-left hover:bg-[#B3985B]/15 transition-colors">
+                            <span className="text-sm text-white font-medium leading-snug">{pres.label}</span>
+                            <div className="flex items-center gap-1 text-[#B3985B] text-[10px] shrink-0">
+                              {COPY_ICON}<span>Copiar link</span>
+                            </div>
+                          </button>
+                        );
+                      })()}
+                      {/* Sugerencias de contenido */}
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">También puedes usar:</p>
+                        <ul className="space-y-1.5">
+                          {playbook.contenido.map((c, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                              <span className="text-gray-700 mt-0.5 shrink-0">›</span><span>{c}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Otras presentaciones secundarias */}
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {(presentacionPrincipal ? presentacionesSecundarias : presentacionesSecundarias.slice(1)).map(p => (
+                            <button key={p.url}
+                              onClick={() => navigator.clipboard.writeText(p.url)}
+                              className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-gray-300 bg-[#111] border border-[#2a2a2a] hover:border-[#444] px-2 py-1 rounded-lg transition-colors">
+                              <span>{p.label}</span>{COPY_ICON}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ── Guiones WA — etapa actual + tipo de evento ── */}
-              <div className="border-t border-[#1a1a1a] pt-5">
+              {/* ── Guión estándar ── */}
+              <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">
-                    Guiones WhatsApp — {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}
+                  <p className="text-base font-bold text-white">
+                    Guión de contacto
                     {trato.tipoEvento && trato.tipoEvento !== "OTRO" && (
-                      <span className="ml-2 text-[#B3985B]">
+                      <span className="ml-2 text-sm text-emerald-600 font-normal">
                         · {trato.tipoEvento === "MUSICAL" ? "Musical" : trato.tipoEvento === "SOCIAL" ? "Social" : "Empresarial"}
                       </span>
                     )}
@@ -1573,58 +1628,68 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   {!num && <span className="text-[10px] text-orange-400">Sin teléfono en cliente</span>}
                 </div>
 
-                {tplsEvento.length > 0 ? (
-                  <div className="space-y-2">
-                    {tplsEvento.map(tpl => {
-                      const msg = tpl.msg(nombre, ctx);
-                      const yaEnviado = nurturing.log.some(l => l.templateId === tpl.id);
-                      return (
-                        <div key={tpl.id} className={`bg-[#111] border rounded-xl overflow-hidden ${yaEnviado ? "border-emerald-900/60" : "border-[#222]"}`}>
-                          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a]">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-emerald-300">{tpl.icon} {tpl.label}</span>
-                              {yaEnviado && (
-                                <span className="text-[10px] text-emerald-600 bg-emerald-900/20 border border-emerald-900/40 px-1.5 py-0.5 rounded">
-                                  ✓ Enviado
-                                </span>
-                              )}
-                            </div>
-                            {num ? (
-                              <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
-                                target="_blank" rel="noopener noreferrer"
-                                onClick={() => registrarEnvioWA(tpl.id, tpl.label)}
-                                className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-800/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors">
-                                {WA_ICON} {yaEnviado ? "Reenviar" : "Enviar"}
-                              </a>
-                            ) : (
-                              <span className="text-[10px] text-gray-600">Sin teléfono</span>
-                            )}
-                          </div>
-                          <div className="px-4 py-3">
-                            <p className="text-gray-400 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
-                          </div>
+                {tplsEvento.length > 0 ? (() => {
+                  const tpl = tplsEvento[0];
+                  const msg = tpl.msg(nombre, ctx);
+                  const yaEnviado = nurturing.log.some(l => l.templateId === tpl.id);
+                  return (
+                    <div className={`bg-[#111] border rounded-xl overflow-hidden ${yaEnviado ? "border-emerald-900/60" : "border-[#222]"}`}>
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-emerald-300">{tpl.icon} {tpl.label}</span>
+                          {yaEnviado && <span className="text-[10px] text-emerald-600 bg-emerald-900/20 border border-emerald-900/40 px-1.5 py-0.5 rounded">✓ Enviado</span>}
+                          <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#2a2a2a]">Guión base</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-gray-600 text-xs">Define el tipo de evento arriba para ver los guiones correspondientes.</p>
+                        {num ? (
+                          <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            onClick={() => registrarEnvioWA(tpl.id, tpl.label)}
+                            className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-800/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                            {WA_ICON} {yaEnviado ? "Reenviar" : "Enviar WA"}
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-gray-600">Sin teléfono</span>
+                        )}
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
+                      </div>
+                      <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+                        <p className="text-[10px] text-gray-600 leading-relaxed">
+                          Este es el guión base recomendado. El vendedor puede adaptar el mensaje según el contexto del cliente — siempre manteniendo el objetivo de la etapa: <span className="text-gray-500 italic">{playbook?.objetivo}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-gray-600 text-xs">Define el tipo de evento arriba para ver el guión correspondiente.</p>
                 )}
+              </div>
 
-                {playbook?.contenido && (
-                  <div className="mt-3 p-3 bg-[#111] border border-[#1e1e1e] rounded-lg flex flex-wrap gap-1.5">
-                    {playbook.contenido.map((c, i) => (
-                      <span key={i} className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded">{c}</span>
-                    ))}
-                  </div>
-                )}
+              {/* ── Actividad y notas de seguimiento ── */}
+              <div>
+                <p className="text-base font-bold text-white mb-1">Actividad y notas</p>
+                <p className="text-xs text-gray-500 mb-3">Registra respuestas recibidas, avances, solicitudes o cualquier dato relevante en esta etapa.</p>
+                <textarea
+                  key={etapaKey}
+                  defaultValue={nurturing.notas?.[etapaKey] ?? ""}
+                  onBlur={e => {
+                    const notas = { ...(nurturing.notas ?? {}), [etapaKey]: e.target.value };
+                    const u = { ...nurturing, notas };
+                    setNurturing(u);
+                    guardarNurturing(u);
+                  }}
+                  rows={4}
+                  placeholder={`Ej: Respondió el ${new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short" })}, mostró interés en audio, dijo que tiene evento en junio...`}
+                  className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-emerald-700/60 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-gray-700 transition-colors"
+                />
               </div>
 
               {/* ── Historial de mensajes enviados ── */}
               {nurturing.log.length > 0 && (
                 <div className="border-t border-[#1a1a1a] pt-5">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
-                    Mensajes enviados ({nurturing.log.length})
+                  <p className="text-sm font-bold text-white mb-3">
+                    Historial de mensajes <span className="text-gray-600 font-normal text-xs">({nurturing.log.length})</span>
                   </p>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {[...nurturing.log].reverse().map((entry, i) => {
@@ -1645,44 +1710,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              {/* ── Links de presentación para compartir ── */}
+              {/* ── Transición al pipeline de venta ── */}
               <div className="border-t border-[#1a1a1a] pt-5">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Presentaciones para compartir</p>
-                <div className="flex flex-wrap gap-2">
-                  {trato.tipoEvento && trato.tipoEvento !== "OTRO" && (() => {
-                    const tipo = trato.tipoEvento === "MUSICAL" ? "musical" : trato.tipoEvento === "SOCIAL" ? "social" : "empresarial";
-                    const url  = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/presentacion/evento/${tipo}`;
-                    const label = trato.tipoEvento === "MUSICAL" ? "🎸 Eventos Musicales" : trato.tipoEvento === "SOCIAL" ? "🎊 Eventos Sociales" : "🏢 Eventos Empresariales";
-                    return (
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(url); }}
-                        className="flex items-center gap-2 text-xs bg-[#111] hover:bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-300 px-3 py-2 rounded-lg transition-all">
-                        <span>{label}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      </button>
-                    );
-                  })()}
-                  {[
-                    { label: "📋 Servicios", url: "/presentacion/servicios" },
-                    { label: "🎛 Inventario", url: "/presentacion/inventario" },
-                  ].map(item => {
-                    const fullUrl = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}${item.url}`;
-                    return (
-                      <button key={item.url}
-                        onClick={() => { navigator.clipboard.writeText(fullUrl); }}
-                        className="flex items-center gap-2 text-xs bg-[#111] hover:bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-300 px-3 py-2 rounded-lg transition-all">
-                        <span>{item.label}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-gray-600 mt-2">Clic para copiar el link y pegarlo en WhatsApp</p>
-              </div>
-
-              {/* ── Transición ── */}
-              <div className="border-t border-[#1a1a1a] pt-5">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">¿El prospecto ya está listo para avanzar?</p>
+                <p className="text-sm font-bold text-white mb-1">¿El prospecto ya está listo para avanzar?</p>
                 <p className="text-gray-600 text-xs mb-4">Cuando el prospecto tenga una necesidad concreta, pásalo al flujo de venta activo.</p>
                 <div className="grid grid-cols-2 gap-3">
                   <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}

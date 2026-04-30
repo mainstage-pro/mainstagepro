@@ -233,32 +233,48 @@ export default function RolesPage() {
 
           {(form.tipoPago === "TARIFA_PLANA" || form.tipoPago === "POR_PROYECTO") && (
             <div className="mb-5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifa por evento</p>
-              <div className="max-w-xs">
-                <label className="text-xs text-gray-500 block mb-1">Tarifa ($)</label>
-                <input
-                  type="number"
-                  value={numVal("tarifaPlanaAAA")}
-                  onChange={e => set("tarifaPlanaAAA", e.target.value === "" ? null : parseFloat(e.target.value))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                  placeholder="0"
-                />
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por evento</p>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: "tarifaPlanaAAA" as const, label: "AAA" },
+                  { key: "tarifaPlanaAA" as const, label: "AA" },
+                  { key: "tarifaPlanaA" as const, label: "A" },
+                ]).map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                    <input
+                      type="number"
+                      value={numVal(key)}
+                      onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
           {form.tipoPago === "POR_HORA" && (
             <div className="mb-5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifa por hora</p>
-              <div className="max-w-xs">
-                <label className="text-xs text-gray-500 block mb-1">$ / hora</label>
-                <input
-                  type="number"
-                  value={numVal("tarifaHoraAAA")}
-                  onChange={e => set("tarifaHoraAAA", e.target.value === "" ? null : parseFloat(e.target.value))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                  placeholder="0"
-                />
+              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por hora</p>
+              <div className="grid grid-cols-3 gap-3">
+                {([
+                  { key: "tarifaHoraAAA" as const, label: "AAA" },
+                  { key: "tarifaHoraAA" as const, label: "AA" },
+                  { key: "tarifaHoraA" as const, label: "A" },
+                ]).map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="text-xs text-gray-500 block mb-1">{label} · $ / hr</label>
+                    <input
+                      type="number"
+                      value={numVal(key)}
+                      onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+                      placeholder="0"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -343,11 +359,23 @@ function RolCard({ r, onEdit, onToggle, onDelete }: {
         )}
 
         {(r.tipoPago === "TARIFA_PLANA" || r.tipoPago === "POR_PROYECTO") && (
-          <p className="text-xs text-gray-300 font-medium">{fmt(r.tarifaPlanaAAA)} por evento</p>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-gray-600">AAA <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaPlanaAAA)}</span></span>
+            <span className="text-gray-700">·</span>
+            <span className="text-gray-600">AA <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaPlanaAA)}</span></span>
+            <span className="text-gray-700">·</span>
+            <span className="text-gray-600">A <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaPlanaA)}</span></span>
+          </div>
         )}
 
         {r.tipoPago === "POR_HORA" && (
-          <p className="text-xs text-gray-300 font-medium">{fmt(r.tarifaHoraAAA)} / hora</p>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="text-gray-600">AAA <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaHoraAAA)}/hr</span></span>
+            <span className="text-gray-700">·</span>
+            <span className="text-gray-600">AA <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaHoraAA)}/hr</span></span>
+            <span className="text-gray-700">·</span>
+            <span className="text-gray-600">A <span className="text-gray-300 font-medium ml-1">{fmt(r.tarifaHoraA)}/hr</span></span>
+          </div>
         )}
 
         {r.descripcion && <p className="text-gray-600 text-xs mt-1">{r.descripcion}</p>}

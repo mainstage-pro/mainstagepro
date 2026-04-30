@@ -15,7 +15,7 @@ import ProyectoTareas from "./ProyectoTareas";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
-interface RolTecnico { id: string; nombre: string; tipoPago: string; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaHoraAAA: number | null }
+interface RolTecnico { id: string; nombre: string; tipoPago: string; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
 interface Personal {
   id: string; confirmado: boolean; estadoPago: string;
   participacion: string | null;
@@ -492,6 +492,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showAddPersonal, setShowAddPersonal] = useState(false);
   const [selTecnico, setSelTecnico] = useState("");
   const [selRol, setSelRol] = useState("");
+  const [selNivel, setSelNivel] = useState("AAA");
   const [selJornada, setSelJornada] = useState("MEDIA");
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
@@ -883,7 +884,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setOpenDocs(new Set(suggested));
   }, [proyecto?.id]); // eslint-disable-line
 
-  // Auto-calcular tarifa desde tabulador cuando cambia rol o jornada
+  // Auto-calcular tarifa desde tabulador cuando cambia rol, jornada o nivel
   useEffect(() => {
     if (!selRol || !proyecto) return;
     const rol = roles.find(r => r.id === selRol);
@@ -893,10 +894,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (rol.tipoPago === "POR_JORNADA") {
       base = selJornada === "CORTA" ? rol.tarifaAAACorta : selJornada === "MEDIA" ? rol.tarifaAAAMedia : rol.tarifaAAALarga;
     } else if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
-      base = rol.tarifaPlanaAAA;
+      const key = `tarifaPlana${selNivel}` as keyof RolTecnico;
+      base = rol[key] as number | null;
+    } else if (rol.tipoPago === "POR_HORA") {
+      const key = `tarifaHora${selNivel}` as keyof RolTecnico;
+      base = rol[key] as number | null;
     }
     if (base != null) setSelTarifa(String(base + zonaBonus));
-  }, [selRol, selJornada, proyecto?.zona]); // eslint-disable-line
+  }, [selRol, selJornada, selNivel, proyecto?.zona]); // eslint-disable-line
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -1458,7 +1463,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         tecnicoId: selTecnico || null,
         rolTecnicoId: selRol || null,
         participacion: selParticipacion,
-        nivel: "AAA",
+        nivel: selNivel,
         jornada: selJornada,
         tarifaAcordada: selTarifa || null,
         responsabilidad: selResp || null,
@@ -1472,7 +1477,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
-    setSelTecnico(""); setSelRol(""); setSelTarifa(""); setSelResp("");
+    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp("");
     setShowAddPersonal(false);
     setAddingPersonal(false);
   }
@@ -2633,15 +2638,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Jornada</label>
-                    <Combobox
-                      value={selJornada}
-                      onChange={v => setSelJornada(v)}
-                      options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                    />
-                  </div>
+                  {(!selRol || roles.find(r => r.id === selRol)?.tipoPago === "POR_JORNADA") && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Jornada</label>
+                      <Combobox
+                        value={selJornada}
+                        onChange={v => setSelJornada(v)}
+                        options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                      />
+                    </div>
+                  )}
+                  {selRol && roles.find(r => r.id === selRol)?.tipoPago !== "POR_JORNADA" && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Nivel</label>
+                      <Combobox
+                        value={selNivel}
+                        onChange={v => setSelNivel(v)}
+                        options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
                     <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
