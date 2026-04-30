@@ -21,8 +21,11 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const responsableId = searchParams.get("responsableId");
 
+  const tipoProspecto = searchParams.get("tipoProspecto");
+
   const where: Record<string, unknown> = {};
   if (responsableId) where.responsableId = responsableId;
+  if (tipoProspecto) where.tipoProspecto = tipoProspecto;
 
   const tratos = await prisma.trato.findMany({
     where,
@@ -30,6 +33,7 @@ export async function GET(request: NextRequest) {
       id: true, etapa: true, tipoEvento: true, nombreEvento: true,
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
       origenLead: true, fechaProximaAccion: true, createdAt: true,
+      tipoProspecto: true, nurturingData: true, proximaAccion: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
       cotizaciones: {
