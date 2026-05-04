@@ -60,6 +60,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "tipoProspecto", "nurturingData",
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
+    "diasServicio",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",
     // Horarios del evento

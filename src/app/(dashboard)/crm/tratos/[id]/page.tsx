@@ -49,6 +49,7 @@ interface Trato {
   canalAtencion: string | null;
   nombreEvento: string | null;
   duracionEvento: string | null;
+  diasServicio: number | null;
   asistentesEstimados: number | null;
   serviciosInteres: string | null;
   ideasReferencias: string | null;
@@ -651,6 +652,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     fechaEventoEstimada: "",
     lugarEstimado: "",
     asistentesEstimados: "",
+    diasServicio: "",
     presupuestoEstimado: "",
     tipoServicio: "",
     ideasReferencias: "",
@@ -799,6 +801,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             fechaEventoEstimada: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : "",
             lugarEstimado: t.lugarEstimado ?? "",
             asistentesEstimados: t.asistentesEstimados?.toString() ?? "",
+            diasServicio: t.diasServicio?.toString() ?? "",
             presupuestoEstimado: t.presupuestoEstimado?.toString() ?? "",
             tipoServicio: t.tipoServicio ?? "",
             ideasReferencias: t.tipoServicio !== "RENTA" ? (t.ideasReferencias ?? "") : "",
@@ -889,6 +892,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
+      diasServicio: discForm.diasServicio ? parseInt(discForm.diasServicio) : null,
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
       tipoServicio: discForm.tipoServicio || null,
       notas: discForm.notas || null,
@@ -947,6 +951,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
         lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
         asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
+        diasServicio: form.diasServicio ? parseInt(form.diasServicio) : null,
         presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
         tipoServicio: form.tipoServicio || null,
         notas: form.notas || null,
@@ -1841,6 +1846,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 ) : (
                   <VenuePicker value={discForm.lugarEstimado} onChange={(v) => setDiscForm(p => ({ ...p, lugarEstimado: v }))} placeholder="Ej: CDMX · Salón Versalles" />
                 )}
+              </div>
+
+              {/* Días de servicio */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Días de servicio del equipo</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="1" max="30"
+                    value={discForm.diasServicio}
+                    onChange={e => setDiscForm(p => ({ ...p, diasServicio: e.target.value }))}
+                    placeholder="1"
+                    className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <span className="text-xs text-gray-500">día(s) · se pre-llena en la cotización</span>
+                </div>
               </div>
 
               {/* Horarios del evento */}

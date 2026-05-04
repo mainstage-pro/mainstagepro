@@ -411,6 +411,8 @@ function CotizadorForm() {
           tipoServicio: t.tipoServicio || prev.tipoServicio,
           fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : prev.fechaEvento,
           lugarEvento: t.lugarEstimado || prev.lugarEvento,
+          diasEquipo: t.diasServicio ? String(t.diasServicio) : prev.diasEquipo,
+          diasOperacion: t.diasServicio ? String(t.diasServicio) : prev.diasOperacion,
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);

@@ -185,6 +185,8 @@ model Trato {
   formEstado          String   @default("NO_ENVIADO") // NO_ENVIADO | ENVIADO | COMPLETADO
   formRespuestas      String?  // JSON con respuestas del prospecto
 
+  // ── Duración del servicio ────────────────────────────────────────────────
+  diasServicio       Int?     // días de renta de equipo — se usa para pre-llenar cotizaciones
   // ── Horarios del evento (capturados durante ventas) ─────────────────────
   horaInicioEvento   String?  // ej: "18:00"
   horaFinEvento      String?  // ej: "23:00"
