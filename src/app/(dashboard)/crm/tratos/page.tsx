@@ -388,11 +388,22 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
           const fechaLabel = t.fechaEventoEstimada
             ? showHace
               ? (() => {
-                  const diff = Math.floor((new Date().getTime() - new Date(t.fechaEventoEstimada + "T00:00:00").getTime()) / 86400000);
+                  const eventMs = new Date(t.fechaEventoEstimada.slice(0, 10) + "T00:00:00Z").getTime();
+                  const todayMs = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z").getTime();
+                  const diff = Math.floor((todayMs - eventMs) / 86400000);
                   return diff === 0 ? "Hoy" : diff === 1 ? "Ayer" : `Hace ${diff}d`;
                 })()
               : fmtFecha(t.fechaEventoEstimada)
             : null;
+
+          const presupuesto = t.presupuestoEstimado
+            ?? (() => {
+                const cots = t.cotizaciones ?? [];
+                const aprobada = cots.find(c => c.estado === "APROBADA");
+                const enviada  = cots.find(c => c.estado === "ENVIADA" || c.estado === "REENVIADA");
+                const ref = aprobada ?? enviada ?? (cots.length > 0 ? cots[cots.length - 1] : null);
+                return ref ? ref.granTotal : null;
+              })();
 
           return (
             <div key={t.id}>
@@ -429,8 +440,8 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                   )}
                 </div>
                 <div className="shrink-0 min-w-[80px] text-right">
-                  {t.presupuestoEstimado ? (
-                    <span className="text-[#B3985B] text-xs">{formatCurrency(t.presupuestoEstimado)}</span>
+                  {presupuesto ? (
+                    <span className={`text-xs ${t.presupuestoEstimado ? "text-[#B3985B]" : "text-[#666]"}`}>{formatCurrency(presupuesto)}</span>
                   ) : (
                     <span className="text-[#333] text-xs">—</span>
                   )}
