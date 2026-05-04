@@ -569,12 +569,13 @@ function CotizadorForm() {
     const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
     if (!rol) return;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
-    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada && l.nivel === selRolNivel);
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
+    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada);
     if (yaExiste) return;
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad, dias,
+      nivel, jornada: selRolJornada, cantidad, dias,
       precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
     }]);
   }
@@ -699,10 +700,11 @@ function CotizadorForm() {
     if (!rol) return;
     const cant = parseFloat(selRolCant) || 1;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad: cant, dias,
+      nivel, jornada: selRolJornada, cantidad: cant, dias,
       precioUnitario: tarifa, subtotal: tarifa * cant * dias,
     }]);
     setSelRol(""); setSelRolCant("1");
@@ -1724,25 +1726,26 @@ function CotizadorForm() {
                 options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
                 className="flex-1"
               />
-              <Combobox
-                value={selRolNivel}
-                onChange={v => setSelRolNivel(v)}
-                options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-              />
               {(() => {
                 const rolSel = roles.find(r => r.id === selRol);
-                if (!rolSel || rolSel.tipoPago === "POR_JORNADA") {
+                if (rolSel && rolSel.tipoPago !== "POR_JORNADA") {
                   return (
                     <Combobox
-                      value={selRolJornada}
-                      onChange={v => setSelRolJornada(v)}
-                      options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                      className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                      value={selRolNivel}
+                      onChange={v => setSelRolNivel(v)}
+                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                      className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
                     />
                   );
                 }
-                return null;
+                return (
+                  <Combobox
+                    value={selRolJornada}
+                    onChange={v => setSelRolJornada(v)}
+                    options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                    className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                  />
+                );
               })()}
               <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
