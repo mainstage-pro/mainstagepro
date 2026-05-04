@@ -481,6 +481,7 @@ export default function TratosPage() {
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
+  const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
@@ -546,6 +547,43 @@ export default function TratosPage() {
   const tratosArchivados = tratosFiltrados.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy)
     .sort((a, b) => new Date(b.fechaEventoEstimada!).getTime() - new Date(a.fechaEventoEstimada!).getTime());
 
+  // Agrupación por mes o semana
+  const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+  function grupoMes(fecha: string) {
+    const [y, m] = fecha.slice(0,7).split("-");
+    return { key: fecha.slice(0,7), label: `${MESES_ES[parseInt(m)-1]} ${y}` };
+  }
+
+  function grupoSemana(fecha: string) {
+    const d = new Date(fecha + "T12:00:00");
+    const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    const lunes = new Date(d); lunes.setDate(d.getDate() - dow);
+    const dom   = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+    const key = lunes.toISOString().slice(0,10);
+    const fmt = (x: Date) => x.toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" });
+    return { key, label: `${fmt(lunes)} – ${fmt(dom)}` };
+  }
+
+  type Grupo = { key: string; label: string; tratos: Trato[] };
+
+  function agrupar(list: Trato[]): Grupo[] {
+    if (agrupacion === "todos") return [{ key: "todos", label: "", tratos: list }];
+    const map = new Map<string, Grupo>();
+    const sinFecha: Trato[] = [];
+    for (const t of list) {
+      if (!t.fechaEventoEstimada) { sinFecha.push(t); continue; }
+      const g = agrupacion === "mes" ? grupoMes(t.fechaEventoEstimada) : grupoSemana(t.fechaEventoEstimada);
+      if (!map.has(g.key)) map.set(g.key, { ...g, tratos: [] });
+      map.get(g.key)!.tratos.push(t);
+    }
+    const sorted = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+    if (sinFecha.length) sorted.push({ key: "sin-fecha", label: "Sin fecha definida", tratos: sinFecha });
+    return sorted;
+  }
+
+  const gruposProximos = agrupar(tratosProximos);
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -598,85 +636,109 @@ export default function TratosPage() {
         )}
       </div>
 
-      {/* ── Vista Lista: dos columnas ── */}
+      {/* ── Vista Lista ── */}
       {vista === "lista" && (
-        <div className="flex gap-4 items-start">
+        <div className="space-y-4">
 
-          {/* ── Sidebar izquierdo: etapas ── */}
-          <div className="w-44 shrink-0 space-y-1">
-            {([{ key: null, label: "Todos" }, ...ETAPAS.map(e => ({ key: e, label: ETAPA_LABELS[e] }))] as { key: string | null; label: string }[]).map(({ key, label }) => {
-              const total    = tratos.filter(t => !key || t.etapa === key);
-              const proxN    = total.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy).length;
-              const archN    = total.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy).length;
-              const activo   = filtroEtapa === key;
-              const accentCls = key === null ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
-                : key === "DESCUBRIMIENTO" ? "border-blue-700/60 text-blue-300 bg-blue-950/30"
-                : key === "OPORTUNIDAD"    ? "border-yellow-600/60 text-yellow-300 bg-yellow-950/30"
-                : key === "VENTA_CERRADA"  ? "border-green-700/60 text-green-300 bg-green-950/30"
-                :                            "border-red-700/60 text-red-300 bg-red-950/30";
-              return (
-                <button key={String(key)} onClick={() => setFiltroEtapa(key)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${activo ? accentCls : "border-transparent text-gray-500 hover:text-white hover:bg-[#161616]"}`}>
-                  <div className="text-xs font-semibold">{label}</div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-gray-600">{proxN} próx.</span>
-                    {archN > 0 && <span className="text-[10px] text-amber-600">{archN} pend.</span>}
-                  </div>
-                </button>
-              );
-            })}
-            <div className="pt-2 border-t border-[#1a1a1a]">
-              <select value={orden} onChange={e => setOrden(e.target.value as typeof orden)}
-                className="w-full bg-[#111] border border-[#1e1e1e] text-[#555] text-[10px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
-                <option value="evento_asc">Fecha ↑</option>
-                <option value="evento_desc">Fecha ↓</option>
-                <option value="creacion_desc">Más recientes</option>
-                <option value="creacion_asc">Más antiguos</option>
-              </select>
+          {/* ── Barra de filtros horizontal ── */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Etapas como pills */}
+            <div className="flex items-center gap-1.5 flex-wrap flex-1">
+              {([{ key: null, label: "Todos" }, ...ETAPAS.map(e => ({ key: e, label: ETAPA_LABELS[e] }))] as { key: string | null; label: string }[]).map(({ key, label }) => {
+                const total = tratos.filter(t => !key || t.etapa === key);
+                const n = total.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy).length;
+                const archN = total.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy).length;
+                const activo = filtroEtapa === key;
+                const accentCls = key === null ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
+                  : key === "DESCUBRIMIENTO" ? "border-blue-700/60 text-blue-300 bg-blue-950/30"
+                  : key === "OPORTUNIDAD"    ? "border-yellow-600/60 text-yellow-300 bg-yellow-950/30"
+                  : key === "VENTA_CERRADA"  ? "border-green-700/60 text-green-300 bg-green-950/30"
+                  :                            "border-red-700/60 text-red-300 bg-red-950/30";
+                return (
+                  <button key={String(key)} onClick={() => setFiltroEtapa(key)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${activo ? accentCls : "border-[#222] text-gray-500 hover:text-white hover:border-[#333]"}`}>
+                    {label}
+                    <span className={`text-[10px] font-bold ${activo ? "" : "text-gray-600"}`}>{n}</span>
+                    {archN > 0 && <span className="text-[9px] text-amber-500">+{archN}</span>}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Agrupación */}
+            <div className="flex items-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5 shrink-0">
+              {(["todos","mes","semana"] as const).map(ag => (
+                <button key={ag} onClick={() => setAgrupacion(ag)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${agrupacion === ag ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+                  {ag === "todos" ? "Todo" : ag === "mes" ? "Por mes" : "Por semana"}
+                </button>
+              ))}
+            </div>
+
+            {/* Orden */}
+            <select value={orden} onChange={e => setOrden(e.target.value as typeof orden)}
+              className="bg-[#111] border border-[#1e1e1e] text-[#555] text-[10px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50 shrink-0">
+              <option value="evento_asc">Fecha ↑</option>
+              <option value="evento_desc">Fecha ↓</option>
+              <option value="creacion_desc">Más recientes</option>
+              <option value="creacion_asc">Más antiguos</option>
+            </select>
           </div>
 
-          {/* ── Panel derecho ── */}
-          <div className="flex-1 min-w-0 space-y-6">
-            {loading ? (
-              <SkeletonPage rows={5} cols={5} />
-            ) : tratos.length === 0 ? (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
-                <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>
-                <button onClick={() => setShowNueva(true)} className="inline-block mt-4 text-[#B3985B] text-sm hover:underline">
-                  Crear primera oportunidad →
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Pendientes de cerrar */}
-                {tratosArchivados.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
-                      <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full">{tratosArchivados.length}</span>
-                    </div>
-                    <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />
+          {/* ── Contenido ── */}
+          {loading ? (
+            <SkeletonPage rows={5} cols={5} />
+          ) : tratos.length === 0 ? (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
+              <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>
+              <button onClick={() => setShowNueva(true)} className="inline-block mt-4 text-[#B3985B] text-sm hover:underline">
+                Crear primera oportunidad →
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Pendientes de cerrar — siempre arriba y separados */}
+              {tratosArchivados.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
+                    <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full">{tratosArchivados.length}</span>
+                    <span className="text-[10px] text-amber-700 italic">Fecha de evento ya pasó — requieren acción</span>
                   </div>
-                )}
+                  <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />
+                </div>
+              )}
 
-                {/* Próximos */}
+              {/* Próximos agrupados */}
+              {tratosProximos.length === 0 ? (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center text-[#555] text-sm">
+                  Sin tratos próximos en esta etapa
+                </div>
+              ) : agrupacion === "todos" ? (
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Próximos</h2>
                     <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{tratosProximos.length}</span>
                   </div>
-                  {tratosProximos.length === 0 ? (
-                    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center text-[#555] text-sm">
-                      Sin tratos próximos en esta etapa
-                    </div>
-                  ) : (
-                    <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
-                  )}
+                  <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
                 </div>
-              </>
-            )}
-          </div>
+              ) : (
+                <div className="space-y-5">
+                  {gruposProximos.map(grupo => (
+                    <div key={grupo.key}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h2 className="text-xs font-bold text-white">{grupo.label}</h2>
+                        <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{grupo.tratos.length}</span>
+                        <div className="flex-1 h-px bg-[#1e1e1e]" />
+                      </div>
+                      <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
