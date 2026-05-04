@@ -507,6 +507,7 @@ interface CotizacionData {
   };
   creadaPor: { name: string } | null;
   lineas: Linea[];
+  incluirChofer?: boolean;
   tradeCalificado?: boolean;
   mainstageTradeData?: string | null;
   planPagos?: string | null;
@@ -633,10 +634,10 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
 }
 
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
-function SubtotalOperacion({ lineas }: { lineas: Linea[] }) {
+function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluirChofer?: boolean }) {
   const opLineas = lineas.filter(l => ["OPERACION_TECNICA", "DJ"].includes(l.tipo));
-  if (opLineas.length === 0) return null;
-  const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0);
+  const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0) + (incluirChofer ? 500 : 0);
+  if (subtotal === 0) return null;
 
   return (
     <View style={{ marginHorizontal: 40, marginTop: 8 }}>
@@ -724,6 +725,8 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
     discRows.push({ label: `Family & Friends (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
     discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
+  if ((c.descuentoPatrocinioPct ?? 0) > 0)
+    discRows.push({ label: `Patrocinio (${Math.round(c.descuentoPatrocinioPct * 100)}%)${c.descuentoPatrocinioNota ? ` · ${c.descuentoPatrocinioNota}` : ""}`, monto: sb * c.descuentoPatrocinioPct });
   if ((c.descuentoFijoMonto ?? 0) > 0)
     discRows.push({ label: "Descuento por monto fijo", monto: c.descuentoFijoMonto! });
   // Trade
@@ -815,7 +818,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         <TablaAdicionales lineas={c.lineas} />
 
         {/* ── OPERACIÓN TÉCNICA (subtotal global, sin desglose) ── */}
-        <SubtotalOperacion lineas={c.lineas} />
+        <SubtotalOperacion lineas={c.lineas} incluirChofer={c.incluirChofer} />
 
         {/* ── LOGÍSTICA (subtotal global, sin desglose) ── */}
         <SubtotalLogistica lineas={c.lineas} />
@@ -841,10 +844,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0))}</Text>
               </View>
             )}
-            {c.subtotalOperacion > 0 && (
+            {(c.subtotalOperacion + (c.incluirChofer ? 500 : 0)) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Operación técnica</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalOperacion)}</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalOperacion + (c.incluirChofer ? 500 : 0))}</Text>
               </View>
             )}
             {(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
