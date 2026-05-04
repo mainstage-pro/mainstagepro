@@ -265,6 +265,8 @@ function CotizadorForm() {
   const [especialActivo, setEspecialActivo] = useState(false); // renombrado de Family & Friends
   const [especialEdit, setEspecialEdit] = useState(false);
   const [dFamilyFriends, setDFamilyFriends] = useState("10"); // % fijo por defecto
+  const [descuentoFijoActivo, setDescuentoFijoActivo] = useState(false);
+  const [descuentoFijoMonto, setDescuentoFijoMonto] = useState("");
   const [aplicaIva, setAplicaIva] = useState(false);
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
@@ -346,6 +348,7 @@ function CotizadorForm() {
         if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
         if ((cot.descuentoMultidiaPct ?? 0) > 0) { setMultidiaActivo(true); }
         if ((cot.descuentoFamilyFriendsPct ?? 0) > 0) { setEspecialActivo(true); setDFamilyFriends(String(Math.round(cot.descuentoFamilyFriendsPct * 100))); }
+        if ((cot.descuentoFijoMonto ?? 0) > 0) { setDescuentoFijoActivo(true); setDescuentoFijoMonto(String(cot.descuentoFijoMonto)); }
         // Preservar descuentos sin control de UI (especial, patrocinio)
         if ((cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
         if ((cot.descuentoPatrocinioPct ?? 0) > 0) { setDPatrocinioPreservado(cot.descuentoPatrocinioPct); setDPatrocinioNotaPreservada(cot.descuentoPatrocinioNota ?? null); }
@@ -769,7 +772,8 @@ function CotizadorForm() {
 
     // Total incluye equipos propios (con descuento) + externos (con/sin descuento) + ocasionales + operación + logística
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const montoDescuentoFijo = descuentoFijoActivo ? (parseFloat(descuentoFijoMonto) || 0) : 0;
+    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer - montoDescuentoFijo;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
 
@@ -795,13 +799,14 @@ function CotizadorForm() {
       autoVolumen, autoB2B, autoMultidia,
       dB2B, dVolumen, dMultidia, dFF,
       descuentoTotalPct, montoDescuento,
+      montoDescuentoFijo,
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan, evento.diasEquipo,
     b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
     especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
-    dEspecialPreservado, dPatrocinioPreservado]);
+    dEspecialPreservado, dPatrocinioPreservado, descuentoFijoActivo, descuentoFijoMonto]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -882,6 +887,7 @@ function CotizadorForm() {
       descuentoPatrocinioPct: dPatrocinioPreservado,
       descuentoEspecialPct: dEspecialPreservado,
       descuentoFamilyFriendsPct: resumen.dFF,
+      descuentoFijoMonto: resumen.montoDescuentoFijo,
       descuentoTotalPct: resumen.descuentoTotalPct,
       montoDescuento: resumen.montoDescuento,
       montoBeneficio: resumen.montoDescuento,
@@ -1645,7 +1651,7 @@ function CotizadorForm() {
             return (
               <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
                 <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
-                  <span className="text-[#B3985B] text-sm font-semibold">Sugerencias de personal técnico</span>
+                  <span className="text-[#B3985B] text-sm font-semibold">Sugerencia de cálculo — op. técnica</span>
                   <span className="text-gray-500 text-xs">basado en equipos y tamaño del evento</span>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-[#555] group-open:rotate-180 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
                 </summary>
@@ -1750,17 +1756,25 @@ function CotizadorForm() {
               <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
             </div>
-            {lineasOp.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin técnicos agregados</p> : lineasOp.map(l => (
-              <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
-                <div className="flex-1">
-                  <p className="text-white text-sm">{l.descripcion}</p>
-                  <p className="text-gray-500 text-xs">{JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
+            {lineasOp.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin técnicos agregados</p> : (
+              <>
+                {lineasOp.map(l => (
+                  <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
+                    <div className="flex-1">
+                      <p className="text-white text-sm">{l.descripcion}</p>
+                      <p className="text-gray-500 text-xs">{JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
+                    </div>
+                    <input type="number" value={l.precioUnitario} onChange={e => updateOp(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" />
+                    <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasOp(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
+                  </div>
+                ))}
+                <div className="flex justify-between px-2 py-2 mt-1 border-t border-[#222]">
+                  <span className="text-xs text-gray-500">Subtotal operación técnica</span>
+                  <span className="text-sm font-medium text-white">{formatCurrency(lineasOp.reduce((s, l) => s + l.subtotal, 0))}</span>
                 </div>
-                <input type="number" value={l.precioUnitario} onChange={e => updateOp(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" />
-                <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
-                <button onClick={() => setLineasOp(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
-              </div>
-            ))}
+              </>
+            )}
           </Seccion>
 
           {/* ── Plan de jornadas operativas ── */}
@@ -1860,6 +1874,12 @@ function CotizadorForm() {
                   </div>
                 )}
 
+                {jornada.slots.length > 0 && (
+                  <div className="flex justify-between px-1 py-1.5 mt-1 mb-2 border-t border-[#1a1a1a]">
+                    <span className="text-[10px] text-gray-500">Subtotal día</span>
+                    <span className="text-xs font-semibold text-white">{formatCurrency(jornada.slots.reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0))}</span>
+                  </div>
+                )}
                 <button
                   onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
                     ...j, slots: [...j.slots, { id: uid(), rolId: "", rolNombre: "", cantidad: 1, nivel: "AA", jornada: "MEDIA", tarifa: 0 }]
@@ -2120,6 +2140,30 @@ function CotizadorForm() {
                   <span className="text-gray-700 text-xs flex-1 italic">Inactivo · se activa automáticamente en tratos Family & Friends</span>
                 )}
               </div>
+              {/* Descuento fijo en MXN */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setDescuentoFijoActivo(v => !v)}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${descuentoFijoActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${descuentoFijoActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${descuentoFijoActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Desc. fijo $
+                </button>
+                {descuentoFijoActivo ? (
+                  <>
+                    <span className="text-gray-500 text-xs flex-1">Monto fijo en MXN</span>
+                    <input type="number" min="0" step="1"
+                      value={descuentoFijoMonto} onChange={e => setDescuentoFijoMonto(e.target.value)}
+                      placeholder="0"
+                      className="w-28 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(parseFloat(descuentoFijoMonto) || 0)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · descuento por cantidad fija en MXN</span>
+                )}
+              </div>
+
               {/* Total descuento */}
               <div className="flex items-center justify-between pt-2 border-t border-[#222]">
                 <span className="text-white text-sm font-medium">Descuento total</span>
@@ -2178,6 +2222,7 @@ function CotizadorForm() {
               <div className="flex justify-between text-gray-400"><span>Equipos bruto</span><span>{formatCurrency(resumen.subtotalEquiposBruto)}</span></div>
               {resumen.montoDescuento > 0 && <div className="flex justify-between text-red-400"><span>Descuento ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.montoDescuento)}</span></div>}
               <div className="flex justify-between text-white"><span>Equipos neto</span><span>{formatCurrency(resumen.subtotalEquiposNeto)}</span></div>
+              {resumen.montoDescuentoFijo > 0 && <div className="flex justify-between text-red-400"><span>Descuento fijo</span><span>-{formatCurrency(resumen.montoDescuentoFijo)}</span></div>}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.descuentoMontaAdicionales > 0 && <div className="flex justify-between text-red-400"><span>Desc. adicionales ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.descuentoMontaAdicionales)}</span></div>}

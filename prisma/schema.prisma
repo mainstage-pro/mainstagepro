@@ -280,6 +280,7 @@ model Cotizacion {
   descuentoEspecialPct        Float @default(0)
   descuentoEspecialNota       String?
   descuentoFamilyFriendsPct   Float @default(0)
+  descuentoFijoMonto          Float @default(0)
   descuentoTotalPct           Float @default(0)
   montoDescuento         Float @default(0)
   subtotalEquiposNeto    Float @default(0)
