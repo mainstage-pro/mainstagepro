@@ -123,6 +123,11 @@ function getRolTarifa(rol: RolTecnico, nivel: string, jornada: string): number {
     const key = `tarifaPlana${nivel}` as keyof RolTecnico;
     return (rol[key] as number | null) ?? 0;
   }
+  if (rol.tipoPago === "POR_HORA") {
+    const key = `tarifaHora${nivel}` as keyof RolTecnico;
+    return (rol[key] as number | null) ?? 0;
+  }
+  // POR_JORNADA: tarifa por nivel + tipo de jornada
   const j = jornada.charAt(0) + jornada.slice(1).toLowerCase();
   const key = `tarifa${nivel}${j}` as keyof RolTecnico;
   return (rol[key] as number | null) ?? 0;
@@ -362,7 +367,7 @@ function CotizadorForm() {
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
           proveedorId: l.proveedorId ?? null,
         })));
-        setLineasOp(lineas.filter((l: {tipo:string}) => l.tipo === "OPERACION_TECNICA").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
+        setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
           descripcion: l.descripcion, nivel: l.nivel ?? "AA", jornada: l.jornada ?? "MEDIA",
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
@@ -564,12 +569,12 @@ function CotizadorForm() {
     const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
     if (!rol) return;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, "AAA", selRolJornada);
-    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada);
+    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
+    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada && l.nivel === selRolNivel);
     if (yaExiste) return;
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: "AAA", jornada: selRolJornada, cantidad, dias,
+      nivel: selRolNivel, jornada: selRolJornada, cantidad, dias,
       precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
     }]);
   }
@@ -694,11 +699,10 @@ function CotizadorForm() {
     if (!rol) return;
     const cant = parseFloat(selRolCant) || 1;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
-    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
+    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel, jornada: selRolJornada, cantidad: cant, dias,
+      nivel: selRolNivel, jornada: selRolJornada, cantidad: cant, dias,
       precioUnitario: tarifa, subtotal: tarifa * cant * dias,
     }]);
     setSelRol(""); setSelRolCant("1");
@@ -731,7 +735,8 @@ function CotizadorForm() {
     const subtotalExternos = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
     const costoExternos = lineasExterno.reduce((s, l) => s + l.costoTotal, 0);
 
-    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalJornadas = jornadasPlan.flatMap(j => j.slots).reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0);
+    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0) + subtotalJornadas;
     const subtotalDJ = lineasDJ.reduce((s, l) => s + l.subtotal, 0);
     const subtotalTransporte = lineasLog.filter(l => l.tipo === "TRANSPORTE").reduce((s, l) => s + l.subtotal, 0);
     const subtotalComidas = lineasLog.filter(l => l.tipo === "COMIDA").reduce((s, l) => s + l.subtotal, 0);
@@ -791,7 +796,7 @@ function CotizadorForm() {
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
     };
-  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo,
+  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan, evento.diasEquipo,
     b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
     especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
     dEspecialPreservado, dPatrocinioPreservado]);
@@ -827,6 +832,21 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: l.precioUnitario,
         subtotal: l.subtotal, esExterno: false, esIncluido: false, rolTecnicoId: l.rolTecnicoId,
       })),
+      ...jornadasPlan.flatMap(j =>
+        j.slots
+          .filter(s => s.rolId && s.tarifa > 0)
+          .map(s => ({
+            tipo: "OPERACION_TECNICA",
+            descripcion: `${s.rolNombre} (${j.tipo === "MONTAJE" ? "Montaje" : j.tipo === "OPERACION" ? "Operación" : j.tipo === "DESMONTAJE" ? "Desmontaje" : j.tipo}${j.fecha ? ` · ${j.fecha}` : ""})`,
+            nivel: s.nivel, jornada: s.jornada,
+            cantidad: s.cantidad, dias: 1,
+            precioUnitario: s.tarifa, costoUnitario: s.tarifa,
+            subtotal: s.tarifa * s.cantidad,
+            esExterno: false, esIncluido: false,
+            rolTecnicoId: s.rolId,
+            notas: "from:jornada",
+          }))
+      ),
       ...lineasDJ.map(l => ({
         tipo: "DJ", descripcion: `DJ ${l.nivel} (${l.horas}h)`,
         nivel: l.nivel, cantidad: l.horas, dias: 1,
@@ -1704,26 +1724,25 @@ function CotizadorForm() {
                 options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
                 className="flex-1"
               />
+              <Combobox
+                value={selRolNivel}
+                onChange={v => setSelRolNivel(v)}
+                options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+              />
               {(() => {
                 const rolSel = roles.find(r => r.id === selRol);
-                if (rolSel && rolSel.tipoPago !== "POR_JORNADA") {
+                if (!rolSel || rolSel.tipoPago === "POR_JORNADA") {
                   return (
                     <Combobox
-                      value={selRolNivel}
-                      onChange={v => setSelRolNivel(v)}
-                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                      className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                      value={selRolJornada}
+                      onChange={v => setSelRolJornada(v)}
+                      options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                      className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
                     />
                   );
                 }
-                return (
-                  <Combobox
-                    value={selRolJornada}
-                    onChange={v => setSelRolJornada(v)}
-                    options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                    className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-                  />
-                );
+                return null;
               })()}
               <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
               <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
@@ -1742,7 +1761,7 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Plan de jornadas operativas ── */}
-          <Seccion titulo="Plan de jornadas operativas" hint="operativo para el proyecto · no afecta precios">
+          <Seccion titulo="Plan de jornadas operativas" hint="tarifas y técnicos por día · se suman a Operación técnica">
             <p className="text-xs text-gray-500 mb-3">Define los días de trabajo por fecha (montaje, operación, desmontaje) y cuántos técnicos de qué rol necesitas cada día. Esto pre-carga el personal en el proyecto.</p>
             {jornadasPlan.map((jornada, ji) => (
               <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
