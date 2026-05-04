@@ -161,6 +161,27 @@ export default function UsuariosPage() {
   async function toggleModulo(userId: string, key: string, hasAccess: boolean) {
     const lockKey = `${userId}-${key}`;
     setTogglingKey(lockKey);
+
+    const u = users.find(u => u.id === userId);
+    // If user has no explicit entries, first materialize area defaults so we don't
+    // accidentally wipe inherited modules when creating the first explicit entry.
+    if (u && u.moduloAccesos.length === 0 && u.area && AREA_MODULE_PRESETS[u.area]) {
+      const areaKeys = AREA_MODULE_PRESETS[u.area];
+      for (const areaKey of areaKeys) {
+        if (areaKey !== key) {
+          await fetch(`/api/admin/modulos/${areaKey}/accesos`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId }),
+          });
+        }
+      }
+      setUsers(prev => prev.map(u2 => u2.id !== userId ? u2 : {
+        ...u2,
+        moduloAccesos: areaKeys.filter(k => k !== key).map(k => ({ moduloKey: k })),
+      }));
+    }
+
     if (hasAccess) {
       await fetch(`/api/admin/modulos/${key}/accesos/${userId}`, { method: "DELETE" });
     } else {
@@ -171,12 +192,12 @@ export default function UsuariosPage() {
       });
     }
     setUsers(prev =>
-      prev.map(u => {
-        if (u.id !== userId) return u;
+      prev.map(u2 => {
+        if (u2.id !== userId) return u2;
         const accesos = hasAccess
-          ? u.moduloAccesos.filter(a => a.moduloKey !== key)
-          : [...u.moduloAccesos, { moduloKey: key }];
-        return { ...u, moduloAccesos: accesos };
+          ? u2.moduloAccesos.filter(a => a.moduloKey !== key)
+          : [...u2.moduloAccesos, { moduloKey: key }];
+        return { ...u2, moduloAccesos: accesos };
       })
     );
     setTogglingKey(null);
@@ -199,6 +220,8 @@ export default function UsuariosPage() {
   }
 
   async function revokeAll(userId: string) {
+    const u = users.find(u => u.id === userId);
+    if (!window.confirm(`¿Quitar TODOS los accesos de ${u?.name ?? "este usuario"}? Esta acción no se puede deshacer.`)) return;
     for (const key of ALL_MODULE_KEYS) {
       await fetch(`/api/admin/modulos/${key}/accesos/${userId}`, { method: "DELETE" });
     }
@@ -208,6 +231,8 @@ export default function UsuariosPage() {
   async function applyAreaPreset(userId: string, area: string) {
     const presetKeys = AREA_MODULE_PRESETS[area];
     if (!presetKeys) return;
+    const u = users.find(u => u.id === userId);
+    if (!window.confirm(`¿Reemplazar los accesos de ${u?.name ?? "este usuario"} con los predeterminados de ${AREA_LABELS[area] ?? area}? Se perderán los permisos personalizados actuales.`)) return;
     // First revoke all
     for (const key of ALL_MODULE_KEYS) {
       await fetch(`/api/admin/modulos/${key}/accesos/${userId}`, { method: "DELETE" });
@@ -378,7 +403,12 @@ export default function UsuariosPage() {
         {users.map(u => {
           const isAdminUser = u.role === "ADMIN";
           const isExpanded = expandedPermisos === u.id;
-          const userKeys = new Set(u.moduloAccesos.map(a => a.moduloKey));
+          const hasExplicit = u.moduloAccesos.length > 0;
+          // Show effective modules: explicit ones if set, otherwise area defaults
+          const effectiveKeys = hasExplicit
+            ? u.moduloAccesos.map(a => a.moduloKey)
+            : (AREA_MODULE_PRESETS[u.area ?? ""] ?? []);
+          const userKeys = new Set(effectiveKeys);
           const grantedCount = userKeys.size;
 
           return (
