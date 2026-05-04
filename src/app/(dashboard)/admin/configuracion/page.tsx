@@ -1,25 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 
 // ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
-const MODULOS = [
-  { key: "finanzas",          label: "Finanzas",           seccion: "Administración" },
-  { key: "rrhh",              label: "RR.HH.",              seccion: "Administración" },
-  { key: "base-datos",        label: "Base de datos",       seccion: "Administración" },
-  { key: "contenido-organico",label: "Contenido orgánico",  seccion: "Marketing" },
-  { key: "publicidad",        label: "Publicidad",          seccion: "Marketing" },
-  { key: "crm",               label: "CRM",                 seccion: "Ventas" },
-  { key: "cotizaciones",      label: "Cotizaciones",        seccion: "Ventas" },
-  { key: "comisiones",        label: "Comisiones",          seccion: "Ventas" },
-  { key: "proyectos",         label: "Proyectos",           seccion: "Producción" },
-  { key: "inventario",        label: "Inventario",          seccion: "Producción" },
-  { key: "calendario",        label: "Calendario de eventos", seccion: "Dirección" },
-  { key: "dashboard",         label: "Dashboard",           seccion: "Dirección" },
-];
 
 const ETIQUETAS = [
   { group: "Secciones del menú", items: [
@@ -75,15 +60,13 @@ const SECCION_LABELS: Record<string, string> = {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface User { id: string; name: string; email: string; role: string; }
-interface Acceso { moduloKey: string; userId: string; user: User; }
 interface ConfigEntry {
   id: string; key: string; value: string; section: string;
   label: string; description?: string | null; type: string;
   defaultValue?: string | null; orden: number;
 }
 
-type Tab = "accesos" | "etiquetas" | "configuracion";
+type Tab = "etiquetas" | "configuracion";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -142,15 +125,7 @@ function ConfigInput({ entry, val, isDirty, onChange }: {
 
 export default function ConfiguracionPage() {
   const toast = useToast();
-  const [tab, setTab] = useState<Tab>("accesos");
-
-  // ── Accesos ──────────────────────────────────────────────────────────────
-  const [privateModules, setPrivateModules] = useState<string[]>([]);
-  const [accesos, setAccesos] = useState<Acceso[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [expandedModule, setExpandedModule] = useState<string | null>(null);
-  const [addingUser, setAddingUser] = useState<string | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState("");
+  const [tab, setTab] = useState<Tab>("etiquetas");
   const [saving, setSaving] = useState(false);
 
   // ── Etiquetas ────────────────────────────────────────────────────────────
@@ -172,19 +147,12 @@ export default function ConfiguracionPage() {
   const [migMsg, setMigMsg] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
-    const [modulosRes, configRes] = await Promise.all([
-      fetch("/api/admin/modulos"),
-      fetch("/api/admin/config"),
-    ]);
-    const [modulosData, configData] = await Promise.all([modulosRes.json(), configRes.json()]);
-    setAccesos(modulosData.accesos ?? []);
-    setUsers(modulosData.users ?? []);
+    const configRes = await fetch("/api/admin/config");
+    const configData = await configRes.json();
     const entries: ConfigEntry[] = configData.entries ?? [];
     const cfg: Record<string, string> = {};
     for (const e of entries) cfg[e.key] = e.value;
-    const priv: string[] = cfg["nav.private"] ? JSON.parse(cfg["nav.private"]) : [];
     const lbls: Record<string, string> = cfg["nav.labels"] ? JSON.parse(cfg["nav.labels"]) : {};
-    setPrivateModules(priv);
     setLabels(lbls);
     setLabelsDraft(lbls);
     setConfigEntries(entries);
@@ -194,51 +162,6 @@ export default function ConfiguracionPage() {
   }, []);
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
-
-  async function togglePrivate(key: string) {
-    setSaving(true);
-    const next = privateModules.includes(key)
-      ? privateModules.filter(k => k !== key)
-      : [...privateModules, key];
-    const res = await fetch("/api/admin/config", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key: "nav.private", value: JSON.stringify(next) }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      setSaving(false);
-      return;
-    }
-    setPrivateModules(next);
-    setSaving(false);
-  }
-
-  async function grantAccess(moduloKey: string, userId: string) {
-    const res = await fetch(`/api/admin/modulos/${moduloKey}/accesos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      return;
-    }
-    await loadConfig();
-    setAddingUser(null);
-  }
-
-  async function revokeAccess(moduloKey: string, userId: string) {
-    const res = await fetch(`/api/admin/modulos/${moduloKey}/accesos/${userId}`, { method: "DELETE" });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al eliminar");
-      return;
-    }
-    await loadConfig();
-  }
 
   async function saveLabels() {
     setSavingLabels(true);
@@ -265,11 +188,6 @@ export default function ConfiguracionPage() {
 
   function resetLabel(key: string) {
     setLabelsDraft(d => { const n = { ...d }; delete n[key]; return n; });
-  }
-
-  function availableUsers(moduloKey: string) {
-    const granted = accesos.filter(a => a.moduloKey === moduloKey).map(a => a.userId);
-    return users.filter(u => u.role !== "ADMIN" && !granted.includes(u.id));
   }
 
   async function saveConfigChanges() {
@@ -325,13 +243,12 @@ export default function ConfiguracionPage() {
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-white">Configuración</h1>
-        <p className="text-[#6b7280] text-sm">Accesos, personalización y parámetros del sistema</p>
+        <p className="text-[#6b7280] text-sm">Personalización y parámetros del sistema</p>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit flex-wrap">
         {([
-          ["accesos", "Accesos por módulo"],
           ["etiquetas", "Etiquetas"],
           ["configuracion", "Configuración general"],
         ] as [Tab, string][]).map(([t, l]) => (
@@ -341,102 +258,6 @@ export default function ConfiguracionPage() {
           </button>
         ))}
       </div>
-
-      {/* ── Tab: Accesos ─────────────────────────────────────────────────── */}
-      {tab === "accesos" && (
-        <div className="space-y-3">
-          <p className="text-xs text-gray-600">
-            Los módulos marcados como <span className="text-orange-400">Privado</span> solo son visibles para los usuarios con acceso concedido. Los administradores siempre ven todo.
-          </p>
-          {MODULOS.map(modulo => {
-            const isPrivate = privateModules.includes(modulo.key);
-            const moduloAccesos = accesos.filter(a => a.moduloKey === modulo.key);
-            const isExpanded = expandedModule === modulo.key;
-            const available = availableUsers(modulo.key);
-            return (
-              <div key={modulo.key} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                <div className="flex items-center justify-between p-4 gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div>
-                      <p className="text-white text-sm font-medium">{labels[modulo.key] || modulo.label}</p>
-                      <p className="text-gray-600 text-[10px]">{modulo.seccion}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {isPrivate && moduloAccesos.length > 0 && (
-                      <span className="text-[10px] text-gray-500">{moduloAccesos.length} con acceso</span>
-                    )}
-                    <button onClick={() => togglePrivate(modulo.key)} disabled={saving}
-                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                        isPrivate
-                          ? "bg-orange-900/20 border-orange-500/30 text-orange-400 hover:bg-orange-900/30"
-                          : "bg-green-900/20 border-green-500/30 text-green-400 hover:bg-green-900/30"
-                      }`}>
-                      {isPrivate ? "🔒 Privado" : "🌐 Público"}
-                    </button>
-                    {isPrivate && (
-                      <button onClick={() => setExpandedModule(isExpanded ? null : modulo.key)}
-                        className="text-gray-600 hover:text-white text-sm transition-colors px-2">
-                        {isExpanded ? "▲" : "▼"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {isPrivate && isExpanded && (
-                  <div className="border-t border-[#1a1a1a] p-4 space-y-3 bg-[#0d0d0d]">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider">Usuarios con acceso</p>
-                    {moduloAccesos.length === 0 ? (
-                      <p className="text-gray-700 text-xs">Ningún usuario tiene acceso aún.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {moduloAccesos.map(a => (
-                          <div key={a.userId} className="flex items-center justify-between gap-2">
-                            <div>
-                              <span className="text-white text-sm">{a.user.name}</span>
-                              <span className="text-gray-600 text-xs ml-2">{a.user.email}</span>
-                            </div>
-                            <button onClick={() => revokeAccess(modulo.key, a.userId)}
-                              className="text-[10px] text-gray-600 hover:text-red-400 transition-colors">
-                              Quitar
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {available.length > 0 && (
-                      addingUser === modulo.key ? (
-                        <div className="flex items-center gap-2 mt-2">
-                          <Combobox
-                            value={selectedUserId}
-                            onChange={v => setSelectedUserId(v)}
-                            options={[{ value: "", label: "Seleccionar usuario..." }, ...available.map(u => ({ value: u.id, label: `${u.name} (${u.email})` }))]}
-                            className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                          />
-                          <button onClick={() => {
-                            if (selectedUserId) { grantAccess(modulo.key, selectedUserId); setSelectedUserId(""); }
-                          }} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg">
-                            Dar acceso
-                          </button>
-                          <button onClick={() => setAddingUser(null)} className="text-gray-600 hover:text-white text-xs px-2">Cancelar</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => setAddingUser(modulo.key)}
-                          className="text-[#B3985B] hover:text-[#c9a96a] text-xs transition-colors mt-1">
-                          + Dar acceso a usuario
-                        </button>
-                      )
-                    )}
-                    {available.length === 0 && moduloAccesos.length > 0 && (
-                      <p className="text-gray-700 text-xs">Todos los usuarios activos ya tienen acceso.</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* ── Tab: Etiquetas ───────────────────────────────────────────────── */}
       {tab === "etiquetas" && (
