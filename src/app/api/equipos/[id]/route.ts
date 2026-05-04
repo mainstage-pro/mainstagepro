@@ -38,13 +38,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "descripcion", "marca", "modelo", "tipo", "precioRenta", "costoProveedor",
-    "cantidadTotal", "proveedorDefaultId", "notas", "activo", "estado",
+    "costoInternoEstimado", "cantidadTotal", "proveedorDefaultId", "notas", "activo", "estado",
     "categoriaId", "subcategoria", "imagenUrl", "imagenesUrls",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) {
-      if (["precioRenta", "costoProveedor"].includes(key)) {
+      if (["precioRenta", "costoProveedor", "costoInternoEstimado"].includes(key)) {
         data[key] = body[key] !== null && body[key] !== "" ? parseFloat(body[key]) : null;
       } else if (key === "cantidadTotal") {
         data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : 1;
