@@ -482,6 +482,8 @@ export default function TratosPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
+  const [pendientesOpen, setPendientesOpen] = useState(true);
+  const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
@@ -700,13 +702,14 @@ export default function TratosPage() {
               {/* Pendientes de cerrar — siempre arriba y separados */}
               {tratosArchivados.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <button onClick={() => setPendientesOpen(o => !o)} className="flex items-center gap-2 mb-2 w-full text-left group">
+                    <svg className={`w-3.5 h-3.5 text-amber-500 transition-transform shrink-0 ${pendientesOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                     <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
                     <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full">{tratosArchivados.length}</span>
                     <span className="text-[10px] text-amber-700 italic">Fecha de evento ya pasó — requieren acción</span>
-                  </div>
-                  <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />
+                  </button>
+                  {pendientesOpen && <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />}
                 </div>
               )}
 
@@ -717,24 +720,29 @@ export default function TratosPage() {
                 </div>
               ) : agrupacion === "todos" ? (
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <button onClick={() => setGruposOpen(o => ({ ...o, __todos: !(o.__todos ?? true) }))} className="flex items-center gap-2 mb-2 w-full text-left group">
+                    <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform shrink-0 ${(gruposOpen.__todos ?? true) ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                     <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Próximos</h2>
                     <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{tratosProximos.length}</span>
-                  </div>
-                  <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
+                  </button>
+                  {(gruposOpen.__todos ?? true) && <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />}
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {gruposProximos.map(grupo => (
-                    <div key={grupo.key}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h2 className="text-xs font-bold text-white">{grupo.label}</h2>
-                        <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{grupo.tratos.length}</span>
-                        <div className="flex-1 h-px bg-[#1e1e1e]" />
+                  {gruposProximos.map(grupo => {
+                    const isOpen = gruposOpen[grupo.key] ?? true;
+                    return (
+                      <div key={grupo.key}>
+                        <button onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))} className="flex items-center gap-3 mb-2 w-full text-left group">
+                          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                          <h2 className="text-xs font-bold text-white">{grupo.label}</h2>
+                          <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{grupo.tratos.length}</span>
+                          <div className="flex-1 h-px bg-[#1e1e1e]" />
+                        </button>
+                        {isOpen && <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />}
                       </div>
-                      <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
