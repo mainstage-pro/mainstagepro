@@ -486,6 +486,7 @@ interface CotizacionData {
   descuentoEspecialPct: number;
   descuentoEspecialNota?: string | null;
   descuentoFamilyFriendsPct: number;
+  descuentoFijoMonto?: number;
   montoDescuento: number;
   montoBeneficio: number;
   subtotalEquiposNeto: number;
@@ -723,6 +724,8 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
     discRows.push({ label: `Family & Friends (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
     discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
+  if ((c.descuentoFijoMonto ?? 0) > 0)
+    discRows.push({ label: "Descuento por monto fijo", monto: c.descuentoFijoMonto! });
   // Trade
   try {
     const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
