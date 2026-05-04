@@ -36,7 +36,7 @@ export default function InventarioEquiposPage() {
   const [tipoFiltro, setTipoFiltro] = useState<"TODOS" | "PROPIO" | "EXTERNO">("TODOS");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [descargandoPDF, setDescargandoPDF] = useState(false);
-  const [vista, setVista] = useState<"grid" | "lista">("grid");
+  const [vista, setVista] = useState<"grid" | "lista">("lista");
 
   async function load() {
     const res = await fetch("/api/equipos?todos=true");

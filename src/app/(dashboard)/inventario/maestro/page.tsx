@@ -269,6 +269,7 @@ export default function InventarioMaestroPage() {
   const [filtroInactivos, setFiltroInactivos] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
+  const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [panel, setPanel] = useState<"nuevo" | string | null>(null); // "nuevo" | equipoId | null
   const [form, setForm] = useState<Form>(FORM_EMPTY);
   const [imagen, setImagen] = useState<string | null>(null);
@@ -398,6 +399,13 @@ export default function InventarioMaestroPage() {
     );
   }, [equipos, busqueda]);
 
+  const porCategoria = useMemo(() =>
+    categorias
+      .map(cat => ({ cat, items: equiposFiltrados.filter(e => e.categoria.id === cat.id) }))
+      .filter(g => g.items.length > 0),
+    [categorias, equiposFiltrados]
+  );
+
   const valorTotal = useMemo(() =>
     equiposFiltrados.filter(e => e.tipo === "PROPIO")
       .reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
@@ -479,13 +487,28 @@ export default function InventarioMaestroPage() {
           <input type="checkbox" checked={filtroInactivos} onChange={e => setFiltroInactivos(e.target.checked)} className="accent-[#B3985B]" />
           Incluir inactivos
         </label>
-        <span className="ml-auto text-xs text-[#444]">{equiposFiltrados.length} equipos</span>
+        <span className="text-xs text-[#444]">{equiposFiltrados.length} equipos</span>
+        <div className="ml-auto flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
+          <button onClick={() => setVista("lista")} title="Vista lista"
+            className={`p-1.5 rounded transition-colors ${vista === "lista" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <button onClick={() => setVista("grid")} title="Vista cuadrícula"
+            className={`p-1.5 rounded transition-colors ${vista === "grid" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Panel editar (encima de tabla) */}
       {panel !== null && panel !== "nuevo" && <FormPanel {...formPanelProps} />}
 
-      {/* Tabla */}
+      {/* Contenido */}
       {loading ? (
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />)}
@@ -494,92 +517,159 @@ export default function InventarioMaestroPage() {
         <div className="text-center py-16 text-[#333]">
           <p className="text-sm">Sin equipos con los filtros actuales.</p>
         </div>
-      ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                  <th className="text-left px-4 py-3 font-medium">Equipo</th>
-                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">Categoría</th>
-                  <th className="text-center px-3 py-3 font-medium">Tipo</th>
-                  <th className="text-center px-3 py-3 font-medium hidden sm:table-cell">Estado</th>
-                  <th className="text-right px-3 py-3 font-medium">Cant.</th>
-                  <th className="text-right px-4 py-3 font-medium">Precio renta</th>
-                  <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Valor activo</th>
-                  <th className="text-right px-4 py-3 font-medium hidden lg:table-cell">Valor total</th>
-                  <th className="text-center px-3 py-3 font-medium hidden xl:table-cell">Acc.</th>
-                  <th className="px-3 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#161616]">
-                {equiposFiltrados.map(e => {
-                  const valorActivo = e.costoInternoEstimado ?? null;
-                  const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
+      ) : vista === "grid" ? (
+
+        /* ── Vista cuadrícula por categoría ── */
+        <div className="space-y-8">
+          {porCategoria.map(({ cat, items }) => (
+            <div key={cat.id}>
+              <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold mb-3 pb-2 border-b border-[#1a1a1a]">
+                {cat.nombre} <span className="text-[#333] ml-1">({items.length})</span>
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {items.map(e => {
                   const isEditing = panel === e.id;
                   return (
-                    <tr key={e.id} className={`transition-colors group ${isEditing ? "bg-[#0d0d0d]" : "hover:bg-[#0d0d0d]"}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          {e.imagenUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
-                          ) : (
-                            <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="text-white font-medium truncate">{e.descripcion}</p>
-                            {(e.marca || e.modelo) && (
-                              <p className="text-[#555] truncate">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-[#6b7280] hidden md:table-cell">{e.categoria.nombre}</td>
-                      <td className="px-3 py-3 text-center">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
-                          {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                    <div key={e.id}
+                      className={`bg-[#111] border rounded-xl p-3 flex flex-col gap-2 transition-colors cursor-pointer group ${isEditing ? "border-[#B3985B]/50" : "border-[#1a1a1a] hover:border-[#B3985B]/40"}`}
+                      onClick={() => isEditing ? cerrarPanel() : abrirEdit(e)}>
+                      <div className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center">
+                        {e.imagenUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-2" />
+                        ) : (
+                          <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
+                          {e.descripcion}
+                        </p>
+                        {(e.marca || e.modelo) && (
+                          <p className="text-[#555] text-[10px] truncate mt-0.5">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[#B3985B] text-xs font-semibold">
+                          {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
                         </span>
-                      </td>
-                      <td className="px-3 py-3 text-center hidden sm:table-cell">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
-                          {ESTADO_LABEL[e.estado] ?? e.estado}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-right text-white font-medium">{e.cantidadTotal}</td>
-                      <td className="px-4 py-3 text-right text-[#B3985B] font-medium">
-                        {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
-                      </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {valorActivo != null ? <span className="text-[#9ca3af]">{fmx(valorActivo)}</span> : <span className="text-[#333]">—</span>}
-                      </td>
-                      <td className="px-4 py-3 text-right hidden lg:table-cell">
-                        {valorFilaTotal != null ? <span className="text-white font-medium">{fmx(valorFilaTotal)}</span> : <span className="text-[#333]">—</span>}
-                      </td>
-                      <td className="px-3 py-3 text-center hidden xl:table-cell">
-                        {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
-                          <button onClick={() => isEditing ? cerrarPanel() : abrirEdit(e)}
-                            className={`text-[10px] transition-colors ${isEditing ? "text-[#B3985B]" : "text-[#555] hover:text-[#B3985B]"}`}>
-                            {isEditing ? "Cerrar ↑" : "Editar"}
-                          </button>
-                          <button onClick={() => eliminar(e)} disabled={eliminando === e.id}
-                            className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
-                            {eliminando === e.id ? "..." : "Eliminar"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                        <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          ))}
+        </div>
 
-          {/* Footer */}
-          <div className="border-t border-[#1a1a1a] px-4 py-3 flex flex-wrap items-center justify-between gap-3 bg-[#0d0d0d]">
+      ) : (
+
+        /* ── Vista lista por categoría ── */
+        <div className="space-y-6">
+          {porCategoria.map(({ cat, items }) => {
+            const catValor = items.filter(e => e.tipo === "PROPIO").reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
+            const catRenta = items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
+            return (
+              <div key={cat.id}>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">
+                    {cat.nombre}
+                  </h2>
+                  <span className="text-[#333] text-[10px]">({items.length})</span>
+                  <div className="flex-1 h-px bg-[#1a1a1a]" />
+                  {catValor > 0 && <span className="text-[10px] text-[#555]">Activo {fmx(catValor)}</span>}
+                  {catRenta > 0 && <span className="text-[10px] text-green-900">Renta pot. {fmx(catRenta)}</span>}
+                </div>
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                          <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                          <th className="text-center px-3 py-2.5 font-medium">Tipo</th>
+                          <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
+                          <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
+                          <th className="text-right px-4 py-2.5 font-medium">Precio renta</th>
+                          <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor activo</th>
+                          <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor total</th>
+                          <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
+                          <th className="px-3 py-2.5" />
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#161616]">
+                        {items.map(e => {
+                          const valorActivo = e.costoInternoEstimado ?? null;
+                          const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
+                          const isEditing = panel === e.id;
+                          return (
+                            <tr key={e.id} className={`transition-colors group ${isEditing ? "bg-[#0d0d0d]" : "hover:bg-[#0d0d0d]"}`}>
+                              <td className="px-4 py-2.5">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {e.imagenUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
+                                  )}
+                                  <div className="min-w-0">
+                                    <p className="text-white font-medium truncate">{e.descripcion}</p>
+                                    {(e.marca || e.modelo) && (
+                                      <p className="text-[#555] truncate">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
+                                  {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center hidden sm:table-cell">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
+                                  {ESTADO_LABEL[e.estado] ?? e.estado}
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-white font-medium">{e.cantidadTotal}</td>
+                              <td className="px-4 py-2.5 text-right text-[#B3985B] font-medium">
+                                {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right hidden lg:table-cell">
+                                {valorActivo != null ? <span className="text-[#9ca3af]">{fmx(valorActivo)}</span> : <span className="text-[#333]">—</span>}
+                              </td>
+                              <td className="px-4 py-2.5 text-right hidden lg:table-cell">
+                                {valorFilaTotal != null ? <span className="text-white font-medium">{fmx(valorFilaTotal)}</span> : <span className="text-[#333]">—</span>}
+                              </td>
+                              <td className="px-3 py-2.5 text-center hidden xl:table-cell">
+                                {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
+                              </td>
+                              <td className="px-3 py-2.5">
+                                <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
+                                  <button onClick={() => isEditing ? cerrarPanel() : abrirEdit(e)}
+                                    className={`text-[10px] transition-colors ${isEditing ? "text-[#B3985B]" : "text-[#555] hover:text-[#B3985B]"}`}>
+                                    {isEditing ? "Cerrar ↑" : "Editar"}
+                                  </button>
+                                  <button onClick={() => eliminar(e)} disabled={eliminando === e.id}
+                                    className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
+                                    {eliminando === e.id ? "..." : "Eliminar"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Footer global */}
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[#555] text-xs">{equiposFiltrados.length} equipos mostrados</p>
             <div className="flex items-center gap-6 text-xs">
               <div className="text-right hidden lg:block">
