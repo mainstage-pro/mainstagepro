@@ -81,6 +81,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       descuentoPatrocinioNota: original.descuentoPatrocinioNota,
       descuentoEspecialPct: original.descuentoEspecialPct,
       descuentoEspecialNota: original.descuentoEspecialNota,
+      descuentoFamilyFriendsPct: original.descuentoFamilyFriendsPct,
+      descuentoFijoMonto: original.descuentoFijoMonto,
       descuentoTotalPct: original.descuentoTotalPct,
       montoDescuento: original.montoDescuento,
       subtotalEquiposNeto: original.subtotalEquiposNeto,
@@ -105,6 +107,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       observaciones: original.observaciones,
       terminosComerciales: original.terminosComerciales,
       notasSecciones: original.notasSecciones,
+      jornadasPlan: original.jornadasPlan,
       // Copiar líneas
       lineas: {
         create: original.lineas.map(l => ({
