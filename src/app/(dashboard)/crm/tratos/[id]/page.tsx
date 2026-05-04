@@ -1847,7 +1847,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="col-span-2 space-y-3">
                 {(() => {
                   const camposCliente: string[] = trato?.camposCliente ? JSON.parse(trato.camposCliente) : [];
-                  const Badge = ({ campo }: { campo: string }) =>
+                  const badge = (campo: string) =>
                     camposCliente.includes(campo)
                       ? <span className="ml-1.5 text-[9px] bg-blue-900/30 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded font-semibold">cliente</span>
                       : null;
@@ -1860,14 +1860,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="flex items-center gap-3">
                           <div className="flex-1">
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Inicio del evento <Badge campo="horaInicioEvento" />
+                              Inicio del evento {badge("horaInicioEvento")}
                             </label>
                             <TimePicker value={discForm.horaInicioEvento} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Hora inicio" />
                           </div>
                           <span className="text-gray-600 text-sm pt-4">→</span>
                           <div className="flex-1">
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Fin del evento <Badge campo="horaFinEvento" />
+                              Fin del evento {badge("horaFinEvento")}
                             </label>
                             <TimePicker value={discForm.horaFinEvento} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Hora fin" />
                           </div>
@@ -1882,20 +1882,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                             <div className="flex items-center gap-3">
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Primer acceso <Badge campo="ventanaMontajeInicio" />
+                                  Primer acceso {badge("ventanaMontajeInicio")}
                                 </label>
                                 <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
                               </div>
                               <span className="text-gray-600 text-sm pt-4">→</span>
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Límite montaje <Badge campo="ventanaMontajeFin" />
+                                  Límite montaje {badge("ventanaMontajeFin")}
                                 </label>
                                 <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
                               </div>
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Salida desmontaje <Badge campo="horaTerminoMontaje" />
+                                  Salida desmontaje {badge("horaTerminoMontaje")}
                                 </label>
                                 <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
                               </div>
@@ -1909,7 +1909,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Coordinador del venue <Badge campo="contactoVenueNombre" />
+                              Coordinador del venue {badge("contactoVenueNombre")}
                             </label>
                             <input value={discForm.contactoVenueNombre}
                               onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
@@ -1918,7 +1918,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                           <div>
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Teléfono coordinador <Badge campo="contactoVenueTelefono" />
+                              Teléfono coordinador {badge("contactoVenueTelefono")}
                             </label>
                             <input value={discForm.contactoVenueTelefono}
                               onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}

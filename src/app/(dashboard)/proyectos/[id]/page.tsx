@@ -245,6 +245,234 @@ function CampoVenue({ label, value, field, onSave }: { label: string; value: str
   );
 }
 
+// ─── Sub-componentes de operación ────────────────────────────────────────────
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p>
+      <div className="flex-1 border-t border-[#1a1a1a]" />
+    </div>
+  );
+}
+
+function TableHeader({ cols }: { cols: string[] }) {
+  return (
+    <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
+      {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
+      <div />
+    </div>
+  );
+}
+
+function DocAccordion({ docKey, title, desc, tag, children, isOpen, onToggle }: {
+  docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode;
+  isOpen: boolean; onToggle: () => void;
+}) {
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <p className="text-white text-sm font-semibold">{title}</p>
+            {desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}
+          </div>
+          {tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}
+        </div>
+        <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      {isOpen && <div className="border-t border-[#222]">{children}</div>}
+    </div>
+  );
+}
+
+type ProtocoloData = { estado: string; responsable: string; hora: string; observaciones: string; fotos: string[] };
+const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
+const ESTADO_OPTS_PROTOCOLO = [
+  { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
+  { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
+  { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
+];
+
+async function comprimirFotoProtocolo(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1200 / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.src = e.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function ProtocoloPanel({ tipo, data, onSave }: {
+  tipo: "salida" | "entrada";
+  data: ProtocoloData;
+  onSave: (tipo: "salida" | "entrada", data: ProtocoloData) => Promise<void>;
+}) {
+  const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
+  const icon = tipo === "salida" ? "🚚" : "🏠";
+  const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
+  const [local, setLocal] = useState<ProtocoloData>(data);
+  const [saving, setSaving] = useState(false);
+
+  const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const b64 = await comprimirFotoProtocolo(file);
+    const next = { ...local, fotos: [...local.fotos, b64] }; setLocal(next); await onSave(tipo, next); e.target.value = "";
+  };
+  const removeFoto = async (idx: number) => {
+    const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) };
+    setLocal(next); await onSave(tipo, next);
+  };
+  const save = async () => { setSaving(true); await onSave(tipo, local); setSaving(false); };
+
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{icon}</span>
+          <div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div>
+        </div>
+        <div className="flex gap-2">
+          {ESTADO_OPTS_PROTOCOLO.map(opt => (
+            <button key={opt.id} onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); onSave(tipo, next); }}
+              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label>
+            <input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))} placeholder="Nombre del técnico"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Hora de verificación</label>
+            <input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))} placeholder="ej. 09:30"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 block mb-1">Observaciones</label>
+          <textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))} rows={3}
+            placeholder="Estado del equipo, daños, faltantes, notas..."
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label>
+            <label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">
+              + Agregar foto
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} />
+            </label>
+          </div>
+          {local.fotos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {local.fotos.map((foto, i) => (
+                <div key={i} className="relative group">
+                  <a href={foto} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" />
+                  </a>
+                  <button onClick={() => removeFoto(i)} className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button onClick={save} disabled={saving} className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">
+          {saving ? "Guardando..." : "Guardar protocolo"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type EquipoRowProps = {
+  eq: ProyectoEquipoItem;
+  proyectoId: string;
+  fichaCompleta: boolean;
+  fichaTooltip: string;
+  onToggleConfirmado: (id: string, confirmado: boolean) => void;
+  onEliminar: (id: string) => void;
+  onRefresh: () => Promise<void>;
+  onToastInfo: (msg: string) => void;
+};
+
+function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfirmado, onEliminar, onRefresh, onToastInfo }: EquipoRowProps) {
+  const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
+  return (
+    <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
+        <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
+        {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.nombre}</p>}
+      </div>
+      <div className="text-center shrink-0">
+        <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
+        <p className="text-gray-600 text-[10px]">cant.</p>
+      </div>
+      <div className="text-center shrink-0">
+        <p className="text-white text-sm">{eq.dias}</p>
+        <p className="text-gray-600 text-[10px]">días</p>
+      </div>
+      {costo !== null && (
+        <div className="text-right shrink-0">
+          <p className="text-yellow-400 text-sm font-semibold">{fmt(costo)}</p>
+          <p className="text-gray-600 text-[10px]">costo</p>
+        </div>
+      )}
+      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+            {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
+          </span>
+        )}
+        <button onClick={() => onToggleConfirmado(eq.id, eq.confirmado)}
+          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
+          {eq.confirmado ? "Confirmado" : "Confirmar"}
+        </button>
+        {eq.tipo === "EXTERNO" && eq.proveedor && (
+          <button
+            disabled={!fichaCompleta}
+            title={fichaCompleta ? "Consultar disponibilidad al proveedor" : fichaTooltip}
+            onClick={async () => {
+              const res = await fetch(`/api/proyectos/${proyectoId}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
+              const d = await res.json();
+              if (d.whatsappUrl) {
+                window.open(d.whatsappUrl, "_blank");
+                await onRefresh();
+              } else if (d.token) {
+                const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
+                await navigator.clipboard.writeText(url).catch(() => {});
+                onToastInfo("Sin número registrado. Link copiado al portapapeles.");
+                await onRefresh();
+              }
+            }}
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompleta ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+            📲 Proveedor
+          </button>
+        )}
+        <button onClick={() => onEliminar(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -3413,71 +3641,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         if (!proyecto.lugarEvento) camposFaltantesEq.push("lugar del evento");
         const fichaCompletaEq = camposFaltantesEq.length === 0;
         const fichaTooltipEq = fichaCompletaEq ? "" : `Completa la ficha técnica antes de invitar: falta ${camposFaltantesEq.join(", ")}.`;
-        const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
-
-        function EquipoRow({ eq }: { eq: ProyectoEquipoItem }) {
-          const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
-          return (
-            <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
-                <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
-                {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.nombre}</p>}
-              </div>
-              <div className="text-center shrink-0">
-                <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
-                <p className="text-gray-600 text-[10px]">cant.</p>
-              </div>
-              <div className="text-center shrink-0">
-                <p className="text-white text-sm">{eq.dias}</p>
-                <p className="text-gray-600 text-[10px]">días</p>
-              </div>
-              {costo !== null && (
-                <div className="text-right shrink-0">
-                  <p className="text-yellow-400 text-sm font-semibold">{fmt(costo)}</p>
-                  <p className="text-gray-600 text-[10px]">costo</p>
-                </div>
-              )}
-              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                {/* Respuesta del proveedor */}
-                {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                    eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-                  }`}>
-                    {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
-                  </span>
-                )}
-                <button onClick={() => toggleConfirmadoEquipo(eq.id, eq.confirmado)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
-                  {eq.confirmado ? "Confirmado" : "Confirmar"}
-                </button>
-                {/* Botón invitar proveedor (solo equipo externo con proveedor) */}
-                {eq.tipo === "EXTERNO" && eq.proveedor && (
-                  <button
-                    disabled={!fichaCompletaEq}
-                    title={fichaCompletaEq ? "Consultar disponibilidad al proveedor" : fichaTooltipEq}
-                    onClick={async () => {
-                      const res = await fetch(`/api/proyectos/${id}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
-                      const d = await res.json();
-                      if (d.whatsappUrl) {
-                        window.open(d.whatsappUrl, "_blank");
-                        await load();
-                      } else if (d.token) {
-                        const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
-                        await navigator.clipboard.writeText(url).catch(() => {});
-                        toast.info("Sin número registrado. Link copiado al portapapeles.");
-                        await load();
-                      }
-                    }}
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompletaEq ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-                    📲 Proveedor
-                  </button>
-                )}
-                <button onClick={() => eliminarEquipo(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
-              </div>
-            </div>
-          );
-        }
 
         return (
           <div className="space-y-4">
@@ -3574,7 +3737,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     Total: {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
                   </p>
                 </div>
-                {equiposExternos.map(eq => <EquipoRow key={eq.id} eq={eq} />)}
+                {equiposExternos.map(eq => (
+                  <EquipoRow key={eq.id} eq={eq}
+                    proyectoId={id}
+                    fichaCompleta={fichaCompletaEq}
+                    fichaTooltip={fichaTooltipEq}
+                    onToggleConfirmado={toggleConfirmadoEquipo}
+                    onEliminar={eliminarEquipo}
+                    onRefresh={load}
+                    onToastInfo={msg => toast.info(msg)}
+                  />
+                ))}
               </div>
             )}
 
@@ -3626,34 +3799,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           }
         };
 
-        const TableHeader = ({ cols }: { cols: string[] }) => (
-          <div className={`grid gap-1 mb-1`} style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
-            {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
-            <div />
-          </div>
-        );
-
-        // ── Protocolo helpers ──────────────────────────────────────────
-        type ProtocoloData = { estado: string; responsable: string; hora: string; observaciones: string; fotos: string[] };
-        const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
-        async function comprimirFoto(file: File): Promise<string> {
-          return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => {
-              const img = new Image();
-              img.onload = () => {
-                const scale = Math.min(1, 1200 / img.width);
-                const canvas = document.createElement("canvas");
-                canvas.width = Math.round(img.width * scale);
-                canvas.height = Math.round(img.height * scale);
-                canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL("image/jpeg", 0.75));
-              };
-              img.src = e.target!.result as string;
-            };
-            reader.readAsDataURL(file);
-          });
-        }
+        // ── Protocolo helpers ──────────────────────────���───────────────
         let salida: ProtocoloData;
         let entrada: ProtocoloData;
         try { salida = proyecto.protocoloSalida ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloSalida) } : defaultProtocolo; } catch { salida = defaultProtocolo; }
@@ -3663,46 +3809,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           const res = await fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: JSON.stringify(data) }) });
           if (res.ok) { const d = await res.json(); setProyecto(prev => prev ? { ...prev, [field]: d.proyecto?.[field] ?? JSON.stringify(data) } : prev); }
         };
-        const ESTADO_OPTS = [
-          { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
-          { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
-          { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
-        ];
-        const ProtocoloPanel = ({ tipo, data }: { tipo: "salida" | "entrada"; data: ProtocoloData }) => {
-          const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
-          const icon = tipo === "salida" ? "🚚" : "🏠";
-          const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
-          const [local, setLocal] = useState<ProtocoloData>(data);
-          const [saving2, setSaving2] = useState(false);
-          const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            const b64 = await comprimirFoto(file);
-            const next = { ...local, fotos: [...local.fotos, b64] }; setLocal(next); await saveProtocolo(tipo, next); e.target.value = "";
-          };
-          const removeFoto = async (idx: number) => { const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) }; setLocal(next); await saveProtocolo(tipo, next); };
-          const save = async () => { setSaving2(true); await saveProtocolo(tipo, local); setSaving2(false); };
-          return (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
-                <div className="flex items-center gap-3"><span className="text-2xl">{icon}</span><div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div></div>
-                <div className="flex gap-2">{ESTADO_OPTS.map(opt => (<button key={opt.id} onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); saveProtocolo(tipo, next); }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>{opt.label}</button>))}</div>
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label><input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))} placeholder="Nombre del técnico" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Hora de verificación</label><input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))} placeholder="ej. 09:30" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                </div>
-                <div><label className="text-xs text-gray-400 block mb-1">Observaciones</label><textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))} rows={3} placeholder="Estado del equipo, daños, faltantes, notas..." className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-                <div>
-                  <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label><label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">+ Agregar foto<input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} /></label></div>
-                  {local.fotos.length > 0 && (<div className="flex flex-wrap gap-2">{local.fotos.map((foto, i) => (<div key={i} className="relative group"><a href={foto} target="_blank" rel="noopener noreferrer"><img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" /></a><button onClick={() => removeFoto(i)} className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}</div>)}
-                </div>
-                <button onClick={save} disabled={saving2} className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">{saving2 ? "Guardando..." : "Guardar protocolo"}</button>
-              </div>
-            </div>
-          );
-        };
-
         // ── Evaluación helpers ──────────────────────────────────────────
         const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
           { key: "puntualidad", label: "Puntualidad en entrega", desc: "Equipo entregado en el horario y fecha acordados con el cliente" },
@@ -3725,21 +3831,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         // ── Accordion helpers ──────────────────────────────────────────
         const toggleDoc = (key: string) => setOpenDocs(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
-        const DocAccordion = ({ docKey, title, desc, tag, children }: { docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode }) => {
-          const isOpen = openDocs.has(docKey);
-          return (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <button onClick={() => toggleDoc(docKey)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
-                <div className="flex items-center gap-2 min-w-0"><div className="min-w-0"><p className="text-white text-sm font-semibold">{title}</p>{desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}</div>{tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}</div>
-                <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-              </button>
-              {isOpen && <div className="border-t border-[#222]">{children}</div>}
-            </div>
-          );
-        };
-        const SectionDivider = ({ label }: { label: string }) => (
-          <div className="flex items-center gap-3 pt-2"><p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p><div className="flex-1 border-t border-[#1a1a1a]" /></div>
-        );
 
         return (
           <div className="space-y-6">
@@ -4041,21 +4132,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
             <SectionDivider label="Documentos del show" />
             <div className="space-y-3">
-              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido">
+              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" isOpen={openDocs.has("soundcheck")} onToggle={() => toggleDoc("soundcheck")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
                   {docs.soundcheck.map((row, i) => { const update = (field: string, val: string) => { const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, soundcheck: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="programaEvento" title="Programa general del evento" desc="Secuencia completa de actividades">
+              <DocAccordion docKey="programaEvento" title="Programa general del evento" desc="Secuencia completa de actividades" isOpen={openDocs.has("programaEvento")} onToggle={() => toggleDoc("programaEvento")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
                   {docs.programaEvento.map((row, i) => { const update = (field: string, val: string) => { const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, programaEvento: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc.">
+              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." isOpen={openDocs.has("coordinacionProveedores")} onToggle={() => toggleDoc("coordinacionProveedores")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
                   {docs.coordinacionProveedores.map((row, i) => { const update = (field: string, val: string) => { const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, coordinacionProveedores: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}><input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
@@ -4071,8 +4162,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {esRenta && (
               <div className="space-y-5">
                 <div><p className="text-white font-semibold">Protocolo de entrada / salida</p><p className="text-gray-500 text-xs mt-0.5">Verificación del estado de los equipos al salir y al regresar del evento</p></div>
-                <ProtocoloPanel tipo="salida" data={salida} />
-                <ProtocoloPanel tipo="entrada" data={entrada} />
+                <ProtocoloPanel tipo="salida" data={salida} onSave={saveProtocolo} />
+                <ProtocoloPanel tipo="entrada" data={entrada} onSave={saveProtocolo} />
               </div>
             )}
 

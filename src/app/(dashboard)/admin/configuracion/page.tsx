@@ -87,6 +87,59 @@ type Tab = "accesos" | "etiquetas" | "configuracion";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+function ConfigInput({ entry, val, isDirty, onChange }: {
+  entry: ConfigEntry; val: string; isDirty: boolean; onChange: (v: string) => void;
+}) {
+  const base = `w-full bg-[#0d0d0d] border rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none transition-colors ${isDirty ? "border-[#B3985B]" : "border-[#2a2a2a] focus:border-[#B3985B]"}`;
+
+  if (entry.type === "boolean") {
+    const isOn = val === "true";
+    return (
+      <button
+        onClick={() => onChange(isOn ? "false" : "true")}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+          isOn
+            ? "bg-green-900/20 border-green-500/30 text-green-400"
+            : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-500"
+        } ${isDirty ? "ring-1 ring-[#B3985B]" : ""}`}
+      >
+        <span className={`w-2.5 h-2.5 rounded-full ${isOn ? "bg-green-400" : "bg-gray-600"}`} />
+        {isOn ? "Activado" : "Desactivado"}
+      </button>
+    );
+  }
+
+  if (entry.type === "textarea" || entry.type === "json") {
+    return (
+      <textarea
+        value={val}
+        onChange={e => onChange(e.target.value)}
+        rows={entry.type === "json" ? 5 : 3}
+        className={`${base} font-mono text-xs resize-y`}
+      />
+    );
+  }
+
+  if (entry.type === "color") {
+    return (
+      <div className="flex items-center gap-2">
+        <input type="color" value={val} onChange={e => onChange(e.target.value)}
+          className="h-8 w-12 rounded cursor-pointer border border-[#2a2a2a] bg-transparent" />
+        <input value={val} onChange={e => onChange(e.target.value)} className={`${base} flex-1`} />
+      </div>
+    );
+  }
+
+  return (
+    <input
+      type={entry.type === "number" ? "number" : entry.type === "email" ? "email" : "text"}
+      value={val}
+      onChange={e => onChange(e.target.value)}
+      className={base}
+    />
+  );
+}
+
 export default function ConfiguracionPage() {
   const toast = useToast();
   const [tab, setTab] = useState<Tab>("accesos");
@@ -264,60 +317,6 @@ export default function ConfiguracionPage() {
     }
     return map;
   };
-
-  function ConfigInput({ entry }: { entry: ConfigEntry }) {
-    const val = configDraft[entry.key] ?? entry.value;
-    const onChange = (v: string) => setConfigDraft(d => ({ ...d, [entry.key]: v }));
-    const isDirty = val !== entry.value;
-    const base = `w-full bg-[#0d0d0d] border rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none transition-colors ${isDirty ? "border-[#B3985B]" : "border-[#2a2a2a] focus:border-[#B3985B]"}`;
-
-    if (entry.type === "boolean") {
-      const isOn = val === "true";
-      return (
-        <button
-          onClick={() => onChange(isOn ? "false" : "true")}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-            isOn
-              ? "bg-green-900/20 border-green-500/30 text-green-400"
-              : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-500"
-          } ${isDirty ? "ring-1 ring-[#B3985B]" : ""}`}
-        >
-          <span className={`w-2.5 h-2.5 rounded-full ${isOn ? "bg-green-400" : "bg-gray-600"}`} />
-          {isOn ? "Activado" : "Desactivado"}
-        </button>
-      );
-    }
-
-    if (entry.type === "textarea" || entry.type === "json") {
-      return (
-        <textarea
-          value={val}
-          onChange={e => onChange(e.target.value)}
-          rows={entry.type === "json" ? 5 : 3}
-          className={`${base} font-mono text-xs resize-y`}
-        />
-      );
-    }
-
-    if (entry.type === "color") {
-      return (
-        <div className="flex items-center gap-2">
-          <input type="color" value={val} onChange={e => onChange(e.target.value)}
-            className="h-8 w-12 rounded cursor-pointer border border-[#2a2a2a] bg-transparent" />
-          <input value={val} onChange={e => onChange(e.target.value)} className={`${base} flex-1`} />
-        </div>
-      );
-    }
-
-    return (
-      <input
-        type={entry.type === "number" ? "number" : entry.type === "email" ? "email" : "text"}
-        value={val}
-        onChange={e => onChange(e.target.value)}
-        className={base}
-      />
-    );
-  }
 
   const sections = configBySections();
   const hasDirty = configEntries.some(e => configDraft[e.key] !== e.value);
@@ -524,7 +523,12 @@ export default function ConfiguracionPage() {
                       {entry.description && (
                         <p className="text-xs text-gray-600 mb-1.5">{entry.description}</p>
                       )}
-                      <ConfigInput entry={entry} />
+                      <ConfigInput
+                        entry={entry}
+                        val={configDraft[entry.key] ?? entry.value}
+                        isDirty={(configDraft[entry.key] ?? entry.value) !== entry.value}
+                        onChange={v => setConfigDraft(d => ({ ...d, [entry.key]: v }))}
+                      />
                     </div>
                   ))}
                 </div>

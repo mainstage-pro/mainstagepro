@@ -102,6 +102,157 @@ function FInput({ value, onChange, placeholder, type = "text", className = "" }:
   );
 }
 
+type FormPanelProps = {
+  panel: "nuevo" | string | null;
+  equipos: Equipo[];
+  form: Form;
+  setForm: React.Dispatch<React.SetStateAction<Form>>;
+  imagen: string | null;
+  saving: boolean;
+  categorias: Categoria[];
+  proveedores: Proveedor[];
+  imgRef: React.RefObject<HTMLInputElement | null>;
+  onClose: () => void;
+  onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onSave: () => void;
+};
+
+function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef, onClose, onImageChange, onSave }: FormPanelProps) {
+  const equipoActual = panel !== "nuevo" ? equipos.find(e => e.id === panel) : null;
+  return (
+    <div className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-5 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[#B3985B] font-semibold text-sm">
+          {panel === "nuevo" ? "Nuevo equipo" : `Editando: ${equipoActual?.descripcion ?? ""}`}
+        </h2>
+        <button onClick={onClose} className="text-[#555] hover:text-white text-lg leading-none">✕</button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Col 1 — descripción + imagen */}
+        <div className="space-y-3">
+          <FieldGroup label="Descripción *">
+            <FInput value={form.descripcion} onChange={v => setForm(p => ({ ...p, descripcion: v }))} placeholder="Ej. Subwoofer 18'' RCF" />
+          </FieldGroup>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldGroup label="Marca">
+              <FInput value={form.marca} onChange={v => setForm(p => ({ ...p, marca: v }))} placeholder="RCF" />
+            </FieldGroup>
+            <FieldGroup label="Modelo">
+              <FInput value={form.modelo} onChange={v => setForm(p => ({ ...p, modelo: v }))} placeholder="SUB 9004-AS" />
+            </FieldGroup>
+          </div>
+          <FieldGroup label="Imagen">
+            <div className="flex items-center gap-3">
+              {(imagen || equipoActual?.imagenUrl) && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagen ?? equipoActual?.imagenUrl ?? ""} alt="" className="w-12 h-12 object-contain rounded bg-[#111] p-1 shrink-0" />
+              )}
+              <div>
+                <input ref={imgRef} type="file" accept="image/*" onChange={onImageChange} className="hidden" />
+                <button onClick={() => imgRef.current?.click()}
+                  className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-[#9ca3af] hover:text-white hover:border-[#B3985B]/50 transition-colors">
+                  {imagen || equipoActual?.imagenUrl ? "Cambiar foto" : "Subir foto"}
+                </button>
+                {imagen && <p className="text-[10px] text-[#B3985B] mt-1">Nueva imagen lista</p>}
+              </div>
+            </div>
+          </FieldGroup>
+          <FieldGroup label="Notas">
+            <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} rows={2}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 resize-none"
+              placeholder="Notas internas..." />
+          </FieldGroup>
+        </div>
+
+        {/* Col 2 — clasificación */}
+        <div className="space-y-3">
+          <FieldGroup label="Categoría *">
+            <select value={form.categoriaId} onChange={e => setForm(p => ({ ...p, categoriaId: e.target.value }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
+              <option value="">— Selecciona —</option>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+          </FieldGroup>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldGroup label="Tipo">
+              <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
+                <option value="PROPIO">Propio</option>
+                <option value="EXTERNO">Externo</option>
+              </select>
+            </FieldGroup>
+            <FieldGroup label="Estado">
+              <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
+                <option value="ACTIVO">Activo</option>
+                <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+                <option value="DADO_DE_BAJA">Dado de baja</option>
+              </select>
+            </FieldGroup>
+          </div>
+          <FieldGroup label="Cantidad total">
+            <FInput type="number" value={form.cantidadTotal} onChange={v => setForm(p => ({ ...p, cantidadTotal: v }))} />
+          </FieldGroup>
+          <FieldGroup label="Proveedor (externo)">
+            <select value={form.proveedorDefaultId} onChange={e => setForm(p => ({ ...p, proveedorDefaultId: e.target.value }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
+              <option value="">— Ninguno —</option>
+              {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>)}
+            </select>
+          </FieldGroup>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldGroup label="Amperaje (A)">
+              <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="—" />
+            </FieldGroup>
+            <FieldGroup label="Voltaje (V)">
+              <FInput type="number" value={form.voltajeRequerido} onChange={v => setForm(p => ({ ...p, voltajeRequerido: v }))} placeholder="—" />
+            </FieldGroup>
+          </div>
+        </div>
+
+        {/* Col 3 — financiero */}
+        <div className="space-y-3">
+          <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 space-y-3">
+            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Información financiera</p>
+            <FieldGroup label="Precio de renta (al cliente)">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
+                <FInput type="number" value={form.precioRenta} onChange={v => setForm(p => ({ ...p, precioRenta: v }))} className="pl-7" placeholder="0" />
+              </div>
+              <p className="text-[10px] text-[#555] mt-1">Precio que ve el cliente en cotizaciones</p>
+            </FieldGroup>
+            <FieldGroup label="Costo proveedor">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
+                <FInput type="number" value={form.costoProveedor} onChange={v => setForm(p => ({ ...p, costoProveedor: v }))} className="pl-7" placeholder="—" />
+              </div>
+              <p className="text-[10px] text-[#555] mt-1">Lo que cobramos al proveedor (equipo externo)</p>
+            </FieldGroup>
+            <FieldGroup label="Valor del activo">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
+                <FInput type="number" value={form.costoInternoEstimado} onChange={v => setForm(p => ({ ...p, costoInternoEstimado: v }))} className="pl-7" placeholder="—" />
+              </div>
+              <p className="text-[10px] text-[#555] mt-1">Costo de adquisición (equipo propio)</p>
+            </FieldGroup>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 pt-2 border-t border-[#1a1a1a]">
+        <button onClick={onSave} disabled={saving || !form.descripcion || !form.categoriaId}
+          className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c4aa6b] transition-colors">
+          {saving ? "Guardando..." : panel === "nuevo" ? "Crear equipo" : "Guardar cambios"}
+        </button>
+        <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function InventarioMaestroPage() {
   const toast = useToast();
   const confirm = useConfirm();
@@ -253,142 +404,10 @@ export default function InventarioMaestroPage() {
     [equiposFiltrados]
   );
 
-  // ── Form panel ──────────────────────────────────────────────────────────────
-  function FormPanel() {
-    const equipoActual = panel !== "nuevo" ? equipos.find(e => e.id === panel) : null;
-    return (
-      <div className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-5 mb-4">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-[#B3985B] font-semibold text-sm">
-            {panel === "nuevo" ? "Nuevo equipo" : `Editando: ${equipoActual?.descripcion ?? ""}`}
-          </h2>
-          <button onClick={cerrarPanel} className="text-[#555] hover:text-white text-lg leading-none">✕</button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Col 1 — descripción + imagen */}
-          <div className="space-y-3">
-            <FieldGroup label="Descripción *">
-              <FInput value={form.descripcion} onChange={v => setForm(p => ({ ...p, descripcion: v }))} placeholder="Ej. Subwoofer 18'' RCF" />
-            </FieldGroup>
-            <div className="grid grid-cols-2 gap-2">
-              <FieldGroup label="Marca">
-                <FInput value={form.marca} onChange={v => setForm(p => ({ ...p, marca: v }))} placeholder="RCF" />
-              </FieldGroup>
-              <FieldGroup label="Modelo">
-                <FInput value={form.modelo} onChange={v => setForm(p => ({ ...p, modelo: v }))} placeholder="SUB 9004-AS" />
-              </FieldGroup>
-            </div>
-            <FieldGroup label="Imagen">
-              <div className="flex items-center gap-3">
-                {(imagen || equipoActual?.imagenUrl) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imagen ?? equipoActual?.imagenUrl ?? ""} alt="" className="w-12 h-12 object-contain rounded bg-[#111] p-1 shrink-0" />
-                )}
-                <div>
-                  <input ref={imgRef} type="file" accept="image/*" onChange={handleImagen} className="hidden" />
-                  <button onClick={() => imgRef.current?.click()}
-                    className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-[#9ca3af] hover:text-white hover:border-[#B3985B]/50 transition-colors">
-                    {imagen || equipoActual?.imagenUrl ? "Cambiar foto" : "Subir foto"}
-                  </button>
-                  {imagen && <p className="text-[10px] text-[#B3985B] mt-1">Nueva imagen lista</p>}
-                </div>
-              </div>
-            </FieldGroup>
-            <FieldGroup label="Notas">
-              <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} rows={2}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 resize-none"
-                placeholder="Notas internas..." />
-            </FieldGroup>
-          </div>
-
-          {/* Col 2 — clasificación */}
-          <div className="space-y-3">
-            <FieldGroup label="Categoría *">
-              <select value={form.categoriaId} onChange={e => setForm(p => ({ ...p, categoriaId: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
-                <option value="">— Selecciona —</option>
-                {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            </FieldGroup>
-            <div className="grid grid-cols-2 gap-2">
-              <FieldGroup label="Tipo">
-                <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
-                  <option value="PROPIO">Propio</option>
-                  <option value="EXTERNO">Externo</option>
-                </select>
-              </FieldGroup>
-              <FieldGroup label="Estado">
-                <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
-                  <option value="ACTIVO">Activo</option>
-                  <option value="EN_MANTENIMIENTO">En mantenimiento</option>
-                  <option value="DADO_DE_BAJA">Dado de baja</option>
-                </select>
-              </FieldGroup>
-            </div>
-            <FieldGroup label="Cantidad total">
-              <FInput type="number" value={form.cantidadTotal} onChange={v => setForm(p => ({ ...p, cantidadTotal: v }))} />
-            </FieldGroup>
-            <FieldGroup label="Proveedor (externo)">
-              <select value={form.proveedorDefaultId} onChange={e => setForm(p => ({ ...p, proveedorDefaultId: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
-                <option value="">— Ninguno —</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>)}
-              </select>
-            </FieldGroup>
-            <div className="grid grid-cols-2 gap-2">
-              <FieldGroup label="Amperaje (A)">
-                <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="—" />
-              </FieldGroup>
-              <FieldGroup label="Voltaje (V)">
-                <FInput type="number" value={form.voltajeRequerido} onChange={v => setForm(p => ({ ...p, voltajeRequerido: v }))} placeholder="—" />
-              </FieldGroup>
-            </div>
-          </div>
-
-          {/* Col 3 — financiero */}
-          <div className="space-y-3">
-            <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 space-y-3">
-              <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Información financiera</p>
-              <FieldGroup label="Precio de renta (al cliente)">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                  <FInput type="number" value={form.precioRenta} onChange={v => setForm(p => ({ ...p, precioRenta: v }))} className="pl-7" placeholder="0" />
-                </div>
-                <p className="text-[10px] text-[#555] mt-1">Precio que ve el cliente en cotizaciones</p>
-              </FieldGroup>
-              <FieldGroup label="Costo proveedor">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                  <FInput type="number" value={form.costoProveedor} onChange={v => setForm(p => ({ ...p, costoProveedor: v }))} className="pl-7" placeholder="—" />
-                </div>
-                <p className="text-[10px] text-[#555] mt-1">Lo que cobramos al proveedor (equipo externo)</p>
-              </FieldGroup>
-              <FieldGroup label="Valor del activo">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                  <FInput type="number" value={form.costoInternoEstimado} onChange={v => setForm(p => ({ ...p, costoInternoEstimado: v }))} className="pl-7" placeholder="—" />
-                </div>
-                <p className="text-[10px] text-[#555] mt-1">Costo de adquisición (equipo propio)</p>
-              </FieldGroup>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 pt-2 border-t border-[#1a1a1a]">
-          <button onClick={guardar} disabled={saving || !form.descripcion || !form.categoriaId}
-            className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c4aa6b] transition-colors">
-            {saving ? "Guardando..." : panel === "nuevo" ? "Crear equipo" : "Guardar cambios"}
-          </button>
-          <button onClick={cerrarPanel} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const formPanelProps: FormPanelProps = {
+    panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef,
+    onClose: cerrarPanel, onImageChange: handleImagen, onSave: guardar,
+  };
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-5">
@@ -406,7 +425,7 @@ export default function InventarioMaestroPage() {
       </div>
 
       {/* Panel nuevo */}
-      {panel === "nuevo" && <FormPanel />}
+      {panel === "nuevo" && <FormPanel {...formPanelProps} />}
 
       {/* KPIs */}
       {kpis && (
@@ -464,7 +483,7 @@ export default function InventarioMaestroPage() {
       </div>
 
       {/* Panel editar (encima de tabla) */}
-      {panel !== null && panel !== "nuevo" && <FormPanel />}
+      {panel !== null && panel !== "nuevo" && <FormPanel {...formPanelProps} />}
 
       {/* Tabla */}
       {loading ? (

@@ -36,6 +36,7 @@ export default function InventarioEquiposPage() {
   const [tipoFiltro, setTipoFiltro] = useState<"TODOS" | "PROPIO" | "EXTERNO">("TODOS");
   const [categoriaFiltro, setCategoriaFiltro] = useState("");
   const [descargandoPDF, setDescargandoPDF] = useState(false);
+  const [vista, setVista] = useState<"grid" | "lista">("grid");
 
   async function load() {
     const res = await fetch("/api/equipos?todos=true");
@@ -147,19 +148,45 @@ export default function InventarioEquiposPage() {
           <option value="">Categoría: todas</option>
           {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
         </select>
-        <span className="ml-auto text-xs text-[#444]">{filtrados.length} equipos</span>
+
+        <span className="text-xs text-[#444]">{filtrados.length} equipos</span>
+
+        {/* Toggle vista */}
+        <div className="ml-auto flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
+          <button onClick={() => setVista("grid")} title="Vista cuadrícula"
+            className={`p-1.5 rounded transition-colors ${vista === "grid" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </button>
+          <button onClick={() => setVista("lista")} title="Vista lista"
+            className={`p-1.5 rounded transition-colors ${vista === "lista" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Contenido */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {[...Array(10)].map((_, i) => <div key={i} className="h-36 bg-[#111] rounded-xl animate-pulse" />)}
-        </div>
+        vista === "grid" ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {[...Array(10)].map((_, i) => <div key={i} className="h-36 bg-[#111] rounded-xl animate-pulse" />)}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {[...Array(10)].map((_, i) => <div key={i} className="h-10 bg-[#111] rounded-lg animate-pulse" />)}
+          </div>
+        )
       ) : filtrados.length === 0 ? (
         <div className="text-center py-16 text-[#333]">
           <p className="text-sm">Sin equipos con los filtros actuales.</p>
         </div>
-      ) : (
+      ) : vista === "grid" ? (
+
+        /* ── Vista cuadrícula ── */
         <div className="space-y-8">
           {porCategoria.map(({ cat, items }) => (
             <div key={cat.id}>
@@ -170,19 +197,16 @@ export default function InventarioEquiposPage() {
                 {items.map(e => (
                   <Link key={e.id} href={`/inventario/equipos/${e.id}`}
                     className="bg-[#111] border border-[#1a1a1a] hover:border-[#B3985B]/40 rounded-xl p-3 flex flex-col gap-2 transition-colors group">
-                    {/* Imagen */}
                     <div className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center">
                       {e.imagenUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={e.imagenUrl} alt={e.descripcion}
-                          className="w-full h-full object-contain p-2" />
+                        <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-2" />
                       ) : (
                         <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       )}
                     </div>
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
                         {e.descripcion}
@@ -193,12 +217,11 @@ export default function InventarioEquiposPage() {
                         </p>
                       )}
                     </div>
-                    {/* Footer */}
                     <div className="flex items-center justify-between mt-1">
                       <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#555]"}`}>
                         {ESTADO_LABEL[e.estado] ?? e.estado}
                       </span>
-                      <span className="text-[10px] text-[#6b7280] font-medium">×{e.cantidadTotal}</span>
+                      <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
                     </div>
                   </Link>
                 ))}
@@ -206,6 +229,75 @@ export default function InventarioEquiposPage() {
             </div>
           ))}
         </div>
+
+      ) : (
+
+        /* ── Vista lista ── */
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#1a1a1a] text-[#555]">
+                <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Categoría</th>
+                <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Tipo</th>
+                <th className="text-center px-3 py-2.5 font-medium">Estado</th>
+                <th className="text-right px-4 py-2.5 font-medium">Cant.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porCategoria.map(({ cat, items }) => (
+                <>
+                  <tr key={`cat-${cat.id}`} className="bg-[#0d0d0d]">
+                    <td colSpan={5} className="px-4 py-2 text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">
+                      {cat.nombre} <span className="text-[#333] ml-1">({items.length})</span>
+                    </td>
+                  </tr>
+                  {items.map(e => (
+                    <tr key={e.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors group">
+                      <td className="px-4 py-2.5">
+                        <Link href={`/inventario/equipos/${e.id}`} className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-md overflow-hidden bg-[#0a0a0a] flex items-center justify-center shrink-0">
+                            {e.imagenUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-0.5" />
+                            ) : (
+                              <svg className="w-4 h-4 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-white font-medium truncate group-hover:text-[#B3985B] transition-colors">
+                              {e.descripcion}
+                            </p>
+                            {(e.marca || e.modelo) && (
+                              <p className="text-[#555] text-[10px] truncate">
+                                {[e.marca, e.modelo].filter(Boolean).join(" · ")}
+                              </p>
+                            )}
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2.5 text-[#6b7280] hidden md:table-cell">{e.categoria.nombre}</td>
+                      <td className="px-3 py-2.5 text-center hidden sm:table-cell">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
+                          {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#555]"}`}>
+                          {ESTADO_LABEL[e.estado] ?? e.estado}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-white font-bold text-sm">×{e.cantidadTotal}</td>
+                    </tr>
+                  ))}
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
       )}
     </div>
   );
