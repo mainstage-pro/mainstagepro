@@ -39,6 +39,10 @@ const ESTADO_DOT: Record<string, string> = {
 const FORMATO_COLORS: Record<string, string> = {
   POST: "text-blue-400", REEL: "text-purple-400", STORIE: "text-pink-400", TIK_TOK: "text-cyan-400",
 };
+const FORMATOS = ["POST", "REEL", "STORIE", "TIK_TOK"];
+const FORMATO_LABEL: Record<string, string> = {
+  POST: "Post", REEL: "Reel", STORIE: "Story", TIK_TOK: "TikTok",
+};
 const PLATAFORMAS = [
   { key: "enFacebook" as const, short: "FB" },
   { key: "enInstagram" as const, short: "IG" },
@@ -161,6 +165,19 @@ export default function MarketingCalendarioPage() {
     }
     cancelEdit();
     setSaving(false);
+  }
+
+  async function quickFormato(id: string, formato: string) {
+    const res = await fetch(`/api/marketing/publicaciones/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formato }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
+    setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, formato } : p));
   }
 
   async function quickEstado(id: string, estado: string) {
@@ -554,6 +571,7 @@ export default function MarketingCalendarioPage() {
           openEdit={openEdit}
           deletePub={deletePub}
           quickEstado={quickEstado}
+          quickFormato={quickFormato}
         />
       ) : vista === "tipo" ? (
         <VistaPorTipo
@@ -989,11 +1007,12 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
 }
 
 // ─── Vista Parrilla (tabla) ──────────────────────────────────────────────────
-function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado }: {
+function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, quickFormato }: {
   publicaciones: Publicacion[]; expandedId: string | null; editId: string | null;
   setExpandedId: (id: string | null) => void;
   openEdit: (p: Publicacion) => void; deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
+  quickFormato: (id: string, formato: string) => void;
 }) {
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const tiposUnicos = Array.from(new Map(publicaciones.filter(p => p.tipo).map(p => [p.tipo!.id, p.tipo!])).values());
@@ -1033,7 +1052,14 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                     <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
                     <p className="text-[#444] text-[9px]">{MESES[d.getMonth()].slice(0,3)}</p>
                   </div>
-                  <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato ?? ""] ?? "text-gray-600"}`}>{formato ?? "—"}</span>
+                  <div onClick={e => e.stopPropagation()}>
+                    <Combobox
+                      value={formato ?? ""}
+                      onChange={v => quickFormato(p.id, v)}
+                      options={FORMATOS.map(f => ({ value: f, label: FORMATO_LABEL[f] }))}
+                      className={`text-[10px] font-bold bg-transparent border-0 focus:outline-none cursor-pointer p-0 ${FORMATO_COLORS[formato ?? ""] ?? "text-gray-600"}`}
+                    />
+                  </div>
                   <div className="min-w-0">
                     <p className="text-white text-xs font-medium truncate">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</p>
                     {p.descripcion && <p className="text-gray-500 text-[10px] truncate">{p.descripcion}</p>}
