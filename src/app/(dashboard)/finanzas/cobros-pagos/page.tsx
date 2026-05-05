@@ -24,6 +24,14 @@ interface EmpresaItem {
   contactosProveedor: { id: string; nombre: string; telefono: string | null; correo: string | null }[];
 }
 
+interface AbonoItem {
+  id: string;
+  monto: number;
+  fecha: string;
+  metodoPago: string;
+  notas: string | null;
+}
+
 interface CxCItem {
   id: string;
   concepto: string;
@@ -37,6 +45,7 @@ interface CxCItem {
   proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cotizacion: { id: string; numeroCotizacion: string } | null;
   cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
+  abonos: AbonoItem[];
 }
 
 interface CxPItem {
@@ -248,6 +257,7 @@ export default function CobrosPagosPage() {
   const [modalMetodoPago, setModalMetodoPago] = useState("TRANSFERENCIA");
   const [confirmando, setConfirmando] = useState(false);
   const [anulando, setAnulando] = useState<string | null>(null);
+  const [expandedAbonos, setExpandedAbonos] = useState<Set<string>>(new Set());
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
   const [sortBy, setSortBy] = useState<"fecha_asc" | "fecha_desc" | "monto_desc" | "monto_asc" | "nombre_asc">("fecha_asc");
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -556,12 +566,29 @@ export default function CobrosPagosPage() {
     const endpoint = tipo === "cobro"
       ? `/api/cuentas-cobrar/${id}/anular`
       : `/api/cuentas-pagar/${id}/anular`;
-    const res = await fetch(endpoint, { method: "POST" });
+    const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
     if (res.ok) {
       toast.success("Registro anulado — vuelve a estado Pendiente");
       await load();
     } else {
       toast.error("Error al anular");
+    }
+    setAnulando(null);
+  }
+
+  async function anularAbono(cxcId: string, abonoId: string) {
+    if (!await confirm({ message: "¿Eliminar este abono? El movimiento financiero asociado será eliminado.", danger: true, confirmText: "Eliminar abono" })) return;
+    setAnulando(abonoId);
+    const res = await fetch(`/api/cuentas-cobrar/${cxcId}/anular`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ abonoId }),
+    });
+    if (res.ok) {
+      toast.success("Abono eliminado");
+      await load();
+    } else {
+      toast.error("Error al eliminar abono");
     }
     setAnulando(null);
   }
@@ -976,9 +1003,6 @@ export default function CobrosPagosPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_COLORS[c.estado] ?? "bg-gray-800 text-gray-400"}`}>
                       {c.estado}
                     </span>
-                    <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                      {TIPO_LABELS[c.tipoPago] ?? c.tipoPago}
-                    </span>
                     {c.esVencida && <span className="text-[10px] text-red-400 font-medium">⚠ Vencida</span>}
                   </div>
                   <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
@@ -992,24 +1016,6 @@ export default function CobrosPagosPage() {
                     <span className={`text-[10px] ${c.esVencida ? "text-red-400" : "text-[#555]"}`}>
                       Vence: {fmtDate(c.fechaCompromiso)}
                     </span>
-                    {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                      <span className="text-[10px] text-blue-400">
-                        Abonado: {formatCurrency(c.montoCobrado)}
-                      </span>
-                    )}
-                    {(() => {
-                      const cid = c.cliente?.id;
-                      const eid = c.empresa?.id;
-                      const total = cxc
-                        .filter(x => x.estado !== "LIQUIDADO" && ((cid && x.cliente?.id === cid) || (eid && x.empresa?.id === eid)))
-                        .reduce((s, x) => s + (x.monto - x.montoCobrado), 0);
-                      if (total <= 0) return null;
-                      return (
-                        <span className="text-[10px] text-orange-400 bg-orange-950/25 border border-orange-900/40 px-2 py-0.5 rounded-full font-medium">
-                          Adeudo total: {formatCurrency(total)}
-                        </span>
-                      );
-                    })()}
                   </div>
                 </div>
 
@@ -1018,13 +1024,72 @@ export default function CobrosPagosPage() {
                   {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" ? (
                     <>
                       <p className="text-yellow-400 font-semibold text-base">{formatCurrency(c.monto - c.montoCobrado)}</p>
-                      <p className="text-[10px] text-gray-600 mt-0.5">de {formatCurrency(c.monto)}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">saldo de {formatCurrency(c.monto)}</p>
                     </>
                   ) : (
-                    <p className="text-white font-semibold text-base">{formatCurrency(c.monto)}</p>
+                    <p className={`font-semibold text-base ${c.estado === "LIQUIDADO" ? "text-green-400" : "text-white"}`}>{formatCurrency(c.monto)}</p>
                   )}
                 </div>
               </div>
+
+              {/* Barra de progreso */}
+              {c.monto > 0 && (
+                <div className="mt-2.5">
+                  <div className="flex justify-between text-[10px] text-gray-600 mb-1">
+                    <span>Cobrado: {formatCurrency(c.montoCobrado)}</span>
+                    <span>{Math.round((c.montoCobrado / c.monto) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-[#1a1a1a] rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${c.estado === "LIQUIDADO" ? "bg-green-500" : "bg-[#B3985B]"}`}
+                      style={{ width: `${Math.min(100, (c.montoCobrado / c.monto) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Historial de abonos (expandible) */}
+              {c.abonos && c.abonos.length > 0 && (
+                <div className="mt-2.5">
+                  <button
+                    onClick={() => setExpandedAbonos(prev => {
+                      const next = new Set(prev);
+                      next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                      return next;
+                    })}
+                    className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    <svg className={`w-3 h-3 transition-transform ${expandedAbonos.has(c.id) ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    {c.abonos.length} {c.abonos.length === 1 ? "abono registrado" : "abonos registrados"}
+                  </button>
+                  {expandedAbonos.has(c.id) && (
+                    <div className="mt-2 space-y-1.5 pl-2 border-l border-[#2a2a2a]">
+                      {c.abonos.map(abono => (
+                        <div key={abono.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                            <span className="text-[#B3985B] font-medium">{formatCurrency(abono.monto)}</span>
+                            <span>·</span>
+                            <span>{fmtDate(abono.fecha)}</span>
+                            <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded capitalize">
+                              {abono.metodoPago === "TRANSFERENCIA" ? "Transf." : abono.metodoPago === "EFECTIVO" ? "Efectivo" : abono.metodoPago}
+                            </span>
+                            {abono.notas && <span className="text-gray-700 truncate max-w-[120px]">{abono.notas}</span>}
+                          </div>
+                          <button
+                            onClick={() => anularAbono(c.id, abono.id)}
+                            disabled={anulando === abono.id}
+                            className="text-[10px] text-red-500/50 hover:text-red-400 transition-colors disabled:opacity-40"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Acciones */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
@@ -1033,9 +1098,9 @@ export default function CobrosPagosPage() {
                     <button onClick={() => openModal(c, "cobro")}
                       className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      Confirmar cobro
+                      Registrar abono
                     </button>
                     <button onClick={() => openEdit(c, "cxc")}
                       className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
@@ -1067,8 +1132,9 @@ export default function CobrosPagosPage() {
                 {(() => {
                   const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
                   const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
+                  const saldo = c.monto - c.montoCobrado;
                   return c.estado !== "LIQUIDADO" && tel ? (
-                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, c.monto, c.concepto)}`}
+                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, saldo, c.concepto)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -1080,19 +1146,12 @@ export default function CobrosPagosPage() {
                   ) : null;
                 })()}
                 {c.estado === "LIQUIDADO" && (
-                  <>
-                    <a href={`/api/cuentas-cobrar/${c.id}/recibo`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Recibo PDF
-                    </a>
-                    <button onClick={() => anular(c.id, "cobro")} disabled={anulando === c.id}
-                      className="text-xs text-red-400/70 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
-                      {anulando === c.id ? "Anulando..." : "Anular cobro"}
-                    </button>
-                  </>
+                  <span className="text-xs text-green-400/60 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Liquidado
+                  </span>
                 )}
                 <button onClick={() => eliminar(c.id, "cxc", c.estado === "LIQUIDADO")}
                   className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
@@ -1285,16 +1344,16 @@ export default function CobrosPagosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-white font-semibold mb-1">
-              {modal.tipo === "cobro" ? "Confirmar cobro" : "Confirmar pago"}
+              {modal.tipo === "cobro" ? "Registrar abono" : "Confirmar pago"}
             </h3>
             <p className="text-gray-500 text-xs mb-4">{modal.concepto} · {modal.nombre}</p>
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Monto recibido / pagado</label>
+                <label className="text-xs text-gray-500 mb-1 block">Monto recibido</label>
                 <input type="number" step="0.01" min="0" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
-                <p className="text-[10px] text-gray-600 mt-1">Total: {formatCurrency(modal.monto)}</p>
+                <p className="text-[10px] text-gray-600 mt-1">Saldo: {formatCurrency(modal.monto)}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha</label>

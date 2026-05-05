@@ -134,7 +134,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
       if (proyecto) {
         // Romper FK CxC/CxP → MovimientoFinanciero antes de borrar movimientos
-        await tx.cuentaCobrar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
+        await tx.abono.updateMany({ where: { cuentaCobrar: { proyectoId: proyecto.id } }, data: { movimientoId: null } });
         await tx.cuentaPagar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
         await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
         await tx.cuentaCobrar.deleteMany({ where: { proyectoId: proyecto.id } });

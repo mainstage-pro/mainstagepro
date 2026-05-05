@@ -790,6 +790,7 @@ model CuentaBancaria {
   cuentasCobrar      CuentaCobrar[]
   cuentasPagar       CuentaPagar[]
   pagosNomina        PagoNomina[]
+  abonos             Abono[]
 
   @@map("cuentas_bancarias")
 }
@@ -831,9 +832,9 @@ model MovimientoFinanciero {
   creadoPor           String?
   createdAt           DateTime @default(now())
 
-  cuentaCobrar CuentaCobrar?
   cuentaPagar  CuentaPagar?
   pagoNomina   PagoNomina?
+  abono        Abono?
 
   @@map("movimientos_financieros")
 }
@@ -849,7 +850,7 @@ model CuentaCobrar {
   cotizacionId    String?
   cotizacion      Cotizacion? @relation(fields: [cotizacionId], references: [id])
   concepto        String
-  tipoPago        String   @default("ANTICIPO") // ANTICIPO | LIQUIDACION | OTRO
+  tipoPago        String   @default("TOTAL") // TOTAL | ANTICIPO | LIQUIDACION | OTRO
   monto           Float
   fechaCompromiso DateTime
   fechaCobroReal  DateTime?
@@ -857,15 +858,33 @@ model CuentaCobrar {
   montoCobrado    Float    @default(0)
   cuentaDestinoId String?
   cuentaDestino   CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
-  movimientoId    String?  @unique
-  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?
   montoOriginal   Float?   // monto al momento de la creación, antes de ajustes
   ajustesLog      String?  // JSON: [{fecha, de, a, motivo, usuario}]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  abonos          Abono[]
+
   @@map("cuentas_cobrar")
+}
+
+model Abono {
+  id               String   @id @default(cuid())
+  cuentaCobrarId   String
+  cuentaCobrar     CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id], onDelete: Cascade)
+  monto            Float
+  fecha            DateTime
+  metodoPago       String   @default("TRANSFERENCIA") // TRANSFERENCIA | EFECTIVO | TARJETA | CHEQUE
+  notas            String?
+  cuentaDestinoId  String?
+  cuentaDestino    CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
+  movimientoId     String?  @unique
+  movimiento       MovimientoFinanciero? @relation(fields: [movimientoId], references: [id], onDelete: SetNull)
+  creadoPor        String?
+  createdAt        DateTime @default(now())
+
+  @@map("abonos")
 }
 
 model CuentaPagar {

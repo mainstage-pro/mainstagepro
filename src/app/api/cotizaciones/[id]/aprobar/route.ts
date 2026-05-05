@@ -90,32 +90,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const hoy = new Date();
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  // ── Leer plan de pagos (o usar default 50/50) ──────────────────────────────
-  // Convención diasAntes:
-  //   > 0  → días ANTES del evento  (ej: 3 = 3 días antes)
-  //   = 0  → día del evento
-  //   < 0  → días DESPUÉS del evento (ej: -1 = 1 día después = día siguiente)
-  type PagoPlan = { concepto: string; porcentaje: number; monto?: number; diasAntes: number; tipoPago: string };
-  let cuotas: PagoPlan[];
-  try {
-    const plan = cot.planPagos ? JSON.parse(cot.planPagos) : null;
-    cuotas = (plan?.pagos && plan.pagos.length > 0)
-      ? plan.pagos
-      : [
-          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "ANTICIPO" },
-          { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
-        ];
-  } catch {
-    cuotas = [
-      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 1, tipoPago: "ANTICIPO" },
-      { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
-    ];
-  }
-
-  function fechaPago(diasAntes: number): Date {
-    // Post-event or same-day → next Monday; pre-event → plan-based date
-    if (diasAntes <= 0) return proximoLunesTraEvento(fechaEvento);
-    return new Date(fechaEvento.getTime() - diasAntes * 24 * 60 * 60 * 1000);
+  // fecha de compromiso: lunes siguiente al evento
+  function fechaCxC(): Date {
+    return proximoLunesTraEvento(fechaEvento);
   }
 
   // Equipos propios y externos de la cotización para copiar al proyecto
@@ -275,33 +252,19 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       } catch { /* ideasReferencias es texto plano, no JSON */ }
     }
 
-    // 5 & 6. Crear CxC según plan de pagos
-    let acumulado = 0;
-    for (let i = 0; i < cuotas.length; i++) {
-      const cuota = cuotas[i];
-      const esUltima = i === cuotas.length - 1;
-      const monto = esUltima
-        ? Math.round((cot.granTotal - acumulado) * 100) / 100
-        : (cuota.monto && cuota.monto > 0)
-          ? cuota.monto
-          : Math.round(cot.granTotal * (cuota.porcentaje / 100) * 100) / 100;
-      acumulado += monto;
-      const concepto = cuota.concepto.endsWith(" — ")
-        ? `${cuota.concepto}${proy.nombre}`
-        : cuota.concepto || `Pago ${i + 1} — ${proy.nombre}`;
-      await tx.cuentaCobrar.create({
-        data: {
-          clienteId: cot.clienteId,
-          proyectoId: proy.id,
-          cotizacionId: cot.id,
-          concepto,
-          tipoPago: cuota.tipoPago || (i === 0 ? "ANTICIPO" : "LIQUIDACION"),
-          monto,
-          fechaCompromiso: fechaPago(cuota.diasAntes),
-          estado: "PENDIENTE",
-        },
-      });
-    }
+    // 5. Crear una única CxC por el total del evento
+    await tx.cuentaCobrar.create({
+      data: {
+        clienteId: cot.clienteId,
+        proyectoId: proy.id,
+        cotizacionId: cot.id,
+        concepto: `Total — ${proy.nombre}`,
+        tipoPago: "TOTAL",
+        monto: cot.granTotal,
+        fechaCompromiso: fechaCxC(),
+        estado: "PENDIENTE",
+      },
+    });
 
     // 5b. Crear gastos operativos desde cotización (comidas, transporte, hospedaje)
     const gastosOpData: Array<{

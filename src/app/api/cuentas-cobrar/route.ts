@@ -45,6 +45,7 @@ export async function GET() {
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true } },
       cotizacion: { select: { id: true, numeroCotizacion: true } },
       cuentaDestino: { select: { id: true, nombre: true, banco: true } },
+      abonos: { orderBy: { fecha: "asc" }, select: { id: true, monto: true, fecha: true, metodoPago: true, notas: true } },
     },
     orderBy: [
       { proyecto: { fechaEvento: "asc" } },

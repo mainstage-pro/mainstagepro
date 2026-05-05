@@ -7,43 +7,67 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  const { monto, fecha, notas, cuentaId, metodoPago, categoriaId } = await req.json();
+  const { monto, fecha, notas, cuentaId, metodoPago } = await req.json();
 
   const cxc = await prisma.cuentaCobrar.findUnique({
     where: { id },
-    include: { proyecto: { select: { id: true, nombre: true, clienteId: true } } },
+    include: { abonos: true },
   });
   if (!cxc) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+  if (cxc.estado === "LIQUIDADO") return NextResponse.json({ error: "Ya está liquidada" }, { status: 400 });
 
-  const montoCobrado = parseFloat(monto) || cxc.monto;
-  const liquidado = montoCobrado >= cxc.monto;
+  const montoAbono = parseFloat(monto);
+  if (!montoAbono || montoAbono <= 0) return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
 
-  const movimiento = await prisma.movimientoFinanciero.create({
-    data: {
-      tipo: "INGRESO",
-      fecha: fecha ? new Date(fecha) : new Date(),
-      concepto: cxc.concepto,
-      monto: montoCobrado,
-      clienteId: cxc.clienteId,
-      proyectoId: cxc.proyectoId,
-      cuentaDestinoId: cuentaId || null,
-      metodoPago: metodoPago || "TRANSFERENCIA",
-      categoriaId: categoriaId || null,
-      notas: notas || null,
-      creadoPor: session.id,
-    },
+  const nuevoMontoCobrado = Math.round((cxc.montoCobrado + montoAbono) * 100) / 100;
+  const liquidado = nuevoMontoCobrado >= cxc.monto;
+
+  const [abono] = await prisma.$transaction(async (tx) => {
+    const movimiento = await tx.movimientoFinanciero.create({
+      data: {
+        tipo: "INGRESO",
+        fecha: fecha ? new Date(fecha) : new Date(),
+        concepto: cxc.concepto,
+        monto: montoAbono,
+        clienteId: cxc.clienteId,
+        proyectoId: cxc.proyectoId,
+        cuentaDestinoId: cuentaId || null,
+        metodoPago: metodoPago || "TRANSFERENCIA",
+        creadoPor: session.id,
+        notas: notas || null,
+      },
+    });
+
+    const nuevoAbono = await tx.abono.create({
+      data: {
+        cuentaCobrarId: id,
+        monto: montoAbono,
+        fecha: fecha ? new Date(fecha) : new Date(),
+        metodoPago: metodoPago || "TRANSFERENCIA",
+        notas: notas || null,
+        cuentaDestinoId: cuentaId || null,
+        movimientoId: movimiento.id,
+        creadoPor: session.id,
+      },
+    });
+
+    await tx.cuentaCobrar.update({
+      where: { id },
+      data: {
+        montoCobrado: nuevoMontoCobrado,
+        estado: liquidado ? "LIQUIDADO" : "PARCIAL",
+        fechaCobroReal: liquidado ? new Date() : undefined,
+        cuentaDestinoId: cuentaId || undefined,
+      },
+    });
+
+    return [nuevoAbono];
   });
 
-  const updated = await prisma.cuentaCobrar.update({
+  const updated = await prisma.cuentaCobrar.findUnique({
     where: { id },
-    data: {
-      estado: liquidado ? "LIQUIDADO" : "PARCIAL",
-      montoCobrado: { increment: montoCobrado },
-      fechaCobroReal: liquidado ? new Date() : undefined,
-      cuentaDestinoId: cuentaId || undefined,
-      movimientoId: liquidado ? movimiento.id : undefined,
-    },
+    include: { abonos: { orderBy: { fecha: "asc" } } },
   });
 
-  return NextResponse.json({ cxc: updated, movimiento });
+  return NextResponse.json({ cxc: updated, abono });
 }

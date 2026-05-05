@@ -301,9 +301,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   await prisma.$transaction(async (tx) => {
-    // 1. Romper FK de CxC → Movimiento antes de borrar movimientos
-    await tx.cuentaCobrar.updateMany({
-      where: { proyectoId: id },
+    // 1. Romper FK de Abono → Movimiento antes de borrar movimientos
+    await tx.abono.updateMany({
+      where: { cuentaCobrar: { proyectoId: id } },
       data: { movimientoId: null },
     });
 
@@ -316,7 +316,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     // 3. Borrar movimientos financieros del proyecto
     await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: id } });
 
-    // 4. Borrar CxC y CxP ligadas al proyecto
+    // 4. Borrar CxC y CxP ligadas al proyecto (abonos se eliminan en cascada)
     await tx.cuentaCobrar.deleteMany({ where: { proyectoId: id } });
     await tx.cuentaPagar.deleteMany({ where: { proyectoId: id } });
 

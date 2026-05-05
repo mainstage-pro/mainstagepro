@@ -185,10 +185,10 @@ function MexicoMap() {
 
         {/* ── City dots ── */}
         {[
-          { cx: 362, cy: 268, label: "Querétaro",  lx: 362, ly: 258, anchor: "middle" },
-          { cx: 294, cy: 290, label: "Guanajuato", lx: 274, ly: 280, anchor: "middle" },
-          { cx: 394, cy: 366, label: "CDMX",       lx: 412, ly: 360, anchor: "start"  },
-          { cx: 440, cy: 372, label: "Puebla",     lx: 468, ly: 370, anchor: "start"  },
+          { cx: 362, cy: 268, label: "Querétaro",  lx: 362, ly: 258, anchor: "middle" as const },
+          { cx: 294, cy: 290, label: "Guanajuato", lx: 274, ly: 280, anchor: "middle" as const },
+          { cx: 394, cy: 366, label: "CDMX",       lx: 412, ly: 360, anchor: "start" as const  },
+          { cx: 440, cy: 372, label: "Puebla",     lx: 468, ly: 370, anchor: "start" as const  },
         ].map(d => (
           <g key={d.label}>
             <circle cx={d.cx} cy={d.cy} r="9"   fill="#B3985B" opacity="0.18"/>
