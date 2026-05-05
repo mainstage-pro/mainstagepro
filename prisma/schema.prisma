@@ -1207,16 +1207,18 @@ model ChecklistBodega {
 }
 
 model ChecklistBodegaItem {
-  id          String          @id @default(cuid())
-  checklistId String
-  checklist   ChecklistBodega @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  descripcion String
-  categoria   String          @default("GENERAL")
-  estado      String          @default("PENDIENTE") // PENDIENTE | OK | FALTA | DAÑADO | EN_REPARACION
-  notas       String?
-  equipoId    String?
-  equipo      Equipo?         @relation(fields: [equipoId], references: [id])
-  orden       Int             @default(0)
+  id                String          @id @default(cuid())
+  checklistId       String
+  checklist         ChecklistBodega @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  descripcion       String
+  categoria         String          @default("GENERAL")
+  estado            String          @default("PENDIENTE") // PENDIENTE | EN_BODEGA | EN_RENTA_O_USO | EXTRAVIADO | PERDIDO
+  notas             String?
+  equipoId          String?
+  equipo            Equipo?         @relation(fields: [equipoId], references: [id])
+  orden             Int             @default(0)
+  cantidadEsperada  Int?
+  cantidadContada   Int?
 
   @@map("checklist_bodega_items")
 }

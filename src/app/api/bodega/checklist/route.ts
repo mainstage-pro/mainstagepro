@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
           categoria: e.categoria.nombre,
           orden: idx,
           estado: "PENDIENTE",
+          cantidadEsperada: e.cantidadTotal ?? 1,
         })),
       },
     },
