@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
 interface Evaluacion {
@@ -132,9 +133,7 @@ export default function EvaluacionesPage() {
       </div>
 
       {/* Formulario */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-5">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva evaluación</p>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setForm(EMPTY_FORM()); }} title="Nueva evaluación">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div><label className="text-xs text-gray-500 mb-1 block">Empleado</label>
               <Combobox
@@ -154,7 +153,7 @@ export default function EvaluacionesPage() {
           </div>
 
           {/* Métricas */}
-          <div>
+          <div className="mt-5">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Calificación (1=Deficiente · 5=Excelente)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {METRICAS.map(m => (
@@ -181,7 +180,7 @@ export default function EvaluacionesPage() {
           </div>
 
           {/* Texto libre */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
             <div>
               <label className="text-xs text-green-400 mb-1 block font-semibold">+ Aspectos positivos</label>
               <textarea value={form.aspectosPositivos} onChange={e=>setForm(p=>({...p,aspectosPositivos:e.target.value}))} rows={3}
@@ -208,15 +207,13 @@ export default function EvaluacionesPage() {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-4">
             <button onClick={save} disabled={saving||!form.personalId||!form.periodo}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving?"Guardando...":"Guardar evaluación"}
             </button>
-            <button onClick={()=>{setShowForm(false);setForm(EMPTY_FORM());}} className="text-gray-500 hover:text-white text-sm px-3">Cancelar</button>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Lista */}
       <div className="space-y-3">

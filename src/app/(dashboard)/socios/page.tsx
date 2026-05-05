@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 type Socio = {
   id: string;
@@ -115,12 +116,10 @@ export default function SociosPage() {
               ` · ${socios.filter((s) => s.status === "EN_REVISION").length} en revisión`}
           </p>
         </div>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
+        <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo socio
           </button>
-        )}
       </div>
 
       {/* Stats */}
@@ -139,9 +138,8 @@ export default function SociosPage() {
       </div>
 
       {/* Formulario nuevo socio */}
-      {showForm && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-6 mb-6 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo socio</p>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setForm(EMPTY); }} title="Nuevo socio">
+        <form onSubmit={crear} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
@@ -189,20 +187,17 @@ export default function SociosPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving || !form.nombre.trim()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Crear socio"}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setForm(EMPTY); }}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {/* Filtros y búsqueda */}
-      {!showForm && (
-        <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
           <input value={search} onChange={(e) => setSearch(e.target.value)}
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
             placeholder="Buscar socio..." />
@@ -215,7 +210,6 @@ export default function SociosPage() {
             </button>
           ))}
         </div>
-      )}
 
       {/* Lista */}
       {loading ? (

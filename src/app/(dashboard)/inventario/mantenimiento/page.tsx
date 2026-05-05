@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -389,7 +390,7 @@ function MantenimientoContent() {
                           Generar {selectedEquipo.cantidadTotal} unidades
                         </button>
                       )}
-                      <button onClick={() => { setShowAddUnidad(v => !v); setEditUnidadId(null); setUnidadForm({ codigo: "", estado: "ACTIVO", notas: "" }); }}
+                      <button onClick={() => { setShowAddUnidad(true); setEditUnidadId(null); setUnidadForm({ codigo: "", estado: "ACTIVO", notas: "" }); }}
                         className="text-[10px] text-gray-500 hover:text-white border border-[#222] px-2 py-1 rounded transition-colors">
                         + Agregar
                       </button>
@@ -397,8 +398,8 @@ function MantenimientoContent() {
                   </div>
 
                   {/* Add/Edit unit form */}
-                  {showAddUnidad && (
-                    <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg p-3 mb-3 space-y-2">
+                  <Modal open={showAddUnidad} onClose={() => { setShowAddUnidad(false); setEditUnidadId(null); }} title={editUnidadId ? "Editar unidad" : "Agregar unidad"}>
+                    <div className="space-y-3">
                       <div className="grid grid-cols-3 gap-2">
                         <div className="col-span-2">
                           <label className="text-[10px] text-gray-600 mb-1 block">Código / N° serie / Etiqueta</label>
@@ -427,11 +428,9 @@ function MantenimientoContent() {
                           className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-3 py-1.5 rounded transition-colors">
                           {savingUnidad ? "..." : editUnidadId ? "Actualizar" : "Agregar unidad"}
                         </button>
-                        <button onClick={() => { setShowAddUnidad(false); setEditUnidadId(null); }}
-                          className="text-gray-600 hover:text-white text-xs transition-colors px-2">Cancelar</button>
                       </div>
                     </div>
-                  )}
+                  </Modal>
 
                   {/* Units list */}
                   {unidades.length === 0 ? (
@@ -508,18 +507,15 @@ function MantenimientoContent() {
                       {!selectedUnidadId && <> · registros sin unidad asignada</>}
                     </p>
                   </div>
-                  <button onClick={() => { setShowForm(v => !v); setForm(FORM_EMPTY); }}
+                  <button onClick={() => { setShowForm(true); setForm(FORM_EMPTY); }}
                     className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs px-3 py-2 rounded-lg transition-colors shrink-0">
-                    {showForm ? "Cancelar" : "+ Registrar"}
+                    + Registrar
                   </button>
                 </div>
 
                 {/* Form */}
-                {showForm && (
-                  <div className="p-5 border-b border-[#1a1a1a] bg-[#0d0d0d] space-y-3">
-                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-                      Nuevo registro{selectedUnidad ? ` · ${unidadLabel(selectedUnidad, unidades.indexOf(selectedUnidad))}` : " · equipo general"}
-                    </p>
+                <Modal open={showForm} onClose={() => setShowForm(false)} title={`Nuevo registro${selectedUnidad ? ` · ${unidadLabel(selectedUnidad, unidades.indexOf(selectedUnidad))}` : " · equipo general"}`}>
+                  <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
                         <label className="text-gray-500 text-xs mb-1 block">Fecha *</label>
@@ -597,10 +593,9 @@ function MantenimientoContent() {
                         className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
                         {saving ? "Guardando..." : "Guardar registro"}
                       </button>
-                      <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm px-3 transition-colors">Cancelar</button>
                     </div>
                   </div>
-                )}
+                </Modal>
 
                 {/* History list */}
                 {viewRegistros.length === 0 ? (

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 type User = {
   id: string;
@@ -361,71 +362,65 @@ export default function UsuariosPage() {
           <h1 className="text-xl font-semibold text-white">Usuarios y Accesos</h1>
           <p className="text-[#6b7280] text-sm">{users.length} usuarios registrados</p>
         </div>
-        {!showForm && (
-          <button onClick={startCreate}
+        <button onClick={startCreate}
             className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
             + Nuevo usuario
           </button>
-        )}
       </div>
 
-      {/* Formulario nuevo/editar */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-          <h2 className="text-white font-medium mb-4">{editing ? `Editando: ${editing.name}` : "Nuevo usuario"}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">Nombre completo *</label>
-              <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-                placeholder="Ej. Ana García" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">Correo electrónico *</label>
-              <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-                placeholder="ana@mainstagepro.mx" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">Contraseña {editing ? "(vacío = sin cambio)" : "*"}</label>
-              <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-                placeholder="Mínimo 6 caracteres" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">Tipo de acceso</label>
-              <Combobox value={form.role} onChange={v => setForm(p => ({ ...p, role: v }))}
-                options={[
-                  { value: "ADMIN", label: "Administrador — acceso total" },
-                  { value: "USER", label: "Usuario regular — puede crear y editar" },
-                  { value: "READONLY", label: "Solo lectura — no puede modificar" },
-                ]}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] mb-1 block">Área</label>
-              <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
-                options={[
-                  { value: "DIRECCION", label: "Dirección" }, { value: "ADMINISTRACION", label: "Administración" },
-                  { value: "MARKETING", label: "Marketing" }, { value: "VENTAS", label: "Ventas" },
-                  { value: "PRODUCCION", label: "Producción" }, { value: "GENERAL", label: "General" },
-                ]}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
-            </div>
+      <Modal
+        open={showForm}
+        onClose={cancel}
+        title={editing ? `Editando: ${editing.name}` : "Nuevo usuario"}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs text-[#6b7280] mb-1 block">Nombre completo *</label>
+            <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              placeholder="Ej. Ana García" />
           </div>
-          {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-          <div className="flex gap-3">
-            <button onClick={save} disabled={saving}
-              className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
-              {saving ? "Guardando..." : "Guardar"}
-            </button>
-            <button onClick={cancel}
-              className="text-sm text-[#6b7280] hover:text-white px-4 py-2 rounded-md border border-[#333] transition-colors">
-              Cancelar
-            </button>
+          <div>
+            <label className="text-xs text-[#6b7280] mb-1 block">Correo electrónico *</label>
+            <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              placeholder="ana@mainstagepro.mx" />
+          </div>
+          <div>
+            <label className="text-xs text-[#6b7280] mb-1 block">Contraseña {editing ? "(vacío = sin cambio)" : "*"}</label>
+            <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div>
+            <label className="text-xs text-[#6b7280] mb-1 block">Tipo de acceso</label>
+            <Combobox value={form.role} onChange={v => setForm(p => ({ ...p, role: v }))}
+              options={[
+                { value: "ADMIN", label: "Administrador — acceso total" },
+                { value: "USER", label: "Usuario regular — puede crear y editar" },
+                { value: "READONLY", label: "Solo lectura — no puede modificar" },
+              ]}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div>
+            <label className="text-xs text-[#6b7280] mb-1 block">Área</label>
+            <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
+              options={[
+                { value: "DIRECCION", label: "Dirección" }, { value: "ADMINISTRACION", label: "Administración" },
+                { value: "MARKETING", label: "Marketing" }, { value: "VENTAS", label: "Ventas" },
+                { value: "PRODUCCION", label: "Producción" }, { value: "GENERAL", label: "General" },
+              ]}
+              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
           </div>
         </div>
-      )}
+        {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
+        <div className="flex gap-3 mt-4">
+          <button onClick={save} disabled={saving}
+            className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </Modal>
 
       {/* Tabs de vista */}
       <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit">

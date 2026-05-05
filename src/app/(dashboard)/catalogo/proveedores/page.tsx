@@ -6,6 +6,7 @@ import { useConfirm } from "@/components/Confirm";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 type Proveedor = {
   id: string;
@@ -294,8 +295,7 @@ export default function ProveedoresPage() {
             {proveedores.filter(p => p.activo).length} activos · rentas externas y servicios
           </p>
         </div>
-        {!showForm && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
               <button onClick={() => setView("card")} title="Tarjetas"
                 className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
@@ -311,137 +311,133 @@ export default function ProveedoresPage() {
               + Nuevo proveedor
             </button>
           </div>
-        )}
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-6 mb-6 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {creating ? "Nuevo proveedor" : `Editando: ${editing?.nombre}`}
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Nombre / Contacto *</label>
-              <input value={form.nombre} onChange={e => set("nombre", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Nombre del contacto o empresa" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Empresa / Razón social</label>
-              <EmpresaCombobox
-                value={empresaEdit}
-                onChange={(emp) => {
-                  setEmpresaEdit(emp);
-                  setForm(p => ({ ...p, empresaId: emp?.id ?? "", empresa: emp?.nombre ?? "" }));
-                }}
-                tipoDefault="PROVEEDOR"
-                placeholder="Buscar o crear empresa..."
-              />
-            </div>
-            <div className="relative">
-              <label className="text-xs text-gray-500 mb-1 block">Giro / Tipo de servicio</label>
-              <input
-                ref={giroInputRef}
-                type="text"
-                value={giroQuery}
-                onChange={e => { setGiroQuery(e.target.value); set("giro", e.target.value); setGiroDropdown(true); }}
-                onFocus={() => setGiroDropdown(true)}
-                onBlur={() => setTimeout(() => setGiroDropdown(false), 150)}
-                placeholder="Buscar o escribe un nuevo giro..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#555]"
-              />
-              {giroDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
-                  {girosBase
-                    .filter(g => !giroQuery || g.toLowerCase().includes(giroQuery.toLowerCase()))
-                    .map(g => (
-                      <button key={g} type="button" onMouseDown={() => selectGiro(g)}
-                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors">
-                        {g}
-                      </button>
-                    ))}
-                  {giroQuery.trim() && !girosBase.some(g => g.toLowerCase() === giroQuery.trim().toLowerCase()) && (
-                    <button type="button" onMouseDown={() => addGiro(giroQuery)}
-                      className="w-full text-left px-3 py-2 text-sm text-[#B3985B] hover:bg-[#222] transition-colors border-t border-[#2a2a2a]">
-                      + Agregar &ldquo;{giroQuery.trim()}&rdquo;
-                    </button>
-                  )}
-                  {!giroQuery && girosBase.length === 0 && (
-                    <p className="px-3 py-2 text-xs text-[#555]">Escribe el primer giro</p>
-                  )}
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Teléfono / WhatsApp</label>
-              <input value={form.telefono} onChange={e => set("telefono", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="442 000 0000" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
-              <input type="email" value={form.correo} onChange={e => set("correo", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="contacto@proveedor.com" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">RFC</label>
-              <input value={form.rfc} onChange={e => set("rfc", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="RFC del proveedor" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Banco</label>
-              <input value={form.banco} onChange={e => set("banco", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="BBVA, Banorte, HSBC…" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
-              <input value={form.cuentaBancaria} onChange={e => set("cuentaBancaria", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="11 dígitos" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">CLABE interbancaria</label>
-              <input value={form.clabe} onChange={e => set("clabe", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="18 dígitos" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Número de tarjeta</label>
-              <input value={form.noTarjeta} onChange={e => set("noTarjeta", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="16 dígitos (últimos 4 si es necesario)" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Datos fiscales adicionales</label>
-              <input value={form.datosFiscales} onChange={e => set("datosFiscales", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Razón social, régimen fiscal, dirección fiscal…" />
-            </div>
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Notas</label>
-              <textarea value={form.notas} onChange={e => set("notas", e.target.value)} rows={2}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                placeholder="Condiciones de pago, disponibilidad, referencias..." />
-            </div>
+      <Modal
+        open={showForm}
+        onClose={cancel}
+        title={creating ? "Nuevo proveedor" : `Editando: ${editing?.nombre}`}
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Nombre / Contacto *</label>
+            <input value={form.nombre} onChange={e => set("nombre", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="Nombre del contacto o empresa" />
           </div>
-          <div className="flex items-center gap-3">
-            {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
-            {!editing && (
-              <button onClick={save} disabled={saving || !form.nombre}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-                {saving ? "Guardando..." : "Agregar"}
-              </button>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Empresa / Razón social</label>
+            <EmpresaCombobox
+              value={empresaEdit}
+              onChange={(emp) => {
+                setEmpresaEdit(emp);
+                setForm(p => ({ ...p, empresaId: emp?.id ?? "", empresa: emp?.nombre ?? "" }));
+              }}
+              tipoDefault="PROVEEDOR"
+              placeholder="Buscar o crear empresa..."
+            />
+          </div>
+          <div className="relative">
+            <label className="text-xs text-gray-500 mb-1 block">Giro / Tipo de servicio</label>
+            <input
+              ref={giroInputRef}
+              type="text"
+              value={giroQuery}
+              onChange={e => { setGiroQuery(e.target.value); set("giro", e.target.value); setGiroDropdown(true); }}
+              onFocus={() => setGiroDropdown(true)}
+              onBlur={() => setTimeout(() => setGiroDropdown(false), 150)}
+              placeholder="Buscar o escribe un nuevo giro..."
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#555]"
+            />
+            {giroDropdown && (
+              <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                {girosBase
+                  .filter(g => !giroQuery || g.toLowerCase().includes(giroQuery.toLowerCase()))
+                  .map(g => (
+                    <button key={g} type="button" onMouseDown={() => selectGiro(g)}
+                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors">
+                      {g}
+                    </button>
+                  ))}
+                {giroQuery.trim() && !girosBase.some(g => g.toLowerCase() === giroQuery.trim().toLowerCase()) && (
+                  <button type="button" onMouseDown={() => addGiro(giroQuery)}
+                    className="w-full text-left px-3 py-2 text-sm text-[#B3985B] hover:bg-[#222] transition-colors border-t border-[#2a2a2a]">
+                    + Agregar &ldquo;{giroQuery.trim()}&rdquo;
+                  </button>
+                )}
+                {!giroQuery && girosBase.length === 0 && (
+                  <p className="px-3 py-2 text-xs text-[#555]">Escribe el primer giro</p>
+                )}
+              </div>
             )}
-            <button onClick={cancel} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cerrar</button>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Teléfono / WhatsApp</label>
+            <input value={form.telefono} onChange={e => set("telefono", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="442 000 0000" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Correo electrónico</label>
+            <input type="email" value={form.correo} onChange={e => set("correo", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="contacto@proveedor.com" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">RFC</label>
+            <input value={form.rfc} onChange={e => set("rfc", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="RFC del proveedor" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Banco</label>
+            <input value={form.banco} onChange={e => set("banco", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="BBVA, Banorte, HSBC…" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
+            <input value={form.cuentaBancaria} onChange={e => set("cuentaBancaria", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="11 dígitos" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">CLABE interbancaria</label>
+            <input value={form.clabe} onChange={e => set("clabe", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="18 dígitos" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Número de tarjeta</label>
+            <input value={form.noTarjeta} onChange={e => set("noTarjeta", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="16 dígitos (últimos 4 si es necesario)" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Datos fiscales adicionales</label>
+            <input value={form.datosFiscales} onChange={e => set("datosFiscales", e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              placeholder="Razón social, régimen fiscal, dirección fiscal…" />
+          </div>
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+            <textarea value={form.notas} onChange={e => set("notas", e.target.value)} rows={2}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+              placeholder="Condiciones de pago, disponibilidad, referencias..." />
           </div>
         </div>
-      )}
+        <div className="flex items-center gap-3 mt-4">
+          {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
+          {!editing && (
+            <button onClick={save} disabled={saving || !form.nombre}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+              {saving ? "Guardando..." : "Agregar"}
+            </button>
+          )}
+        </div>
+      </Modal>
 
-      {!showForm && (
-        <div className="flex flex-wrap items-center gap-3 mb-5">
+      <div className="flex flex-wrap items-center gap-3 mb-5">
           <input value={search} onChange={e => setSearch(e.target.value)}
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
             placeholder="Buscar proveedor..." />
@@ -466,7 +462,6 @@ export default function ProveedoresPage() {
             </button>
           )}
         </div>
-      )}
 
       {activos.length === 0 && !creating ? (
         <div className="text-center py-12 text-gray-600">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
@@ -589,46 +590,44 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
           <p className="text-white text-sm font-semibold">{activos.length} activos registrados</p>
           <p className="text-gray-500 text-xs">Valor total actual: <span className="text-[#B3985B] font-semibold">{fmt(totalActual)}</span></p>
         </div>
-        {!showForm && (
-          <button onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY); }}
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY); }}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg">
             + Agregar activo
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar activo" : "Nuevo activo"}</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Inp label="Nombre del activo *" value={form.nombre} onChange={v => s("nombre", v)} />
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-500 mb-1 block">Categoría</label>
-              <Combobox
-                value={form.categoria}
-                onChange={v => s("categoria", v)}
-                options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <Inp label="Fecha de adquisición" value={form.fechaAdquisicion} onChange={v => s("fechaAdquisicion", v)} type="date" />
-            <Inp label="Valor de adquisición" hint="Cuánto costó originalmente" value={form.valorAdquisicion} onChange={v => s("valorAdquisicion", v)} type="number" prefix="$" />
-            <Inp label="Valor actual (en libros)" hint="Valor presente estimado" value={form.valorActual} onChange={v => s("valorActual", v)} type="number" prefix="$" />
-            <div className="col-span-2">
-              <Inp label="Descripción / notas" value={form.descripcion} onChange={v => s("descripcion", v)} />
-            </div>
+      <Modal
+        open={showForm}
+        onClose={cancel}
+        title={editId ? "Editar activo" : "Nuevo activo"}
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Inp label="Nombre del activo *" value={form.nombre} onChange={v => s("nombre", v)} />
           </div>
-          <div className="flex gap-2">
-            <button onClick={save} disabled={saving || !form.nombre}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
-              {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
-            </button>
-            <button onClick={cancel} className="text-gray-500 text-sm px-3">Cancelar</button>
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">Categoría</label>
+            <Combobox
+              value={form.categoria}
+              onChange={v => s("categoria", v)}
+              options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <Inp label="Fecha de adquisición" value={form.fechaAdquisicion} onChange={v => s("fechaAdquisicion", v)} type="date" />
+          <Inp label="Valor de adquisición" hint="Cuánto costó originalmente" value={form.valorAdquisicion} onChange={v => s("valorAdquisicion", v)} type="number" prefix="$" />
+          <Inp label="Valor actual (en libros)" hint="Valor presente estimado" value={form.valorActual} onChange={v => s("valorActual", v)} type="number" prefix="$" />
+          <div className="col-span-2">
+            <Inp label="Descripción / notas" value={form.descripcion} onChange={v => s("descripcion", v)} />
           </div>
         </div>
-      )}
+        <div className="flex gap-2 mt-4">
+          <button onClick={save} disabled={saving || !form.nombre}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
+            {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
+          </button>
+        </div>
+      </Modal>
 
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {activos.length === 0 ? (

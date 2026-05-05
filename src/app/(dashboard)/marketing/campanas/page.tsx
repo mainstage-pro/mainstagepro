@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -366,18 +367,16 @@ export default function TiposCampanaPage() {
               {seeding ? "Cargando…" : "Cargar del documento"}
             </button>
           )}
-          <button onClick={() => { cancelForm(); setShowForm(s => !s); }}
+          <button onClick={() => { cancelForm(); setShowForm(true); }}
             className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 transition-opacity">
-            {showForm && !editId ? "Cancelar" : "+ Nueva campaña"}
+            + Nueva campaña
           </button>
         </div>
       </div>
 
       {/* ── Formulario ──────────────────────────────────────────────────────────── */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-white">{editId ? "Editar campaña" : "Nueva campaña Meta Ads"}</h2>
-
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar campaña" : "Nueva campaña Meta Ads"}>
+        <div className="space-y-5">
           {/* Nombre + color */}
           <div className="space-y-2">
             <label className="text-xs text-white/40 uppercase tracking-wider">Nombre y color</label>
@@ -556,16 +555,13 @@ export default function TiposCampanaPage() {
           </div>
 
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={cancelForm} className="text-xs px-4 py-2 rounded-lg border border-white/10 text-white/50 hover:text-white transition-colors">
-              Cancelar
-            </button>
             <button onClick={save} disabled={saving || !form.nombre.trim()}
               className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 disabled:opacity-50 transition-opacity">
               {saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear campaña"}
             </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading && <div className="text-white/30 text-sm text-center py-12">Cargando…</div>}
 

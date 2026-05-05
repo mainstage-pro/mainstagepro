@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 interface TipoContenido {
   id: string; nombre: string; formato: string; objetivo: string | null;
@@ -162,17 +163,14 @@ export default function ContenidosPage() {
           <h1 className="text-xl font-semibold text-white">Tipos de contenido</h1>
           <p className="text-[#6b7280] text-sm">{activos.length} formatos activos</p>
         </div>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + Agregar tipo
-          </button>
-        )}
+        <button onClick={() => setShowForm(true)}
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          + Agregar tipo
+        </button>
       </div>
 
       {/* Filtros */}
-      {!showForm && (
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -214,14 +212,10 @@ export default function ContenidosPage() {
             </button>
           )}
         </div>
-      )}
 
       {/* Formulario */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {editId ? "Editar tipo de contenido" : "Nuevo tipo de contenido"}
-          </p>
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar tipo de contenido" : "Nuevo tipo de contenido"}>
+        <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
@@ -304,10 +298,9 @@ export default function ContenidosPage() {
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar tipo"}
             </button>
-            <button onClick={cancelForm} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>

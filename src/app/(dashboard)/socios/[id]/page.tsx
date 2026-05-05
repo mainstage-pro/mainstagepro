@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -356,19 +357,14 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
           Equipos — {activos.length} registrados
         </p>
-        {!showForm && (
           <button onClick={() => { setForm(EMPTY_A); setEditId(null); setShowForm(true); }}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Agregar equipo
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <form onSubmit={guardar} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {editId ? "Editar equipo" : "Nuevo equipo"}
-          </p>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setEditId(null); }} title={editId ? "Editar equipo" : "Nuevo equipo"}>
+        <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Nombre *", key: "nombre", span: 2 },
             { label: "Categoría", key: "categoria", sel: ["AUDIO","ILUMINACION","VIDEO","ESTRUCTURAS","ACCESORIOS","OTRO"] },
@@ -397,16 +393,14 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
             <FieldLabel>Notas</FieldLabel>
             <DarkInput value={form.notas} onChange={(v) => f("notas", v)} />
           </div>
-          <div className="col-span-3 flex items-center gap-3">
+          <div className="col-span-3 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving || !form.nombre.trim()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {activos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
@@ -550,7 +544,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
             className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
           />
         </div>
-        {!showForm && activos.length > 0 && (
+        {activos.length > 0 && (
           <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Registrar renta
@@ -564,9 +558,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
         </div>
       )}
 
-      {showForm && activos.length > 0 && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva renta</p>
+      <Modal open={showForm && activos.length > 0} onClose={() => setShowForm(false)} title="Nueva renta">
+        <form onSubmit={crear} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="col-span-2">
             <FieldLabel>Evento / descripción *</FieldLabel>
             <DarkInput value={form.descripcion} required onChange={(v) => setForm((p) => ({ ...p, descripcion: v }))}
@@ -599,16 +592,14 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
               <div><span className="text-[#555]">Mainstage ({pctM}%): </span><span className="text-[#B3985B] font-semibold">{fmt(preview.mainstage)}</span></div>
             </div>
           )}
-          <div className="col-span-3 flex items-center gap-3">
+          <div className="col-span-3 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>
@@ -819,17 +810,14 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Mantenimiento</p>
-        {!showForm && (
           <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Registrar
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-2 gap-4">
-          <p className="col-span-2 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo registro</p>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nuevo registro de mantenimiento">
+        <form onSubmit={crear} className="grid grid-cols-2 gap-4">
           <div>
             <FieldLabel>Equipo *</FieldLabel>
             <DarkSelect value={form.activoId} onChange={(v) => f("activoId", v)}
@@ -868,16 +856,14 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
               <DarkInput type="number" value={form.costoSocio} onChange={(v) => f("costoSocio", v)} />
             </div>
           </div>
-          <div className="col-span-2 flex items-center gap-3">
+          <div className="col-span-2 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>

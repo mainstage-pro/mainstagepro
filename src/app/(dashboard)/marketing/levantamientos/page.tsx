@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 const GOLD = "#B3985B";
 const PLANES: Record<string, { label: string; color: string }> = {
@@ -299,17 +300,17 @@ export default function LevantamientosPage() {
               </p>
             )}
             <button
-              onClick={() => setShowForm(f => !f)}
+              onClick={() => setShowForm(true)}
               className="mt-3 w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-              style={{ background: showForm ? "rgba(255,255,255,0.05)" : GOLD, color: showForm ? "rgba(255,255,255,0.6)" : "#000" }}
+              style={{ background: GOLD, color: "#000" }}
             >
-              {showForm ? "Cancelar" : "+ Agregar activo"}
+              + Agregar activo
             </button>
           </div>
 
           {/* Form nuevo activo */}
-          {showForm && (
-            <div className="px-5 py-4 border-b border-white/8 space-y-3 bg-white/[0.02]">
+          <Modal open={showForm} onClose={() => setShowForm(false)} title="Agregar activo">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-white/30 block mb-1">Tipo</label>
@@ -351,7 +352,7 @@ export default function LevantamientosPage() {
                 {savingActivo ? "Guardando..." : "Guardar activo"}
               </button>
             </div>
-          )}
+          </Modal>
 
           {/* Lista activos */}
           <div className="flex-1 px-5 py-4 space-y-3">

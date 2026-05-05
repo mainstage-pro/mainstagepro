@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -304,10 +305,8 @@ export default function CalendarioCampanasPage() {
       )}
 
       {/* Form */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-white">{editId ? "Editar campaña" : "Programar campaña"}</h2>
-
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar campaña" : "Programar campaña"}>
+        <div className="space-y-4">
           {/* Tipo selector */}
           {!editId && (
             <div>
@@ -449,16 +448,13 @@ export default function CalendarioCampanasPage() {
           )}
 
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={cancelForm} className="text-xs px-4 py-2 rounded-lg border border-white/10 text-white/50 hover:text-white transition-colors">
-              Cancelar
-            </button>
             <button onClick={save} disabled={saving || !form.nombre.trim() || !form.fechaInicio || !form.fechaFin}
               className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 disabled:opacity-50 transition-opacity">
               {saving ? "Guardando…" : editId ? "Guardar cambios" : "Programar"}
             </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading && <div className="text-white/30 text-sm text-center py-16">Cargando…</div>}
 

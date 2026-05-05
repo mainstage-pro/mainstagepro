@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Modal } from "@/components/Modal";
 
 type Rol = {
   id: string;
@@ -167,148 +168,140 @@ export default function RolesPage() {
           <h1 className="text-xl font-semibold text-white">Tabulador de Personal</h1>
           <p className="text-gray-500 text-sm">{activos.length} roles activos · tarifas para cotización y proyectos</p>
         </div>
-        {!showForm && (
-          <button
+        <button
             onClick={startCreate}
             className="bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             + Nuevo rol
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-6 mb-6">
-          <h2 className="text-white font-medium mb-5">{creating ? "Nuevo rol técnico" : `Editando: ${editing?.nombre}`}</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-            <div className="md:col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
-              <input
-                value={form.nombre}
-                onChange={e => set("nombre", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                placeholder="Ej. Operador de Audio"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tipo de pago</label>
-              <Combobox
-                value={form.tipoPago}
-                onChange={v => set("tipoPago", v)}
-                options={[
-                  { value: "POR_JORNADA", label: "Por Jornada (0–8 / 8–12 / 12+ hrs)" },
-                  { value: "TARIFA_PLANA", label: "Tarifa Plana (por evento)" },
-                  { value: "POR_PROYECTO", label: "Por Proyecto" },
-                  { value: "POR_HORA", label: "Por Hora" },
-                ]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-              />
-            </div>
-          </div>
-
-          {form.tipoPago === "POR_JORNADA" && (
-            <div className="mb-5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por jornada</p>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { key: "tarifaAAACorta" as const, label: "0–8 hrs" },
-                  { key: "tarifaAAAMedia" as const, label: "8–12 hrs" },
-                  { key: "tarifaAAALarga" as const, label: "+12 hrs" },
-                ]).map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="text-xs text-gray-500 block mb-1">{label}</label>
-                    <input
-                      type="number"
-                      value={numVal(key)}
-                      onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(form.tipoPago === "TARIFA_PLANA" || form.tipoPago === "POR_PROYECTO") && (
-            <div className="mb-5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por evento</p>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { key: "tarifaPlanaAAA" as const, label: "AAA" },
-                  { key: "tarifaPlanaAA" as const, label: "AA" },
-                  { key: "tarifaPlanaA" as const, label: "A" },
-                ]).map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="text-xs text-gray-500 block mb-1">{label}</label>
-                    <input
-                      type="number"
-                      value={numVal(key)}
-                      onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {form.tipoPago === "POR_HORA" && (
-            <div className="mb-5">
-              <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por hora</p>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { key: "tarifaHoraAAA" as const, label: "AAA" },
-                  { key: "tarifaHoraAA" as const, label: "AA" },
-                  { key: "tarifaHoraA" as const, label: "A" },
-                ]).map(({ key, label }) => (
-                  <div key={key}>
-                    <label className="text-xs text-gray-500 block mb-1">{label} · $ / hr</label>
-                    <input
-                      type="number"
-                      value={numVal(key)}
-                      onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-                      placeholder="0"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="mb-5">
-            <label className="text-xs text-gray-500 mb-1 block">Descripción (opcional)</label>
+      <Modal
+        open={showForm}
+        onClose={cancel}
+        title={creating ? "Nuevo rol técnico" : `Editando: ${editing?.nombre}`}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
             <input
-              value={form.descripcion ?? ""}
-              onChange={e => set("descripcion", e.target.value || null)}
+              value={form.nombre}
+              onChange={e => set("nombre", e.target.value)}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
-              placeholder="Notas sobre este rol..."
+              placeholder="Ej. Operador de Audio"
             />
           </div>
-
-          <div className="flex items-center gap-3">
-            {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
-            {!editing && (
-              <button
-                onClick={save}
-                disabled={saving || !form.nombre}
-                className="bg-[#B3985B] hover:bg-[#c9ac6a] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-              >
-                {saving ? "Guardando..." : "Agregar rol"}
-              </button>
-            )}
-            <button
-              onClick={cancel}
-              className="text-sm text-gray-500 hover:text-white px-4 py-2 rounded-lg border border-[#2a2a2a] transition-colors"
-            >
-              Cancelar
-            </button>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Tipo de pago</label>
+            <Combobox
+              value={form.tipoPago}
+              onChange={v => set("tipoPago", v)}
+              options={[
+                { value: "POR_JORNADA", label: "Por Jornada (0–8 / 8–12 / 12+ hrs)" },
+                { value: "TARIFA_PLANA", label: "Tarifa Plana (por evento)" },
+                { value: "POR_PROYECTO", label: "Por Proyecto" },
+                { value: "POR_HORA", label: "Por Hora" },
+              ]}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+            />
           </div>
         </div>
-      )}
+
+        {form.tipoPago === "POR_JORNADA" && (
+          <div className="mb-5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por jornada</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "tarifaAAACorta" as const, label: "0–8 hrs" },
+                { key: "tarifaAAAMedia" as const, label: "8–12 hrs" },
+                { key: "tarifaAAALarga" as const, label: "+12 hrs" },
+              ]).map(({ key, label }) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                  <input
+                    type="number"
+                    value={numVal(key)}
+                    onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(form.tipoPago === "TARIFA_PLANA" || form.tipoPago === "POR_PROYECTO") && (
+          <div className="mb-5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por evento</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "tarifaPlanaAAA" as const, label: "AAA" },
+                { key: "tarifaPlanaAA" as const, label: "AA" },
+                { key: "tarifaPlanaA" as const, label: "A" },
+              ]).map(({ key, label }) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-500 block mb-1">{label}</label>
+                  <input
+                    type="number"
+                    value={numVal(key)}
+                    onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {form.tipoPago === "POR_HORA" && (
+          <div className="mb-5">
+            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-3">Tarifas por hora</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "tarifaHoraAAA" as const, label: "AAA" },
+                { key: "tarifaHoraAA" as const, label: "AA" },
+                { key: "tarifaHoraA" as const, label: "A" },
+              ]).map(({ key, label }) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-500 block mb-1">{label} · $ / hr</label>
+                  <input
+                    type="number"
+                    value={numVal(key)}
+                    onChange={e => set(key, e.target.value === "" ? null : parseFloat(e.target.value))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+                    placeholder="0"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mb-5">
+          <label className="text-xs text-gray-500 mb-1 block">Descripción (opcional)</label>
+          <input
+            value={form.descripcion ?? ""}
+            onChange={e => set("descripcion", e.target.value || null)}
+            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+            placeholder="Notas sobre este rol..."
+          />
+        </div>
+
+        <div className="flex items-center gap-3 mt-4">
+          {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
+          {!editing && (
+            <button
+              onClick={save}
+              disabled={saving || !form.nombre}
+              className="bg-[#B3985B] hover:bg-[#c9ac6a] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            >
+              {saving ? "Guardando..." : "Agregar rol"}
+            </button>
+          )}
+        </div>
+      </Modal>
 
       {/* Roles activos */}
       <div className="space-y-2">

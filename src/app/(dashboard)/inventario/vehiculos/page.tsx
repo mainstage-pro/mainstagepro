@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface Mantenimiento {
   id: string;
@@ -361,59 +362,56 @@ export default function VehiculosPage() {
       )}
 
       {/* Formulario nuevo vehículo */}
-      {showVehForm && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5 mb-5">
-          <p className="text-white font-semibold mb-4">Nuevo vehículo</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {[
-              { key: "nombre", label: "Nombre / Alias *", placeholder: "Ej. Sprinter Negra" },
-              { key: "marca", label: "Marca", placeholder: "Mercedes-Benz" },
-              { key: "modelo", label: "Modelo", placeholder: "Sprinter 316" },
-              { key: "anio", label: "Año", placeholder: "2022" },
-              { key: "placas", label: "Placas", placeholder: "ABC-123-D" },
-              { key: "color", label: "Color", placeholder: "Negro" },
-              { key: "kilometraje", label: "Km actuales", placeholder: "45000" },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                <input
-                  value={vehForm[f.key as keyof typeof vehForm]}
-                  onChange={e => setVehForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                />
-              </div>
-            ))}
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+      <Modal open={showVehForm} onClose={() => { setShowVehForm(false); setVehFotos([]); }} title="Nuevo vehículo">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {[
+            { key: "nombre", label: "Nombre / Alias *", placeholder: "Ej. Sprinter Negra" },
+            { key: "marca", label: "Marca", placeholder: "Mercedes-Benz" },
+            { key: "modelo", label: "Modelo", placeholder: "Sprinter 316" },
+            { key: "anio", label: "Año", placeholder: "2022" },
+            { key: "placas", label: "Placas", placeholder: "ABC-123-D" },
+            { key: "color", label: "Color", placeholder: "Negro" },
+            { key: "kilometraje", label: "Km actuales", placeholder: "45000" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
               <input
-                value={vehForm.notas}
-                onChange={e => setVehForm(p => ({ ...p, notas: e.target.value }))}
-                placeholder="Observaciones generales del vehículo"
+                value={vehForm[f.key as keyof typeof vehForm]}
+                onChange={e => setVehForm(p => ({ ...p, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
                 className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
               />
             </div>
-          </div>
-          {/* Fotos del vehículo */}
-          <div className="mb-4">
-            <label className="text-xs text-gray-500 mb-2 block">Fotos del vehículo</label>
-            <FotoGrid fotos={vehFotos} onRemove={i => setVehFotos(prev => prev.filter((_, idx) => idx !== i))} />
-            <div className="mt-2">
-              <FotoUpload fotos={vehFotos} onChange={setVehFotos} />
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={saveVehiculo} disabled={savingVeh || !vehForm.nombre.trim()}
-              className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-              {savingVeh ? "Guardando..." : "Agregar vehículo"}
-            </button>
-            <button onClick={() => { setShowVehForm(false); setVehFotos([]); }}
-              className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
-              Cancelar
-            </button>
+          ))}
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+            <input
+              value={vehForm.notas}
+              onChange={e => setVehForm(p => ({ ...p, notas: e.target.value }))}
+              placeholder="Observaciones generales del vehículo"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+            />
           </div>
         </div>
-      )}
+        {/* Fotos del vehículo */}
+        <div className="mb-4">
+          <label className="text-xs text-gray-500 mb-2 block">Fotos del vehículo</label>
+          <FotoGrid fotos={vehFotos} onRemove={i => setVehFotos(prev => prev.filter((_, idx) => idx !== i))} />
+          <div className="mt-2">
+            <FotoUpload fotos={vehFotos} onChange={setVehFotos} />
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={saveVehiculo} disabled={savingVeh || !vehForm.nombre.trim()}
+            className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+            {savingVeh ? "Guardando..." : "Agregar vehículo"}
+          </button>
+          <button onClick={() => { setShowVehForm(false); setVehFotos([]); }}
+            className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </Modal>
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -539,117 +537,114 @@ export default function VehiculosPage() {
                 </div>
 
                 {/* Formulario nuevo registro */}
-                {showMantForm && (
-                  <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
-                    <p className="text-white font-semibold mb-4">Nuevo registro de mantenimiento</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
-                        <input type="date" value={mantForm.fecha}
-                          onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
-                        <Combobox
-                          value={mantForm.tipoRegistro}
-                          onChange={v => setMantForm(p => ({ ...p, tipoRegistro: v }))}
-                          options={Object.entries(TIPO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Km al registrar</label>
-                        <input value={mantForm.km} onChange={e => setMantForm(p => ({ ...p, km: e.target.value }))}
-                          placeholder="45000" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div className="col-span-2 md:col-span-3">
-                        <label className="text-xs text-gray-500 mb-1 block">Servicio / trabajo realizado *</label>
-                        <input value={mantForm.servicio} onChange={e => setMantForm(p => ({ ...p, servicio: e.target.value }))}
-                          placeholder="Cambio de aceite y filtros, revisión general..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">N. Aceite</label>
-                        <input value={mantForm.aceite} onChange={e => setMantForm(p => ({ ...p, aceite: e.target.value }))}
-                          placeholder="5W-30 sintético"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">N. Anticongelante</label>
-                        <input value={mantForm.anticongelante} onChange={e => setMantForm(p => ({ ...p, anticongelante: e.target.value }))}
-                          placeholder="OAT verde"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Estado de llantas</label>
-                        <input value={mantForm.estadoLlantas} onChange={e => setMantForm(p => ({ ...p, estadoLlantas: e.target.value }))}
-                          placeholder="Bueno / Desgaste leve..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (Km)</label>
-                        <input value={mantForm.proximoKm} onChange={e => setMantForm(p => ({ ...p, proximoKm: e.target.value }))}
-                          placeholder="50000" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (fecha)</label>
-                        <input type="date" value={mantForm.proximaFecha} onChange={e => setMantForm(p => ({ ...p, proximaFecha: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Costo</label>
-                        <input value={mantForm.costo} onChange={e => setMantForm(p => ({ ...p, costo: e.target.value }))}
-                          placeholder="1500" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
-                        <Combobox
-                          value={mantForm.prioridad}
-                          onChange={v => setMantForm(p => ({ ...p, prioridad: v }))}
-                          options={[{ value: "BAJA", label: "Baja" }, { value: "NORMAL", label: "Normal" }, { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Urgente" }]}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Estatus</label>
-                        <Combobox
-                          value={mantForm.estatus}
-                          onChange={v => setMantForm(p => ({ ...p, estatus: v }))}
-                          options={[{ value: "COMPLETADO", label: "Completado" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "PENDIENTE", label: "Pendiente" }]}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-3">
-                        <label className="text-xs text-gray-500 mb-1 block">Comentarios</label>
-                        <input value={mantForm.comentarios} onChange={e => setMantForm(p => ({ ...p, comentarios: e.target.value }))}
-                          placeholder="Notas adicionales, taller, mecánico..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      {/* Fotos del registro */}
-                      <div className="col-span-2 md:col-span-3">
-                        <label className="text-xs text-gray-500 mb-2 block">Fotos del registro</label>
-                        <FotoGrid fotos={mantFotos} onRemove={i => setMantFotos(prev => prev.filter((_, idx) => idx !== i))} />
-                        <div className="mt-2">
-                          <FotoUpload fotos={mantFotos} onChange={setMantFotos} label="Adjuntar fotos" />
-                        </div>
-                      </div>
+                <Modal open={showMantForm} onClose={() => { setShowMantForm(false); setMantFotos([]); }} title="Nuevo registro de mantenimiento" maxWidth="max-w-3xl">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+                      <input type="date" value={mantForm.fecha}
+                        onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
                     </div>
-                    <div className="flex gap-3">
-                      <button onClick={saveMantenimiento} disabled={savingMant || !mantForm.servicio.trim()}
-                        className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-                        {savingMant ? "Guardando..." : "Guardar registro"}
-                      </button>
-                      <button onClick={() => { setShowMantForm(false); setMantFotos([]); }}
-                        className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
-                        Cancelar
-                      </button>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
+                      <Combobox
+                        value={mantForm.tipoRegistro}
+                        onChange={v => setMantForm(p => ({ ...p, tipoRegistro: v }))}
+                        options={Object.entries(TIPO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Km al registrar</label>
+                      <input value={mantForm.km} onChange={e => setMantForm(p => ({ ...p, km: e.target.value }))}
+                        placeholder="45000" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-1 block">Servicio / trabajo realizado *</label>
+                      <input value={mantForm.servicio} onChange={e => setMantForm(p => ({ ...p, servicio: e.target.value }))}
+                        placeholder="Cambio de aceite y filtros, revisión general..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">N. Aceite</label>
+                      <input value={mantForm.aceite} onChange={e => setMantForm(p => ({ ...p, aceite: e.target.value }))}
+                        placeholder="5W-30 sintético"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">N. Anticongelante</label>
+                      <input value={mantForm.anticongelante} onChange={e => setMantForm(p => ({ ...p, anticongelante: e.target.value }))}
+                        placeholder="OAT verde"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Estado de llantas</label>
+                      <input value={mantForm.estadoLlantas} onChange={e => setMantForm(p => ({ ...p, estadoLlantas: e.target.value }))}
+                        placeholder="Bueno / Desgaste leve..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (Km)</label>
+                      <input value={mantForm.proximoKm} onChange={e => setMantForm(p => ({ ...p, proximoKm: e.target.value }))}
+                        placeholder="50000" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (fecha)</label>
+                      <input type="date" value={mantForm.proximaFecha} onChange={e => setMantForm(p => ({ ...p, proximaFecha: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Costo</label>
+                      <input value={mantForm.costo} onChange={e => setMantForm(p => ({ ...p, costo: e.target.value }))}
+                        placeholder="1500" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
+                      <Combobox
+                        value={mantForm.prioridad}
+                        onChange={v => setMantForm(p => ({ ...p, prioridad: v }))}
+                        options={[{ value: "BAJA", label: "Baja" }, { value: "NORMAL", label: "Normal" }, { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Urgente" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Estatus</label>
+                      <Combobox
+                        value={mantForm.estatus}
+                        onChange={v => setMantForm(p => ({ ...p, estatus: v }))}
+                        options={[{ value: "COMPLETADO", label: "Completado" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "PENDIENTE", label: "Pendiente" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-1 block">Comentarios</label>
+                      <input value={mantForm.comentarios} onChange={e => setMantForm(p => ({ ...p, comentarios: e.target.value }))}
+                        placeholder="Notas adicionales, taller, mecánico..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    {/* Fotos del registro */}
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-2 block">Fotos del registro</label>
+                      <FotoGrid fotos={mantFotos} onRemove={i => setMantFotos(prev => prev.filter((_, idx) => idx !== i))} />
+                      <div className="mt-2">
+                        <FotoUpload fotos={mantFotos} onChange={setMantFotos} label="Adjuntar fotos" />
+                      </div>
                     </div>
                   </div>
-                )}
+                  <div className="flex gap-3">
+                    <button onClick={saveMantenimiento} disabled={savingMant || !mantForm.servicio.trim()}
+                      className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+                      {savingMant ? "Guardando..." : "Guardar registro"}
+                    </button>
+                    <button onClick={() => { setShowMantForm(false); setMantFotos([]); }}
+                      className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                </Modal>
 
                 {/* Bitácora de registros */}
                 <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
