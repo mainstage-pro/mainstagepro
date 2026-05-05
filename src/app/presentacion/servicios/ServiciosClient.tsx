@@ -82,133 +82,6 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
   );
 }
 
-// ─── Mexico service map ────────────────────────────────────────────────────────
-function MexicoMap() {
-  return (
-    <div className="relative w-full max-w-2xl mx-auto select-none">
-      <svg viewBox="0 0 800 560" className="w-full" style={{ filter: "drop-shadow(0 0 40px rgba(179,152,91,0.08))" }}>
-        <defs>
-          <radialGradient id="bajioGlow" cx="43%" cy="65%" r="55%" gradientUnits="objectBoundingBox">
-            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.20" />
-            <stop offset="40%"  stopColor="#B3985B" stopOpacity="0.07" />
-            <stop offset="100%" stopColor="#B3985B" stopOpacity="0"    />
-          </radialGradient>
-          <radialGradient id="hl" cx="50%" cy="50%" r="60%">
-            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.85" />
-            <stop offset="100%" stopColor="#B3985B" stopOpacity="0.45" />
-          </radialGradient>
-        </defs>
-
-        {/* ── Baja California peninsula ── */}
-        <path d="M118,28 L108,52 L94,88 L82,128 L72,166 L64,202 L60,234 L62,256 L72,264 L80,256 L82,232 L80,200 L84,166 L92,130 L104,90 L116,52 L124,30 Z"
-          fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.09)" strokeWidth="0.8"/>
-
-        {/* ── Mexico mainland ── */}
-        {/* North border + Pacific coast + Gulf coast + SE peninsula */}
-        <path d="
-          M 188,28 L 266,26 L 356,24 L 448,24 L 528,26 L 596,28 L 644,32
-          L 668,40 L 682,64 L 688,96 L 678,136 L 660,176 L 648,210 L 646,244
-          L 652,272 L 666,298 L 682,320 L 700,342 L 716,364 L 728,390
-          L 718,416 L 700,440 L 676,462 L 650,476 L 622,466 L 598,448
-          L 574,428 L 554,436 L 534,454 L 508,470 L 480,480 L 452,480
-          L 426,470 L 408,454 L 396,458 L 374,466 L 350,450 L 326,430
-          L 302,412 L 280,394 L 264,376 L 250,360 L 234,346 L 216,342
-          L 198,338 L 180,328 L 162,310 L 150,288 L 148,264 L 156,242
-          L 158,218 L 150,198 L 140,178 L 136,156 L 140,132 L 148,108
-          L 148,82 L 152,56 L 162,36 Z"
-          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)" strokeWidth="0.8"/>
-
-        {/* ── State grid lines (approximate internal borders) ── */}
-        <g stroke="rgba(255,255,255,0.055)" strokeWidth="0.7" fill="none">
-          {/* Sonora / Chihuahua */}
-          <line x1="266" y1="26" x2="256" y2="160"/>
-          {/* Chihuahua / Coahuila */}
-          <line x1="356" y1="24" x2="348" y2="180"/>
-          {/* Coahuila / NL */}
-          <line x1="448" y1="24" x2="440" y2="170"/>
-          {/* NL / Tamaulipas */}
-          <line x1="528" y1="26" x2="520" y2="200"/>
-          {/* Sinaloa E border */}
-          <line x1="194" y1="140" x2="240" y2="290"/>
-          {/* Durango S border */}
-          <line x1="256" y1="160" x2="244" y2="300"/>
-          {/* Zacatecas E */}
-          <line x1="348" y1="180" x2="330" y2="330"/>
-          {/* SLP E */}
-          <line x1="440" y1="170" x2="428" y2="320"/>
-          {/* Tamaulipas coast */}
-          <line x1="520" y1="200" x2="566" y2="310"/>
-          {/* Veracruz W */}
-          <line x1="566" y1="310" x2="530" y2="420"/>
-          {/* Horizontal mid (Jalisco/Guanajuato N) */}
-          <line x1="200" y1="290" x2="440" y2="282"/>
-          {/* Jalisco E */}
-          <line x1="240" y1="290" x2="248" y2="364"/>
-          {/* Michoacán N */}
-          <line x1="248" y1="364" x2="374" y2="372"/>
-          {/* Hidalgo S */}
-          <line x1="428" y1="320" x2="426" y2="354"/>
-          {/* Estado Méx */}
-          <line x1="374" y1="372" x2="416" y2="368"/>
-          {/* Morelos */}
-          <line x1="390" y1="390" x2="416" y2="368"/>
-          {/* Guerrero N */}
-          <line x1="262" y1="400" x2="450" y2="408"/>
-          {/* Oaxaca W */}
-          <line x1="450" y1="408" x2="530" y2="420"/>
-        </g>
-
-        {/* ── Glow overlay from Bajío ── */}
-        <rect x="0" y="0" width="800" height="560" fill="url(#bajioGlow)"/>
-
-        {/* ── Highlighted service states ── */}
-
-        {/* Guanajuato */}
-        <path d="M 248,298 L 260,266 L 298,258 L 332,260 L 348,278 L 344,310 L 328,328 L 292,334 L 260,322 Z"
-          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
-
-        {/* Querétaro */}
-        <path d="M 350,278 L 356,250 L 382,248 L 400,260 L 398,284 L 382,296 L 352,292 Z"
-          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
-
-        {/* Aguascalientes */}
-        <path d="M 228,270 L 234,254 L 252,252 L 256,264 L 248,278 L 232,278 Z"
-          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.78"/>
-
-        {/* CDMX */}
-        <path d="M 384,372 L 386,358 L 402,358 L 404,372 L 394,380 Z"
-          fill="#B3985B" stroke="#B3985B" strokeWidth="0.5" opacity="0.95"/>
-
-        {/* Puebla */}
-        <path d="M 406,358 L 412,328 L 440,324 L 468,336 L 470,360 L 456,394 L 432,408 L 408,402 L 404,384 Z"
-          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
-
-        {/* ── City dots ── */}
-        {[
-          { cx: 362, cy: 268, label: "Querétaro",  lx: 362, ly: 258, anchor: "middle" as const },
-          { cx: 294, cy: 290, label: "Guanajuato", lx: 274, ly: 280, anchor: "middle" as const },
-          { cx: 394, cy: 366, label: "CDMX",       lx: 412, ly: 360, anchor: "start" as const  },
-          { cx: 440, cy: 372, label: "Puebla",     lx: 468, ly: 370, anchor: "start" as const  },
-        ].map(d => (
-          <g key={d.label}>
-            <circle cx={d.cx} cy={d.cy} r="9"   fill="#B3985B" opacity="0.18"/>
-            <circle cx={d.cx} cy={d.cy} r="4.5" fill="#B3985B"/>
-            <text x={d.lx} y={d.ly} textAnchor={d.anchor} fill="white" fontSize="9.5"
-                  fontWeight="600" opacity="0.88" letterSpacing="0.4">{d.label}</text>
-          </g>
-        ))}
-
-        {/* El Bajío tag */}
-        <text x="296" y="350" textAnchor="middle" fill="#B3985B" fontSize="7.5"
-              fontWeight="700" opacity="0.55" letterSpacing="2">EL BAJÍO</text>
-      </svg>
-
-      <p className="text-center text-white/25 text-xs mt-3 tracking-wide">
-        También realizamos servicios en toda la República Mexicana — contáctanos para condiciones.
-      </p>
-    </div>
-  );
-}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
@@ -545,21 +418,48 @@ export default function ServiciosClient() {
         <div className="max-w-5xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
-            <h2 className="font-bold text-white leading-tight mb-4"
+            <h2 className="font-bold text-white leading-tight mb-6"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
               Donde trabajamos
             </h2>
-            <p className="text-white/40 text-sm mb-14">
-              Querétaro · Guanajuato · El Bajío · Ciudad de México · Puebla
+            <p className="text-white/40 text-sm max-w-lg mb-16 leading-relaxed">
+              Nuestra base de operaciones está en el corazón de México. Producimos eventos en las principales ciudades del país y nos desplazamos a donde el proyecto lo requiera.
             </p>
           </R>
-          <R delay={120}>
-            <MexicoMap />
+
+          {/* Ciudades principales */}
+          <R delay={80}>
+            <div className="border-t border-white/[0.06]">
+              {[
+                { ciudad: "Querétaro",       detalle: "Base de operaciones",          primary: true  },
+                { ciudad: "León",            detalle: "Guanajuato · El Bajío",        primary: true  },
+                { ciudad: "San Miguel de Allende", detalle: "Guanajuato",             primary: false },
+                { ciudad: "Ciudad de México",detalle: "CDMX y Zona Metropolitana",    primary: true  },
+                { ciudad: "Puebla",          detalle: "Puebla · Tlaxcala",            primary: false },
+              ].map((z, i) => (
+                <div key={i} className="flex items-center justify-between py-5 border-b border-white/[0.06] group">
+                  <div className="flex items-center gap-4">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${z.primary ? "bg-[#B3985B]" : "bg-white/20"}`} />
+                    <span className={`font-semibold tracking-tight ${z.primary ? "text-white" : "text-white/50"}`}
+                          style={{ fontSize: "clamp(1.1rem,2.5vw,1.5rem)" }}>
+                      {z.ciudad}
+                    </span>
+                  </div>
+                  <span className="text-white/30 text-sm">{z.detalle}</span>
+                </div>
+              ))}
+            </div>
           </R>
-          <R delay={200}>
-            <div className="mt-10 text-center">
+
+          {/* Nota república */}
+          <R delay={180}>
+            <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <p className="text-white/25 text-sm leading-relaxed max-w-sm">
+                ¿Tu evento es fuera de estas ciudades?<br/>
+                Nos desplazamos a cualquier punto de la República.
+              </p>
               <a href="/presentacion/inventario"
-                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all">
+                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all shrink-0">
                 Ver inventario de equipo
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
