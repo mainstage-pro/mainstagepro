@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
+import { BackButton } from "@/components/BackButton";
 
 interface Linea {
   id: string;
@@ -458,6 +459,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   return (
     <>
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
+      <div className="mb-2"><BackButton /></div>
 
       {/* Tabs de opciones */}
       {(tieneOpciones || opciones.length > 0) && (

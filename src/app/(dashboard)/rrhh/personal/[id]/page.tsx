@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { BackButton } from "@/components/BackButton";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
 interface PagoNomina { id: string; periodo: string; tipoPeriodo: string; monto: number; concepto: string | null; estado: string; fechaPago: string | null; metodoPago: string; notas: string | null; cuentaOrigen: { nombre: string } | null }
@@ -159,6 +160,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-center gap-4">

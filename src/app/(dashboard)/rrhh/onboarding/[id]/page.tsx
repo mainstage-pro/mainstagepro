@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { BackButton } from "@/components/BackButton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
@@ -148,6 +149,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
 
       {/* Header */}
       <div>

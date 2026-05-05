@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { BackButton } from "@/components/BackButton";
 
 interface Puesto {
   id: string; titulo: string; area: string; descripcion?: string | null;
@@ -266,6 +267,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 flex-wrap">
         <div className="flex-1 min-w-0">

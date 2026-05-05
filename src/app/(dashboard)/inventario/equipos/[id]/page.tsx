@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { BackButton } from "@/components/BackButton";
 
 const CATEGORIAS_ACC = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
 type CategoriaAcc = typeof CATEGORIAS_ACC[number] | null;
@@ -329,6 +330,7 @@ export default function EquipoFichaPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">

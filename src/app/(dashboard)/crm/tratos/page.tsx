@@ -299,17 +299,21 @@ function NuevaOportunidadModal({ onClose, onCreated }: {
 // ── Kanban Card ───────────────────────────────────────────────────────────────
 
 function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () => void; deleting: boolean }) {
+  const router = useRouter();
   const wa = waUrl(trato);
   const cots = trato.cotizaciones ?? [];
   const aprobada = cots.find(c => c.estado === "APROBADA");
   return (
-    <div className={`bg-[#111] border ${ETAPA_BORDER[trato.etapa] ?? "border-[#1e1e1e]"} rounded-xl p-3 space-y-2`}>
+    <div
+      onClick={() => router.push(`/crm/tratos/${trato.id}`)}
+      className={`bg-[#111] border ${ETAPA_BORDER[trato.etapa] ?? "border-[#1e1e1e]"} rounded-xl p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors`}>
       <div className="flex items-start justify-between gap-2">
-        <Link href={`/crm/tratos/${trato.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors leading-tight">
+        <span className="text-white text-sm font-medium leading-tight">
           {trato.cliente.nombre}
-        </Link>
+        </span>
         {wa && (
           <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp seguimiento"
+            onClick={e => e.stopPropagation()}
             className="shrink-0 text-green-500 hover:text-green-400 transition-colors">
             <WaIcon />
           </a>
@@ -327,11 +331,11 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
           )}
         </div>
       )}
-      {/* Cotizaciones badge */}
       {cots.length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-[#1a1a1a]">
           {cots.map(c => (
             <Link key={c.id} href={`/cotizaciones/${c.id}`}
+              onClick={e => e.stopPropagation()}
               className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium hover:opacity-80 transition-opacity ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}
               title={`${c.numeroCotizacion} · ${formatCurrency(c.granTotal)}`}>
               {c.numeroCotizacion}{c.opcionLetra ? ` ${c.opcionLetra}` : ""}
@@ -341,15 +345,13 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
       )}
       <div className="flex items-center justify-between pt-1 border-t border-[#1a1a1a]">
         {aprobada?.proyecto ? (
-          <Link href={`/proyectos/${aprobada.proyecto.id}`} className="text-green-400 text-[11px] hover:underline">
+          <Link href={`/proyectos/${aprobada.proyecto.id}`} onClick={e => e.stopPropagation()} className="text-green-400 text-[11px] hover:underline">
             Ver proyecto →
           </Link>
         ) : (
-          <Link href={`/crm/tratos/${trato.id}`} className="text-[#B3985B] text-[11px] hover:underline">
-            Ver →
-          </Link>
+          <span className="text-[#B3985B] text-[11px]">Ver →</span>
         )}
-        <button onClick={onDelete} disabled={deleting}
+        <button onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
           className="text-[#333] hover:text-red-400 text-[11px] transition-colors disabled:opacity-40">
           {deleting ? "..." : "Eliminar"}
         </button>
@@ -372,6 +374,7 @@ interface TratoTableProps {
 }
 
 function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, eliminar, borderClass, headerClass }: TratoTableProps) {
+  const router = useRouter();
   return (
     <div className={`rounded-xl border overflow-hidden ${borderClass}`}>
       <div className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 border-b text-[10px] font-medium uppercase tracking-wider ${headerClass}`}>
@@ -407,8 +410,10 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
 
           return (
             <div key={t.id}>
-              <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] group">
-                <button onClick={() => toggleExpand(t.id)}
+              <div
+                className="flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] group cursor-pointer"
+                onClick={() => router.push(`/crm/tratos/${t.id}`)}>
+                <button onClick={e => { e.stopPropagation(); toggleExpand(t.id); }}
                   className="shrink-0 text-[#444] hover:text-gray-300 transition-colors">
                   <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
@@ -416,9 +421,9 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Link href={`/crm/tratos/${t.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+                    <span className="text-white text-sm font-medium">
                       {t.cliente.nombre}
-                    </Link>
+                    </span>
                     {t.cliente.empresa && <span className="text-[#555] text-xs">{t.cliente.empresa}</span>}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ETAPA_COLORS[t.etapa] ?? "bg-[#222] text-[#888]"}`}>
                       {ETAPA_LABELS[t.etapa] ?? t.etapa}
@@ -449,11 +454,12 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                 <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   {wa && (
                     <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                      onClick={e => e.stopPropagation()}
                       className="text-green-500 hover:text-green-400 transition-colors">
                       <WaIcon />
                     </a>
                   )}
-                  <button onClick={() => eliminar(t.id, t.cliente.nombre)} disabled={deletingId === t.id}
+                  <button onClick={e => { e.stopPropagation(); eliminar(t.id, t.cliente.nombre); }} disabled={deletingId === t.id}
                     className="text-[#333] hover:text-red-400 transition-colors disabled:opacity-40">
                     {deletingId === t.id ? (
                       <span className="text-[10px]">...</span>

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { BackButton } from "@/components/BackButton";
 
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
@@ -92,6 +93,7 @@ export default function EvaluacionDetailPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>

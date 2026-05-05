@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -1177,6 +1178,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5 pb-12">
+      <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

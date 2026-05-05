@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { type ReporteData, generarMensajeWhatsApp, fmtMXN } from "@/lib/reportes";
 import { useToast } from "@/components/Toast";
+import { BackButton } from "@/components/BackButton";
 
 const CEO_WHATSAPP = "524461432565";
 
@@ -110,6 +111,7 @@ export default function ReporteDetallePage() {
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6 print:p-4">
+      <div className="mb-2"><BackButton /></div>
       {/* ── Encabezado ─────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 print:hidden">
         <div>

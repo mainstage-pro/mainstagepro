@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { BackButton } from "@/components/BackButton";
 
 interface EquipoInfo {
   id: string; descripcion: string; cantidadTotal: number; estado: string;
@@ -143,6 +144,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">

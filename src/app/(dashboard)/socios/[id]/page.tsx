@@ -7,6 +7,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -1223,6 +1224,7 @@ export default function SocioDetallePage() {
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${

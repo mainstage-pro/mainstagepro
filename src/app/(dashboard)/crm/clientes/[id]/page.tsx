@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
+import { BackButton } from "@/components/BackButton";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -295,6 +296,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

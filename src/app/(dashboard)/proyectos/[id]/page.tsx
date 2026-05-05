@@ -12,6 +12,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -2211,6 +2212,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   return (
     <>
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5 pb-12">
+      <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

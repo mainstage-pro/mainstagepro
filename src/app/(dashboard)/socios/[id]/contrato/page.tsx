@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { BackButton } from "@/components/BackButton";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
@@ -69,6 +70,9 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
       </head>
       <body>
         {/* Botón imprimir (oculto al imprimir) */}
+        <div className="no-print" style={{ position: "fixed", top: 16, left: 16, zIndex: 99 }}>
+          <div className="mb-2"><BackButton /></div>
+        </div>
         <div className="no-print" style={{ position: "fixed", top: 16, right: 16, zIndex: 99 }}>
           <button
             onClick={() => { if (typeof window !== "undefined") window.print(); }}
