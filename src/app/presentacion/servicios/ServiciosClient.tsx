@@ -84,147 +84,123 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
 
 // ─── Mexico service map ────────────────────────────────────────────────────────
 function MexicoMap() {
-  // Simplified SVG map of Mexico. State shapes are approximate but geographically consistent.
-  // ViewBox 740×520. Bajío region center ≈ (328, 348).
   return (
     <div className="relative w-full max-w-2xl mx-auto select-none">
-      <svg viewBox="0 0 740 520" className="w-full" style={{ filter: "drop-shadow(0 0 40px rgba(179,152,91,0.08))" }}>
+      <svg viewBox="0 0 800 560" className="w-full" style={{ filter: "drop-shadow(0 0 40px rgba(179,152,91,0.08))" }}>
         <defs>
-          {/* Radial glow emanating from Bajío center */}
-          <radialGradient id="bajioGlow" cx="44%" cy="67%" r="70%" gradientUnits="objectBoundingBox">
-            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.22" />
-            <stop offset="30%"  stopColor="#B3985B" stopOpacity="0.10" />
-            <stop offset="60%"  stopColor="#B3985B" stopOpacity="0.03" />
+          <radialGradient id="bajioGlow" cx="43%" cy="65%" r="55%" gradientUnits="objectBoundingBox">
+            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.20" />
+            <stop offset="40%"  stopColor="#B3985B" stopOpacity="0.07" />
             <stop offset="100%" stopColor="#B3985B" stopOpacity="0"    />
           </radialGradient>
-          <radialGradient id="stateHighlight" cx="50%" cy="50%" r="60%">
-            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#B3985B" stopOpacity="0.55" />
+          <radialGradient id="hl" cx="50%" cy="50%" r="60%">
+            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.85" />
+            <stop offset="100%" stopColor="#B3985B" stopOpacity="0.45" />
           </radialGradient>
         </defs>
 
-        {/* ── Mexico mainland silhouette ── */}
-        <path
-          d="M 108,42 L 196,38 L 308,36 L 416,36 L 510,38 L 582,40 L 625,42
-             L 650,48 L 664,80 L 668,118 L 656,160 L 636,202 L 620,242 L 616,278
-             L 622,306 L 636,332 L 654,356 L 670,376 L 690,394 L 706,410 L 718,434
-             L 708,462 L 690,488 L 664,512 L 636,520 L 606,510 L 578,492 L 554,470
-             L 530,450 L 514,460 L 492,482 L 464,498 L 438,504 L 413,498 L 394,482
-             L 381,474 L 370,480 L 344,488 L 317,472 L 290,452 L 264,432 L 242,414
-             L 226,396 L 213,376 L 198,356 L 182,344 L 163,346 L 144,342 L 124,326
-             L 110,304 L 106,278 L 116,252 L 116,228 L 108,206 L 100,186
-             L 98,164 L 104,146 L 110,124 L 108,96 Z"
-          fill="rgba(255,255,255,0.04)"
-          stroke="rgba(255,255,255,0.10)"
-          strokeWidth="0.8"
-        />
-
         {/* ── Baja California peninsula ── */}
-        <path
-          d="M 102,46 L 90,70 L 77,108 L 66,144 L 56,178 L 50,212
-             L 49,246 L 52,268 L 62,278 L 70,268 L 72,244 L 70,210
-             L 72,178 L 78,144 L 88,110 L 98,78 L 106,52 Z"
-          fill="rgba(255,255,255,0.04)"
-          stroke="rgba(255,255,255,0.10)"
-          strokeWidth="0.8"
-        />
+        <path d="M118,28 L108,52 L94,88 L82,128 L72,166 L64,202 L60,234 L62,256 L72,264 L80,256 L82,232 L80,200 L84,166 L92,130 L104,90 L116,52 L124,30 Z"
+          fill="rgba(255,255,255,0.035)" stroke="rgba(255,255,255,0.09)" strokeWidth="0.8"/>
 
-        {/* ── Interior state lines (simplified major divisions) ── */}
-        <g stroke="rgba(255,255,255,0.06)" strokeWidth="0.6" fill="none">
-          {/* North tier roughly */}
-          <line x1="220" y1="38" x2="218" y2="140" />
-          <line x1="320" y1="36" x2="315" y2="170" />
-          <line x1="450" y1="36" x2="445" y2="150" />
-          <line x1="562" y1="40" x2="558" y2="120" />
-          {/* Center dividers */}
-          <line x1="215" y1="140" x2="200" y2="300" />
-          <line x1="315" y1="170" x2="305" y2="330" />
-          <line x1="400" y1="160" x2="395" y2="298" />
-          <line x1="445" y1="150" x2="440" y2="280" />
-          <line x1="558" y1="120" x2="552" y2="240" />
-          {/* Gulf coast divider */}
-          <line x1="552" y1="240" x2="620" y2="240" />
-          {/* Central cross lines */}
-          <line x1="200" y1="300" x2="440" y2="280" />
-          <line x1="260" y1="370" x2="510" y2="350" />
-          <line x1="305" y1="330" x2="300" y2="450" />
-          <line x1="395" y1="298" x2="400" y2="345" />
-          <line x1="400" y1="430" x2="510" y2="450" />
-          <line x1="510" y1="350" x2="556" y2="470" />
+        {/* ── Mexico mainland ── */}
+        {/* North border + Pacific coast + Gulf coast + SE peninsula */}
+        <path d="
+          M 188,28 L 266,26 L 356,24 L 448,24 L 528,26 L 596,28 L 644,32
+          L 668,40 L 682,64 L 688,96 L 678,136 L 660,176 L 648,210 L 646,244
+          L 652,272 L 666,298 L 682,320 L 700,342 L 716,364 L 728,390
+          L 718,416 L 700,440 L 676,462 L 650,476 L 622,466 L 598,448
+          L 574,428 L 554,436 L 534,454 L 508,470 L 480,480 L 452,480
+          L 426,470 L 408,454 L 396,458 L 374,466 L 350,450 L 326,430
+          L 302,412 L 280,394 L 264,376 L 250,360 L 234,346 L 216,342
+          L 198,338 L 180,328 L 162,310 L 150,288 L 148,264 L 156,242
+          L 158,218 L 150,198 L 140,178 L 136,156 L 140,132 L 148,108
+          L 148,82 L 152,56 L 162,36 Z"
+          fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.10)" strokeWidth="0.8"/>
+
+        {/* ── State grid lines (approximate internal borders) ── */}
+        <g stroke="rgba(255,255,255,0.055)" strokeWidth="0.7" fill="none">
+          {/* Sonora / Chihuahua */}
+          <line x1="266" y1="26" x2="256" y2="160"/>
+          {/* Chihuahua / Coahuila */}
+          <line x1="356" y1="24" x2="348" y2="180"/>
+          {/* Coahuila / NL */}
+          <line x1="448" y1="24" x2="440" y2="170"/>
+          {/* NL / Tamaulipas */}
+          <line x1="528" y1="26" x2="520" y2="200"/>
+          {/* Sinaloa E border */}
+          <line x1="194" y1="140" x2="240" y2="290"/>
+          {/* Durango S border */}
+          <line x1="256" y1="160" x2="244" y2="300"/>
+          {/* Zacatecas E */}
+          <line x1="348" y1="180" x2="330" y2="330"/>
+          {/* SLP E */}
+          <line x1="440" y1="170" x2="428" y2="320"/>
+          {/* Tamaulipas coast */}
+          <line x1="520" y1="200" x2="566" y2="310"/>
+          {/* Veracruz W */}
+          <line x1="566" y1="310" x2="530" y2="420"/>
+          {/* Horizontal mid (Jalisco/Guanajuato N) */}
+          <line x1="200" y1="290" x2="440" y2="282"/>
+          {/* Jalisco E */}
+          <line x1="240" y1="290" x2="248" y2="364"/>
+          {/* Michoacán N */}
+          <line x1="248" y1="364" x2="374" y2="372"/>
+          {/* Hidalgo S */}
+          <line x1="428" y1="320" x2="426" y2="354"/>
+          {/* Estado Méx */}
+          <line x1="374" y1="372" x2="416" y2="368"/>
+          {/* Morelos */}
+          <line x1="390" y1="390" x2="416" y2="368"/>
+          {/* Guerrero N */}
+          <line x1="262" y1="400" x2="450" y2="408"/>
+          {/* Oaxaca W */}
+          <line x1="450" y1="408" x2="530" y2="420"/>
         </g>
 
-        {/* ── Radial glow from Bajío ── */}
-        <rect x="0" y="0" width="740" height="520" fill="url(#bajioGlow)" />
+        {/* ── Glow overlay from Bajío ── */}
+        <rect x="0" y="0" width="800" height="560" fill="url(#bajioGlow)"/>
 
-        {/* ── Highlighted states ── */}
+        {/* ── Highlighted service states ── */}
 
         {/* Guanajuato */}
-        <path
-          d="M 266,375 L 278,327 L 308,320 L 348,323 L 354,344 L 344,373 L 330,388 L 298,393 L 270,382 Z"
-          fill="url(#stateHighlight)"
-          stroke="#B3985B"
-          strokeWidth="0.8"
-          opacity="0.85"
-        />
+        <path d="M 248,298 L 260,266 L 298,258 L 332,260 L 348,278 L 344,310 L 328,328 L 292,334 L 260,322 Z"
+          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
 
         {/* Querétaro */}
-        <path
-          d="M 347,337 L 353,298 L 377,296 L 395,311 L 390,337 L 372,344 L 350,340 Z"
-          fill="url(#stateHighlight)"
-          stroke="#B3985B"
-          strokeWidth="0.8"
-          opacity="0.85"
-        />
+        <path d="M 350,278 L 356,250 L 382,248 L 400,260 L 398,284 L 382,296 L 352,292 Z"
+          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
 
-        {/* Aguascalientes (part of Bajío) */}
-        <path
-          d="M 247,325 L 252,308 L 268,306 L 271,318 L 264,330 L 250,330 Z"
-          fill="url(#stateHighlight)"
-          stroke="#B3985B"
-          strokeWidth="0.8"
-          opacity="0.75"
-        />
+        {/* Aguascalientes */}
+        <path d="M 228,270 L 234,254 L 252,252 L 256,264 L 248,278 L 232,278 Z"
+          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.78"/>
 
-        {/* Ciudad de México (tiny) */}
-        <path
-          d="M 379,392 L 381,372 L 398,372 L 400,390 L 388,398 Z"
-          fill="#B3985B"
-          stroke="#B3985B"
-          strokeWidth="0.5"
-          opacity="0.95"
-        />
+        {/* CDMX */}
+        <path d="M 384,372 L 386,358 L 402,358 L 404,372 L 394,380 Z"
+          fill="#B3985B" stroke="#B3985B" strokeWidth="0.5" opacity="0.95"/>
 
         {/* Puebla */}
-        <path
-          d="M 401,378 L 407,347 L 433,344 L 463,356 L 466,380 L 452,415 L 432,429 L 407,424 L 402,408 Z"
-          fill="url(#stateHighlight)"
-          stroke="#B3985B"
-          strokeWidth="0.8"
-          opacity="0.85"
-        />
+        <path d="M 406,358 L 412,328 L 440,324 L 468,336 L 470,360 L 456,394 L 432,408 L 408,402 L 404,384 Z"
+          fill="url(#hl)" stroke="#B3985B" strokeWidth="0.9" opacity="0.88"/>
 
-        {/* ── Service city dots ── */}
-        {/* Querétaro city */}
-        <circle cx="371" cy="316" r="4.5" fill="#B3985B" />
-        <circle cx="371" cy="316" r="8"   fill="#B3985B" opacity="0.2" />
-        {/* Guanajuato / San Miguel */}
-        <circle cx="312" cy="352" r="4.5" fill="#B3985B" />
-        <circle cx="312" cy="352" r="8"   fill="#B3985B" opacity="0.2" />
-        {/* CDMX */}
-        <circle cx="390" cy="381" r="5"   fill="#B3985B" />
-        <circle cx="390" cy="381" r="9"   fill="#B3985B" opacity="0.2" />
-        {/* Puebla city */}
-        <circle cx="436" cy="390" r="4.5" fill="#B3985B" />
-        <circle cx="436" cy="390" r="8"   fill="#B3985B" opacity="0.2" />
+        {/* ── City dots ── */}
+        {[
+          { cx: 362, cy: 268, label: "Querétaro",  lx: 362, ly: 258, anchor: "middle" },
+          { cx: 294, cy: 290, label: "Guanajuato", lx: 274, ly: 280, anchor: "middle" },
+          { cx: 394, cy: 366, label: "CDMX",       lx: 412, ly: 360, anchor: "start"  },
+          { cx: 440, cy: 372, label: "Puebla",     lx: 468, ly: 370, anchor: "start"  },
+        ].map(d => (
+          <g key={d.label}>
+            <circle cx={d.cx} cy={d.cy} r="9"   fill="#B3985B" opacity="0.18"/>
+            <circle cx={d.cx} cy={d.cy} r="4.5" fill="#B3985B"/>
+            <text x={d.lx} y={d.ly} textAnchor={d.anchor} fill="white" fontSize="9.5"
+                  fontWeight="600" opacity="0.88" letterSpacing="0.4">{d.label}</text>
+          </g>
+        ))}
 
-        {/* ── Labels ── */}
-        <text x="371" y="306" textAnchor="middle" fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Querétaro</text>
-        <text x="298" y="347" textAnchor="middle" fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Guanajuato</text>
-        <text x="409" y="374" textAnchor="start"  fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">CDMX</text>
-        <text x="458" y="400" textAnchor="start"  fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Puebla</text>
-
-        {/* El Bajío region label */}
-        <text x="310" y="415" textAnchor="middle" fill="#B3985B" fontSize="8" fontWeight="700" opacity="0.65" letterSpacing="1.5">EL BAJÍO</text>
+        {/* El Bajío tag */}
+        <text x="296" y="350" textAnchor="middle" fill="#B3985B" fontSize="7.5"
+              fontWeight="700" opacity="0.55" letterSpacing="2">EL BAJÍO</text>
       </svg>
 
       <p className="text-center text-white/25 text-xs mt-3 tracking-wide">
