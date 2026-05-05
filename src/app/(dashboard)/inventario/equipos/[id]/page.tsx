@@ -345,10 +345,9 @@ export default function EquipoFichaPage() {
               <img src={equipo.imagenUrl} alt="" className="w-12 h-12 object-contain rounded-lg bg-[#0a0a0a] p-1 shrink-0" />
             )}
             <div>
-              <h1 className="text-xl font-semibold text-white">{equipo.descripcion}</h1>
+              <h1 className="text-xl font-semibold text-white">{[equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion}</h1>
               <p className="text-[#6b7280] text-sm mt-0.5">
-                {[equipo.marca, equipo.modelo].filter(Boolean).join(" · ")}
-                {[equipo.marca, equipo.modelo].filter(Boolean).length > 0 && " · "}
+                {[equipo.marca, equipo.modelo].filter(Boolean).length > 0 && <span>{equipo.descripcion} · </span>}
                 {equipo.categoria.nombre}
               </p>
             </div>

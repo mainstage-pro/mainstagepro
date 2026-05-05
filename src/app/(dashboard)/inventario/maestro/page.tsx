@@ -545,10 +545,10 @@ export default function InventarioMaestroPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
-                          {e.descripcion}
+                          {(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}
                         </p>
                         {(e.marca || e.modelo) && (
-                          <p className="text-[#555] text-[10px] truncate mt-0.5">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>
+                          <p className="text-[#555] text-[10px] truncate mt-0.5">{e.descripcion}</p>
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
@@ -615,9 +615,9 @@ export default function InventarioMaestroPage() {
                                     <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
                                   )}
                                   <div className="min-w-0">
-                                    <p className="text-white font-medium truncate">{e.descripcion}</p>
+                                    <p className="text-white font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
                                     {(e.marca || e.modelo) && (
-                                      <p className="text-[#555] truncate">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>
+                                      <p className="text-[#555] text-xs truncate">{e.descripcion}</p>
                                     )}
                                   </div>
                                 </div>
