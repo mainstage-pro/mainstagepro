@@ -566,6 +566,7 @@ function ProyectoTaskModal({
               {/* Title */}
               <textarea
                 ref={titleRef}
+                autoFocus={!activeId}
                 value={titulo}
                 onChange={e => { setTitulo(e.target.value); mark(); }}
                 onKeyDown={e => {

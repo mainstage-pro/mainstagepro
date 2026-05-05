@@ -237,6 +237,7 @@ export default function QuickAdd({
       <div className="px-4 pt-3.5 pb-1">
         <input
           ref={titleRef}
+          autoFocus
           value={titulo}
           onChange={e => setTitulo(e.target.value)}
           onKeyDown={e => {
