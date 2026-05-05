@@ -326,15 +326,18 @@ export default function CobrosPagosPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rc, rp, rm] = await Promise.all([
-      fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()),
-      fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()),
-      fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()),
-    ]);
-    setCxc(Array.isArray(rc) ? rc : []);
-    setCxp(Array.isArray(rp) ? rp : []);
-    setMovDirectos(rm.movimientos ?? []);
-    setLoading(false);
+    try {
+      const [rc, rp, rm] = await Promise.all([
+        fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
+        fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
+        fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()).catch(() => ({ movimientos: [] })),
+      ]);
+      setCxc(Array.isArray(rc) ? rc : []);
+      setCxp(Array.isArray(rp) ? rp : []);
+      setMovDirectos(rm.movimientos ?? []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);

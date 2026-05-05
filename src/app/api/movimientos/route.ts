@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   // Sin filtro se limita a 500 para no sobrecargar la vista global.
   const where = cuentaId
     ? { OR: [{ cuentaOrigenId: cuentaId }, { cuentaDestinoId: cuentaId }] }
-    : directos ? { cuentaCobrar: null, cuentaPagar: null } : undefined;
+    : directos ? { abono: null, cuentaPagar: null } : undefined;
 
   const movimientos = await prisma.movimientoFinanciero.findMany({
     where,
