@@ -1,8 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD  = "#B3985B";
-const WA    = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
+const GOLD = "#B3985B";
+const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
+
+const HERO_SLIDES = [
+  { src: "/images/presentacion/musicales/Musicales-016.jpg",        label: "Musicales" },
+  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  label: "Sociales" },
+  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
+];
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useReveal(threshold = 0.12) {
@@ -76,9 +82,167 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
   );
 }
 
+// ─── Mexico service map ────────────────────────────────────────────────────────
+function MexicoMap() {
+  // Simplified SVG map of Mexico. State shapes are approximate but geographically consistent.
+  // ViewBox 740×520. Bajío region center ≈ (328, 348).
+  return (
+    <div className="relative w-full max-w-2xl mx-auto select-none">
+      <svg viewBox="0 0 740 520" className="w-full" style={{ filter: "drop-shadow(0 0 40px rgba(179,152,91,0.08))" }}>
+        <defs>
+          {/* Radial glow emanating from Bajío center */}
+          <radialGradient id="bajioGlow" cx="44%" cy="67%" r="70%" gradientUnits="objectBoundingBox">
+            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.22" />
+            <stop offset="30%"  stopColor="#B3985B" stopOpacity="0.10" />
+            <stop offset="60%"  stopColor="#B3985B" stopOpacity="0.03" />
+            <stop offset="100%" stopColor="#B3985B" stopOpacity="0"    />
+          </radialGradient>
+          <radialGradient id="stateHighlight" cx="50%" cy="50%" r="60%">
+            <stop offset="0%"   stopColor="#B3985B" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#B3985B" stopOpacity="0.55" />
+          </radialGradient>
+        </defs>
+
+        {/* ── Mexico mainland silhouette ── */}
+        <path
+          d="M 108,42 L 196,38 L 308,36 L 416,36 L 510,38 L 582,40 L 625,42
+             L 650,48 L 664,80 L 668,118 L 656,160 L 636,202 L 620,242 L 616,278
+             L 622,306 L 636,332 L 654,356 L 670,376 L 690,394 L 706,410 L 718,434
+             L 708,462 L 690,488 L 664,512 L 636,520 L 606,510 L 578,492 L 554,470
+             L 530,450 L 514,460 L 492,482 L 464,498 L 438,504 L 413,498 L 394,482
+             L 381,474 L 370,480 L 344,488 L 317,472 L 290,452 L 264,432 L 242,414
+             L 226,396 L 213,376 L 198,356 L 182,344 L 163,346 L 144,342 L 124,326
+             L 110,304 L 106,278 L 116,252 L 116,228 L 108,206 L 100,186
+             L 98,164 L 104,146 L 110,124 L 108,96 Z"
+          fill="rgba(255,255,255,0.04)"
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth="0.8"
+        />
+
+        {/* ── Baja California peninsula ── */}
+        <path
+          d="M 102,46 L 90,70 L 77,108 L 66,144 L 56,178 L 50,212
+             L 49,246 L 52,268 L 62,278 L 70,268 L 72,244 L 70,210
+             L 72,178 L 78,144 L 88,110 L 98,78 L 106,52 Z"
+          fill="rgba(255,255,255,0.04)"
+          stroke="rgba(255,255,255,0.10)"
+          strokeWidth="0.8"
+        />
+
+        {/* ── Interior state lines (simplified major divisions) ── */}
+        <g stroke="rgba(255,255,255,0.06)" strokeWidth="0.6" fill="none">
+          {/* North tier roughly */}
+          <line x1="220" y1="38" x2="218" y2="140" />
+          <line x1="320" y1="36" x2="315" y2="170" />
+          <line x1="450" y1="36" x2="445" y2="150" />
+          <line x1="562" y1="40" x2="558" y2="120" />
+          {/* Center dividers */}
+          <line x1="215" y1="140" x2="200" y2="300" />
+          <line x1="315" y1="170" x2="305" y2="330" />
+          <line x1="400" y1="160" x2="395" y2="298" />
+          <line x1="445" y1="150" x2="440" y2="280" />
+          <line x1="558" y1="120" x2="552" y2="240" />
+          {/* Gulf coast divider */}
+          <line x1="552" y1="240" x2="620" y2="240" />
+          {/* Central cross lines */}
+          <line x1="200" y1="300" x2="440" y2="280" />
+          <line x1="260" y1="370" x2="510" y2="350" />
+          <line x1="305" y1="330" x2="300" y2="450" />
+          <line x1="395" y1="298" x2="400" y2="345" />
+          <line x1="400" y1="430" x2="510" y2="450" />
+          <line x1="510" y1="350" x2="556" y2="470" />
+        </g>
+
+        {/* ── Radial glow from Bajío ── */}
+        <rect x="0" y="0" width="740" height="520" fill="url(#bajioGlow)" />
+
+        {/* ── Highlighted states ── */}
+
+        {/* Guanajuato */}
+        <path
+          d="M 266,375 L 278,327 L 308,320 L 348,323 L 354,344 L 344,373 L 330,388 L 298,393 L 270,382 Z"
+          fill="url(#stateHighlight)"
+          stroke="#B3985B"
+          strokeWidth="0.8"
+          opacity="0.85"
+        />
+
+        {/* Querétaro */}
+        <path
+          d="M 347,337 L 353,298 L 377,296 L 395,311 L 390,337 L 372,344 L 350,340 Z"
+          fill="url(#stateHighlight)"
+          stroke="#B3985B"
+          strokeWidth="0.8"
+          opacity="0.85"
+        />
+
+        {/* Aguascalientes (part of Bajío) */}
+        <path
+          d="M 247,325 L 252,308 L 268,306 L 271,318 L 264,330 L 250,330 Z"
+          fill="url(#stateHighlight)"
+          stroke="#B3985B"
+          strokeWidth="0.8"
+          opacity="0.75"
+        />
+
+        {/* Ciudad de México (tiny) */}
+        <path
+          d="M 379,392 L 381,372 L 398,372 L 400,390 L 388,398 Z"
+          fill="#B3985B"
+          stroke="#B3985B"
+          strokeWidth="0.5"
+          opacity="0.95"
+        />
+
+        {/* Puebla */}
+        <path
+          d="M 401,378 L 407,347 L 433,344 L 463,356 L 466,380 L 452,415 L 432,429 L 407,424 L 402,408 Z"
+          fill="url(#stateHighlight)"
+          stroke="#B3985B"
+          strokeWidth="0.8"
+          opacity="0.85"
+        />
+
+        {/* ── Service city dots ── */}
+        {/* Querétaro city */}
+        <circle cx="371" cy="316" r="4.5" fill="#B3985B" />
+        <circle cx="371" cy="316" r="8"   fill="#B3985B" opacity="0.2" />
+        {/* Guanajuato / San Miguel */}
+        <circle cx="312" cy="352" r="4.5" fill="#B3985B" />
+        <circle cx="312" cy="352" r="8"   fill="#B3985B" opacity="0.2" />
+        {/* CDMX */}
+        <circle cx="390" cy="381" r="5"   fill="#B3985B" />
+        <circle cx="390" cy="381" r="9"   fill="#B3985B" opacity="0.2" />
+        {/* Puebla city */}
+        <circle cx="436" cy="390" r="4.5" fill="#B3985B" />
+        <circle cx="436" cy="390" r="8"   fill="#B3985B" opacity="0.2" />
+
+        {/* ── Labels ── */}
+        <text x="371" y="306" textAnchor="middle" fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Querétaro</text>
+        <text x="298" y="347" textAnchor="middle" fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Guanajuato</text>
+        <text x="409" y="374" textAnchor="start"  fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">CDMX</text>
+        <text x="458" y="400" textAnchor="start"  fill="white" fontSize="9" fontWeight="600" opacity="0.85" letterSpacing="0.5">Puebla</text>
+
+        {/* El Bajío region label */}
+        <text x="310" y="415" textAnchor="middle" fill="#B3985B" fontSize="8" fontWeight="700" opacity="0.65" letterSpacing="1.5">EL BAJÍO</text>
+      </svg>
+
+      <p className="text-center text-white/25 text-xs mt-3 tracking-wide">
+        También realizamos servicios en toda la República Mexicana — contáctanos para condiciones.
+      </p>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
-  const scrolled = useScrollHeader();
+  const scrolled  = useScrollHeader();
+  const [heroIdx, setHeroIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % HERO_SLIDES.length), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <div className="bg-[#080808] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
@@ -108,30 +272,60 @@ export default function ServiciosClient() {
         </div>
       </nav>
 
-      {/* ── Hero ── */}
+      {/* ── Hero con slideshow ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Background image */}
-        <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/presentacion/hero-festival.png" alt="" draggable={false}
-               className="w-full h-full object-cover"
-               style={{ animation: "kenBurns 12s ease forwards" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.3) 0%, rgba(8,8,8,0.5) 40%, rgba(8,8,8,0.85) 80%, #080808 100%)" }} />
+        {/* Slideshow */}
+        {HERO_SLIDES.map((slide, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={slide.src}
+            src={slide.src}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              opacity: i === heroIdx ? 1 : 0,
+              transform: i === heroIdx ? "scale(1.04)" : "scale(1)",
+              transition: "opacity 1.4s ease-in-out, transform 8s ease-out",
+              zIndex: i === heroIdx ? 1 : 0,
+            }}
+          />
+        ))}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.25) 0%, rgba(8,8,8,0.45) 40%, rgba(8,8,8,0.82) 80%, #080808 100%)" }} />
+
+        {/* Slide type indicator */}
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {HERO_SLIDES.map((s, i) => (
+            <button
+              key={s.label}
+              onClick={() => setHeroIdx(i)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all duration-500"
+              style={{
+                background: i === heroIdx ? `${GOLD}25` : "transparent",
+                border: `1px solid ${i === heroIdx ? GOLD : "rgba(255,255,255,0.15)"}`,
+                color: i === heroIdx ? GOLD : "rgba(255,255,255,0.4)",
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+        <div className="relative z-20 text-center px-6 max-w-4xl mx-auto">
           <p className="text-[#B3985B] text-xs font-semibold tracking-[0.28em] uppercase mb-6"
              style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
             Mainstage Pro · Soluciones Audiovisuales
           </p>
           <h1 className="font-bold text-white leading-[1.0]"
               style={{ fontSize: "clamp(2.8rem,8vw,7rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
-            La técnica que hace<br />
-            <span style={{ color: GOLD }}>que todo funcione.</span>
+            Todo resuelto.<br />
+            <span style={{ color: GOLD }}>Tú solo disfruta.</span>
           </h1>
           <p className="text-white/60 mt-8 max-w-lg mx-auto"
              style={{ fontSize: "clamp(1rem,2vw,1.15rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Audio, luz, video y operadores. Un solo equipo. Desde 2019.
+            Audio, iluminación, video y operadores expertos. Un solo equipo que lo maneja todo — antes, durante y después de tu evento.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
@@ -148,7 +342,7 @@ export default function ServiciosClient() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40"
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40 z-20"
              style={{ animation: "fadeUp 1s ease forwards 1.2s" }}>
           <span className="text-xs tracking-[0.18em] uppercase text-white/50">Scroll</span>
           <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent" />
@@ -160,12 +354,12 @@ export default function ServiciosClient() {
         <R>
           <h2 className="font-bold text-white leading-[1.1]"
               style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
-            No somos un proveedor<br />
-            <span style={{ color: GOLD }}>más de equipo.</span>
+            Nuestro trabajo es que<br />
+            <span style={{ color: GOLD }}>tú no tengas que preocuparte.</span>
           </h2>
           <p className="text-white/50 mt-6 max-w-xl" style={{ fontSize: "clamp(1rem,1.8vw,1.15rem)" }}>
-            Somos el equipo técnico detrás de más de 750 eventos.<br className="hidden sm:block" />
-            Un solo responsable para que tú te enfoques en lo que importa.
+            Técnica impecable, operadores que saben lo que hacen y un solo responsable para cualquier cosa.
+            Así de simple.
           </p>
         </R>
       </section>
@@ -175,7 +369,7 @@ export default function ServiciosClient() {
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-10 sm:gap-4">
           <StatCount target={7}   suffix="+"  label="Años de experiencia" />
           <StatCount target={750} suffix="+"  label="Eventos realizados"  />
-          <StatCount target={3}   suffix=""   label="Zonas de servicio"   />
+          <StatCount target={5}   suffix=""   label="Zonas de servicio"   />
           <StatCount target={100} suffix="%"  label="Compromiso con cada evento" />
         </div>
       </section>
@@ -305,10 +499,10 @@ export default function ServiciosClient() {
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { title: "7 años en campo.", body: "Sabemos qué puede pasar. Y cómo anticiparlo." },
-              { title: "Operadores reales.", body: "Trabajan en eventos constantemente. Sin improvisar." },
-              { title: "Puntuales, siempre.", body: "Montados y calibrados antes del primer invitado." },
-              { title: "Un responsable.", body: "Cualquier ajuste, antes o durante. Una llamada." },
+              { title: "Llegas a disfrutar, no a resolver.", body: "Anticipamos cada detalle técnico antes del evento. Tú te enfocas en tus invitados." },
+              { title: "Operadores que viven en escena.",    body: "No enviamos asistentes sin experiencia. El que operó cientos de eventos es el que opera el tuyo." },
+              { title: "Todo listo antes del primero.",      body: "Sistema montado y calibrado antes de que llegue el primer invitado. Sin excusas." },
+              { title: "Una llamada lo resuelve todo.",      body: "Cualquier ajuste, cambio o emergencia: un solo responsable, antes y durante el evento." },
             ].map((item, i) => (
               <R key={item.title} delay={i * 90}>
                 <div className="rounded-2xl p-6 h-full"
@@ -330,23 +524,22 @@ export default function ServiciosClient() {
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Cómo trabajamos</p>
             <h2 className="font-bold text-white leading-tight mb-16"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              De cero a evento impecable —<br />en seis pasos
+              De cero a evento impecable —<br />en cinco pasos
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 mb-14">
             {[
-              { n: "1", title: "Contáctanos", body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
-              { n: "2", title: "Levantamiento técnico", body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
+              { n: "1", title: "Contáctanos",            body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
+              { n: "2", title: "Levantamiento técnico",  body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
               { n: "3", title: "Cotización personalizada", body: "Clara, sin letra chica. Ajustamos lo que necesites." },
               { n: "4", title: "Confirmación y reserva", body: "Contrato, anticipo y la fecha bloqueada en nuestra agenda." },
-              { n: "5", title: "Coordinación previa", body: "Revisamos el programa contigo. Llegamos listos." },
-              { n: "6", title: "Tú disfrutas.", body: "Montaje, operación y cierre. Todo en nuestras manos." },
+              { n: "5", title: "Coordinación previa",    body: "Revisamos el programa contigo. Llegamos listos para ejecutar." },
             ].map((step, i) => (
               <R key={step.n} delay={i * 80}>
                 <div className="flex gap-6">
                   <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-                       style={{ background: i === 5 ? GOLD : "rgba(179,152,91,0.1)", color: i === 5 ? "#000" : GOLD, border: `1px solid ${GOLD}25` }}>
+                       style={{ background: "rgba(179,152,91,0.1)", color: GOLD, border: `1px solid ${GOLD}25` }}>
                     {step.n}
                   </div>
                   <div>
@@ -357,26 +550,46 @@ export default function ServiciosClient() {
               </R>
             ))}
           </div>
+
+          {/* Frase final — no es paso */}
+          <R delay={400}>
+            <div className="rounded-2xl px-8 py-7 text-center"
+                 style={{ background: `rgba(179,152,91,0.06)`, border: `1px solid ${GOLD}22` }}>
+              <p className="font-bold text-white" style={{ fontSize: "clamp(1.3rem,3vw,2rem)", letterSpacing: "-0.02em" }}>
+                El día de tu evento,<br />
+                <span style={{ color: GOLD }}>solo disfruta.</span>
+              </p>
+            </div>
+          </R>
         </div>
       </section>
 
       {/* ── Zonas de servicio ── */}
-      <section className="py-16 px-6 border-t border-white/[0.04]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <section className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-white/30 text-xs tracking-[0.2em] uppercase">Zonas de servicio</p>
-            <p className="text-white text-lg font-medium mt-1">
-              Querétaro · San Miguel de Allende · Ciudad de México · El Bajío
+            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
+            <h2 className="font-bold text-white leading-tight mb-4"
+                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+              Donde trabajamos
+            </h2>
+            <p className="text-white/40 text-sm mb-14">
+              Querétaro · Guanajuato · El Bajío · Ciudad de México · Puebla
             </p>
           </R>
-          <R delay={100}>
-            <a href="/presentacion/inventario"
-               className="text-[#B3985B] text-sm font-semibold tracking-wide flex items-center gap-2 hover:gap-3 transition-all">
-              Ver inventario de equipo
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </a>
+          <R delay={120}>
+            <MexicoMap />
+          </R>
+          <R delay={200}>
+            <div className="mt-10 text-center">
+              <a href="/presentacion/inventario"
+                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all">
+                Ver inventario de equipo
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
           </R>
         </div>
       </section>
@@ -393,8 +606,8 @@ export default function ServiciosClient() {
             </div>
             <p className="font-bold text-white leading-[1.08]"
                style={{ fontSize: "clamp(2rem,6vw,5rem)", letterSpacing: "-0.03em" }}>
-              Tu evento merece técnica<br />
-              <span style={{ color: GOLD }}>que no se note — solo se sienta.</span>
+              Para que mañana,<br />
+              <span style={{ color: GOLD }}>todos sigan hablando de tu evento.</span>
             </p>
           </R>
         </div>
