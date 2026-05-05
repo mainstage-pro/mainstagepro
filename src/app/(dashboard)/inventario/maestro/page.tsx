@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Modal } from "@/components/Modal";
 
 type Equipo = {
   id: string;
@@ -120,14 +121,7 @@ type FormPanelProps = {
 function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef, onClose, onImageChange, onSave }: FormPanelProps) {
   const equipoActual = panel !== "nuevo" ? equipos.find(e => e.id === panel) : null;
   return (
-    <div className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-5 mb-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[#B3985B] font-semibold text-sm">
-          {panel === "nuevo" ? "Nuevo equipo" : `Editando: ${equipoActual?.descripcion ?? ""}`}
-        </h2>
-        <button onClick={onClose} className="text-[#555] hover:text-white text-lg leading-none">✕</button>
-      </div>
-
+    <div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         {/* Col 1 — descripción + imagen */}
         <div className="space-y-3">
@@ -432,8 +426,15 @@ export default function InventarioMaestroPage() {
         </button>
       </div>
 
-      {/* Panel nuevo */}
-      {panel === "nuevo" && <FormPanel {...formPanelProps} />}
+      {/* Modal nuevo/editar */}
+      <Modal
+        open={panel !== null}
+        onClose={cerrarPanel}
+        title={panel === "nuevo" ? "Nuevo equipo" : "Editar equipo"}
+        maxWidth="max-w-5xl"
+      >
+        <FormPanel {...formPanelProps} />
+      </Modal>
 
       {/* KPIs */}
       {kpis && (
@@ -505,9 +506,6 @@ export default function InventarioMaestroPage() {
         </div>
       </div>
 
-      {/* Panel editar (encima de tabla) */}
-      {panel !== null && panel !== "nuevo" && <FormPanel {...formPanelProps} />}
-
       {/* Contenido */}
       {loading ? (
         <div className="space-y-2">
@@ -528,11 +526,10 @@ export default function InventarioMaestroPage() {
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {items.map(e => {
-                  const isEditing = panel === e.id;
                   return (
                     <div key={e.id}
-                      className={`bg-[#111] border rounded-xl p-3 flex flex-col gap-2 transition-colors cursor-pointer group ${isEditing ? "border-[#B3985B]/50" : "border-[#1a1a1a] hover:border-[#B3985B]/40"}`}
-                      onClick={() => isEditing ? cerrarPanel() : abrirEdit(e)}>
+                      className="bg-[#111] border border-[#1a1a1a] hover:border-[#B3985B]/40 rounded-xl p-3 flex flex-col gap-2 transition-colors cursor-pointer group"
+                      onClick={() => abrirEdit(e)}>
                       <div className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center">
                         {e.imagenUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -603,9 +600,8 @@ export default function InventarioMaestroPage() {
                         {items.map(e => {
                           const valorActivo = e.costoInternoEstimado ?? null;
                           const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
-                          const isEditing = panel === e.id;
                           return (
-                            <tr key={e.id} className={`transition-colors group ${isEditing ? "bg-[#0d0d0d]" : "hover:bg-[#0d0d0d]"}`}>
+                            <tr key={e.id} className="transition-colors group hover:bg-[#0d0d0d]">
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   {e.imagenUrl ? (
@@ -647,9 +643,9 @@ export default function InventarioMaestroPage() {
                               </td>
                               <td className="px-3 py-2.5">
                                 <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
-                                  <button onClick={() => isEditing ? cerrarPanel() : abrirEdit(e)}
-                                    className={`text-[10px] transition-colors ${isEditing ? "text-[#B3985B]" : "text-[#555] hover:text-[#B3985B]"}`}>
-                                    {isEditing ? "Cerrar ↑" : "Editar"}
+                                  <button onClick={() => abrirEdit(e)}
+                                    className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
+                                    Editar
                                   </button>
                                   <button onClick={() => eliminar(e)} disabled={eliminando === e.id}
                                     className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">

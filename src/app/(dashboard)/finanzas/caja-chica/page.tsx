@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -122,10 +123,10 @@ export default function CajaChicaPage() {
           <p className="text-gray-500 text-sm mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
         <button
-          onClick={() => setMostrarForm(v => !v)}
+          onClick={() => setMostrarForm(true)}
           className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
         >
-          {mostrarForm ? "Cancelar" : "+ Registrar gasto"}
+          + Registrar gasto
         </button>
       </div>
 
@@ -171,10 +172,8 @@ export default function CajaChicaPage() {
       )}
 
       {/* ── Formulario ──────────────────────────────────────────────────────── */}
-      {mostrarForm && (
-        <form onSubmit={guardar} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-white mb-2">Registrar gasto</p>
-
+      <Modal open={mostrarForm} onClose={() => setMostrarForm(false)} title="Nuevo gasto" maxWidth="max-w-lg">
+        <form onSubmit={guardar} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Concepto <span className="text-red-400">*</span></label>
@@ -250,7 +249,7 @@ export default function CajaChicaPage() {
             </button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {/* ── Historial ───────────────────────────────────────────────────────── */}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
