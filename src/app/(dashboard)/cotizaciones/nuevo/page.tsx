@@ -246,6 +246,7 @@ function CotizadorForm() {
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
   const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
+  const [zonaEvento, setZonaEvento] = useState<"LOCAL"|"BAJIO"|"NACIONAL">("LOCAL");
   const [selOcDesc, setSelOcDesc] = useState("");
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
@@ -394,6 +395,7 @@ function CotizadorForm() {
             setJornadasPlan(jp.map(j => ({ ...j, id: j.id || uid(), slots: j.slots.map(s => ({ ...s, id: s.id || uid() })) })));
           } catch { /* ignore */ }
         }
+        if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         return;
       }
 
@@ -434,6 +436,29 @@ function CotizadorForm() {
       + lineasDJ.length;
     if (totalTecnicos > 0) setLogCant(p => ({ ...p, COMIDA: String(totalTecnicos) }));
   }, [lineasOp, lineasDJ]);
+
+  // Recalcular tarifas de personal cuando cambia la zona
+  useEffect(() => {
+    if (roles.length === 0) return;
+    const bonus = zonaEvento === "BAJIO" ? 500 : zonaEvento === "NACIONAL" ? 800 : 0;
+    setLineasOp(prev => prev.map(l => {
+      const rol = roles.find(r => r.id === l.rolTecnicoId);
+      if (!rol) return l;
+      const base = getRolTarifa(rol, l.nivel, l.jornada);
+      const precio = base + bonus;
+      return { ...l, precioUnitario: precio, subtotal: precio * l.cantidad * l.dias };
+    }));
+    setJornadasPlan(prev => prev.map(j => ({
+      ...j,
+      slots: j.slots.map(s => {
+        const rol = roles.find(r => r.id === s.rolId);
+        if (!rol) return s;
+        const base = getRolTarifa(rol, s.nivel, s.jornada);
+        return { ...s, tarifa: base + bonus };
+      }),
+    })));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonaEvento, roles]);
 
   // Cargar disponibilidad cuando cambia la fecha del evento
   useEffect(() => {
@@ -876,6 +901,7 @@ function CotizadorForm() {
 
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
+      zonaEvento,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
       jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
       descuentoPatrocinioNota: dPatrocinioNotaPreservada,
@@ -1537,7 +1563,7 @@ function CotizadorForm() {
                 <SearchableSelect
                   options={equiposExternos.map(eq => ({
                     value: eq.id,
-                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
+                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
                   }))}
                   value={selExt}
                   onChange={setSelExt}
@@ -1648,6 +1674,20 @@ function CotizadorForm() {
 
           {/* ── Operación técnica ── */}
           <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
+            {/* Zona selector */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-xs text-gray-500">Zona del evento:</span>
+              {(["LOCAL", "BAJIO", "NACIONAL"] as const).map(z => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => setZonaEvento(z)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${zonaEvento === z ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B]"}`}
+                >
+                  {z === "LOCAL" ? "Local" : z === "BAJIO" ? "Bajío +$500" : "Nacional +$800"}
+                </button>
+              ))}
+            </div>
             <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
             {jornadasPlan.map((jornada, ji) => (
               <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">

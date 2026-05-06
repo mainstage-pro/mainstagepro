@@ -431,7 +431,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   const renderEquipos = cot.lineas
     .filter(l => !["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
-    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${l.descripcion}${l.marca ? ` (${l.marca})` : ""}`)
+    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${l.marca || l.descripcion}${l.marca ? ` (${l.descripcion})` : ""}`)
     .join("\n");
 
   const buildRenderMsg = () => [
@@ -854,8 +854,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                           )}
                           <div>
-                          <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.descripcion}</span>
-                          {l.marca && <span className="text-gray-500 text-xs ml-2">{l.marca}</span>}
+                          <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.marca || l.descripcion}</span>
+                          {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400 text-xs">
@@ -937,8 +937,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               {lineasExterno.map((l) => (
                 <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
                   <div>
-                    <span className="text-white">{l.descripcion}</span>
-                    {l.marca && <span className="text-gray-500 text-xs ml-2">{l.marca}</span>}
+                    <span className="text-white">{l.marca || l.descripcion}</span>
+                    {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                   </div>
                   <div className="flex items-center gap-4 text-gray-400 text-xs">
                     <span>{l.cantidad} × {l.dias}d</span>

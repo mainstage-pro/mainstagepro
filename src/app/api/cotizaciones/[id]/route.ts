@@ -71,6 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       costosTotalesEstimados, utilidadEstimada, porcentajeUtilidad,
       observaciones,
       jornadasPlan,
+      zonaEvento,
     } = body;
 
     try {
@@ -94,6 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           data: {
             notasSecciones: notasSecciones ?? null,
             jornadasPlan: jornadasPlan !== undefined ? (jornadasPlan ? JSON.stringify(jornadasPlan) : null) : undefined,
+            zonaEvento: zonaEvento ?? "LOCAL",
             nombreEvento: nombreEvento ?? null,
             tipoEvento: tipoEvento ?? null,
             tipoServicio: tipoServicio ?? null,

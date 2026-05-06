@@ -125,6 +125,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         encargadoId: cot.creadaPorId,
         nombre: cot.nombreEvento || `Proyecto ${cot.numeroCotizacion}`,
         estado: "PLANEACION",
+        zona: cot.zonaEvento ?? "LOCAL",
         tipoEvento: cot.tipoEvento || cot.trato.tipoEvento || "OTRO",
         tipoServicio: cot.tipoServicio || cot.trato.tipoServicio,
         recoleccionStatus: (cot.tipoServicio || cot.trato.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
