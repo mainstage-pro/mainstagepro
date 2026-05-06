@@ -247,6 +247,7 @@ function CotizadorForm() {
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
   const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
   const [zonaEvento, setZonaEvento] = useState<"LOCAL"|"BAJIO"|"NACIONAL">("LOCAL");
+  const [numTecnicosZona, setNumTecnicosZona] = useState(0);
   const [selOcDesc, setSelOcDesc] = useState("");
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
@@ -371,7 +372,7 @@ function CotizadorForm() {
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
           proveedorId: l.proveedorId ?? null,
         })));
-        setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
+        setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada" && l.notas !== "zona:bonus").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
           descripcion: l.descripcion, nivel: l.nivel ?? "AA", jornada: l.jornada ?? "MEDIA",
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
@@ -396,6 +397,7 @@ function CotizadorForm() {
           } catch { /* ignore */ }
         }
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
+        if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
         return;
       }
 
@@ -436,29 +438,6 @@ function CotizadorForm() {
       + lineasDJ.length;
     if (totalTecnicos > 0) setLogCant(p => ({ ...p, COMIDA: String(totalTecnicos) }));
   }, [lineasOp, lineasDJ]);
-
-  // Recalcular tarifas de personal cuando cambia la zona
-  useEffect(() => {
-    if (roles.length === 0) return;
-    const bonus = zonaEvento === "BAJIO" ? 500 : zonaEvento === "NACIONAL" ? 800 : 0;
-    setLineasOp(prev => prev.map(l => {
-      const rol = roles.find(r => r.id === l.rolTecnicoId);
-      if (!rol) return l;
-      const base = getRolTarifa(rol, l.nivel, l.jornada);
-      const precio = base + bonus;
-      return { ...l, precioUnitario: precio, subtotal: precio * l.cantidad * l.dias };
-    }));
-    setJornadasPlan(prev => prev.map(j => ({
-      ...j,
-      slots: j.slots.map(s => {
-        const rol = roles.find(r => r.id === s.rolId);
-        if (!rol) return s;
-        const base = getRolTarifa(rol, s.nivel, s.jornada);
-        return { ...s, tarifa: base + bonus };
-      }),
-    })));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zonaEvento, roles]);
 
   // Cargar disponibilidad cuando cambia la fecha del evento
   useEffect(() => {
@@ -768,7 +747,9 @@ function CotizadorForm() {
     const costoExternos = lineasExterno.reduce((s, l) => s + l.costoTotal, 0);
 
     const subtotalJornadas = jornadasPlan.flatMap(j => j.slots).reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0);
-    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0) + subtotalJornadas;
+    const zonaBonus = zonaEvento === "BAJIO" ? 500 : zonaEvento === "NACIONAL" ? 800 : 0;
+    const bonusZonaTotal = zonaBonus * numTecnicosZona;
+    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0) + subtotalJornadas + bonusZonaTotal;
     const subtotalDJ = lineasDJ.reduce((s, l) => s + l.subtotal, 0);
     const subtotalTransporte = lineasLog.filter(l => l.tipo === "TRANSPORTE").reduce((s, l) => s + l.subtotal, 0);
     const subtotalComidas = lineasLog.filter(l => l.tipo === "COMIDA").reduce((s, l) => s + l.subtotal, 0);
@@ -829,11 +810,13 @@ function CotizadorForm() {
       montoDescuentoFijo,
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
+      zonaBonus, bonusZonaTotal,
     };
   }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan, evento.diasEquipo,
     b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
     especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
-    dEspecialPreservado, dPatrocinioPreservado, descuentoFijoActivo, descuentoFijoMonto]);
+    dEspecialPreservado, dPatrocinioPreservado, descuentoFijoActivo, descuentoFijoMonto,
+    zonaEvento, numTecnicosZona]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -897,11 +880,20 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: 0,
         subtotal: l.subtotal, esExterno: false, esIncluido: false,
       })),
+      ...(resumen.bonusZonaTotal > 0 ? [{
+        tipo: "OPERACION_TECNICA",
+        descripcion: `Extra de zona ${zonaEvento === "BAJIO" ? "Bajío" : "Nacional"} · ${numTecnicosZona} técnico${numTecnicosZona !== 1 ? "s" : ""}`,
+        cantidad: numTecnicosZona, dias: 1,
+        precioUnitario: resumen.zonaBonus, costoUnitario: resumen.zonaBonus,
+        subtotal: resumen.bonusZonaTotal, esExterno: false, esIncluido: false,
+        notas: "zona:bonus",
+      }] : []),
     ];
 
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
       zonaEvento,
+      numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
       jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
       descuentoPatrocinioNota: dPatrocinioNotaPreservada,
@@ -1674,19 +1666,34 @@ function CotizadorForm() {
 
           {/* ── Operación técnica ── */}
           <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
-            {/* Zona selector */}
+            {/* Zona selector + técnicos */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-xs text-gray-500">Zona del evento:</span>
               {(["LOCAL", "BAJIO", "NACIONAL"] as const).map(z => (
                 <button
                   key={z}
                   type="button"
-                  onClick={() => setZonaEvento(z)}
+                  onClick={() => { setZonaEvento(z); if (z === "LOCAL") setNumTecnicosZona(0); }}
                   className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${zonaEvento === z ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B]"}`}
                 >
                   {z === "LOCAL" ? "Local" : z === "BAJIO" ? "Bajío +$500" : "Nacional +$800"}
                 </button>
               ))}
+              {zonaEvento !== "LOCAL" && (
+                <>
+                  <span className="text-xs text-gray-500 ml-1">·</span>
+                  <span className="text-xs text-gray-500">Técnicos:</span>
+                  <input
+                    type="number" min="0" max="50" value={numTecnicosZona || ""}
+                    onChange={e => setNumTecnicosZona(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-14 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]"
+                  />
+                  {numTecnicosZona > 0 && (
+                    <span className="text-xs text-[#B3985B]">= +{resumen.bonusZonaTotal.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+                  )}
+                </>
+              )}
             </div>
             <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
             {jornadasPlan.map((jornada, ji) => (
@@ -1806,6 +1813,16 @@ function CotizadorForm() {
             >
               + Agregar día
             </button>
+
+            {resumen.bonusZonaTotal > 0 && (
+              <div className="mt-3 flex items-center justify-between px-3 py-2.5 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-xl">
+                <div>
+                  <span className="text-[#B3985B] text-sm font-medium">Extra de zona {zonaEvento === "BAJIO" ? "Bajío" : "Nacional"}</span>
+                  <span className="text-gray-500 text-xs ml-2">{numTecnicosZona} técnico{numTecnicosZona !== 1 ? "s" : ""} × {resumen.zonaBonus.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+                </div>
+                <span className="text-white font-semibold text-sm">{resumen.bonusZonaTotal.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+              </div>
+            )}
           </Seccion>
 
           {/* ── Servicio de DJ ── */}

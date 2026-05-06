@@ -310,6 +310,7 @@ model Cotizacion {
   planPagos           String?  // JSON: esquema de pagos (porcentajes y fechas para CxC)
   jornadasPlan        String?  // JSON: plan operativo de jornadas por fecha (JornadaPlan[])
   zonaEvento          String   @default("LOCAL") // LOCAL | BAJIO | NACIONAL — afecta bonus de personal
+  numTecnicosZona     Int      @default(0)
   observaciones       String?
   terminosComerciales String?
   vigenciaDias        Int      @default(30)

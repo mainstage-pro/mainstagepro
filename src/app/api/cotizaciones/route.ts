@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       jornadasPlan = null,
       incluirChofer = false,
       zonaEvento = "LOCAL",
+      numTecnicosZona = 0,
       ...campos
     } = body;
 
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
         notasSecciones: notasSecciones ?? null,
         jornadasPlan: jornadasPlan ? JSON.stringify(jornadasPlan) : null,
         zonaEvento,
+        numTecnicosZona,
         nombreEvento: campos.nombreEvento || null,
         tipoEvento: campos.tipoEvento || null,
         tipoServicio: campos.tipoServicio || null,

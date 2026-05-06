@@ -72,6 +72,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       observaciones,
       jornadasPlan,
       zonaEvento,
+      numTecnicosZona,
     } = body;
 
     try {
@@ -96,6 +97,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             notasSecciones: notasSecciones ?? null,
             jornadasPlan: jornadasPlan !== undefined ? (jornadasPlan ? JSON.stringify(jornadasPlan) : null) : undefined,
             zonaEvento: zonaEvento ?? "LOCAL",
+            numTecnicosZona: numTecnicosZona ?? 0,
             nombreEvento: nombreEvento ?? null,
             tipoEvento: tipoEvento ?? null,
             tipoServicio: tipoServicio ?? null,
