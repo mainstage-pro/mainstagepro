@@ -404,11 +404,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
   const lineasOp = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
   const lineasLog = cot.lineas.filter((l) => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
+  const lineasOcasional = cot.lineas.filter((l) => l.tipo === "OTRO");
 
   const subtotalEquipo = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
   const subtotalExterno = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
   const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
   const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
+  const subtotalOcasional = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
 
   // Notas por sección (guardadas en notasSecciones JSON)
   const notasSecciones: Record<string, string> = cot.notasSecciones
@@ -992,6 +994,26 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
                 <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal logística</span>
                 <span className="text-white font-bold">{formatCurrency(subtotalLog)}</span>
+              </div>
+            </div>
+          )}
+
+          {lineasOcasional.length > 0 && (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos y conceptos adicionales</h3>
+              </div>
+              {lineasOcasional.map((l) => (
+                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                  <span className="text-gray-300">{l.descripcion}
+                    <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
+                  </span>
+                  <span className="text-white font-medium">{formatCurrency(l.subtotal)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal adicionales</span>
+                <span className="text-white font-bold">{formatCurrency(subtotalOcasional)}</span>
               </div>
             </div>
           )}
