@@ -62,6 +62,7 @@ interface Proyecto {
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
+  equiposRiderExtra: string | null;
   zona: string;
   protocoloSalida: string | null;
   protocoloEntrada: string | null;
@@ -777,6 +778,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (d.proyecto) setProyecto(prev => prev ? { ...prev, proveedoresRenta: d.proyecto.proveedoresRenta } : prev);
   }
 
+  // Equipos extra al rider (fuera de cotización)
+  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean };
+  const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
+  const [addingEquipoExtra, setAddingEquipoExtra] = useState(false);
+  const [newExtraDesc, setNewExtraDesc] = useState("");
+  const [newExtraCant, setNewExtraCant] = useState(1);
+  const [newExtraNotas, setNewExtraNotas] = useState("");
+
+  async function saveEquiposRiderExtra(data: EquipoRiderExtra[]) {
+    setEquiposRiderExtra(data);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ equiposRiderExtra: JSON.stringify(data) }),
+    });
+  }
+
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
   const [addingNota, setAddingNota] = useState(false);
@@ -871,6 +888,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setProyecto(p);
       setRiderEquipos(p.equipos ?? []);
       try { setProveedoresRentaData(p.proveedoresRenta ? JSON.parse(p.proveedoresRenta) : []); } catch { /* ignore */ }
+      try { setEquiposRiderExtra(p.equiposRiderExtra ? JSON.parse(p.equiposRiderExtra) : []); } catch { /* ignore */ }
       setNotasPortal(p.notasPortal ?? "");
       try {
         const resp = p.responsables ? JSON.parse(p.responsables) : {};
@@ -4026,6 +4044,79 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
 
+
+            {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
+            <SectionDivider label="Equipos adicionales al rider" />
+            <div className="space-y-3">
+              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original.</p>
+
+              {equiposRiderExtra.length > 0 && (
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  {equiposRiderExtra.map(eq => (
+                    <div key={eq.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0 group">
+                      <input
+                        type="checkbox"
+                        checked={eq.completado}
+                        onChange={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
+                        className="w-4 h-4 rounded accent-[#B3985B] shrink-0 cursor-pointer"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm truncate ${eq.completado ? "line-through text-gray-600" : "text-white"}`}>{eq.descripcion}</p>
+                        {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
+                      </div>
+                      <span className="text-gray-500 text-xs shrink-0">×{eq.cantidad}</span>
+                      <button
+                        onClick={() => saveEquiposRiderExtra(equiposRiderExtra.filter(e => e.id !== eq.id))}
+                        className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-sm leading-none shrink-0"
+                      >×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {addingEquipoExtra ? (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      value={newExtraDesc}
+                      onChange={e => setNewExtraDesc(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Escape") { setAddingEquipoExtra(false); setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas(""); }}}
+                      placeholder="Nombre del equipo *"
+                      className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                    />
+                    <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2">
+                      <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                      <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                      <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                    </div>
+                  </div>
+                  <input
+                    value={newExtraNotas}
+                    onChange={e => setNewExtraNotas(e.target.value)}
+                    placeholder="Notas opcionales (proveedor, condición, etc.)"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={!newExtraDesc.trim()}
+                      onClick={() => {
+                        if (!newExtraDesc.trim()) return;
+                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion: newExtraDesc.trim(), cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false };
+                        saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
+                        setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas("");
+                      }}
+                      className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
+                    >Agregar</button>
+                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setAddingEquipoExtra(true)} className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9ac6a] transition-colors">
+                  <span className="text-base leading-none">+</span> Agregar equipo extra
+                </button>
+              )}
+            </div>
 
             {/* ═══════ ZONA 1.5: PROVEEDORES DE SUBARRIENDO ═══════ */}
             <SectionDivider label="Proveedores de subarriendo" />
