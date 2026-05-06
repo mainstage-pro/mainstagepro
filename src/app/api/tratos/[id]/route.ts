@@ -106,6 +106,43 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   const trato = await prisma.trato.update({ where: { id }, data });
+
+  // ── Cascade a cotizaciones y proyectos ──────────────────────────────────────
+  const cotUpdate: Record<string, unknown> = {};
+  const proyUpdate: Record<string, unknown> = {};
+
+  if ("nombreEvento" in body && body.nombreEvento) {
+    cotUpdate.nombreEvento = body.nombreEvento;
+    proyUpdate.nombre = body.nombreEvento;
+  }
+  if ("fechaEventoEstimada" in body && body.fechaEventoEstimada) {
+    cotUpdate.fechaEvento = new Date(body.fechaEventoEstimada);
+    proyUpdate.fechaEvento = new Date(body.fechaEventoEstimada);
+  }
+  if ("tipoEvento" in body && body.tipoEvento) {
+    cotUpdate.tipoEvento = body.tipoEvento;
+    proyUpdate.tipoEvento = body.tipoEvento;
+  }
+  if ("tipoServicio" in body && body.tipoServicio) {
+    cotUpdate.tipoServicio = body.tipoServicio;
+    proyUpdate.tipoServicio = body.tipoServicio;
+  }
+  if ("lugarEstimado" in body && body.lugarEstimado) {
+    cotUpdate.lugarEvento = body.lugarEstimado;
+    proyUpdate.lugarEvento = body.lugarEstimado;
+  }
+
+  if (Object.keys(cotUpdate).length > 0) {
+    await prisma.cotizacion.updateMany({ where: { tratoId: id }, data: cotUpdate });
+  }
+  if (Object.keys(proyUpdate).length > 0) {
+    await prisma.proyecto.updateMany({
+      where: { tratoId: id, estado: { not: "COMPLETADO" } },
+      data: proyUpdate,
+    });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   return NextResponse.json({ trato });
 }
 
