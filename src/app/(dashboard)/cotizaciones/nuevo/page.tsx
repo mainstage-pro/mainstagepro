@@ -1386,7 +1386,7 @@ function CotizadorForm() {
                           <div className="flex items-center gap-2 px-3 py-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-white text-sm truncate">{l.descripcion}</p>
+                                <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
                                 {esPrecioEspecialActivo && (
                                   <span
                                     title={precioOriginalCliente != null ? `Precio especial (lista original: ${formatCurrency(precioOriginalCliente)})` : "Precio especial de este cliente"}
@@ -1398,7 +1398,7 @@ function CotizadorForm() {
                                   <span title="Precio modificado manualmente en esta cotización" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
                                 )}
                               </div>
-                              {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
+                              {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                             </div>
                             <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
                             <NumSelect value={l.dias} onChange={v => updateEquipo(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
@@ -1588,8 +1588,8 @@ function CotizadorForm() {
                 {lineasExterno.map(l => (
                   <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm truncate">{l.descripcion}</p>
-                      {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
+                      <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                      {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
                     <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
