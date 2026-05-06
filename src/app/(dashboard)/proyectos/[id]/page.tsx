@@ -782,7 +782,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean };
   const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
   const [addingEquipoExtra, setAddingEquipoExtra] = useState(false);
-  const [newExtraDesc, setNewExtraDesc] = useState("");
+  const [newExtraEquipoId, setNewExtraEquipoId] = useState("");
   const [newExtraCant, setNewExtraCant] = useState(1);
   const [newExtraNotas, setNewExtraNotas] = useState("");
 
@@ -4076,16 +4076,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               {addingEquipoExtra ? (
                 <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-                  <div className="flex gap-2">
-                    <input
-                      autoFocus
-                      value={newExtraDesc}
-                      onChange={e => setNewExtraDesc(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Escape") { setAddingEquipoExtra(false); setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas(""); }}}
-                      placeholder="Nombre del equipo *"
-                      className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
-                    />
-                    <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2">
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <Combobox
+                        value={newExtraEquipoId}
+                        onChange={v => setNewExtraEquipoId(v)}
+                        options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}` }))]}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
                       <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
                       <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
                       <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
@@ -4099,16 +4099,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   />
                   <div className="flex gap-2">
                     <button
-                      disabled={!newExtraDesc.trim()}
+                      disabled={!newExtraEquipoId}
                       onClick={() => {
-                        if (!newExtraDesc.trim()) return;
-                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion: newExtraDesc.trim(), cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false };
+                        const eq = equipoCatalogo.find(e => e.id === newExtraEquipoId);
+                        if (!eq) return;
+                        const descripcion = `${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}`;
+                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion, cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false };
                         saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
-                        setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas("");
+                        setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas("");
                       }}
                       className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
                     >Agregar</button>
-                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraDesc(""); setNewExtraCant(1); setNewExtraNotas(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
                   </div>
                 </div>
               ) : (
