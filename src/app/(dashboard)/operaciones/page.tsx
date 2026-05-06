@@ -402,6 +402,18 @@ export default function OperacionesPage() {
       return;
     }
 
+    // In "hoy" view, if fecha is moved to tomorrow or later (or cleared), remove from list
+    if (vista === "hoy" && "fecha" in patch) {
+      const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+      const nuevaFecha = patch.fecha as string | null;
+      if (!nuevaFecha || nuevaFecha > hoyCST) {
+        const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+        setTareas(rm);
+        if (selectedId === id) setSelectedId(null);
+        return;
+      }
+    }
+
     const upd = (arr: TareaItem[]) => arr.map(t => {
       if (t.id !== id) return t;
       const next = { ...t };
