@@ -8,33 +8,33 @@ type EventoTipo = "musical" | "social" | "empresarial";
 
 const CONFIG = {
   musical: {
-    label:    "Producción para eventos musicales",
+    label:    "Producción técnica para eventos musicales",
     hero:     "/images/presentacion/musicales/Musicales-016.jpg",
-    headline: "El show en punto.\nDesde el soundcheck.",
-    sub:      "Rider cubierto, operadores con experiencia en vivo, producción que no interrumpe.",
+    headline: "Tu show en punto.\nNosotros lo hacemos posible.",
+    sub:      "Desde el rider hasta el último beat — audio, luz y video operados por gente que vive el escenario.",
     insights: [
       {
-        title: "Antes de que llegue el artista",
-        body:  "Rider verificado, líneas de señal probadas, booth calibrado. El soundcheck empieza cuando el artista baja, no cuando nosotros terminamos de conectar cables.",
+        title: "El rider cubierto antes de que llegue el artista",
+        body:  "Revisamos cada punto del rider con anticipación. Cuando el artista baja del camión, el soundcheck empieza de inmediato. No hay cables que conectar de último momento ni equipo incorrecto que retrasar la prueba.",
       },
       {
-        title: "Audio que llega a todo el venue",
-        body:  "Cobertura uniforme de frente a fondo — sin puntos muertos, sin distorsión, con el nivel correcto en monitores de tarima.",
+        title: "Audio que llega donde tiene que llegar",
+        body:  "Cobertura uniforme de frente a fondo, sin puntos muertos ni picos inesperados. El técnico de FOH conoce el sistema antes de la prueba de sonido, y los monitores de tarima están calibrados para el artista.",
       },
       {
-        title: "Luz y video que siguen al show",
-        body:  "Cues programadas por escena. Cada cambio coordinado con el ritmo del set, no reaccionando a él.",
+        title: "Luz y video que van con la música, no detrás",
+        body:  "No reaccionamos al show — lo seguimos. Cues programadas por escena, cambios coordinados con el set. Un operador dedicado a cada área para que audio, luz y video lleguen juntos.",
       },
       {
-        title: "Operadores que conocen el escenario",
-        body:  "Gente que ha estado en tarima, que entiende cómo fluye un show en vivo y que resuelve en silencio cuando algo cambia.",
+        title: "Rentamos, producimos o dirigimos — lo que necesita tu evento",
+        body:  "Si ya tienes parte del equipo, rentamos lo que falta y lo integramos. Si necesitas equipo y operadores, los llevamos juntos. Si el evento necesita coordinación completa, ponemos un director técnico al frente.",
       },
     ],
     servicios: [
-      { cat: "Audio",        detail: "Line arrays, subwoofers, monitores de tarima. Consola operada en vivo durante todo el show." },
-      { cat: "Iluminación",  detail: "Cabezas móviles, beams, strobes y efectos especiales. Programados y ejecutados desde consola." },
-      { cat: "DJ Setup",     detail: "CDJs, mezcladora profesional, booth de referencia. El rider cubierto antes del soundcheck." },
-      { cat: "Video / LED",  detail: "Pantallas bien posicionadas, procesador de señal, resolución calibrada al venue." },
+      { cat: "Renta de equipo",      detail: "Line arrays, subwoofers, consolas, cabezas móviles, pantallas LED. Equipo profesional disponible con o sin operador para completar o montar tu producción desde cero." },
+      { cat: "Producción técnica",   detail: "Operadores de audio, iluminación y video en el evento. Montaje, prueba de sonido y operación en vivo durante todo el show, de principio a fin." },
+      { cat: "Dirección técnica",    detail: "Un director de producción que coordina cada área: rider, cues de luz, señal de video y comunicación directa con el artista y su equipo." },
+      { cat: "DJ Setup completo",    detail: "CDJs, mezcladora profesional, booth de referencia y sistema de monitoreo. Todo verificado y en punto antes del soundcheck." },
     ],
     tipos:   "Festivales · Conciertos · DJ Sets · Showcases · Presentaciones en vivo · Raves · Fiestas privadas",
     gallery: [
@@ -47,38 +47,38 @@ const CONFIG = {
       { src: "/images/presentacion/musicales/DSC07491.jpg",                         caption: "En vivo · Operación técnica" },
       { src: "/images/presentacion/musicales/Musicales-126.jpg",                    caption: "Show · Producción audiovisual" },
     ],
-    cta:    "Cuéntanos sobre el artista y el venue.",
-    ctaSub: "Propuesta técnica en menos de 24 horas.",
+    cta:    "Háblanos de tu evento",
+    ctaSub: "Dinos el artista, el venue y la fecha. Propuesta técnica en menos de 24 horas.",
   },
 
   social: {
-    label:    "Producción para eventos sociales",
+    label:    "Producción técnica para eventos sociales",
     hero:     "/images/presentacion/sociales/s-boda-elegante.jpg",
-    headline: "Los momentos que importan,\ncon la atmósfera que merecen.",
-    sub:      "Brindis, primer baile, pista — cada instante en su punto.",
+    headline: "Que los momentos\nsuenen y se vean perfectos.",
+    sub:      "Primer baile, brindis, pista — cada instante con el sonido y la luz que merece, sin que notes que estamos ahí.",
     insights: [
       {
-        title: "Llegamos preparados para cada momento",
-        body:  "Primer baile, vals, brindis, pastel — revisamos el programa contigo. No hay cues que improvisar el día del evento.",
+        title: "Coordinamos el programa contigo desde antes",
+        body:  "Primer baile, vals, brindis, entrada, pastel — revisamos cada momento con anticipación. El día del evento no hay nada que improvisar: cada transición ya está planeada y el equipo sabe qué viene.",
       },
       {
         title: "El brindis se escucha en cada mesa",
-        body:  "Micrófonos inalámbricos operados por un técnico dedicado. Sin retroalimentación, con volumen uniforme en todo el salón.",
+        body:  "Micrófonos inalámbricos manejados por un técnico dedicado. Sin retroalimentación, sin volumen disparejo. Cada palabra del discurso llega clara a todos en el salón, sin que nadie tenga que repetir.",
       },
       {
-        title: "Luz que transita sin romper el ambiente",
-        body:  "De la cena a la pista, los cambios son graduales y naturales. Programados con anticipación, ejecutados en el momento exacto.",
+        title: "La luz cambia sin que nadie lo note",
+        body:  "De la cena a la pista, los cambios de ambiente son graduales y suaves. No hay flashazos de más ni oscuridad de repente — solo la transición correcta en el momento correcto, programada con anticipación.",
       },
       {
-        title: "En segundo plano, siempre",
-        body:  "Coordinamos con venue, decoración y fotógrafo. El protagonismo es de los festejados — no de la producción.",
+        title: "Coordinamos con todos sin estorbar a nadie",
+        body:  "Trabajamos alineados con el venue, el fotógrafo y el decorador. Llegamos, montamos con orden y nos hacemos a un lado. El protagonismo es de los festejados, no de la producción.",
       },
     ],
     servicios: [
-      { cat: "Audio",             detail: "Micrófonos inalámbricos, sistema de pista y operación técnica durante todo el evento." },
-      { cat: "Iluminación",       detail: "Pares LED, cabezas móviles y efectos programados para cada momento de la noche." },
-      { cat: "DJ Setup",          detail: "Tornamesas, mezcladora y señal verificados antes de los primeros invitados." },
-      { cat: "Pantallas y video", detail: "Para ceremonia, galería de fotos en vivo o contenido especial del evento." },
+      { cat: "Renta de equipo",      detail: "Sistema de audio para salón o exterior, pantallas para slideshow o ceremonia, iluminación de ambiente. Disponible con o sin operador según lo que necesites." },
+      { cat: "Producción técnica",   detail: "Operadores de audio e iluminación durante todo el evento. Micrófonos abiertos en el momento correcto, sistema de pista listo para cuando empiece el baile." },
+      { cat: "Dirección técnica",    detail: "Un coordinador técnico que planea cada cue con el organizador y los ejecuta en el momento exacto — primer baile, vals, brindis, apertura de pista, cierre." },
+      { cat: "DJ Setup",             detail: "Tornamesas, mezcladora y sistema de monitoreo para el DJ. Todo verificado antes de los primeros invitados para que el arranque sea limpio." },
     ],
     tipos:   "Bodas · XV Años · Cocteles · Cumpleaños · Graduaciones · Aniversarios · Fiestas privadas",
     gallery: [
@@ -89,40 +89,40 @@ const CONFIG = {
       { src: "/images/presentacion/sociales/s-boda-elegante.jpg",      caption: "Boda elegante · Producción exterior" },
       { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg",     caption: "Vista aérea · Iluminación completa" },
     ],
-    cta:    "Cuéntanos sobre tu evento.",
-    ctaSub: "Fecha, venue y lo que tienes en mente. Respondemos rápido.",
+    cta:    "Cuéntanos tu fecha",
+    ctaSub: "Venue, número de invitados y lo que tienes en mente. Te respondemos con disponibilidad y propuesta.",
   },
 
   empresarial: {
-    label:    "Producción para eventos empresariales",
+    label:    "Producción técnica para eventos corporativos",
     hero:     "/images/presentacion/empresariales/e-auditorio.jpg",
-    headline: "La técnica que no falla\nes parte del mensaje.",
-    sub:      "Audio claro, pantallas en punto, producción sin interrupciones.",
+    headline: "La técnica invisible\nque hace ver bien a tu empresa.",
+    sub:      "Audio claro para cada presentador, pantallas que no fallan, producción que no interrumpe.",
     insights: [
       {
-        title: "Un fallo técnico no es solo un problema técnico",
-        body:  "En un evento corporativo, la producción forma parte de la imagen de tu empresa. Operamos con verificación previa y respaldo para que no haya imprevistos visibles.",
+        title: "Un fallo técnico en tu evento no es solo un problema técnico",
+        body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre, una laptop que no conecta o una pantalla con resolución incorrecta deja una impresión que cuesta. Llegamos antes para verificar todo y evitarlo.",
       },
       {
         title: "La laptop del presentador ya la probamos",
-        body:  "Conexiones verificadas, resolución calibrada, señal de video estabilizada antes del evento. Probamos con el equipo real de quien presenta.",
+        body:  "Conexiones verificadas, resolución calibrada, señal de video estabilizada antes de que lleguen los invitados. Hacemos la prueba con el equipo real de quien va a presentar, no con el nuestro.",
       },
       {
-        title: "Integrados con tu coordinador o agencia",
-        body:  "Si ya tienes equipo de producción, nos alineamos. Sin duplicar trabajo, un solo punto de contacto para todo lo técnico.",
+        title: "Nos integramos con tu equipo sin complicar las cosas",
+        body:  "Si ya tienes coordinador de evento o agencia, nos alineamos con ellos. Un solo punto de contacto para todo lo técnico, sin duplicar comunicaciones ni crear confusión el día del evento.",
       },
       {
-        title: "Presencia discreta, montaje puntual",
-        body:  "Llegamos antes de tiempo, montamos con orden. Durante el evento somos parte del equipo, no del escenario.",
+        title: "Montaje puntual, presencia discreta",
+        body:  "Llegamos antes de tiempo y montamos con orden. Durante el evento operamos en silencio, resolvemos sin llamar la atención y desmontamos de forma ordenada al cierre. Nadie nota que estamos ahí hasta que algo necesita atención.",
       },
     ],
     servicios: [
-      { cat: "Audio y micrófonos",  detail: "Solapa, headset o de mano — operados en consola durante toda la conferencia." },
-      { cat: "Iluminación",         detail: "Ambiente profesional para conferencias, lanzamientos, cenas y premiaciones." },
-      { cat: "Pantallas y video",   detail: "HDMI, streaming, content display — probado con el presentador antes del evento." },
-      { cat: "Networking y cierre", detail: "Música de ambiente o DJ para el cierre. Misma calidad técnica, mismo nivel de atención." },
+      { cat: "Renta de equipo",              detail: "Micrófonos, pantallas, proyectores, sistemas de audio para sala o auditorio. Equipo de conferencia disponible con o sin operador, integrado a tu setup existente." },
+      { cat: "Producción técnica",           detail: "Operadores de audio y video durante toda la conferencia o evento. Micrófono abierto en el momento correcto, transiciones de presentación sin pausas ni interrupciones." },
+      { cat: "Dirección técnica",            detail: "Un director que coordina todo lo técnico con tu equipo de producción: cues, guión del evento, señales de video y apertura y cierre de micrófonos en tiempo real." },
+      { cat: "Streaming y networking",       detail: "Señal de video para transmisión en vivo o grabación del evento. Música de ambiente profesional para el área de networking o el cierre de la noche." },
     ],
-    tipos:   "Conferencias · Congresos · Lanzamientos · Activaciones · Networking · Inauguraciones · Fiestas corporativas",
+    tipos:   "Conferencias · Congresos · Lanzamientos · Activaciones · Networking · Premiaciones · Inauguraciones",
     gallery: [
       { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Experiencias que generan impacto" },
       { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
@@ -131,8 +131,8 @@ const CONFIG = {
       { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",    caption: "Inauguración · Iluminación arquitectónica" },
       { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección artística · Evento exclusivo" },
     ],
-    cta:    "Cuéntanos sobre el evento y el espacio.",
-    ctaSub: "Propuesta técnica a la medida en 24 horas.",
+    cta:    "Platícanos sobre el evento",
+    ctaSub: "Espacio, número de presentadores y tipo de evento. Propuesta técnica a la medida en 24 horas.",
   },
 } satisfies Record<EventoTipo, {
   label: string; hero: string; headline: string; sub: string;
