@@ -52,6 +52,7 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     items: [
       { key: "dashboard",      label: "Dashboard CEO",               desc: "Panel principal y métricas" },
       { key: "operaciones",    label: "Gestión operativa",           desc: "Visible globalmente para todos" },
+      { key: "reportes",       label: "Reportes semanales",          desc: "Reportes y seguimiento semanal" },
       { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas" },
       { key: "calendario",     label: "Calendario de eventos",       desc: "Vista y reportes de eventos" },
     ],
@@ -59,22 +60,24 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
   {
     seccion: "VENTAS",
     items: [
-      { key: "crm-clientes",  label: "Clientes",               desc: "Base de datos de clientes" },
-      { key: "crm-tratos",    label: "Tratos",                  desc: "Pipeline de oportunidades" },
-      { key: "cotizaciones",              label: "Cotizaciones",            desc: "Crear y gestionar cotizaciones" },
-      { key: "cotizaciones-plantillas",  label: "Plantillas de cotización", desc: "Plantillas base para crear cotizaciones" },
-      { key: "comisiones",               label: "Comisiones / Ventas",     desc: "Pipeline, metas, vendedores, reportes" },
+      { key: "crm-clientes",            label: "Clientes",                 desc: "Base de datos de clientes" },
+      { key: "prospectos",              label: "Prospectos en frío",       desc: "Prospección y seguimiento outbound" },
+      { key: "crm-tratos",              label: "Tratos",                   desc: "Pipeline de oportunidades" },
+      { key: "cotizaciones",            label: "Cotizaciones",             desc: "Crear y gestionar cotizaciones" },
+      { key: "cotizaciones-plantillas", label: "Plantillas de cotización", desc: "Plantillas base para crear cotizaciones" },
+      { key: "comisiones",              label: "Comisiones / Ventas",      desc: "Pipeline, metas, vendedores, reportes" },
     ],
   },
   {
     seccion: "PRODUCCIÓN",
     items: [
-      { key: "proyectos",     label: "Proyectos",                          desc: "Gestión de eventos y proyectos" },
-      { key: "inventario",    label: "Inventario",                         desc: "Equipos, disponibilidad, recolecciones, mantenimiento" },
-      { key: "inv-maestro",   label: "Inventario maestro",                 desc: "Precios, costos y valor del activo" },
-      { key: "catalogo",      label: "Catálogo (proveedores y técnicos)",  desc: "Proveedores, técnicos freelance, venues" },
-      { key: "bd-proveedores",label: "Proveedores",                        desc: "Catálogo de proveedores de equipo" },
-      { key: "bd-tecnicos",   label: "Técnicos freelance",                 desc: "Catálogo de técnicos" },
+      { key: "proyectos",      label: "Proyectos",                          desc: "Gestión de eventos y proyectos" },
+      { key: "ordenes-compra", label: "Órdenes de compra",                  desc: "Órdenes de compra a proveedores" },
+      { key: "inventario",     label: "Inventario",                         desc: "Equipos, disponibilidad, recolecciones, mantenimiento" },
+      { key: "inv-maestro",    label: "Inventario maestro",                 desc: "Precios, costos y valor del activo" },
+      { key: "catalogo",       label: "Catálogo (proveedores y técnicos)",  desc: "Proveedores, técnicos freelance, venues" },
+      { key: "bd-proveedores", label: "Proveedores",                        desc: "Catálogo de proveedores de equipo" },
+      { key: "bd-tecnicos",    label: "Técnicos freelance",                 desc: "Catálogo de técnicos" },
     ],
   },
   {
@@ -103,7 +106,7 @@ const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario"],
   MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones"],
   VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario"],
-  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "bd-roles", "calendario"],
+  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "tabulador", "calendario"],
 };
 
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };
