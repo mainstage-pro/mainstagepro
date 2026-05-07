@@ -779,12 +779,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // Equipos extra al rider (fuera de cotización)
-  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean };
+  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[] };
   const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
   const [addingEquipoExtra, setAddingEquipoExtra] = useState(false);
   const [newExtraEquipoId, setNewExtraEquipoId] = useState("");
   const [newExtraCant, setNewExtraCant] = useState(1);
   const [newExtraNotas, setNewExtraNotas] = useState("");
+  const [extraEditId, setExtraEditId] = useState<string | null>(null);
+  const [extraEditDesc, setExtraEditDesc] = useState("");
+  const [extraEditCant, setExtraEditCant] = useState(1);
+  const [extraEditNotas, setExtraEditNotas] = useState("");
+  const [extraAddMode, setExtraAddMode] = useState<"inventario" | "manual">("inventario");
+  const [newExtraManualDesc, setNewExtraManualDesc] = useState("");
+  const [extraAccOpen, setExtraAccOpen] = useState<string | null>(null);
+  const [extraAccNombre, setExtraAccNombre] = useState("");
+  const [extraAccCant, setExtraAccCant] = useState(1);
 
   async function saveEquiposRiderExtra(data: EquipoRiderExtra[]) {
     setEquiposRiderExtra(data);
@@ -4048,27 +4057,128 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
             <SectionDivider label="Equipos adicionales al rider" />
             <div className="space-y-3">
-              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original.</p>
+              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. La disponibilidad no se verifica aquí.</p>
 
               {equiposRiderExtra.length > 0 && (
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
                   {equiposRiderExtra.map(eq => (
-                    <div key={eq.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] last:border-0 group">
-                      <input
-                        type="checkbox"
-                        checked={eq.completado}
-                        onChange={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
-                        className="w-4 h-4 rounded accent-[#B3985B] shrink-0 cursor-pointer"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm truncate ${eq.completado ? "line-through text-gray-600" : "text-white"}`}>{eq.descripcion}</p>
-                        {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
-                      </div>
-                      <span className="text-gray-500 text-xs shrink-0">×{eq.cantidad}</span>
-                      <button
-                        onClick={() => saveEquiposRiderExtra(equiposRiderExtra.filter(e => e.id !== eq.id))}
-                        className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-sm leading-none shrink-0"
-                      >×</button>
+                    <div key={eq.id} className="px-4 py-3">
+                      {extraEditId === eq.id ? (
+                        /* ── Modo edición inline ── */
+                        <div className="space-y-2">
+                          <input
+                            value={extraEditDesc}
+                            onChange={e => setExtraEditDesc(e.target.value)}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                            placeholder="Descripción del equipo"
+                          />
+                          <div className="flex gap-2">
+                            <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 shrink-0">
+                              <button onClick={() => setExtraEditCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">−</button>
+                              <span className="text-white text-sm w-6 text-center">{extraEditCant}</span>
+                              <button onClick={() => setExtraEditCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">+</button>
+                            </div>
+                            <input
+                              value={extraEditNotas}
+                              onChange={e => setExtraEditNotas(e.target.value)}
+                              placeholder="Notas opcionales"
+                              className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                if (!extraEditDesc.trim()) return;
+                                saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, descripcion: extraEditDesc.trim(), cantidad: extraEditCant, notas: extraEditNotas.trim() } : e));
+                                setExtraEditId(null);
+                              }}
+                              className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded transition-colors"
+                            >Guardar</button>
+                            <button onClick={() => setExtraEditId(null)} className="px-3 py-1.5 bg-[#1a1a1a] text-gray-400 text-xs rounded transition-colors">Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ── Vista normal ── */
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={eq.completado}
+                              onChange={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
+                              className="w-4 h-4 rounded accent-[#B3985B] shrink-0 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm truncate ${eq.completado ? "line-through text-gray-600" : "text-white"}`}>{eq.descripcion}</p>
+                              {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
+                            </div>
+                            <span className="text-gray-500 text-xs shrink-0">×{eq.cantidad}</span>
+                            <button
+                              onClick={() => { setExtraEditId(eq.id); setExtraEditDesc(eq.descripcion); setExtraEditCant(eq.cantidad); setExtraEditNotas(eq.notas); }}
+                              className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors shrink-0"
+                            >Editar</button>
+                            <button
+                              onClick={() => saveEquiposRiderExtra(equiposRiderExtra.filter(e => e.id !== eq.id))}
+                              className="text-xs text-gray-600 hover:text-red-500 transition-colors shrink-0"
+                            >Eliminar</button>
+                          </div>
+
+                          {/* Accesorios del item extra */}
+                          {(eq.accesorios ?? []).length > 0 && (
+                            <div className="mt-2 ml-7 space-y-1">
+                              {(eq.accesorios ?? []).map(a => (
+                                <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span className="w-3 h-3 border border-[#333] rounded-sm shrink-0" />
+                                  <span className="flex-1">{a.nombre}</span>
+                                  {a.cantidad > 1 && <span className="text-[#B3985B]">×{a.cantidad}</span>}
+                                  <button
+                                    onClick={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, accesorios: (e.accesorios ?? []).filter(x => x.id !== a.id) } : e))}
+                                    className="text-[#333] hover:text-red-500 leading-none"
+                                  >×</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Agregar accesorio a este item */}
+                          {extraAccOpen === eq.id ? (
+                            <div className="mt-2 ml-7 flex items-center gap-2">
+                              <input
+                                value={extraAccNombre}
+                                onChange={e => setExtraAccNombre(e.target.value)}
+                                placeholder="Nombre del accesorio"
+                                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && extraAccNombre.trim()) {
+                                    const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
+                                    saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                    setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
+                                  }
+                                }}
+                              />
+                              <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded px-1.5 py-1 shrink-0">
+                                <button onClick={() => setExtraAccCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-4 text-center text-base leading-none">−</button>
+                                <span className="text-white text-xs w-4 text-center">{extraAccCant}</span>
+                                <button onClick={() => setExtraAccCant(v => v + 1)} className="text-gray-500 hover:text-white w-4 text-center text-base leading-none">+</button>
+                              </div>
+                              <button
+                                disabled={!extraAccNombre.trim()}
+                                onClick={() => {
+                                  const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
+                                  saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                  setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
+                                }}
+                                className="px-2 py-1 bg-[#B3985B] text-black text-xs font-semibold rounded disabled:opacity-40"
+                              >+</button>
+                              <button onClick={() => { setExtraAccOpen(null); setExtraAccNombre(""); setExtraAccCant(1); }} className="text-gray-600 hover:text-white text-xs">×</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setExtraAccOpen(eq.id); setExtraAccNombre(""); setExtraAccCant(1); }}
+                              className="mt-1.5 ml-7 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors"
+                            >+ accesorio</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -4076,21 +4186,52 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               {addingEquipoExtra ? (
                 <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-                  <div className="flex gap-2 items-start">
-                    <div className="flex-1">
-                      <Combobox
-                        value={newExtraEquipoId}
-                        onChange={v => setNewExtraEquipoId(v)}
-                        options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}` }))]}
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
-                      />
-                    </div>
-                    <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
-                      <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
-                      <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
-                      <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
-                    </div>
+                  {/* Toggle inventario / manual */}
+                  <div className="flex gap-1 bg-[#111] rounded-lg p-0.5 w-fit">
+                    {(["inventario", "manual"] as const).map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setExtraAddMode(mode)}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${extraAddMode === mode ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}
+                      >
+                        {mode === "inventario" ? "Del inventario" : "Manual"}
+                      </button>
+                    ))}
                   </div>
+
+                  {extraAddMode === "inventario" ? (
+                    <div className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <Combobox
+                          value={newExtraEquipoId}
+                          onChange={v => setNewExtraEquipoId(v)}
+                          options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion}` }))]}
+                          className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
+                        <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                        <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                        <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        value={newExtraManualDesc}
+                        onChange={e => setNewExtraManualDesc(e.target.value)}
+                        placeholder="Nombre del equipo (ej. Cable XLR, DI Box, etc.)"
+                        className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                      <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
+                        <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                        <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                        <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                      </div>
+                    </div>
+                  )}
+
                   <input
                     value={newExtraNotas}
                     onChange={e => setNewExtraNotas(e.target.value)}
@@ -4099,18 +4240,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   />
                   <div className="flex gap-2">
                     <button
-                      disabled={!newExtraEquipoId}
+                      disabled={extraAddMode === "inventario" ? !newExtraEquipoId : !newExtraManualDesc.trim()}
                       onClick={() => {
-                        const eq = equipoCatalogo.find(e => e.id === newExtraEquipoId);
-                        if (!eq) return;
-                        const descripcion = `${eq.descripcion}${eq.marca ? ` (${eq.marca})` : ""}`;
-                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion, cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false };
+                        let descripcion = "";
+                        if (extraAddMode === "inventario") {
+                          const eq = equipoCatalogo.find(e => e.id === newExtraEquipoId);
+                          if (!eq) return;
+                          descripcion = eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion;
+                        } else {
+                          if (!newExtraManualDesc.trim()) return;
+                          descripcion = newExtraManualDesc.trim();
+                        }
+                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion, cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false, accesorios: [] };
                         saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
-                        setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas("");
+                        setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc("");
+                        setAddingEquipoExtra(false);
                       }}
                       className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
                     >Agregar</button>
-                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc(""); setExtraAddMode("inventario"); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
                   </div>
                 </div>
               ) : (

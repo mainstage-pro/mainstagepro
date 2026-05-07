@@ -31,6 +31,12 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
 
   if (!proyecto) notFound();
 
+  // Equipos extra (no en cotización)
+  type ExtraAcc = { id: string; nombre: string; cantidad: number };
+  type ExtraItem = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: ExtraAcc[] };
+  let equiposExtra: ExtraItem[] = [];
+  try { equiposExtra = proyecto.equiposRiderExtra ? JSON.parse(proyecto.equiposRiderExtra) : []; } catch { equiposExtra = []; }
+
   const fmtDate = (d: Date | string | null) => {
     if (!d) return "—";
     const str = typeof d === "string" ? d : d.toISOString();
@@ -57,10 +63,13 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 11px; color: #111; background: white; }
         .page { max-width: 820px; margin: 0 auto; padding: 32px 40px; }
         @media print {
+          html, body { height: auto !important; overflow: visible !important; }
           body { font-size: 10px; }
-          .page { padding: 20px 24px; }
+          .page { padding: 20px 24px; max-width: 100%; }
           .no-print { display: none !important; }
-          @page { margin: 1.5cm; }
+          @page { margin: 1.5cm; size: A4; }
+          .equipo-block { page-break-inside: avoid; }
+          .cat-block { page-break-inside: avoid; }
         }
         .section-title { font-size: 8px; text-transform: uppercase; letter-spacing: 2px; font-weight: 700; color: #B3985B; margin-bottom: 8px; margin-top: 20px; }
         .divider { border: none; border-top: 1px solid #e0e0e0; margin: 16px 0; }
@@ -116,13 +125,13 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
           <>
             <div className="section-title">Equipos</div>
             {Object.entries(grupos).map(([cat, items]) => (
-              <div key={cat} style={{ marginBottom: 12 }}>
+              <div key={cat} className="cat-block" style={{ marginBottom: 12 }}>
                 <div style={{ background: "#111", color: "white", padding: "4px 10px", fontSize: 8, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700, borderRadius: "3px 3px 0 0" }}>
                   {cat}
                 </div>
                 <div style={{ border: "1px solid #ddd", borderTop: "none", borderRadius: "0 0 3px 3px" }}>
                   {items.map((e, idx) => (
-                    <div key={e.id} style={{ borderBottom: idx < items.length - 1 ? "1px solid #eee" : "none" }}>
+                    <div key={e.id} className="equipo-block" style={{ borderBottom: idx < items.length - 1 ? "1px solid #eee" : "none" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 12px" }}>
                         <div style={{ width: 14, height: 14, border: "1.5px solid #999", borderRadius: 3, flexShrink: 0, marginTop: 2 }} />
                         <div style={{ flex: 1 }}>
@@ -159,6 +168,47 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
             ))}
+          </>
+        )}
+
+        {/* ── Equipos adicionales (fuera de cotización) ── */}
+        {equiposExtra.length > 0 && (
+          <>
+            <div className="section-title">Equipos adicionales</div>
+            <div style={{ border: "1px solid #ddd", borderRadius: 4 }}>
+              {equiposExtra.map((e, idx) => (
+                <div key={e.id} className="equipo-block" style={{ borderBottom: idx < equiposExtra.length - 1 ? "1px solid #eee" : "none" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 12px" }}>
+                    <div style={{ width: 14, height: 14, border: "1.5px solid #999", borderRadius: 3, flexShrink: 0, marginTop: 2 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#111" }}>{e.descripcion}</div>
+                      {e.notas && <div style={{ fontSize: 10, color: "#888", marginTop: 1 }}>{e.notas}</div>}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#B3985B", background: "#FFF8EE", border: "1px solid #F0E0C0", padding: "1px 6px", borderRadius: 10, flexShrink: 0 }}>
+                      ×{e.cantidad}
+                    </span>
+                  </div>
+                  {(e.accesorios ?? []).length > 0 && (
+                    <div style={{ background: "#fafafa", borderTop: "1px dashed #ddd", padding: "8px 12px 8px 38px" }}>
+                      <div style={{ fontSize: 8.5, textTransform: "uppercase", letterSpacing: 1, color: "#aaa", marginBottom: 6, fontWeight: 600 }}>
+                        Accesorios
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 4 }}>
+                        {(e.accesorios ?? []).map(a => (
+                          <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ width: 11, height: 11, border: "1px solid #bbb", borderRadius: 2, flexShrink: 0 }} />
+                            <span style={{ fontSize: 10.5, color: "#333" }}>{a.nombre}</span>
+                            {a.cantidad > 1 && (
+                              <span style={{ fontSize: 9.5, fontWeight: 700, color: "#B3985B", background: "#FFF8EE", border: "1px solid #F0E0C0", padding: "0px 4px", borderRadius: 8, flexShrink: 0 }}>×{a.cantidad}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </>
         )}
 
