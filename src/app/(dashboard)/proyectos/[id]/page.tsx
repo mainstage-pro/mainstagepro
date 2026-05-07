@@ -790,6 +790,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [extraEditCant, setExtraEditCant] = useState(1);
   const [extraEditNotas, setExtraEditNotas] = useState("");
   const [extraAddMode, setExtraAddMode] = useState<"inventario" | "manual">("inventario");
+  // Edición de cantidad en rider de carga
+  const [riderEquipoEditId, setRiderEquipoEditId] = useState<string | null>(null);
+  const [riderEquipoEditCant, setRiderEquipoEditCant] = useState(1);
   const [newExtraManualDesc, setNewExtraManualDesc] = useState("");
   const [extraAccOpen, setExtraAccOpen] = useState<string | null>(null);
   const [extraAccNombre, setExtraAccNombre] = useState("");
@@ -1073,6 +1076,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function eliminarEquipo(eqId: string) {
     await fetch(`/api/proyectos/${id}/equipos/${eqId}`, { method: "DELETE" });
     await load();
+  }
+
+  async function actualizarCantidadEquipo(eqId: string, cantidad: number) {
+    await fetch(`/api/proyectos/${id}/equipos/${eqId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+    setRiderEquipos(prev => prev.map(e => e.id === eqId ? { ...e, cantidad } : e));
+    setRiderEquipoEditId(null);
   }
 
   async function loadEvalCliente() {
@@ -3908,15 +3920,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           const totalGuardados = e.riderAccesorios.length;
                           const isAddOpen = riderAddOpen === e.id;
 
+                          const isEditingCant = riderEquipoEditId === e.id;
                           return (
                             <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
                               {/* Equipo header row */}
-                              <div
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
-                                onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
-                              >
-                                <svg className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors group">
+                                <svg
+                                  className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 cursor-pointer ${isExpanded ? "rotate-90" : ""}`}
+                                  fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                                  onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                                ><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                <div
+                                  className="flex-1 min-w-0 cursor-pointer select-none"
+                                  onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                                >
                                   <p className="text-sm font-medium text-white">
                                     {e.equipo.marca ?? "Sin marca"}
                                     {e.equipo.modelo && <span className="font-normal text-gray-300"> {e.equipo.modelo}</span>}
@@ -3929,7 +3946,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                       {completados}/{totalGuardados} acc
                                     </span>
                                   )}
-                                  <span className="text-[#B3985B] text-xs font-bold">×{e.cantidad}</span>
+                                  {isEditingCant ? (
+                                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
+                                      <button onClick={() => setRiderEquipoEditCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">−</button>
+                                      <span className="text-white text-sm w-6 text-center">{riderEquipoEditCant}</span>
+                                      <button onClick={() => setRiderEquipoEditCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">+</button>
+                                      <button onClick={() => actualizarCantidadEquipo(e.id, riderEquipoEditCant)} className="ml-1 px-2 py-0.5 bg-[#B3985B] text-black text-xs font-semibold rounded">✓</button>
+                                      <button onClick={() => setRiderEquipoEditId(null)} className="text-gray-600 hover:text-white text-xs">×</button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[#B3985B] text-xs font-bold">×{e.cantidad}</span>
+                                  )}
+                                  {!isEditingCant && (
+                                    <>
+                                      <button
+                                        onClick={ev => { ev.stopPropagation(); setRiderEquipoEditId(e.id); setRiderEquipoEditCant(e.cantidad); }}
+                                        className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors opacity-0 group-hover:opacity-100"
+                                      >Editar</button>
+                                      <button
+                                        onClick={async ev => { ev.stopPropagation(); await eliminarEquipo(e.id); }}
+                                        className="text-xs text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                      >Eliminar</button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
 
