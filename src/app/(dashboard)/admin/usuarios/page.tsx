@@ -61,8 +61,9 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     items: [
       { key: "crm-clientes",  label: "Clientes",               desc: "Base de datos de clientes" },
       { key: "crm-tratos",    label: "Tratos",                  desc: "Pipeline de oportunidades" },
-      { key: "cotizaciones",  label: "Cotizaciones",            desc: "Crear y gestionar cotizaciones" },
-      { key: "comisiones",    label: "Comisiones / Ventas",     desc: "Pipeline, metas, vendedores, reportes" },
+      { key: "cotizaciones",              label: "Cotizaciones",            desc: "Crear y gestionar cotizaciones" },
+      { key: "cotizaciones-plantillas",  label: "Plantillas de cotización", desc: "Plantillas base para crear cotizaciones" },
+      { key: "comisiones",               label: "Comisiones / Ventas",     desc: "Pipeline, metas, vendedores, reportes" },
     ],
   },
   {
