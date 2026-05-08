@@ -602,7 +602,11 @@ export default function TratosPage() {
       if (!map.has(g.key)) map.set(g.key, { ...g, tratos: [] });
       map.get(g.key)!.tratos.push(t);
     }
+    const ETAPA_ORDEN: Record<string, number> = { VENTA_CERRADA: 0, OPORTUNIDAD: 1, DESCUBRIMIENTO: 2, VENTA_PERDIDA: 3 };
     const sorted = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+    for (const g of sorted) {
+      g.tratos.sort((a, b) => (ETAPA_ORDEN[a.etapa] ?? 9) - (ETAPA_ORDEN[b.etapa] ?? 9));
+    }
     if (sinFecha.length) sorted.push({ key: "sin-fecha", label: "Sin fecha definida", tratos: sinFecha });
     return sorted;
   }

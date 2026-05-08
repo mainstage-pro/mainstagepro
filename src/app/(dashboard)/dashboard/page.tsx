@@ -163,7 +163,7 @@ export default async function DashboardPage() {
 
     // ── ESTA SEMANA ─────────────────────────────
     prisma.proyecto.findMany({
-      where: { estado: { in: ["PLANEACION","CONFIRMADO","EN_CURSO"] }, fechaEvento: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PLANEACION","CONFIRMADO","EN_CURSO"] }, fechaEvento: { gte: inicioDeHoy, lte: en7dias } },
       include: {
         cliente: { select: { nombre: true } },
         personal: { where: { confirmado: false }, select: { id: true, tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } } },
@@ -294,7 +294,7 @@ export default async function DashboardPage() {
                   <a key={p.id} href={`/proyectos/${p.id}`} className="block px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-white text-xs font-medium truncate">{p.nombre}</p>
-                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias <= 1 ? "bg-red-900/40 text-red-300" : dias <= 3 ? "bg-yellow-900/40 text-yellow-300" : "bg-[#1e1e1e] text-gray-400"}`}>
+                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias === 0 ? "bg-green-900/40 text-green-300" : dias === 1 ? "bg-yellow-900/40 text-yellow-300" : dias <= 3 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1e1e1e] text-gray-400"}`}>
                         {dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : `${dias}d`}
                       </span>
                     </div>
