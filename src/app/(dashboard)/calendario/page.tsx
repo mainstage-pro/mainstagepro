@@ -75,6 +75,13 @@ export default function CalendarioPage() {
   const { offset, diasEnMes } = getMesData(year, month);
   const totalCeldas = Math.ceil((offset + diasEnMes) / 7) * 7;
   const esMesActual = year === ahora.getFullYear() && month === ahora.getMonth();
+  const esMesPasado = year < ahora.getFullYear() || (year === ahora.getFullYear() && month < ahora.getMonth());
+
+  function esPasado(dia: number) {
+    if (esMesPasado) return true;
+    if (!esMesActual) return false;
+    return dia < ahora.getDate();
+  }
   const nombreMes = new Date(year, month, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
   const eventosPanel = diaSeleccionado !== null
@@ -225,31 +232,47 @@ export default function CalendarioPage() {
                 </div>
               ) : eventos.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-8">Sin eventos</p>
-              ) : (
-                <div className="divide-y divide-[#1a1a1a] max-h-[70vh] overflow-y-auto">
-                  {[...eventos].sort((a, b) => a.dia - b.dia).map(e => {
-                    const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500", text: "text-gray-400" };
-                    return (
-                      <Link key={e.id} href={e.url}
-                        className="flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
-                        <div className="text-center w-8 shrink-0">
-                          <p className="text-[#B3985B] text-base font-bold leading-none">{e.dia}</p>
-                          <p className="text-gray-600 text-[10px]">
-                            {new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}
-                          </p>
+              ) : (() => {
+                const sorted = [...eventos].sort((a, b) => a.dia - b.dia);
+                const proximos = sorted.filter(e => !esPasado(e.dia));
+                const pasados  = sorted.filter(e =>  esPasado(e.dia));
+                const renderItem = (e: Evento, dimmed: boolean) => {
+                  const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500", text: "text-gray-400" };
+                  return (
+                    <Link key={e.id} href={e.url}
+                      className={`flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
+                      <div className="text-center w-8 shrink-0">
+                        <p className={`text-base font-bold leading-none ${dimmed ? "text-gray-500" : "text-[#B3985B]"}`}>{e.dia}</p>
+                        <p className="text-gray-600 text-[10px]">
+                          {new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}
+                        </p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
+                          <p className="text-xs font-medium truncate text-white">{e.titulo}</p>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 mb-0.5">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
-                            <p className="text-white text-xs font-medium truncate">{e.titulo}</p>
+                        <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
+                      </div>
+                    </Link>
+                  );
+                };
+                return (
+                  <div className="divide-y divide-[#1a1a1a] max-h-[70vh] overflow-y-auto">
+                    {proximos.map(e => renderItem(e, false))}
+                    {pasados.length > 0 && (
+                      <>
+                        {proximos.length > 0 && (
+                          <div className="px-4 py-1.5 bg-[#0d0d0d]">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-wider">Pasados</p>
                           </div>
-                          <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+                        )}
+                        {pasados.map(e => renderItem(e, true))}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -263,23 +286,43 @@ export default function CalendarioPage() {
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Eventos del mes</p>
             </div>
             <div className="divide-y divide-[#1a1a1a]">
-              {[...eventos].sort((a, b) => a.dia - b.dia).map(e => {
-                const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500" };
+              {(() => {
+                const sorted = [...eventos].sort((a, b) => a.dia - b.dia);
+                const proximos = sorted.filter(e => !esPasado(e.dia));
+                const pasados  = sorted.filter(e =>  esPasado(e.dia));
+                const renderItem = (e: Evento, dimmed: boolean) => {
+                  const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500" };
+                  return (
+                    <Link key={e.id} href={e.url}
+                      className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
+                      <div className="text-center w-8 shrink-0">
+                        <p className={`text-base font-bold leading-none ${dimmed ? "text-gray-500" : "text-[#B3985B]"}`}>{e.dia}</p>
+                        <p className="text-gray-600 text-[10px]">{new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}</p>
+                      </div>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-white text-sm truncate">{e.titulo}</p>
+                        <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
+                      </div>
+                    </Link>
+                  );
+                };
                 return (
-                  <Link key={e.id} href={e.url}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
-                    <div className="text-center w-8 shrink-0">
-                      <p className="text-[#B3985B] text-base font-bold leading-none">{e.dia}</p>
-                      <p className="text-gray-600 text-[10px]">{new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}</p>
-                    </div>
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white text-sm truncate">{e.titulo}</p>
-                      <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
-                    </div>
-                  </Link>
+                  <>
+                    {proximos.map(e => renderItem(e, false))}
+                    {pasados.length > 0 && (
+                      <>
+                        {proximos.length > 0 && (
+                          <div className="px-4 py-1.5 bg-[#0d0d0d]">
+                            <p className="text-[10px] text-gray-600 uppercase tracking-wider">Pasados</p>
+                          </div>
+                        )}
+                        {pasados.map(e => renderItem(e, true))}
+                      </>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}
