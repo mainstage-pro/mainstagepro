@@ -139,8 +139,7 @@ const PASOS_DISCOVERY_FULL = [
 ];
 const PASOS_DISCOVERY_RENTA = [
   { id: 1, icon: "📋", label: "Básico" },
-  { id: 2, icon: "✨", label: "Servicios" },
-  { id: 3, icon: "📸", label: "Contenido" },
+  { id: 2, icon: "📦", label: "Equipos y logística" },
 ];
 
 // Servicios por tipo de evento
@@ -1963,26 +1962,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
-                {/* Categorías de equipo */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Categorías de equipo que necesita</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORIAS_RENTA.map(cat => (
-                      <button key={cat.id} onClick={() => toggleServicio(cat.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                          discForm.serviciosInteres.includes(cat.id)
-                            ? "border-[#B3985B] text-black bg-[#B3985B]"
-                            : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
-                        }`}>
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Descripción de equipos */}
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Descripción del equipo (o rider técnico)</label>
+                  <label className="text-xs text-gray-400 block mb-1">Descripción del equipo solicitado (rider o listado libre)</label>
                   <textarea value={discForm.rentaDescripcionEquipos}
                     onChange={e => setDiscForm(p => ({ ...p, rentaDescripcionEquipos: e.target.value }))}
                     rows={3} placeholder="Ej: 2 bafles EV EKX-15P, 1 sub EKX-18SP, 4 micrófonos inalámbricos Shure BLX..."

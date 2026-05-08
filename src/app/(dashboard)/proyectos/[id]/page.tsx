@@ -2348,18 +2348,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const _cateringParsed: { proveedorId?: string } = (() => { try { return proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {}; } catch { return {}; } })();
         const _cronoParsed: CronoRow[] = (() => { try { return proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { return []; } })();
         const checks = [
-          { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,                              label: "Horario" },
           { ok: !!proyecto.lugarEvento,                                                               label: "Lugar" },
-          { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,                      label: "Enc. del lugar" },
-          { ok: !!proyecto.fechaMontaje,                                                              label: "Montaje" },
           { ok: !!proyecto.encargadoCliente,                                                         label: "Enc. cliente" },
           { ok: !!proyecto.encargadoClienteContacto,                                                 label: "Contacto cliente" },
           { ok: !!proyecto.encargado,                                                                label: "Responsable" },
           { ok: !!proyecto.cotizacion,                                                               label: "Cotización" },
           { ok: proyecto.cuentasCobrar.length > 0,                                                   label: "CxC" },
           { ok: proyecto.equipos.length > 0,                                                         label: "Equipo" },
-          { ok: !!proyecto.contactosDireccion,                                                       label: "Contactos" },
           ...(!esRenta ? [
+            { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,                            label: "Horario" },
+            { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,                    label: "Enc. del lugar" },
+            { ok: !!proyecto.fechaMontaje,                                                            label: "Montaje" },
+            { ok: !!proyecto.contactosDireccion,                                                     label: "Contactos" },
             { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),                  label: "Personal" },
             { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),                      label: "Traslados" },
             { ok: !!_cateringParsed.proveedorId,                                                     label: "Catering" },
@@ -2522,8 +2522,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <div id="section-resumen" className="scroll-mt-4">
       {(() => {
         const fichaCamposFaltantes: string[] = [];
-        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
-        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
+        if (!esRenta && !proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
+        if (!esRenta && !proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
         if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
         const fichaCompleta = fichaCamposFaltantes.length === 0;
         return (
@@ -2581,28 +2581,49 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   const TS: Record<string, string> = { PRODUCCION_TECNICA: "🎛️ Producción técnica", RENTA: "📦 Renta de equipo", DIRECCION_TECNICA: "🎬 Dirección técnica" };
                   return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
                 })()}
-                <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 text-xs">
-                  {proyecto.zona === "BAJIO" ? "📍 Bajío" : proyecto.zona === "NACIONAL" ? "✈️ Nacional" : "📍 Local"}
-                </span>
+                {!esRenta && (
+                  <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 text-xs">
+                    {proyecto.zona === "BAJIO" ? "📍 Bajío" : proyecto.zona === "NACIONAL" ? "✈️ Nacional" : "📍 Local"}
+                  </span>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                 <div className="col-span-2">
                   <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
                 </div>
-                <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
-                <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
-                <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
-                <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
-                <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
-                <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                {!esRenta && (<>
+                  <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                  <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
+                  <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
+                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                  <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
+                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                </>)}
               </div>
             </div>
             {/* Notas */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas del proyecto</p>
-              <Campo label="Descripción" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
+              {(() => {
+                let notasDesc: string | null = null;
+                try {
+                  if (esRenta) {
+                    const d = JSON.parse(proyecto.trato?.ideasReferencias ?? "{}");
+                    notasDesc = d?.notas ?? null;
+                  } else {
+                    notasDesc = (proyecto.trato as { notas?: string | null } | null)?.notas ?? null;
+                  }
+                } catch { /* ignore */ }
+                return notasDesc ? (
+                  <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Del descubrimiento</p>
+                    <p className="text-gray-400 text-xs whitespace-pre-wrap">{notasDesc}</p>
+                  </div>
+                ) : null;
+              })()}
+              <Campo label="Notas adicionales del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
             </div>
 
 
@@ -2698,7 +2719,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 rentaData = JSON.parse(proyecto.logisticaRenta);
               } else if (proyecto.trato?.ideasReferencias) {
                 const d = JSON.parse(proyecto.trato.ideasReferencias);
-                if (d && typeof d === "object" && d.nivelServicio) rentaData = d;
+                if (d && typeof d === "object" && (d.nivelServicio || d.modalidadServicio || d.fechaEntrega)) rentaData = d;
               }
             } catch { /* vacío */ }
 
@@ -2725,16 +2746,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-600 text-sm italic">Sin datos de logística. Completa el descubrimiento en el trato asociado para ver esta información.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                    {rentaData.nivelServicio && (
+                    {(rentaData.nivelServicio || rentaData.modalidadServicio) && (
                       <div>
                         <p className="text-gray-500 text-xs mb-1">Nivel de servicio</p>
-                        <p className="text-white">{NIVEL_LABELS[rentaData.nivelServicio] ?? rentaData.nivelServicio}</p>
+                        <p className="text-white">{NIVEL_LABELS[rentaData.nivelServicio ?? rentaData.modalidadServicio] ?? (rentaData.nivelServicio ?? rentaData.modalidadServicio)}</p>
                       </div>
                     )}
-                    {rentaData.entrega && (
+                    {(rentaData.entrega || rentaData.modalidadEntrega) && (
                       <div>
                         <p className="text-gray-500 text-xs mb-1">Modalidad de entrega</p>
-                        <p className="text-white">{ENTREGA_LABELS[rentaData.entrega] ?? rentaData.entrega}</p>
+                        <p className="text-white">{ENTREGA_LABELS[rentaData.entrega ?? rentaData.modalidadEntrega] ?? (rentaData.entrega ?? rentaData.modalidadEntrega)}</p>
                       </div>
                     )}
                     {rentaData.fechaEntrega && (
@@ -2854,7 +2875,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Personal del evento (gestión completa) — solo producción ── */}
-          <div className="space-y-3">
+          {!esRenta && <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -3430,10 +3451,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
               })
             )}
-          </div>
+          </div>}
 
-          {/* ── Directorio Mainstage Pro ── */}
-          {(() => {
+          {!esRenta && (() => {
             const DIRECTORIO = [
               { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
               { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
@@ -3631,7 +3651,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Documentos operativos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Documentos operativos</p>
               <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
@@ -3663,7 +3683,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
 
 
@@ -3877,7 +3897,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="space-y-6">
 
             {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
-            <SectionDivider label="Rider & Checklist" />
+            {!esRenta && <><SectionDivider label="Rider & Checklist" />
 
             {/* ══ RIDER DE CARGA ══ */}
             <div className="space-y-4">
@@ -4305,7 +4325,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <span className="text-base leading-none">+</span> Agregar equipo extra
                 </button>
               )}
-            </div>
+            </div></>}
 
             {/* ═══════ ZONA 1.5: PROVEEDORES DE SUBARRIENDO ═══════ */}
             <SectionDivider label="Proveedores de subarriendo" />
@@ -4412,7 +4432,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
-            <SectionDivider label="Documentos del show" />
+            {!esRenta && <><SectionDivider label="Documentos del show" />
             <div className="space-y-3">
               <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" isOpen={openDocs.has("soundcheck")} onToggle={() => toggleDoc("soundcheck")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
@@ -4436,7 +4456,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </DocAccordion>
               <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
-            </div>
+            </div></>}
 
             {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
             <SectionDivider label="Cierre & Evaluación" />
@@ -4477,13 +4497,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
               <div className="bg-[#111] border border-[#222] rounded-xl p-5"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas y observaciones</p><textarea value={evaluacion.notas} onChange={e => setEvaluacion(prev => ({ ...prev, notas: e.target.value }))} rows={4} placeholder="¿Qué funcionó bien? ¿Qué mejoraría para el siguiente evento similar? ¿Algún incidente relevante?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
               <div className="flex justify-end"><button onClick={guardarEval} disabled={savingEval} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">{savingEval ? "Guardando..." : "Guardar evaluación"}</button></div>
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte de mejora post-evento</p><p className="text-gray-500 text-xs mt-0.5">Documenta problemas y sus soluciones por área para mejorar futuros eventos</p></div><button onClick={() => setReportePostEvento(prev => [...prev, { area: "", problema: "", causa: "", solucion: "" }])} className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:border-[#B3985B] hover:text-white px-3 py-1.5 rounded-lg transition-colors">+ Agregar área</button></div>
                 {reportePostEvento.length === 0 ? (<div className="py-8 text-center"><p className="text-gray-600 text-sm">Sin registros aún</p><p className="text-gray-700 text-xs mt-1">Agrega cada área con el problema encontrado, causa y solución aplicada</p></div>) : (
                   <div className="divide-y divide-[#1a1a1a]">{reportePostEvento.map((item, i) => (<div key={i} className="px-5 py-4 space-y-3"><div className="flex items-center justify-between"><input value={item.area} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, area: e.target.value } : x))} placeholder="Área (ej: Audio, Iluminación, Logística...)" className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#B3985B] font-semibold text-sm focus:outline-none focus:border-[#B3985B]/60" /><button onClick={() => setReportePostEvento(prev => prev.filter((_, j) => j !== i))} className="ml-3 text-gray-600 hover:text-red-400 transition-colors text-lg shrink-0">×</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-2"><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Problema</label><textarea value={item.problema} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, problema: e.target.value } : x))} rows={3} placeholder="¿Qué falló o salió diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-red-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Causa raíz</label><textarea value={item.causa} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, causa: e.target.value } : x))} rows={3} placeholder="¿Por qué ocurrió?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Solución aplicada / propuesta</label><textarea value={item.solucion} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, solucion: e.target.value } : x))} rows={3} placeholder="¿Qué se hizo o se hará diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-green-900/60 resize-none" /></div></div></div>))}</div>
                 )}
                 {reportePostEvento.length > 0 && (<div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center gap-2 flex-wrap"><a href={`/api/proyectos/${id}/reporte-post-evento/pdf`} download className="flex items-center gap-1.5 text-xs text-gray-300 border border-[#333] hover:bg-[#222] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Descargar PDF</a>{proyecto.cliente?.telefono && (<button onClick={async () => { try { const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`, { cache: "no-store" }); const blob = await res.blob(); const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: `Reporte post-evento: ${proyecto!.nombre}` }); } else { const tel = proyecto!.cliente!.telefono!.replace(/\D/g, ""); window.open(`https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${proyecto!.cliente!.nombre}, adjunto el reporte de mejora del evento *${proyecto!.nombre}*.`)}`, "_blank"); } } catch (e) { console.error(e); } }} className="flex items-center gap-1.5 text-xs text-green-500 border border-green-800/50 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>Enviar a cliente</button>)}<button onClick={guardarReporte} disabled={savingReporte} className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">{savingReporte ? "Guardando..." : "Guardar reporte"}</button></div>)}
-              </div>
+              </div>}
               {(() => {
                 const linkBase = typeof window !== "undefined" ? `${window.location.origin}/encuesta/` : "/encuesta/";
                 return (

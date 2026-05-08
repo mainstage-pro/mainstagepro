@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 
 const GOLD   = "#B3985B";
 const BLACK  = "#0a0a0a";
@@ -417,6 +417,7 @@ interface ProyectoData {
   lugarEvento: string | null;
   encargadoCliente: string | null;
   logisticaRenta: string | null;
+  tratoIdeasReferencias?: string | null;
   cliente: { nombre: string; empresa: string | null; telefono?: string | null } | null;
   equipos: ProyectoEquipo[];
 }
@@ -452,13 +453,22 @@ const NIVEL_LABELS: Record<string, string> = {
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
+export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoData; logoSrc?: string | null }) {
   let rentaData: Record<string, string> = {};
-  try { if (proyecto.logisticaRenta) rentaData = JSON.parse(proyecto.logisticaRenta); } catch { /* noop */ }
+  try {
+    const src = proyecto.logisticaRenta || proyecto.tratoIdeasReferencias;
+    if (src) {
+      const parsed = JSON.parse(src);
+      if (parsed && typeof parsed === "object" && (parsed.nivelServicio || parsed.modalidadServicio || parsed.fechaEntrega)) {
+        rentaData = parsed;
+      }
+    }
+  } catch { /* noop */ }
 
   const fechaEntrega    = rentaData.fechaEntrega    ? `${fmtDate(rentaData.fechaEntrega)}${rentaData.horaEntrega    ? "  " + rentaData.horaEntrega    : ""}` : "";
   const fechaDevolucion = rentaData.fechaDevolucion ? `${fmtDate(rentaData.fechaDevolucion)}${rentaData.horaDevolucion ? "  " + rentaData.horaDevolucion : ""}` : "";
-  const modalidad       = rentaData.nivelServicio   ? (NIVEL_LABELS[rentaData.nivelServicio] ?? rentaData.nivelServicio) : "";
+  const nivelKey        = rentaData.nivelServicio ?? rentaData.modalidadServicio ?? "";
+  const modalidad       = nivelKey ? (NIVEL_LABELS[nivelKey] ?? nivelKey) : "";
   const direccion       = rentaData.direccionEntrega ?? "";
 
   // Folio: PRY-XXX-YYYYMMDD
@@ -485,9 +495,11 @@ export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
 
         {/* ── Header ── */}
         <View style={s.header} fixed>
-          <View>
-            <Text style={s.brand}>MAINSTAGE</Text>
-            <Text style={s.brandSub}>PRO · SOLUCIONES AUDIOVISUALES</Text>
+          <View style={{ justifyContent: "center" }}>
+            {logoSrc
+              ? <Image src={logoSrc} style={{ width: 110, height: 38, objectFit: "contain" }} />
+              : <><Text style={s.brand}>MAINSTAGE</Text><Text style={s.brandSub}>PRO · SOLUCIONES AUDIOVISUALES</Text></>
+            }
           </View>
           <View style={s.headerRight}>
             <Text style={s.docTitle}>HOJA DE ENTREGA DE EQUIPOS (RENTA)</Text>
@@ -510,6 +522,10 @@ export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>CONTACTO</Text>
                 <Text style={s.infoValue}>{proyecto.encargadoCliente ?? ""}</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>TELÉFONO</Text>
+                <Text style={s.infoValue}>{proyecto.cliente?.telefono ?? ""}</Text>
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>EVENTO</Text>
@@ -618,7 +634,6 @@ export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
               "Todo el equipo probado y en buen funcionamiento antes de salir de bodega",
               "Accesorios incluidos: cables, soportes, clamps, fundas, adaptadores (según corresponda)",
               "Número de serie / ID de inventario registrado en esta hoja para cada equipo",
-              "Número de bultos contabilizado y anotado en la sección de firma",
               "Fotografías del equipo tomadas antes de la entrega (para respaldo en caso de daños)",
               "Firma y nombre completo del cliente obtenidos al momento de entregar",
             ].map((item, i) => (
@@ -651,33 +666,27 @@ export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
           {/* ── Firma: RECIBO ── */}
           <View style={s.signatureSection}>
             <View style={s.signatureSectionHeader}>
-              <Text style={s.signatureSectionHeaderText}>RECIBO LOS EQUIPOS MENCIONADOS EN EL PRESENTE DOCUMENTO — ENTREGA AL CLIENTE</Text>
+              <Text style={s.signatureSectionHeaderText}>RECIBO DE EQUIPOS — ENTREGA AL CLIENTE</Text>
             </View>
             <View style={s.signatureBody}>
               <View style={s.signatureRow}>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabel}>NOMBRE COMPLETO DEL CLIENTE / REPRESENTANTE:</Text>
+                  <Text style={s.signatureLabel}>NOMBRE / REPRESENTANTE:</Text>
                   <View style={s.signatureLine} />
                 </View>
                 <View style={s.signatureFieldNarrow}>
-                  <Text style={s.signatureLabel}>FECHA Y HORA DE ENTREGA:</Text>
-                  <View style={s.signatureLine} />
-                </View>
-                <View style={{ width: 70 }}>
-                  <Text style={s.signatureLabel}>NÚMERO DE BULTOS:</Text>
+                  <Text style={s.signatureLabel}>FECHA Y HORA:</Text>
                   <View style={s.signatureLine} />
                 </View>
               </View>
               <View style={[s.signatureRow, { marginBottom: 0 }]}>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabelSm}>FIRMA DE PERSONAL MAINSTAGE QUE ENTREGA:</Text>
-                  <View style={[s.signatureLine, { marginTop: 26 }]} />
-                  <Text style={s.signatureNote}>Nombre legible abajo</Text>
+                  <Text style={s.signatureLabelSm}>ENTREGA (Mainstage)</Text>
+                  <View style={[s.signatureLine, { marginTop: 28 }]} />
                 </View>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabelSm}>FIRMA DEL CLIENTE QUE RECIBE:</Text>
-                  <View style={[s.signatureLine, { marginTop: 26 }]} />
-                  <Text style={s.signatureNote}>Nombre legible abajo</Text>
+                  <Text style={s.signatureLabelSm}>RECIBE (cliente)</Text>
+                  <View style={[s.signatureLine, { marginTop: 28 }]} />
                 </View>
               </View>
             </View>
@@ -686,40 +695,34 @@ export function HojaEntregaRentaPDF({ proyecto }: { proyecto: ProyectoData }) {
           {/* ── Firma: DEVOLUCIÓN ── */}
           <View style={s.signatureSection}>
             <View style={[s.signatureSectionHeader, { backgroundColor: "#2a2a2a" }]}>
-              <Text style={[s.signatureSectionHeaderText, { color: WHITE }]}>REGRESO / DEVOLUCIÓN DE EQUIPOS</Text>
+              <Text style={[s.signatureSectionHeaderText, { color: WHITE }]}>DEVOLUCIÓN DE EQUIPOS</Text>
             </View>
             <View style={s.signatureBody}>
               <View style={s.signatureRow}>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabel}>NOMBRE COMPLETO DEL CLIENTE / REPRESENTANTE:</Text>
+                  <Text style={s.signatureLabel}>NOMBRE / REPRESENTANTE:</Text>
                   <View style={s.signatureLine} />
                 </View>
                 <View style={s.signatureFieldNarrow}>
-                  <Text style={s.signatureLabel}>FECHA Y HORA DE DEVOLUCIÓN:</Text>
-                  <View style={s.signatureLine} />
-                </View>
-                <View style={{ width: 70 }}>
-                  <Text style={s.signatureLabel}>BULTOS RECIBIDOS:</Text>
+                  <Text style={s.signatureLabel}>FECHA Y HORA:</Text>
                   <View style={s.signatureLine} />
                 </View>
               </View>
               {/* Observaciones de devolución */}
               <View style={{ marginBottom: 14 }}>
-                <Text style={s.signatureLabelSm}>OBSERVACIONES AL REGRESAR EL EQUIPO (daños, faltantes, comentarios):</Text>
+                <Text style={s.signatureLabelSm}>OBSERVACIONES (daños, faltantes, comentarios):</Text>
                 <View style={s.observacionesBox}>
                   <Text style={s.observacionesPlaceholder}> </Text>
                 </View>
               </View>
               <View style={[s.signatureRow, { marginBottom: 0 }]}>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabelSm}>FIRMA DE PERSONAL MAINSTAGE QUE RECIBE:</Text>
-                  <View style={[s.signatureLine, { marginTop: 26 }]} />
-                  <Text style={s.signatureNote}>Nombre legible abajo</Text>
+                  <Text style={s.signatureLabelSm}>RECIBE (Mainstage)</Text>
+                  <View style={[s.signatureLine, { marginTop: 28 }]} />
                 </View>
                 <View style={s.signatureField}>
-                  <Text style={s.signatureLabelSm}>FIRMA DEL CLIENTE QUE DEVUELVE:</Text>
-                  <View style={[s.signatureLine, { marginTop: 26 }]} />
-                  <Text style={s.signatureNote}>Nombre legible abajo</Text>
+                  <Text style={s.signatureLabelSm}>DEVUELVE (cliente)</Text>
+                  <View style={[s.signatureLine, { marginTop: 28 }]} />
                 </View>
               </View>
             </View>
