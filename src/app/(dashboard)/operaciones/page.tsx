@@ -109,6 +109,7 @@ export default function OperacionesPage() {
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
+  const [syncTrigger, setSyncTrigger]           = useState(0);
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [selectedIds, setSelectedIds]           = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk]           = useState(false);
@@ -171,6 +172,18 @@ export default function OperacionesPage() {
     });
   }, []);
 
+  // ── SW sync listener — recargar vista cuando el SW termina de sincronizar ──
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "SYNC_DONE" && event.data?.remaining === 0) {
+        setSyncTrigger(n => n + 1);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, []);
+
   // ── Load view ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof vista !== "string") return;
@@ -198,7 +211,7 @@ export default function OperacionesPage() {
       .then(d => { setTareas(d.tareas ?? []); })
       .catch(() => {})
       .finally(() => setLoadingMain(false));
-  }, [vista]);
+  }, [vista, syncTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (typeof vista === "string") return;
@@ -210,7 +223,7 @@ export default function OperacionesPage() {
       .catch(() => {})
       .finally(() => setLoadingMain(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeof vista === "object" ? (vista as {id:string}).id : null]);
+  }, [typeof vista === "object" ? (vista as {id:string}).id : null, syncTrigger]);
 
   // ── Load task detail ────────────────────────────────────────────────────
   useEffect(() => {
@@ -275,9 +288,19 @@ export default function OperacionesPage() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    const json = await res.json().catch(() => ({}));
+
+    // Sin conexión — SW encoló la petición
+    if (json.offline || json.queued) {
+      setAddToast({ msg: "Sin conexión — tarea en cola, se enviará al reconectar", visible: true });
+      setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 3500);
+      setTimeout(() => setAddToast(null), 4000);
+      return;
+    }
+
     if (!res.ok) return;
-    const { tarea } = await res.json();
-    if (data.parentId) return;
+    const { tarea } = json;
+    if (!tarea || data.parentId) return;
 
     // Brief success toast
     const msg = ADD_MSGS[Math.floor(Math.random() * ADD_MSGS.length)];
