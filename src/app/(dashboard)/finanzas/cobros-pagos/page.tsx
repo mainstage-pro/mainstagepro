@@ -103,10 +103,19 @@ function groupByProject<T extends { proyecto: { id: string; nombre: string; nume
     map.get(key)!.items.push(item);
   }
   const grupos = Array.from(map.values());
-  // Con proyecto primero (ordenados por fechaEvento), sin proyecto al final
   const conProyecto = grupos.filter(g => g.proyectoId !== null);
   const sinProyecto = grupos.filter(g => g.proyectoId === null);
   return [...conProyecto, ...sinProyecto];
+}
+
+function splitGroups<T>(grupos: ProyGrupo<T>[], hoy: string): { proximos: ProyGrupo<T>[]; pasados: ProyGrupo<T>[] } {
+  const proximos = grupos
+    .filter(g => !g.fechaEvento || g.fechaEvento.substring(0, 10) >= hoy)
+    .sort((a, b) => (a.fechaEvento ?? "9999").localeCompare(b.fechaEvento ?? "9999"));
+  const pasados = grupos
+    .filter(g => !!g.fechaEvento && g.fechaEvento.substring(0, 10) < hoy)
+    .sort((a, b) => b.fechaEvento!.localeCompare(a.fechaEvento!));
+  return { proximos, pasados };
 }
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -960,10 +969,20 @@ export default function CobrosPagosPage() {
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por cobrar</p>
             </div>
-          ) : groupByProject(cxcList).map(grupo => {
+          ) : (() => {
+            const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList), hoyStr);
+            return [..._cp, ..._cv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
             return (
-            <div key={grupo.proyectoId ?? "__sin__"}>
+            <div key={(grupo.proyectoId ?? "__sin__") + idx}>
+              {idx === _cp.length && _cv.length > 0 && (
+                <div className="flex items-center gap-4 py-3">
+                  <div className="flex-1 h-px bg-[#161616]" />
+                  <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {_cv.length}</span>
+                  <div className="flex-1 h-px bg-[#161616]" />
+                </div>
+              )}
+              <div className={idx >= _cp.length ? "opacity-50" : ""}>
               {grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1164,8 +1183,11 @@ export default function CobrosPagosPage() {
             </div>
           ))}
               </div>
+              </div>
             </div>
-          );})}
+          );
+          });
+          })()}
         </div>
       ) : (
         // ── CxP Cards ──
@@ -1174,10 +1196,20 @@ export default function CobrosPagosPage() {
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
-          ) : groupByProject(cxpList).map(grupo => {
+          ) : (() => {
+            const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
+            return [..._pp, ..._pv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
             return (
-            <div key={grupo.proyectoId ?? "__sin__"}>
+            <div key={(grupo.proyectoId ?? "__sin__") + idx}>
+              {idx === _pp.length && _pv.length > 0 && (
+                <div className="flex items-center gap-4 py-3">
+                  <div className="flex-1 h-px bg-[#161616]" />
+                  <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {_pv.length}</span>
+                  <div className="flex-1 h-px bg-[#161616]" />
+                </div>
+              )}
+              <div className={idx >= _pp.length ? "opacity-50" : ""}>
               {grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1283,9 +1315,11 @@ export default function CobrosPagosPage() {
             );
           })}
               </div>
+              </div>
             </div>
           );
-          })}
+          });
+          })()}
         </div>
       )}
 
