@@ -24,6 +24,11 @@ const ESTADO_TEXT: Record<string, string> = {
   CANCELADO:  "text-red-500/40",
 };
 
+// Prioridad de estado dentro de cada grupo — igual que etapa en tratos
+const ESTADO_ORDEN: Record<string, number> = {
+  EN_CURSO: 0, CONFIRMADO: 1, PLANEACION: 2, COMPLETADO: 3, CANCELADO: 4,
+};
+
 const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
 function fmtFecha(iso: string | null) {
@@ -35,9 +40,19 @@ function fmtFecha(iso: string | null) {
   } catch { return iso; }
 }
 
-function grupoMes(fechaIso: string) {
+function grupoMesFn(fechaIso: string) {
   const [y, m] = fechaIso.slice(0, 7).split("-");
   return { key: fechaIso.slice(0, 7), label: `${MESES_ES[parseInt(m) - 1]} ${y}` };
+}
+
+function grupoSemanaFn(fechaIso: string) {
+  const d = new Date(fechaIso + "T12:00:00");
+  const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  const lunes = new Date(d); lunes.setDate(d.getDate() - dow);
+  const dom   = new Date(lunes); dom.setDate(lunes.getDate() + 6);
+  const key = lunes.toISOString().slice(0, 10);
+  const fmt = (x: Date) => x.toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" });
+  return { key, label: `${fmt(lunes)} – ${fmt(dom)}` };
 }
 
 // ── Fila compacta ─────────────────────────────────────────────────────────────
@@ -104,8 +119,8 @@ export default function ProyectosPage() {
   const confirm = useConfirm();
 
   const [view, setView] = useState<"list" | "timeline">("list");
-  const [tab, setTab] = useState<"proximos" | "pasados">("proximos");
   const [busqueda, setBusqueda] = useState("");
+  const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
 
   // timeline
@@ -136,7 +151,7 @@ export default function ProyectosPage() {
     } finally { setDeletingId(null); }
   }
 
-  // Próximos = activos (no completado/cancelado), orden cronológico
+  // Próximos = activos, orden cronológico base
   const proximos = proyectos
     .filter(p => p.estado !== "COMPLETADO" && p.estado !== "CANCELADO")
     .sort((a, b) => new Date(a.fechaEvento ?? "9999").getTime() - new Date(b.fechaEvento ?? "9999").getTime());
@@ -146,31 +161,43 @@ export default function ProyectosPage() {
     .filter(p => p.estado === "COMPLETADO" || p.estado === "CANCELADO")
     .sort((a, b) => new Date(b.fechaEvento ?? "0").getTime() - new Date(a.fechaEvento ?? "0").getTime());
 
-  const lista = tab === "proximos" ? proximos : pasados;
-  const listaFiltrada = lista.filter(p => {
-    const q = busqueda.toLowerCase();
-    return !q ||
+  const q = busqueda.toLowerCase();
+  function filtrar(list: Proyecto[]) {
+    return !q ? list : list.filter(p =>
       p.nombre.toLowerCase().includes(q) ||
       p.numeroProyecto?.toLowerCase().includes(q) ||
-      p.cliente?.nombre?.toLowerCase().includes(q);
-  });
+      p.cliente?.nombre?.toLowerCase().includes(q)
+    );
+  }
 
-  // Agrupar próximos por mes
-  function agrupar(list: Proyecto[]) {
-    const map = new Map<string, { key: string; label: string; items: Proyecto[] }>();
+  const proximosFiltrados = filtrar(proximos);
+  const pasadosFiltrados  = filtrar(pasados);
+
+  // Agrupación con orden de estado dentro de cada grupo
+  type Grupo = { key: string; label: string; items: Proyecto[] };
+
+  function agrupar(list: Proyecto[]): Grupo[] {
+    if (agrupacion === "todos") return [{ key: "todos", label: "", items: list }];
+    const map = new Map<string, Grupo>();
     const sinFecha: Proyecto[] = [];
     for (const p of list) {
       if (!p.fechaEvento) { sinFecha.push(p); continue; }
-      const g = grupoMes(p.fechaEvento.substring(0, 10));
+      const g = agrupacion === "mes"
+        ? grupoMesFn(p.fechaEvento.substring(0, 10))
+        : grupoSemanaFn(p.fechaEvento.substring(0, 10));
       if (!map.has(g.key)) map.set(g.key, { ...g, items: [] });
       map.get(g.key)!.items.push(p);
     }
     const sorted = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+    // Ordenar dentro de cada grupo: EN_CURSO → CONFIRMADO → PLANEACION
+    for (const g of sorted) {
+      g.items.sort((a, b) => (ESTADO_ORDEN[a.estado] ?? 9) - (ESTADO_ORDEN[b.estado] ?? 9));
+    }
     if (sinFecha.length) sorted.push({ key: "sin-fecha", label: "Sin fecha", items: sinFecha });
     return sorted;
   }
 
-  const grupos = agrupar(listaFiltrada);
+  const grupos = agrupar(proximosFiltrados);
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
@@ -179,7 +206,7 @@ export default function ProyectosPage() {
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Proyectos</h1>
-          <p className="text-gray-600 text-sm">
+          <p className="text-[#6b7280] text-sm">
             {loading ? "Cargando..." : `${proximos.length} próximos · ${pasados.length} completados`}
           </p>
         </div>
@@ -289,82 +316,99 @@ export default function ProyectosPage() {
       {view === "list" && (
         <div className="space-y-4">
 
-          {/* Tabs + búsqueda */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
-              <button onClick={() => setTab("proximos")}
-                className={`px-3 py-1.5 rounded-md text-xs transition-colors flex items-center gap-1.5 ${tab === "proximos" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
-                Próximos
-                <span className={`text-[10px] ${tab === "proximos" ? "text-gray-400" : "text-gray-700"}`}>{proximos.length}</span>
-              </button>
-              <button onClick={() => setTab("pasados")}
-                className={`px-3 py-1.5 rounded-md text-xs transition-colors flex items-center gap-1.5 ${tab === "pasados" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
-                Pasados
-                <span className={`text-[10px] ${tab === "pasados" ? "text-gray-400" : "text-gray-700"}`}>{pasados.length}</span>
-              </button>
-            </div>
+          {/* Búsqueda — línea propia, igual que tratos */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#444]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
+            </svg>
+            <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar por nombre, número o cliente..."
+              className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
+            )}
+          </div>
 
-            <div className="relative flex-1 min-w-[180px]">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#444]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8"/><path strokeLinecap="round" d="m21 21-4.35-4.35"/>
-              </svg>
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
-                placeholder="Buscar proyecto, número o cliente..."
-                className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
-              {busqueda && (
-                <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
-              )}
+          {/* Barra de controles — igual estructura que tratos */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Agrupación */}
+            <div className="flex items-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5 shrink-0">
+              {(["todos","mes","semana"] as const).map(ag => (
+                <button key={ag} onClick={() => setAgrupacion(ag)}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${agrupacion === ag ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+                  {ag === "todos" ? "Todo" : ag === "mes" ? "Por mes" : "Por semana"}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Contenido */}
           {loading ? (
             <SkeletonPage rows={6} cols={3} />
-          ) : listaFiltrada.length === 0 ? (
+          ) : proximosFiltrados.length === 0 && pasadosFiltrados.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-12">
-              <p className="text-gray-600 text-sm">
-                {busqueda ? "Sin resultados" : tab === "proximos" ? "No hay proyectos próximos" : "No hay proyectos pasados"}
-              </p>
-              {tab === "proximos" && !busqueda && (
-                <p className="text-[#444] text-xs mt-1">Los proyectos se crean al aprobar una cotización</p>
-              )}
-            </div>
-          ) : tab === "proximos" ? (
-            <div className="space-y-5">
-              {grupos.map(grupo => {
-                const isOpen = gruposOpen[grupo.key] ?? true;
-                return (
-                  <div key={grupo.key}>
-                    <button
-                      onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))}
-                      className="flex items-center gap-3 mb-2 w-full text-left">
-                      <svg className={`w-3 h-3 text-gray-600 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                      </svg>
-                      <h2 className="text-xs font-semibold text-gray-300">{grupo.label}</h2>
-                      <span className="text-[10px] text-gray-600">{grupo.items.length}</span>
-                      <div className="flex-1 h-px bg-[#1a1a1a]" />
-                    </button>
-                    {isOpen && (
-                      <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                        <div className="divide-y divide-[#111]">
-                          {grupo.items.map(p => (
-                            <ProyectoRow key={p.id} p={p} deletingId={deletingId} eliminar={eliminar} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              <p className="text-gray-600 text-sm">{busqueda ? "Sin resultados" : "No hay proyectos"}</p>
+              {!busqueda && <p className="text-[#444] text-xs mt-1">Los proyectos se crean al aprobar una cotización</p>}
             </div>
           ) : (
-            <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-              <div className="divide-y divide-[#111]">
-                {listaFiltrada.map(p => (
-                  <ProyectoRow key={p.id} p={p} deletingId={deletingId} eliminar={eliminar} />
-                ))}
-              </div>
+            <div className="space-y-5">
+
+              {/* Próximos agrupados */}
+              {proximosFiltrados.length > 0 && (agrupacion === "todos" ? (
+                <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                  <div className="divide-y divide-[#111]">
+                    {proximosFiltrados.map(p => <ProyectoRow key={p.id} p={p} deletingId={deletingId} eliminar={eliminar} />)}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {grupos.map(grupo => {
+                    const isOpen = gruposOpen[grupo.key] ?? true;
+                    return (
+                      <div key={grupo.key}>
+                        <button
+                          onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))}
+                          className="flex items-center gap-3 mb-2 w-full text-left">
+                          <svg className={`w-3 h-3 text-gray-600 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                          </svg>
+                          <h2 className="text-xs font-semibold text-gray-300">{grupo.label}</h2>
+                          <span className="text-[10px] text-gray-600">{grupo.items.length}</span>
+                          <div className="flex-1 h-px bg-[#1a1a1a]" />
+                        </button>
+                        {isOpen && (
+                          <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                            <div className="divide-y divide-[#111]">
+                              {grupo.items.map(p => <ProyectoRow key={p.id} p={p} deletingId={deletingId} eliminar={eliminar} />)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+
+              {/* Pasados — mismo separador que tratos */}
+              {pasadosFiltrados.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-4 py-3">
+                    <div className="flex-1 h-px bg-[#161616]" />
+                    <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {pasadosFiltrados.length}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                  <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                    <div className="divide-y divide-[#111]">
+                      {pasadosFiltrados.map(p => (
+                        <div key={p.id} className="opacity-50">
+                          <ProyectoRow p={p} deletingId={deletingId} eliminar={eliminar} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </div>
