@@ -62,7 +62,7 @@ function ProyectoRow({ p, deletingId, eliminar }: {
   eliminar: (id: string, nombre: string, e: React.MouseEvent) => void;
 }) {
   return (
-    <Link href={`/proyectos/${p.id}`}>
+    <Link href={`/proyectos/${p.id}`} className="block">
       <div className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#0a0a0a] group cursor-pointer transition-colors">
 
         <span className="w-1.5 h-1.5 rounded-full shrink-0"
