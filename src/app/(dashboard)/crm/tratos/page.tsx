@@ -47,11 +47,11 @@ const ETAPA_COLORS: Record<string, string> = {
   VENTA_PERDIDA: "bg-red-900/40 text-red-400",
 };
 
-const ETAPA_BORDER: Record<string, string> = {
-  DESCUBRIMIENTO: "border-blue-900/40",
-  OPORTUNIDAD: "border-yellow-900/40",
-  VENTA_CERRADA: "border-green-900/40",
-  VENTA_PERDIDA: "border-red-900/40",
+const ETAPA_TEXT: Record<string, string> = {
+  DESCUBRIMIENTO: "text-blue-500/60",
+  OPORTUNIDAD:    "text-yellow-500/60",
+  VENTA_CERRADA:  "text-emerald-500/60",
+  VENTA_PERDIDA:  "text-red-500/40",
 };
 
 const COT_COLORS: Record<string, string> = {
@@ -306,7 +306,7 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
   return (
     <div
       onClick={() => router.push(`/crm/tratos/${trato.id}`)}
-      className={`bg-[#111] border ${ETAPA_BORDER[trato.etapa] ?? "border-[#1e1e1e]"} rounded-xl p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors`}>
+      className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <span className="text-white text-sm font-medium leading-tight">
           {trato.cliente.nombre}
@@ -369,25 +369,20 @@ interface TratoTableProps {
   toggleExpand: (id: string) => void;
   deletingId: string | null;
   eliminar: (id: string, nombre: string) => void;
-  borderClass: string;
-  headerClass: string;
+  dimmed?: boolean;
 }
 
-function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, eliminar, borderClass, headerClass }: TratoTableProps) {
+function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, eliminar, dimmed = false }: TratoTableProps) {
   const router = useRouter();
   return (
-    <div className={`rounded-xl border overflow-hidden ${borderClass}`}>
-      <div className={`grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 border-b text-[10px] font-medium uppercase tracking-wider ${headerClass}`}>
-        <span>Cliente / Evento</span>
-        <span>Fecha</span>
-        <span>Presupuesto</span>
-        <span />
-      </div>
-      <div className="divide-y divide-[#1a1a1a]">
+    <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+      <div className="divide-y divide-[#111]">
         {tratos.map(t => {
           const wa = waUrl(t);
           const expanded = expandedIds.has(t.id);
           const cots = t.cotizaciones ?? [];
+          const aprobada = cots.find(c => c.estado === "APROBADA");
+
           const fechaLabel = t.fechaEventoEstimada
             ? showHace
               ? (() => {
@@ -401,68 +396,80 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
 
           const presupuesto = t.presupuestoEstimado
             ?? (() => {
-                const cots = t.cotizaciones ?? [];
-                const aprobada = cots.find(c => c.estado === "APROBADA");
-                const enviada  = cots.find(c => c.estado === "ENVIADA" || c.estado === "REENVIADA");
-                const ref = aprobada ?? enviada ?? (cots.length > 0 ? cots[cots.length - 1] : null);
+                const ap = cots.find(c => c.estado === "APROBADA");
+                const en = cots.find(c => c.estado === "ENVIADA" || c.estado === "REENVIADA");
+                const ref = ap ?? en ?? (cots.length > 0 ? cots[cots.length - 1] : null);
                 return ref ? ref.granTotal : null;
               })();
 
           return (
-            <div key={t.id}>
+            <div key={t.id} className={dimmed ? "opacity-50" : ""}>
               <div
-                className="flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] group cursor-pointer"
+                className="flex items-center gap-3 px-4 py-3.5 hover:bg-[#0a0a0a] group cursor-pointer"
                 onClick={() => router.push(`/crm/tratos/${t.id}`)}>
-                <button onClick={e => { e.stopPropagation(); toggleExpand(t.id); }}
-                  className="shrink-0 text-[#444] hover:text-gray-300 transition-colors">
-                  <svg className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+
+                <button
+                  onClick={e => { e.stopPropagation(); toggleExpand(t.id); }}
+                  className="shrink-0 text-[#2e2e2e] hover:text-gray-500 transition-colors">
+                  <svg className={`w-3 h-3 transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
                   </svg>
                 </button>
+
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white text-sm font-medium">
-                      {t.cliente.nombre}
-                    </span>
-                    {t.cliente.empresa && <span className="text-[#555] text-xs">{t.cliente.empresa}</span>}
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ETAPA_COLORS[t.etapa] ?? "bg-[#222] text-[#888]"}`}>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-white text-sm font-medium leading-snug">{t.cliente.nombre}</span>
+                    {t.cliente.empresa && (
+                      <span className="text-gray-600 text-xs truncate max-w-[160px]">{t.cliente.empresa}</span>
+                    )}
+                    <span className={`text-[10px] font-medium uppercase tracking-wide ${ETAPA_TEXT[t.etapa] ?? "text-gray-700"}`}>
                       {ETAPA_LABELS[t.etapa] ?? t.etapa}
                     </span>
                   </div>
-                  <div className="text-[#555] text-xs mt-0.5">
+                  <p className="text-gray-600 text-[11px] mt-0.5 truncate">
                     {t.nombreEvento || TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
-                    {t.lugarEstimado && <span className="ml-2 text-[#444]">· {t.lugarEstimado}</span>}
-                  </div>
+                    {t.lugarEstimado && <span className="text-gray-700"> · {t.lugarEstimado}</span>}
+                    {cots.length > 0 && <span className="text-gray-700"> · {cots.length} cot.</span>}
+                  </p>
                 </div>
-                {cots.length > 0 && (
-                  <span className="text-[10px] text-[#555] shrink-0">{cots.length} cot.</span>
-                )}
-                <div className="shrink-0">
-                  {fechaLabel ? (
-                    <span className={`text-xs font-medium ${showHace ? "text-amber-400" : "text-[#9ca3af]"}`}>{fechaLabel}</span>
-                  ) : (
-                    <span className="text-[#333] text-xs">—</span>
-                  )}
-                </div>
-                <div className="shrink-0 min-w-[80px] text-right">
+
+                <div className="shrink-0 text-right min-w-[76px] hidden sm:block">
                   {presupuesto ? (
-                    <span className={`text-xs ${t.presupuestoEstimado ? "text-[#B3985B]" : "text-[#666]"}`}>{formatCurrency(presupuesto)}</span>
+                    <span className={`text-xs ${t.presupuestoEstimado ? "text-[#B3985B]" : "text-gray-600"}`}>{formatCurrency(presupuesto)}</span>
                   ) : (
-                    <span className="text-[#333] text-xs">—</span>
+                    <span className="text-[#222] text-xs">—</span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {wa && (
-                    <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp"
+
+                <div className="shrink-0 text-right min-w-[64px] hidden sm:block">
+                  {fechaLabel ? (
+                    <span className="text-xs text-gray-500">{fechaLabel}</span>
+                  ) : (
+                    <span className="text-[#222] text-xs">—</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {aprobada?.proyecto && (
+                    <Link href={`/proyectos/${aprobada.proyecto.id}`}
                       onClick={e => e.stopPropagation()}
-                      className="text-green-500 hover:text-green-400 transition-colors">
+                      className="text-emerald-600 hover:text-emerald-400 text-[11px] transition-colors whitespace-nowrap">
+                      Proyecto →
+                    </Link>
+                  )}
+                  {wa && (
+                    <a href={wa} target="_blank" rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="text-green-700 hover:text-green-400 transition-colors">
                       <WaIcon />
                     </a>
                   )}
-                  <button onClick={e => { e.stopPropagation(); eliminar(t.id, t.cliente.nombre); }} disabled={deletingId === t.id}
-                    className="text-[#333] hover:text-red-400 transition-colors disabled:opacity-40">
+                  <button
+                    onClick={e => { e.stopPropagation(); eliminar(t.id, t.cliente.nombre); }}
+                    disabled={deletingId === t.id}
+                    className="text-[#252525] hover:text-red-500/60 transition-colors disabled:opacity-40">
                     {deletingId === t.id ? (
-                      <span className="text-[10px]">...</span>
+                      <span className="text-[10px] text-gray-600">...</span>
                     ) : (
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
@@ -499,7 +506,6 @@ export default function TratosPage() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
-  const [pendientesOpen, setPendientesOpen] = useState(true);
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
@@ -715,51 +721,46 @@ export default function TratosPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Pendientes de cerrar — siempre arriba y separados */}
-              {tratosArchivados.length > 0 && (
-                <div>
-                  <button onClick={() => setPendientesOpen(o => !o)} className="flex items-center gap-2 mb-2 w-full text-left group">
-                    <svg className={`w-3.5 h-3.5 text-amber-500 transition-transform shrink-0 ${pendientesOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                    <h2 className="text-xs font-semibold text-amber-400 uppercase tracking-wider">Pendientes de cerrar</h2>
-                    <span className="text-[10px] bg-amber-900/40 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full">{tratosArchivados.length}</span>
-                    <span className="text-[10px] text-amber-700 italic">Fecha de evento ya pasó — requieren acción</span>
-                  </button>
-                  {pendientesOpen && <TratoTable tratos={tratosArchivados} showHace expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-amber-900/30" headerClass="bg-amber-950/20 border-amber-900/20 text-amber-900/80" />}
-                </div>
-              )}
-
+            <div className="space-y-5">
               {/* Próximos agrupados */}
-              {tratosProximos.length === 0 ? (
+              {tratosProximos.length === 0 && tratosArchivados.length === 0 ? (
                 <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center text-[#555] text-sm">
-                  Sin tratos próximos en esta etapa
+                  Sin tratos en esta etapa
                 </div>
               ) : agrupacion === "todos" ? (
-                <div>
-                  <button onClick={() => setGruposOpen(o => ({ ...o, __todos: !(o.__todos ?? true) }))} className="flex items-center gap-2 mb-2 w-full text-left group">
-                    <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform shrink-0 ${(gruposOpen.__todos ?? true) ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                    <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Próximos</h2>
-                    <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{tratosProximos.length}</span>
-                  </button>
-                  {(gruposOpen.__todos ?? true) && <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />}
-                </div>
+                <>
+                  {tratosProximos.length > 0 && (
+                    <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />
+                  )}
+                </>
               ) : (
                 <div className="space-y-5">
                   {gruposProximos.map(grupo => {
                     const isOpen = gruposOpen[grupo.key] ?? true;
                     return (
                       <div key={grupo.key}>
-                        <button onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))} className="flex items-center gap-3 mb-2 w-full text-left group">
-                          <svg className={`w-3.5 h-3.5 text-gray-500 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                          <h2 className="text-xs font-bold text-white">{grupo.label}</h2>
-                          <span className="text-[10px] bg-[#1a1a1a] text-gray-600 border border-[#222] px-2 py-0.5 rounded-full">{grupo.tratos.length}</span>
-                          <div className="flex-1 h-px bg-[#1e1e1e]" />
+                        <button onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))} className="flex items-center gap-3 mb-2 w-full text-left">
+                          <svg className={`w-3 h-3 text-gray-600 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                          <h2 className="text-xs font-semibold text-gray-300">{grupo.label}</h2>
+                          <span className="text-[10px] text-gray-600">{grupo.tratos.length}</span>
+                          <div className="flex-1 h-px bg-[#1a1a1a]" />
                         </button>
-                        {isOpen && <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} borderClass="border-[#1e1e1e]" headerClass="border-[#1e1e1e] text-[#555]" />}
+                        {isOpen && <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />}
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Pasados — sin drama */}
+              {tratosArchivados.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-4 py-3">
+                    <div className="flex-1 h-px bg-[#161616]" />
+                    <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {tratosArchivados.length}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                  <TratoTable tratos={tratosArchivados} showHace dimmed expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />
                 </div>
               )}
             </div>
