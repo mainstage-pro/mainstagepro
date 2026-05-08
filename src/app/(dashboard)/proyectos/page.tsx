@@ -151,15 +151,17 @@ export default function ProyectosPage() {
     } finally { setDeletingId(null); }
   }
 
-  // Próximos = activos, orden cronológico base
+  const hoy = new Date().toISOString().split("T")[0];
+
+  // Próximos = fecha de evento >= hoy o sin fecha
   const proximos = proyectos
-    .filter(p => p.estado !== "COMPLETADO" && p.estado !== "CANCELADO")
+    .filter(p => !p.fechaEvento || p.fechaEvento.substring(0, 10) >= hoy)
     .sort((a, b) => new Date(a.fechaEvento ?? "9999").getTime() - new Date(b.fechaEvento ?? "9999").getTime());
 
-  // Pasados = completados/cancelados, más reciente primero
+  // Pasados = fecha de evento ya ocurrió, más reciente primero
   const pasados = proyectos
-    .filter(p => p.estado === "COMPLETADO" || p.estado === "CANCELADO")
-    .sort((a, b) => new Date(b.fechaEvento ?? "0").getTime() - new Date(a.fechaEvento ?? "0").getTime());
+    .filter(p => !!p.fechaEvento && p.fechaEvento.substring(0, 10) < hoy)
+    .sort((a, b) => new Date(b.fechaEvento).getTime() - new Date(a.fechaEvento).getTime());
 
   const q = busqueda.toLowerCase();
   function filtrar(list: Proyecto[]) {
@@ -207,7 +209,7 @@ export default function ProyectosPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Proyectos</h1>
           <p className="text-[#6b7280] text-sm">
-            {loading ? "Cargando..." : `${proximos.length} próximos · ${pasados.length} completados`}
+            {loading ? "Cargando..." : `${proximos.length} próximos · ${pasados.length} pasados`}
           </p>
         </div>
         <div className="flex items-center gap-2">
