@@ -262,20 +262,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
 
     if (personalPendiente.length > 0) {
-        const fechaCompromiso = proximoMiercolesTraEvento(proyecto.fechaEvento ?? new Date());
-
-      await prisma.cuentaPagar.createMany({
-        data: personalPendiente.map(p => ({
-          tipoAcreedor: "TECNICO",
-          tecnicoId: p.tecnicoId ?? undefined,
-          proyectoId: id,
-          concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
-          monto: p.tarifaAcordada!,
-          fechaCompromiso,
-          estado: "PENDIENTE",
-        })),
-        skipDuplicates: true,
+      // Contar CxP existentes por técnico para no duplicar las creadas al asignar
+      const cxpExistentes = await prisma.cuentaPagar.findMany({
+        where: { proyectoId: id, tipoAcreedor: "TECNICO", tecnicoId: { not: null } },
+        select: { tecnicoId: true },
       });
+      const cxpPorTecnico = new Map<string, number>();
+      for (const c of cxpExistentes) {
+        if (c.tecnicoId) cxpPorTecnico.set(c.tecnicoId, (cxpPorTecnico.get(c.tecnicoId) ?? 0) + 1);
+      }
+      // Contar entradas de personal por técnico para comparar
+      const personalPorTecnico = new Map<string, number>();
+      const personalSinCxP = personalPendiente.filter(p => {
+        if (!p.tecnicoId) return true;
+        const existentes = cxpPorTecnico.get(p.tecnicoId) ?? 0;
+        const visto = personalPorTecnico.get(p.tecnicoId) ?? 0;
+        personalPorTecnico.set(p.tecnicoId, visto + 1);
+        return visto >= existentes;
+      });
+
+      if (personalSinCxP.length > 0) {
+        const fechaCompromiso = proximoMiercolesTraEvento(proyecto.fechaEvento ?? new Date());
+        await prisma.cuentaPagar.createMany({
+          data: personalSinCxP.map(p => ({
+            tipoAcreedor: "TECNICO",
+            tecnicoId: p.tecnicoId ?? undefined,
+            proyectoId: id,
+            concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
+            monto: p.tarifaAcordada!,
+            fechaCompromiso,
+            estado: "PENDIENTE",
+          })),
+        });
+      }
     }
   }
 

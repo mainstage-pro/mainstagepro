@@ -182,8 +182,8 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
 }
 
 // ─── Componente campo editable ────────────────────────────────────────────────
-function Campo({ label, value, field, onSave, type = "text", multiline = false }:
-  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean }) {
+function Campo({ label, value, field, onSave, type = "text", multiline = false, noLabel = false }:
+  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean }) {
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -204,7 +204,7 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false }
 
   return (
     <div>
-      <label className="text-gray-500 text-xs mb-1 block">{label}</label>
+      {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
       {multiline ? (
         <textarea ref={textareaRef} value={val} rows={2} className={inputCls + " resize-none overflow-hidden"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
@@ -2554,8 +2554,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white">{proyecto.cliente.telefono ?? "—"}</p>
                   {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
                 </div>
-                <Campo label="Responsable por parte del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-                <Campo label="Contacto del responsable" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
                 <div className="col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
                   <Combobox
@@ -2593,7 +2591,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
                 </div>
                 {!esRenta && (<>
-                  <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del lugar</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoLugar", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoLugarContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del lugar" noLabel value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                  </div>
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                   <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
                   <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
