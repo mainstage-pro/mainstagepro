@@ -70,9 +70,9 @@ function ProyectoRow({ p, deletingId, eliminar }: {
 
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <span className="text-white text-sm font-medium leading-snug">{p.nombre}</span>
+            <span className="text-white text-sm font-medium leading-snug">{p.cliente?.nombre ?? p.nombre}</span>
             {p.cliente?.nombre && (
-              <span className="text-gray-600 text-xs truncate max-w-[160px]">{p.cliente.nombre}</span>
+              <span className="text-gray-600 text-xs truncate max-w-[160px]">{p.nombre}</span>
             )}
             <span className={`text-[10px] font-medium uppercase tracking-wide ${ESTADO_TEXT[p.estado] ?? "text-gray-700"}`}>
               {ESTADO_PROYECTO_LABELS[p.estado] ?? p.estado}

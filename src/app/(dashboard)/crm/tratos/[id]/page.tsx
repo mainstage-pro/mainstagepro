@@ -140,6 +140,7 @@ const PASOS_DISCOVERY_FULL = [
 const PASOS_DISCOVERY_RENTA = [
   { id: 1, icon: "📋", label: "Básico" },
   { id: 2, icon: "📦", label: "Equipos y logística" },
+  { id: 3, icon: "✅", label: "Finalizar" },
 ];
 
 // Servicios por tipo de evento
@@ -2492,7 +2493,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {canalInfo && <p className="text-gray-500 text-xs">Canal: {canalInfo.icon} {canalInfo.label}</p>}
               </div>
             </div>
-            <button onClick={() => setTrato(prev => prev ? { ...prev, descubrimientoCompleto: false } : prev)}
+            <button onClick={async () => { const d = await patch({ descubrimientoCompleto: false }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
               className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
               Editar descubrimiento
             </button>
@@ -2673,6 +2674,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   disabled={savingCliente}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nombre del evento / proyecto</label>
+                <input value={form.nombreEvento || ""} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
+                  placeholder="Ej: Boda García-López, Concierto Verano..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
