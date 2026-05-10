@@ -167,19 +167,6 @@ export default function MarketingCalendarioPage() {
     setSaving(false);
   }
 
-  async function quickFormato(id: string, formato: string) {
-    const res = await fetch(`/api/marketing/publicaciones/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ formato }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      return;
-    }
-    setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, formato } : p));
-  }
-
   async function quickEstado(id: string, estado: string) {
     if (estado === "CANCELADO") {
       setCancelandoId(id);
@@ -571,7 +558,6 @@ export default function MarketingCalendarioPage() {
           openEdit={openEdit}
           deletePub={deletePub}
           quickEstado={quickEstado}
-          quickFormato={quickFormato}
         />
       ) : vista === "tipo" ? (
         <VistaPorTipo
@@ -1007,12 +993,11 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
 }
 
 // ─── Vista Parrilla (tabla) ──────────────────────────────────────────────────
-function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, quickFormato }: {
+function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado }: {
   publicaciones: Publicacion[]; expandedId: string | null; editId: string | null;
   setExpandedId: (id: string | null) => void;
   openEdit: (p: Publicacion) => void; deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
-  quickFormato: (id: string, formato: string) => void;
 }) {
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const tiposUnicos = Array.from(new Map(publicaciones.filter(p => p.tipo).map(p => [p.tipo!.id, p.tipo!])).values());
@@ -1035,8 +1020,8 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
         </div>
       )}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[72px_80px_1fr_1fr_80px_100px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
-          <span>Fecha</span><span>Formato</span><span>Tipo / Descripción</span><span>Copy</span>
+        <div className="grid grid-cols-[72px_60px_1fr_1fr_80px_100px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
+          <span>Fecha</span><span>Fmt</span><span>Tipo / Descripción</span><span>Copy</span>
           <span className="text-center">Plataformas</span><span className="text-center">Estado</span>
         </div>
         <div className="divide-y divide-[#181818]">
@@ -1045,20 +1030,17 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
             const formato = p.formato ?? p.tipo?.formato ?? null;
             return (
               <div key={p.id}>
-                <div className={`grid grid-cols-[72px_80px_1fr_1fr_80px_100px] gap-2 px-4 py-2.5 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
+                <div className={`grid grid-cols-[72px_60px_1fr_1fr_80px_100px] gap-2 px-4 py-2.5 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
                   onClick={() => { if (editId !== p.id) setExpandedId(expandedId === p.id ? null : p.id); }}>
                   <div>
                     <p className="text-white text-sm font-bold leading-none">{d.getDate()}</p>
                     <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
                     <p className="text-[#444] text-[9px]">{MESES[d.getMonth()].slice(0,3)}</p>
                   </div>
-                  <div onClick={e => e.stopPropagation()}>
-                    <Combobox
-                      value={formato ?? ""}
-                      onChange={v => quickFormato(p.id, v)}
-                      options={FORMATOS.map(f => ({ value: f, label: FORMATO_LABEL[f] }))}
-                      className={`text-[10px] font-bold bg-transparent border-0 focus:outline-none cursor-pointer p-0 ${FORMATO_COLORS[formato ?? ""] ?? "text-gray-600"}`}
-                    />
+                  <div>
+                    {formato
+                      ? <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{FORMATO_LABEL[formato] ?? formato}</span>
+                      : <span className="text-gray-700 text-[9px]">—</span>}
                   </div>
                   <div className="min-w-0">
                     <p className="text-white text-xs font-medium truncate">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</p>
