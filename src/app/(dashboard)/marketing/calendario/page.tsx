@@ -289,8 +289,9 @@ export default function MarketingCalendarioPage() {
   }
 
   function openNueva(fechaInicial?: string) {
+    const today = new Date().toISOString().slice(0, 10);
     setNuevaForm({
-      fecha: fechaInicial ?? (mes + "-01"),
+      fecha: fechaInicial ?? today,
       tipoId: "", descripcion: "", copy: "",
       enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
     });
@@ -327,15 +328,14 @@ export default function MarketingCalendarioPage() {
       }),
     });
     if (res.ok) {
-      const { publicacion } = await res.json();
       const newMes = nuevaForm.fecha.slice(0, 7);
+      toast.success("Publicación agregada");
+      setShowNueva(false);
       if (newMes !== mes) {
         setMes(newMes);
       } else {
-        setPublicaciones(prev => [...prev, publicacion].sort((a, b) => a.fecha.localeCompare(b.fecha)));
+        await load();
       }
-      toast.success("Publicación agregada");
-      setShowNueva(false);
     } else {
       toast.error("Error al crear publicación");
     }
