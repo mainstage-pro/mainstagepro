@@ -55,6 +55,7 @@ export default async function DashboardVentasPage() {
     cotizacionesVencen3dias,
     tratosRecientes,
     ventasReporte,
+    reporteAreaSemana,
   ] = await Promise.all([
     prisma.trato.groupBy({ by: ["etapa"], _count: { _all: true }, _sum: { presupuestoEstimado: true }, where: tf }),
     prisma.cotizacion.count({ where: { createdAt: { gte: inicioMes, lte: finMes }, ...cf } }),
@@ -91,6 +92,7 @@ export default async function DashboardVentasPage() {
       take: 8,
     }),
     prisma.trato.count({ where: { etapa: "VENTA_CERRADA", updatedAt: { gte: inicioMes }, ...tf } }),
+    isAdmin ? prisma.reporteAreaSemanal.findFirst({ where: { area: "VENTAS", semana: new Date(ahora.getTime() - ((ahora.getDay() + 6) % 7) * 86400000).toLocaleDateString("en-CA") } }).catch(() => null) : Promise.resolve(null),
   ]);
 
   // suppress unused variable warning
@@ -133,6 +135,15 @@ export default async function DashboardVentasPage() {
           </Link>
         </div>
       </div>
+
+      {/* Alerta reporte semanal (solo admin/director de ventas) */}
+      {isAdmin && !reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Ventas pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

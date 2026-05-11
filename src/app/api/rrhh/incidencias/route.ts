@@ -11,9 +11,10 @@ export async function GET(req: NextRequest) {
   const where: Record<string, unknown> = {};
   if (personalId) where.personalId = personalId;
   if (mes) {
+    const [y, m] = mes.split("-").map(Number);
     where.fecha = {
-      gte: new Date(`${mes}-01`),
-      lt: new Date(new Date(`${mes}-01`).setMonth(new Date(`${mes}-01`).getMonth() + 1)),
+      gte: new Date(y, m - 1, 1),
+      lt:  new Date(y, m, 1),
     };
   }
   const incidencias = await prisma.incidencia.findMany({
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   const incidencia = await prisma.incidencia.create({
-    data: { personalId, tipoId, fecha: new Date(fecha), descripcion, periodoNomina, montoCalculado },
+    data: { personalId, tipoId, fecha: new Date(fecha + "T12:00:00"), descripcion, periodoNomina, montoCalculado },
     include: { personal: { select: { id: true, nombre: true } }, tipo: true },
   });
   return NextResponse.json({ incidencia }, { status: 201 });

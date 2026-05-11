@@ -41,6 +41,7 @@ model User {
   versiones             VersionHistorial[] @relation("versiones")
   clientesVendedor      Cliente[]          @relation("ClientesVendedor")
   notificaciones        Notificacion[]
+  reportesArea          ReporteAreaSemanal[] @relation("ReportesAreaAutor")
 
   @@map("users")
 }
@@ -423,6 +424,9 @@ model Proyecto {
   responsables           String?   // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
   proveedoresRenta       String?   // JSON: [{ id, nombre, contacto, equipos: string[] }] — proveedores de subarriendo manuales
   equiposRiderExtra      String?   // JSON: [{ id, descripcion, cantidad, notas?, completado }] — equipos fuera de cotización
+  planProduccion         String?   // JSON: plan completo de producción (briefing, equipos, personal, logística, cronograma)
+  planProduccionAprobado Boolean   @default(false) // true cuando el encargado aprueba el plan >= 72h antes
+  planProduccionAprobadoEn DateTime? // timestamp de aprobación
   zona                   String    @default("LOCAL") // LOCAL | BAJIO | NACIONAL
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
@@ -1083,6 +1087,8 @@ model PersonalInterno {
   asistencias   Asistencia[]
   incidencias   Incidencia[]
   evaluaciones  EvaluacionEmpleado[]
+  encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
+  capacitaciones CapacitacionParticipante[]
 
   @@map("personal_interno")
 }
@@ -1296,6 +1302,82 @@ model Publicacion {
   updatedAt      DateTime       @updatedAt
 
   @@map("publicaciones")
+}
+
+// ─── ENCUESTA SATISFACCIÓN EQUIPO ────────────────────────────────────────────
+// Los empleados/freelancers responden cómo perciben trabajar en Mainstage
+
+model EncuestaSatisfaccionEquipo {
+  id          String    @id @default(cuid())
+  personalId  String
+  personal    PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  periodo     String    // ej. "Q1-2026" o "2026-05"
+  token       String    @unique @default(cuid())
+  enviada     Boolean   @default(false)
+  respondida  Boolean   @default(false)
+  respondidaEn DateTime?
+
+  // Criterios 1-10
+  claridadInstrucciones  Int?  // ¿Las instrucciones de trabajo son claras?
+  pagosPuntuales         Int?  // ¿Los pagos son puntuales?
+  tratoJusto             Int?  // ¿Sientes que te tratan de forma justa?
+  organizacion           Int?  // ¿Mainstage está bien organizada?
+  comunicacion           Int?  // ¿La comunicación contigo es fluida?
+  herramientas           Int?  // ¿Tienes los equipos/herramientas que necesitas?
+  crecimiento            Int?  // ¿Sientes que puedes crecer aquí?
+  ambiente               Int?  // ¿Cómo es el ambiente de trabajo?
+
+  // NPS 0-10
+  probabilidadRecomendar Int?  // ¿Recomendarías trabajar en Mainstage?
+
+  // Texto libre
+  loMejor         String?  // ¿Qué es lo que más valoras de trabajar en Mainstage?
+  loMejorable     String?  // ¿Qué cambiarías?
+  comentarios     String?
+
+  promedioCalculado Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([personalId, periodo])
+  @@map("encuestas_satisfaccion_equipo")
+}
+
+// Capacitaciones del equipo
+model Capacitacion {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  area        String   @default("GENERAL") // área responsable
+  tipo        String   @default("TECNICA") // TECNICA | SEGURIDAD | PROCEDIMIENTOS | DESARROLLO | INDUCCION
+  modalidad   String   @default("PRESENCIAL") // PRESENCIAL | VIRTUAL | AUTOAPRENDIZAJE
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  duracionHrs Float?
+  instructor  String?
+  material    String?  // URL o descripción del material
+  estado      String   @default("PROGRAMADA") // PROGRAMADA | EN_CURSO | COMPLETADA | CANCELADA
+  obligatoria Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participantes CapacitacionParticipante[]
+  @@map("capacitaciones")
+}
+
+model CapacitacionParticipante {
+  id              String       @id @default(cuid())
+  capacitacionId  String
+  capacitacion    Capacitacion @relation(fields: [capacitacionId], references: [id], onDelete: Cascade)
+  personalId      String
+  personal        PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  asistio         Boolean      @default(false)
+  calificacion    Float?
+  notas           String?
+  createdAt       DateTime     @default(now())
+
+  @@unique([capacitacionId, personalId])
+  @@map("capacitacion_participantes")
 }
 
 // ─── CONFIGURACIÓN DE LA APP ─────────────────────────────────────────────────
@@ -2223,6 +2305,25 @@ model ReporteSemanal {
 
   @@unique([semana])
   @@map("reportes_semanales")
+}
+
+// Reporte semanal por área (lo llena cada responsable de área cada lunes)
+model ReporteAreaSemanal {
+  id          String   @id @default(cuid())
+  area        String   // VENTAS | PRODUCCION | MARKETING | ADMINISTRACION | RRHH | DIRECCION
+  semana      String   // Lunes de la semana: "2026-05-04"
+  autorId     String
+  autor       User     @relation("ReportesAreaAutor", fields: [autorId], references: [id])
+  resultados  String   @default("") // Texto libre: logros de la semana
+  kpis        String   @default("[]") // JSON: [{ nombre, valor, meta?, unidad? }]
+  compromisos String   @default("") // Texto libre: qué se compromete para la siguiente semana
+  bloqueo     String?  // Texto libre: qué está bloqueando (opcional)
+  revisado    Boolean  @default(false) // Dirección revisó el reporte
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([area, semana])
+  @@map("reportes_area_semanal")
 }
 
 // ─── MÉTRICAS ORGÁNICAS ───────────────────────────────────────────────────────

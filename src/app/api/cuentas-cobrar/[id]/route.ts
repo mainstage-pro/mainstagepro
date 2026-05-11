@@ -20,6 +20,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (cxc.estado === "LIQUIDADO")
     return NextResponse.json({ error: "No se puede ajustar una cuenta ya liquidada" }, { status: 400 });
 
+  // Marcar como liquidado manualmente (cuando el movimiento ya se registró por otra vía)
+  if (body.marcarLiquidado === true) {
+    const montoCobradoFinal = typeof body.montoCobrado === "number" ? body.montoCobrado : cxc.monto;
+    const updated = await prisma.cuentaCobrar.update({
+      where: { id },
+      data: {
+        montoCobrado: montoCobradoFinal,
+        estado: montoCobradoFinal >= cxc.monto ? "LIQUIDADO" : "PARCIAL",
+        fechaCobroReal: montoCobradoFinal >= cxc.monto ? new Date() : undefined,
+      },
+    });
+    return NextResponse.json({ ok: true, cxc: updated });
+  }
+
   const updateData: Record<string, unknown> = {};
 
   if (monto !== undefined) {

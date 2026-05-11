@@ -43,6 +43,7 @@ export default async function DashboardAdminPage() {
     hervamPagoMes,
     hervamConfig,
     proyectosActivos,
+    reporteAreaSemana,
   ] = await Promise.all([
     prisma.movimientoFinanciero.groupBy({
       by: ["tipo"],
@@ -97,6 +98,7 @@ export default async function DashboardAdminPage() {
     }),
     prisma.hervamConfig.findFirst(),
     prisma.proyecto.count({ where: { estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] } } }),
+    prisma.reporteAreaSemanal.findFirst({ where: { area: "ADMINISTRACION", semana: (() => { const d = new Date(ahora); d.setDate(ahora.getDate() - (ahora.getDay() + 6) % 7); d.setHours(0,0,0,0); return d.toLocaleDateString("en-CA"); })() } }).catch(() => null),
   ]);
 
   const ingresos = movimientosMes.find((m) => m.tipo === "INGRESO")?._sum.monto ?? 0;
@@ -136,6 +138,15 @@ export default async function DashboardAdminPage() {
           )}
         </div>
       </div>
+
+      {/* Alerta reporte semanal */}
+      {!reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Administración pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

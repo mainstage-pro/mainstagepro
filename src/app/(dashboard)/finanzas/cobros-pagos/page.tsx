@@ -266,6 +266,7 @@ export default function CobrosPagosPage() {
   const [modalMetodoPago, setModalMetodoPago] = useState("TRANSFERENCIA");
   const [confirmando, setConfirmando] = useState(false);
   const [anulando, setAnulando] = useState<string | null>(null);
+  const [marcandoLiquidado, setMarcandoLiquidado] = useState<string | null>(null);
   const [expandedAbonos, setExpandedAbonos] = useState<Set<string>>(new Set());
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
   const [sortBy, setSortBy] = useState<"fecha_asc" | "fecha_desc" | "monto_desc" | "monto_asc" | "nombre_asc">("fecha_asc");
@@ -603,6 +604,25 @@ export default function CobrosPagosPage() {
       toast.error("Error al eliminar abono");
     }
     setAnulando(null);
+  }
+
+  async function marcarCobradoManual(cxcItem: CxCItem) {
+    const msg = `El movimiento de ${formatCurrency(cxcItem.monto)} ya está registrado en Movimientos.\n\n¿Marcar esta cuenta como LIQUIDADA sin crear un movimiento adicional?`;
+    if (!await confirm({ message: msg, confirmText: "Marcar como cobrada" })) return;
+    setMarcandoLiquidado(cxcItem.id);
+    const res = await fetch(`/api/cuentas-cobrar/${cxcItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marcarLiquidado: true, montoCobrado: cxcItem.monto }),
+    });
+    if (res.ok) {
+      toast.success("Cuenta marcada como cobrada");
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al actualizar");
+    }
+    setMarcandoLiquidado(null);
   }
 
   async function eliminar(id: string, tipo: "cxc" | "cxp", liquidado: boolean) {
@@ -1130,6 +1150,15 @@ export default function CobrosPagosPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                       Editar
+                    </button>
+                    <button onClick={() => marcarCobradoManual(c)}
+                      disabled={marcandoLiquidado === c.id}
+                      title="El movimiento ya se registró por otra vía — solo actualiza el estado de esta cuenta"
+                      className="flex items-center gap-1.5 text-xs text-green-500/70 border border-green-900/30 hover:border-green-600/50 hover:text-green-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Ya cobré (sin movimiento)
                     </button>
                   </>
                 )}

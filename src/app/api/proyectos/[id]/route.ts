@@ -172,6 +172,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
     "notasPortal", "responsables", "proveedoresRenta", "equiposRiderExtra", "zona",
+    "planProduccion",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
@@ -187,6 +188,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else {
         data[key] = body[key] || null;
       }
+    }
+  }
+  // planProduccionAprobado — boolean especial con timestamp
+  if ("planProduccionAprobado" in body) {
+    data["planProduccionAprobado"] = Boolean(body["planProduccionAprobado"]);
+    if (body["planProduccionAprobado"]) {
+      data["planProduccionAprobadoEn"] = new Date();
     }
   }
   // Campos de chofer

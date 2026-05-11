@@ -44,7 +44,16 @@ const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
-      { key: "reportes", label: "Reportes semanales", href: "/reportes" },
+      { key: "semaforo", label: "Semáforo del negocio", href: "/dashboard/semaforo" },
+      { key: "agenda-semana", label: "Vista semanal", href: "/agenda/semana" },
+      {
+        key: "reportes",
+        label: "Reportes semanales",
+        children: [
+          { key: "reportes-auto", label: "Resumen automático", href: "/reportes" },
+          { key: "reportes-areas", label: "Reportes por área", href: "/reportes/areas" },
+        ],
+      },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
         key: "calendario",
@@ -87,6 +96,8 @@ const NAV: NavSection[] = [
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
           { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/rrhh/satisfaccion" },
+          { key: "rrhh-capacitaciones", label: "Capacitaciones", href: "/rrhh/capacitaciones" },
           { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
         ],
       },
