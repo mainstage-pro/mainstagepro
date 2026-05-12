@@ -2889,8 +2889,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Personal del evento (gestión completa) — solo producción ── */}
-          {!esRenta && <div className="space-y-3">
+          {/* ── Personal del evento (gestión completa) ── */}
+          <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -3466,7 +3466,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
               })
             )}
-          </div>}
+          </div>
 
           {!esRenta && (() => {
             const DIRECTORIO = [
