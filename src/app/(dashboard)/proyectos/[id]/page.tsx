@@ -58,7 +58,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; lineas: { id: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
@@ -2465,20 +2465,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const anticipoCobrado = anticipo ? anticipo.montoCobrado >= anticipo.monto : false;
         const equiposTotal = proyecto.equipos?.length ?? 0;
         const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
-        const fichaOk = !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
+        const fichaOk = esRenta
+          ? !!proyecto.lugarEvento
+          : !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
         const items = [
           {
             label: "Ficha",
             ok: fichaOk,
             warn: !fichaOk,
-            txt: fichaOk ? "Completa" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante",
+            txt: fichaOk ? "Completa" : (esRenta ? "lugar faltante" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante"),
           },
-          {
+          ...(!esRenta ? [{
             label: "Personal",
             ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
             warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
             txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
-          },
+          }] : []),
           {
             label: "Equipos",
             ok: equiposTotal > 0 && equiposConf === equiposTotal,
@@ -2650,8 +2652,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       {(() => {
         // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
         const fichaCamposFaltantes: string[] = [];
-        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
-        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin del evento");
+        if (!esRenta && !proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
+        if (!esRenta && !proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin del evento");
         if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
         const fichaCompleta = fichaCamposFaltantes.length === 0;
         const fichaTooltip = fichaCompleta
@@ -3908,6 +3910,43 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         return (
           <div className="space-y-6">
+
+            {/* ═══════ ZONA 0: NOTAS DE COTIZACIÓN (todos los proyectos) ═══════ */}
+            {proyecto.cotizacion && (proyecto.cotizacion.observaciones || proyecto.cotizacion.notasSecciones) && (() => {
+              let seccionesMap: Record<string, string> = {};
+              try { seccionesMap = proyecto.cotizacion!.notasSecciones ? JSON.parse(proyecto.cotizacion!.notasSecciones) : {}; } catch { /* ignore */ }
+              const secciones = Object.entries(seccionesMap).filter(([, v]) => v?.trim());
+              return (
+                <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas de la cotización</p>
+                    <span className="text-[10px] text-[#B3985B]/40 ml-auto">{proyecto.cotizacion!.numeroCotizacion}</span>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {proyecto.cotizacion!.observaciones && (
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Observaciones generales</p>
+                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{proyecto.cotizacion!.observaciones}</p>
+                      </div>
+                    )}
+                    {secciones.length > 0 && (
+                      <div className={proyecto.cotizacion!.observaciones ? "border-t border-[#1a1a1a] pt-3" : ""}>
+                        {proyecto.cotizacion!.observaciones && <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Notas por sección</p>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {secciones.map(([cat, nota]) => (
+                            <div key={cat} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5">
+                              <p className="text-[10px] text-[#B3985B]/70 font-semibold uppercase tracking-wider mb-1">{cat}</p>
+                              <p className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed">{nota}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
             {!esRenta && <><SectionDivider label="Rider & Checklist" />

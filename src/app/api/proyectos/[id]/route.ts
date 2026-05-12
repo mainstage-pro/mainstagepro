@@ -46,6 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cotizacion: {
           select: {
             id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            notasSecciones: true, observaciones: true,
             lineas: {
               where: { tipo: "OPERACION_TECNICA" },
               select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
@@ -98,6 +99,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cotizacion: {
           select: {
             id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            notasSecciones: true, observaciones: true,
             lineas: {
               where: { tipo: "OPERACION_TECNICA" },
               select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
