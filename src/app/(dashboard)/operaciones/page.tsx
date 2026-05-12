@@ -743,7 +743,10 @@ export default function OperacionesPage() {
   const applyBusqueda = (list: TareaItem[]) => {
     const q = busqueda.toLowerCase().trim();
     if (!q) return list;
-    return list.filter(t => t.titulo.toLowerCase().includes(q));
+    return list.filter(t =>
+      t.titulo.toLowerCase().includes(q) ||
+      (t.descripcion?.toLowerCase().includes(q) ?? false)
+    );
   };
 
   const hoyGrouped = useMemo(() => {
@@ -944,6 +947,27 @@ export default function OperacionesPage() {
             </span>
             Nueva tarea
           </button>
+        </div>
+
+        {/* ── Buscador ───────────────────────────────────────────────────── */}
+        <div className="px-3 pb-2 shrink-0">
+          <div className="relative">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#333] pointer-events-none" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              placeholder="Buscar tarea…"
+              className="w-full pl-7 pr-6 py-1.5 bg-[#0d0d0d] border border-[#181818] rounded-lg text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/30 transition-colors"
+            />
+            {busqueda && (
+              <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#333] hover:text-[#777] transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Fixed nav items ────────────────────────────────────────────── */}
