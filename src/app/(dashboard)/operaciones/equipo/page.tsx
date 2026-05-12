@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import TaskModal, { type TareaDetalle } from "../components/TaskModal";
 
 interface TareaEquipo {
   id: string;
@@ -82,10 +83,11 @@ function fechaChip(fecha: string | null): { label: string; cls: string } | null 
 
 // ── Componente tarea ──────────────────────────────────────────────────────────
 
-function TareaCard({ t, showArea, onDateChange }: {
+function TareaCard({ t, showArea, onDateChange, onSelect }: {
   t: TareaEquipo;
   showArea?: boolean;
   onDateChange?: (id: string, fecha: string) => void;
+  onSelect?: (id: string) => void;
 }) {
   const chip       = fechaChip(t.fecha);
   const overdue    = isOverdue(t.fecha);
@@ -98,10 +100,10 @@ function TareaCard({ t, showArea, onDateChange }: {
       <div className={`w-1 shrink-0 rounded-l-lg ${PRIO_BAR[t.prioridad] ?? "bg-[#2a2a2a]"}`} />
 
       <div className="flex-1 min-w-0 px-3 py-2.5">
-        {/* Título — navega a la tarea */}
-        <Link href={`/operaciones?open=${t.id}`} className="text-[12px] text-white leading-snug font-medium group-hover:text-[#ddd] truncate block">
+        {/* Título — abre modal */}
+        <button onClick={() => onSelect?.(t.id)} className="text-[12px] text-white leading-snug font-medium group-hover:text-[#ddd] truncate block text-left w-full">
           {t.titulo}
-        </Link>
+        </button>
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -179,11 +181,94 @@ export default function EquipoPage() {
   const [filtroFecha, setFiltroFecha]   = useState<"hoy" | "proximas" | "todas">("todas");
   const [filtroUsuario, setFiltroUsuario] = useState<string>("");
 
+  // Task modal state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTask, setSelectedTask]     = useState<TareaDetalle | null>(null);
+  const [loadingTask, setLoadingTask]       = useState(false);
+  const [proyectos, setProyectos]           = useState<{id:string;nombre:string;color:string|null}[]>([]);
+  const [iniciativas, setIniciativas]       = useState<{id:string;nombre:string;color:string|null}[]>([]);
+  const [sessionId, setSessionId]           = useState("");
+
   useEffect(() => {
-    fetch("/api/usuarios")
-      .then(r => r.json())
-      .then(d => setUsuarios(d.usuarios ?? []));
+    Promise.all([
+      fetch("/api/usuarios").then(r => r.json()).catch(() => ({ usuarios: [] })),
+      fetch("/api/operaciones/proyectos").then(r => r.json()).catch(() => ({ proyectos: [] })),
+      fetch("/api/iniciativas").then(r => r.json()).catch(() => ({ iniciativas: [] })),
+      fetch("/api/me").then(r => r.json()).catch(() => ({})),
+    ]).then(([usr, proy, init, me]) => {
+      setUsuarios(usr.usuarios ?? []);
+      setProyectos(proy.proyectos ?? []);
+      setIniciativas(init.iniciativas ?? []);
+      if (me?.id) setSessionId(me.id);
+    });
   }, []);
+
+  useEffect(() => {
+    if (!selectedTaskId) { setSelectedTask(null); return; }
+    setLoadingTask(true);
+    fetch(`/api/tareas/${selectedTaskId}`)
+      .then(r => r.json())
+      .then(d => { setSelectedTask(d.tarea ?? null); setLoadingTask(false); });
+  }, [selectedTaskId]);
+
+  async function handleSaveTask(id: string, patch: Record<string, unknown>) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    setSelectedTask(prev => prev ? { ...prev, ...patch } as TareaDetalle : prev);
+    setTareas(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const next = { ...t };
+      if (patch.titulo     != null) next.titulo    = patch.titulo    as string;
+      if (patch.prioridad  != null) next.prioridad = patch.prioridad as string;
+      if ("fecha"          in patch) next.fecha     = patch.fecha     as string | null;
+      if ("asignadoAId"    in patch) {
+        const uid = patch.asignadoAId as string | null;
+        next.asignadoA = uid ? (usuarios.find(u => u.id === uid) ?? null) : null;
+      }
+      return next;
+    }));
+  }
+
+  async function handleCompleteTask(id: string) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    });
+    setTareas(prev => prev.filter(t => t.id !== id));
+    setSelectedTaskId(null);
+  }
+
+  async function handleDeleteTask(id: string) {
+    const res = await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Error al eliminar"); return; }
+    setTareas(prev => prev.filter(t => t.id !== id));
+    setSelectedTaskId(null);
+  }
+
+  async function handleAddSubtarea(parentId: string, data: { titulo: string; fecha: string | null; prioridad: string }) {
+    await fetch("/api/tareas", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...data, parentId }),
+    });
+    fetch(`/api/tareas/${parentId}`).then(r => r.json()).then(d => setSelectedTask(d.tarea ?? null));
+  }
+
+  async function handleCompleteSubtarea(id: string) {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    });
+    if (selectedTaskId) {
+      fetch(`/api/tareas/${selectedTaskId}`).then(r => r.json()).then(d => setSelectedTask(d.tarea ?? null));
+    }
+  }
+
+  function handleDeleteSubtarea(id: string) {
+    fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    setSelectedTask(prev => prev ? { ...prev, subtareas: prev.subtareas.filter(s => s.id !== id) } : prev);
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -438,13 +523,28 @@ export default function EquipoPage() {
                 {/* ── Lista de tareas ─────────────────────────────────────── */}
                 <div className="flex-1 divide-y divide-[#131313] px-1 py-1">
                   {sorted.map(t => (
-                    <TareaCard key={t.id} t={t} showArea={showAreaChip} onDateChange={handleDateChange} />
+                    <TareaCard key={t.id} t={t} showArea={showAreaChip} onDateChange={handleDateChange} onSelect={setSelectedTaskId} />
                   ))}
                 </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* ── Task modal ──────────────────────────────────────────────────────── */}
+      {selectedTaskId && (
+        <TaskModal
+          tarea={selectedTask} loading={loadingTask}
+          usuarios={usuarios} proyectos={proyectos} iniciativas={iniciativas} sessionId={sessionId}
+          onClose={() => setSelectedTaskId(null)}
+          onSave={handleSaveTask}
+          onComplete={handleCompleteTask}
+          onDelete={handleDeleteTask}
+          onAddSubtarea={handleAddSubtarea}
+          onCompleteSubtarea={handleCompleteSubtarea}
+          onDeleteSubtarea={handleDeleteSubtarea}
+        />
       )}
     </div>
   );
