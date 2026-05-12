@@ -22,51 +22,59 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cxc) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  // Obtener granTotal desde cotización (directo o via proyecto)
+  // ── 1. granTotal ────────────────────────────────────────────────────────────
+  // Fuente primaria: cotizacion incluida en esta CxC
   let granTotal: number | null = cxc.cotizacion?.granTotal ?? null;
-  let montoAnticipo: number | null = null;
-  let montoCobradoProyecto = 0;
 
-  if (cxc.proyectoId) {
-    if (!granTotal) {
-      const proyecto = await prisma.proyecto.findUnique({
-        where: { id: cxc.proyectoId },
-        select: { cotizacion: { select: { granTotal: true } } },
-      });
-      granTotal = proyecto?.cotizacion?.granTotal ?? null;
-    }
-
-    // Anticipo registrado en el mismo proyecto
-    const cxcAnticipo = await prisma.cuentaCobrar.findFirst({
-      where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
-      select: { monto: true, montoCobrado: true },
+  // Fuente secundaria: cotización del proyecto vinculado
+  if (!granTotal && cxc.proyectoId) {
+    const proy = await prisma.proyecto.findUnique({
+      where: { id: cxc.proyectoId },
+      select: { cotizacion: { select: { granTotal: true } } },
     });
-    montoAnticipo = cxcAnticipo?.monto ?? null;
-
-    // Total cobrado en el proyecto (todos los abonos confirmados)
-    const todas = await prisma.cuentaCobrar.findMany({
-      where: { proyectoId: cxc.proyectoId },
-      select: { montoCobrado: true },
-    });
-    montoCobradoProyecto = todas.reduce((s, c) => s + c.montoCobrado, 0);
+    granTotal = proy?.cotizacion?.granTotal ?? null;
   }
 
+  // ── 2. Anticipos reales ──────────────────────────────────────────────────────
+  // Suma todos los CxC tipo ANTICIPO relacionados al mismo proyecto o cotización.
+  // Se usa `monto` (monto registrado/comprometido) que es la base financiera acordada.
+  let montoAnticipo: number | null = null;
+
+  if (cxc.proyectoId) {
+    // Todos los anticipos del mismo proyecto (incluye el propio si esta CxC es ANTICIPO)
+    const anticipos = await prisma.cuentaCobrar.findMany({
+      where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
+      select: { monto: true },
+    });
+    const total = anticipos.reduce((s, a) => s + a.monto, 0);
+    if (total > 0) montoAnticipo = total;
+  } else if (cxc.cotizacionId) {
+    // Sin proyecto pero con cotización: busca anticipos con la misma cotización
+    const anticipos = await prisma.cuentaCobrar.findMany({
+      where: { cotizacionId: cxc.cotizacionId, tipoPago: "ANTICIPO" },
+      select: { monto: true },
+    });
+    const total = anticipos.reduce((s, a) => s + a.monto, 0);
+    if (total > 0) montoAnticipo = total;
+  }
+
+  // ── 3. Armar datos para el PDF ───────────────────────────────────────────────
   const notaData = {
-    id:               cxc.id,
-    concepto:         cxc.concepto,
-    tipoPago:         cxc.tipoPago,
-    monto:            cxc.monto,
-    fechaCompromiso:  cxc.fechaCompromiso.toISOString(),
+    id:              cxc.id,
+    concepto:        cxc.concepto,
+    tipoPago:        cxc.tipoPago,
+    monto:           cxc.monto,
+    fechaCompromiso: cxc.fechaCompromiso.toISOString(),
     granTotal,
     montoAnticipo,
-    montoCobrado:     montoCobradoProyecto || cxc.montoCobrado,
-    cliente:          cxc.cliente
+    montoCobrado:    cxc.montoCobrado,
+    cliente:         cxc.cliente
       ? { nombre: cxc.cliente.nombre, empresa: cxc.cliente.empresa ?? null, telefono: cxc.cliente.telefono ?? null }
       : null,
-    proyecto:         cxc.proyecto
+    proyecto:        cxc.proyecto
       ? { nombre: cxc.proyecto.nombre, numeroProyecto: cxc.proyecto.numeroProyecto, fechaEvento: cxc.proyecto.fechaEvento?.toISOString() ?? null }
       : null,
-    cotizacion:       cxc.cotizacion ? { numeroCotizacion: cxc.cotizacion.numeroCotizacion } : null,
+    cotizacion:      cxc.cotizacion ? { numeroCotizacion: cxc.cotizacion.numeroCotizacion } : null,
   };
 
   const pdfStream = await ReactPDF.renderToStream(
