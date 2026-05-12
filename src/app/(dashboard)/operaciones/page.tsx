@@ -114,6 +114,7 @@ export default function OperacionesPage() {
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [selectedIds, setSelectedIds]           = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk]           = useState(false);
+  const [noSecDropOver, setNoSecDropOver]        = useState(false);
   const [proyViewOpts, setProyViewOpts]         = useState<ProyViewOpts>(() => {
     if (typeof window === "undefined") return PROY_VIEW_DEFAULT;
     try { const r = localStorage.getItem("op_proy_view"); if (r) return { ...PROY_VIEW_DEFAULT, ...JSON.parse(r) }; } catch {}
@@ -558,6 +559,58 @@ export default function OperacionesPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ seccionId: null }),
     });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Moves multiple tasks to a section at once (used during multi-select drag)
+  const moveManyToSection = useCallback((taskIds: string[], seccionId: string) => {
+    const idSet = new Set(taskIds);
+    setProyectoDetalle(prev => {
+      if (!prev) return null;
+      const targetSec = prev.secciones.find(s => s.id === seccionId);
+      if (!targetSec) return prev;
+      const allTasks: TareaItem[] = [
+        ...prev.tareas.filter(t => idSet.has(t.id)),
+        ...prev.secciones.flatMap(s => s.tareas.filter(t => idSet.has(t.id))),
+      ];
+      return {
+        ...prev,
+        tareas: prev.tareas.filter(t => !idSet.has(t.id)),
+        secciones: prev.secciones.map(s => {
+          if (s.id === seccionId) return {
+            ...s, tareas: [
+              ...s.tareas.filter(t => !idSet.has(t.id)),
+              ...allTasks.map(t => ({ ...t, seccion: { id: s.id, nombre: s.nombre } })),
+            ],
+          };
+          return { ...s, tareas: s.tareas.filter(t => !idSet.has(t.id)) };
+        }),
+      };
+    });
+    Promise.all(taskIds.map(id => fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seccionId }),
+    })));
+    setDraggingId(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Moves multiple tasks to unsectioned at once (used during multi-select drag)
+  const moveManyToNoSection = useCallback((taskIds: string[]) => {
+    const idSet = new Set(taskIds);
+    setProyectoDetalle(prev => {
+      if (!prev) return null;
+      const fromSections = prev.secciones.flatMap(s => s.tareas.filter(t => idSet.has(t.id)));
+      if (fromSections.length === 0) return prev;
+      return {
+        ...prev,
+        tareas: [...prev.tareas, ...fromSections.map(t => ({ ...t, seccion: null }))],
+        secciones: prev.secciones.map(s => ({ ...s, tareas: s.tareas.filter(t => !idSet.has(t.id)) })),
+      };
+    });
+    Promise.all(taskIds.map(id => fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ seccionId: null }),
+    })));
+    setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moveToProject = useCallback((taskId: string, proyectoId: string, proyectoNombre: string) => {
@@ -1468,6 +1521,34 @@ export default function OperacionesPage() {
                     )}
                   </div>
 
+                  {/* ── Drop zone: mover a sin sección (solo aparece al arrastrar desde una sección) ── */}
+                  {draggingId && proyectoDetalle.secciones.some(s => s.tareas.some(t => t.id === draggingId)) && (
+                    <div
+                      className={`flex items-center justify-center h-9 rounded-xl border-2 border-dashed mb-2 transition-all ${
+                        noSecDropOver
+                          ? "border-[#B3985B]/60 bg-[#B3985B]/[0.06] text-[#B3985B]"
+                          : "border-[#1e1e1e] text-[#2a2a2a]"
+                      }`}
+                      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setNoSecDropOver(true); }}
+                      onDragLeave={() => setNoSecDropOver(false)}
+                      onDrop={e => {
+                        e.preventDefault(); e.stopPropagation(); setNoSecDropOver(false);
+                        if (!draggingId) return;
+                        const idsToMove = selectedIds.has(draggingId) && selectedIds.size > 1 ? [...selectedIds] : [draggingId];
+                        moveManyToNoSection(idsToMove);
+                        if (idsToMove.length > 1) clearMultiSelect();
+                      }}
+                    >
+                      <span className="text-[11px] font-medium select-none">
+                        {noSecDropOver
+                          ? selectedIds.has(draggingId) && selectedIds.size > 1
+                            ? `→ Mover ${selectedIds.size} tareas — sin sección`
+                            : "→ Quitar de sección"
+                          : "↑ Soltar aquí para quitar de sección"}
+                      </span>
+                    </div>
+                  )}
+
                   {/* ── Tareas sin sección ── */}
                   {groupProyTareas(applyProyFilter(proyectoDetalle.tareas)).map(group => (
                     <div key={group.label}>
@@ -1507,7 +1588,15 @@ export default function OperacionesPage() {
                       onAddTarea={addTarea} draggingId={draggingId}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
-                      onDropSection={() => { if (draggingId) moveToSection(draggingId, seccion.id); }}
+                      onDropSection={() => {
+                        if (!draggingId) return;
+                        if (selectedIds.has(draggingId) && selectedIds.size > 1) {
+                          moveManyToSection([...selectedIds], seccion.id);
+                          clearMultiSelect();
+                        } else {
+                          moveToSection(draggingId, seccion.id);
+                        }
+                      }}
                       onMoveToNoSection={moveToNoSection}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -1615,7 +1704,9 @@ export default function OperacionesPage() {
             </svg>
           </button>
           <span className="text-xs text-[#666] font-medium px-2 border-r border-[#2a2a2a] mr-1">
-            {selectedIds.size} {selectedIds.size === 1 ? "tarea" : "tareas"}
+            {draggingId && selectedIds.has(draggingId)
+              ? `Moviendo ${selectedIds.size} tareas…`
+              : `${selectedIds.size} ${selectedIds.size === 1 ? "tarea" : "tareas"} · arrastra para mover`}
           </span>
           <button onClick={bulkComplete}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white hover:bg-[#2a2a2a] transition-colors">
@@ -2403,7 +2494,13 @@ function SectionBlock({
         </svg>
         <span className={`text-xs font-semibold transition-colors ${headerOver ? "text-[#B3985B]" : "text-[#666] hover:text-white"}`}>
           {seccion.nombre}
-          {headerOver && <span className="ml-2 text-[10px] font-normal opacity-70">← soltar aquí</span>}
+          {headerOver && (
+            <span className="ml-2 text-[10px] font-normal opacity-70">
+              {selectedIds?.has(draggingId!) && (selectedIds?.size ?? 0) > 1
+                ? `← ${selectedIds!.size} tareas`
+                : "← soltar aquí"}
+            </span>
+          )}
         </span>
         {!headerOver && seccion.tareas.length > 0 && <span className="text-[11px] text-[#333]">({seccion.tareas.length})</span>}
         {hov && !headerOver && (
@@ -2449,7 +2546,11 @@ function SectionBlock({
               onDrop={e => { e.preventDefault(); e.stopPropagation(); setBottomOver(false); onDropSection?.(); }}
             >
               <span className="text-[11px] font-medium select-none">
-                {bottomOver ? `→ Mover a "${seccion.nombre}"` : `Soltar en ${seccion.nombre}`}
+                {bottomOver
+                  ? selectedIds?.has(draggingId!) && (selectedIds?.size ?? 0) > 1
+                    ? `→ Mover ${selectedIds!.size} tareas a "${seccion.nombre}"`
+                    : `→ Mover a "${seccion.nombre}"`
+                  : `Soltar en ${seccion.nombre}`}
               </span>
             </div>
           )}
