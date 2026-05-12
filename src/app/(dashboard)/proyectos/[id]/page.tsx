@@ -3908,14 +3908,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Accordion helpers ──────────────────────────────────────────
         const toggleDoc = (key: string) => setOpenDocs(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
 
+        // ── Notas de cotización por sección ──
+        let cotNotasSecciones: Record<string, string> = {};
+        try { cotNotasSecciones = proyecto.cotizacion?.notasSecciones ? JSON.parse(proyecto.cotizacion.notasSecciones) : {}; } catch { /* ignore */ }
+        const cotObservaciones = proyecto.cotizacion?.observaciones ?? null;
+
         return (
           <div className="space-y-6">
 
-            {/* ═══════ ZONA 0: NOTAS DE COTIZACIÓN (todos los proyectos) ═══════ */}
-            {proyecto.cotizacion && (proyecto.cotizacion.observaciones || proyecto.cotizacion.notasSecciones) && (() => {
-              let seccionesMap: Record<string, string> = {};
-              try { seccionesMap = proyecto.cotizacion!.notasSecciones ? JSON.parse(proyecto.cotizacion!.notasSecciones) : {}; } catch { /* ignore */ }
-              const secciones = Object.entries(seccionesMap).filter(([, v]) => v?.trim());
+            {/* ═══════ ZONA 0: NOTAS DE COTIZACIÓN (solo renta — en producción van inline en rider) ═══════ */}
+            {esRenta && proyecto.cotizacion && (cotObservaciones || Object.keys(cotNotasSecciones).some(k => cotNotasSecciones[k]?.trim())) && (() => {
+              const secciones = Object.entries(cotNotasSecciones).filter(([, v]) => v?.trim());
               return (
                 <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl overflow-hidden">
                   <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
@@ -3924,15 +3927,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <span className="text-[10px] text-[#B3985B]/40 ml-auto">{proyecto.cotizacion!.numeroCotizacion}</span>
                   </div>
                   <div className="p-5 space-y-3">
-                    {proyecto.cotizacion!.observaciones && (
+                    {cotObservaciones && (
                       <div>
                         <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Observaciones generales</p>
-                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{proyecto.cotizacion!.observaciones}</p>
+                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{cotObservaciones}</p>
                       </div>
                     )}
                     {secciones.length > 0 && (
-                      <div className={proyecto.cotizacion!.observaciones ? "border-t border-[#1a1a1a] pt-3" : ""}>
-                        {proyecto.cotizacion!.observaciones && <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Notas por sección</p>}
+                      <div className={cotObservaciones ? "border-t border-[#1a1a1a] pt-3" : ""}>
+                        {cotObservaciones && <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Notas por sección</p>}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {secciones.map(([cat, nota]) => (
                             <div key={cat} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5">
@@ -3966,6 +3969,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
 
+              {cotObservaciones && (
+                <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Observaciones (cotización)</p>
+                  <p className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed">{cotObservaciones}</p>
+                </div>
+              )}
+
               {riderEquipos.length === 0 ? (
                 <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
                   <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
@@ -3981,6 +3991,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
                           <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
                         </div>
+                        {cotNotasSecciones[cat] && (
+                          <div className="px-4 py-2 bg-[#0a0a0a] border-b border-[#111]">
+                            <p className="text-xs text-[#6b7280] italic">{cotNotasSecciones[cat]}</p>
+                          </div>
+                        )}
                         {items.map(e => {
                           const isExpanded = !!riderExpandido[e.id];
                           const riderNames = new Set(e.riderAccesorios.map(a => a.nombre.toLowerCase()));
