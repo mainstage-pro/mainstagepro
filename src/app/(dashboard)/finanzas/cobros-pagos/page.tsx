@@ -119,10 +119,11 @@ function splitGroups<T>(grupos: ProyGrupo<T>[], hoy: string): { proximos: ProyGr
 }
 
 const ESTADO_COLORS: Record<string, string> = {
-  PENDIENTE: "bg-yellow-900/40 text-yellow-400",
-  PARCIAL: "bg-blue-900/40 text-blue-400",
-  LIQUIDADO: "bg-green-900/40 text-green-400",
-  VENCIDO: "bg-red-900/40 text-red-400",
+  PENDIENTE:  "bg-yellow-900/40 text-yellow-400",
+  PARCIAL:    "bg-blue-900/40 text-blue-400",
+  LIQUIDADO:  "bg-green-900/40 text-green-400",
+  VENCIDO:    "bg-red-900/40 text-red-400",
+  CANCELADO:  "bg-gray-800 text-gray-500",
 };
 
 const TIPO_LABELS: Record<string, string> = {
@@ -420,7 +421,7 @@ export default function CobrosPagosPage() {
   const hoyStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,"0")}-${String(_d.getDate()).padStart(2,"0")}`;
 
   const isVencida = (fechaCompromiso: string, estado: string) =>
-    estado !== "LIQUIDADO" && fechaCompromiso.substring(0, 10) < hoyStr;
+    estado !== "LIQUIDADO" && estado !== "CANCELADO" && fechaCompromiso.substring(0, 10) < hoyStr;
 
   // Apply overdue status locally
   const enrichCxC = (c: CxCItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
@@ -443,28 +444,28 @@ export default function CobrosPagosPage() {
 
   const cxcList = applySort(
     cxc.map(enrichCxC).filter(c => {
-      if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-      if (filtro === "liquidados") return c.estado === "LIQUIDADO";
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
       return true;
     }),
     c => c.empresa?.nombre ?? c.cliente?.nombre ?? "",
   );
   const cxpList = applySort(
     cxp.map(enrichCxP).filter(c => {
-      if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-      if (filtro === "liquidados") return c.estado === "LIQUIDADO";
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
       return true;
     }),
     c => c.empresa?.nombre ?? c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.socio?.nombre ?? "",
   );
 
   // Metrics
-  const cxcPend  = cxc.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcPend  = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxcVenc  = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
-  const cxcProx  = cxc.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcProx  = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxcCobr  = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxcVencN = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
-  const cxcProxN = cxc.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxcProxN = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
   const cxpPend  = cxp.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxpVenc  = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
   const cxpProx  = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
@@ -1135,7 +1136,10 @@ export default function CobrosPagosPage() {
 
               {/* Acciones */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
-                {c.estado !== "LIQUIDADO" && (
+                {c.estado === "CANCELADO" && (
+                  <p className="text-xs text-gray-600 italic">Cancelado — trato marcado como Venta Perdida</p>
+                )}
+                {c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && (
                   <>
                     <button onClick={() => openModal(c, "cobro")}
                       className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
@@ -1184,7 +1188,7 @@ export default function CobrosPagosPage() {
                   const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
                   const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
                   const saldo = c.monto - c.montoCobrado;
-                  return c.estado !== "LIQUIDADO" && tel ? (
+                  return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && tel ? (
                     <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, saldo, c.concepto)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">

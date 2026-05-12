@@ -95,6 +95,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia
+  let cambioAVentaPerdida = false;
   if (body.etapa) {
     const current = await prisma.trato.findUnique({ where: { id }, select: { etapa: true, fechaCierre: true } });
     if (current && current.etapa !== body.etapa) {
@@ -102,10 +103,44 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (body.etapa === "VENTA_CERRADA" && !current.fechaCierre) {
         data.fechaCierre = new Date();
       }
+      if (body.etapa === "VENTA_PERDIDA") {
+        cambioAVentaPerdida = true;
+      }
     }
   }
 
   const trato = await prisma.trato.update({ where: { id }, data });
+
+  // ── Cancelar CxC pendientes cuando el trato se pierde ───────────────────────
+  if (cambioAVentaPerdida) {
+    // Buscar proyecto y cotizaciones del trato
+    const tratoConRelaciones = await prisma.trato.findUnique({
+      where: { id },
+      select: {
+        proyecto: { select: { id: true } },
+        cotizaciones: { select: { id: true } },
+      },
+    });
+
+    const proyectoId = tratoConRelaciones?.proyecto?.id;
+    const cotizacionIds = tratoConRelaciones?.cotizaciones.map(c => c.id) ?? [];
+
+    // Cancelar CxC PENDIENTE ligadas al proyecto o cotizaciones (no tocar PARCIAL ni LIQUIDADO)
+    await prisma.cuentaCobrar.updateMany({
+      where: {
+        estado: "PENDIENTE",
+        OR: [
+          ...(proyectoId ? [{ proyectoId }] : []),
+          ...(cotizacionIds.length > 0 ? [{ cotizacionId: { in: cotizacionIds } }] : []),
+        ],
+      },
+      data: {
+        estado: "CANCELADO",
+        notas: `Cancelado automáticamente — trato marcado como Venta Perdida`,
+      },
+    });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
 
   // ── Cascade a cotizaciones y proyectos ──────────────────────────────────────
   const cotUpdate: Record<string, unknown> = {};
