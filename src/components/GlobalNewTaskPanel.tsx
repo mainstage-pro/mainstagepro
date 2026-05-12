@@ -1,65 +1,57 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { detectarFechaEnTitulo, formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
-import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
-interface Comentario {
-  id: string; contenido: string; createdAt: string;
-  autor: { id: string; name: string } | null;
-}
-interface Archivo {
-  id: string; nombre: string; url: string; tipo: string | null; tamano: number | null;
-  createdAt: string; subidoPor: { id: string; name: string } | null;
-}
 
 const PRIOS = [
   { key: "URGENTE", label: "Urgente", color: "#f87171" },
   { key: "ALTA",    label: "Alta",    color: "#fb923c" },
-  { key: "MEDIA",   label: "Media",   color: "#eab308" },
+  { key: "MEDIA",   label: "Media",   color: "#B3985B" },
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
-];
+] as const;
+
+type Panel = "fecha" | "prioridad" | "proyecto" | "asignar" | null;
+
+function toISO(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function formatDisplay(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  const t = new Date(); t.setHours(0,0,0,0);
+  const m = new Date(t); m.setDate(t.getDate() + 1);
+  if (iso === toISO(t)) return "Hoy";
+  if (iso === toISO(m)) return "Mañana";
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
 
 export default function GlobalNewTaskPanel() {
   const toast = useToast();
   const [open, setOpen]               = useState(false);
-  const [phase, setPhase]             = useState<"create" | "edit">("create");
-  const [tareaId, setTareaId]         = useState<string | null>(null);
-
-  // Form fields
   const [titulo, setTitulo]           = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [prioridad, setPrioridad]     = useState("MEDIA");
-  const [asignadoAId, setAsignadoAId] = useState("");
-  const [proyectoId, setProyectoId]   = useState("");
   const [fecha, setFecha]             = useState("");
-  const [dirty, setDirty]             = useState(false);
+  const [prioridad, setPrioridad]     = useState("MEDIA");
+  const [proyectoId, setProyectoId]   = useState("");
+  const [asignadoId, setAsignadoId]   = useState("");
+  const [panel, setPanel]             = useState<Panel>(null);
+  const [detIgnorada, setDetIgnorada] = useState(false);
   const [saving, setSaving]           = useState(false);
-
-  // Lists
+  const [keyboardBottom, setKeyboardBottom] = useState(0);
   const [usuarios, setUsuarios]       = useState<Usuario[]>([]);
   const [proyectos, setProyectos]     = useState<Proyecto[]>([]);
+  // Two refs: one for mobile bottom sheet, one for desktop modal
+  const mobileRef  = useRef<HTMLTextAreaElement>(null);
+  const desktopRef = useRef<HTMLTextAreaElement>(null);
 
-  // Files & comments (phase edit)
-  const [archivos, setArchivos]       = useState<Archivo[]>([]);
-  const [comentarios, setComentarios] = useState<Comentario[]>([]);
-  const [comentario, setComentario]   = useState("");
-  const [uploading, setUploading]     = useState(false);
-  const [addingUrl, setAddingUrl]     = useState(false);
-  const [urlManual, setUrlManual]     = useState("");
-  const [nombreManual, setNombreManual] = useState("");
-
-  const inputRef = useRef<HTMLInputElement>(null);
-
+  // Event + keyboard listeners
   useEffect(() => {
-    function onOpen() { setOpen(true); setPhase("create"); }
+    function onOpen() { setOpen(true); }
     function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen(o => { if (!o) setPhase("create"); return !o; });
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setOpen(o => !o); }
       if (e.key === "Escape") setOpen(false);
     }
     window.addEventListener("open-full-task", onOpen);
@@ -70,9 +62,23 @@ export default function GlobalNewTaskPanel() {
     };
   }, []);
 
+  // iOS visual viewport — keep bottom sheet above keyboard
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    function update() { setKeyboardBottom(Math.max(0, window.innerHeight - vv!.offsetTop - vv!.height)); }
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
+    return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
+  }, []);
+
+  // Reset fields + fetch data + focus on open
   useEffect(() => {
     if (!open) return;
-    setTimeout(() => inputRef.current?.focus(), 60);
+    setTitulo(""); setDescripcion(""); setFecha(""); setPrioridad("MEDIA");
+    setProyectoId(""); setAsignadoId(""); setPanel(null); setDetIgnorada(false);
+    setTimeout(() => { mobileRef.current?.focus(); desktopRef.current?.focus(); }, 60);
     Promise.all([
       fetch("/api/usuarios").then(r => r.json()).catch(() => ({ usuarios: [] })),
       fetch("/api/operaciones/proyectos").then(r => r.json()).catch(() => ({ proyectos: [] })),
@@ -82,387 +88,390 @@ export default function GlobalNewTaskPanel() {
     });
   }, [open]);
 
-  function reset() {
-    setTitulo(""); setDescripcion(""); setPrioridad("MEDIA");
-    setAsignadoAId(""); setProyectoId(""); setFecha("");
-    setDirty(false); setTareaId(null);
-    setArchivos([]); setComentarios([]); setComentario("");
-    setAddingUrl(false); setUrlManual(""); setNombreManual("");
-    setPhase("create");
-  }
+  // Re-focus after panel closes so keyboard stays visible on mobile
+  const prevPanel = useRef<Panel>(null);
+  useEffect(() => {
+    if (prevPanel.current !== null && panel === null && open) {
+      const t = setTimeout(() => { mobileRef.current?.focus(); desktopRef.current?.focus(); }, 80);
+      return () => clearTimeout(t);
+    }
+    prevPanel.current = panel;
+  }, [panel, open]);
 
-  function cerrar() { setOpen(false); reset(); }
+  const deteccion = useMemo(() => {
+    if (detIgnorada || !titulo || fecha) return null;
+    const d = detectarFechaEnTitulo(titulo);
+    return d.textoDetectado ? d : null;
+  }, [titulo, fecha, detIgnorada]);
+
+  function cerrar() { setOpen(false); }
 
   async function crear() {
     const t = titulo.trim();
-    if (!t) return;
+    if (!t) { mobileRef.current?.focus(); desktopRef.current?.focus(); return; }
+    const tituloFinal = deteccion ? deteccion.tituloLimpio || t : t;
+    const fechaFinal  = fecha || deteccion?.fecha || null;
+    const recFinal    = fecha ? null : deteccion?.recurrencia || null;
     setSaving(true);
     const res = await fetch("/api/tareas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        titulo: t,
-        descripcion: descripcion.trim() || null,
-        prioridad,
-        asignadoAId: asignadoAId || null,
-        proyectoTareaId: proyectoId || null,
-        fecha: fecha || null,
-        fechaVencimiento: null,
-        recurrencia: null,
-        seccionId: null,
-        parentId: null,
+        titulo: tituloFinal, descripcion: descripcion.trim() || null, prioridad,
+        fecha: fechaFinal, asignadoAId: asignadoId || null, proyectoTareaId: proyectoId || null,
+        fechaVencimiento: null, recurrencia: recFinal, seccionId: null, parentId: null, area: "GENERAL",
       }),
     });
     setSaving(false);
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al crear tarea");
-      return;
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al crear tarea"); return; }
     toast.success("Tarea creada");
     cerrar();
   }
 
-  async function guardar() {
-    if (!tareaId || !dirty) return;
-    setSaving(true);
-    const res = await fetch(`/api/tareas/${tareaId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        titulo: titulo.trim() || null,
-        descripcion: descripcion.trim() || null,
-        prioridad,
-        asignadoAId: asignadoAId || null,
-        proyectoTareaId: proyectoId || null,
-        fecha: fecha || null,
-      }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      return;
-    }
-    setDirty(false);
-    toast.success("Cambios guardados");
-  }
-
-  async function enviarComentario() {
-    if (!tareaId || !comentario.trim()) return;
-    const res = await fetch(`/api/tareas/${tareaId}/comentarios`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contenido: comentario }),
-    });
-    if (!res.ok) {
-      toast.error("Error al enviar comentario");
-      return;
-    }
-    const { comentario: c } = await res.json();
-    setComentarios(prev => [...prev, c]);
-    setComentario("");
-  }
-
-  async function eliminarComentario(cid: string) {
-    if (!tareaId) return;
-    const res = await fetch(`/api/tareas/${tareaId}/comentarios/${cid}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Error al eliminar comentario");
-      return;
-    }
-    setComentarios(prev => prev.filter(c => c.id !== cid));
-  }
-
-  async function subirArchivo(file: File) {
-    if (!tareaId) return;
-    setUploading(true);
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`/api/tareas/${tareaId}/archivos`, { method: "POST", body: form });
-    const data = await res.json();
-    setUploading(false);
-    if (res.ok) {
-      setArchivos(prev => [data.archivo, ...prev]);
-    } else {
-      toast.error(data.error ?? "Error al subir archivo");
-    }
-  }
-
-  async function adjuntarUrl() {
-    if (!tareaId || !urlManual.trim()) return;
-    const form = new FormData();
-    form.append("url", urlManual.trim());
-    form.append("nombre", nombreManual.trim() || urlManual.split("/").pop() || "archivo");
-    const res = await fetch(`/api/tareas/${tareaId}/archivos`, { method: "POST", body: form });
-    if (!res.ok) {
-      toast.error("Error al adjuntar URL");
-      return;
-    }
-    const { archivo } = await res.json();
-    setArchivos(prev => [archivo, ...prev]);
-    setUrlManual(""); setNombreManual(""); setAddingUrl(false);
-  }
-
-  async function eliminarArchivo(aid: string) {
-    if (!tareaId) return;
-    const res = await fetch(`/api/tareas/${tareaId}/archivos/${aid}`, { method: "DELETE" });
-    if (!res.ok) {
-      toast.error("Error al eliminar archivo");
-      return;
-    }
-    setArchivos(prev => prev.filter(a => a.id !== aid));
-  }
+  const prio      = PRIOS.find(p => p.key === prioridad)!;
+  const proyInfo  = proyectos.find(p => p.id === proyectoId);
+  const userInfo  = usuarios.find(u => u.id === asignadoId);
+  const hasDate   = !!(fecha || deteccion?.fecha);
+  const dateLabel = fecha ? formatDisplay(fecha) : (deteccion?.fecha ? formatDisplay(deteccion.fecha) : null);
 
   if (!open) return null;
 
-  const proyectoNombre = proyectoId
-    ? (proyectos.find(p => p.id === proyectoId)?.nombre ?? "Proyecto")
-    : "Bandeja de entrada";
+  const panelProps = {
+    panel, fecha, setFecha, prioridad, setPrioridad, proyectoId, setProyectoId,
+    asignadoId, setAsignadoId, proyectos, usuarios, closePanel: () => setPanel(null),
+  };
 
-  const mark = () => setDirty(true);
+  // Shared chip toolbar buttons (used in both mobile and desktop)
+  const chips = (
+    <>
+      <ChipBtn icon={<IconCal />} label={dateLabel ?? "Fecha"} active={hasDate} activeColor="#B3985B"
+        isOpen={panel === "fecha"} onClick={() => setPanel(panel === "fecha" ? null : "fecha")} />
+      <ChipBtn
+        icon={<IconFlag color={prio.color} filled={prioridad !== "MEDIA"} />}
+        label={prioridad !== "MEDIA" ? prio.label : "Prioridad"}
+        active={prioridad !== "MEDIA"} activeColor={prio.color}
+        isOpen={panel === "prioridad"} onClick={() => setPanel(panel === "prioridad" ? null : "prioridad")} />
+      {proyectos.length > 0 && (
+        <ChipBtn icon={<IconFolder color={proyInfo?.color ?? undefined} />}
+          label={proyInfo?.nombre ?? "Proyecto"} active={!!proyInfo} activeColor={proyInfo?.color ?? "#B3985B"}
+          isOpen={panel === "proyecto"} onClick={() => setPanel(panel === "proyecto" ? null : "proyecto")} />
+      )}
+      {usuarios.length > 0 && (
+        <ChipBtn icon={<IconUser />} label={userInfo ? userInfo.name.split(" ")[0] : "Asignar"} active={!!userInfo}
+          activeColor="#B3985B" isOpen={panel === "asignar"} onClick={() => setPanel(panel === "asignar" ? null : "asignar")} />
+      )}
+    </>
+  );
 
   return (
-    <div
-      className="fixed inset-0 z-[95] flex items-start justify-center pt-[10vh] px-4"
-      onClick={cerrar}
-    >
+    <div className="fixed inset-0 z-[95]" onClick={cerrar}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
+      {/* ── MOBILE: bottom sheet ── */}
       <div
-        className="relative w-full max-w-2xl bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[80vh]"
+        className="absolute inset-x-0 bottom-0 lg:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] flex flex-col"
+        style={{
+          bottom: keyboardBottom > 0 ? `${keyboardBottom}px` : 0,
+          maxHeight: "92dvh",
+          paddingBottom: keyboardBottom > 0 ? "0px" : "env(safe-area-inset-bottom)",
+        }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#141414] shrink-0">
-          <div className="flex items-center gap-2">
-            {phase === "edit" && (
-              <span className="w-2 h-2 rounded-full bg-[#22c55e] shrink-0" />
-            )}
-            <p className="text-white font-semibold text-sm">
-              {phase === "create" ? "Nueva tarea" : titulo || "Tarea creada"}
-            </p>
+        {/* Handle + X */}
+        <div className="flex items-center justify-between px-3 pt-2.5 pb-1 shrink-0">
+          <div className="w-8" />
+          <div className="w-8 h-1 rounded-full bg-[#333]" />
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={cerrar}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-[#444] hover:text-white hover:bg-[#1e1e1e] transition-all active:scale-95"
+            aria-label="Descartar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="px-4 pt-1 pb-1">
+            <textarea
+              ref={mobileRef}
+              value={titulo}
+              onChange={e => setTitulo(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); crear(); } }}
+              placeholder="Nombre de la tarea"
+              inputMode="text"
+              className="w-full bg-transparent text-white text-[17px] placeholder-[#3a3a3a] focus:outline-none resize-none leading-snug"
+              rows={titulo.split("\n").length || 1}
+            />
+            <textarea
+              value={descripcion}
+              onChange={e => setDescripcion(e.target.value)}
+              placeholder="Descripción"
+              className="w-full bg-transparent text-[#555] text-sm placeholder-[#2a2a2a] focus:outline-none resize-none leading-snug mt-1"
+              rows={1}
+            />
           </div>
-          <div className="flex items-center gap-2">
-            {phase === "edit" && dirty && (
-              <button
-                onClick={guardar}
-                disabled={saving}
-                className="px-3 py-1 text-xs font-medium bg-[#B3985B]/15 border border-[#B3985B]/40 text-[#B3985B] rounded-lg hover:bg-[#B3985B]/25 transition-all disabled:opacity-40"
-              >
-                {saving ? "Guardando…" : "Guardar"}
-              </button>
-            )}
+          {deteccion && (
+            <div className="px-4 pb-1">
+              <span className="inline-flex items-center gap-1.5 text-[12px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-full px-2.5 py-0.5">
+                <DetLabel deteccion={deteccion} />
+                <button onMouseDown={e => e.preventDefault()} onClick={() => setDetIgnorada(true)}
+                  className="text-[#B3985B]/50 hover:text-red-400 ml-0.5">×</button>
+              </span>
+            </div>
+          )}
+          {panel && (
+            <div className="border-t border-[#1a1a1a] bg-[#0d0d0d]">
+              <PanelContent {...panelProps} />
+            </div>
+          )}
+        </div>
+
+        {/* Chip toolbar */}
+        <div className="shrink-0 flex items-center gap-1 px-3 py-2.5 border-t border-[#1a1a1a] overflow-x-auto bg-[#111]" style={{ scrollbarWidth: "none" }}>
+          {chips}
+          <div className="flex-1 min-w-[8px]" />
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={crear}
+            disabled={!titulo.trim() || saving}
+            className="shrink-0 px-4 py-1.5 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
+          >
+            {saving ? "…" : "Agregar"}
+          </button>
+        </div>
+      </div>
+
+      {/* ── DESKTOP: centered modal ── */}
+      <div className="hidden lg:flex absolute inset-0 items-start justify-center pt-[10vh] px-4" onClick={cerrar}>
+        <div
+          className="relative w-full max-w-xl bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[80vh]"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#141414] shrink-0">
+            <p className="text-white font-semibold text-sm">Nueva tarea</p>
             <button onClick={cerrar} className="text-[#333] hover:text-white transition-colors">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
           </div>
-        </div>
 
-        {/* Body — scrollable */}
-        <div className="overflow-y-auto flex-1">
-          <div className="p-5 space-y-4">
-            {/* Título */}
-            <input
-              ref={inputRef}
-              value={titulo}
-              onChange={e => { setTitulo(e.target.value); if (phase === "edit") mark(); }}
-              onKeyDown={e => { if (e.key === "Escape") cerrar(); }}
-              placeholder="¿En qué estás trabajando?"
-              className="w-full bg-transparent text-white text-base placeholder-[#2a2a2a] focus:outline-none font-medium"
-            />
-
-            {/* Descripción */}
-            <textarea
-              value={descripcion}
-              onChange={e => { setDescripcion(e.target.value); if (phase === "edit") mark(); }}
-              onKeyDown={e => { if (e.key === "Escape") cerrar(); }}
-              placeholder="Descripción (opcional)"
-              rows={2}
-              className="w-full bg-transparent text-sm text-[#777] placeholder-[#222] focus:outline-none resize-none leading-relaxed"
-            />
-
-            <div className="border-t border-[#111] pt-4 grid grid-cols-2 gap-4">
-              {/* Asignado a */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Responsable</p>
-                <Combobox
-                  value={asignadoAId}
-                  onChange={v => { setAsignadoAId(v); if (phase === "edit") mark(); }}
-                  options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
-                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-
-              {/* Proyecto */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Proyecto</p>
-                <Combobox
-                  value={proyectoId}
-                  onChange={v => { setProyectoId(v); if (phase === "edit") mark(); }}
-                  options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
-                  className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-
-              {/* Fecha */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Fecha</p>
-                <DatePicker value={fecha} onChange={v => { setFecha(v); if (phase === "edit") mark(); }} size="sm" />
-              </div>
-
-              {/* Prioridad */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Prioridad</p>
-                <div className="grid grid-cols-2 gap-1">
-                  {PRIOS.map(p => (
-                    <button
-                      key={p.key}
-                      type="button"
-                      onClick={() => { setPrioridad(p.key); if (phase === "edit") mark(); }}
-                      className={`px-2 py-1 rounded-lg border text-[11px] font-medium transition-all ${
-                        prioridad === p.key
-                          ? "border-transparent"
-                          : "border-[#1a1a1a] text-[#444] hover:text-[#666]"
-                      }`}
-                      style={prioridad === p.key ? { background: p.color + "22", borderColor: p.color + "55", color: p.color } : {}}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* Body */}
+          <div className="overflow-y-auto flex-1">
+            <div className="px-5 pt-4 pb-2">
+              <textarea
+                ref={desktopRef}
+                value={titulo}
+                onChange={e => setTitulo(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); crear(); }
+                  if (e.key === "Escape") cerrar();
+                }}
+                placeholder="¿En qué estás trabajando?"
+                className="w-full bg-transparent text-white text-base placeholder-[#2a2a2a] focus:outline-none font-medium resize-none leading-snug"
+                rows={titulo.split("\n").length || 1}
+              />
+              <textarea
+                value={descripcion}
+                onChange={e => setDescripcion(e.target.value)}
+                onKeyDown={e => { if (e.key === "Escape") cerrar(); }}
+                placeholder="Descripción (opcional)"
+                rows={2}
+                className="w-full bg-transparent text-sm text-[#666] placeholder-[#222] focus:outline-none resize-none leading-relaxed mt-2"
+              />
             </div>
-
-            {/* ── Files & Comments — only after task is created ── */}
-            {phase === "edit" && (
-              <>
-                {/* Archivos */}
-                <div className="border-t border-[#111] pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold">Archivos</p>
-                    <div className="flex gap-3">
-                      <label className="cursor-pointer text-xs text-[#555] hover:text-[#B3985B] transition-colors">
-                        <input type="file" multiple className="hidden"
-                          onChange={e => { Array.from(e.target.files ?? []).forEach(subirArchivo); e.target.value = ""; }}
-                        />
-                        ↑ Subir
-                      </label>
-                      <button onClick={() => setAddingUrl(!addingUrl)} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
-                        🔗 URL
-                      </button>
-                    </div>
-                  </div>
-
-                  {addingUrl && (
-                    <div className="mb-2 space-y-1 p-3 bg-[#080808] border border-[#1a1a1a] rounded-xl">
-                      <input value={urlManual} onChange={e => setUrlManual(e.target.value)} placeholder="https://…"
-                        className="w-full bg-transparent text-xs text-white placeholder-[#333] focus:outline-none" />
-                      <input value={nombreManual} onChange={e => setNombreManual(e.target.value)} placeholder="Nombre (opcional)"
-                        className="w-full bg-transparent text-xs text-white placeholder-[#333] focus:outline-none" />
-                      <div className="flex gap-2 pt-1">
-                        <button onClick={adjuntarUrl} className="text-xs text-[#B3985B] hover:underline">Adjuntar</button>
-                        <button onClick={() => setAddingUrl(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {uploading && <p className="text-xs text-[#555] mb-1">Subiendo…</p>}
-
-                  {archivos.length === 0 && !uploading ? (
-                    <p className="text-xs text-[#2a2a2a] py-1">Sin archivos adjuntos</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {archivos.map(a => (
-                        <div key={a.id} className="flex items-center gap-2 group py-1.5 px-2 rounded-lg hover:bg-[#111]">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                          </svg>
-                          <a href={a.url} target="_blank" rel="noopener noreferrer"
-                            className="flex-1 text-xs text-[#888] hover:text-white truncate">{a.nombre}</a>
-                          {a.tamano && <span className="text-[11px] text-[#444]">{(a.tamano / 1024).toFixed(0)}KB</span>}
-                          <button onClick={() => eliminarArchivo(a.id)}
-                            className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Comentarios */}
-                <div className="border-t border-[#111] pt-4">
-                  <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-3">Comentarios</p>
-                  {comentarios.length === 0 && (
-                    <p className="text-xs text-[#2a2a2a] mb-3">Sin comentarios aún</p>
-                  )}
-                  {comentarios.map(c => (
-                    <div key={c.id} className="group flex gap-3 mb-4">
-                      <div className="w-7 h-7 rounded-full bg-[#1a1a1a] flex items-center justify-center shrink-0 text-[11px] font-semibold text-[#B3985B]">
-                        {c.autor?.name.charAt(0).toUpperCase() ?? "?"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-medium text-[#888]">{c.autor?.name ?? "Desconocido"}</span>
-                          <span className="text-[11px] text-[#333]">
-                            {new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          <button onClick={() => eliminarComentario(c.id)}
-                            className="opacity-0 group-hover:opacity-100 ml-auto text-[#333] hover:text-red-400 text-xs transition-all">✕</button>
-                        </div>
-                        <p className="text-sm text-[#c4c4c4] whitespace-pre-wrap">{c.contenido}</p>
-                      </div>
-                    </div>
-                  ))}
-                  <div className="flex gap-2 items-end mt-2">
-                    <textarea
-                      value={comentario}
-                      onChange={e => setComentario(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
-                      placeholder="Escribe un comentario… (Enter para enviar)"
-                      className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a]"
-                      rows={2}
-                    />
-                    <button
-                      onClick={enviarComentario}
-                      disabled={!comentario.trim()}
-                      className="px-3 py-2 bg-[#1a1a1a] text-[#B3985B] text-xs rounded-xl hover:bg-[#222] transition-colors disabled:opacity-30"
-                    >→</button>
-                  </div>
-                </div>
-              </>
+            {deteccion && (
+              <div className="px-5 pb-2">
+                <span className="inline-flex items-center gap-1.5 text-[12px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-md px-2 py-0.5">
+                  <DetLabel deteccion={deteccion} />
+                  <button onClick={() => setDetIgnorada(true)} className="ml-0.5 text-[#B3985B]/50 hover:text-red-400">×</button>
+                </span>
+              </div>
+            )}
+            {panel && (
+              <div className="border-t border-[#111]">
+                <PanelContent {...panelProps} />
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-[#141414] bg-[#090909] shrink-0">
-          <p className="text-[11px] text-[#333]">{proyectoNombre}</p>
-          <div className="flex gap-2">
-            <button
-              onClick={cerrar}
-              className="px-3 py-1.5 text-xs text-[#444] hover:text-[#888] transition-colors"
-            >
-              {phase === "edit" ? "Cerrar" : "Cancelar"}
-            </button>
-            {phase === "create" && (
+          {/* Footer toolbar */}
+          <div className="shrink-0 border-t border-[#141414] bg-[#090909]">
+            <div className="flex items-center gap-0.5 px-4 py-2.5">
+              {chips}
+              <div className="flex-1" />
+              <button onClick={cerrar} className="text-xs text-[#444] hover:text-[#888] px-2 py-1 rounded-lg hover:bg-[#0f0f0f] transition-all">
+                Cancelar
+              </button>
               <button
                 onClick={crear}
                 disabled={!titulo.trim() || saving}
-                className="px-4 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9aa6a] disabled:opacity-40 transition-all"
+                className="text-xs font-semibold px-3 py-1 rounded-lg ml-1 disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
+                style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}
               >
-                {saving ? "Creando…" : "Crear tarea"}
+                {saving ? "Creando…" : "Agregar"}
               </button>
-            )}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Panel content (shared between mobile and desktop) ────────────────────────
+
+interface PanelProps {
+  panel: Panel;
+  fecha: string; setFecha: (v: string) => void;
+  prioridad: string; setPrioridad: (v: string) => void;
+  proyectoId: string; setProyectoId: (v: string) => void;
+  asignadoId: string; setAsignadoId: (v: string) => void;
+  proyectos: Proyecto[]; usuarios: Usuario[];
+  closePanel: () => void;
+}
+
+function PanelContent({ panel, fecha, setFecha, prioridad, setPrioridad, proyectoId, setProyectoId, asignadoId, setAsignadoId, proyectos, usuarios, closePanel }: PanelProps) {
+  const md = (e: React.MouseEvent) => e.preventDefault();
+
+  if (panel === "fecha") return (
+    <div className="p-3">
+      <div className="flex gap-2 mb-3">
+        {[{ label: "Hoy", iso: toISO(new Date()) }, { label: "Mañana", iso: toISO(new Date(Date.now() + 86400000)) }].map(opt => (
+          <button key={opt.label} onMouseDown={md} onClick={() => { setFecha(opt.iso); closePanel(); }}
+            className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${fecha === opt.iso ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]" : "border-[#1e1e1e] text-[#666] hover:text-white"}`}>
+            {opt.label}
+          </button>
+        ))}
+        {fecha && (
+          <button onMouseDown={md} onClick={() => { setFecha(""); closePanel(); }}
+            className="px-3 py-2 rounded-xl text-sm border border-[#1e1e1e] text-[#444] hover:text-red-400">
+            Quitar
+          </button>
+        )}
+      </div>
+      <DatePicker value={fecha} onChange={val => { setFecha(val); if (val) closePanel(); }} size="sm" />
+    </div>
+  );
+
+  if (panel === "prioridad") return (
+    <div className="grid grid-cols-4 gap-1.5 p-3">
+      {PRIOS.map(p => (
+        <button key={p.key} onMouseDown={md} onClick={() => { setPrioridad(p.key); closePanel(); }}
+          className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition-all"
+          style={{
+            borderColor: prioridad === p.key ? p.color + "60" : "#1a1a1a",
+            backgroundColor: prioridad === p.key ? p.color + "15" : "transparent",
+            color: prioridad === p.key ? p.color : "#555",
+          }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={prioridad === p.key ? p.color + "40" : "none"} stroke={p.color} strokeWidth="1.5" strokeLinecap="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+          </svg>
+          {p.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (panel === "proyecto") return (
+    <div className="max-h-52 overflow-y-auto py-1.5">
+      <button onMouseDown={md} onClick={() => { setProyectoId(""); closePanel(); }}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${!proyectoId ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
+        <span className="w-2 h-2 rounded-full bg-[#333] shrink-0" />Bandeja de entrada
+      </button>
+      {proyectos.map(p => (
+        <button key={p.id} onMouseDown={md} onClick={() => { setProyectoId(p.id); closePanel(); }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${proyectoId === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />{p.nombre}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (panel === "asignar") return (
+    <div className="max-h-52 overflow-y-auto py-1.5">
+      <button onMouseDown={md} onClick={() => { setAsignadoId(""); closePanel(); }}
+        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${!asignadoId ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
+        <span className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs text-[#444]">—</span>
+        Sin asignar
+      </button>
+      {usuarios.map(u => (
+        <button key={u.id} onMouseDown={md} onClick={() => { setAsignadoId(u.id); closePanel(); }}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${asignadoId === u.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
+          <span className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-xs text-[#B3985B] font-bold shrink-0">
+            {u.name.charAt(0).toUpperCase()}
+          </span>{u.name}
+        </button>
+      ))}
+    </div>
+  );
+
+  return null;
+}
+
+// ── Chip button ───────────────────────────────────────────────────────────────
+
+function ChipBtn({ icon, label, active, activeColor, isOpen, onClick }: {
+  icon: React.ReactNode; label: string; active: boolean;
+  activeColor: string; isOpen: boolean; onClick: () => void;
+}) {
+  return (
+    <button
+      onMouseDown={e => e.preventDefault()}
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-all shrink-0 ${isOpen ? "border-[#2a2a2a] bg-[#1a1a1a] text-white" : ""}`}
+      style={!isOpen ? (active ? { borderColor: activeColor + "50", backgroundColor: activeColor + "15", color: activeColor } : { borderColor: "#1a1a1a", color: "#444" }) : {}}
+    >
+      {icon}{label}
+    </button>
+  );
+}
+
+// ── NL detection label helper ─────────────────────────────────────────────────
+
+function DetLabel({ deteccion }: { deteccion: { fecha: string | null; recurrencia: string | null } }) {
+  if (deteccion.fecha) return <>{formatDisplay(deteccion.fecha)}</>;
+  try { return <>{formatearRecurrencia(JSON.parse(deteccion.recurrencia!))}</>; } catch { return null; }
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+function IconCal() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  );
+}
+
+function IconFlag({ color, filled }: { color: string; filled?: boolean }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? color + "28" : "none"} stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+      <line x1="4" y1="22" x2="4" y2="15"/>
+    </svg>
+  );
+}
+
+function IconFolder({ color }: { color?: string }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color ?? "currentColor"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+}
+
+function IconUser() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
   );
 }
