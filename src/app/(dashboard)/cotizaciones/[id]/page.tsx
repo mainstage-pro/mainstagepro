@@ -885,7 +885,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 if ((cot.descuentoMultidiaPct ?? 0) > 0)
                   rows.push({ label: `Descuento multi-día (${Math.round(cot.descuentoMultidiaPct * 100)}%)`, pct: cot.descuentoMultidiaPct, monto: sb * cot.descuentoMultidiaPct, color: "text-red-400" });
                 if ((cot.descuentoFamilyFriendsPct ?? 0) > 0)
-                  rows.push({ label: `Family & Friends (${Math.round(cot.descuentoFamilyFriendsPct * 100)}%)`, pct: cot.descuentoFamilyFriendsPct, monto: sb * cot.descuentoFamilyFriendsPct, color: "text-red-400" });
+                  rows.push({ label: `Descuento especial (${Math.round(cot.descuentoFamilyFriendsPct * 100)}%)`, pct: cot.descuentoFamilyFriendsPct, monto: sb * cot.descuentoFamilyFriendsPct, color: "text-red-400" });
                 if ((cot.descuentoEspecialPct ?? 0) > 0)
                   rows.push({ label: `Descuento especial (${Math.round(cot.descuentoEspecialPct * 100)}%)${cot.descuentoEspecialNota ? ` · ${cot.descuentoEspecialNota}` : ""}`, pct: cot.descuentoEspecialPct, monto: sb * cot.descuentoEspecialPct, color: "text-red-400" });
 

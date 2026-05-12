@@ -722,7 +722,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   if ((c.descuentoMultidiaPct ?? 0) > 0)
     discRows.push({ label: `Descuento multi-día (${Math.round(c.descuentoMultidiaPct * 100)}%)`, monto: sb * c.descuentoMultidiaPct });
   if ((c.descuentoFamilyFriendsPct ?? 0) > 0)
-    discRows.push({ label: `Family & Friends (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
+    discRows.push({ label: `Descuento especial (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
     discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
   if ((c.descuentoPatrocinioPct ?? 0) > 0)
