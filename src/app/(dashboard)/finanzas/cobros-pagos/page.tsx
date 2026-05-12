@@ -848,20 +848,20 @@ export default function CobrosPagosPage() {
       {pageTab === "cobros" && <>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
           <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={openReciboModal}
-            className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
+            className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
             Recibos técnicos
           </button>
           <button
             onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setEmpresaQuery(""); setShowNuevo(true); }}
-            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
             + Nuevo registro
           </button>
         </div>
@@ -918,11 +918,12 @@ export default function CobrosPagosPage() {
       </div>
 
       {/* Tabs + filtro */}
-      <div className="flex items-center justify-between mb-4 border-b border-[#1a1a1a] pb-0">
-        <div className="flex gap-1">
-          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length], ["directos", "Movimientos directos", movDirectos.length]] as const).map(([key, label, count]) => (
+      <div className="mb-4 border-b border-[#1a1a1a]">
+        {/* Tabs row — scrollable on mobile */}
+        <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length], ["directos", "Movimientos", movDirectos.length]] as const).map(([key, label, count]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              className={`shrink-0 px-4 py-2.5 text-sm font-medium transition-colors relative ${
                 tab === key
                   ? "text-[#B3985B] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-[#B3985B]"
                   : "text-[#555] hover:text-[#888]"
@@ -934,10 +935,11 @@ export default function CobrosPagosPage() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 pb-2">
+        {/* Filter row */}
+        <div className="flex items-center gap-1.5 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           {([["pendientes", "Pendientes"], ["liquidados", "Liquidados"], ["todos", "Todos"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setFiltro(key)}
-              className={`text-xs px-3 py-1 rounded-lg transition-colors ${
+              className={`shrink-0 text-xs px-3 py-1 rounded-lg transition-colors ${
                 filtro === key ? "bg-[#B3985B]/15 text-[#B3985B]" : "text-[#555] hover:text-white"
               }`}>
               {label}
@@ -945,7 +947,7 @@ export default function CobrosPagosPage() {
           ))}
           {/* Sort button — only for CxC / CxP tabs */}
           {tab !== "directos" && (
-            <div className="relative">
+            <div className="relative shrink-0">
               <button
                 onClick={() => setShowSortMenu(v => !v)}
                 className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition-colors ${showSortMenu ? "border-[#B3985B]/50 text-[#B3985B]" : "border-[#333] text-[#555] hover:text-white"}`}>
@@ -955,7 +957,7 @@ export default function CobrosPagosPage() {
                 Ordenar
               </button>
               {showSortMenu && (
-                <div className="absolute right-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
+                <div className="absolute left-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
                   onMouseLeave={() => setShowSortMenu(false)}>
                   {([
                     ["fecha_asc",  "Fecha de cobro: más cercana"],
@@ -1159,10 +1161,10 @@ export default function CobrosPagosPage() {
                       disabled={marcandoLiquidado === c.id}
                       title="El movimiento ya se registró por otra vía — solo actualiza el estado de esta cuenta"
                       className="flex items-center gap-1.5 text-xs text-green-500/70 border border-green-900/30 hover:border-green-600/50 hover:text-green-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      Ya cobré (sin movimiento)
+                      <span>Ya cobré<span className="hidden sm:inline"> (sin movimiento)</span></span>
                     </button>
                   </>
                 )}

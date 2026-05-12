@@ -36,8 +36,8 @@ export default function UndoToast({ undo, onUndo, onDismiss }: Props) {
 
   return (
     <div
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-0 rounded-xl overflow-hidden shadow-2xl shadow-black/60"
-      style={{ minWidth: 320, maxWidth: 400 }}
+      className="fixed left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-0 rounded-xl overflow-hidden shadow-2xl shadow-black/60"
+      style={{ minWidth: 280, maxWidth: 400, bottom: "calc(env(safe-area-inset-bottom) + 180px)" }}
     >
       {/* Progress bar */}
       <div className="h-0.5 bg-[#1a1a1a] w-full">

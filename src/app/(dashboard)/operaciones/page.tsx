@@ -1005,7 +1005,7 @@ export default function OperacionesPage() {
       <main className="flex-1 flex flex-col overflow-hidden">
 
         {/* ── CONTENT HEADER ─────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-[#0f0f0f] shrink-0">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[#0f0f0f] shrink-0">
 
           {/* Sidebar toggle — desktop only */}
           <button
@@ -1018,10 +1018,10 @@ export default function OperacionesPage() {
             </svg>
           </button>
 
-          <h1 className="text-base font-semibold text-white tracking-tight shrink-0">{vistaLabel}</h1>
+          <h1 className="text-base font-semibold text-white tracking-tight shrink-0 min-w-0 truncate max-w-[140px] sm:max-w-none">{vistaLabel}</h1>
 
-          {/* Search */}
-          <div className="relative flex-1 max-w-xs mx-2">
+          {/* Search — hidden on mobile (available in Explorar panel) */}
+          <div className="relative hidden sm:flex flex-1 max-w-xs mx-2">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#444] pointer-events-none" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
@@ -1155,7 +1155,7 @@ export default function OperacionesPage() {
                   >
                     Todos
                   </button>
-                  {usuarios.map(u => {
+                  {usuarios.map((u, idx) => {
                     const initials = u.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
                     const isActive = filterUserProy === u.id;
                     return (
@@ -1163,7 +1163,7 @@ export default function OperacionesPage() {
                         key={u.id}
                         onClick={() => setFilterUserProy(isActive ? null : u.id)}
                         title={u.name}
-                        className={`w-7 h-7 rounded-full text-[10px] font-bold transition-all flex items-center justify-center shrink-0 ${
+                        className={`${idx >= 4 ? "hidden sm:flex" : "flex"} w-7 h-7 rounded-full text-[10px] font-bold transition-all items-center justify-center shrink-0 ${
                           isActive
                             ? "ring-2 ring-[#B3985B] bg-[#B3985B]/20 text-[#B3985B]"
                             : "bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222]"
@@ -1276,7 +1276,7 @@ export default function OperacionesPage() {
         </div>
 
         {/* ── TASK LIST ─────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto pb-[72px] lg:pb-0">
+        <div className="flex-1 overflow-y-auto pb-44 lg:pb-4">
           {loadingMain ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
@@ -1605,7 +1605,8 @@ export default function OperacionesPage() {
 
       {/* ── MULTI-SELECT TOOLBAR ────────────────────────────────────────────── */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] hidden md:flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl px-2 py-1.5 shadow-2xl shadow-black/70 select-none">
+        <div className="fixed left-1/2 -translate-x-1/2 z-[80] flex items-center gap-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl px-2 py-1.5 shadow-2xl shadow-black/70 select-none"
+          style={{ bottom: "calc(env(safe-area-inset-bottom) + 180px)" }}>
           <button onClick={clearMultiSelect}
             className="w-7 h-7 flex items-center justify-center text-[#555] hover:text-white transition-colors rounded-lg hover:bg-[#2a2a2a]">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1670,9 +1671,9 @@ export default function OperacionesPage() {
 
       {/* Add-task toast */}
       {addToast && (
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] pointer-events-none transition-all duration-300 ${
+        <div className={`fixed left-1/2 -translate-x-1/2 z-[70] pointer-events-none transition-all duration-300 ${
           addToast.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
-        }`}>
+        }`} style={{ bottom: "calc(env(safe-area-inset-bottom) + 180px)" }}>
           <div className="flex items-center gap-2.5 bg-[#141414] border border-[#2a2a2a] rounded-full px-4 py-2 shadow-2xl shadow-black/60 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
             <span className="text-sm text-white/80">{addToast.msg}</span>
@@ -1769,8 +1770,8 @@ export default function OperacionesPage() {
       {mobileProyectos && (
         <>
           <div className="fixed inset-0 z-[35] bg-black/60 lg:hidden" onClick={() => setMobileProyectos(false)} />
-          <div className="lg:hidden fixed inset-x-0 bottom-[56px] z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"
-            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          <div className="lg:hidden fixed inset-x-0 z-[36] bg-[#0d0d0d] border-t border-[#1e1e1e] rounded-t-2xl max-h-[70vh] overflow-y-auto"
+            style={{ bottom: "calc(env(safe-area-inset-bottom) + 80px)", paddingBottom: "env(safe-area-inset-bottom)" }}
           >
             <div className="flex justify-center pt-2.5 pb-2">
               <div className="w-8 h-1 rounded-full bg-[#2a2a2a]" />
