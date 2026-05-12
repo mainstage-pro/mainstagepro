@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
@@ -1688,9 +1689,11 @@ export default function OperacionesPage() {
       {/* FAB */}
       <button
         onClick={() => {
-          // Focus BEFORE setState so iOS keyboard triggers within the gesture
+          // flushSync forces the DOM to update synchronously (sheet slides visible)
+          // before focus() — iOS only shows keyboard when element is on-screen
+          // and still within the same user-gesture call stack
+          flushSync(() => setMobileQuickAdd(true));
           mobileQARef.current?.focus();
-          setMobileQuickAdd(true);
         }}
         className="lg:hidden fixed right-5 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 100px)" }}

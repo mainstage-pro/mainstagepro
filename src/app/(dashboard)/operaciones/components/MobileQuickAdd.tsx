@@ -86,12 +86,14 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
     };
   }, []);
 
-  // Reset state when opened
+  // Reset state when opened + auto-focus textarea
   useEffect(() => {
     if (open) {
       setTitulo(""); setDescripcion(""); setFecha("");
       setPrioridad("MEDIA"); setProyectoId(defaultProyectoId);
       setAsignadoId(null); setPanel(null); setDetIgnorada(false);
+      // Focus immediately (works on desktop; on iOS the parent uses flushSync first)
+      titleRef.current?.focus();
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -191,6 +193,7 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
               onChange={e => setTitulo(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
               placeholder="Nombre de la tarea"
+              inputMode="text"
               className="w-full bg-transparent text-white text-[17px] placeholder-[#3a3a3a] focus:outline-none resize-none leading-snug"
               rows={titulo.split("\n").length || 1}
             />
