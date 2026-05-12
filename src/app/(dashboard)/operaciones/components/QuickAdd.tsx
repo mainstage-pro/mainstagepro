@@ -289,50 +289,53 @@ export default function QuickAdd({
       {/* ── Divider ──────────────────────────────────────────────────────── */}
       <div className="h-px bg-[#111]" />
 
-      {/* ── Bottom toolbar ───────────────────────────────────────────────── */}
-      <div className="flex items-center gap-0.5 px-3 py-1.5 flex-wrap">
-        {/* Fecha fija — opens calendar directly, clears recurrencia */}
-        <ToolbarBtn icon={<IconCalendar />}
-          label={fecha ? formatDisplay(fecha) : "Fecha"} active={!!fecha} activeColor="#B3985B"
-          isOpen={panel === "fecha"} onClick={() => { if (recurrencia) { setRecurrencia(null); setRecTexto(""); } togglePanel("fecha"); }} />
+      {/* ── Bottom toolbar (two rows) ────────────────────────────────────── */}
+      <div>
+        {/* Row 1: chips */}
+        <div className="flex items-center gap-0.5 px-3 pt-1.5 pb-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          <ToolbarBtn icon={<IconCalendar />}
+            label={fecha ? formatDisplay(fecha) : "Fecha"} active={!!fecha} activeColor="#B3985B"
+            isOpen={panel === "fecha"} onClick={() => { if (recurrencia) { setRecurrencia(null); setRecTexto(""); } togglePanel("fecha"); }} />
 
-        {/* Recurrente — separate button, clears fecha */}
-        <ToolbarBtn icon={<IconRepeat />}
-          label={recLabel ?? "Recurrente"} active={!!recurrencia} activeColor="#B3985B"
-          isOpen={panel === "recurrente"} onClick={() => { if (fecha) setFecha(""); togglePanel("recurrente"); }} />
+          <ToolbarBtn icon={<IconRepeat />}
+            label={recLabel ?? "Recurrente"} active={!!recurrencia} activeColor="#B3985B"
+            isOpen={panel === "recurrente"} onClick={() => { if (fecha) setFecha(""); togglePanel("recurrente"); }} />
 
-        <ToolbarBtn icon={<IconClock />}
-          label={fechaVen ? formatDisplay(fechaVen) : "Límite"} active={!!fechaVen} activeColor="#e85d04"
-          isOpen={panel === "limite"} onClick={() => togglePanel("limite")} />
+          <ToolbarBtn icon={<IconClock />}
+            label={fechaVen ? formatDisplay(fechaVen) : "Límite"} active={!!fechaVen} activeColor="#e85d04"
+            isOpen={panel === "limite"} onClick={() => togglePanel("limite")} />
 
-        <ToolbarBtn icon={<IconFlag color={prioridad !== "MEDIA" ? prio.color : undefined} />}
-          label={prioridad !== "MEDIA" ? prio.label : "Prioridad"} active={prioridad !== "MEDIA"} activeColor={prio.color}
-          isOpen={panel === "prioridad"} onClick={() => togglePanel("prioridad")} />
+          <ToolbarBtn icon={<IconFlag color={prioridad !== "MEDIA" ? prio.color : undefined} />}
+            label={prioridad !== "MEDIA" ? prio.label : "Prioridad"} active={prioridad !== "MEDIA"} activeColor={prio.color}
+            isOpen={panel === "prioridad"} onClick={() => togglePanel("prioridad")} />
 
-        {!compact && (
-          <>
-            <ToolbarBtn icon={<IconFolder />}
-              label={proyectoInfo?.nombre ?? "Proyecto"} active={!!proyectoInfo} activeColor="#B3985B"
-              isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
+          {!compact && (
+            <>
+              <ToolbarBtn icon={<IconFolder />}
+                label={proyectoInfo?.nombre ?? "Proyecto"} active={!!proyectoInfo} activeColor="#B3985B"
+                isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
 
-            {usuarios.length > 0 && (
-              <ToolbarBtn icon={<IconUser />}
-                label={usuarioInfo?.name.split(" ")[0] ?? "Asignar"} active={!!usuarioInfo} activeColor="#B3985B"
-                isOpen={panel === "asignado"} onClick={() => togglePanel("asignado")} />
-            )}
-          </>
-        )}
+              {usuarios.length > 0 && (
+                <ToolbarBtn icon={<IconUser />}
+                  label={usuarioInfo?.name.split(" ")[0] ?? "Asignar"} active={!!usuarioInfo} activeColor="#B3985B"
+                  isOpen={panel === "asignado"} onClick={() => togglePanel("asignado")} />
+              )}
+            </>
+          )}
+        </div>
 
-        <div className="flex-1" />
-        <button onClick={reset}
-          className="text-xs text-[#333] hover:text-[#777] px-2 py-1 rounded-lg hover:bg-[#0f0f0f] transition-all">
-          Cancelar
-        </button>
-        <button onClick={submit} disabled={!titulo.trim()}
-          className="text-xs font-semibold px-3 py-1 rounded-lg transition-all ml-1 disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
-          style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}>
-          Agregar
-        </button>
+        {/* Row 2: actions */}
+        <div className="flex items-center justify-end gap-1 px-3 pb-2">
+          <button onClick={reset}
+            className="text-xs text-[#333] hover:text-[#777] px-2 py-1 rounded-lg hover:bg-[#0f0f0f] transition-all">
+            Cancelar
+          </button>
+          <button onClick={submit} disabled={!titulo.trim()}
+            className="text-xs font-semibold px-3 py-1 rounded-lg transition-all disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
+            style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}>
+            Agregar
+          </button>
+        </div>
       </div>
 
       {/* ── Panels (below toolbar) ───────────────────────────────────────── */}

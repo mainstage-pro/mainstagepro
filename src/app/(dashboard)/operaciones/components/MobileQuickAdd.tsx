@@ -324,63 +324,46 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
           )}
         </div>
 
-        {/* Chips toolbar — always visible, never scrolled off */}
-        <div className="shrink-0 flex items-center gap-1 px-3 py-2.5 border-t border-[#1a1a1a] overflow-x-auto bg-[#111]" style={{ scrollbarWidth: "none" }}>
-          {/* Fecha */}
-          <ChipBtn
-            icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
-            label={dateLabel ?? "Fecha"}
-            active={hasDate}
-            activeColor="#B3985B"
-            isOpen={panel === "fecha"}
-            onClick={() => setPanel(panel === "fecha" ? null : "fecha")}
-          />
-
-          {/* Prioridad */}
-          <ChipBtn
-            icon={<svg width="13" height="13" viewBox="0 0 24 24" fill={prioridad !== "BAJA" ? prio.color + "30" : "none"} stroke={prioridad !== "BAJA" ? prio.color : "#555"} strokeWidth="1.5" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
-            label={prioridad !== "MEDIA" ? prio.label : "Prioridad"}
-            active={prioridad !== "MEDIA"}
-            activeColor={prio.color}
-            isOpen={panel === "prioridad"}
-            onClick={() => setPanel(panel === "prioridad" ? null : "prioridad")}
-          />
-
-          {/* Proyecto */}
-          {proyectos.length > 0 && (
+        {/* Two-row toolbar */}
+        <div className="shrink-0 border-t border-[#1a1a1a] bg-[#111]">
+          {/* Row 1: chips */}
+          <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             <ChipBtn
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={proyInfo?.color ?? "currentColor"} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
-              label={proyInfo?.nombre ?? "Proyecto"}
-              active={!!proyInfo}
-              activeColor={proyInfo?.color ?? "#B3985B"}
-              isOpen={panel === "proyecto"}
-              onClick={() => setPanel(panel === "proyecto" ? null : "proyecto")}
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+              label={dateLabel ?? "Fecha"} active={hasDate} activeColor="#B3985B"
+              isOpen={panel === "fecha"} onClick={() => setPanel(panel === "fecha" ? null : "fecha")}
             />
-          )}
-
-          {/* Asignar */}
-          {usuarios.length > 0 && (
             <ChipBtn
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
-              label={userInfo ? userInfo.name.split(" ")[0] : "Asignar"}
-              active={!!userInfo}
-              activeColor="#B3985B"
-              isOpen={panel === "asignar"}
-              onClick={() => setPanel(panel === "asignar" ? null : "asignar")}
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill={prioridad !== "BAJA" ? prio.color + "30" : "none"} stroke={prioridad !== "BAJA" ? prio.color : "#555"} strokeWidth="1.5" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
+              label={prioridad !== "MEDIA" ? prio.label : "Prioridad"} active={prioridad !== "MEDIA"} activeColor={prio.color}
+              isOpen={panel === "prioridad"} onClick={() => setPanel(panel === "prioridad" ? null : "prioridad")}
             />
-          )}
-
-          <div className="flex-1 min-w-[8px]" />
-
-          {/* Agregar button — always visible */}
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={submit}
-            disabled={!titulo.trim()}
-            className="shrink-0 px-4 py-1.5 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
-          >
-            Agregar
-          </button>
+            {proyectos.length > 0 && (
+              <ChipBtn
+                icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={proyInfo?.color ?? "currentColor"} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
+                label={proyInfo?.nombre ?? "Proyecto"} active={!!proyInfo} activeColor={proyInfo?.color ?? "#B3985B"}
+                isOpen={panel === "proyecto"} onClick={() => setPanel(panel === "proyecto" ? null : "proyecto")}
+              />
+            )}
+            {usuarios.length > 0 && (
+              <ChipBtn
+                icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+                label={userInfo ? userInfo.name.split(" ")[0] : "Asignar"} active={!!userInfo} activeColor="#B3985B"
+                isOpen={panel === "asignar"} onClick={() => setPanel(panel === "asignar" ? null : "asignar")}
+              />
+            )}
+          </div>
+          {/* Row 2: Agregar */}
+          <div className="flex items-center justify-end px-3 pb-3">
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={submit}
+              disabled={!titulo.trim()}
+              className="px-5 py-2 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
+            >
+              Agregar
+            </button>
+          </div>
         </div>
       </div>
     </>

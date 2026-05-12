@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { detectarFechaEnTitulo, formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { useToast } from "@/components/Toast";
@@ -43,13 +44,17 @@ export default function GlobalNewTaskPanel() {
   const [keyboardBottom, setKeyboardBottom] = useState(0);
   const [usuarios, setUsuarios]       = useState<Usuario[]>([]);
   const [proyectos, setProyectos]     = useState<Proyecto[]>([]);
-  // Two refs: one for mobile bottom sheet, one for desktop modal
+  // Two refs: mobile sheet is always in DOM; desktop modal is conditional
   const mobileRef  = useRef<HTMLTextAreaElement>(null);
   const desktopRef = useRef<HTMLTextAreaElement>(null);
 
   // Event + keyboard listeners
+  // flushSync ensures the mobile sheet is visible before focus() — required for iOS keyboard
   useEffect(() => {
-    function onOpen() { setOpen(true); }
+    function onOpen() {
+      flushSync(() => setOpen(true));
+      mobileRef.current?.focus();
+    }
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setOpen(o => !o); }
       if (e.key === "Escape") setOpen(false);
@@ -73,7 +78,7 @@ export default function GlobalNewTaskPanel() {
     return () => { vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
   }, []);
 
-  // Reset fields + fetch data + focus on open
+  // Reset + fetch data + focus on open (handles Cmd+K case and desktop modal)
   useEffect(() => {
     if (!open) return;
     setTitulo(""); setDescripcion(""); setFecha(""); setPrioridad("MEDIA");
@@ -134,14 +139,12 @@ export default function GlobalNewTaskPanel() {
   const hasDate   = !!(fecha || deteccion?.fecha);
   const dateLabel = fecha ? formatDisplay(fecha) : (deteccion?.fecha ? formatDisplay(deteccion.fecha) : null);
 
-  if (!open) return null;
-
   const panelProps = {
     panel, fecha, setFecha, prioridad, setPrioridad, proyectoId, setProyectoId,
     asignadoId, setAsignadoId, proyectos, usuarios, closePanel: () => setPanel(null),
   };
 
-  // Shared chip toolbar buttons (used in both mobile and desktop)
+  // Chip buttons — shared between mobile and desktop
   const chips = (
     <>
       <ChipBtn icon={<IconCal />} label={dateLabel ?? "Fecha"} active={hasDate} activeColor="#B3985B"
@@ -164,17 +167,22 @@ export default function GlobalNewTaskPanel() {
   );
 
   return (
-    <div className="fixed inset-0 z-[95]" onClick={cerrar}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-
-      {/* ── MOBILE: bottom sheet ── */}
+    <>
+      {/* ── MOBILE: backdrop (separate so sheet can stay in DOM) ── */}
       <div
-        className="absolute inset-x-0 bottom-0 lg:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] flex flex-col"
+        className={`fixed inset-0 z-[94] lg:hidden bg-black/60 backdrop-blur-sm transition-opacity duration-200 ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        onClick={cerrar}
+      />
+
+      {/* ── MOBILE: bottom sheet — always in DOM for iOS keyboard focus ── */}
+      <div
+        className={`fixed inset-x-0 z-[95] lg:hidden bg-[#111] rounded-t-2xl shadow-2xl border-t border-[#1e1e1e] flex flex-col transition-transform duration-200 ${open ? "translate-y-0" : "translate-y-full"}`}
         style={{
           bottom: keyboardBottom > 0 ? `${keyboardBottom}px` : 0,
           maxHeight: "92dvh",
           paddingBottom: keyboardBottom > 0 ? "0px" : "env(safe-area-inset-bottom)",
         }}
+        aria-hidden={!open}
         onClick={e => e.stopPropagation()}
       >
         {/* Handle + X */}
@@ -230,101 +238,112 @@ export default function GlobalNewTaskPanel() {
           )}
         </div>
 
-        {/* Chip toolbar */}
-        <div className="shrink-0 flex items-center gap-1 px-3 py-2.5 border-t border-[#1a1a1a] overflow-x-auto bg-[#111]" style={{ scrollbarWidth: "none" }}>
-          {chips}
-          <div className="flex-1 min-w-[8px]" />
-          <button
-            onMouseDown={e => e.preventDefault()}
-            onClick={crear}
-            disabled={!titulo.trim() || saving}
-            className="shrink-0 px-4 py-1.5 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
-          >
-            {saving ? "…" : "Agregar"}
-          </button>
-        </div>
-      </div>
-
-      {/* ── DESKTOP: centered modal ── */}
-      <div className="hidden lg:flex absolute inset-0 items-start justify-center pt-[10vh] px-4" onClick={cerrar}>
-        <div
-          className="relative w-full max-w-xl bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[80vh]"
-          onClick={e => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#141414] shrink-0">
-            <p className="text-white font-semibold text-sm">Nueva tarea</p>
-            <button onClick={cerrar} className="text-[#333] hover:text-white transition-colors">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
+        {/* Two-row toolbar */}
+        <div className="shrink-0 border-t border-[#1a1a1a] bg-[#111]">
+          {/* Row 1: chips */}
+          <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {chips}
+          </div>
+          {/* Row 2: Agregar */}
+          <div className="flex items-center justify-end px-3 pb-3">
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={crear}
+              disabled={!titulo.trim() || saving}
+              className="px-5 py-2 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
+            >
+              {saving ? "…" : "Agregar"}
             </button>
           </div>
+        </div>
+      </div>
 
-          {/* Body */}
-          <div className="overflow-y-auto flex-1">
-            <div className="px-5 pt-4 pb-2">
-              <textarea
-                ref={desktopRef}
-                value={titulo}
-                onChange={e => setTitulo(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); crear(); }
-                  if (e.key === "Escape") cerrar();
-                }}
-                placeholder="¿En qué estás trabajando?"
-                className="w-full bg-transparent text-white text-base placeholder-[#2a2a2a] focus:outline-none font-medium resize-none leading-snug"
-                rows={titulo.split("\n").length || 1}
-              />
-              <textarea
-                value={descripcion}
-                onChange={e => setDescripcion(e.target.value)}
-                onKeyDown={e => { if (e.key === "Escape") cerrar(); }}
-                placeholder="Descripción (opcional)"
-                rows={2}
-                className="w-full bg-transparent text-sm text-[#666] placeholder-[#222] focus:outline-none resize-none leading-relaxed mt-2"
-              />
+      {/* ── DESKTOP: overlay + centered modal ── */}
+      {open && (
+        <div className="hidden lg:flex fixed inset-0 z-[95] items-start justify-center pt-[10vh] px-4" onClick={cerrar}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-xl bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl shadow-2xl shadow-black/60 overflow-hidden flex flex-col max-h-[80vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#141414] shrink-0">
+              <p className="text-white font-semibold text-sm">Nueva tarea</p>
+              <button onClick={cerrar} className="text-[#333] hover:text-white transition-colors">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
             </div>
-            {deteccion && (
-              <div className="px-5 pb-2">
-                <span className="inline-flex items-center gap-1.5 text-[12px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-md px-2 py-0.5">
-                  <DetLabel deteccion={deteccion} />
-                  <button onClick={() => setDetIgnorada(true)} className="ml-0.5 text-[#B3985B]/50 hover:text-red-400">×</button>
-                </span>
-              </div>
-            )}
-            {panel && (
-              <div className="border-t border-[#111]">
-                <PanelContent {...panelProps} />
-              </div>
-            )}
-          </div>
 
-          {/* Footer toolbar */}
-          <div className="shrink-0 border-t border-[#141414] bg-[#090909]">
-            <div className="flex items-center gap-0.5 px-4 py-2.5">
-              {chips}
-              <div className="flex-1" />
-              <button onClick={cerrar} className="text-xs text-[#444] hover:text-[#888] px-2 py-1 rounded-lg hover:bg-[#0f0f0f] transition-all">
-                Cancelar
-              </button>
-              <button
-                onClick={crear}
-                disabled={!titulo.trim() || saving}
-                className="text-xs font-semibold px-3 py-1 rounded-lg ml-1 disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808]"
-                style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}
-              >
-                {saving ? "Creando…" : "Agregar"}
-              </button>
+            {/* Body */}
+            <div className="overflow-y-auto flex-1">
+              <div className="px-5 pt-4 pb-2">
+                <textarea
+                  ref={desktopRef}
+                  value={titulo}
+                  onChange={e => setTitulo(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); crear(); }
+                    if (e.key === "Escape") cerrar();
+                  }}
+                  placeholder="¿En qué estás trabajando?"
+                  className="w-full bg-transparent text-white text-base placeholder-[#2a2a2a] focus:outline-none font-medium resize-none leading-snug"
+                  rows={titulo.split("\n").length || 1}
+                />
+                <textarea
+                  value={descripcion}
+                  onChange={e => setDescripcion(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Escape") cerrar(); }}
+                  placeholder="Descripción (opcional)"
+                  rows={2}
+                  className="w-full bg-transparent text-sm text-[#666] placeholder-[#222] focus:outline-none resize-none leading-relaxed mt-2"
+                />
+              </div>
+              {deteccion && (
+                <div className="px-5 pb-2">
+                  <span className="inline-flex items-center gap-1.5 text-[12px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 rounded-md px-2 py-0.5">
+                    <DetLabel deteccion={deteccion} />
+                    <button onClick={() => setDetIgnorada(true)} className="ml-0.5 text-[#B3985B]/50 hover:text-red-400">×</button>
+                  </span>
+                </div>
+              )}
+              {panel && (
+                <div className="border-t border-[#111]">
+                  <PanelContent {...panelProps} />
+                </div>
+              )}
+            </div>
+
+            {/* Two-row footer */}
+            <div className="shrink-0 border-t border-[#141414] bg-[#090909]">
+              {/* Row 1: chips */}
+              <div className="flex items-center gap-0.5 px-4 pt-3 pb-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {chips}
+              </div>
+              {/* Row 2: actions */}
+              <div className="flex items-center justify-end gap-1 px-4 pb-3">
+                <button onClick={cerrar} className="text-xs text-[#444] hover:text-[#888] px-3 py-1.5 rounded-lg hover:bg-[#0f0f0f] transition-all">
+                  Cancelar
+                </button>
+                <button
+                  onClick={crear}
+                  disabled={!titulo.trim() || saving}
+                  className="text-xs font-semibold px-4 py-1.5 rounded-lg disabled:opacity-25 disabled:cursor-not-allowed bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] transition-all"
+                  style={{ boxShadow: titulo.trim() ? "0 0 14px #B3985B30" : "none" }}
+                >
+                  {saving ? "Creando…" : "Agregar"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
-// ── Panel content (shared between mobile and desktop) ────────────────────────
+// ── Panel content ─────────────────────────────────────────────────────────────
 
 interface PanelProps {
   panel: Panel;
@@ -432,7 +451,7 @@ function ChipBtn({ icon, label, active, activeColor, isOpen, onClick }: {
   );
 }
 
-// ── NL detection label helper ─────────────────────────────────────────────────
+// ── NL detection label ────────────────────────────────────────────────────────
 
 function DetLabel({ deteccion }: { deteccion: { fecha: string | null; recurrencia: string | null } }) {
   if (deteccion.fecha) return <>{formatDisplay(deteccion.fecha)}</>;
