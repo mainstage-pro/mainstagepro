@@ -857,6 +857,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [editGastoForm, setEditGastoForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "TRANSFERENCIA", categoriaId: "", proveedorId: "", cuentaOrigenId: "" });
   const [savingGasto, setSavingGasto] = useState(false);
 
+  // Estados para nueva CxP manual desde el proyecto
+  const [showNuevaCxP, setShowNuevaCxP] = useState(false);
+  const [nuevaCxPConcepto, setNuevaCxPConcepto] = useState("");
+  const [nuevaCxPMonto, setNuevaCxPMonto] = useState("");
+  const [nuevaCxPFecha, setNuevaCxPFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [nuevaCxPTipo, setNuevaCxPTipo] = useState("OTRO");
+  const [nuevaCxPTecnicoId, setNuevaCxPTecnicoId] = useState("");
+  const [nuevaCxPProveedorId, setNuevaCxPProveedorId] = useState("");
+  const [nuevaCxPNotas, setNuevaCxPNotas] = useState("");
+  const [savingNuevaCxP, setSavingNuevaCxP] = useState(false);
+
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
@@ -2200,6 +2211,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setMontoPago("");
     setCuentaPagoId("");
     setMetodoPagoFinanzas("TRANSFERENCIA");
+  }
+
+  // ── Crear CxP manual desde el proyecto ──
+  async function crearNuevaCxP() {
+    if (!nuevaCxPConcepto.trim() || !nuevaCxPMonto || !nuevaCxPFecha) return;
+    setSavingNuevaCxP(true);
+    const res = await fetch("/api/cuentas-pagar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: nuevaCxPConcepto.trim(),
+        monto: parseFloat(nuevaCxPMonto),
+        fechaCompromiso: nuevaCxPFecha,
+        tipoAcreedor: nuevaCxPTipo,
+        tecnicoId: nuevaCxPTipo === "TECNICO" ? (nuevaCxPTecnicoId || null) : null,
+        proveedorId: nuevaCxPTipo === "PROVEEDOR" ? (nuevaCxPProveedorId || null) : null,
+        notas: nuevaCxPNotas || null,
+        proyectoId: id,
+      }),
+    });
+    const d = await res.json();
+    if (res.ok && d.cxp) {
+      setProyecto(prev => prev ? {
+        ...prev,
+        cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+      } : prev);
+      toast.success("CxP registrada");
+      setNuevaCxPConcepto(""); setNuevaCxPMonto(""); setNuevaCxPFecha(new Date().toISOString().split("T")[0]);
+      setNuevaCxPTipo("OTRO"); setNuevaCxPTecnicoId(""); setNuevaCxPProveedorId(""); setNuevaCxPNotas("");
+      setShowNuevaCxP(false);
+    } else {
+      toast.error(d.error ?? "Error al crear CxP");
+    }
+    setSavingNuevaCxP(false);
   }
 
   async function anularMovimiento(id: string, tipo: "cobro" | "pago") {
@@ -5090,64 +5134,109 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           {/* CxP */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
-              {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
+                  <button
+                    onClick={async () => {
+                      const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
+                      const d = await res.json();
+                      if (res.ok) {
+                        toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
+                        const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
+                        const d2 = await r2.json();
+                        if (d2.proyecto) setProyecto(d2.proyecto);
+                      } else {
+                        toast.error(d.error ?? "Error al sincronizar");
+                      }
+                    }}
+                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors"
+                  >
+                    Sincronizar tarifas
+                  </button>
+                )}
                 <button
-                  onClick={async () => {
-                    const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
-                    const d = await res.json();
-                    if (res.ok) {
-                      toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
-                      // Recargar proyecto
-                      const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
-                      const d2 = await r2.json();
-                      if (d2.proyecto) setProyecto(d2.proyecto);
-                    } else {
-                      toast.error(d.error ?? "Error al sincronizar");
-                    }
-                  }}
+                  onClick={() => { setShowNuevaCxP(v => !v); }}
                   className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors"
                 >
-                  Sincronizar tarifas desde cotización
+                  {showNuevaCxP ? "Cancelar" : "+ Nueva CxP"}
                 </button>
-              )}
+              </div>
             </div>
 
-            {/* Personal técnico (siempre visible si hay personal) */}
-            {proyecto.personal.length > 0 && (
-              <div className="border-b border-[#1a1a1a]">
-                <div className="px-5 py-2 bg-[#0d0d0d]">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Personal técnico</p>
-                </div>
-                {proyecto.personal.map(p => {
-                  const nombre = p.tecnico?.nombre ?? "Por asignar";
-                  const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Técnico";
-                  const pagado = p.estadoPago === "PAGADO";
-                  return (
-                    <div key={p.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
-                      <div>
-                        <p className="text-white text-sm">{nombre}</p>
-                        <p className="text-gray-500 text-xs">{rol}{p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {p.tarifaAcordada != null && p.tarifaAcordada > 0 ? (
-                          <span className="text-white font-semibold text-sm">{fmt(p.tarifaAcordada)}</span>
-                        ) : (
-                          <span className="text-gray-600 text-xs italic">Sin tarifa</span>
-                        )}
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pagado ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"}`}>
-                          {pagado ? "Pagado" : "Pendiente"}
-                        </span>
-                      </div>
+            {/* Form nueva CxP */}
+            {showNuevaCxP && (
+              <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0d0d0d] space-y-3">
+                <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider">Nueva cuenta por pagar</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-500 block mb-1">Concepto *</label>
+                    <input value={nuevaCxPConcepto} onChange={e => setNuevaCxPConcepto(e.target.value)}
+                      placeholder="Ej: Renta sonido, Pago técnico..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Monto *</label>
+                    <input type="number" value={nuevaCxPMonto} onChange={e => setNuevaCxPMonto(e.target.value)}
+                      placeholder="0.00" min="0" step="0.01"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso *</label>
+                    <input type="date" value={nuevaCxPFecha} onChange={e => setNuevaCxPFecha(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
+                    <Combobox
+                      value={nuevaCxPTipo}
+                      onChange={v => { setNuevaCxPTipo(v); setNuevaCxPTecnicoId(""); setNuevaCxPProveedorId(""); }}
+                      options={[{ value: "TECNICO", label: "Técnico" }, { value: "PROVEEDOR", label: "Proveedor" }, { value: "OTRO", label: "Otro" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                  {nuevaCxPTipo === "TECNICO" && (
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-1">Técnico</label>
+                      <Combobox
+                        value={nuevaCxPTecnicoId}
+                        onChange={v => setNuevaCxPTecnicoId(v)}
+                        options={[{ value: "", label: "— Seleccionar —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
                     </div>
-                  );
-                })}
+                  )}
+                  {nuevaCxPTipo === "PROVEEDOR" && (
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-1">Proveedor</label>
+                      <Combobox
+                        value={nuevaCxPProveedorId}
+                        onChange={v => setNuevaCxPProveedorId(v)}
+                        options={[{ value: "", label: "— Seleccionar —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                  )}
+                  <div className={nuevaCxPTipo === "OTRO" ? "col-span-2" : "col-span-2"}>
+                    <label className="text-[10px] text-gray-500 block mb-1">Notas</label>
+                    <input value={nuevaCxPNotas} onChange={e => setNuevaCxPNotas(e.target.value)}
+                      placeholder="Opcional"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={crearNuevaCxP} disabled={savingNuevaCxP || !nuevaCxPConcepto.trim() || !nuevaCxPMonto}
+                    className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                    {savingNuevaCxP ? "Guardando..." : "Registrar CxP"}
+                  </button>
+                  <button onClick={() => setShowNuevaCxP(false)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                </div>
               </div>
             )}
 
-            {/* CXP de proveedores */}
-            {proyecto.cuentasPagar.length === 0 && proyecto.personal.length === 0 ? (
+            {/* CxP registradas */}
+            {proyecto.cuentasPagar.length === 0 ? (
               <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por pagar</p>
             ) : proyecto.cuentasPagar.length > 0 ? (
               <>
