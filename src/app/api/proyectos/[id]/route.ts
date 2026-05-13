@@ -75,7 +75,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { createdAt: "desc" },
         },
         cuentasCobrar: true,
-        cuentasPagar: true,
+        cuentasPagar: { orderBy: [{ estado: "desc" }, { fechaCompromiso: "asc" }] },
         movimientos: {
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
@@ -127,7 +127,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { createdAt: "desc" },
         },
         cuentasCobrar: true,
-        cuentasPagar: true,
+        cuentasPagar: { orderBy: [{ estado: "desc" }, { fechaCompromiso: "asc" }] },
         movimientos: {
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
