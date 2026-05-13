@@ -1877,6 +1877,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
   }
 
+  // ── Marcar pago de personal (toggle PAGADO ↔ PENDIENTE) ──
+  const [marcandoPago, setMarcandoPago] = useState<Set<string>>(new Set());
+
+  async function togglePagoPersonal(pId: string, estadoActual: string) {
+    const nuevoEstado = estadoActual === "PAGADO" ? "PENDIENTE" : "PAGADO";
+    setMarcandoPago(prev => new Set([...prev, pId]));
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estadoPago: nuevoEstado }),
+    });
+    if (res.ok) {
+      setProyecto(prev => prev ? {
+        ...prev,
+        personal: prev.personal.map(p => p.id === pId ? { ...p, estadoPago: nuevoEstado } : p),
+      } : prev);
+    }
+    setMarcandoPago(prev => { const s = new Set(prev); s.delete(pId); return s; });
+  }
+
+  async function marcarTodosPagado() {
+    const pendientes = proyecto!.personal.filter(p => p.tecnico && p.estadoPago !== "PAGADO");
+    if (pendientes.length === 0) return;
+    pendientes.forEach(p => setMarcandoPago(prev => new Set([...prev, p.id])));
+    await Promise.all(pendientes.map(p =>
+      fetch(`/api/proyectos/${id}/personal/${p.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estadoPago: "PAGADO" }),
+      })
+    ));
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => pendientes.some(pp => pp.id === p.id) ? { ...p, estadoPago: "PAGADO" } : p),
+    } : prev);
+    setMarcandoPago(new Set());
+  }
+
   // ── Eliminar personal ──
   async function eliminarPersonal(pId: string) {
     await fetch(`/api/proyectos/${id}/personal/${pId}`, { method: "DELETE" });
@@ -5132,253 +5168,298 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* CxP */}
+          {/* Pagos a personal */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
-              <div className="flex items-center gap-2 flex-wrap">
-                {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
-                  <button
-                    onClick={async () => {
-                      const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
-                      const d = await res.json();
-                      if (res.ok) {
-                        toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
-                        const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
-                        const d2 = await r2.json();
-                        if (d2.proyecto) setProyecto(d2.proyecto);
-                      } else {
-                        toast.error(d.error ?? "Error al sincronizar");
-                      }
-                    }}
-                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors"
-                  >
-                    Sincronizar tarifas
-                  </button>
-                )}
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a personal</h3>
+              {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
                 <button
-                  onClick={() => { setShowNuevaCxP(v => !v); }}
-                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors"
+                  onClick={async () => {
+                    const res = await fetch(`/api/proyectos/${id}/sincronizar-tarifas`, { method: "POST" });
+                    const d = await res.json();
+                    if (res.ok) {
+                      toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
+                      const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
+                      const d2 = await r2.json();
+                      if (d2.proyecto) setProyecto(d2.proyecto);
+                    } else {
+                      toast.error(d.error ?? "Error al sincronizar");
+                    }
+                  }}
+                  className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors"
                 >
-                  {showNuevaCxP ? "Cancelar" : "+ Nueva CxP"}
+                  Sincronizar tarifas
                 </button>
-              </div>
+              )}
             </div>
 
-            {/* Form nueva CxP */}
-            {showNuevaCxP && (
-              <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0d0d0d] space-y-3">
-                <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider">Nueva cuenta por pagar</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-gray-500 block mb-1">Concepto *</label>
-                    <input value={nuevaCxPConcepto} onChange={e => setNuevaCxPConcepto(e.target.value)}
-                      placeholder="Ej: Renta sonido, Pago técnico..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">Monto *</label>
-                    <input type="number" value={nuevaCxPMonto} onChange={e => setNuevaCxPMonto(e.target.value)}
-                      placeholder="0.00" min="0" step="0.01"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso *</label>
-                    <input type="date" value={nuevaCxPFecha} onChange={e => setNuevaCxPFecha(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
-                    <Combobox
-                      value={nuevaCxPTipo}
-                      onChange={v => { setNuevaCxPTipo(v); setNuevaCxPTecnicoId(""); setNuevaCxPProveedorId(""); }}
-                      options={[{ value: "TECNICO", label: "Técnico" }, { value: "PROVEEDOR", label: "Proveedor" }, { value: "OTRO", label: "Otro" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  {nuevaCxPTipo === "TECNICO" && (
-                    <div>
-                      <label className="text-[10px] text-gray-500 block mb-1">Técnico</label>
-                      <Combobox
-                        value={nuevaCxPTecnicoId}
-                        onChange={v => setNuevaCxPTecnicoId(v)}
-                        options={[{ value: "", label: "— Seleccionar —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                  )}
-                  {nuevaCxPTipo === "PROVEEDOR" && (
-                    <div>
-                      <label className="text-[10px] text-gray-500 block mb-1">Proveedor</label>
-                      <Combobox
-                        value={nuevaCxPProveedorId}
-                        onChange={v => setNuevaCxPProveedorId(v)}
-                        options={[{ value: "", label: "— Seleccionar —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                  )}
-                  <div className={nuevaCxPTipo === "OTRO" ? "col-span-2" : "col-span-2"}>
-                    <label className="text-[10px] text-gray-500 block mb-1">Notas</label>
-                    <input value={nuevaCxPNotas} onChange={e => setNuevaCxPNotas(e.target.value)}
-                      placeholder="Opcional"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={crearNuevaCxP} disabled={savingNuevaCxP || !nuevaCxPConcepto.trim() || !nuevaCxPMonto}
-                    className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
-                    {savingNuevaCxP ? "Guardando..." : "Registrar CxP"}
-                  </button>
-                  <button onClick={() => setShowNuevaCxP(false)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                </div>
-              </div>
-            )}
+            {/* Tabla de personal — estilo pagos a personal */}
+            {(() => {
+              const TIPO_COLOR: Record<string, string> = {
+                MONTAJE: "text-blue-400", OPERACION: "text-[#B3985B]",
+                DESMONTAJE: "text-purple-400", TRANSPORTE: "text-cyan-400", OTRO: "text-gray-400",
+              };
+              const TIPO_LABEL: Record<string, string> = {
+                MONTAJE: "Montaje", OPERACION: "Operación", DESMONTAJE: "Desmontaje",
+                TRANSPORTE: "Transporte", OTRO: "Otro",
+              };
+              const JORNADA_LABEL: Record<string, string> = {
+                COMPLETA: "Completa", MEDIA: "Media", CUARTO: "Cuarto",
+              };
+              const personal = proyecto.personal;
+              const totalPersonal = personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              const hayPendientes = personal.some(p => p.tecnico && p.estadoPago !== "PAGADO");
 
-            {/* CxP registradas */}
-            {proyecto.cuentasPagar.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por pagar</p>
-            ) : proyecto.cuentasPagar.length > 0 ? (
-              <>
-              {proyecto.cuentasPagar.map(c => {
-                const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
-                const tieneAjustes = ajustesEntradas.length > 0;
-                return (
-                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-white text-sm font-medium">{c.concepto}</p>
-                          {tieneAjustes && (
-                            <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
-                              className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
-                              {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
-                            </button>
-                          )}
-                        </div>
-                        <p className="text-gray-500 text-xs">{c.tipoAcreedor} · Vence: {fmtDate(c.fechaCompromiso)}</p>
-                        {c.montoOriginal && c.montoOriginal !== c.monto && (
-                          <p className="text-gray-600 text-[10px] mt-0.5">
-                            Original: <span className="line-through">{fmt(c.montoOriginal)}</span>
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {c.estado !== "LIQUIDADO" && (
-                          <button
-                            onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
-                            className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                            ✏ Editar
-                          </button>
-                        )}
-                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                          "bg-yellow-900/30 text-yellow-400"
-                        }`}>{c.estado}</span>
-                      </div>
-                    </div>
+              // Agrupar por participacion
+              const grupos = new Map<string, NonNullable<typeof proyecto>["personal"]>();
+              const ORDER = ["MONTAJE", "OPERACION", "DESMONTAJE", "TRANSPORTE", "OTRO"];
+              for (const p of personal) {
+                const key = p.participacion ?? "OTRO";
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key)!.push(p);
+              }
+              const gruposOrdenados = ORDER
+                .filter(k => grupos.has(k))
+                .map(k => [k, grupos.get(k)!] as [string, typeof personal]);
 
-                    {/* Inline: editar */}
-                    {ajustando === c.id && (
-                      <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                        <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar pago</p>
-                        <div className="flex gap-2 flex-wrap items-start">
-                          <div>
-                            <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
-                            <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
-                              placeholder="0.00" min="0" step="0.01"
-                              className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
-                            <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
-                              className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
-                          </div>
-                          {parseFloat(ajusteMonto) !== c.monto && (
-                            <div className="flex-1 min-w-[200px]">
-                              <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                              <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                                placeholder="Explica brevemente por qué se ajusta este monto..."
-                                rows={2}
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+              if (personal.length === 0) return (
+                <p className="text-gray-600 text-sm text-center py-6 italic">Sin personal registrado</p>
+              );
+
+              return (
+                <>
+                  {/* Headers */}
+                  <div className="grid grid-cols-[1fr_1fr_72px_80px_72px] gap-2 px-5 py-1.5 border-b border-[#0d0d0d]">
+                    {["Técnico", "Rol", "Jornada", "Tarifa", "Estado"].map(h => (
+                      <p key={h} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
+                    ))}
+                  </div>
+
+                  {gruposOrdenados.map(([tipo, slots]) => (
+                    <div key={tipo}>
+                      <div className="px-5 py-1.5 bg-[#0d0d0d] flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${TIPO_COLOR[tipo] ?? "text-gray-400"}`}>
+                          {TIPO_LABEL[tipo] ?? tipo}
+                        </span>
+                        <span className="text-[10px] text-gray-700 ml-auto">{slots.length} técnico{slots.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      {slots.map(p => {
+                        const nombre = p.tecnico?.nombre ?? "Sin asignar";
+                        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "—";
+                        const pagado = p.estadoPago === "PAGADO";
+                        const marcando = marcandoPago.has(p.id);
+                        return (
+                          <div key={p.id} className="grid grid-cols-[1fr_1fr_72px_80px_72px] gap-2 px-5 py-2.5 border-b border-[#0d0d0d] last:border-0 items-center">
+                            <p className={`text-sm truncate ${p.tecnico ? "text-white" : "text-yellow-500 italic"}`}>{nombre}</p>
+                            <p className="text-xs text-gray-400 truncate">{rol}</p>
+                            <p className="text-xs text-gray-500">{JORNADA_LABEL[p.jornada ?? ""] ?? p.jornada ?? "—"}</p>
+                            <p className={`text-sm font-medium text-right ${p.tarifaAcordada != null ? "text-white" : "text-gray-600"}`}>
+                              {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "—"}
+                            </p>
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => p.tecnico && togglePagoPersonal(p.id, p.estadoPago)}
+                                disabled={marcando || !p.tecnico}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors ${
+                                  !p.tecnico ? "text-gray-700" :
+                                  pagado ? "bg-green-900/40 text-green-400 hover:bg-red-900/30 hover:text-red-400" :
+                                  "bg-yellow-900/30 text-yellow-400 hover:bg-green-900/30 hover:text-green-400"
+                                } ${marcando ? "opacity-40" : ""}`}>
+                                {!p.tecnico ? "—" : pagado ? "Pagado" : "Pend."}
+                              </button>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => ajustarMontoCxP(c.id, c.monto)}
-                            className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                            Guardar
-                          </button>
-                          <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                        </div>
-                      </div>
-                    )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
 
-                    {/* Historial de ajustes */}
-                    {ajusteHistorial === c.id && tieneAjustes && (
-                      <div className="mt-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-3">
-                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Historial de ajustes</p>
-                        <div className="space-y-1.5">
-                          {ajustesEntradas.map((a, i) => (
-                            <div key={i} className="flex items-start gap-2 text-xs">
-                              <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{(() => { const iso = typeof a.fecha === "string" ? a.fecha : (a.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }); })()}</span>
-                              <div className="flex-1">
-                                <span className="text-red-400 line-through">{fmt(a.de)}</span>
-                                <span className="text-gray-600 mx-1">→</span>
-                                <span className="text-white font-semibold">{fmt(a.a)}</span>
-                                <p className="text-gray-500 text-[10px] mt-0.5">{a.motivo}</p>
-                                <p className="text-gray-700 text-[10px]">por {a.usuario}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
-                      pagando === c.id ? (
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                            placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                          <Combobox
-                            value={cuentaPagoId}
-                            onChange={v => setCuentaPagoId(v)}
-                            options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                          />
-                          <Combobox
-                            value={metodoPagoFinanzas}
-                            onChange={v => setMetodoPagoFinanzas(v)}
-                            options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                          />
-                          <button onClick={() => registrarPagoCxP(c.id)}
-                            className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
-                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
-                          className="text-xs text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-3 py-1 rounded-lg transition-colors">
-                          + Registrar pago
-                        </button>
-                      )
-                    )}
-                    {c.estado === "LIQUIDADO" && (
-                      <button onClick={() => anularMovimiento(c.id, "pago")} disabled={anulando === c.id}
-                        className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
-                        {anulando === c.id ? "Anulando..." : "Anular pago"}
+                  {/* Footer con total */}
+                  <div className="px-5 py-3 bg-[#0d0d0d] flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-xs text-gray-500">
+                      Total personal: <span className="text-white font-semibold">{fmt(totalPersonal)}</span>
+                    </span>
+                    {hayPendientes && (
+                      <button onClick={marcarTodosPagado}
+                        className="text-xs bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                        Marcar todos pagado
                       </button>
                     )}
                   </div>
-                );
-              })}
-              </>
-            ) : null}
+                </>
+              );
+            })()}
           </div>
+
+          {/* Otras CxP (proveedores, otros — no técnicos) */}
+          {(() => {
+            const otrasCxP = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO");
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
+                  <button onClick={() => setShowNuevaCxP(v => !v)}
+                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                    {showNuevaCxP ? "Cancelar" : "+ Nueva CxP"}
+                  </button>
+                </div>
+
+                {showNuevaCxP && (
+                  <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0d0d0d] space-y-3">
+                    <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider">Nueva cuenta por pagar</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="text-[10px] text-gray-500 block mb-1">Concepto *</label>
+                        <input value={nuevaCxPConcepto} onChange={e => setNuevaCxPConcepto(e.target.value)}
+                          placeholder="Ej: Renta sonido, Transporte..." autoFocus
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 block mb-1">Monto *</label>
+                        <input type="number" value={nuevaCxPMonto} onChange={e => setNuevaCxPMonto(e.target.value)}
+                          placeholder="0.00" min="0" step="0.01"
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso *</label>
+                        <input type="date" value={nuevaCxPFecha} onChange={e => setNuevaCxPFecha(e.target.value)}
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
+                        <Combobox value={nuevaCxPTipo} onChange={v => { setNuevaCxPTipo(v); setNuevaCxPProveedorId(""); }}
+                          options={[{ value: "PROVEEDOR", label: "Proveedor" }, { value: "OTRO", label: "Otro" }]}
+                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      </div>
+                      {nuevaCxPTipo === "PROVEEDOR" && (
+                        <div>
+                          <label className="text-[10px] text-gray-500 block mb-1">Proveedor</label>
+                          <Combobox value={nuevaCxPProveedorId} onChange={v => setNuevaCxPProveedorId(v)}
+                            options={[{ value: "", label: "— Seleccionar —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={crearNuevaCxP} disabled={savingNuevaCxP || !nuevaCxPConcepto.trim() || !nuevaCxPMonto}
+                        className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                        {savingNuevaCxP ? "Guardando..." : "Registrar"}
+                      </button>
+                      <button onClick={() => setShowNuevaCxP(false)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                    </div>
+                  </div>
+                )}
+
+                {otrasCxP.length === 0 && !showNuevaCxP ? (
+                  <p className="text-gray-600 text-sm text-center py-6 italic">Sin cuentas por pagar registradas</p>
+                ) : (
+                  otrasCxP.map(c => {
+                    const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
+                    const tieneAjustes = ajustesEntradas.length > 0;
+                    return (
+                      <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-white text-sm font-medium">{c.concepto}</p>
+                              {tieneAjustes && (
+                                <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
+                                  className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
+                                  {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
+                                </button>
+                              )}
+                            </div>
+                            <p className="text-gray-500 text-xs">Vence: {fmtDate(c.fechaCompromiso)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {c.estado !== "LIQUIDADO" && (
+                              <button
+                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
+                                className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
+                                ✏ Editar
+                              </button>
+                            )}
+                            <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
+                              c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
+                              "bg-yellow-900/30 text-yellow-400"
+                            }`}>{c.estado}</span>
+                          </div>
+                        </div>
+
+                        {ajustando === c.id && (
+                          <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
+                            <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar pago</p>
+                            <div className="flex gap-2 flex-wrap items-start">
+                              <div>
+                                <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
+                                <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
+                                  placeholder="0.00" min="0" step="0.01"
+                                  className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
+                                <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
+                                  className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
+                              </div>
+                              {parseFloat(ajusteMonto) !== c.monto && (
+                                <div className="flex-1 min-w-[200px]">
+                                  <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                                  <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                                    placeholder="Explica brevemente por qué se ajusta este monto..."
+                                    rows={2}
+                                    className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => ajustarMontoCxP(c.id, c.monto)}
+                                className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                                Guardar
+                              </button>
+                              <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            </div>
+                          </div>
+                        )}
+
+                        {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
+                          pagando === c.id ? (
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
+                                placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
+                              <Combobox value={cuentaPagoId} onChange={v => setCuentaPagoId(v)}
+                                options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <Combobox value={metodoPagoFinanzas} onChange={v => setMetodoPagoFinanzas(v)}
+                                options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <button onClick={() => registrarPagoCxP(c.id)}
+                                className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
+                              <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
+                              className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors mt-1">
+                              + Registrar pago
+                            </button>
+                          )
+                        )}
+                        {c.estado === "LIQUIDADO" && (
+                          <button onClick={() => anularMovimiento(c.id, "pago")} disabled={anulando === c.id}
+                            className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
+                            {anulando === c.id ? "Anulando..." : "Anular pago"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Gastos Operativos ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
