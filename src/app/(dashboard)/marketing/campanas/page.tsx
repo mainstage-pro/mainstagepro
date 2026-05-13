@@ -18,9 +18,10 @@ interface TipoCampana {
 }
 
 // Categorías del documento
-const OBJETIVOS = ["INFORMATIVO","VENTA","ENTRETENIMIENTO","POSICIONAMIENTO"];
+const OBJETIVOS = ["INFORMATIVO","TIPO_SERVICIO","VENTA","ENTRETENIMIENTO","POSICIONAMIENTO"];
 const OBJ_LABEL: Record<string,string> = {
-  INFORMATIVO:"Informativo", VENTA:"Venta", ENTRETENIMIENTO:"Entretenimiento", POSICIONAMIENTO:"Posicionamiento",
+  INFORMATIVO:"Informativo", TIPO_SERVICIO:"Tipo de servicio",
+  VENTA:"Venta", ENTRETENIMIENTO:"Entretenimiento", POSICIONAMIENTO:"Posicionamiento",
 };
 const OBJ_META = ["RECONOCIMIENTO","TRAFICO","INTERACCION","LEADS","VENTAS"];
 const OBJ_META_LABEL: Record<string,string> = {
@@ -103,30 +104,30 @@ const SUGERIDOS: Sugerido[] = [
     descripcion:"Imagen de posicionamiento con frase de marca. Simple, elegante y directa.",
   },
   {
-    nombre:"Renta de equipo", objetivo:"INFORMATIVO", objetivoMeta:"TRAFICO",
+    nombre:"Renta de equipo", objetivo:"TIPO_SERVICIO", objetivoMeta:"TRAFICO",
     formato:"IMAGEN", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:2000,
     publicoEdadMin:25, publicoEdadMax:50, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,STORIES_IG", cta:"MAS_INFORMACION",
     copyReferencia:"Equipo de audio, iluminación y video disponible para renta. Consigue exactamente lo que necesitas para tu producción.",
-    pixelEvento:"Lead", grupo:"Tipo de servicio", color:"#14B8A6",
+    pixelEvento:"Lead", grupo:null, color:"#14B8A6",
     descripcion:"Campaña de tráfico para el servicio de renta de equipo. Dirige al cliente a la página de catálogo o cotización.",
   },
   {
-    nombre:"Producción técnica", objetivo:"INFORMATIVO", objetivoMeta:"TRAFICO",
+    nombre:"Producción técnica", objetivo:"TIPO_SERVICIO", objetivoMeta:"TRAFICO",
     formato:"VIDEO", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:2500,
     publicoEdadMin:25, publicoEdadMax:50, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG", cta:"COTIZAR",
     copyReferencia:"Producción técnica integral: armamos, operamos y desmontamos. Tú solo disfruta el evento.",
-    pixelEvento:"Lead", grupo:"Tipo de servicio", color:"#10B981",
+    pixelEvento:"Lead", grupo:null, color:"#10B981",
     descripcion:"Video que muestra el proceso completo de producción técnica desde el armado hasta el desmontaje.",
   },
   {
-    nombre:"Dirección técnica integral", objetivo:"INFORMATIVO", objetivoMeta:"RECONOCIMIENTO",
+    nombre:"Dirección técnica integral", objetivo:"TIPO_SERVICIO", objetivoMeta:"RECONOCIMIENTO",
     formato:"VIDEO", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:3000,
     publicoEdadMin:30, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG", cta:"CONTACTAR",
     copyReferencia:"La dirección técnica integral que tu evento necesita. Coordinamos cada detalle técnico para que nada falle en el momento más importante.",
-    pixelEvento:"Lead", grupo:"Tipo de servicio", color:"#F59E0B",
+    pixelEvento:"Lead", grupo:null, color:"#F59E0B",
     descripcion:"Campaña dirigida a empresas y organizadores que buscan un solo punto de contacto para toda la producción.",
   },
   {
