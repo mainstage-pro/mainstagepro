@@ -182,7 +182,8 @@ const NAV: NavSection[] = [
     key: "seccion-produccion",
     section: "Producción",
     items: [
-      { key: "proyectos", label: "Proyectos", href: "/proyectos" },
+      { key: "proyectos", label: "Proyectos/Eventos", href: "/proyectos" },
+      { key: "equipo-tareas", label: "Tareas del equipo", href: "/operaciones/equipo" },
       { key: "ordenes-compra", label: "Órdenes de compra", href: "/operaciones/ordenes-compra" },
       {
         key: "inventario",
