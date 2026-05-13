@@ -18,8 +18,6 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: BLACK,
   },
-
-  // Header
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 44,
@@ -31,74 +29,57 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
   },
   brand:    { fontSize: 17, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 3 },
-  tagline:  { fontSize: 7,  color: "#666666", letterSpacing: 1 },
-  docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2, letterSpacing: 0.5 },
-  docRef:   { fontSize: 8,  color: "#888888" },
-  docDate:  { fontSize: 7.5,color: "#666666", marginTop: 2 },
-
-  body: { paddingHorizontal: 44, paddingTop: 26 },
-
-  // Para
-  paraLabel:  { fontSize: 7,  color: "#999999", letterSpacing: 1.2, marginBottom: 3 },
+  tagline:  { fontSize: 7, color: "#666666", letterSpacing: 1 },
+  docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2 },
+  docRef:   { fontSize: 8, color: "#888888" },
+  docDate:  { fontSize: 7.5, color: "#666666", marginTop: 2 },
+  body:     { paddingHorizontal: 44, paddingTop: 26 },
+  paraLabel:  { fontSize: 7, color: "#999999", letterSpacing: 1.2, marginBottom: 3 },
   paraName:   { fontSize: 12, fontFamily: "Helvetica-Bold", color: BLACK, marginBottom: 1 },
-  paraEmpresa:{ fontSize: 8.5,color: GRAY, marginBottom: 14 },
-
-  // Info box (proyecto / cotización)
-  infoBox: { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 16 },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  paraEmpresa:{ fontSize: 8.5, color: GRAY, marginBottom: 14 },
+  infoBox:  { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 16 },
+  infoRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
   infoLabel:{ fontSize: 7.5, color: "#888888" },
   infoValue:{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "62%", textAlign: "right" },
-
-  // Concepto
   sectionLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: "#999999", letterSpacing: 1.5, marginBottom: 6 },
   conceptoBox:  { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 20 },
   conceptoText: { fontSize: 9, color: BLACK, lineHeight: 1.5 },
 
-  // ── Resumen de cobros (3 filas prominentes) ──
-  resumenBox:   { marginBottom: 18 },
+  // Resumen — contenedor con borderRadius, filas sin radios individuales
+  resumenWrap: { borderRadius: 4, overflow: "hidden", marginBottom: 18 },
   resumenRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingVertical: 10, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: MID,
     backgroundColor: LIGHT,
+    borderBottomWidth: 1, borderBottomColor: MID,
   },
-  resumenRowFirst: { borderTopLeftRadius: 4, borderTopRightRadius: 4 },
   resumenLabel: { fontSize: 8.5, color: GRAY },
-  resumenValue: { fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" },
-  resumenAnticipoValue: { fontSize: 9, color: "#888888" },
+  resumenValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
+  resumenGray:  { fontSize: 9, color: "#888888" },
 
-  // Fila total (saldo)
   saldoRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: 12, paddingHorizontal: 16,
+    paddingVertical: 13, paddingHorizontal: 16,
     backgroundColor: BLACK,
-    borderBottomLeftRadius: 4, borderBottomRightRadius: 4,
-    marginTop: 1,
   },
   saldoLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE },
   saldoValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD },
   saldoZero:  { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#4ade80" },
 
-  // Fecha de pago
   dueDateBox: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: GOLD + "12",
+    backgroundColor: GOLD + "15",
     borderRadius: 4, paddingHorizontal: 14, paddingVertical: 10,
     borderLeftWidth: 3, borderLeftColor: GOLD,
     marginBottom: 16,
   },
-  dueDateLabel: { fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
-  dueDateValue: { fontSize: 9,   fontFamily: "Helvetica-Bold", color: BLACK },
-
+  dueDateLabel: { fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" },
+  dueDateValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
   nota: { fontSize: 7, color: "#aaaaaa", fontStyle: "italic", lineHeight: 1.5 },
-
-  // Footer
   footer: {
-    position: "absolute",
-    bottom: 18, left: 44, right: 44,
+    position: "absolute", bottom: 18, left: 44, right: 44,
     flexDirection: "row", justifyContent: "space-between",
-    borderTopWidth: 1, borderTopColor: MID,
-    paddingTop: 7,
+    borderTopWidth: 1, borderTopColor: MID, paddingTop: 7,
   },
   footerText: { fontSize: 7, color: "#aaaaaa" },
 });
@@ -189,30 +170,23 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
             <Text style={s.conceptoText}>{nota.concepto}</Text>
           </View>
 
-          {/* ── Resumen de cobros ── */}
+          {/* Resumen de cobros */}
           <Text style={s.sectionLabel}>RESUMEN DE COBROS</Text>
-          <View style={s.resumenBox}>
-
-            {/* Fila 1: Total del servicio */}
-            <View style={[s.resumenRow, s.resumenRowFirst]}>
+          <View style={s.resumenWrap}>
+            <View style={s.resumenRow}>
               <Text style={s.resumenLabel}>Total del servicio</Text>
               <Text style={s.resumenValue}>{fmt(gt)}</Text>
             </View>
-
-            {/* Fila 2: Anticipo (siempre visible, 0 si no hay) */}
             <View style={s.resumenRow}>
               <Text style={s.resumenLabel}>Anticipo recibido</Text>
-              <Text style={anticipo > 0 ? s.resumenAnticipoValue : s.resumenValue}>
+              <Text style={anticipo > 0 ? s.resumenGray : s.resumenValue}>
                 {anticipo > 0 ? `− ${fmt(anticipo)}` : "—"}
               </Text>
             </View>
-
-            {/* Fila 3: Saldo */}
             <View style={s.saldoRow}>
               <Text style={s.saldoLabel}>RESTA POR PAGAR</Text>
               <Text style={saldo === 0 ? s.saldoZero : s.saldoValue}>{fmt(saldo)}</Text>
             </View>
-
           </View>
 
           {/* Fecha de pago */}

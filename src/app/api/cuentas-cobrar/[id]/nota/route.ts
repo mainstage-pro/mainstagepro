@@ -77,23 +77,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     cotizacion:      cxc.cotizacion ? { numeroCotizacion: cxc.cotizacion.numeroCotizacion } : null,
   };
 
-  const pdfStream = await ReactPDF.renderToStream(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(NotaCobroPDF, { nota: notaData }) as React.ReactElement<React.ComponentProps<typeof Document>>
-  );
+  try {
+    const pdfStream = await ReactPDF.renderToStream(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      React.createElement(NotaCobroPDF, { nota: notaData }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    );
 
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of pdfStream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    const chunks: Uint8Array[] = [];
+    for await (const chunk of pdfStream) {
+      chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+    }
+    const pdfBuffer = Buffer.concat(chunks);
+
+    return new NextResponse(pdfBuffer, {
+      status: 200,
+      headers: {
+        "Content-Type":        "application/pdf",
+        "Content-Disposition": `attachment; filename="NotaCobro-${id.slice(-8).toUpperCase()}.pdf"`,
+        "Content-Length":      String(pdfBuffer.length),
+      },
+    });
+  } catch (err) {
+    console.error("Error generando nota de cobro PDF:", err);
+    return NextResponse.json({ error: "Error al generar PDF", detail: String(err) }, { status: 500 });
   }
-  const pdfBuffer = Buffer.concat(chunks);
-
-  return new NextResponse(pdfBuffer, {
-    status: 200,
-    headers: {
-      "Content-Type":        "application/pdf",
-      "Content-Disposition": `attachment; filename="NotaCobro-${id.slice(-8).toUpperCase()}.pdf"`,
-      "Content-Length":      String(pdfBuffer.length),
-    },
-  });
 }
