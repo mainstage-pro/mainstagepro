@@ -600,7 +600,7 @@ export default async function DashboardPage() {
           <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} href="/proyectos" />
           <KpiCard label="Equipos en mant." value={equiposMantenimiento}
             sub="fuera de servicio"
-            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} href="/inventario" />
+            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} href="/inventario/mantenimiento" />
           <KpiCard label="Nómina pendiente" value={formatCurrency(nominaPendiente._sum.monto ?? 0)}
             sub="por pagar"
             subColor={(nominaPendiente._sum.monto ?? 0) > 0 ? "text-yellow-400" : "text-gray-500"} href="/rrhh/nomina" />
