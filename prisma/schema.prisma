@@ -400,6 +400,7 @@ model Proyecto {
   encargadoCliente         String?  // Nombre del encargado de parte del cliente
   encargadoClienteContacto String?  // Teléfono / contacto del encargado del cliente
   transportes            String?  // Descripción de transportes del evento
+  aplicaCatering         Boolean  @default(false) // Si el proyecto requiere catering de producción
   proveedorCatering      String?  // Proveedor de catering / alimentación producción
   contactosDireccion     String?  // Contactos de dirección y coordinación
   cronograma             String?

@@ -178,7 +178,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
-  const booleanFields = ["choferExterno"];
+  const booleanFields = ["choferExterno", "aplicaCatering"];
   const numberFields = ["choferCosto"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 

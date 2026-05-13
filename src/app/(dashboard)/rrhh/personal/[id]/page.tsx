@@ -55,6 +55,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   const [addingPago, setAddingPago] = useState(false);
   const [pagandoId, setPagandoId] = useState<string | null>(null);
   const [fechaPagoReal, setFechaPagoReal] = useState(new Date().toISOString().split("T")[0]);
+  const [showAcuerdo, setShowAcuerdo] = useState(false);
 
   async function load() {
     const r = await fetch(`/api/rrhh/personal/${id}`, { cache: "no-store" });
@@ -182,6 +183,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             className="text-xs px-3 py-1.5 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
             Editar
           </button>
+          {persona.tipo === "INTERNO" && (
+            <button onClick={() => setShowAcuerdo(true)}
+              className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
+              Acuerdo laboral
+            </button>
+          )}
           <button onClick={eliminarEmpleado}
             className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-600 hover:text-red-400 hover:border-red-900 transition-colors">
             Eliminar
@@ -518,6 +525,60 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-gray-700 text-xs mt-4">Los documentos se agregan manualmente via URL. Próximamente: carga directa de archivos.</p>
         </div>
       )}
+
+      {/* ── Modal Acuerdo Laboral ── */}
+      {showAcuerdo && (() => {
+        const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+        const periodoLabel: Record<string, string> = { MENSUAL: "mensual", QUINCENAL: "quincenal", SEMANAL: "semanal", POR_EVENTO: "por evento" };
+        const acuerdoText = [
+          "ACUERDO LABORAL",
+          "",
+          `Querétaro, Qro., a ${hoy}`,
+          "",
+          `Por medio del presente documento, Mainstage Producciones S.A. de C.V. (en adelante "La Empresa") acuerda las siguientes condiciones de trabajo con:`,
+          "",
+          `Nombre: ${persona.nombre}`,
+          `Puesto: ${persona.puesto}`,
+          `Departamento: ${persona.departamento}`,
+          persona.fechaIngreso ? `Fecha de ingreso: ${fmtDate(persona.fechaIngreso)}` : null,
+          "",
+          "CONDICIONES:",
+          "",
+          persona.salario ? `• Remuneración: ${fmt(persona.salario)} ${periodoLabel[persona.periodoPago] ?? persona.periodoPago}` : null,
+          persona.banco ? `• Banco: ${persona.banco}` : null,
+          persona.clabe ? `• CLABE: ${persona.clabe}` : null,
+          persona.numeroCuenta ? `• Cuenta: ${persona.numeroCuenta}` : null,
+          "",
+          "Ambas partes acuerdan que las presentes condiciones son válidas y serán respetadas de conformidad con lo establecido en la Ley Federal del Trabajo.",
+          "",
+          "",
+          "_______________________________          _______________________________",
+          "La Empresa                               El/La Colaborador(a)",
+          "Mainstage Producciones                   " + persona.nombre,
+        ].filter(s => s !== null).join("\n");
+
+        return (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+              <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+                <h2 className="text-white font-semibold text-sm">Acuerdo laboral · {persona.nombre}</h2>
+                <button onClick={() => setShowAcuerdo(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+              </div>
+              <div className="p-5 space-y-4">
+                <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
+                  {acuerdoText}
+                </pre>
+                <button
+                  onClick={() => navigator.clipboard.writeText(acuerdoText)}
+                  className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  Copiar texto
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

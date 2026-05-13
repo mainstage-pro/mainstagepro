@@ -72,6 +72,7 @@ interface Proyecto {
   choferNombre: string | null;
   choferExterno: boolean;
   choferCosto: number | null;
+  aplicaCatering: boolean;
   personal: Personal[];
   equipos: ProyectoEquipoItem[];
   checklist: CheckItem[];
@@ -558,6 +559,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Checklist de cierre de evento (local, solo UI)
   const [cierreChecklist, setCierreChecklist] = useState({ desmontaje: false, bodega: false, evalCliente: false });
   const [showCierreFlow, setShowCierreFlow] = useState(false);
+  const [showAnuncioCierre, setShowAnuncioCierre] = useState(false);
 
   async function loadCierre() {
     setLoadingCierre(true);
@@ -2338,6 +2340,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </svg>
               Carta Responsiva
             </Link>
+            <button
+              onClick={() => setShowAnuncioCierre(true)}
+              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Anuncio
+            </button>
           </div>
         </div>
       </div>
@@ -3528,9 +3539,24 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {/* ── Logística (solo producción técnica / dirección técnica) ── */}
           {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Catering de producción</p>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Catering de producción</p>
+              <button
+                onClick={() => {
+                  const next = !proyecto.aplicaCatering;
+                  setProyecto(prev => prev ? { ...prev, aplicaCatering: next } : prev);
+                  fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aplicaCatering: next }) });
+                }}
+                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-colors ${proyecto.aplicaCatering ? "border-[#B3985B]/40 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#222] text-[#555] hover:border-[#333] hover:text-[#777]"}`}
+              >
+                <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${proyecto.aplicaCatering ? "bg-[#B3985B] border-[#B3985B]" : "border-[#555]"}`}>
+                  {proyecto.aplicaCatering && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
+                </span>
+                {proyecto.aplicaCatering ? "Aplica" : "No aplica"}
+              </button>
+            </div>
 
-            <div>
+            {proyecto.aplicaCatering && <div>
               {savingCatering && <p className="text-xs text-gray-600 mb-2">Guardando...</p>}
               {catering.contactoTelefono && (
                 <div className="flex justify-end mb-3">
@@ -3600,7 +3626,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </button>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
           )}
 
@@ -5827,6 +5853,46 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         )}
       </div>
     )}
+
+    {/* ── Modal Anuncio de cierre ── */}
+    {showAnuncioCierre && (() => {
+      const equiposLineas = proyecto.equipos.map(e =>
+        `• ${e.cantidad}x ${e.equipo.descripcion}${e.equipo.marca ? ` ${e.equipo.marca}` : ""}${e.equipo.modelo ? ` ${e.equipo.modelo}` : ""}`
+      ).join("\n");
+      const anuncioText = [
+        "🎉 ¡Servicio confirmado!",
+        "",
+        `👤 Cliente: ${proyecto.cliente.nombre}${proyecto.cliente.empresa ? ` / ${proyecto.cliente.empresa}` : ""}`,
+        `📋 Proyecto: ${proyecto.nombre} (${proyecto.numeroProyecto})`,
+        `📅 Fecha: ${fmtDate(proyecto.fechaEvento)}`,
+        proyecto.lugarEvento ? `📍 Lugar: ${proyecto.lugarEvento}` : null,
+        (proyecto.horaInicioEvento || proyecto.horaFinEvento) ? `⏰ Horario: ${proyecto.horaInicioEvento ?? ""}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}` : null,
+        proyecto.fechaMontaje ? `🔧 Montaje: ${fmtDate(proyecto.fechaMontaje)}${proyecto.horaInicioMontaje ? ` desde ${proyecto.horaInicioMontaje}` : ""}` : null,
+        proyecto.equipos.length > 0 ? `\nEquipos:\n${equiposLineas}` : null,
+      ].filter(Boolean).join("\n");
+
+      return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+              <h2 className="text-white font-semibold text-sm">Anuncio de cierre</h2>
+              <button onClick={() => setShowAnuncioCierre(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
+                {anuncioText}
+              </pre>
+              <button
+                onClick={() => { navigator.clipboard.writeText(anuncioText); }}
+                className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+              >
+                Copiar texto
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </>
   );
 }
