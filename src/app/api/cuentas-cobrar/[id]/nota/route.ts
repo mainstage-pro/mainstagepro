@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { NotaCobroPDF } from "@/components/NotaCobroPDF";
 import React from "react";
+import fs from "fs";
+import path from "path";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -59,8 +61,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     montoAnticipo = cxc.montoCobrado;
   }
 
-  // ── 3. Armar datos para el PDF ───────────────────────────────────────────────
+  // ── 3. Logo ─────────────────────────────────────────────────────────────────
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
+  const logoSrc  = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
+  // ── 4. Armar datos para el PDF ───────────────────────────────────────────────
   const notaData = {
+    logoSrc,
     id:              cxc.id,
     concepto:        cxc.concepto,
     tipoPago:        cxc.tipoPago,
