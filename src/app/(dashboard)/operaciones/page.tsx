@@ -87,7 +87,11 @@ export default function OperacionesPage() {
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
 
-  const [vista, setVista]                             = useState<VistaKey>("bandeja");
+  const [vista, setVista]                             = useState<VistaKey>(() => {
+    if (typeof window === "undefined") return "bandeja";
+    try { const s = localStorage.getItem("op_vista"); if (s) return JSON.parse(s) as VistaKey; } catch {}
+    return "bandeja";
+  });
   const [tareas, setTareas]                           = useState<TareaItem[]>([]);
   const [integradas, setIntegradas]                   = useState<TareaIntegrada[]>([]);
   const [proyectoDetalle, setProyectoDetalle]         = useState<ProyectoDetalle | null>(null);
@@ -135,6 +139,7 @@ export default function OperacionesPage() {
     return () => document.removeEventListener("mousedown", h);
   }, [showViewPanel]);
   useEffect(() => { try { localStorage.setItem("op_vista_opts", JSON.stringify(vistaOpts)); } catch {} }, [vistaOpts]);
+  useEffect(() => { try { localStorage.setItem("op_vista", JSON.stringify(vista)); } catch {} }, [vista]);
   useEffect(() => {
     if (!showVistaPanel) return;
     function h(e: MouseEvent) { if (vistaPanelRef.current && !vistaPanelRef.current.contains(e.target as Node)) setShowVistaPanel(false); }
