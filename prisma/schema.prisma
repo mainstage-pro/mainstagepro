@@ -42,6 +42,8 @@ model User {
   clientesVendedor      Cliente[]          @relation("ClientesVendedor")
   notificaciones        Notificacion[]
   reportesArea          ReporteAreaSemanal[] @relation("ReportesAreaAutor")
+  juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
+  juntasParticipadas    JuntaParticipante[]
 
   @@map("users")
 }
@@ -1535,6 +1537,9 @@ model Tarea {
   // ── Content ──────────────────────────────────────────────────────────────
   notas            String?
   etiquetas        String?    // JSON string[]
+  // ── Origen ───────────────────────────────────────────────────────────────
+  juntaOrigenId    String?
+  juntaOrigen      Junta?             @relation("JuntaOrigen", fields: [juntaOrigenId], references: [id], onDelete: SetNull)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -2378,4 +2383,61 @@ model Notificacion {
 
   @@index([usuarioId, leida])
   @@map("notificaciones")
+}
+
+// ─── JUNTAS ───────────────────────────────────────────────────────────────────
+
+model Junta {
+  id            String   @id @default(cuid())
+  titulo        String
+  area          String   // GLOBAL | DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  tipo          String   // GLOBAL_SEMANAL | AREA_SEMANAL | REVISION_MENSUAL | EXTRAORDINARIA | CAPACITACION
+  fecha         DateTime
+  duracionMin   Int      @default(45)
+  estado        String   @default("PROGRAMADA") // PROGRAMADA | EN_CURSO | COMPLETADA | CANCELADA
+  facilitadorId String
+  facilitador   User     @relation("JuntaFacilitador", fields: [facilitadorId], references: [id])
+
+  notas         String?  @db.Text
+  resumen       String?  @db.Text
+
+  agendaItems   AgendaItem[]
+  tareas        Tarea[]           @relation("JuntaOrigen")
+  participantes JuntaParticipante[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([fecha])
+  @@index([area, fecha])
+  @@map("juntas")
+}
+
+model AgendaItem {
+  id          String   @id @default(cuid())
+  juntaId     String
+  junta       Junta    @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  orden       Int
+  tipo        String   // RESULTADOS | COMPROMISOS | BLOQUEO | DECISION | ACUERDO | AVISO | RECONOCIMIENTO | KPI_REVIEW | CUSTOM
+  titulo      String
+  descripcion String?
+  placeholder String?  @db.Text
+  respuesta   String?  @db.Text
+  completado  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  @@map("agenda_items")
+}
+
+model JuntaParticipante {
+  id      String  @id @default(cuid())
+  juntaId String
+  userId  String
+  junta   Junta   @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  asistio Boolean @default(false)
+
+  @@unique([juntaId, userId])
+  @@map("junta_participantes")
 }
