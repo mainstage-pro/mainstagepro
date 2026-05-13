@@ -580,80 +580,97 @@ export default function TiposCampanaPage() {
         </div>
       )}
 
-      {/* Lista activos */}
+      {/* Lista activos — agrupada por objetivo */}
       {!loading && activos.length > 0 && (
-        <div className="space-y-2">
-          {activos.map(t => {
-            const ubics = t.ubicaciones ? t.ubicaciones.split(",").filter(Boolean) : [];
-            const expanded = expandedId === t.id;
+        <div className="space-y-8">
+          {OBJETIVOS.filter(obj => activos.some(t => t.objetivo === obj)).map(obj => {
+            const grupo = activos.filter(t => t.objetivo === obj);
             return (
-              <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                <div style={{ height: 2, background: t.color }} />
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: t.color }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button onClick={() => setExpandedId(expanded ? null : t.id)}
-                          className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors text-left">
-                          {t.nombre}
-                        </button>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${OBJ_META_COLOR[t.objetivoMeta] ?? "bg-white/10 text-white/50"}`}>
-                          {OBJ_META_LABEL[t.objetivoMeta]}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
-                          {FORMATO_ICON[t.formato]} {FORMATO_LABEL[t.formato]}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
-                          {REC_LABEL[t.recurrencia]}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-white/30 flex-wrap">
-                        <span>{t.publicoEdadMin}–{t.publicoEdadMax} años · {GENERO_LABEL[t.publicoGenero]}</span>
-                        <span>{t.duracionDias} días</span>
-                        {t.presupuestoEstimado && <span className="text-[#B3985B]/70">${t.presupuestoEstimado.toLocaleString("es-MX")} MXN</span>}
-                        <span>{CTA_LABEL[t.cta]}</span>
-                      </div>
-                      {ubics.length > 0 && (
-                        <div className="flex gap-1 flex-wrap mt-1.5">
-                          {ubics.map(u => <UbicTag key={u} k={u} />)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => startEdit(t)} className="text-xs text-white/30 hover:text-white px-2 py-1 rounded transition-colors">Editar</button>
-                      <button onClick={() => toggleActivo(t)} className="text-xs text-white/30 hover:text-yellow-400 px-2 py-1 rounded transition-colors">Pausar</button>
-                      <button onClick={() => del(t)} className="text-xs text-white/30 hover:text-red-400 px-2 py-1 rounded transition-colors">Eliminar</button>
-                      <button onClick={() => setExpandedId(expanded ? null : t.id)}
-                        className="text-white/25 hover:text-white p-1 transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points={expanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+              <div key={obj}>
+                {/* Encabezado de sección */}
+                <div className="flex items-center gap-3 mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#B3985B]">
+                    {OBJ_LABEL[obj]}
+                  </p>
+                  <span className="text-xs text-white/20">{grupo.length} campaña{grupo.length !== 1 ? "s" : ""}</span>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
 
-                  {expanded && (
-                    <div className="mt-4 pt-4 border-t border-white/[0.05] space-y-3">
-                      {t.copyReferencia && (
-                        <div>
-                          <p className="text-xs text-white/25 mb-1">Copy de referencia</p>
-                          <p className="text-white/60 text-xs leading-relaxed italic">"{t.copyReferencia}"</p>
+                <div className="space-y-2">
+                  {grupo.map(t => {
+                    const ubics = t.ubicaciones ? t.ubicaciones.split(",").filter(Boolean) : [];
+                    const expanded = expandedId === t.id;
+                    return (
+                      <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                        <div style={{ height: 2, background: t.color }} />
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: t.color }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <button onClick={() => setExpandedId(expanded ? null : t.id)}
+                                  className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors text-left">
+                                  {t.nombre}
+                                </button>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${OBJ_META_COLOR[t.objetivoMeta] ?? "bg-white/10 text-white/50"}`}>
+                                  {OBJ_META_LABEL[t.objetivoMeta]}
+                                </span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
+                                  {FORMATO_ICON[t.formato]} {FORMATO_LABEL[t.formato]}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
+                                  {REC_LABEL[t.recurrencia]}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-1 text-xs text-white/30 flex-wrap">
+                                <span>{t.publicoEdadMin}–{t.publicoEdadMax} años · {GENERO_LABEL[t.publicoGenero]}</span>
+                                <span>{t.duracionDias} días</span>
+                                {t.presupuestoEstimado && <span className="text-[#B3985B]/70">${t.presupuestoEstimado.toLocaleString("es-MX")} MXN</span>}
+                                <span>{CTA_LABEL[t.cta]}</span>
+                              </div>
+                              {ubics.length > 0 && (
+                                <div className="flex gap-1 flex-wrap mt-1.5">
+                                  {ubics.map(u => <UbicTag key={u} k={u} />)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => startEdit(t)} className="text-xs text-white/30 hover:text-white px-2 py-1 rounded transition-colors">Editar</button>
+                              <button onClick={() => toggleActivo(t)} className="text-xs text-white/30 hover:text-yellow-400 px-2 py-1 rounded transition-colors">Pausar</button>
+                              <button onClick={() => del(t)} className="text-xs text-white/30 hover:text-red-400 px-2 py-1 rounded transition-colors">Eliminar</button>
+                              <button onClick={() => setExpandedId(expanded ? null : t.id)}
+                                className="text-white/25 hover:text-white p-1 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points={expanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          {expanded && (
+                            <div className="mt-4 pt-4 border-t border-white/[0.05] space-y-3">
+                              {t.copyReferencia && (
+                                <div>
+                                  <p className="text-xs text-white/25 mb-1">Copy de referencia</p>
+                                  <p className="text-white/60 text-xs leading-relaxed italic">"{t.copyReferencia}"</p>
+                                </div>
+                              )}
+                              {t.descripcion && (
+                                <div>
+                                  <p className="text-xs text-white/25 mb-1">Notas</p>
+                                  <p className="text-white/45 text-xs leading-relaxed">{t.descripcion}</p>
+                                </div>
+                              )}
+                              <div className="flex gap-4 text-xs text-white/30 flex-wrap">
+                                {t.pixelEvento && <span>Píxel: <span className="text-white/50">{t.pixelEvento}</span></span>}
+                                <span>CTA: <span className="text-white/50">{CTA_LABEL[t.cta]}</span></span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {t.descripcion && (
-                        <div>
-                          <p className="text-xs text-white/25 mb-1">Notas</p>
-                          <p className="text-white/45 text-xs leading-relaxed">{t.descripcion}</p>
-                        </div>
-                      )}
-                      <div className="flex gap-4 text-xs text-white/30 flex-wrap">
-                        <span>Objetivo doc: <span className="text-white/50">{OBJ_LABEL[t.objetivo]}</span></span>
-                        {t.pixelEvento && <span>Píxel: <span className="text-white/50">{t.pixelEvento}</span></span>}
-                        <span>CTA: <span className="text-white/50">{CTA_LABEL[t.cta]}</span></span>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             );
