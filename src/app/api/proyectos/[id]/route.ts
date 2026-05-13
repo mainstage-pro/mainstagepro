@@ -45,11 +45,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
         cotizacion: {
           select: {
-            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
+            subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              where: { tipo: "OPERACION_TECNICA" },
-              select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              orderBy: { id: "asc" },
             },
           },
         },
@@ -85,7 +87,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
-        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
       },
     });
   } catch {
@@ -98,11 +100,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
         cotizacion: {
           select: {
-            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true,
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
+            subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              where: { tipo: "OPERACION_TECNICA" },
-              select: { id: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              orderBy: { id: "asc" },
             },
           },
         },
@@ -137,7 +141,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
-        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
       },
     });
     // Normalize fallback: add empty arrays for new fields

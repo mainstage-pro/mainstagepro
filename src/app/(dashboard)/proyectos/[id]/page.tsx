@@ -35,7 +35,7 @@ interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; us
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
-interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
+interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
@@ -58,7 +58,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
@@ -81,7 +81,7 @@ interface Proyecto {
   cuentasPagar: CxP[];
   bitacora: Bitacora[];
   movimientos: Gasto[];
-  cierreFinanciero: { cerradoEn: string; notas: string | null } | null;
+  cierreFinanciero: { cerradoEn: string; notas: string | null; totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number; granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number } | null;
   portalToken: string | null;
   notasPortal: string | null;
   responsables: string | null;
@@ -108,7 +108,7 @@ const NIVEL_COLORS: Record<string, string> = {
 };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 function proximoLunesTraEvento(fechaStr: string): string {
   const d = new Date(fechaStr.substring(0, 10) + "T12:00:00Z");
@@ -495,6 +495,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
   const [gastoOpForm, setGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
   const [togglingGasto, setTogglingGasto] = useState<string | null>(null);
+  const [editingGastoOpId, setEditingGastoOpId] = useState<string | null>(null);
+  const [editGastoOpForm, setEditGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+  const [savingEditGastoOp, setSavingEditGastoOp] = useState(false);
 
   // Evaluación interna
   type EvalData = {
@@ -855,7 +858,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [addingGasto, setAddingGasto] = useState(false);
   const [editGasto, setEditGasto] = useState<Gasto | null>(null);
   const [editGastoForm, setEditGastoForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "TRANSFERENCIA", categoriaId: "", proveedorId: "", cuentaOrigenId: "" });
+  const [editGastoEstado, setEditGastoEstado] = useState<"PENDIENTE" | "PAGADO">("PAGADO");
+  const [editingCxPId, setEditingCxPId] = useState<string | null>(null);
   const [savingGasto, setSavingGasto] = useState(false);
+  const [gastoEstado, setGastoEstado] = useState<"PENDIENTE" | "PAGADO">("PENDIENTE");
+  const [refCotOpen, setRefCotOpen] = useState(true);
+  const [showGastoModal, setShowGastoModal] = useState(false);
+  const [marcarPagadoId, setMarcarPagadoId] = useState<string | null>(null);
+  const [marcarPagadoFecha, setMarcarPagadoFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [savingMarcarPagado, setSavingMarcarPagado] = useState(false);
 
   // Estados para nueva CxP manual desde el proyecto
   const [showNuevaCxP, setShowNuevaCxP] = useState(false);
@@ -871,6 +882,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("section-resumen");
 
   const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
   const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
@@ -983,6 +995,43 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       return;
     }
     loadGastosOp();
+  }
+
+  async function editarGastoOp() {
+    if (!editingGastoOpId || !editGastoOpForm.concepto.trim() || !editGastoOpForm.monto) return;
+    setSavingEditGastoOp(true);
+    const res = await fetch("/api/proyectos/gastos-operativos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingGastoOpId,
+        tipo: editGastoOpForm.tipo,
+        concepto: editGastoOpForm.concepto.trim(),
+        monto: parseFloat(editGastoOpForm.monto),
+        cantidad: parseInt(editGastoOpForm.cantidad) || 1,
+        notas: editGastoOpForm.notas || null,
+      }),
+    });
+    setSavingEditGastoOp(false);
+    if (res.ok) {
+      setEditingGastoOpId(null);
+      loadGastosOp();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al editar");
+    }
+  }
+
+  async function eliminarCxP(cxpId: string) {
+    const ok = await confirm({ message: "¿Eliminar esta cuenta por pagar? Esta acción no se puede deshacer." });
+    if (!ok) return;
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}`, { method: "DELETE" });
+    if (res.ok) {
+      setProyecto(prev => prev ? { ...prev, cuentasPagar: prev.cuentasPagar.filter(c => c.id !== cxpId) } : prev);
+      toast.success("CxP eliminada");
+    } else {
+      toast.error("Error al eliminar");
+    }
   }
 
   async function loadEval() {
@@ -1157,17 +1206,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (proyecto) loadEvalCliente();
   }, [proyecto?.id]); // eslint-disable-line
 
-  // Auto-expand suggested docs on first load
-  useEffect(() => {
-    if (!proyecto || openDocs.size > 0) return;
-    const te = (proyecto.tipoEvento || "").toUpperCase();
-    const isMusical = te.includes("MUSICAL") || te.includes("CONCIERTO") || te.includes("FESTIVAL");
-    const isEmpresarial = te.includes("EMPRESARIAL") || te.includes("CORPORATIVO") || te.includes("CONGRESO") || te.includes("CONFERENCIA");
-    const suggested = isMusical ? ["soundcheck"] :
-      isEmpresarial ? ["programaEvento", "coordinacionProveedores"] :
-      ["programaEvento", "coordinacionProveedores"];
-    setOpenDocs(new Set(suggested));
-  }, [proyecto?.id]); // eslint-disable-line
+  // Docs start closed — user opens them manually
 
   // Auto-calcular tarifa desde tabulador cuando cambia rol, jornada o nivel
   useEffect(() => {
@@ -1283,6 +1322,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (cateringTimer.current) clearTimeout(cateringTimer.current);
     cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
   }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Section nav — track active section via IntersectionObserver ──
+  useEffect(() => {
+    const ids = ["section-resumen", "section-operacion", "section-extras", "section-finanzas"];
+    const observers: IntersectionObserver[] = [];
+    const visible = new Map<string, number>();
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        entries => {
+          entries.forEach(e => {
+            visible.set(id, e.intersectionRatio);
+          });
+          // pick the section with the highest visible ratio
+          let best = ids[0], bestRatio = -1;
+          ids.forEach(i => { const r = visible.get(i) ?? 0; if (r > bestRatio) { bestRatio = r; best = i; } });
+          setActiveSection(best);
+        },
+        { threshold: [0, 0.1, 0.3, 0.5, 0.8, 1.0] }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach(o => o.disconnect());
+  }, [proyecto?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -2015,8 +2080,89 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setAddingGasto(false);
   }
 
+  // ── Agregar gasto unificado (PENDIENTE=CxP, PAGADO=movimiento) ──
+  async function agregarGastoProy(): Promise<boolean> {
+    if (!gastoConcepto.trim() || !gastoMonto) return false;
+    setAddingGasto(true);
+    try {
+      if (gastoEstado === "PENDIENTE") {
+        const res = await fetch("/api/cuentas-pagar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: gastoConcepto.trim(),
+            monto: parseFloat(gastoMonto),
+            fechaCompromiso: gastoFecha,
+            tipoAcreedor: gastoCategoria === "PROVEEDOR_EXTERNO" || gastoProveedor ? "PROVEEDOR" : "OTRO",
+            proveedorId: gastoProveedor || null,
+            notas: gastoNotas || null,
+            proyectoId: id,
+          }),
+        });
+        const d = await res.json();
+        if (res.ok && d.cxp) {
+          setProyecto(prev => prev ? {
+            ...prev,
+            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+          } : prev);
+          toast.success("Gasto registrado");
+        } else {
+          toast.error(d.error ?? "Error al registrar");
+          return false;
+        }
+      } else {
+        const validCategoriaId = categorias.some(c => c.id === gastoCategoria) ? gastoCategoria : null;
+        const res = await fetch(`/api/proyectos/${id}/gastos`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: gastoConcepto.trim(),
+            monto: parseFloat(gastoMonto),
+            fecha: gastoFecha,
+            notas: gastoNotas || null,
+            metodoPago: gastoMetodo,
+            categoriaId: validCategoriaId,
+            proveedorId: gastoProveedor || null,
+            cuentaOrigenId: gastoCuenta || null,
+            referencia: gastoReferencia || null,
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          toast.error(d.error ?? "Error al registrar");
+          return false;
+        }
+        const d = await res.json();
+        setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
+        toast.success("Gasto registrado");
+      }
+      setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia("");
+      setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
+      return true;
+    } finally {
+      setAddingGasto(false);
+    }
+  }
+
+  // ── Marcar CxP como pagado (mini modal) ──
+  async function marcarPagadoGasto(cxpId: string) {
+    setSavingMarcarPagado(true);
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}/pagar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha: marcarPagadoFecha }),
+    });
+    if (res.ok) {
+      await load();
+      toast.success("Marcado como pagado");
+    } else {
+      toast.error("Error al marcar como pagado");
+    }
+    setMarcarPagadoId(null);
+    setSavingMarcarPagado(false);
+  }
+
   // ── Editar gasto directo ──
   function abrirEditarGasto(g: Gasto) {
+    setEditGastoEstado("PAGADO");
+    setEditingCxPId(null);
     setEditGasto(g);
     setEditGastoForm({
       concepto: g.concepto,
@@ -2031,48 +2177,135 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }
 
+  // ── Editar CxP (pendiente) ──
+  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string }) {
+    setEditGastoEstado("PENDIENTE");
+    setEditingCxPId(c.id);
+    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: null, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
+    setEditGastoForm({
+      concepto: c.concepto,
+      monto: String(c.monto),
+      fecha: c.fechaCompromiso ? c.fechaCompromiso.slice(0, 10) : new Date().toISOString().split("T")[0],
+      notas: "",
+      referencia: "",
+      metodoPago: "TRANSFERENCIA",
+      categoriaId: "",
+      proveedorId: "",
+      cuentaOrigenId: "",
+    });
+  }
+
   async function guardarEdicionGasto() {
     if (!editGasto) return;
     setSavingGasto(true);
-    const res = await fetch(`/api/movimientos/${editGasto.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        concepto: editGastoForm.concepto,
-        monto: parseFloat(editGastoForm.monto),
-        fecha: editGastoForm.fecha,
-        notas: editGastoForm.notas || null,
-        referencia: editGastoForm.referencia || null,
-        metodoPago: editGastoForm.metodoPago,
-        categoriaId: editGastoForm.categoriaId || null,
-        proveedorId: editGastoForm.proveedorId || null,
-        cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
-      }),
-    });
-    if (res.ok) {
-      const cuentaSeleccionada = cuentasBancarias.find(c => c.id === editGastoForm.cuentaOrigenId) ?? null;
-      const catSeleccionada = categorias.find(c => c.id === editGastoForm.categoriaId) ?? null;
-      const provSeleccionado = proveedores.find(p => p.id === editGastoForm.proveedorId) ?? null;
-      setProyecto(prev => prev ? {
-        ...prev,
-        movimientos: prev.movimientos.map(m => m.id !== editGasto.id ? m : {
-          ...m,
-          concepto: editGastoForm.concepto,
-          monto: parseFloat(editGastoForm.monto),
-          fecha: editGastoForm.fecha,
-          notas: editGastoForm.notas || null,
-          referencia: editGastoForm.referencia || null,
-          metodoPago: editGastoForm.metodoPago,
-          categoriaId: editGastoForm.categoriaId || null,
-          categoria: catSeleccionada ? { id: catSeleccionada.id, nombre: catSeleccionada.nombre } : null,
-          proveedorId: editGastoForm.proveedorId || null,
-          proveedor: provSeleccionado ? { id: provSeleccionado.id, nombre: provSeleccionado.nombre } : null,
-          cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
-          cuentaOrigen: cuentaSeleccionada ? { id: cuentaSeleccionada.id, nombre: cuentaSeleccionada.nombre, banco: cuentaSeleccionada.banco } : null,
-        }),
-      } : prev);
+
+    try {
+      const esEdicionCxP = editGastoEstado === "PENDIENTE" && editingCxPId;
+      const esCambioAPendiente = editGastoEstado === "PENDIENTE" && !editingCxPId;
+
+      if (esEdicionCxP) {
+        // PENDIENTE → PENDIENTE: editar CxP existente
+        const res = await fetch(`/api/cuentas-pagar/${editingCxPId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: editGastoForm.concepto,
+            monto: parseFloat(editGastoForm.monto),
+            motivo: "Edición de gasto",
+            fechaCompromiso: editGastoForm.fecha,
+            notas: editGastoForm.notas || null,
+          }),
+        });
+        if (res.ok) {
+          setProyecto(prev => prev ? {
+            ...prev,
+            cuentasPagar: prev.cuentasPagar.map(c => c.id !== editingCxPId ? c : {
+              ...c,
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fechaCompromiso: editGastoForm.fecha,
+            }),
+          } : prev);
+        }
+      } else if (esCambioAPendiente) {
+        // PAGADO → PENDIENTE: eliminar movimiento + crear CxP
+        const delRes = await fetch(`/api/movimientos/${editGasto.id}`, { method: "DELETE" });
+        if (delRes.ok) {
+          const cxpRes = await fetch("/api/cuentas-pagar", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fechaCompromiso: editGastoForm.fecha,
+              tipoAcreedor: editGastoForm.proveedorId ? "PROVEEDOR" : "OTRO",
+              proveedorId: editGastoForm.proveedorId || null,
+              notas: editGastoForm.notas || null,
+              proyectoId: id,
+            }),
+          });
+          if (cxpRes.ok) {
+            const d = await cxpRes.json();
+            setProyecto(prev => prev ? {
+              ...prev,
+              movimientos: prev.movimientos.filter(m => m.id !== editGasto.id),
+              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+            } : prev);
+          }
+        }
+      } else {
+        // PAGADO → PAGADO: editar movimiento existente
+        const res = await fetch(`/api/movimientos/${editGasto.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: editGastoForm.concepto,
+            monto: parseFloat(editGastoForm.monto),
+            fecha: editGastoForm.fecha,
+            notas: editGastoForm.notas || null,
+            referencia: editGastoForm.referencia || null,
+            metodoPago: editGastoForm.metodoPago,
+            categoriaId: editGastoForm.categoriaId || null,
+            proveedorId: editGastoForm.proveedorId || null,
+            cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+          }),
+        });
+        if (res.ok) {
+          const cuentaSeleccionada = cuentasBancarias.find(c => c.id === editGastoForm.cuentaOrigenId) ?? null;
+          const catSeleccionada = categorias.find(c => c.id === editGastoForm.categoriaId) ?? null;
+          const provSeleccionado = proveedores.find(p => p.id === editGastoForm.proveedorId) ?? null;
+          setProyecto(prev => prev ? {
+            ...prev,
+            movimientos: prev.movimientos.map(m => m.id !== editGasto.id ? m : {
+              ...m,
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fecha: editGastoForm.fecha,
+              notas: editGastoForm.notas || null,
+              referencia: editGastoForm.referencia || null,
+              metodoPago: editGastoForm.metodoPago,
+              categoriaId: editGastoForm.categoriaId || null,
+              categoria: catSeleccionada ? { id: catSeleccionada.id, nombre: catSeleccionada.nombre } : null,
+              proveedorId: editGastoForm.proveedorId || null,
+              proveedor: provSeleccionado ? { id: provSeleccionado.id, nombre: provSeleccionado.nombre } : null,
+              cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+              cuentaOrigen: cuentaSeleccionada ? { id: cuentaSeleccionada.id, nombre: cuentaSeleccionada.nombre, banco: cuentaSeleccionada.banco } : null,
+            }),
+          } : prev);
+        }
+      }
+    } finally {
+      setEditGasto(null);
+      setEditingCxPId(null);
+      setSavingGasto(false);
     }
-    setEditGasto(null);
-    setSavingGasto(false);
+  }
+
+  async function eliminarMovimiento(movId: string) {
+    if (!confirm("¿Eliminar este gasto?")) return;
+    const res = await fetch(`/api/movimientos/${movId}`, { method: "DELETE" });
+    if (res.ok) {
+      setProyecto(prev => prev ? { ...prev, movimientos: prev.movimientos.filter(m => m.id !== movId) } : prev);
+    } else {
+      toast.error("Error al eliminar el gasto");
+    }
   }
 
   // ── Eliminar proyecto ──
@@ -2427,7 +2660,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
-              Anuncio
+              Brief
             </button>
           </div>
         </div>
@@ -2438,41 +2671,100 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const _transportesParsed: TransporteSlot[] = (() => { try { return proyecto.transportes ? JSON.parse(proyecto.transportes) : []; } catch { return []; } })();
         const _cateringParsed: { proveedorId?: string } = (() => { try { return proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {}; } catch { return {}; } })();
         const _cronoParsed: CronoRow[] = (() => { try { return proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { return []; } })();
-        const checks = [
-          { ok: !!proyecto.lugarEvento,                                                               label: "Lugar" },
-          { ok: !!proyecto.encargadoCliente,                                                         label: "Enc. cliente" },
-          { ok: !!proyecto.encargadoClienteContacto,                                                 label: "Contacto cliente" },
-          { ok: !!proyecto.encargado,                                                                label: "Responsable" },
-          { ok: !!proyecto.cotizacion,                                                               label: "Cotización" },
-          { ok: proyecto.cuentasCobrar.length > 0,                                                   label: "CxC" },
-          { ok: proyecto.equipos.length > 0,                                                         label: "Equipo" },
+
+        const anticipoCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
+        const liquidacionCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
+
+        type CheckItem = { ok: boolean; label: string };
+        const infoChecks: CheckItem[] = [
+          { ok: !!proyecto.lugarEvento,                                             label: "Lugar del evento" },
+          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto, label: "Contacto cliente" },
+          { ok: !!proyecto.encargado,                                                label: "Responsable interno" },
           ...(!esRenta ? [
-            { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,                            label: "Horario" },
-            { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,                    label: "Enc. del lugar" },
-            { ok: !!proyecto.fechaMontaje,                                                            label: "Montaje" },
-            { ok: !!proyecto.contactosDireccion,                                                     label: "Contactos" },
-            { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),                  label: "Personal" },
-            { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),                      label: "Traslados" },
-            { ok: !!_cateringParsed.proveedorId,                                                     label: "Catering" },
-            { ok: _cronoParsed.length > 0,                                                           label: "Cronograma" },
+            { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,          label: "Horario" },
+            { ok: !!proyecto.fechaMontaje,                                           label: "Fecha montaje" },
+            { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,   label: "Enc. del lugar" },
+            { ok: !!proyecto.contactosDireccion,                                     label: "Contactos" },
           ] : []),
         ];
-        const completados = checks.filter(c => c.ok).length;
-        const pct = Math.round((completados / checks.length) * 100);
-        const barColor = pct >= 80 ? "#10b981" : pct >= 50 ? "#B3985B" : "#ef4444";
+        const prodChecks: CheckItem[] = [
+          { ok: proyecto.equipos.length > 0,                                         label: "Equipo registrado" },
+          ...(!esRenta ? [
+            { ok: proyecto.personal.length > 0,                                      label: "Personal asignado" },
+            { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),  label: "Personal confirmado" },
+            { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),     label: "Traslados" },
+            { ok: _cronoParsed.length > 0,                                           label: "Cronograma" },
+            ...(!proyecto.aplicaCatering ? [] : [
+              { ok: !!_cateringParsed.proveedorId,                                   label: "Catering" },
+            ]),
+          ] : []),
+        ];
+        const finChecks: CheckItem[] = [
+          { ok: !!proyecto.cotizacion,                                               label: "Cotización" },
+          { ok: proyecto.cuentasCobrar.length > 0,                                   label: "CxC registradas" },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,     label: "Anticipo cobrado" },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto, label: "Liquidación cobrada" },
+          ...(!esRenta && proyecto.personal.length > 0 ? [
+            { ok: proyecto.personal.filter(p => p.tecnico).every(p => p.estadoPago === "PAGADO"), label: "Personal pagado" },
+          ] : []),
+        ];
+
+        const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
+        const completados = allChecks.filter(c => c.ok).length;
+        const pct = Math.round((completados / allChecks.length) * 100);
+        const barColor = pct >= 85 ? "#10b981" : pct >= 55 ? "#B3985B" : "#ef4444";
+
         const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO"] as const;
         const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
+
+        function AreaCard({ title, checks, color }: { title: string; checks: CheckItem[]; color: string }) {
+          const done = checks.filter(c => c.ok).length;
+          const areaPct = checks.length > 0 ? Math.round((done / checks.length) * 100) : 100;
+          return (
+            <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{title}</span>
+                <span className="text-[10px] tabular-nums font-semibold" style={{ color: areaPct === 100 ? "#10b981" : areaPct >= 50 ? color : "#ef4444" }}>
+                  {done}/{checks.length}
+                </span>
+              </div>
+              <div className="h-1 bg-[#222] rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${areaPct}%`, backgroundColor: areaPct === 100 ? "#10b981" : color }} />
+              </div>
+              <div className="space-y-0.5">
+                {checks.map(c => (
+                  <div key={c.label} className={`flex items-center gap-1.5 text-[10px] ${c.ok ? "text-[#3a3a3a]" : "text-gray-500"}`}>
+                    <span className={`shrink-0 text-[9px] font-bold ${c.ok ? "text-[#2a2a2a]" : "text-red-500/70"}`}>
+                      {c.ok ? "✓" : "○"}
+                    </span>
+                    <span className={c.ok ? "line-through" : ""}>{c.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        const pendientes = allChecks.filter(c => !c.ok);
+
         return (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 uppercase tracking-wider">Avance del proyecto</span>
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xs text-gray-500 uppercase tracking-wider shrink-0">Avance</span>
+                <span className="text-2xl font-bold tabular-nums shrink-0" style={{ color: barColor }}>{pct}%</span>
                 {proyecto.estado === "CANCELADO" && (
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/40 text-red-400 font-medium">Cancelado</span>
                 )}
+                {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
+                  <span className="text-[10px] text-gray-600 truncate hidden sm:block">
+                    Faltan: {pendientes.slice(0, 3).map(p => p.label).join(", ")}{pendientes.length > 3 ? ` +${pendientes.length - 3}` : ""}
+                  </span>
+                )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold tabular-nums" style={{ color: barColor }}>{pct}%</span>
+              <div className="flex items-center gap-2 shrink-0">
                 {proyecto.estado !== "CANCELADO" ? (
                   <select
                     value={proyecto.estado}
@@ -2494,21 +2786,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
             </div>
-            {/* Barra de progreso */}
-            <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+
+            {/* Barra global */}
+            <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
               <div className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${pct}%`, backgroundColor: barColor }} />
             </div>
-            {/* Checklist de avance */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              {checks.map(c => (
-                <span key={c.label} className={`flex items-center gap-1 text-[11px] ${c.ok ? "text-[#555]" : "text-red-500"}`}>
-                  {c.ok
-                    ? <span className="text-[#444]">✓</span>
-                    : <span className="text-red-500 font-bold">✗</span>}
-                  {c.label}
-                </span>
-              ))}
+
+            {/* 3 áreas */}
+            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+              <AreaCard title="Información" checks={infoChecks} color="#60a5fa" />
+              <AreaCard title="Producción"  checks={prodChecks} color="#B3985B" />
+              <AreaCard title="Finanzas"    checks={finChecks}  color="#4ade80" />
             </div>
           </div>
         );
@@ -2611,8 +2900,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
 
+      {/* ────── Sticky section nav ────── */}
+      {(() => {
+        const navItems = [
+          { id: "section-resumen",   label: "Resumen" },
+          { id: "section-operacion", label: "Operación" },
+          { id: "section-extras",    label: "Extras" },
+          { id: "section-finanzas",  label: "Finanzas" },
+        ];
+        return (
+          <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 py-2 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1a1a1a]">
+            <div className="max-w-5xl mx-auto flex gap-1">
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    const el = document.getElementById(item.id);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeSection === item.id
+                      ? "bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/40"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-[#1a1a1a]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ────── SECCIÓN: RESUMEN ────── */}
-      <div id="section-resumen" className="scroll-mt-4">
+      <div id="section-resumen" className="scroll-mt-14">
       {(() => {
         const fichaCamposFaltantes: string[] = [];
         if (!esRenta && !proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
@@ -2748,7 +3069,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 ) : null;
               })()}
-              <Campo label="Notas adicionales del proyecto" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
             </div>
 
 
@@ -2758,7 +3078,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>{/* /section-resumen */}
 
       {/* ────── SECCIÓN: OPERACIÓN ────── */}
-      <div id="section-operacion" className="scroll-mt-4">
+      <div id="section-operacion" className="scroll-mt-14">
       {(() => {
         // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
         const fichaCamposFaltantes: string[] = [];
@@ -2812,12 +3132,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Chofer</label>
-                      <Combobox
+                      <input
+                        list={`chofer-list-${i}`}
                         value={slot.choferId}
-                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
+                        onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: e.target.value } : s); setTransporteSlots(n); }}
+                        onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Nombre o seleccionar..."
+                        autoComplete="off"
                         className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
                       />
+                      <datalist id={`chofer-list-${i}`}>
+                        {tecnicos.map(t => <option key={t.id} value={t.nombre} />)}
+                      </datalist>
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Notas</label>
@@ -3006,21 +3332,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
-                  {/* Zona de viaje */}
-                  <div className="flex items-center gap-1.5">
-                    {(["LOCAL","BAJIO","NACIONAL"] as const).map(z => (
-                      <button
-                        key={z}
-                        onClick={async () => {
-                          await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ zona: z }) });
-                          setProyecto(prev => prev ? { ...prev, zona: z } : prev);
-                        }}
-                        className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border transition-colors ${proyecto.zona === z ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] text-gray-600 hover:text-gray-400"}`}
-                      >
-                        {z === "LOCAL" ? "Local" : z === "BAJIO" ? "Bajío +$500" : "Nacional +$800"}
-                      </button>
-                    ))}
-                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
@@ -3187,8 +3498,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             {/* ── Sugerencias de cotización ── */}
-            {proyecto.cotizacion && proyecto.cotizacion.lineas.length > 0 && (() => {
-              const lineas = proyecto.cotizacion!.lineas;
+            {proyecto.cotizacion && proyecto.cotizacion.lineas.some(l => l.tipo === "OPERACION_TECNICA") && (() => {
+              const lineas = proyecto.cotizacion!.lineas.filter(l => l.tipo === "OPERACION_TECNICA");
               const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
               const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
               const restante = presupuestoCotizado - presupuestoAsignado;
@@ -3916,7 +4227,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </label>
                 )}
                 {selEquipoTipo === "EXTERNO" && selEquipoCosto && selEquipoProveedor && (
-                  <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
+                  <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
                 )}
                 <div className="flex gap-3">
                   <button onClick={agregarEquipo} disabled={addingEquipo || !selEquipoId}
@@ -3965,7 +4276,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>{/* /section-operacion */}
 
       {/* ────── SECCIÓN: DOCS / OPERATIVO ────── */}
-      <div id="section-extras" className="scroll-mt-4">
+      <div id="section-extras" className="scroll-mt-14">
       {(() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
@@ -4519,110 +4830,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               )}
             </div></>}
 
-            {/* ═══════ ZONA 1.5: PROVEEDORES DE SUBARRIENDO ═══════ */}
-            <SectionDivider label="Proveedores de subarriendo" />
-            <div className="space-y-4">
-              <div>
-                <p className="text-white font-semibold">Proveedores de equipo rentado</p>
-                <p className="text-gray-500 text-xs mt-0.5">Empresas o personas que nos proveen equipo para este evento</p>
-              </div>
-
-              {/* Auto-agrupados desde cotización */}
-              {(() => {
-                const mapa = new Map<string, { telefono: string | null; equipos: string[] }>();
-                for (const e of riderEquipos) {
-                  if (!e.proveedor) continue;
-                  const n = e.proveedor.nombre;
-                  if (!mapa.has(n)) mapa.set(n, { telefono: e.proveedor.telefono, equipos: [] });
-                  mapa.get(n)!.equipos.push([e.equipo.marca, e.equipo.modelo, e.equipo.descripcion].filter(Boolean).join(" · "));
-                }
-                if (mapa.size === 0 && proveedoresRentaData.length === 0) return (
-                  <div className="bg-[#111] border border-[#222] rounded-xl py-8 text-center">
-                    <p className="text-gray-600 text-sm">Sin proveedores de renta registrados</p>
-                    <p className="text-gray-700 text-xs mt-1">Los proveedores asignados en equipos aparecerán aquí automáticamente</p>
-                  </div>
-                );
-                return Array.from(mapa.entries()).map(([nombre, { telefono, equipos }]) => (
-                  <div key={nombre} className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-white text-sm font-medium">{nombre}</p>
-                        {telefono && <p className="text-gray-500 text-xs mt-0.5">{telefono}</p>}
-                      </div>
-                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full shrink-0">Desde cotización</span>
-                    </div>
-                    <ul className="space-y-0.5">
-                      {equipos.map((eq, i) => (
-                        <li key={i} className="text-xs text-gray-400 flex items-start gap-1.5"><span className="text-gray-700 mt-0.5">·</span>{eq}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ));
-              })()}
-
-              {/* Proveedores manuales */}
-              {proveedoresRentaData.map(prov => (
-                <div key={prov.id} className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-white text-sm font-medium">{prov.nombre}</p>
-                      {prov.contacto && <p className="text-gray-500 text-xs mt-0.5">{prov.contacto}</p>}
-                    </div>
-                    <button onClick={() => saveProveedoresRenta(proveedoresRentaData.filter(p => p.id !== prov.id))} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
-                  </div>
-                  {prov.equipos.length > 0 && (
-                    <ul className="space-y-0.5">
-                      {prov.equipos.map((eq, i) => (
-                        <li key={i} className="text-xs text-gray-400 flex items-start gap-1.5"><span className="text-gray-700 mt-0.5">·</span>{eq}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              ))}
-
-              {/* Form agregar proveedor manual */}
-              {addingProvRenta ? (
-                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
-                  <p className="text-white text-sm font-medium">Agregar proveedor</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Nombre *</label>
-                      <input value={newProvNombre} onChange={e => setNewProvNombre(e.target.value)} placeholder="Ej: Audio Pro" className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Contacto / teléfono</label>
-                      <input value={newProvContacto} onChange={e => setNewProvContacto(e.target.value)} placeholder="555-1234" className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Lista de equipos (uno por línea)</label>
-                    <textarea value={newProvEquipos} onChange={e => setNewProvEquipos(e.target.value)} rows={3} placeholder={"Sistema L-Acoustics K2\nSubwoofers SB28\nConsola DiGiCo SD10"} className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        if (!newProvNombre.trim()) return;
-                        const nuevo: ProveedorRenta = {
-                          id: crypto.randomUUID(),
-                          nombre: newProvNombre.trim(),
-                          contacto: newProvContacto.trim(),
-                          equipos: newProvEquipos.split("\n").map(l => l.trim()).filter(Boolean),
-                        };
-                        saveProveedoresRenta([...proveedoresRentaData, nuevo]);
-                        setNewProvNombre(""); setNewProvContacto(""); setNewProvEquipos(""); setAddingProvRenta(false);
-                      }}
-                      className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors"
-                    >Guardar</button>
-                    <button onClick={() => { setAddingProvRenta(false); setNewProvNombre(""); setNewProvContacto(""); setNewProvEquipos(""); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <button onClick={() => setAddingProvRenta(true)} className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9ac6a] transition-colors">
-                  <span className="text-base leading-none">+</span> Agregar proveedor manualmente
-                </button>
-              )}
-            </div>
-
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
             {!esRenta && <><SectionDivider label="Documentos del show" />
             <div className="space-y-3">
@@ -4723,21 +4930,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>{/* /section-extras */}
 
       {/* ────── SECCIÓN: FINANZAS ────── */}
-      <div id="section-finanzas" className="scroll-mt-4">
+      <div id="section-finanzas" className="scroll-mt-14">
       {(() => {
         // ── P&L en tiempo real ──────────────────────────────────────────────
         const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
         const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
-        // Costos personal: suma directamente las tarifas acordadas del personal (fuente de verdad)
-        const costosPersonal = proyecto.personal
+        // Costos personal: usar CxP de técnicos si existen (fuente de verdad); fallback a tarifas acordadas
+        const tarifaTotal = proyecto.personal
           .filter(p => p.tarifaAcordada && p.tarifaAcordada > 0)
           .reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
-        const costosProveedor = proyecto.cuentasPagar
-          .filter(c => c.tipoAcreedor === "PROVEEDOR")
+        const tecnicoCxPTotal = proyecto.cuentasPagar
+          .filter(c => c.tipoAcreedor === "TECNICO")
           .reduce((s, c) => s + c.monto, 0);
-        const otrosGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
-        const gastosOpTotal = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
-        const costosTotales = costosPersonal + costosProveedor + otrosGastos + gastosOpTotal;
+        const costosPersonal = Math.max(tarifaTotal, tecnicoCxPTotal);
+        const gastosProyPendientes = proyecto.cuentasPagar
+          .filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO")
+          .reduce((s, c) => s + c.monto, 0);
+        const gastosProyPagados = proyecto.movimientos.reduce((s, m) => s + m.monto, 0);
+        const gastosProyTotal = gastosProyPendientes + gastosProyPagados;
+        const costosTotales = costosPersonal + gastosProyTotal;
         const utilidadBruta = ingresoContratado - costosTotales;
         const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
 
@@ -4783,22 +4994,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <span className="text-red-300">{fmt(costosPersonal)}</span>
                   </div>
                 )}
-                {costosProveedor > 0 && (
+                {gastosProyPendientes > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Proveedores</span>
-                    <span className="text-red-300">{fmt(costosProveedor)}</span>
+                    <span className="text-gray-400">Por pagar</span>
+                    <span className="text-yellow-400">{fmt(gastosProyPendientes)}</span>
                   </div>
                 )}
-                {gastosOpTotal > 0 && (
+                {gastosProyPagados > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Gastos operativos</span>
-                    <span className="text-red-300">{fmt(gastosOpTotal)}</span>
+                    <span className="text-gray-400">Pagado</span>
+                    <span className="text-red-300">{fmt(gastosProyPagados)}</span>
                   </div>
                 )}
-                {otrosGastos > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Otros gastos</span>
-                    <span className="text-red-300">{fmt(otrosGastos)}</span>
+                {gastosProyTotal > 0 && (
+                  <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-1">
+                    <span className="text-gray-500">Total real</span>
+                    <span className="text-red-400 font-medium">{fmt(gastosProyTotal)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-2">
@@ -5274,428 +5485,249 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   ))}
 
-                  {/* Footer con total */}
-                  <div className="px-5 py-3 bg-[#0d0d0d] flex items-center justify-between gap-3 flex-wrap">
-                    <span className="text-xs text-gray-500">
-                      Total personal: <span className="text-white font-semibold">{fmt(totalPersonal)}</span>
-                    </span>
-                    {hayPendientes && (
-                      <button onClick={marcarTodosPagado}
-                        className="text-xs bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                        Marcar todos pagado
-                      </button>
-                    )}
-                  </div>
+                  {/* Footer con presupuesto/real/diferencia */}
+                  {(() => {
+                    const presupuesto = proyecto.cotizacion?.subtotalOperacion ?? 0;
+                    const real = totalPersonal;
+                    const diff = presupuesto - real;
+                    return (
+                      <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#111] flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-5 flex-wrap">
+                          {presupuesto > 0 && (
+                            <>
+                              <span className="text-xs text-gray-500">Presupuesto: <span className="text-gray-300">{fmt(presupuesto)}</span></span>
+                              <span className="text-xs text-gray-500">Real: <span className="text-white font-semibold">{fmt(real)}</span></span>
+                              <span className={`text-xs font-semibold ${diff >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {diff >= 0 ? `+${fmt(diff)}` : fmt(diff)}
+                              </span>
+                            </>
+                          )}
+                          {presupuesto === 0 && (
+                            <span className="text-xs text-gray-500">Total personal: <span className="text-white font-semibold">{fmt(real)}</span></span>
+                          )}
+                        </div>
+                        {hayPendientes && (
+                          <button onClick={marcarTodosPagado}
+                            className="text-xs bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            Marcar todos pagado
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </>
               );
             })()}
           </div>
 
-          {/* Otras CxP (proveedores, otros — no técnicos) */}
+          {/* ── Gastos del proyecto ── */}
           {(() => {
-            const otrasCxP = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO");
+            const cot = proyecto.cotizacion;
+            // Bloque 1: Referencia cotización
+            const TIPO_LABEL: Record<string, string> = {
+              EQUIPO_EXTERNO: "Proveedores externos",
+              OPERACION_TECNICA: "Operación técnica",
+              COMIDA: "Comidas",
+              TRANSPORTE: "Transporte",
+              HOSPEDAJE: "Hospedaje",
+              OTRO: "Otros",
+            };
+            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; precioUnitario: number };
+            const lineasConCosto: LinCot[] = (cot?.lineas ?? []).filter(l =>
+              l.precioUnitario > 0 && !["EQUIPO_PROPIO","DESCUENTO_BENEFICIO","PAQUETE"].includes(l.tipo)
+            );
+            const grouped: Record<string, LinCot[]> = {};
+            for (const l of lineasConCosto) {
+              const key = ["EQUIPO_EXTERNO","OPERACION_TECNICA","COMIDA","TRANSPORTE","HOSPEDAJE"].includes(l.tipo) ? l.tipo : "OTRO";
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(l);
+            }
+            const estimadoTotal = cot
+              ? cot.subtotalComidas + cot.subtotalOperacion + cot.subtotalTransporte + cot.subtotalHospedaje + cot.subtotalTerceros
+              : 0;
+
+            // Bloque 2: Gastos registrados
+            const cxpGastos = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO");
+            const pagados = proyecto.movimientos;
+            const totalPendiente = cxpGastos.reduce((s, c) => s + c.monto, 0);
+            const totalPagado = pagados.reduce((s, m) => s + m.monto, 0);
+            const totalGastosProy = totalPendiente + totalPagado;
+
+            // Bloque 3: Desviacion
+            const desviacion = totalGastosProy - estimadoTotal;
+            const pctDesviacion = estimadoTotal > 0 ? (desviacion / estimadoTotal) * 100 : 0;
+
             return (
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+
+                {/* Header */}
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
-                  <button onClick={() => setShowNuevaCxP(v => !v)}
-                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                    {showNuevaCxP ? "Cancelar" : "+ Nueva CxP"}
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos del proyecto</h3>
+                    {totalGastosProy > 0 && <span className="text-xs text-gray-500">{fmt(totalGastosProy)}</span>}
+                  </div>
+                  <button onClick={() => {
+                    setGastoEstado("PENDIENTE"); setGastoConcepto(""); setGastoMonto("");
+                    setGastoFecha(new Date().toISOString().split("T")[0]); setGastoNotas("");
+                    setGastoProveedor(""); setGastoMetodo("TRANSFERENCIA"); setGastoCuenta("");
+                    setGastoReferencia(""); setGastoCategoria(""); setShowGastoModal(true);
+                  }} className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors shrink-0">
+                    + Agregar gasto
                   </button>
                 </div>
 
-                {showNuevaCxP && (
-                  <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0d0d0d] space-y-3">
-                    <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider">Nueva cuenta por pagar</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2">
-                        <label className="text-[10px] text-gray-500 block mb-1">Concepto *</label>
-                        <input value={nuevaCxPConcepto} onChange={e => setNuevaCxPConcepto(e.target.value)}
-                          placeholder="Ej: Renta sonido, Transporte..." autoFocus
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                {/* Bloque 1: Referencia cotizacion */}
+                {cot && (
+                  <div className="border-b border-[#1a1a1a]">
+                    <button onClick={() => setRefCotOpen(v => !v)}
+                      className="w-full px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between hover:bg-[#0d0d0d] transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] text-gray-600 uppercase tracking-[0.12em] font-semibold shrink-0">Referencia — {cot.numeroCotizacion}</span>
+                        <span className="text-gray-700 text-[10px]">·</span>
+                        <span className="text-[10px] text-gray-700">Estimado costos: {fmt(estimadoTotal)}</span>
                       </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 block mb-1">Monto *</label>
-                        <input type="number" value={nuevaCxPMonto} onChange={e => setNuevaCxPMonto(e.target.value)}
-                          placeholder="0.00" min="0" step="0.01"
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <span className="text-gray-600 text-[10px] shrink-0 ml-2">{refCotOpen ? "▲ Colapsar" : "▼ Ver"}</span>
+                    </button>
+                    {refCotOpen && (
+                      <div className="px-5 pt-3 pb-4 bg-[#0a0a0a] space-y-3">
+                        {lineasConCosto.length === 0 ? (
+                          <p className="text-xs text-gray-700 italic">Sin líneas de costo en la cotización</p>
+                        ) : (
+                          Object.entries(grouped).map(([tipo, lineas]) => {
+                            const grupoTotal = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
+                            return (
+                              <div key={tipo}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{TIPO_LABEL[tipo] ?? "Otros"}</p>
+                                  <span className="text-[10px] text-gray-400 font-semibold">{fmt(grupoTotal)}</span>
+                                </div>
+                                {lineas.map(l => (
+                                  <div key={l.id} className="flex items-center justify-between py-0.5 pl-3">
+                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}</span>
+                                    <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso *</label>
-                        <input type="date" value={nuevaCxPFecha} onChange={e => setNuevaCxPFecha(e.target.value)}
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
-                        <Combobox value={nuevaCxPTipo} onChange={v => { setNuevaCxPTipo(v); setNuevaCxPProveedorId(""); }}
-                          options={[{ value: "PROVEEDOR", label: "Proveedor" }, { value: "OTRO", label: "Otro" }]}
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      </div>
-                      {nuevaCxPTipo === "PROVEEDOR" && (
-                        <div>
-                          <label className="text-[10px] text-gray-500 block mb-1">Proveedor</label>
-                          <Combobox value={nuevaCxPProveedorId} onChange={v => setNuevaCxPProveedorId(v)}
-                            options={[{ value: "", label: "— Seleccionar —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={crearNuevaCxP} disabled={savingNuevaCxP || !nuevaCxPConcepto.trim() || !nuevaCxPMonto}
-                        className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
-                        {savingNuevaCxP ? "Guardando..." : "Registrar"}
-                      </button>
-                      <button onClick={() => setShowNuevaCxP(false)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                    </div>
+                    )}
                   </div>
                 )}
 
-                {otrasCxP.length === 0 && !showNuevaCxP ? (
-                  <p className="text-gray-600 text-sm text-center py-6 italic">Sin cuentas por pagar registradas</p>
-                ) : (
-                  otrasCxP.map(c => {
-                    const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
-                    const tieneAjustes = ajustesEntradas.length > 0;
-                    return (
-                      <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                          <div>
+                {/* Bloque 2: POR PAGAR */}
+                {cxpGastos.length > 0 && (
+                  <div>
+                    <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
+                      <p className="text-[10px] text-yellow-600/90 uppercase tracking-[0.12em] font-semibold">Por pagar</p>
+                      <span className="text-xs text-yellow-400 font-semibold">{fmt(totalPendiente)}</span>
+                    </div>
+                    {cxpGastos.map(c => (
+                      <div key={c.id} className="px-5 py-3 border-b border-[#1a1a1a]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-white text-sm font-medium">{c.concepto}</p>
-                              {tieneAjustes && (
-                                <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
-                                  className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
-                                  {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
-                                </button>
+                              <span className="text-sm text-white">{c.concepto}</span>
+                              {c.tipoAcreedor !== "OTRO" && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-600 shrink-0">{c.tipoAcreedor}</span>
                               )}
                             </div>
-                            <p className="text-gray-500 text-xs">Vence: {fmtDate(c.fechaCompromiso)}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {c.estado !== "LIQUIDADO" && (
-                              <button
-                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
-                                className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                                ✏ Editar
-                              </button>
+                            {c.fechaCompromiso && (
+                              <p className="text-xs text-gray-600 mt-0.5">Fecha estimada: {fmtDate(c.fechaCompromiso)}</p>
                             )}
-                            <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                              c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                              c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                              "bg-yellow-900/30 text-yellow-400"
-                            }`}>{c.estado}</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm text-yellow-400 font-semibold">{fmt(c.monto)}</span>
+                            <button onClick={() => abrirEditarCxP(c)} className="text-gray-600 hover:text-[#B3985B] text-xs transition-colors">✎</button>
+                            <button onClick={() => eliminarCxP(c.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors">✕</button>
                           </div>
                         </div>
-
-                        {ajustando === c.id && (
-                          <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                            <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar pago</p>
-                            <div className="flex gap-2 flex-wrap items-start">
-                              <div>
-                                <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
-                                <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
-                                  placeholder="0.00" min="0" step="0.01"
-                                  className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
-                                <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
-                                  className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
-                              </div>
-                              {parseFloat(ajusteMonto) !== c.monto && (
-                                <div className="flex-1 min-w-[200px]">
-                                  <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                                  <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                                    placeholder="Explica brevemente por qué se ajusta este monto..."
-                                    rows={2}
-                                    className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <button onClick={() => ajustarMontoCxP(c.id, c.monto)}
-                                className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                                Guardar
+                        <div className="mt-2">
+                          {marcarPagadoId === c.id ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-gray-500">Fecha en que se pagó:</span>
+                              <input type="date" value={marcarPagadoFecha} onChange={e => setMarcarPagadoFecha(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <button onClick={() => marcarPagadoGasto(c.id)} disabled={savingMarcarPagado}
+                                className="bg-green-800 hover:bg-green-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
+                                {savingMarcarPagado ? "..." : "Confirmar pago"}
                               </button>
-                              <button onClick={() => { setAjustando(null); setAjusteFecha(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                            </div>
-                          </div>
-                        )}
-
-                        {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
-                          pagando === c.id ? (
-                            <div className="flex gap-2 mt-2 flex-wrap">
-                              <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                                placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                              <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                              <Combobox value={cuentaPagoId} onChange={v => setCuentaPagoId(v)}
-                                options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
-                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                              <Combobox value={metodoPagoFinanzas} onChange={v => setMetodoPagoFinanzas(v)}
-                                options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                              <button onClick={() => registrarPagoCxP(c.id)}
-                                className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
-                              <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                              <button onClick={() => setMarcarPagadoId(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                             </div>
                           ) : (
-                            <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
-                              className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors mt-1">
-                              + Registrar pago
+                            <button onClick={() => { setMarcarPagadoId(c.id); setMarcarPagadoFecha(new Date().toISOString().split("T")[0]); }}
+                              className="text-xs text-green-600 hover:text-green-400 border border-green-900/40 hover:border-green-700 px-3 py-1 rounded-lg transition-colors">
+                              ✓ Marcar pagado
                             </button>
-                          )
-                        )}
-                        {c.estado === "LIQUIDADO" && (
-                          <button onClick={() => anularMovimiento(c.id, "pago")} disabled={anulando === c.id}
-                            className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
-                            {anulando === c.id ? "Anulando..." : "Anular pago"}
-                          </button>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            );
-          })()}
-
-          {/* ── Gastos Operativos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos Operativos</h3>
-                <p className="text-xs text-gray-600 mt-0.5">Comida, transporte y hospedaje — generados desde cotización o agregados manualmente</p>
-              </div>
-              <button onClick={() => setShowGastoOpForm(v => !v)}
-                className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors shrink-0">
-                {showGastoOpForm ? "Cancelar" : "+ Agregar"}
-              </button>
-            </div>
-
-            {showGastoOpForm && (
-              <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Tipo</label>
-                  <Combobox
-                    value={gastoOpForm.tipo}
-                    onChange={v => setGastoOpForm(f => ({ ...f, tipo: v }))}
-                    options={[{ value: "COMIDA", label: "Comida" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "HOSPEDAJE", label: "Hospedaje" }, { value: "OTRO", label: "Otro" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
-                  <input type="number" min="1" value={gastoOpForm.cantidad} onChange={e => setGastoOpForm(f => ({ ...f, cantidad: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
-                  <input value={gastoOpForm.concepto} onChange={e => setGastoOpForm(f => ({ ...f, concepto: e.target.value }))}
-                    placeholder="Ej: Comida crew día 1, Gasolina van, Habitación hotel..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
-                  <input type="number" value={gastoOpForm.monto} onChange={e => setGastoOpForm(f => ({ ...f, monto: e.target.value }))}
-                    placeholder="0"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                  <input value={gastoOpForm.notas} onChange={e => setGastoOpForm(f => ({ ...f, notas: e.target.value }))}
-                    placeholder="Opcional"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <button onClick={agregarGastoOp} disabled={!gastoOpForm.concepto || !gastoOpForm.monto}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                    Guardar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {gastosOp.length === 0 && !showGastoOpForm ? (
-              <p className="text-gray-600 text-sm text-center py-6 italic">Sin gastos operativos registrados</p>
-            ) : (
-              gastosOp.map(g => {
-                const TIPO_COLORS: Record<string, string> = {
-                  COMIDA: "bg-orange-900/30 text-orange-300",
-                  TRANSPORTE: "bg-blue-900/30 text-blue-300",
-                  HOSPEDAJE: "bg-purple-900/30 text-purple-300",
-                  OTRO: "bg-gray-800 text-gray-400",
-                };
-                const TIPO_LABELS: Record<string, string> = { COMIDA: "Comida", TRANSPORTE: "Transporte", HOSPEDAJE: "Hospedaje", OTRO: "Otro" };
-                return (
-                  <div key={g.id} className={`flex items-center gap-3 px-5 py-3 border-t border-[#1a1a1a] hover:bg-[#0d0d0d] transition-colors ${g.entregado ? "opacity-50" : ""}`}>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
-                      {TIPO_LABELS[g.tipo] ?? g.tipo}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white/80 text-sm truncate">{g.concepto}</p>
-                      {g.notas && <p className="text-gray-600 text-xs">{g.notas}</p>}
-                    </div>
-                    {g.cantidad > 1 && <span className="text-gray-600 text-xs shrink-0">×{g.cantidad}</span>}
-                    <p className="text-white text-sm font-medium w-24 text-right shrink-0">{fmt(g.monto * g.cantidad)}</p>
-                    <button onClick={() => toggleEntregadoOp(g)} disabled={togglingGasto === g.id}
-                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all disabled:opacity-50 ${
-                        g.entregado
-                          ? "border-green-800 text-green-400 hover:border-red-800 hover:text-red-400"
-                          : "border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B] hover:text-black"
-                      }`}>
-                      {togglingGasto === g.id ? "..." : g.entregado ? "✓ Entregado" : "Entregar"}
-                    </button>
-                    <button onClick={() => eliminarGastoOp(g.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Otros gastos */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Otros gastos del proyecto</h3>
-              <button onClick={() => setShowGastoForm(v => !v)}
-                className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                {showGastoForm ? "Cancelar" : "+ Registrar gasto"}
-              </button>
-            </div>
-
-            {showGastoForm && (
-              <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
-                  <input value={gastoConcepto} onChange={e => setGastoConcepto(e.target.value)}
-                    placeholder="Ej: Gasolina, comida crew, material, renta..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
-                  <input type="number" value={gastoMonto} onChange={e => setGastoMonto(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Fecha</label>
-                  <input type="date" value={gastoFecha} onChange={e => setGastoFecha(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
-                  <Combobox
-                    value={gastoCategoria}
-                    onChange={v => setGastoCategoria(v)}
-                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
-                  <Combobox
-                    value={gastoProveedor}
-                    onChange={v => setGastoProveedor(v)}
-                    options={[{ value: "", label: "— No aplica / Genérico —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
-                  <Combobox
-                    value={gastoCuenta}
-                    onChange={v => setGastoCuenta(v)}
-                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Referencia / comprobante</label>
-                  <input value={gastoReferencia} onChange={e => setGastoReferencia(e.target.value)}
-                    placeholder="Folio, número de transacción..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                  <input value={gastoNotas} onChange={e => setGastoNotas(e.target.value)}
-                    placeholder="Opcional"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <button onClick={agregarGasto} disabled={addingGasto || !gastoConcepto || !gastoMonto}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                    {addingGasto ? "Guardando..." : "Guardar gasto"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {proyecto.movimientos.length === 0 && !showGastoForm ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin gastos adicionales registrados</p>
-            ) : (
-              proyecto.movimientos.map(g => (
-                <div key={g.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between group">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-white text-sm">{g.concepto}</p>
-                      {g.categoria && (
-                        <span className="text-xs px-1.5 py-0.5 bg-[#222] text-gray-400 rounded">{g.categoria.nombre}</span>
-                      )}
-                      {g.proveedor && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>
-                      )}
-                      {g.cuentaOrigen && (
-                        <span className="text-xs px-1.5 py-0.5 bg-[#1a2a1a] text-green-600 rounded">{g.cuentaOrigen.nombre}</span>
-                      )}
-                    </div>
-                    <p className="text-gray-500 text-xs">
-                      {fmtDate(g.fecha)} · {g.metodoPago}
-                      {g.referencia ? ` · Ref: ${g.referencia}` : ""}
-                      {g.notas ? ` · ${g.notas}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      onClick={() => abrirEditarGasto(g)}
-                      className="opacity-0 group-hover:opacity-100 text-xs text-gray-500 hover:text-[#B3985B] transition-all"
-                    >
-                      Editar
-                    </button>
-                    <span className="text-red-400 font-semibold text-sm">−{fmt(g.monto)}</span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Resumen financiero */}
-          {(() => {
-            const totalGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
-            const totalGastosOp = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
-            return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-                {proyecto.cotizacion && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Total cotizado</p>
-                    <p className="text-white font-bold">{fmt(proyecto.cotizacion.granTotal)}</p>
+                    ))}
                   </div>
                 )}
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Cobrado</p>
-                  <p className="text-green-400 font-bold">{fmt(cobrado)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Por cobrar</p>
-                  <p className="text-yellow-400 font-bold">{fmt(totalCxC - cobrado)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Gastos operativos</p>
-                  <p className="text-orange-400 font-bold">{fmt(totalGastosOp)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Otros gastos</p>
-                  <p className="text-red-400 font-bold">{fmt(totalGastos)}</p>
+
+                {/* Bloque 2: PAGADOS */}
+                {pagados.length > 0 && (
+                  <div>
+                    <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
+                      <p className="text-[10px] text-green-700/90 uppercase tracking-[0.12em] font-semibold">Pagados</p>
+                      <span className="text-xs text-green-400 font-semibold">{fmt(totalPagado)}</span>
+                    </div>
+                    {pagados.map(g => (
+                      <div key={g.id} className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-white text-sm">{g.concepto}</p>
+                            {g.categoria && <span className="text-xs px-1.5 py-0.5 bg-[#222] text-gray-400 rounded">{g.categoria.nombre}</span>}
+                            {g.proveedor && <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>}
+                          </div>
+                          <p className="text-gray-600 text-xs">Pagó {fmtDate(g.fecha)} · {g.metodoPago}{g.cuentaOrigen ? ` · ${g.cuentaOrigen.nombre}` : ""}{g.referencia ? ` · Ref: ${g.referencia}` : ""}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => abrirEditarGasto(g)}
+                            className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] hover:border-[#555] px-2 py-1 rounded transition-colors">Editar</button>
+                          <button onClick={() => eliminarMovimiento(g.id)}
+                            className="text-gray-700 hover:text-red-400 text-xs transition-colors">✕</button>
+                          <span className="text-green-400 font-semibold text-sm">{fmt(g.monto)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {cxpGastos.length === 0 && pagados.length === 0 && (
+                  <div className="px-5 py-10 text-center">
+                    <p className="text-gray-600 text-sm">Sin gastos registrados</p>
+                    <p className="text-gray-700 text-xs mt-1">Usa "+ Agregar gasto" para registrar un pago pendiente o ya realizado</p>
+                  </div>
+                )}
+
+                {/* Bloque 3: Resumen de desviacion */}
+                <div className={`px-5 py-3 border-t border-[#1a1a1a] bg-[#0a0a0a] grid gap-4 ${cot && estimadoTotal > 0 ? "grid-cols-3" : "grid-cols-1"}`}>
+                  {cot && estimadoTotal > 0 && (
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Estimado (cotización)</p>
+                      <p className="text-sm text-gray-300 font-semibold">{fmt(estimadoTotal)}</p>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Real registrado</p>
+                    <p className="text-sm text-white font-semibold">{fmt(totalGastosProy)}</p>
+                    <p className="text-[10px] text-gray-700 mt-0.5">{fmt(totalPendiente)} pendiente + {fmt(totalPagado)} pagado</p>
+                  </div>
+                  {cot && estimadoTotal > 0 && (
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Desviación</p>
+                      <p className={`text-sm font-bold ${desviacion > 0 ? "text-red-400" : desviacion < 0 ? "text-green-400" : "text-gray-400"}`}>
+                        {desviacion === 0 ? "Sin desviación" : `${desviacion > 0 ? "+" : ""}${fmt(desviacion)}`}
+                        {desviacion !== 0 && (
+                          <span className="text-xs ml-1 font-normal">({desviacion > 0 ? "+" : ""}{pctDesviacion.toFixed(0)}%)</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -5741,10 +5773,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 )}
                 {proyecto.cierreFinanciero && (
-                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
-                    <span className="text-green-400 text-sm">✓</span>
-                    <p className="text-green-400 text-xs font-medium">
-                      Cierre registrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3 text-center">
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobrado real</p>
+                        <p className="text-white font-bold text-sm">{fmt(proyecto.cierreFinanciero.totalCobrado)}</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">Est. {fmt(proyecto.cierreFinanciero.granTotalEstimado)}</p>
+                      </div>
+                      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3 text-center">
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Gastado real</p>
+                        <p className="text-red-400 font-bold text-sm">{fmt(proyecto.cierreFinanciero.totalGastado)}</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">Est. {fmt(proyecto.cierreFinanciero.costoEstimado)}</p>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center border ${proyecto.cierreFinanciero.utilidadReal >= 0 ? "bg-green-950/20 border-green-900/30" : "bg-red-950/20 border-red-900/30"}`}>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Utilidad real</p>
+                        <p className={`font-bold text-sm ${proyecto.cierreFinanciero.utilidadReal >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(proyecto.cierreFinanciero.utilidadReal)}</p>
+                        <p className={`text-[10px] mt-0.5 font-semibold ${proyecto.cierreFinanciero.margenReal >= 20 ? "text-green-500" : proyecto.cierreFinanciero.margenReal >= 0 ? "text-yellow-500" : "text-red-500"}`}>{proyecto.cierreFinanciero.margenReal.toFixed(1)}% margen</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-700 text-right">
+                      Cerrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
                     </p>
                   </div>
                 )}
@@ -5758,6 +5806,107 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
       </div>{/* /section-finanzas */}
 
+      {/* ── Modal agregar gasto ── */}
+      {showGastoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.80)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowGastoModal(false); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-white font-semibold">Agregar gasto</h3>
+              <button onClick={() => setShowGastoModal(false)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            <div className="flex gap-1 p-1 bg-[#0a0a0a] border border-[#222] rounded-xl mb-4">
+              <button onClick={() => setGastoEstado("PENDIENTE")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${gastoEstado === "PENDIENTE" ? "bg-yellow-800/60 text-yellow-200" : "text-gray-500 hover:text-gray-300"}`}>
+                Por pagar
+              </button>
+              <button onClick={() => setGastoEstado("PAGADO")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${gastoEstado === "PAGADO" ? "bg-green-900/50 text-green-200" : "text-gray-500 hover:text-gray-300"}`}>
+                Ya pagado
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                <input value={gastoConcepto} onChange={e => setGastoConcepto(e.target.value)}
+                  placeholder="Ej: Renta equipo externo, gasolina, comida crew..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
+                  <input type="number" step="0.01" min="0" value={gastoMonto} onChange={e => setGastoMonto(e.target.value)} placeholder="0"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">{gastoEstado === "PENDIENTE" ? "Fecha estimada de pago" : "Fecha en que se pagó"}</label>
+                  <input type="date" value={gastoFecha} onChange={e => setGastoFecha(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                  <select value={gastoCategoria} onChange={e => setGastoCategoria(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Sin categoría —</option>
+                    <option value="PROVEEDOR_EXTERNO">Proveedor externo</option>
+                    <option value="OPERACION_TECNICA">Operación técnica</option>
+                    <option value="COMIDAS">Comidas</option>
+                    <option value="TRANSPORTE">Transporte</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
+                  <Combobox value={gastoProveedor} onChange={v => setGastoProveedor(v)}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              {gastoEstado === "PAGADO" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                    <Combobox value={gastoMetodo} onChange={v => setGastoMetodo(v)}
+                      options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "CHEQUE", label: "Cheque" }, { value: "TARJETA", label: "Tarjeta" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                    <Combobox value={gastoCuenta} onChange={v => setGastoCuenta(v)}
+                      options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                    <input value={gastoReferencia} onChange={e => setGastoReferencia(e.target.value)}
+                      placeholder="Núm. transferencia, folio..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                <input value={gastoNotas} onChange={e => setGastoNotas(e.target.value)} placeholder="Opcional"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowGastoModal(false)} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={async () => { const ok = await agregarGastoProy(); if (ok) setShowGastoModal(false); }}
+                disabled={addingGasto || !gastoConcepto.trim() || !gastoMonto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {addingGasto ? "Guardando..." : gastoEstado === "PENDIENTE" ? "Registrar gasto pendiente" : "Registrar pago"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Modal editar gasto ── */}
       {editGasto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -5768,6 +5917,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <h3 className="text-white font-semibold">Editar gasto</h3>
               <button onClick={() => setEditGasto(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
             </div>
+            {/* Toggle estado */}
+            <p className="text-xs text-gray-500 mb-1.5">Estado del gasto</p>
+            <div className="flex gap-1 p-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setEditGastoEstado("PENDIENTE")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${editGastoEstado === "PENDIENTE" ? "bg-yellow-700/30 text-yellow-300 border border-yellow-700/40" : "text-gray-400 hover:text-white hover:bg-[#1a1a1a] border border-transparent"}`}>
+                Por pagar
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditGastoEstado("PAGADO")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${editGastoEstado === "PAGADO" ? "bg-green-800/30 text-green-300 border border-green-800/40" : "text-gray-400 hover:text-white hover:bg-[#1a1a1a] border border-transparent"}`}>
+                Ya pagado
+              </button>
+            </div>
+            {editGastoEstado === "PENDIENTE" && !editingCxPId && (
+              <p className="text-xs text-yellow-600/80 bg-yellow-900/10 border border-yellow-900/20 rounded-lg px-3 py-2 mb-3">
+                Al guardar, este gasto se convertirá en una cuenta por pagar y aparecerá en Cobros y Pagos.
+              </p>
+            )}
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
@@ -5782,19 +5952,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Fecha</label>
+                  <label className="text-xs text-gray-500 block mb-1">{editGastoEstado === "PENDIENTE" ? "Fecha estimada de pago" : "Fecha de pago"}</label>
                   <input type="date" value={editGastoForm.fecha}
                     onChange={e => setEditGastoForm(p => ({ ...p, fecha: e.target.value }))}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
-                <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
-                  options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+                {editGastoEstado === "PAGADO" && (<>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                  <Combobox value={editGastoForm.metodoPago} onChange={v => setEditGastoForm(p => ({ ...p, metodoPago: v }))}
+                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "CHEQUE", label: "Cheque" }, { value: "TARJETA", label: "Tarjeta" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                  <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
+                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                </>)}
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Categoría</label>
                   <Combobox value={editGastoForm.categoriaId} onChange={v => setEditGastoForm(p => ({ ...p, categoriaId: v }))}
@@ -5808,12 +5984,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
+              {editGastoEstado === "PAGADO" && (
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
                 <input value={editGastoForm.referencia} onChange={e => setEditGastoForm(p => ({ ...p, referencia: e.target.value }))}
                   placeholder="Núm. transferencia, folio..."
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
+              )}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Notas</label>
                 <input value={editGastoForm.notas} onChange={e => setEditGastoForm(p => ({ ...p, notas: e.target.value }))}
@@ -6024,36 +6202,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
     )}
 
-    {/* ── Modal Anuncio de cierre ── */}
+    {/* ── Modal Brief del evento ── */}
     {showAnuncioCierre && (() => {
+      const TIPO_SERVICIO_LABEL: Record<string, string> = {
+        PRODUCCION_TECNICA: "Producción técnica",
+        RENTA: "Renta de equipo",
+        DIRECCION_TECNICA: "Dirección técnica",
+      };
+      const tipoServicioLabel = proyecto.tipoServicio ? (TIPO_SERVICIO_LABEL[proyecto.tipoServicio] ?? proyecto.tipoServicio) : null;
+
       const equiposLineas = proyecto.equipos.map(e =>
         `• ${e.cantidad}x ${e.equipo.descripcion}${e.equipo.marca ? ` ${e.equipo.marca}` : ""}${e.equipo.modelo ? ` ${e.equipo.modelo}` : ""}`
       ).join("\n");
-      const anuncioText = [
+
+      const personalConfirmado = proyecto.personal.filter(p => p.confirmado);
+      const personalLineas = personalConfirmado.map(p => {
+        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null;
+        return `• ${p.tecnico?.nombre ?? "—"}${rol ? ` (${rol})` : ""}`;
+      }).join("\n");
+
+      const accesoLink = `https://mainstagepro.vercel.app/proyectos/${proyecto.id}`;
+
+      const briefText = [
         "🎉 ¡Servicio confirmado!",
         "",
         `👤 Cliente: ${proyecto.cliente.nombre}${proyecto.cliente.empresa ? ` / ${proyecto.cliente.empresa}` : ""}`,
         `📋 Proyecto: ${proyecto.nombre} (${proyecto.numeroProyecto})`,
+        tipoServicioLabel ? `🎛️ Servicio: ${tipoServicioLabel}${proyecto.tipoEvento ? ` · ${proyecto.tipoEvento}` : ""}` : (proyecto.tipoEvento ? `🎭 Evento: ${proyecto.tipoEvento}` : null),
         `📅 Fecha: ${fmtDate(proyecto.fechaEvento)}`,
         proyecto.lugarEvento ? `📍 Lugar: ${proyecto.lugarEvento}` : null,
         (proyecto.horaInicioEvento || proyecto.horaFinEvento) ? `⏰ Horario: ${proyecto.horaInicioEvento ?? ""}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}` : null,
         proyecto.fechaMontaje ? `🔧 Montaje: ${fmtDate(proyecto.fechaMontaje)}${proyecto.horaInicioMontaje ? ` desde ${proyecto.horaInicioMontaje}` : ""}` : null,
         proyecto.equipos.length > 0 ? `\nEquipos:\n${equiposLineas}` : null,
+        personalConfirmado.length > 0 ? `\nPersonal confirmado:\n${personalLineas}` : null,
+        `\n🔗 Acceso: ${accesoLink}`,
       ].filter(Boolean).join("\n");
 
       return (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
-              <h2 className="text-white font-semibold text-sm">Anuncio de cierre</h2>
+              <h2 className="text-white font-semibold text-sm">Brief del evento</h2>
               <button onClick={() => setShowAnuncioCierre(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">
               <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
-                {anuncioText}
+                {briefText}
               </pre>
               <button
-                onClick={() => { navigator.clipboard.writeText(anuncioText); }}
+                onClick={() => { navigator.clipboard.writeText(briefText); }}
                 className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
               >
                 Copiar texto

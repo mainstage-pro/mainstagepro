@@ -32,10 +32,11 @@ export function Combobox({
   const inputRef = useRef<HTMLInputElement>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep display text in sync when value changes externally
+  // Keep display text in sync when value changes externally OR when options load async
+  // (selectedLabel is a string — React only re-runs the effect when its value actually changes)
   useEffect(() => {
-    setQuery(value ? (options.find(o => o.value === value)?.label ?? "") : "");
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!open) setQuery(selectedLabel);
+  }, [selectedLabel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isFiltering = query !== selectedLabel;
   const filtered = isFiltering && query.trim()
@@ -63,6 +64,7 @@ export function Combobox({
   }
 
   function select(opt: ComboboxOption) {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
     onChange(opt.value);
     setQuery(opt.label);
     setOpen(false);

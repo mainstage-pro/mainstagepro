@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
@@ -994,10 +994,27 @@ export default function CobrosPagosPage() {
             </div>
           ) : (() => {
             const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList), hoyStr);
+            let _cvLastMonth = "";
             return [..._cp, ..._cv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+            const isPasado = idx >= _cp.length;
+            let monthHeader = null;
+            if (isPasado && grupo.fechaEvento) {
+              const mk = grupo.fechaEvento.substring(0, 7);
+              if (mk !== _cvLastMonth) {
+                _cvLastMonth = mk;
+                const [y, m] = mk.split("-");
+                const lbl = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+                monthHeader = (
+                  <div className="flex items-center gap-3 pt-3 pb-1">
+                    <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold capitalize">{lbl}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                );
+              }
+            }
             return (
-            <div key={(grupo.proyectoId ?? "__sin__") + idx}>
+            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
               {idx === _cp.length && _cv.length > 0 && (
                 <div className="flex items-center gap-4 py-3">
                   <div className="flex-1 h-px bg-[#161616]" />
@@ -1005,7 +1022,8 @@ export default function CobrosPagosPage() {
                   <div className="flex-1 h-px bg-[#161616]" />
                 </div>
               )}
-              <div className={idx >= _cp.length ? "opacity-50" : ""}>
+              {monthHeader}
+              <div className={isPasado ? "opacity-50" : ""}>
               {grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1227,7 +1245,7 @@ export default function CobrosPagosPage() {
           ))}
               </div>
               </div>
-            </div>
+            </Fragment>
           );
           });
           })()}
@@ -1241,10 +1259,27 @@ export default function CobrosPagosPage() {
             </div>
           ) : (() => {
             const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
+            let _pvLastMonth = "";
             return [..._pp, ..._pv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+            const isPasadoP = idx >= _pp.length;
+            let monthHeaderP = null;
+            if (isPasadoP && grupo.fechaEvento) {
+              const mk = grupo.fechaEvento.substring(0, 7);
+              if (mk !== _pvLastMonth) {
+                _pvLastMonth = mk;
+                const [y, m] = mk.split("-");
+                const lbl = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+                monthHeaderP = (
+                  <div className="flex items-center gap-3 pt-3 pb-1">
+                    <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold capitalize">{lbl}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                );
+              }
+            }
             return (
-            <div key={(grupo.proyectoId ?? "__sin__") + idx}>
+            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
               {idx === _pp.length && _pv.length > 0 && (
                 <div className="flex items-center gap-4 py-3">
                   <div className="flex-1 h-px bg-[#161616]" />
@@ -1252,7 +1287,8 @@ export default function CobrosPagosPage() {
                   <div className="flex-1 h-px bg-[#161616]" />
                 </div>
               )}
-              <div className={idx >= _pp.length ? "opacity-50" : ""}>
+              {monthHeaderP}
+              <div className={isPasadoP ? "opacity-50" : ""}>
               {grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1367,7 +1403,7 @@ export default function CobrosPagosPage() {
           })}
               </div>
               </div>
-            </div>
+            </Fragment>
           );
           });
           })()}

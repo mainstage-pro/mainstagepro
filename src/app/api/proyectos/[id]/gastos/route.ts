@@ -32,8 +32,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       creadoPor: session.id,
     },
     include: {
-      categoria: { select: { nombre: true } },
-      proveedor: { select: { nombre: true } },
+      categoria: { select: { id: true, nombre: true } },
+      proveedor: { select: { id: true, nombre: true } },
+      cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
     },
   });
 

@@ -112,21 +112,51 @@ export async function PATCH(req: NextRequest) {
 
   await ensureTable();
   const body = await req.json();
-  const { id, entregado, notas } = body;
+  const { id, entregado, notas, tipo, concepto, monto, cantidad } = body;
 
   // Fetch before update to get cxpId and amounts
   const [gastoAntes] = await prisma.$queryRawUnsafe<GastoRow[]>(
     `SELECT * FROM gastos_operativos WHERE id = $1`, id
   );
 
-  const [gasto] = await prisma.$queryRawUnsafe<GastoRow[]>(`
-    UPDATE gastos_operativos
-    SET entregado = $2,
-        "fechaEntrega" = CASE WHEN $2 THEN NOW() ELSE NULL END,
-        notas = COALESCE($3, notas)
-    WHERE id = $1
-    RETURNING *
-  `, id, entregado, notas ?? null);
+  const isEdit = tipo !== undefined || concepto !== undefined || monto !== undefined || cantidad !== undefined;
+
+  let gasto: GastoRow;
+  if (isEdit) {
+    const nuevoTipo = tipo ?? gastoAntes.tipo;
+    const nuevoConcepto = concepto ?? gastoAntes.concepto;
+    const nuevoMonto = monto !== undefined ? Number(monto) : gastoAntes.monto;
+    const nuevaCantidad = cantidad !== undefined ? Number(cantidad) : gastoAntes.cantidad;
+    const nuevoTotal = nuevoMonto * nuevaCantidad;
+
+    [gasto] = await prisma.$queryRawUnsafe<GastoRow[]>(`
+      UPDATE gastos_operativos
+      SET tipo = $2, concepto = $3, monto = $4, cantidad = $5,
+          notas = COALESCE($6, notas)
+      WHERE id = $1
+      RETURNING *
+    `, id, nuevoTipo, nuevoConcepto, nuevoMonto, nuevaCantidad, notas ?? null);
+
+    // Sync the linked CxP if it exists and is not yet paid
+    if (gastoAntes?.cxpId) {
+      const cxp = await prisma.cuentaPagar.findUnique({ where: { id: gastoAntes.cxpId }, select: { estado: true } });
+      if (cxp && cxp.estado !== "LIQUIDADO") {
+        await prisma.cuentaPagar.update({
+          where: { id: gastoAntes.cxpId },
+          data: { concepto: `${nuevoTipo} — ${nuevoConcepto}`, monto: nuevoTotal },
+        });
+      }
+    }
+  } else {
+    [gasto] = await prisma.$queryRawUnsafe<GastoRow[]>(`
+      UPDATE gastos_operativos
+      SET entregado = $2,
+          "fechaEntrega" = CASE WHEN $2 THEN NOW() ELSE NULL END,
+          notas = COALESCE($3, notas)
+      WHERE id = $1
+      RETURNING *
+    `, id, entregado, notas ?? null);
+  }
 
   // Auto-confirm: when marking as delivered, create MovimientoFinanciero + liquidate CxP
   if (entregado && gastoAntes?.cxpId) {

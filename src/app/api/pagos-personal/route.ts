@@ -87,7 +87,6 @@ export async function GET(req: NextRequest) {
         tecMap.set(key, { tecnicoId: pp.tecnicoId, tecnicoNombre: pp.tecnico.nombre, pagos: [] });
       }
       const entry = tecMap.get(key)!;
-      // Accumulate within the same project (may work multiple jornadas)
       const existing = entry.pagos.find((x) => x.proyectoId === p.id);
       if (existing) {
         existing.monto += pp.tarifaAcordada;
@@ -111,39 +110,99 @@ export async function GET(req: NextRequest) {
     }))
     .sort((a, b) => a.tecnicoNombre.localeCompare(b.tecnicoNombre));
 
+  // Cuentas bancarias para el modal
+  const cuentas = await prisma.cuentaBancaria.findMany({
+    select: { id: true, nombre: true, banco: true },
+    orderBy: { nombre: "asc" },
+  });
+
   return NextResponse.json({
     ciclo: cicloDate.toISOString().slice(0, 10),
     desde: desde.toISOString().slice(0, 10),
     hasta: hasta.toISOString().slice(0, 10),
     proyectos: proyectosData,
     nomina,
+    cuentas,
   });
 }
 
-// POST /api/pagos-personal  — mark technician as paid for the cycle
+// POST /api/pagos-personal — mark technician as paid + create movimiento
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { tecnicoId, proyectoIds } = body as { tecnicoId: string; proyectoIds: string[] };
+  const {
+    tecnicoId,
+    proyectoIds,
+    cuentaOrigenId,
+    fecha,
+    metodoPago = "TRANSFERENCIA",
+    referencia,
+    notas,
+  } = body as {
+    tecnicoId: string;
+    proyectoIds: string[];
+    cuentaOrigenId?: string;
+    fecha?: string;
+    metodoPago?: string;
+    referencia?: string;
+    notas?: string;
+  };
 
   if (!tecnicoId || !proyectoIds?.length) {
     return NextResponse.json({ error: "tecnicoId y proyectoIds requeridos" }, { status: 400 });
   }
 
-  const [personalUpdate, cxpUpdate] = await prisma.$transaction([
-    // Mark personal slots as paid
-    prisma.proyectoPersonal.updateMany({
+  const tecnico = await prisma.tecnico.findUnique({
+    where: { id: tecnicoId },
+    select: { nombre: true },
+  });
+
+  // CxPs pendientes del técnico en estos proyectos
+  const cxps = await prisma.cuentaPagar.findMany({
+    where: {
+      tecnicoId,
+      proyectoId: { in: proyectoIds },
+      tipoAcreedor: "TECNICO",
+      estado: "PENDIENTE",
+    },
+  });
+
+  const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
+
+  await prisma.$transaction(async (tx) => {
+    // Marcar slots de personal como pagado
+    await tx.proyectoPersonal.updateMany({
       where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
       data: { estadoPago: "PAGADO" },
-    }),
-    // Mark matching CxP as liquidado
-    prisma.cuentaPagar.updateMany({
-      where: { tecnicoId, proyectoId: { in: proyectoIds }, tipoAcreedor: "TECNICO", estado: "PENDIENTE" },
-      data: { estado: "LIQUIDADO" },
-    }),
-  ]);
+    });
 
-  return NextResponse.json({ personalActualizados: personalUpdate.count, cxpActualizadas: cxpUpdate.count });
+    // Por cada CxP crear un movimiento y vincularla
+    for (const cxp of cxps) {
+      const mov = await tx.movimientoFinanciero.create({
+        data: {
+          tipo: "GASTO",
+          fecha: fechaPago,
+          concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
+          monto: cxp.monto,
+          metodoPago,
+          cuentaOrigenId: cuentaOrigenId || null,
+          referencia: referencia || null,
+          notas: notas || null,
+          proyectoId: cxp.proyectoId,
+          creadoPor: session.id,
+        },
+      });
+
+      await tx.cuentaPagar.update({
+        where: { id: cxp.id },
+        data: { estado: "LIQUIDADO", movimientoId: mov.id },
+      });
+    }
+
+    // Si no había CxP (caso borde), solo marcar personal
+  });
+
+  return NextResponse.json({ ok: true, movimientosCreados: cxps.length });
 }

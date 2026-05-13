@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import Link from "next/link";
 import { ESTADO_PROYECTO_LABELS, TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 import { useToast } from "@/components/Toast";
@@ -400,13 +400,30 @@ export default function ProyectosPage() {
                     <div className="flex-1 h-px bg-[#161616]" />
                   </div>
                   <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                    <div className="divide-y divide-[#111]">
-                      {pasadosFiltrados.map(p => (
-                        <div key={p.id} className="opacity-50">
-                          <ProyectoRow p={p} deletingId={deletingId} eliminar={eliminar} />
-                        </div>
-                      ))}
-                    </div>
+                    {(() => {
+                      let lastMonth = "";
+                      return pasadosFiltrados.map(p => {
+                        const monthKey = p.fechaEvento?.substring(0, 7) ?? "";
+                        const showHeader = !!monthKey && monthKey !== lastMonth;
+                        if (showHeader) lastMonth = monthKey;
+                        const [y, m] = monthKey.split("-");
+                        const monthLabel = monthKey
+                          ? new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" })
+                          : "";
+                        return (
+                          <Fragment key={p.id}>
+                            {showHeader && (
+                              <div className="px-4 py-2 bg-[#0a0a0a] border-b border-[#161616]">
+                                <span className="text-[10px] text-gray-500 uppercase tracking-[0.15em] font-semibold capitalize">{monthLabel}</span>
+                              </div>
+                            )}
+                            <div className="opacity-50 border-b border-[#111] last:border-0">
+                              <ProyectoRow p={p} deletingId={deletingId} eliminar={eliminar} />
+                            </div>
+                          </Fragment>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}
