@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     duracionDias, presupuestoEstimado,
     publicoEdadMin, publicoEdadMax, publicoGenero, ubicaciones,
     cta, copyReferencia, pixelEvento,
-    descripcion, color, activo, orden,
+    descripcion, grupo, color, activo, orden,
   } = body;
   const tipo = await prisma.tipoCampana.update({
     where: { id },
@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(copyReferencia !== undefined && { copyReferencia: copyReferencia || null }),
       ...(pixelEvento !== undefined && { pixelEvento: pixelEvento || null }),
       ...(descripcion !== undefined && { descripcion: descripcion || null }),
+      ...(grupo !== undefined && { grupo: grupo || null }),
       ...(color !== undefined && { color }),
       ...(activo !== undefined && { activo }),
       ...(orden !== undefined && { orden }),

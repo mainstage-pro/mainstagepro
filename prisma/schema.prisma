@@ -1856,6 +1856,7 @@ model TipoCampana {
   copyReferencia      String?
   pixelEvento         String?
   descripcion         String?
+  grupo               String?  // Sub-sección libre: "Servicios generales", "Tipo de servicio", "Tipo de evento", etc.
   color               String   @default("#B3985B")
   activo              Boolean  @default(true)
   orden               Int      @default(0)

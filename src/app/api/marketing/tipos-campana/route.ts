@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     duracionDias, presupuestoEstimado,
     publicoEdadMin, publicoEdadMax, publicoGenero, ubicaciones,
     cta, copyReferencia, pixelEvento,
-    descripcion, color, activo, orden,
+    descripcion, grupo, color, activo, orden,
   } = body;
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
   const tipo = await prisma.tipoCampana.create({
@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       copyReferencia: copyReferencia || null,
       pixelEvento: pixelEvento || null,
       descripcion: descripcion || null,
+      grupo: grupo || null,
       color: color ?? "#B3985B",
       activo: activo ?? true,
       orden: orden ?? 0,
