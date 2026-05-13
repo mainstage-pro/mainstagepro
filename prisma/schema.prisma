@@ -45,6 +45,9 @@ model User {
   juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
   juntasParticipadas    JuntaParticipante[]
   temasAdicionales      TemaAdicional[]      @relation("TemaAutor")
+  planTrabajoActividades PlanTrabajoActividad[] @relation("PlanTrabajoResponsable")
+  proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
+  backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
 
   @@map("users")
 }
@@ -1541,6 +1544,15 @@ model Tarea {
   // ── Origen ───────────────────────────────────────────────────────────────
   juntaOrigenId    String?
   juntaOrigen      Junta?             @relation("JuntaOrigen", fields: [juntaOrigenId], references: [id], onDelete: SetNull)
+  // ── Plan de trabajo ───────────────────────────────────────────────────────
+  origenPlan        Boolean  @default(false)
+  planActividadId   String?
+  planActividad     PlanTrabajoActividad? @relation("TareasDePlan", fields: [planActividadId], references: [id], onDelete: SetNull)
+  // ── Proyecto interno ─────────────────────────────────────────────────────
+  proyectoInternoId String?
+  proyectoInterno   ProyectoInterno? @relation("TareasDeProyectoInterno", fields: [proyectoInternoId], references: [id], onDelete: SetNull)
+  faseInternaId     String?
+  faseInterna       FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -2464,4 +2476,99 @@ model TemaAdicional {
 
   @@index([juntaId])
   @@map("temas_adicionales")
+}
+
+// ─── PLAN DE TRABAJO ─────────────────────────────────────────────────────────
+
+model PlanTrabajoActividad {
+  id              String   @id @default(cuid())
+  area            String   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  responsableId   String
+  responsable     User     @relation("PlanTrabajoResponsable", fields: [responsableId], references: [id])
+  titulo          String
+  descripcion     String?  @db.Text
+  frecuencia      String   // DIARIO | LUNES_JUEVES | SEMANAL | POR_EVENTO | MENSUAL | TRIMESTRAL | SEMESTRAL | SEGUN_NECESIDAD
+  diasSemana      String?  // JSON: ["lunes","jueves"]
+  horaEspecifica  String?  // "10:30"
+  entregable      String
+  kpiVinculado    String?
+  origenSO        Boolean  @default(true)
+  seccionSO       String?
+  activa          Boolean  @default(true)
+  generarTareas   Boolean  @default(true)
+  ultimaTareaGeneradaAt DateTime?
+  orden           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tareas          Tarea[]  @relation("TareasDePlan")
+
+  @@index([area, responsableId])
+  @@map("plan_trabajo_actividades")
+}
+
+// ─── PROYECTOS INTERNOS ───────────────────────────────────────────────────────
+
+model ProyectoInterno {
+  id              String   @id @default(cuid())
+  nombre          String
+  descripcion     String?  @db.Text
+  area            String   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  liderId         String
+  lider           User     @relation("ProyectoInternoLider", fields: [liderId], references: [id])
+  estado          String   @default("PLANIFICACION") // PLANIFICACION | ACTIVO | EN_PAUSA | COMPLETADO | CANCELADO
+  prioridad       String   @default("MEDIA")         // URGENTE | ALTA | MEDIA | BAJA
+  fechaInicio     DateTime?
+  fechaFin        DateTime?
+  porcentajeAvance Int     @default(0)
+  backlogItemId   String?
+  backlogItem     BacklogItem? @relation(fields: [backlogItemId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fases           FaseProyectoInterno[]
+  tareas          Tarea[]  @relation("TareasDeProyectoInterno")
+
+  @@index([area, estado])
+  @@map("proyectos_internos")
+}
+
+model FaseProyectoInterno {
+  id          String          @id @default(cuid())
+  proyectoId  String
+  proyecto    ProyectoInterno @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  nombre      String
+  descripcion String?
+  orden       Int             @default(0)
+  completada  Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+
+  tareas      Tarea[]         @relation("TareasDeFase")
+
+  @@index([proyectoId])
+  @@map("fases_proyecto_interno")
+}
+
+// ─── BACKLOG ──────────────────────────────────────────────────────────────────
+
+model BacklogItem {
+  id          String    @id @default(cuid())
+  titulo      String
+  descripcion String?   @db.Text
+  area        String?   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  tipo        String    @default("IDEA") // IDEA | TAREA | PROYECTO
+  estado      String    @default("PENDIENTE") // PENDIENTE | EN_JUNTA | CONVERTIDO | DESCARTADO
+  creadoPorId String
+  creadoPor   User      @relation("BacklogCreadoPor", fields: [creadoPorId], references: [id])
+  procesadoEn String?   // "tarea" | "proyecto" | "junta" | "descartado"
+  procesadoAt DateTime?
+  tareaGeneradaId String?
+  juntaId     String?
+  createdAt   DateTime  @default(now())
+
+  proyectosGenerados ProyectoInterno[]
+
+  @@index([estado])
+  @@index([area, estado])
+  @@map("backlog_items")
 }

@@ -35,7 +35,10 @@ const NAV: NavSection[] = [
     section: "",
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
-      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
+      { key: "operaciones",        label: "Gestión operativa", href: "/operaciones" },
+      { key: "plan-de-trabajo",    label: "Plan de trabajo",   href: "/plan-de-trabajo" },
+      { key: "proyectos-internos", label: "Proyectos",         href: "/proyectos-internos" },
+      { key: "backlog",            label: "Backlog",           href: "/backlog" },
     ],
   },
 
