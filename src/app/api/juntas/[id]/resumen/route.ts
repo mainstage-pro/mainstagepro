@@ -18,6 +18,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       facilitador:   { select: { name: true } },
       participantes: { include: { user: { select: { name: true } } } },
       agendaItems:   { orderBy: { orden: "asc" } },
+      temasAdicionales: { orderBy: { orden: "asc" } },
       tareas: {
         where:  { parentId: null },
         select: {
@@ -48,6 +49,17 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         .join("\n")
     : "Ninguna";
 
+  const temasCubiertos = junta.temasAdicionales.filter((t) => t.cubierto);
+  const temasPendientes = junta.temasAdicionales.filter((t) => !t.cubierto);
+
+  const temasTexto = temasCubiertos.length
+    ? temasCubiertos.map((t) => `- ${t.titulo}${t.notas ? `: ${t.notas}` : ""}`).join("\n")
+    : "Ninguno";
+
+  const temasPendientesTexto = temasPendientes.length
+    ? temasPendientes.map((t) => `- ${t.titulo} (pasa a la siguiente semana)`).join("\n")
+    : "Ninguno";
+
   const prompt = `Eres el asistente operativo de Mainstage Pro, empresa de producción técnica de eventos en México.
 Genera un resumen ejecutivo profesional y conciso de esta junta de ${areaLabel}.
 
@@ -58,6 +70,12 @@ Duración: ${junta.duracionMin} minutos
 
 AGENDA CUBIERTA:
 ${agendaTexto}
+
+TEMAS ADICIONALES CUBIERTOS:
+${temasTexto}
+
+TEMAS NO CUBIERTOS (pasan a la siguiente semana):
+${temasPendientesTexto}
 
 TAREAS GENERADAS (${junta.tareas.length}):
 ${tareasTexto}

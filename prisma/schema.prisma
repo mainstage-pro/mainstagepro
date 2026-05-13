@@ -44,6 +44,7 @@ model User {
   reportesArea          ReporteAreaSemanal[] @relation("ReportesAreaAutor")
   juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
   juntasParticipadas    JuntaParticipante[]
+  temasAdicionales      TemaAdicional[]      @relation("TemaAutor")
 
   @@map("users")
 }
@@ -2401,9 +2402,10 @@ model Junta {
   notas         String?  @db.Text
   resumen       String?  @db.Text
 
-  agendaItems   AgendaItem[]
-  tareas        Tarea[]           @relation("JuntaOrigen")
-  participantes JuntaParticipante[]
+  agendaItems      AgendaItem[]
+  tareas           Tarea[]            @relation("JuntaOrigen")
+  participantes    JuntaParticipante[]
+  temasAdicionales TemaAdicional[]
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -2440,4 +2442,26 @@ model JuntaParticipante {
 
   @@unique([juntaId, userId])
   @@map("junta_participantes")
+}
+
+model TemaAdicional {
+  id           String  @id @default(cuid())
+  juntaId      String
+  junta        Junta   @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  titulo       String
+  descripcion  String? @db.Text
+  propuestoPor String
+  autor        User    @relation("TemaAutor", fields: [propuestoPor], references: [id])
+  orden        Int     @default(0)
+
+  // Estado durante la junta
+  cubierto                Boolean  @default(false)
+  notas                   String?  @db.Text
+  pasadoSiguienteSemana   Boolean  @default(false)
+  agregadoEnJunta         Boolean  @default(false) // true si se agregó durante la junta, no antes
+
+  createdAt DateTime @default(now())
+
+  @@index([juntaId])
+  @@map("temas_adicionales")
 }

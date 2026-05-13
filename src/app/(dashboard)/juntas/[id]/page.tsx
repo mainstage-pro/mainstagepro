@@ -8,41 +8,47 @@ import { AREA_LABELS, AREA_COLORS, TIPO_AGENDA_LABELS, TIPO_AGENDA_COLORS, type 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AgendaItem = {
-  id: string;
-  orden: number;
-  tipo: string;
-  titulo: string;
-  descripcion: string | null;
-  placeholder: string | null;
-  respuesta: string | null;
-  completado: boolean;
+  id: string; orden: number; tipo: string; titulo: string;
+  descripcion: string | null; placeholder: string | null;
+  respuesta: string | null; completado: boolean;
+};
+
+type TemaAdicional = {
+  id: string; titulo: string; descripcion: string | null;
+  cubierto: boolean; notas: string | null;
+  pasadoSiguienteSemana: boolean; agregadoEnJunta: boolean;
+  autor: { id: string; name: string };
 };
 
 type TareaJunta = {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  prioridad: string;
-  estado: string;
-  fechaVencimiento: string | null;
+  id: string; titulo: string; descripcion: string | null;
+  prioridad: string; estado: string; fechaVencimiento: string | null;
   asignadoA: { id: string; name: string } | null;
   proyectoTarea: { id: string; nombre: string } | null;
 };
 
+type TareaPendiente = {
+  id: string; titulo: string; prioridad: string; estado: string;
+  fecha: string | null; fechaVencimiento: string | null;
+  asignadoA: { id: string; name: string } | null;
+};
+
 type Junta = {
-  id: string;
-  titulo: string;
-  area: string;
-  tipo: string;
-  fecha: string;
-  duracionMin: number;
-  estado: string;
-  notas: string | null;
-  resumen: string | null;
+  id: string; titulo: string; area: string; tipo: string;
+  fecha: string; duracionMin: number; estado: string;
+  notas: string | null; resumen: string | null;
   facilitador: { id: string; name: string };
   agendaItems: AgendaItem[];
   participantes: { user: { id: string; name: string } }[];
   tareas: TareaJunta[];
+  temasAdicionales: TemaAdicional[];
+};
+
+type EventoProximo = {
+  id: string; tipo: "CONFIRMADO" | "EN_PROCESO" | "SIN_CERRAR";
+  nombre: string; fecha: string; lugar: string | null;
+  cliente: string | null; responsable: string | null;
+  etapaActual?: string; urgente: boolean; linkHref: string;
 };
 
 type Usuario = { id: string; name: string; area: string | null };
@@ -51,51 +57,36 @@ type Proyecto = { id: string; nombre: string };
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtFecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", {
-    weekday: "long", day: "numeric", month: "long",
-  });
+  return new Date(iso).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 }
 function fmtHora(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", {
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
+  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
-function fmtVencimiento(iso: string | null) {
+function fmtFechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+}
+function fmtVenc(iso: string | null) {
   if (!iso) return null;
-  const d = new Date(iso);
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  const d = new Date(iso); const hoy = new Date(); hoy.setHours(0,0,0,0);
   const diff = Math.round((d.getTime() - hoy.getTime()) / 86400000);
-  if (diff === 0) return "Hoy";
-  if (diff === 1) return "Mañana";
-  if (diff < 0)  return `Hace ${Math.abs(diff)}d`;
-  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+  if (diff < 0)  return { label: `Hace ${Math.abs(diff)}d`, cls: "text-red-400" };
+  if (diff === 0) return { label: "Hoy",    cls: "text-emerald-400" };
+  if (diff === 1) return { label: "Mañana", cls: "text-yellow-400" };
+  return { label: d.toLocaleDateString("es-MX", { day: "numeric", month: "short" }), cls: "text-gray-500" };
 }
 
-const PRIORIDAD_COLORS: Record<string, string> = {
-  URGENTE: "text-red-400",
-  ALTA:    "text-orange-400",
-  MEDIA:   "text-[#B3985B]",
-  BAJA:    "text-gray-500",
+const PRIO_COLOR: Record<string, string> = {
+  URGENTE: "text-red-400", ALTA: "text-orange-400", MEDIA: "text-[#B3985B]", BAJA: "text-gray-500",
 };
 
 // ─── Modal Agregar Tarea ──────────────────────────────────────────────────────
 
-function ModalAgregarTarea({
-  junta,
-  usuarios,
-  proyectos,
-  onClose,
-  onCreated,
-}: {
-  junta: Junta;
-  usuarios: Usuario[];
-  proyectos: Proyecto[];
-  onClose: () => void;
-  onCreated: (t: TareaJunta) => void;
+function ModalAgregarTarea({ junta, usuarios, proyectos, onClose, onCreated }: {
+  junta: Junta; usuarios: Usuario[]; proyectos: Proyecto[];
+  onClose: () => void; onCreated: (t: TareaJunta) => void;
 }) {
-  const [titulo, setTitulo]   = useState("");
-  const [desc, setDesc]       = useState("");
+  const [titulo, setTitulo]       = useState("");
+  const [desc, setDesc]           = useState("");
   const [prioridad, setPrioridad] = useState("ALTA");
   const [asignadoId, setAsignadoId] = useState("");
   const [vencimiento, setVencimiento] = useState("");
@@ -103,20 +94,14 @@ function ModalAgregarTarea({
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
 
-  // Pre-llenar proyecto según área de la junta
   useEffect(() => {
     const areaMap: Record<string, string> = {
-      ADMINISTRACION: "administración",
-      MARKETING:      "marketing",
-      VENTAS:         "ventas",
-      PRODUCCION:     "producción",
-      DIRECCION:      "dirección",
+      ADMINISTRACION: "administración", MARKETING: "marketing",
+      VENTAS: "ventas", PRODUCCION: "producción", DIRECCION: "dirección",
     };
     const keyword = areaMap[junta.area];
     if (keyword) {
-      const match = proyectos.find((p) =>
-        p.nombre.toLowerCase().includes(keyword)
-      );
+      const match = proyectos.find((p) => p.nombre.toLowerCase().includes(keyword));
       if (match) setProyectoId(match.id);
     }
   }, [junta.area, proyectos]);
@@ -128,21 +113,14 @@ function ModalAgregarTarea({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        titulo:           titulo.trim(),
-        descripcion:      desc || null,
-        prioridad,
-        asignadoAId:      asignadoId || null,
-        fechaVencimiento: vencimiento || null,
-        proyectoTareaId:  proyectoId || null,
+        titulo: titulo.trim(), descripcion: desc || null, prioridad,
+        asignadoAId: asignadoId || null, fechaVencimiento: vencimiento || null,
+        proyectoTareaId: proyectoId || null,
       }),
     });
     setSaving(false);
-    if (res.ok) {
-      const { tarea } = await res.json();
-      onCreated(tarea);
-    } else {
-      setError("Error al crear la tarea");
-    }
+    if (res.ok) { const { tarea } = await res.json(); onCreated(tarea); }
+    else setError("Error al crear la tarea");
   }
 
   return (
@@ -154,87 +132,47 @@ function ModalAgregarTarea({
         </div>
         <div className="p-5 space-y-4">
           {error && <p className="text-red-400 text-xs">{error}</p>}
-
           <div>
             <label className="text-xs text-gray-400 block mb-1">Título *</label>
-            <input
-              autoFocus
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
+            <input autoFocus value={titulo} onChange={(e) => setTitulo(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
               placeholder="¿Qué hay que hacer?"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
-            />
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B]" />
           </div>
-
           <div>
             <label className="text-xs text-gray-400 block mb-1">Descripción / contexto</label>
-            <textarea
-              value={desc}
-              onChange={(e) => setDesc(e.target.value)}
-              rows={2}
+            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2}
               placeholder="Contexto o detalle adicional"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none"
-            />
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" />
           </div>
-
           <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Prioridad</label>
-              <select
-                value={prioridad}
-                onChange={(e) => setPrioridad(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="URGENTE">Urgente</option>
-                <option value="ALTA">Alta</option>
-                <option value="MEDIA">Media</option>
-                <option value="BAJA">Baja</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Asignado a</label>
-              <select
-                value={asignadoId}
-                onChange={(e) => setAsignadoId(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              >
-                <option value="">— Sin asignar —</option>
-                {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1">Fecha</label>
-              <input
-                type="date"
-                value={vencimiento}
-                onChange={(e) => setVencimiento(e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
+            {[
+              { label: "Prioridad", el: <select value={prioridad} onChange={(e) => setPrioridad(e.target.value)} className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="URGENTE">Urgente</option><option value="ALTA">Alta</option>
+                  <option value="MEDIA">Media</option><option value="BAJA">Baja</option>
+                </select> },
+              { label: "Asignado a", el: <select value={asignadoId} onChange={(e) => setAsignadoId(e.target.value)} className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Sin asignar —</option>
+                  {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select> },
+              { label: "Fecha", el: <input type="date" value={vencimiento} onChange={(e) => setVencimiento(e.target.value)}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /> },
+            ].map(({ label, el }) => (
+              <div key={label}><label className="text-xs text-gray-400 block mb-1">{label}</label>{el}</div>
+            ))}
           </div>
-
           <div>
             <label className="text-xs text-gray-400 block mb-1">Proyecto en Gestión Operativa</label>
-            <select
-              value={proyectoId}
-              onChange={(e) => setProyectoId(e.target.value)}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-            >
+            <select value={proyectoId} onChange={(e) => setProyectoId(e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
               <option value="">— Sin proyecto —</option>
               {proyectos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
             </select>
           </div>
-
           <div className="flex gap-3 pt-1">
-            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:border-[#444] transition-colors">
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50 transition-colors"
-            >
+            <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#2a2a2a] text-gray-400 text-sm hover:border-[#444] transition-colors">Cancelar</button>
+            <button onClick={handleSave} disabled={saving}
+              className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
               {saving ? "Agregando..." : "Agregar tarea"}
             </button>
           </div>
@@ -246,10 +184,7 @@ function ModalAgregarTarea({
 
 // ─── Agenda Item ──────────────────────────────────────────────────────────────
 
-function ItemAgenda({
-  item,
-  onUpdate,
-}: {
+function ItemAgenda({ item, onUpdate }: {
   item: AgendaItem;
   onUpdate: (id: string, changes: Partial<AgendaItem>) => void;
 }) {
@@ -263,69 +198,374 @@ function ItemAgenda({
   function handleRespuestaChange(val: string) {
     setRespuesta(val);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      onUpdate(item.id, { respuesta: val });
-    }, 800);
+    saveTimer.current = setTimeout(() => { onUpdate(item.id, { respuesta: val }); }, 800);
   }
 
   function handleToggleCompletado() {
     const next = !completado;
     setCompletado(next);
+    if (next) setExpanded(false);
     onUpdate(item.id, { completado: next });
   }
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-all ${
-      completado ? "border-[#1a1a1a] bg-[#0a0a0a]" : "border-[#222] bg-[#111]"
-    }`}>
-      {/* Item header */}
-      <div
-        className="flex items-start gap-3 px-4 py-3 cursor-pointer select-none"
-        onClick={() => setExpanded((v) => !v)}
-      >
-        <button
-          onClick={(e) => { e.stopPropagation(); handleToggleCompletado(); }}
-          className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
-            completado
-              ? "bg-green-500 border-green-500"
-              : "border-[#333] hover:border-[#B3985B]"
-          }`}
-        >
+    <div className={`border rounded-xl overflow-hidden transition-all ${completado ? "border-[#1a1a1a] bg-[#0a0a0a]" : "border-[#222] bg-[#111]"}`}>
+      <div className="flex items-start gap-3 px-4 py-3 cursor-pointer select-none" onClick={() => setExpanded((v) => !v)}>
+        <button onClick={(e) => { e.stopPropagation(); handleToggleCompletado(); }}
+          className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${completado ? "bg-green-500 border-green-500" : "border-[#333] hover:border-[#B3985B]"}`}>
           {completado && <span className="text-white text-[10px] leading-none">✓</span>}
         </button>
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className={`text-[9px] font-bold uppercase tracking-wider ${tipoColor}`}>{tipoLabel}</span>
             <span className="text-gray-700 text-[9px]">·</span>
             <span className="text-gray-600 text-[9px]">{item.orden}</span>
           </div>
-          <p className={`text-sm font-medium ${completado ? "text-gray-600 line-through" : "text-white"}`}>
-            {item.titulo}
-          </p>
+          <p className={`text-sm font-medium ${completado ? "text-gray-600 line-through" : "text-white"}`}>{item.titulo}</p>
           {item.descripcion && !expanded && (
             <p className="text-[11px] text-gray-600 mt-0.5 truncate">{item.descripcion}</p>
           )}
         </div>
-
         <span className="text-gray-600 text-sm mt-0.5">{expanded ? "▲" : "▼"}</span>
       </div>
-
-      {/* Item body */}
       {expanded && (
         <div className="px-4 pb-4 border-t border-[#1a1a1a]">
-          {item.descripcion && (
-            <p className="text-xs text-gray-500 pt-3 pb-2">{item.descripcion}</p>
-          )}
-          <textarea
-            value={respuesta}
-            onChange={(e) => handleRespuestaChange(e.target.value)}
-            rows={4}
+          {item.descripcion && <p className="text-xs text-gray-500 pt-3 pb-2">{item.descripcion}</p>}
+          <textarea value={respuesta} onChange={(e) => handleRespuestaChange(e.target.value)} rows={4}
             placeholder={item.placeholder ?? "Escribe las notas de este punto..."}
-            className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors"
-          />
+            className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors" />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Sección de Temas Adicionales ────────────────────────────────────────────
+
+function SeccionTemasAdicionales({ juntaId, temas, esCerrada, onTemasChange }: {
+  juntaId: string;
+  temas: TemaAdicional[];
+  esCerrada: boolean;
+  onTemasChange: (temas: TemaAdicional[]) => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [nuevoTitulo, setNuevoTitulo] = useState("");
+  const [nuevaDesc, setNuevaDesc]     = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function agregarTema() {
+    if (!nuevoTitulo.trim()) return;
+    setSaving(true);
+    const res = await fetch(`/api/juntas/${juntaId}/temas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo: nuevoTitulo.trim(), descripcion: nuevaDesc || null, agregadoEnJunta: true }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const { tema } = await res.json();
+      onTemasChange([...temas, tema]);
+      setNuevoTitulo(""); setNuevaDesc(""); setShowForm(false);
+    }
+  }
+
+  async function toggleCubierto(tema: TemaAdicional) {
+    const next = !tema.cubierto;
+    const res = await fetch(`/api/juntas/${juntaId}/temas/${tema.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cubierto: next }),
+    });
+    if (res.ok) {
+      onTemasChange(temas.map((t) => t.id === tema.id ? { ...t, cubierto: next } : t));
+    }
+  }
+
+  async function togglePasar(tema: TemaAdicional) {
+    const next = !tema.pasadoSiguienteSemana;
+    const res = await fetch(`/api/juntas/${juntaId}/temas/${tema.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pasadoSiguienteSemana: next }),
+    });
+    if (res.ok) {
+      onTemasChange(temas.map((t) => t.id === tema.id ? { ...t, pasadoSiguienteSemana: next } : t));
+    }
+  }
+
+  async function eliminarTema(id: string) {
+    await fetch(`/api/juntas/${juntaId}/temas/${id}`, { method: "DELETE" });
+    onTemasChange(temas.filter((t) => t.id !== id));
+  }
+
+  return (
+    <div className="border border-[#222] rounded-xl overflow-hidden mt-4">
+      <div className="px-4 py-3 bg-[#111] border-b border-[#1a1a1a] flex items-center justify-between">
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Temas adicionales esta semana</p>
+          {temas.length > 0 && (
+            <p className="text-[10px] text-gray-600 mt-0.5">
+              {temas.filter((t) => t.cubierto).length}/{temas.length} cubiertos
+            </p>
+          )}
+        </div>
+        {!esCerrada && (
+          <button onClick={() => setShowForm((v) => !v)}
+            className="text-xs bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2.5 py-1 rounded-lg hover:border-[#444] hover:text-white transition-colors">
+            + Agregar
+          </button>
+        )}
+      </div>
+
+      <div className="bg-[#0d0d0d]">
+        {temas.length === 0 && !showForm && (
+          <p className="text-gray-700 text-xs text-center py-5">
+            {esCerrada ? "Sin temas adicionales en esta junta" : "Sin temas adicionales — agrégalos antes o durante la junta"}
+          </p>
+        )}
+
+        {temas.map((tema) => (
+          <div key={tema.id} className={`px-4 py-3 border-b border-[#1a1a1a] last:border-0 ${tema.cubierto ? "opacity-60" : ""}`}>
+            <div className="flex items-start gap-2">
+              <button onClick={() => !esCerrada && toggleCubierto(tema)}
+                className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${tema.cubierto ? "bg-green-500 border-green-500" : "border-[#333] hover:border-[#B3985B]"}`}>
+                {tema.cubierto && <span className="text-white text-[10px]">✓</span>}
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className={`text-sm ${tema.cubierto ? "line-through text-gray-600" : "text-white"}`}>{tema.titulo}</p>
+                  {tema.agregadoEnJunta && (
+                    <span className="text-[9px] text-[#B3985B] border border-[#B3985B]/30 px-1.5 py-0.5 rounded-full">En junta</span>
+                  )}
+                  {tema.pasadoSiguienteSemana && (
+                    <span className="text-[9px] text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded-full">→ Siguiente semana</span>
+                  )}
+                </div>
+                {tema.descripcion && <p className="text-[11px] text-gray-600 mt-0.5">{tema.descripcion}</p>}
+                <p className="text-[10px] text-gray-700 mt-0.5">{tema.autor.name}</p>
+              </div>
+              {!esCerrada && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => togglePasar(tema)}
+                    title={tema.pasadoSiguienteSemana ? "Quitar de siguiente semana" : "Pasar a siguiente semana"}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${tema.pasadoSiguienteSemana ? "border-blue-800/40 text-blue-400 bg-blue-900/20" : "border-[#2a2a2a] text-gray-600 hover:text-blue-400 hover:border-blue-800/40"}`}>
+                    →
+                  </button>
+                  <button onClick={() => eliminarTema(tema.id)}
+                    className="text-[10px] px-2 py-0.5 rounded border border-[#2a2a2a] text-gray-700 hover:text-red-400 hover:border-red-900/40 transition-colors">
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {showForm && (
+          <div className="px-4 py-3 border-t border-[#1a1a1a] space-y-2">
+            <input autoFocus value={nuevoTitulo} onChange={(e) => setNuevoTitulo(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && agregarTema()}
+              placeholder="Título del tema *"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B]" />
+            <input value={nuevaDesc} onChange={(e) => setNuevaDesc(e.target.value)}
+              placeholder="Descripción / contexto (opcional)"
+              className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B]" />
+            <div className="flex gap-2">
+              <button onClick={() => { setShowForm(false); setNuevoTitulo(""); setNuevaDesc(""); }}
+                className="flex-1 py-1.5 rounded-lg border border-[#2a2a2a] text-gray-500 text-xs hover:border-[#444] transition-colors">Cancelar</button>
+              <button onClick={agregarTema} disabled={saving || !nuevoTitulo.trim()}
+                className="flex-1 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs hover:bg-[#222] disabled:opacity-40 transition-colors">
+                {saving ? "Agregando..." : "Agregar tema"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Panel Tareas Pendientes del Área ─────────────────────────────────────────
+
+function PanelTareasPendientes({ proyectos, area }: { proyectos: Proyecto[]; area: string }) {
+  const [tareas, setTareas]       = useState<TareaPendiente[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [filtro, setFiltro]       = useState<"todas" | "vencidas" | "hoy" | "semana">("vencidas");
+
+  useEffect(() => {
+    const areaMap: Record<string, string> = {
+      ADMINISTRACION: "administración", MARKETING: "marketing",
+      VENTAS: "ventas", PRODUCCION: "producción", DIRECCION: "dirección",
+      GLOBAL: "",
+    };
+    const keyword = areaMap[area] ?? "";
+    const proyecto = keyword
+      ? proyectos.find((p) => p.nombre.toLowerCase().includes(keyword))
+      : null;
+
+    const url = proyecto
+      ? `/api/tareas?proyectoId=${proyecto.id}&estado=PENDIENTE&parentId=null`
+      : area === "GLOBAL"
+        ? `/api/tareas?estado=PENDIENTE&parentId=null`
+        : null;
+
+    if (!url) { setLoading(false); return; }
+
+    fetch(url).then((r) => r.json()).then((d) => {
+      setTareas(d.tareas ?? []);
+      setLoading(false);
+    });
+  }, [area, proyectos]);
+
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const en7 = new Date(hoy); en7.setDate(hoy.getDate() + 7);
+
+  const filtradas = tareas.filter((t) => {
+    if (filtro === "todas") return true;
+    if (!t.fecha && !t.fechaVencimiento) return false;
+    const d = new Date((t.fechaVencimiento ?? t.fecha)!);
+    if (filtro === "vencidas") return d < hoy;
+    if (filtro === "hoy")      return d.getTime() === hoy.getTime();
+    if (filtro === "semana")   return d >= hoy && d <= en7;
+    return true;
+  });
+
+  const vencidasCount = tareas.filter((t) => {
+    const d = t.fechaVencimiento ?? t.fecha;
+    return d && new Date(d) < hoy;
+  }).length;
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Pendientes del área</p>
+          {vencidasCount > 0 && (
+            <span className="text-[9px] font-bold bg-red-900/30 text-red-400 border border-red-900/40 px-1.5 py-0.5 rounded-full">
+              {vencidasCount} vencidas
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1">
+          {(["vencidas", "hoy", "semana", "todas"] as const).map((f) => (
+            <button key={f} onClick={() => setFiltro(f)}
+              className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${filtro === f ? "bg-[#1a1a1a] text-white" : "text-gray-600 hover:text-gray-400"}`}>
+              {f === "vencidas" ? "Venc." : f === "semana" ? "Semana" : f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <p className="text-gray-700 text-xs text-center py-6">Cargando...</p>
+        ) : filtradas.length === 0 ? (
+          <p className="text-gray-700 text-xs text-center py-6">
+            {filtro === "vencidas" ? "Sin tareas vencidas 🎉" : "Sin tareas en este filtro"}
+          </p>
+        ) : (
+          filtradas.map((t) => {
+            const venc = fmtVenc(t.fechaVencimiento ?? t.fecha);
+            return (
+              <div key={t.id} className="flex items-start gap-2 px-3 py-2.5 border-b border-[#0d0d0d] last:border-0">
+                <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
+                  t.prioridad === "URGENTE" ? "bg-red-500" : t.prioridad === "ALTA" ? "bg-orange-400" : "bg-[#333]"
+                }`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-white truncate">{t.titulo}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {t.asignadoA && <span className="text-[10px] text-gray-600">{t.asignadoA.name}</span>}
+                    {venc && <span className={`text-[10px] ${venc.cls}`}>{venc.label}</span>}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Panel Eventos Próximos (solo junta Global) ───────────────────────────────
+
+function PanelEventosGlobal() {
+  type EventosData = { estaSemana: EventoProximo[]; siguienteSemana: EventoProximo[] };
+  const [data, setData]     = useState<EventosData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/juntas/eventos-proximos").then((r) => r.json()).then((d) => {
+      setData(d); setLoading(false);
+    });
+  }, []);
+
+  const TIPO_CONFIG = {
+    CONFIRMADO: { label: "Confirmado", cls: "bg-green-900/30 text-green-400 border-green-800/40" },
+    EN_PROCESO:  { label: "En proceso", cls: "bg-yellow-900/30 text-yellow-400 border-yellow-800/40" },
+    SIN_CERRAR:  { label: "Sin cerrar", cls: "bg-red-900/30 text-red-400 border-red-800/40" },
+  };
+
+  function EventoRow({ e }: { e: EventoProximo }) {
+    const cfg = TIPO_CONFIG[e.tipo];
+    return (
+      <div className={`px-3 py-2.5 border-b border-[#0d0d0d] last:border-0 ${e.urgente && e.tipo !== "CONFIRMADO" ? "bg-red-950/10" : ""}`}>
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+              <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${cfg.cls}`}>{cfg.label}</span>
+              {e.urgente && e.tipo !== "CONFIRMADO" && (
+                <span className="text-[9px] font-bold text-red-400">URGENTE</span>
+              )}
+            </div>
+            <p className="text-xs text-white truncate">{e.nombre}</p>
+            <p className="text-[10px] text-gray-500">
+              {fmtFechaCorta(e.fecha)}{e.lugar ? ` · ${e.lugar}` : ""}
+            </p>
+            {e.tipo !== "CONFIRMADO" && e.etapaActual && (
+              <p className="text-[10px] text-gray-600">{e.etapaActual}</p>
+            )}
+          </div>
+          <a href={e.linkHref} className="text-[10px] text-[#B3985B] hover:underline shrink-0 mt-0.5">Ver →</a>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) return <p className="text-gray-700 text-xs text-center py-6">Cargando eventos...</p>;
+
+  const urgentes = (data?.estaSemana ?? []).filter((e) => e.tipo !== "CONFIRMADO" && e.urgente);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
+        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Eventos — 2 semanas</p>
+        {urgentes.length > 0 && (
+          <span className="text-[9px] font-bold bg-red-900/30 text-red-400 border border-red-900/40 px-1.5 py-0.5 rounded-full">
+            {urgentes.length} sin cerrar esta semana
+          </span>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {(data?.estaSemana.length ?? 0) + (data?.siguienteSemana.length ?? 0) === 0 ? (
+          <p className="text-gray-700 text-xs text-center py-8">Sin eventos en las próximas 2 semanas</p>
+        ) : (
+          <>
+            {(data?.estaSemana.length ?? 0) > 0 && (
+              <>
+                <p className="text-[9px] font-bold text-gray-600 uppercase tracking-wider px-3 py-2 bg-[#0a0a0a]">Esta semana</p>
+                {data!.estaSemana.map((e) => <EventoRow key={e.id + e.tipo} e={e} />)}
+              </>
+            )}
+            {(data?.siguienteSemana.length ?? 0) > 0 && (
+              <>
+                <p className="text-[9px] font-bold text-gray-600 uppercase tracking-wider px-3 py-2 bg-[#0a0a0a]">Siguiente semana</p>
+                {data!.siguienteSemana.map((e) => <EventoRow key={e.id + e.tipo} e={e} />)}
+              </>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -359,24 +599,22 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
 
   async function patchJunta(data: Record<string, unknown>) {
     const res = await fetch(`/api/juntas/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (res.ok) {
       const { junta: updated } = await res.json();
-      setJunta(updated);
+      setJunta((prev) => prev ? { ...prev, ...updated } : updated);
     }
   }
 
-  async function handleIniciar() {
-    await patchJunta({ estado: "EN_CURSO" });
-  }
-
   async function handleCerrar() {
-    if (!confirm("¿Cerrar esta junta? Se generará el resumen automático.")) return;
+    const temasSinCubrir = junta?.temasAdicionales.filter((t) => !t.cubierto && !t.pasadoSiguienteSemana) ?? [];
+    const msg = temasSinCubrir.length > 0
+      ? `¿Cerrar la junta? Hay ${temasSinCubrir.length} tema(s) sin cubrir. Se generará el resumen automático.`
+      : "¿Cerrar esta junta? Se generará el resumen automático.";
+    if (!confirm(msg)) return;
     setCerrando(true);
-    // Generate summary (also sets estado=COMPLETADA)
     await fetch(`/api/juntas/${id}/resumen`, { method: "POST" });
     setCerrando(false);
     router.push(`/juntas/${id}/reporte`);
@@ -387,39 +625,26 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
     if (notasTimer.current) clearTimeout(notasTimer.current);
     notasTimer.current = setTimeout(() => {
       fetch(`/api/juntas/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notas: val }),
       });
     }, 800);
   }
 
   async function handleAgendaUpdate(itemId: string, changes: Partial<AgendaItem>) {
-    // Optimistic update
     setJunta((prev) => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        agendaItems: prev.agendaItems.map((it) =>
-          it.id === itemId ? { ...it, ...changes } : it
-        ),
-      };
+      return { ...prev, agendaItems: prev.agendaItems.map((it) => it.id === itemId ? { ...it, ...changes } : it) };
     });
     await fetch(`/api/juntas/${id}/agenda/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(changes),
     });
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-gray-600 text-sm">
-        Cargando junta...
-      </div>
-    );
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-gray-600 text-sm">Cargando junta...</div>;
   }
-
   if (!junta) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -431,190 +656,155 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  const colors    = AREA_COLORS[junta.area as AreaJunta] ?? AREA_COLORS.GLOBAL;
-  const areaLabel = AREA_LABELS[junta.area as AreaJunta] ?? junta.area;
-  const esCerrada = junta.estado === "COMPLETADA" || junta.estado === "CANCELADA";
+  const colors      = AREA_COLORS[junta.area as AreaJunta] ?? AREA_COLORS.GLOBAL;
+  const areaLabel   = AREA_LABELS[junta.area as AreaJunta] ?? junta.area;
+  const esCerrada   = junta.estado === "COMPLETADA" || junta.estado === "CANCELADA";
+  const esGlobal    = junta.tipo === "GLOBAL_SEMANAL";
   const itemsCubiertos = junta.agendaItems.filter((i) => i.completado).length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center gap-3 flex-wrap">
-        <Link href="/juntas" className="text-gray-600 hover:text-white text-sm transition-colors shrink-0">
-          ← Juntas
-        </Link>
+      <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-3 flex-wrap shrink-0">
+        <Link href="/juntas" className="text-gray-600 hover:text-white text-sm transition-colors shrink-0">← Juntas</Link>
         <span className="text-gray-700">·</span>
-        <span className={`text-xs font-bold px-2 py-1 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>
-          {areaLabel}
-        </span>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>{areaLabel}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold truncate">{junta.titulo}</p>
-          <p className="text-gray-500 text-xs">
-            {fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)} · {junta.duracionMin} min · {junta.facilitador.name}
-          </p>
+          <p className="text-white font-semibold text-sm truncate">{junta.titulo}</p>
+          <p className="text-gray-500 text-xs">{fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)} · {junta.duracionMin} min · {junta.facilitador.name}</p>
         </div>
-
         <div className="flex items-center gap-2 shrink-0">
-          {/* Progress */}
           {junta.agendaItems.length > 0 && (
-            <span className="text-xs text-gray-500">
-              {itemsCubiertos}/{junta.agendaItems.length}
-            </span>
+            <span className="text-xs text-gray-500">{itemsCubiertos}/{junta.agendaItems.length} agenda</span>
           )}
-
           {!esCerrada && junta.estado === "PROGRAMADA" && (
-            <button
-              onClick={handleIniciar}
-              className="px-3 py-1.5 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/25 transition-colors"
-            >
+            <button onClick={() => patchJunta({ estado: "EN_CURSO" })}
+              className="px-3 py-1.5 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/25 transition-colors">
               ▶ Iniciar
             </button>
           )}
-
           {!esCerrada && (
-            <button
-              onClick={handleCerrar}
-              disabled={cerrando}
-              className="px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-800/40 text-green-400 text-xs font-semibold hover:bg-green-900/50 disabled:opacity-50 transition-colors"
-            >
+            <button onClick={handleCerrar} disabled={cerrando}
+              className="px-3 py-1.5 rounded-lg bg-green-900/30 border border-green-800/40 text-green-400 text-xs font-semibold hover:bg-green-900/50 disabled:opacity-50 transition-colors">
               {cerrando ? "Cerrando..." : "✓ Cerrar junta"}
             </button>
           )}
-
           {esCerrada && (
-            <Link
-              href={`/juntas/${id}/reporte`}
-              className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-xs hover:border-[#444] transition-colors"
-            >
+            <Link href={`/juntas/${id}/reporte`}
+              className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-xs hover:border-[#444] transition-colors">
               Ver reporte →
             </Link>
           )}
         </div>
       </div>
 
-      {/* ── Main content: 2 panels ── */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      {/* ── 3-zone layout ── */}
+      <div className="flex-1 flex overflow-hidden">
 
-        {/* ── Panel izquierdo: Agenda ── */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3 lg:border-r border-[#1a1a1a]">
-          <p className="text-xs text-gray-600 uppercase tracking-wider mb-4">Agenda</p>
+        {/* ── Panel izquierdo — Agenda + Temas adicionales ── */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2 lg:border-r border-[#1a1a1a] min-w-0">
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Agenda estructurada</p>
 
           {junta.agendaItems.map((item) => (
-            <ItemAgenda
-              key={item.id}
-              item={item}
-              onUpdate={handleAgendaUpdate}
-            />
+            <ItemAgenda key={item.id} item={item} onUpdate={handleAgendaUpdate} />
           ))}
 
           {/* Notas generales */}
           <div className="border border-[#222] rounded-xl overflow-hidden mt-4">
             <div className="px-4 py-3 bg-[#111] border-b border-[#1a1a1a]">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Notas generales de la junta</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Notas generales</p>
             </div>
             <div className="bg-[#0d0d0d] p-4">
-              <textarea
-                value={junta.notas ?? ""}
-                onChange={(e) => handleNotasChange(e.target.value)}
-                rows={5}
+              <textarea value={junta.notas ?? ""} onChange={(e) => handleNotasChange(e.target.value)} rows={4}
                 placeholder="Notas libres, observaciones, contexto adicional..."
-                className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none resize-none"
-              />
+                className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none resize-none" />
             </div>
           </div>
+
+          {/* Temas adicionales */}
+          <SeccionTemasAdicionales
+            juntaId={id}
+            temas={junta.temasAdicionales}
+            esCerrada={esCerrada}
+            onTemasChange={(temas) => setJunta((prev) => prev ? { ...prev, temasAdicionales: temas } : prev)}
+          />
         </div>
 
-        {/* ── Panel derecho: Tareas ── */}
-        <div className="w-full lg:w-80 xl:w-96 flex flex-col border-t lg:border-t-0 border-[#1a1a1a]">
-          <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Tareas de esta junta
-              </p>
-              <p className="text-[10px] text-gray-600 mt-0.5">
-                Se crean en Gestión Operativa
-              </p>
-            </div>
-            {!esCerrada && (
-              <button
-                onClick={() => setModalTarea(true)}
-                className="text-xs bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] px-2.5 py-1 rounded-lg hover:bg-[#B3985B]/25 transition-colors font-semibold"
-              >
-                + Agregar
-              </button>
-            )}
-          </div>
+        {/* ── Panel derecho — dividido en dos mitades ── */}
+        <div className="w-full lg:w-80 xl:w-96 flex flex-col border-t lg:border-t-0 border-[#1a1a1a] shrink-0">
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
-            {junta.tareas.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-600 text-sm">Sin tareas aún</p>
-                {!esCerrada && (
-                  <button
-                    onClick={() => setModalTarea(true)}
-                    className="mt-2 text-xs text-[#B3985B] hover:underline"
-                  >
-                    + Agregar primera tarea
-                  </button>
-                )}
-              </div>
+          {/* ── Mitad superior: Eventos (Global) o Tareas de esta junta ── */}
+          <div className="flex-1 flex flex-col border-b border-[#1a1a1a] overflow-hidden">
+            {esGlobal ? (
+              <PanelEventosGlobal />
             ) : (
-              junta.tareas.map((t) => (
-                <div
-                  key={t.id}
-                  className="bg-[#111] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#2a2a2a] transition-colors"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className={`mt-0.5 w-3 h-3 rounded-full border flex-shrink-0 ${
-                      t.estado === "COMPLETADA" ? "bg-green-500 border-green-500" : "border-[#333]"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm leading-snug ${
-                        t.estado === "COMPLETADA" ? "text-gray-600 line-through" : "text-white"
-                      }`}>{t.titulo}</p>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        {t.asignadoA && (
-                          <span className="text-[10px] text-gray-500">{t.asignadoA.name}</span>
-                        )}
-                        <span className={`text-[10px] font-semibold ${PRIORIDAD_COLORS[t.prioridad] ?? "text-gray-500"}`}>
-                          {t.prioridad}
-                        </span>
-                        {t.fechaVencimiento && (
-                          <span className="text-[10px] text-gray-600">
-                            {fmtVencimiento(t.fechaVencimiento)}
-                          </span>
-                        )}
-                      </div>
-                      {t.proyectoTarea && (
-                        <p className="text-[10px] text-gray-600 mt-1 truncate">{t.proyectoTarea.nombre}</p>
+              <>
+                <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between shrink-0">
+                  <div>
+                    <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Tareas de esta junta</p>
+                    <p className="text-[9px] text-gray-700 mt-0.5">→ Gestión Operativa</p>
+                  </div>
+                  {!esCerrada && (
+                    <button onClick={() => setModalTarea(true)}
+                      className="text-xs bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] px-2.5 py-1 rounded-lg hover:bg-[#B3985B]/25 transition-colors font-semibold">
+                      + Agregar
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                  {junta.tareas.length === 0 ? (
+                    <div className="text-center py-6">
+                      <p className="text-gray-600 text-xs">Sin tareas aún</p>
+                      {!esCerrada && (
+                        <button onClick={() => setModalTarea(true)} className="mt-1.5 text-[10px] text-[#B3985B] hover:underline">+ Agregar primera tarea</button>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    junta.tareas.map((t) => {
+                      const venc = fmtVenc(t.fechaVencimiento);
+                      return (
+                        <div key={t.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2.5 hover:border-[#2a2a2a] transition-colors">
+                          <div className="flex items-start gap-2">
+                            <div className={`mt-0.5 w-2.5 h-2.5 rounded-full border flex-shrink-0 ${t.estado === "COMPLETADA" ? "bg-green-500 border-green-500" : "border-[#333]"}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs leading-snug ${t.estado === "COMPLETADA" ? "text-gray-600 line-through" : "text-white"}`}>{t.titulo}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                {t.asignadoA && <span className="text-[10px] text-gray-500">{t.asignadoA.name}</span>}
+                                <span className={`text-[10px] font-semibold ${PRIO_COLOR[t.prioridad] ?? "text-gray-500"}`}>{t.prioridad}</span>
+                                {venc && <span className={`text-[10px] ${venc.cls}`}>{venc.label}</span>}
+                              </div>
+                              {t.proyectoTarea && <p className="text-[9px] text-gray-600 mt-0.5 truncate">{t.proyectoTarea.nombre}</p>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              ))
+                {!esCerrada && junta.tareas.length > 0 && (
+                  <div className="p-3 border-t border-[#1a1a1a] shrink-0">
+                    <button onClick={() => setModalTarea(true)}
+                      className="w-full py-1.5 rounded-lg border border-dashed border-[#2a2a2a] text-gray-600 text-xs hover:border-[#B3985B]/30 hover:text-[#B3985B] transition-colors">
+                      + Agregar tarea
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {!esCerrada && (
-            <div className="p-4 border-t border-[#1a1a1a]">
-              <button
-                onClick={() => setModalTarea(true)}
-                className="w-full py-2 rounded-xl border border-dashed border-[#2a2a2a] text-gray-600 text-xs hover:border-[#B3985B]/30 hover:text-[#B3985B] transition-colors"
-              >
-                + Agregar tarea
-              </button>
-            </div>
-          )}
+          {/* ── Mitad inferior: Tareas pendientes del área ── */}
+          <div className="flex-1 overflow-hidden">
+            <PanelTareasPendientes proyectos={proyectos} area={junta.area} />
+          </div>
         </div>
       </div>
 
       {/* Modal agregar tarea */}
       {modalTarea && (
         <ModalAgregarTarea
-          junta={junta}
-          usuarios={usuarios}
-          proyectos={proyectos}
+          junta={junta} usuarios={usuarios} proyectos={proyectos}
           onClose={() => setModalTarea(false)}
           onCreated={(t) => {
             setJunta((prev) => prev ? { ...prev, tareas: [...prev.tareas, t] } : prev);

@@ -24,6 +24,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           proyectoTarea: { select: { id: true, nombre: true } },
         },
       },
+      temasAdicionales: {
+        orderBy: { orden: "asc" },
+        include: { autor: { select: { id: true, name: true } } },
+      },
     },
   });
 

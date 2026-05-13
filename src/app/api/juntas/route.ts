@@ -52,6 +52,20 @@ export async function POST(req: NextRequest) {
   const titulo = template?.nombre ?? `Junta ${area} — ${tipo}`;
   const duracion = duracionMin ?? template?.duracionMin ?? 45;
 
+  // Buscar temas pendientes de la última junta completada del mismo área
+  const juntaAnterior = area !== "GLOBAL"
+    ? await prisma.junta.findFirst({
+        where: { area, estado: "COMPLETADA" },
+        include: {
+          temasAdicionales: {
+            where: { pasadoSiguienteSemana: true, cubierto: false },
+            orderBy: { orden: "asc" },
+          },
+        },
+        orderBy: { fecha: "desc" },
+      })
+    : null;
+
   const junta = await prisma.junta.create({
     data: {
       titulo,
@@ -82,6 +96,20 @@ export async function POST(req: NextRequest) {
       participantes: { include: { user: { select: { id: true, name: true } } } },
     },
   });
+
+  // Copiar temas pendientes de la semana anterior
+  const temasPendientes = juntaAnterior?.temasAdicionales ?? [];
+  if (temasPendientes.length > 0) {
+    await prisma.temaAdicional.createMany({
+      data: temasPendientes.map((t, i) => ({
+        juntaId:      junta.id,
+        titulo:       `[Pendiente] ${t.titulo}`,
+        descripcion:  t.descripcion,
+        propuestoPor: t.propuestoPor,
+        orden:        i,
+      })),
+    });
+  }
 
   return NextResponse.json({ junta }, { status: 201 });
 }
