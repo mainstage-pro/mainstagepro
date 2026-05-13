@@ -2531,7 +2531,12 @@ function SectionBlock({
             </span>
           )}
         </span>
-        {!headerOver && seccion.tareas.length > 0 && <span className="text-[11px] text-[#333]">({seccion.tareas.length})</span>}
+        {!headerOver && (() => {
+          const visible = viewFilter ? viewFilter(seccion.tareas) : seccion.tareas;
+          return visible.length > 0
+            ? <span className="text-[11px] text-[#333]">({visible.length})</span>
+            : null;
+        })()}
         {hov && !headerOver && (
           <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
             className="ml-auto text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">
