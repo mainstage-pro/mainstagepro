@@ -16,8 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const cxp = await prisma.cuentaPagar.findUnique({
     where: { id },
     include: {
-      proveedor: { select: { nombre: true, empresa: true } },
-      tecnico:   { select: { nombre: true } },
+      proveedor: { select: { nombre: true, empresa: true, banco: true, cuentaBancaria: true, clabe: true, noTarjeta: true, rfc: true } },
+      tecnico:   { select: { nombre: true, cuentaBancaria: true } },
       empresa:   { select: { nombre: true } },
       socio:     { select: { nombre: true } },
       proyecto:  { select: { nombre: true, numeroProyecto: true, fechaEvento: true } },
@@ -47,6 +47,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
+  // Datos bancarios según tipo de acreedor
+  let banco: string | null = null;
+  let cuentaBancaria: string | null = null;
+  let clabe: string | null = null;
+  let noTarjeta: string | null = null;
+  let rfc: string | null = null;
+
+  if (cxp.tipoAcreedor === "PROVEEDOR" && cxp.proveedor) {
+    banco          = cxp.proveedor.banco          ?? null;
+    cuentaBancaria = cxp.proveedor.cuentaBancaria ?? null;
+    clabe          = cxp.proveedor.clabe          ?? null;
+    noTarjeta      = cxp.proveedor.noTarjeta      ?? null;
+    rfc            = cxp.proveedor.rfc            ?? null;
+  } else if (cxp.tipoAcreedor === "TECNICO" && cxp.tecnico) {
+    cuentaBancaria = cxp.tecnico.cuentaBancaria ?? null;
+  }
+
   const notaData = {
     id:               cxp.id,
     logoSrc,
@@ -57,6 +74,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     estado:           cxp.estado,
     beneficiario,
     empresaBeneficiario,
+    banco,
+    cuentaBancaria,
+    clabe,
+    noTarjeta,
+    rfc,
     proyecto: cxp.proyecto
       ? { nombre: cxp.proyecto.nombre, numeroProyecto: cxp.proyecto.numeroProyecto, fechaEvento: cxp.proyecto.fechaEvento?.toISOString() ?? null }
       : null,

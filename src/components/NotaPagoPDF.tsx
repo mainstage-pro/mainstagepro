@@ -66,6 +66,14 @@ const s = StyleSheet.create({
   },
   montoLabel: { fontSize: 9,  fontFamily: "Helvetica-Bold", color: WHITE },
   montoValue: { fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD },
+  // Datos bancarios del acreedor
+  bancosWrap:  { marginBottom: 18 },
+  bancoCard:   { backgroundColor: LIGHT, borderRadius: 4, padding: 10 },
+  bancoTitulo: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, marginBottom: 6 },
+  bancoFila:   { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
+  bancoLabel:  { fontSize: 7.5, color: "#888888" },
+  bancoValor:  { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "60%", textAlign: "right" },
+
   dueDateBox: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     backgroundColor: GOLD + "12",
@@ -101,6 +109,11 @@ export interface NotaPagoData {
   estado: string;
   beneficiario: string;
   empresaBeneficiario?: string | null;
+  banco?: string | null;
+  cuentaBancaria?: string | null;
+  clabe?: string | null;
+  noTarjeta?: string | null;
+  rfc?: string | null;
   proyecto?: { nombre: string; numeroProyecto: string | number; fechaEvento?: string | null } | null;
 }
 
@@ -201,6 +214,36 @@ export function NotaPagoPDF({ nota }: { nota: NotaPagoData }) {
               <Text style={s.infoValue}>{ESTADO_LABEL[nota.estado] ?? nota.estado}</Text>
             </View>
           </View>
+
+          {/* Datos bancarios del acreedor */}
+          {(nota.banco || nota.cuentaBancaria || nota.clabe) && (
+            <>
+              <Text style={s.sectionLabel}>DATOS BANCARIOS PARA PAGO</Text>
+              <View style={s.bancosWrap}>
+                <View style={s.bancoCard}>
+                  <Text style={s.bancoTitulo}>CUENTA DE {nota.beneficiario.toUpperCase()}</Text>
+                  {nota.empresaBeneficiario && (
+                    <View style={s.bancoFila}><Text style={s.bancoLabel}>Empresa</Text><Text style={s.bancoValor}>{nota.empresaBeneficiario}</Text></View>
+                  )}
+                  {nota.rfc && (
+                    <View style={s.bancoFila}><Text style={s.bancoLabel}>RFC</Text><Text style={s.bancoValor}>{nota.rfc}</Text></View>
+                  )}
+                  {nota.banco && (
+                    <View style={s.bancoFila}><Text style={s.bancoLabel}>Banco</Text><Text style={s.bancoValor}>{nota.banco}</Text></View>
+                  )}
+                  {nota.cuentaBancaria && (
+                    <View style={s.bancoFila}><Text style={s.bancoLabel}>No. Cuenta</Text><Text style={s.bancoValor}>{nota.cuentaBancaria}</Text></View>
+                  )}
+                  {nota.clabe && (
+                    <View style={s.bancoFila}><Text style={s.bancoLabel}>CLABE</Text><Text style={s.bancoValor}>{nota.clabe}</Text></View>
+                  )}
+                  {nota.noTarjeta && (
+                    <View style={[s.bancoFila, { marginBottom: 0 }]}><Text style={s.bancoLabel}>Tarjeta</Text><Text style={s.bancoValor}>{nota.noTarjeta}</Text></View>
+                  )}
+                </View>
+              </View>
+            </>
+          )}
 
           <Text style={s.nota}>
             Documento interno sin valor fiscal. Para factura oficial, solicítela por separado.{"\n"}

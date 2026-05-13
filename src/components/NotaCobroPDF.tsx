@@ -87,6 +87,15 @@ const s = StyleSheet.create({
   infoRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
   infoLabel:{ fontSize: 7.5, color: "#888888" },
   infoValue:{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "62%", textAlign: "right" },
+  // Cuentas bancarias
+  cuentasWrap:  { marginBottom: 18 },
+  cuentasRow:   { flexDirection: "row", gap: 8 },
+  cuentaCard:   { flex: 1, backgroundColor: LIGHT, borderRadius: 4, padding: 10 },
+  cuentaTitulo: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, marginBottom: 6 },
+  cuentaFila:   { flexDirection: "row", justifyContent: "space-between", marginBottom: 3 },
+  cuentaLabel:  { fontSize: 7, color: "#888888" },
+  cuentaValor:  { fontSize: 7, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "58%", textAlign: "right" },
+
   nota: { fontSize: 7, color: "#aaaaaa", fontStyle: "italic", lineHeight: 1.5 },
   footer: {
     position: "absolute", bottom: 18, left: 44, right: 44,
@@ -221,6 +230,31 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
           <View style={s.dueDateBox}>
             <Text style={s.dueDateLabel}>FECHA DE PAGO ACORDADA</Text>
             <Text style={s.dueDateValue}>{fmtDate(nota.fechaCompromiso)}</Text>
+          </View>
+
+          {/* Cuentas bancarias para el pago */}
+          <Text style={s.sectionLabel}>DATOS PARA TRANSFERENCIA</Text>
+          <View style={s.cuentasWrap}>
+            <View style={s.cuentasRow}>
+              <View style={s.cuentaCard}>
+                <Text style={s.cuentaTitulo}>CUENTA FISCAL</Text>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Razón Social</Text><Text style={s.cuentaValor}>Escenario Principal Producciones</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>RFC</Text><Text style={s.cuentaValor}>EPP2502068Q8</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Banco</Text><Text style={s.cuentaValor}>Banorte</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>No. Cuenta</Text><Text style={s.cuentaValor}>1313102977</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>CLABE</Text><Text style={s.cuentaValor}>072 680 013131029777</Text></View>
+                <View style={[s.cuentaFila, { marginBottom: 0 }]}><Text style={s.cuentaLabel}>Tarjeta</Text><Text style={s.cuentaValor}>4189 2810 0070 3307</Text></View>
+              </View>
+              <View style={s.cuentaCard}>
+                <Text style={s.cuentaTitulo}>CUENTA NO FISCAL</Text>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Beneficiario</Text><Text style={s.cuentaValor}>Jose Mauricio A. Hernández V.M.</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>RFC</Text><Text style={s.cuentaValor}>HEVM9611179YA</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>Banco</Text><Text style={s.cuentaValor}>Banorte</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>No. Cuenta</Text><Text style={s.cuentaValor}>1314637038</Text></View>
+                <View style={s.cuentaFila}><Text style={s.cuentaLabel}>CLABE</Text><Text style={s.cuentaValor}>072 680 013146370385</Text></View>
+                <View style={[s.cuentaFila, { marginBottom: 0 }]}><Text style={s.cuentaLabel}>Correo</Text><Text style={s.cuentaValor}>mainstageqro@gmail.com</Text></View>
+              </View>
+            </View>
           </View>
 
           <Text style={s.nota}>
