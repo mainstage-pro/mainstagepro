@@ -14,7 +14,7 @@ interface Publicacion {
   id: string; fecha: string; tipo: Tipo | null; tipoId: string | null;
   formato: string | null; objetivo: string | null; descripcion: string | null;
   copy: string | null; enFacebook: boolean; enInstagram: boolean; enTiktok: boolean; enYoutube: boolean;
-  materialLink: string | null; portadaUrl: string | null; colaboradores: string | null;
+  materialLink: string | null; portadaUrl: string | null; portadaUrlB: string | null; colaboradores: string | null;
   estado: string; comentarios: string | null;
   alcance: number | null; impresiones: number | null; interacciones: number | null; seguidoresGanados: number | null;
 }
@@ -76,7 +76,7 @@ function parseDate(fecha: string): Date {
 const FORM_EMPTY = {
   fecha: "", tipoId: "", descripcion: "", copy: "",
   enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
-  materialLink: "", portadaUrl: "", colaboradores: "", estado: "PENDIENTE", comentarios: "",
+  materialLink: "", portadaUrl: "", portadaUrlB: "", colaboradores: "", estado: "PENDIENTE", comentarios: "",
 };
 
 export default function MarketingCalendarioPage() {
@@ -97,6 +97,19 @@ export default function MarketingCalendarioPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [cancelRazon, setCancelRazon] = useState("");
+  const [uploadingPortada, setUploadingPortada] = useState<"A" | "B" | null>(null);
+
+  async function uploadPortada(file: File, slot: "A" | "B") {
+    setUploadingPortada(slot);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    if (res.ok) {
+      const { url } = await res.json();
+      setForm(prev => slot === "A" ? { ...prev, portadaUrl: url } : { ...prev, portadaUrlB: url });
+    }
+    setUploadingPortada(null);
+  }
 
   async function load() {
     const [pRes, tRes] = await Promise.all([
@@ -121,6 +134,7 @@ export default function MarketingCalendarioPage() {
       enTiktok: p.enTiktok, enYoutube: p.enYoutube,
       materialLink: p.materialLink ?? "",
       portadaUrl: p.portadaUrl ?? "",
+      portadaUrlB: p.portadaUrlB ?? "",
       colaboradores: p.colaboradores ?? "",
       estado: p.estado,
       comentarios: p.comentarios ?? "",
@@ -155,6 +169,7 @@ export default function MarketingCalendarioPage() {
         enTiktok: form.enTiktok, enYoutube: form.enYoutube,
         materialLink: form.materialLink || null,
         portadaUrl: form.portadaUrl || null,
+        portadaUrlB: form.portadaUrlB || null,
         colaboradores: form.colaboradores || null,
         estado: form.estado, comentarios: form.comentarios || null,
       }),
@@ -460,11 +475,45 @@ export default function MarketingCalendarioPage() {
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
                     placeholder="Texto que irá en la publicación..." />
                 </div>
-                <div>
-                  <label className="text-xs text-gray-500 mb-1 block">URL portada</label>
-                  <input value={form.portadaUrl} onChange={e => setForm(p => ({ ...p, portadaUrl: e.target.value }))}
-                    placeholder="https://... (imagen de portada)"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                <div className="md:col-span-3">
+                  <label className="text-xs text-gray-500 mb-2 block">Portadas (A/B)</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["A", "B"] as const).map(slot => {
+                      const url = slot === "A" ? form.portadaUrl : form.portadaUrlB;
+                      const uploading = uploadingPortada === slot;
+                      return (
+                        <div key={slot} className="space-y-1">
+                          <p className="text-[10px] text-gray-600 uppercase tracking-wider">Opción {slot}</p>
+                          <label className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed cursor-pointer transition-colors h-24 overflow-hidden ${
+                            uploading ? "border-[#B3985B]/50" : "border-[#2a2a2a] hover:border-[#B3985B]/40"
+                          }`}>
+                            {url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={url} alt={`Portada ${slot}`} className="w-full h-full object-cover absolute inset-0" />
+                            ) : null}
+                            <div className={`relative z-10 flex flex-col items-center gap-1 ${url ? "bg-black/50 w-full h-full justify-center" : ""}`}>
+                              {uploading ? (
+                                <span className="text-[10px] text-[#B3985B]">Subiendo...</span>
+                              ) : (
+                                <>
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={url ? "white" : "#555"} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                  <span className={`text-[10px] ${url ? "text-white" : "text-gray-600"}`}>{url ? "Cambiar" : "Subir imagen"}</span>
+                                </>
+                              )}
+                            </div>
+                            <input type="file" accept="image/*,video/*" className="hidden"
+                              onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(f, slot); }} />
+                          </label>
+                          {url && (
+                            <button onClick={() => setForm(p => slot === "A" ? { ...p, portadaUrl: "" } : { ...p, portadaUrlB: "" })}
+                              className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Link de material</label>
@@ -484,13 +533,6 @@ export default function MarketingCalendarioPage() {
                     placeholder="Observaciones..."
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
-                {form.portadaUrl && (
-                  <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={form.portadaUrl} alt="Portada" className="w-16 h-16 object-cover rounded-lg border border-[#2a2a2a]" />
-                    <span className="text-gray-600 text-xs">Vista previa portada</span>
-                  </div>
-                )}
                 <div className="md:col-span-3">
                   <label className="text-xs text-gray-500 mb-2 block">Plataformas</label>
                   <div className="flex gap-4">
@@ -1205,15 +1247,63 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
 }
 
 // ─── Vista Feed IG ───────────────────────────────────────────────────────────
+function FeedCell({ p, slot, label, openEdit }: {
+  p: Publicacion; slot: "A" | "B"; label?: string; openEdit: (p: Publicacion) => void;
+}) {
+  const d = parseDate(p.fecha);
+  const url = slot === "A" ? p.portadaUrl : p.portadaUrlB;
+  return (
+    <div className="relative aspect-square group cursor-pointer overflow-hidden bg-[#111]" onClick={() => openEdit(p)}>
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={url} alt={p.tipo?.nombre ?? ""} className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-[#141414]">
+          <span className="text-[9px] text-gray-700 font-bold uppercase">{p.tipo?.nombre ?? "Post"}</span>
+          <span className="text-[8px] text-gray-800">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</span>
+        </div>
+      )}
+      {label && (
+        <div className="absolute top-1 left-1 bg-black/80 rounded px-1 py-0.5">
+          <span className="text-[7px] text-[#B3985B] font-bold">{label}</span>
+        </div>
+      )}
+      {(p.formato ?? p.tipo?.formato) === "REEL" && !label && (
+        <div className="absolute top-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
+          <span className="text-[7px] text-purple-400 font-bold">▶</span>
+        </div>
+      )}
+      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+        <p className="text-white text-[9px] font-semibold text-center leading-snug">{p.tipo?.nombre ?? "Post"}</p>
+        <p className="text-gray-400 text-[8px]">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</p>
+        <span className={`text-[7px] px-1 py-0.5 rounded-full mt-0.5 ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
+      </div>
+      <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
+        p.estado === "PUBLICADO" ? "bg-green-400" : p.estado === "LISTO" ? "bg-yellow-400" :
+        p.estado === "EN_PROCESO" ? "bg-blue-400" : "bg-gray-700"}`} />
+    </div>
+  );
+}
+
 function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEdit: (p: Publicacion) => void }) {
-  if (feedPosts.length === 0) {
+  // Expandir posts con portadaUrlB a dos celdas (A y B)
+  const cells: Array<{ p: Publicacion; slot: "A" | "B"; label?: string }> = [];
+  for (const p of feedPosts) {
+    cells.push({ p, slot: "A", label: p.portadaUrlB ? "A" : undefined });
+    if (p.portadaUrlB) cells.push({ p, slot: "B", label: "B" });
+  }
+
+  if (cells.length === 0) {
     return (
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
-        <p className="text-gray-500 text-sm">No hay publicaciones de tipo POST este mes</p>
-        <p className="text-gray-600 text-xs mt-1">Agrega portadas a tus publicaciones POST para verlas aquí</p>
+        <p className="text-gray-500 text-sm">No hay publicaciones Feed IG este mes</p>
+        <p className="text-gray-600 text-xs mt-1">Activa "Feed IG" en el tipo de contenido para que aparezcan aquí</p>
       </div>
     );
   }
+
+  const fillerCount = (6 - (cells.length % 6)) % 6;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 px-1">
@@ -1222,40 +1312,14 @@ function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEd
         </div>
         <div>
           <p className="text-white text-sm font-semibold leading-none">mainstage_pro</p>
-          <p className="text-gray-600 text-[10px]">Preview feed Instagram · {feedPosts.length} posts</p>
+          <p className="text-gray-600 text-[10px]">Preview feed · {feedPosts.length} posts · {cells.filter(c => c.slot === "B").length} con opción B</p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-0.5 rounded-xl overflow-hidden border border-[#1e1e1e]">
-        {feedPosts.map(p => {
-          const d = parseDate(p.fecha);
-          return (
-            <div key={p.id} className="relative aspect-square group cursor-pointer overflow-hidden bg-[#111]" onClick={() => openEdit(p)}>
-              {p.portadaUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.portadaUrl} alt={p.tipo?.nombre ?? ""} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-1 bg-[#141414]">
-                  <span className="text-[10px] text-gray-700 font-bold uppercase">{p.tipo?.nombre ?? "Post"}</span>
-                  <span className="text-[9px] text-gray-800">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</span>
-                </div>
-              )}
-              {(p.formato ?? p.tipo?.formato) === "REEL" && (
-                <div className="absolute top-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
-                  <span className="text-[8px] text-purple-400 font-bold">▶ REEL</span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
-                <p className="text-white text-[10px] font-semibold text-center">{p.tipo?.nombre ?? "Post"}</p>
-                <p className="text-gray-400 text-[9px]">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</p>
-                <span className={`text-[8px] px-1.5 py-0.5 rounded-full mt-1 ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
-              </div>
-              <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${
-                p.estado === "PUBLICADO" ? "bg-green-400" : p.estado === "LISTO" ? "bg-yellow-400" :
-                p.estado === "EN_PROCESO" ? "bg-blue-400" : "bg-gray-600"}`} />
-            </div>
-          );
-        })}
-        {Array.from({ length: (3 - (feedPosts.length % 3)) % 3 }).map((_, i) => (
+      <div className="grid grid-cols-6 gap-0.5 rounded-xl overflow-hidden border border-[#1e1e1e]">
+        {cells.map((c, i) => (
+          <FeedCell key={`${c.p.id}-${c.slot}-${i}`} p={c.p} slot={c.slot} label={c.label} openEdit={openEdit} />
+        ))}
+        {Array.from({ length: fillerCount }).map((_, i) => (
           <div key={`empty-${i}`} className="aspect-square bg-[#0d0d0d]" />
         ))}
       </div>
