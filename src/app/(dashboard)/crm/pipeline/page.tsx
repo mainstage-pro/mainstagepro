@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 import { SERVICIO_LABELS } from "@/lib/form-labels";
+import { BadgeDias } from "@/components/ui/BadgeDias";
+import { diasTrato, nivelTrato, NIVEL_BORDER } from "@/lib/contadores";
 
 const COLUMNAS = [
   { etapa: "DESCUBRIMIENTO", label: "Descubrimiento", color: "border-blue-800", badge: "bg-blue-900/20 text-blue-400" },
@@ -17,6 +19,7 @@ type Trato = {
   id: string; etapa: string; tipoEvento: string; tipoServicio: string | null;
   nombreEvento: string | null; fechaEventoEstimada: string | null;
   presupuestoEstimado: number | null; fechaProximaAccion: string | null;
+  createdAt: string; fechaCierre: string | null;
   cliente: { nombre: string; empresa: string | null };
   responsable: { name: string } | null;
 };
@@ -99,12 +102,21 @@ export default function PipelinePage() {
                   {columnaTratos.map(trato => {
                     const vencido = trato.fechaProximaAccion && new Date(trato.fechaProximaAccion) < new Date();
                     const isMoving = moving === trato.id;
+                    const { dias: diasTr, activo } = diasTrato(trato);
+                    const nivel = nivelTrato(diasTr);
+                    const borderColor = activo && NIVEL_BORDER[nivel] ? NIVEL_BORDER[nivel] : vencido ? "border-yellow-800/60" : "border-[#1e1e1e]";
                     return (
-                      <div key={trato.id} className={`bg-[#111] border rounded-lg overflow-hidden transition-all ${vencido ? "border-yellow-800/60" : "border-[#1e1e1e] hover:border-[#333]"} ${isMoving ? "opacity-50" : ""}`}>
+                      <div key={trato.id} className={`bg-[#111] border rounded-lg overflow-hidden transition-all hover:border-[#333] ${borderColor} ${isMoving ? "opacity-50" : ""}`}>
                         <Link href={`/crm/tratos/${trato.id}`} className="block px-3 py-2 space-y-1">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] ?? "#333" }} />
                             <span className="text-white text-xs font-medium truncate flex-1">{trato.cliente.nombre}</span>
+                            <BadgeDias
+                              inicio={trato.createdAt}
+                              fin={trato.fechaCierre}
+                              tipo="trato"
+                              cerrado={!activo}
+                            />
                             {trato.presupuestoEstimado && (
                               <span className="text-[#B3985B] text-[10px] font-medium shrink-0">${trato.presupuestoEstimado.toLocaleString("es-MX")}</span>
                             )}

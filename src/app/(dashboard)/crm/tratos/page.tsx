@@ -9,6 +9,8 @@ import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { BadgeDias } from "@/components/ui/BadgeDias";
+import { diasTrato } from "@/lib/contadores";
 
 type Cotizacion = {
   id: string;
@@ -33,6 +35,7 @@ type Trato = {
   origenLead: string;
   fechaProximaAccion: string | null;
   createdAt: string;
+  fechaCierre: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null };
   responsable: { id: string; name: string } | null;
   cotizaciones: Cotizacion[];
@@ -303,14 +306,16 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
   const wa = waUrl(trato);
   const cots = trato.cotizaciones ?? [];
   const aprobada = cots.find(c => c.estado === "APROBADA");
+  const { dias: diasTr, activo } = diasTrato(trato);
   return (
     <div
       onClick={() => router.push(`/crm/tratos/${trato.id}`)}
       className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
-        <span className="text-white text-sm font-medium leading-tight">
+        <span className="text-white text-sm font-medium leading-tight flex-1">
           {trato.cliente.nombre}
         </span>
+        <BadgeDias inicio={trato.createdAt} fin={trato.fechaCierre} tipo="trato" cerrado={!activo} labelCerrado={trato.etapa === "VENTA_PERDIDA" ? "perdido" : undefined} />
         {wa && (
           <a href={wa} target="_blank" rel="noopener noreferrer" title="WhatsApp seguimiento"
             onClick={e => e.stopPropagation()}
@@ -382,6 +387,7 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
           const expanded = expandedIds.has(t.id);
           const cots = t.cotizaciones ?? [];
           const aprobada = cots.find(c => c.estado === "APROBADA");
+          const { dias: diasTr, activo } = diasTrato(t);
 
           const fechaLabel = t.fechaEventoEstimada
             ? showHace
@@ -431,6 +437,10 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                     {t.lugarEstimado && <span className="text-gray-700"> · {t.lugarEstimado}</span>}
                     {cots.length > 0 && <span className="text-gray-700"> · {cots.length} cot.</span>}
                   </p>
+                </div>
+
+                <div className="shrink-0 hidden sm:block">
+                  <BadgeDias inicio={t.createdAt} fin={t.fechaCierre} tipo="trato" cerrado={!activo} labelCerrado={t.etapa === "VENTA_PERDIDA" ? "perdido" : undefined} />
                 </div>
 
                 <div className="shrink-0 text-right min-w-[76px] hidden sm:block">

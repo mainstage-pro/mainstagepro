@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const current = await prisma.trato.findUnique({ where: { id }, select: { etapa: true, fechaCierre: true } });
     if (current && current.etapa !== body.etapa) {
       data.etapaCambiadaEn = new Date();
-      if (body.etapa === "VENTA_CERRADA" && !current.fechaCierre) {
+      if (["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && !current.fechaCierre) {
         data.fechaCierre = new Date();
       }
       if (body.etapa === "VENTA_PERDIDA") {

@@ -108,6 +108,8 @@ export default async function SemaforoPage() {
     tareasVencidas,
     // 7. CxP
     cxpVencidas,
+    // 8. Tratos enfriados (+21d)
+    tratosEnfriados,
   ] = await Promise.all([
 
     // 1. Cotizaciones aprobadas este mes (suma de granTotal)
@@ -180,6 +182,14 @@ export default async function SemaforoPage() {
       _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
+
+    // 8. Tratos +21 días en pipeline activo
+    prisma.trato.count({
+      where: {
+        etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
+        createdAt: { lte: new Date(ahora.getTime() - 21 * 86400000) },
+      },
+    }),
   ]);
 
   // ── Calcular indicadores ─────────────────────────────────────────────────
@@ -223,9 +233,12 @@ export default async function SemaforoPage() {
   const cxpVencidaMonto = cxpVencidas._sum.monto ?? 0;
   const semaforoCxP = calcSemaforo(cxpVencidaCount, 0, 2, true);
 
+  // 8. Tratos enfriados en pipeline
+  const semaforoTratos: Semaforo = tratosEnfriados === 0 ? "VERDE" : tratosEnfriados <= 2 ? "AMARILLO" : "ROJO";
+
   // ── Score global ─────────────────────────────────────────────────────────
   const puntos: Record<Semaforo, number> = { VERDE: 3, AMARILLO: 2, ROJO: 0 };
-  const todos = [semaforoVentas, semaforoProduccion, semaforoCxC, semaforoFlujo, semaforoMarketing, semaforoEquipo, semaforoCxP];
+  const todos = [semaforoVentas, semaforoProduccion, semaforoCxC, semaforoFlujo, semaforoMarketing, semaforoEquipo, semaforoCxP, semaforoTratos];
   const scoreTotal = todos.reduce((s, c) => s + puntos[c], 0);
   const scoreMax = todos.length * 3;
   const scorePct = Math.round((scoreTotal / scoreMax) * 100);
@@ -372,6 +385,18 @@ export default async function SemaforoPage() {
           href="/finanzas/cxp"
         />
 
+        <IndicadorCard
+          titulo="Pipeline (tratos +21d)"
+          semaforo={semaforoTratos}
+          valor={tratosEnfriados === 0 ? "Pipeline activo" : `${tratosEnfriados} enfriados`}
+          detalle={
+            tratosEnfriados === 0
+              ? "Todos los tratos tienen menos de 21 días en pipeline."
+              : `${tratosEnfriados} trato(s) con más de 21 días sin cerrarse.`
+          }
+          href="/crm/tratos"
+        />
+
       </div>
 
       {/* Notas de umbral */}
@@ -384,6 +409,7 @@ export default async function SemaforoPage() {
         <p>Marketing: Verde ≥70% publicadas · Amarillo 40-69% · Rojo &lt;40%</p>
         <p>Equipo: Verde = 0 vencidas · Amarillo = 1-5 · Rojo = &gt;5</p>
         <p>CxP: Verde = 0 vencidos · Amarillo = 1-2 · Rojo = &gt;2</p>
+        <p>Pipeline: Verde = 0 tratos +21d · Amarillo = 1-2 · Rojo = &gt;2</p>
         <p className="pt-1 text-[#333]">Meta de ventas configurable en <Link href="/admin/configuracion" className="text-[#555] hover:text-[#B3985B]">Configuración</Link> con clave <code>meta_ventas_mensual</code>.</p>
       </div>
 

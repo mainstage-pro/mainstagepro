@@ -24,6 +24,7 @@ function subtareaToItem(s: Subtarea): TareaItem {
     fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
     recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
     _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
+    createdAt: new Date().toISOString(), fechaCompletada: null,
   };
 }
 interface Comentario {

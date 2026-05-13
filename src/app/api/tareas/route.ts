@@ -26,6 +26,7 @@ const SELECT = {
   seccionId: true,
   carpetaId: true,
   juntaOrigenId: true,
+  fechaCompletada: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
@@ -98,6 +99,10 @@ export async function GET(req: NextRequest) {
     where.iniciativaId    = null;
     where.parentId        = null;
     where.asignadoAId     = { not: null };
+  } else if (vista === "abandonadas") {
+    where.estado    = { notIn: ["COMPLETADA", "CANCELADA"] };
+    where.parentId  = null;
+    where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
   }
 
   const tareas = await prisma.tarea.findMany({

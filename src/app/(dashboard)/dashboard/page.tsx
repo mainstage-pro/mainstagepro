@@ -252,6 +252,25 @@ export default async function DashboardPage() {
     CANCELADO:  "bg-red-900/40 text-red-400",
   };
 
+  // ── Abandono ───────────────────────────────────────────────────────────────
+  const limite15 = new Date(ahora.getTime() - 15 * 86400000);
+  const limite21 = new Date(ahora.getTime() - 21 * 86400000);
+  const [tareasAbandonadas, tratosEnfriados, tratosCriticos] = await Promise.all([
+    prisma.tarea.count({
+      where: { estado: { notIn: ["COMPLETADA", "CANCELADA"] }, parentId: null, createdAt: { lte: limite15 } },
+    }),
+    prisma.trato.count({
+      where: { etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] }, createdAt: { lte: limite15 } },
+    }),
+    prisma.trato.count({
+      where: {
+        etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
+        createdAt: { lte: limite21 },
+        fechaEventoEstimada: { lte: en7dias },
+      },
+    }),
+  ]);
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-8">
 
@@ -649,6 +668,41 @@ export default async function DashboardPage() {
           </div>
         </div>
       </Section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          ALERTAS DE ABANDONO
+      ══════════════════════════════════════════════════════════════════════ */}
+      {(tareasAbandonadas > 0 || tratosEnfriados > 0 || tratosCriticos > 0) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] font-bold text-red-500/70 uppercase tracking-widest">Requieren atención</p>
+            <div className="flex-1 h-px bg-red-900/20" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {tareasAbandonadas > 0 && (
+              <Link href="/operaciones?vista=abandonadas" className="bg-[#111] border border-red-900/30 rounded-xl p-4 hover:border-red-800/50 transition-colors">
+                <p className="text-[10px] text-red-500/60 uppercase tracking-wider font-semibold mb-2">Tareas +15 días abiertas</p>
+                <p className="text-2xl font-bold text-red-400">{tareasAbandonadas}</p>
+                <p className="text-xs text-[#555] mt-1">sin completarse</p>
+              </Link>
+            )}
+            {tratosEnfriados > 0 && (
+              <Link href="/crm/tratos?filtro=enfriados" className="bg-[#111] border border-yellow-900/30 rounded-xl p-4 hover:border-yellow-800/50 transition-colors">
+                <p className="text-[10px] text-yellow-500/60 uppercase tracking-wider font-semibold mb-2">Tratos +15 días sin cerrar</p>
+                <p className="text-2xl font-bold text-yellow-400">{tratosEnfriados}</p>
+                <p className="text-xs text-[#555] mt-1">en pipeline activo</p>
+              </Link>
+            )}
+            {tratosCriticos > 0 && (
+              <Link href="/crm/tratos" className="bg-[#111] border border-red-900/40 rounded-xl p-4 hover:border-red-800/60 transition-colors">
+                <p className="text-[10px] text-red-500/70 uppercase tracking-wider font-semibold mb-2">Tratos críticos</p>
+                <p className="text-2xl font-bold text-red-300">{tratosCriticos}</p>
+                <p className="text-xs text-[#555] mt-1">+21d con evento próximo</p>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           GESTIÓN DE TAREAS POR ÁREA

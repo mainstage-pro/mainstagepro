@@ -23,16 +23,22 @@ export async function GET(request: NextRequest) {
 
   const tipoProspecto = searchParams.get("tipoProspecto");
 
+  const filtro = searchParams.get("filtro");
+
   const where: Record<string, unknown> = {};
   if (responsableId) where.responsableId = responsableId;
   if (tipoProspecto) where.tipoProspecto = tipoProspecto;
+  if (filtro === "enfriados") {
+    where.etapa     = { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] };
+    where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
+  }
 
   const tratos = await prisma.trato.findMany({
     where,
     select: {
       id: true, etapa: true, tipoEvento: true, nombreEvento: true,
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
-      origenLead: true, fechaProximaAccion: true, createdAt: true,
+      origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },

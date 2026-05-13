@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
+import { BadgeDias } from "@/components/ui/BadgeDias";
 
 export interface TareaItem {
   id: string;
@@ -19,6 +20,8 @@ export interface TareaItem {
   juntaOrigenId?: string | null;
   juntaOrigen?: { id: string; area: string; fecha: string } | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
+  createdAt: string;
+  fechaCompletada?: string | null;
 }
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string }> = {
@@ -371,6 +374,14 @@ export default function TaskItem({
                 </span>
               </span>
             )}
+
+            <BadgeDias
+              inicio={tarea.createdAt}
+              fin={tarea.fechaCompletada}
+              tipo="tarea"
+              cerrado={isCompleted}
+              labelCerrado={isCompleted ? "completada" : undefined}
+            />
           </div>
         )}
 
