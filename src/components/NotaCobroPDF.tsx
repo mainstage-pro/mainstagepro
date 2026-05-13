@@ -1,12 +1,13 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 
-const GOLD  = "#B3985B";
-const BLACK = "#0a0a0a";
-const WHITE = "#FFFFFF";
-const GRAY  = "#4a4a4a";
-const LIGHT = "#F7F5F0";
-const MID   = "#E8E5DF";
+const GOLD   = "#B3985B";
+const BLACK  = "#0a0a0a";
+const WHITE  = "#FFFFFF";
+const GRAY   = "#4a4a4a";
+const LIGHT  = "#F7F5F0";
+const MID    = "#E8E5DF";
+const DARK2  = "#1a1a1a";
 
 const s = StyleSheet.create({
   page: {
@@ -29,52 +30,62 @@ const s = StyleSheet.create({
     alignItems: "flex-end",
   },
   brand:    { fontSize: 17, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 3 },
-  tagline:  { fontSize: 7, color: "#666666", letterSpacing: 1 },
-  docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2 },
-  docRef:   { fontSize: 8, color: "#888888" },
-  docDate:  { fontSize: 7.5, color: "#666666", marginTop: 2 },
+  tagline:  { fontSize: 7,  color: "#666666", letterSpacing: 1 },
+  headerRight: { alignItems: "flex-end" },
+  docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2, letterSpacing: 0.5 },
+  docRef:   { fontSize: 8,  color: "#888888" },
+  docDate:  { fontSize: 7.5,color: "#666666", marginTop: 2 },
   body:     { paddingHorizontal: 44, paddingTop: 26 },
-  paraLabel:  { fontSize: 7, color: "#999999", letterSpacing: 1.2, marginBottom: 3 },
+  paraLabel:  { fontSize: 7,  color: "#999999", letterSpacing: 1.2, marginBottom: 3 },
   paraName:   { fontSize: 12, fontFamily: "Helvetica-Bold", color: BLACK, marginBottom: 1 },
-  paraEmpresa:{ fontSize: 8.5, color: GRAY, marginBottom: 14 },
-  infoBox:  { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 16 },
-  infoRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  infoLabel:{ fontSize: 7.5, color: "#888888" },
-  infoValue:{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "62%", textAlign: "right" },
-  sectionLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: "#999999", letterSpacing: 1.5, marginBottom: 6 },
-  conceptoBox:  { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 20 },
-  conceptoText: { fontSize: 9, color: BLACK, lineHeight: 1.5 },
-
-  // Resumen — contenedor con borderRadius, filas sin radios individuales
-  resumenWrap: { borderRadius: 4, overflow: "hidden", marginBottom: 18 },
-  resumenRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: 10, paddingHorizontal: 16,
-    backgroundColor: LIGHT,
+  paraEmpresa:{ fontSize: 8.5,color: GRAY, marginBottom: 14 },
+  divider:    { borderBottomWidth: 1, borderBottomColor: MID, marginVertical: 16 },
+  sectionLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: "#999999", letterSpacing: 1.5, marginBottom: 8 },
+  conceptoBox: { backgroundColor: LIGHT, borderRadius: 4, overflow: "hidden", marginBottom: 18 },
+  conceptoHeader: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: DARK2, borderRadius: 4,
+  },
+  conceptoHeaderLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: "#888888", letterSpacing: 1 },
+  conceptoRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start",
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  conceptoText:  { fontSize: 8.5, color: BLACK, flex: 1, paddingRight: 12 },
+  conceptoMonto: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: BLACK },
+  balanceBox:   { marginBottom: 18 },
+  balanceTable: { backgroundColor: LIGHT, borderRadius: 4, overflow: "hidden" },
+  balanceRow: {
+    flexDirection: "row", justifyContent: "space-between",
+    paddingVertical: 9, paddingHorizontal: 14,
     borderBottomWidth: 1, borderBottomColor: MID,
   },
-  resumenLabel: { fontSize: 8.5, color: GRAY },
-  resumenValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
-  resumenGray:  { fontSize: 9, color: "#888888" },
-
-  saldoRow: {
+  balanceLabel: { fontSize: 8.5, color: GRAY },
+  balanceValue: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: BLACK },
+  balancePaid:  { fontSize: 8.5, color: "#888888" },
+  balanceTotalRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingVertical: 13, paddingHorizontal: 16,
-    backgroundColor: BLACK,
+    paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: BLACK, borderRadius: 3,
+    marginTop: 2,
   },
-  saldoLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: WHITE },
-  saldoValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: GOLD },
-  saldoZero:  { fontSize: 14, fontFamily: "Helvetica-Bold", color: "#4ade80" },
-
+  balanceTotalLabel: { fontSize: 9,  fontFamily: "Helvetica-Bold", color: WHITE },
+  balanceTotalValue: { fontSize: 13, fontFamily: "Helvetica-Bold", color: GOLD },
+  balanceTotalZero:  { fontSize: 13, fontFamily: "Helvetica-Bold", color: "#4ade80" },
   dueDateBox: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    backgroundColor: GOLD + "15",
+    backgroundColor: GOLD + "12",
     borderRadius: 4, paddingHorizontal: 14, paddingVertical: 10,
     borderLeftWidth: 3, borderLeftColor: GOLD,
     marginBottom: 16,
   },
-  dueDateLabel: { fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold" },
-  dueDateValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK },
+  dueDateLabel: { fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
+  dueDateValue: { fontSize: 9,   fontFamily: "Helvetica-Bold", color: BLACK },
+  infoBox:  { backgroundColor: LIGHT, borderRadius: 4, padding: 12, marginBottom: 16 },
+  infoRow:  { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  infoLabel:{ fontSize: 7.5, color: "#888888" },
+  infoValue:{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK, maxWidth: "62%", textAlign: "right" },
   nota: { fontSize: 7, color: "#aaaaaa", fontStyle: "italic", lineHeight: 1.5 },
   footer: {
     position: "absolute", bottom: 18, left: 44, right: 44,
@@ -123,7 +134,7 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
             <Text style={s.brand}>MAINSTAGE PRO</Text>
             <Text style={s.tagline}>SOLUCIONES AUDIOVISUALES PROFESIONALES</Text>
           </View>
-          <View style={{ alignItems: "flex-end" }}>
+          <View style={s.headerRight}>
             <Text style={s.docTitle}>NOTA DE COBRO</Text>
             <Text style={s.docRef}>Ref. {nota.id.slice(-8).toUpperCase()}</Text>
             <Text style={s.docDate}>{fmtDate(new Date().toISOString())}</Text>
@@ -167,25 +178,36 @@ export function NotaCobroPDF({ nota }: { nota: NotaCobroData }) {
           {/* Concepto */}
           <Text style={s.sectionLabel}>CONCEPTO</Text>
           <View style={s.conceptoBox}>
-            <Text style={s.conceptoText}>{nota.concepto}</Text>
+            <View style={s.conceptoHeader}>
+              <Text style={s.conceptoHeaderLabel}>DESCRIPCIÓN</Text>
+              <Text style={s.conceptoHeaderLabel}>TOTAL SERVICIO</Text>
+            </View>
+            <View style={s.conceptoRow}>
+              <Text style={s.conceptoText}>{nota.concepto}</Text>
+              <Text style={s.conceptoMonto}>{fmt(gt)}</Text>
+            </View>
           </View>
 
-          {/* Resumen de cobros */}
+          {/* Resumen de cobros — siempre muestra las 3 filas */}
           <Text style={s.sectionLabel}>RESUMEN DE COBROS</Text>
-          <View style={s.resumenWrap}>
-            <View style={s.resumenRow}>
-              <Text style={s.resumenLabel}>Total del servicio</Text>
-              <Text style={s.resumenValue}>{fmt(gt)}</Text>
+          <View style={s.balanceBox}>
+            <View style={s.balanceTable}>
+              <View style={s.balanceRow}>
+                <Text style={s.balanceLabel}>Total del servicio</Text>
+                <Text style={s.balanceValue}>{fmt(gt)}</Text>
+              </View>
+              <View style={[s.balanceRow, { borderBottomWidth: 0 }]}>
+                <Text style={s.balanceLabel}>Anticipo recibido</Text>
+                <Text style={anticipo > 0 ? s.balancePaid : s.balanceValue}>
+                  {anticipo > 0 ? `- ${fmt(anticipo)}` : "Sin anticipo"}
+                </Text>
+              </View>
             </View>
-            <View style={s.resumenRow}>
-              <Text style={s.resumenLabel}>Anticipo recibido</Text>
-              <Text style={anticipo > 0 ? s.resumenGray : s.resumenValue}>
-                {anticipo > 0 ? `− ${fmt(anticipo)}` : "—"}
+            <View style={s.balanceTotalRow}>
+              <Text style={s.balanceTotalLabel}>RESTA POR PAGAR</Text>
+              <Text style={saldo === 0 ? s.balanceTotalZero : s.balanceTotalValue}>
+                {fmt(saldo)}
               </Text>
-            </View>
-            <View style={s.saldoRow}>
-              <Text style={s.saldoLabel}>RESTA POR PAGAR</Text>
-              <Text style={saldo === 0 ? s.saldoZero : s.saldoValue}>{fmt(saldo)}</Text>
             </View>
           </View>
 

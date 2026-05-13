@@ -23,10 +23,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!cxc) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   // ── 1. granTotal ────────────────────────────────────────────────────────────
-  // Fuente primaria: cotizacion incluida en esta CxC
   let granTotal: number | null = cxc.cotizacion?.granTotal ?? null;
 
-  // Fuente secundaria: cotización del proyecto vinculado
   if (!granTotal && cxc.proyectoId) {
     const proy = await prisma.proyecto.findUnique({
       where: { id: cxc.proyectoId },
@@ -35,13 +33,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     granTotal = proy?.cotizacion?.granTotal ?? null;
   }
 
-  // ── 2. Anticipos reales ──────────────────────────────────────────────────────
-  // Suma todos los CxC tipo ANTICIPO relacionados al mismo proyecto o cotización.
-  // Se usa `monto` (monto registrado/comprometido) que es la base financiera acordada.
+  // ── 2. Anticipo ─────────────────────────────────────────────────────────────
+  // Prioridad 1: CxC separadas de tipo ANTICIPO en el mismo proyecto/cotización
+  // Prioridad 2: montoCobrado de esta misma CxC (caso pago parcial en un solo registro)
   let montoAnticipo: number | null = null;
 
   if (cxc.proyectoId) {
-    // Todos los anticipos del mismo proyecto (incluye el propio si esta CxC es ANTICIPO)
     const anticipos = await prisma.cuentaCobrar.findMany({
       where: { proyectoId: cxc.proyectoId, tipoPago: "ANTICIPO" },
       select: { monto: true },
@@ -49,13 +46,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const total = anticipos.reduce((s, a) => s + a.monto, 0);
     if (total > 0) montoAnticipo = total;
   } else if (cxc.cotizacionId) {
-    // Sin proyecto pero con cotización: busca anticipos con la misma cotización
     const anticipos = await prisma.cuentaCobrar.findMany({
       where: { cotizacionId: cxc.cotizacionId, tipoPago: "ANTICIPO" },
       select: { monto: true },
     });
     const total = anticipos.reduce((s, a) => s + a.monto, 0);
     if (total > 0) montoAnticipo = total;
+  }
+
+  // Fallback: si no hay CxC de tipo ANTICIPO pero sí hay cobros parciales, usarlos
+  if (montoAnticipo === null && cxc.montoCobrado > 0) {
+    montoAnticipo = cxc.montoCobrado;
   }
 
   // ── 3. Armar datos para el PDF ───────────────────────────────────────────────
@@ -93,8 +94,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       status: 200,
       headers: {
         "Content-Type":        "application/pdf",
-        "Content-Disposition": `attachment; filename="NotaCobro-${id.slice(-8).toUpperCase()}.pdf"`,
+        "Content-Disposition": `inline; filename="NotaCobro-${id.slice(-8).toUpperCase()}.pdf"`,
         "Content-Length":      String(pdfBuffer.length),
+        "Cache-Control":       "no-store, no-cache, must-revalidate",
       },
     });
   } catch (err) {
