@@ -24,25 +24,19 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, descripcion, area, liderId, prioridad, fechaInicio, fechaFin, fases } = body;
+  const { nombre, descripcion, area, liderId, prioridad, fechaInicio, fechaFin } = body;
 
-  if (!nombre || !area || !liderId) {
-    return NextResponse.json({ error: "nombre, area y liderId son requeridos" }, { status: 400 });
+  if (!nombre || !area) {
+    return NextResponse.json({ error: "nombre y area son requeridos" }, { status: 400 });
   }
 
   const proyecto = await prisma.proyectoInterno.create({
     data: {
       nombre, descripcion: descripcion ?? null, area,
-      liderId, prioridad: prioridad ?? "MEDIA",
+      liderId: liderId ?? session.id,
+      prioridad: prioridad ?? "MEDIA",
       fechaInicio: fechaInicio ? new Date(fechaInicio) : null,
       fechaFin: fechaFin ? new Date(fechaFin) : null,
-      fases: fases?.length
-        ? {
-            create: fases.map((f: { nombre: string; descripcion?: string }, i: number) => ({
-              nombre: f.nombre, descripcion: f.descripcion ?? null, orden: i,
-            })),
-          }
-        : undefined,
     },
     include: {
       lider: { select: { id: true, name: true } },

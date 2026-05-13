@@ -46,11 +46,10 @@ type Junta = {
 type User = { id: string; name: string };
 
 function ModalCaptura({ onSave, onClose }: { onSave: (item: BacklogItem) => void; onClose: () => void }) {
-  const [titulo, setTitulo]     = useState("");
-  const [descripcion, setDesc]  = useState("");
-  const [area, setArea]         = useState("");
-  const [tipo, setTipo]         = useState("IDEA");
-  const [saving, setSaving]     = useState(false);
+  const [titulo, setTitulo]    = useState("");
+  const [area, setArea]        = useState("");
+  const [descripcion, setDesc] = useState("");
+  const [saving, setSaving]    = useState(false);
 
   async function handleSave() {
     if (!titulo) return;
@@ -58,7 +57,7 @@ function ModalCaptura({ onSave, onClose }: { onSave: (item: BacklogItem) => void
     const res = await fetch("/api/backlog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, descripcion: descripcion || null, area: area || null, tipo }),
+      body: JSON.stringify({ titulo, descripcion: descripcion || null, area: area || null, tipo: "IDEA" }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -69,57 +68,33 @@ function ModalCaptura({ onSave, onClose }: { onSave: (item: BacklogItem) => void
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
-        <h2 className="text-white font-semibold">Nueva idea / pendiente</h2>
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 space-y-3" onClick={e => e.stopPropagation()}>
+        <h2 className="text-white font-semibold">Capturar idea o pendiente</h2>
 
-        <div>
-          <label className="text-[11px] text-[#555] uppercase tracking-wider">Qué es *</label>
-          <input
-            autoFocus
-            value={titulo}
-            onChange={e => setTitulo(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
-            placeholder="Idea, pendiente o tarea por procesar..."
-            className="w-full mt-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333]"
-          />
-        </div>
+        <input
+          autoFocus
+          value={titulo}
+          onChange={e => setTitulo(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) handleSave(); }}
+          placeholder="¿Qué hay que hacer o explorar?"
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333]"
+        />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[11px] text-[#555] uppercase tracking-wider">Área</label>
-            <select value={area} onChange={e => setArea(e.target.value)}
-              className="w-full mt-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
-              <option value="">Sin clasificar</option>
-              {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-[11px] text-[#555] uppercase tracking-wider">Tipo</label>
-            <div className="flex gap-1 mt-1">
-              {Object.entries(TIPO_LABELS).map(([k, v]) => (
-                <button key={k} onClick={() => setTipo(k)}
-                  className={`flex-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                    tipo === k ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-[#666] hover:text-white"
-                  }`}>
-                  {v}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <select value={area} onChange={e => setArea(e.target.value)}
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
+          <option value="">Área (opcional)</option>
+          {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
 
-        <div>
-          <label className="text-[11px] text-[#555] uppercase tracking-wider">Descripción (opcional)</label>
-          <textarea value={descripcion} onChange={e => setDesc(e.target.value)} rows={2}
-            placeholder="Contexto adicional..."
-            className="w-full mt-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] resize-none" />
-        </div>
+        <textarea value={descripcion} onChange={e => setDesc(e.target.value)} rows={2}
+          placeholder="Contexto adicional (opcional)"
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] resize-none" />
 
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !titulo}
             className="px-4 py-2 bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
-            {saving ? "Guardando..." : "Guardar al Backlog"}
+            {saving ? "Guardando..." : "Capturar"}
           </button>
         </div>
       </div>
@@ -143,7 +118,6 @@ function ModalProcesar({
   const [fecha, setFecha]       = useState("");
   const [prioridad, setPrio]    = useState("MEDIA");
   const [area, setArea]         = useState(item.area ?? "DIRECCION");
-  const [liderId, setLider]     = useState("");
   const [nombre, setNombre]     = useState(item.titulo);
   const [saving, setSaving]     = useState(false);
 
@@ -152,7 +126,7 @@ function ModalProcesar({
     const datos: Record<string, string | undefined> =
       accion === "junta"    ? { juntaId } :
       accion === "tarea"    ? { titulo, asignadoAId, fecha: fecha || undefined, prioridad, area } :
-      accion === "proyecto" ? { nombre, liderId, area } :
+      accion === "proyecto" ? { nombre, area } :
       {};
 
     await fetch(`/api/backlog/${item.id}/procesar`, {
@@ -238,17 +212,10 @@ function ModalProcesar({
             <>
               <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre del proyecto"
                 className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333]" />
-              <div className="grid grid-cols-2 gap-2">
-                <select value={liderId} onChange={e => setLider(e.target.value)}
-                  className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
-                  <option value="">Líder...</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </select>
-                <select value={area} onChange={e => setArea(e.target.value)}
-                  className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
-                  {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
+              <select value={area} onChange={e => setArea(e.target.value)}
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
+                {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
             </>
           )}
         </div>

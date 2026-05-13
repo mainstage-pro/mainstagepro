@@ -28,34 +28,22 @@ type Proyecto = {
   _count: { tareas: number };
 };
 
-type User = { id: string; name: string };
-
-function ModalNuevoProyecto({ users, onSave, onClose }: {
-  users: User[];
+function ModalNuevoProyecto({ onSave, onClose }: {
   onSave: (p: Proyecto) => void;
   onClose: () => void;
 }) {
   const [form, setForm] = useState({
-    nombre: "", descripcion: "", area: "DIRECCION",
-    liderId: "", prioridad: "MEDIA",
-    fechaInicio: "", fechaFin: "",
+    nombre: "", descripcion: "", area: "DIRECCION", prioridad: "MEDIA",
   });
-  const [fases, setFases]   = useState<string[]>([""]);
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
-    if (!form.nombre || !form.liderId) return;
+    if (!form.nombre) return;
     setSaving(true);
     const res = await fetch("/api/proyectos-internos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...form,
-        descripcion: form.descripcion || null,
-        fechaInicio: form.fechaInicio || null,
-        fechaFin: form.fechaFin || null,
-        fases: fases.filter(f => f.trim()).map(nombre => ({ nombre })),
-      }),
+      body: JSON.stringify({ ...form, descripcion: form.descripcion || null }),
     });
     if (res.ok) {
       const d = await res.json();
@@ -66,60 +54,37 @@ function ModalNuevoProyecto({ users, onSave, onClose }: {
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 space-y-3" onClick={e => e.stopPropagation()}>
         <h2 className="text-white font-semibold">Nuevo proyecto interno</h2>
 
-        <div className="space-y-3">
-          <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-            placeholder="Nombre del proyecto *"
-            className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333]" />
+        <input value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
+          autoFocus placeholder="Nombre del proyecto *"
+          onKeyDown={e => { if (e.key === "Enter") handleSave(); }}
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#333]" />
 
-          <div className="grid grid-cols-2 gap-2">
-            <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
-              className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
-              {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
-            <select value={form.liderId} onChange={e => setForm(f => ({ ...f, liderId: e.target.value }))}
-              className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
-              <option value="">Líder *</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] text-[#555] uppercase tracking-wider">Inicio</label>
-              <input type="date" value={form.fechaInicio} onChange={e => setForm(f => ({ ...f, fechaInicio: e.target.value }))}
-                className="w-full mt-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white" />
-            </div>
-            <div>
-              <label className="text-[10px] text-[#555] uppercase tracking-wider">Fin estimado</label>
-              <input type="date" value={form.fechaFin} onChange={e => setForm(f => ({ ...f, fechaFin: e.target.value }))}
-                className="w-full mt-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white" />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] text-[#555] uppercase tracking-wider mb-1 block">Fases (opcional)</label>
-            {fases.map((f, i) => (
-              <div key={i} className="flex gap-1 mb-1">
-                <input value={f} onChange={e => { const next = [...fases]; next[i] = e.target.value; setFases(next); }}
-                  placeholder={`Fase ${i + 1}`}
-                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333]" />
-                {fases.length > 1 && (
-                  <button onClick={() => setFases(fases.filter((_, j) => j !== i))} className="text-[#444] hover:text-red-400 px-2">✕</button>
-                )}
-              </div>
-            ))}
-            <button onClick={() => setFases([...fases, ""])} className="text-xs text-[#B3985B] hover:underline mt-1">+ Agregar fase</button>
-          </div>
+        <div className="grid grid-cols-2 gap-2">
+          <select value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))}
+            className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
+            {Object.entries(AREA_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select value={form.prioridad} onChange={e => setForm(f => ({ ...f, prioridad: e.target.value }))}
+            className="bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white">
+            <option value="URGENTE">Urgente</option>
+            <option value="ALTA">Alta</option>
+            <option value="MEDIA">Media</option>
+            <option value="BAJA">Baja</option>
+          </select>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <textarea value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}
+          rows={2} placeholder="Descripción (opcional)"
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] resize-none" />
+
+        <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
-          <button onClick={handleSave} disabled={saving || !form.nombre || !form.liderId}
+          <button onClick={handleSave} disabled={saving || !form.nombre}
             className="px-4 py-2 bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
-            {saving ? "Creando..." : "Crear proyecto"}
+            {saving ? "Creando..." : "Crear"}
           </button>
         </div>
       </div>
@@ -129,17 +94,12 @@ function ModalNuevoProyecto({ users, onSave, onClose }: {
 
 export default function ProyectosInternosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  const [users, setUsers]         = useState<User[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/proyectos-internos").then(r => r.json()),
-      fetch("/api/usuarios").then(r => r.json()).catch(() => ({ users: [] })),
-    ]).then(([d, u]) => {
+    fetch("/api/proyectos-internos").then(r => r.json()).then(d => {
       setProyectos(d.proyectos ?? []);
-      setUsers(u.users ?? []);
       setLoading(false);
     });
   }, []);
@@ -200,7 +160,7 @@ export default function ProyectosInternosPage() {
                             <p className="text-white text-sm font-medium leading-snug flex-1">{p.nombre}</p>
                             <span className={`text-[10px] font-medium shrink-0 ${PRIO_COLORS[p.prioridad]}`}>{p.prioridad.charAt(0)}</span>
                           </div>
-                          <p className="text-[11px] text-[#555]">{AREA_LABELS[p.area] ?? p.area} · {p.lider.name}</p>
+                          <p className="text-[11px] text-[#555]">{AREA_LABELS[p.area] ?? p.area}</p>
 
                           {p.porcentajeAvance > 0 && (
                             <div>
@@ -268,7 +228,6 @@ export default function ProyectosInternosPage() {
 
       {showModal && (
         <ModalNuevoProyecto
-          users={users}
           onSave={p => { setProyectos(prev => [p, ...prev]); setShowModal(false); }}
           onClose={() => setShowModal(false)}
         />
