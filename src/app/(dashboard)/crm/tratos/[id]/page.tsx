@@ -1875,6 +1875,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       : null;
                   return (
                     <>
+                      {discForm.tipoServicio !== "RENTA" && (
                       <div>
                         <label className="text-xs text-gray-400 block mb-2">
                           Horarios del evento
@@ -1895,6 +1896,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                         </div>
                       </div>
+                      )}
 
                       <div>
                         {/* Ventana montaje/desmontaje — solo en Oportunidad+ (cuando cotización está siendo preparada) */}

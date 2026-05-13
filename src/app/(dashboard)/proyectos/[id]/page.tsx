@@ -2565,6 +2565,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
                   />
                 </div>
+                {esRenta && (<>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del cliente</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoCliente", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoClienteContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                  </div>
+                  <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                </>)}
               </div>
             </div>
             {/* Evento */}

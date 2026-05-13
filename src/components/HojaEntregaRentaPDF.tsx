@@ -437,8 +437,7 @@ function EmptyRows({ count }: { count: number }) {
         <View key={i} style={s.emptyRow}>
           <View style={[s.colModelo, { borderRightWidth: 1, borderRightColor: BORDER }]}><Text> </Text></View>
           <View style={[s.colQty, { borderRightWidth: 1, borderRightColor: BORDER }]}><Text> </Text></View>
-          <View style={[s.colSerie, { borderRightWidth: 1, borderRightColor: BORDER }]}><Text> </Text></View>
-          <View style={s.colEstado}><Text> </Text></View>
+          <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text> </Text></View>
         </View>
       ))}
     </>
@@ -516,15 +515,15 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
             {/* Left column */}
             <View style={s.infoLeft}>
               <View style={s.infoRow}>
-                <Text style={s.infoLabel}>CLIENTE</Text>
-                <Text style={s.infoValue}>{clienteNombre}</Text>
+                <Text style={s.infoLabel}>NOMBRE</Text>
+                <Text style={s.infoValue}>{proyecto.cliente?.nombre ?? ""}</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>EMPRESA</Text>
+                <Text style={s.infoValue}>{proyecto.cliente?.empresa ?? ""}</Text>
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>CONTACTO</Text>
-                <Text style={s.infoValue}>{proyecto.encargadoCliente ?? ""}</Text>
-              </View>
-              <View style={s.infoRow}>
-                <Text style={s.infoLabel}>TELÉFONO</Text>
                 <Text style={s.infoValue}>{proyecto.cliente?.telefono ?? ""}</Text>
               </View>
               <View style={s.infoRow}>
@@ -581,8 +580,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                   <View style={s.tableHeader}>
                     <View style={s.colModelo}><Text style={s.colHeaderText}>MARCA / MODELO / DESCRIPCIÓN</Text></View>
                     <View style={s.colQty}><Text style={[s.colHeaderText, { textAlign: "center" }]}>QTY</Text></View>
-                    <View style={s.colSerie}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
-                    <View style={s.colEstado}><Text style={[s.colHeaderText, { textAlign: "center" }]}>ESTADO ✓</Text></View>
+                    <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
                   </View>
                   {/* Equipment rows */}
                   {grouped[cat].map((eq, i) => {
@@ -593,8 +591,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                       <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                         <View style={s.colModelo}><Text style={s.cellText}>{nombre}</Text></View>
                         <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{eq.cantidad}</Text></View>
-                        <View style={s.colSerie}><Text style={s.cellText}> </Text></View>
-                        <View style={s.colEstado}><Text style={[s.cellText, { textAlign: "center" }]}> </Text></View>
+                        <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.cellText}> </Text></View>
                       </View>
                     );
                   })}
@@ -612,8 +609,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                 <View style={s.tableHeader}>
                   <View style={s.colModelo}><Text style={s.colHeaderText}>MARCA / MODELO / DESCRIPCIÓN</Text></View>
                   <View style={s.colQty}><Text style={[s.colHeaderText, { textAlign: "center" }]}>QTY</Text></View>
-                  <View style={s.colSerie}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
-                  <View style={s.colEstado}><Text style={[s.colHeaderText, { textAlign: "center" }]}>ESTADO ✓</Text></View>
+                  <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
                 </View>
                 <EmptyRows count={12} />
               </View>
