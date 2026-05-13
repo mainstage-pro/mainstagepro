@@ -249,12 +249,69 @@ function ModalNuevaJunta({
 
 // ─── Junta Card ────────────────────────────────────────────────────────────────
 
-function JuntaCard({ junta, onInicio }: { junta: JuntaResumen; onInicio?: () => void }) {
+function HistorialRow({ junta, colors, onDelete }: {
+  junta: JuntaResumen;
+  colors: { bg: string; text: string; border: string };
+  onDelete: (id: string) => void;
+}) {
   const router = useRouter();
+  const [confirmando, setConfirmando] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirmando) { setConfirmando(true); return; }
+    await fetch(`/api/juntas/${junta.id}`, { method: "DELETE" });
+    onDelete(junta.id);
+  }
+
+  return (
+    <div
+      onClick={() => router.push(`/juntas/${junta.id}/reporte`)}
+      className="flex items-center gap-3 p-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl hover:border-[#2a2a2a] cursor-pointer transition-colors"
+    >
+      <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${colors.bg} ${colors.text} ${colors.border}`}>
+        {AREA_LABELS[junta.area as AreaJunta]?.slice(0, 4).toUpperCase() ?? junta.area}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white truncate">{junta.titulo}</p>
+        <p className="text-[11px] text-gray-500">{fmtFecha(junta.fecha)}</p>
+      </div>
+      {junta._count.tareas > 0 && (
+        <span className="text-[10px] text-gray-600 shrink-0">{junta._count.tareas} tareas</span>
+      )}
+      <button
+        onClick={handleDelete}
+        onBlur={() => setConfirmando(false)}
+        className={`shrink-0 text-[10px] px-2 py-0.5 rounded transition-colors ${
+          confirmando
+            ? "bg-red-900/40 text-red-400 border border-red-800/50"
+            : "text-gray-700 hover:text-red-400"
+        }`}
+      >
+        {confirmando ? "¿Eliminar?" : "✕"}
+      </button>
+    </div>
+  );
+}
+
+function JuntaCard({ junta, onInicio, onDelete }: {
+  junta: JuntaResumen;
+  onInicio?: () => void;
+  onDelete?: (id: string) => void;
+}) {
+  const router = useRouter();
+  const [confirmando, setConfirmando] = useState(false);
   const colors = AREA_COLORS[junta.area as AreaJunta] ?? AREA_COLORS.GLOBAL;
   const badge = ESTADO_BADGE[junta.estado] ?? ESTADO_BADGE.PROGRAMADA;
   const esProgramada = junta.estado === "PROGRAMADA";
   const esEnCurso    = junta.estado === "EN_CURSO";
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirmando) { setConfirmando(true); return; }
+    await fetch(`/api/juntas/${junta.id}`, { method: "DELETE" });
+    onDelete?.(junta.id);
+  }
 
   return (
     <div
@@ -268,7 +325,20 @@ function JuntaCard({ junta, onInicio }: { junta: JuntaResumen; onInicio?: () => 
           </span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badge.cls}`}>{badge.label}</span>
         </div>
-        <p className="text-[11px] text-gray-500 shrink-0">{fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)}</p>
+        <div className="flex items-center gap-2 shrink-0">
+          <p className="text-[11px] text-gray-500">{fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)}</p>
+          <button
+            onClick={handleDelete}
+            onBlur={() => setConfirmando(false)}
+            className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+              confirmando
+                ? "bg-red-900/40 text-red-400 border border-red-800/50"
+                : "text-gray-700 hover:text-red-400"
+            }`}
+          >
+            {confirmando ? "¿Eliminar?" : "✕"}
+          </button>
+        </div>
       </div>
 
       <p className="text-white text-sm font-medium mb-1 group-hover:text-[#B3985B] transition-colors">{junta.titulo}</p>
@@ -369,7 +439,7 @@ export default function JuntasPage() {
             ) : (
               <div className="space-y-3">
                 {proximas.map((j) => (
-                  <JuntaCard key={j.id} junta={j} />
+                  <JuntaCard key={j.id} junta={j} onDelete={(id) => setJuntas((prev) => prev.filter((x) => x.id !== id))} />
                 ))}
               </div>
             )}
@@ -400,23 +470,12 @@ export default function JuntasPage() {
                 {histFiltro.slice(0, 20).map((j) => {
                   const colors = AREA_COLORS[j.area as AreaJunta] ?? AREA_COLORS.GLOBAL;
                   return (
-                    <div
+                    <HistorialRow
                       key={j.id}
-                      onClick={() => router.push(`/juntas/${j.id}/reporte`)}
-                      className="flex items-center gap-3 p-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl hover:border-[#2a2a2a] cursor-pointer transition-colors"
-                    >
-                      <span className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded border ${colors.bg} ${colors.text} ${colors.border}`}>
-                        {AREA_LABELS[j.area as AreaJunta]?.slice(0, 4).toUpperCase() ?? j.area}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{j.titulo}</p>
-                        <p className="text-[11px] text-gray-500">{fmtFecha(j.fecha)}</p>
-                      </div>
-                      {j._count.tareas > 0 && (
-                        <span className="text-[10px] text-gray-600 shrink-0">{j._count.tareas} tareas</span>
-                      )}
-                      <span className="text-gray-700 text-sm">›</span>
-                    </div>
+                      junta={j}
+                      colors={colors}
+                      onDelete={(id) => setJuntas((prev) => prev.filter((x) => x.id !== id))}
+                    />
                   );
                 })}
               </div>
