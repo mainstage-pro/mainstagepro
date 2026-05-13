@@ -25,12 +25,14 @@ const SELECT = {
   proyectoTareaId: true,
   seccionId: true,
   carpetaId: true,
+  juntaOrigenId: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
+  juntaOrigen:   { select: { id: true, area: true, fecha: true } },
   _count:        { select: { subtareas: true, comentarios: true, archivos: true } },
 };
 

@@ -16,6 +16,8 @@ export interface TareaItem {
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
+  juntaOrigenId?: string | null;
+  juntaOrigen?: { id: string; area: string; fecha: string } | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
 }
 
@@ -270,6 +272,22 @@ export default function TaskItem({
                   style={{ backgroundColor: tarea.proyectoTarea.color ?? "#444" }} />
                 {tarea.proyectoTarea.nombre}
               </span>
+            )}
+
+            {tarea.juntaOrigen && (
+              <a
+                href={`/juntas/${tarea.juntaOrigen.id}/reporte`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-[12px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
+                title="Ver reporte de la junta"
+              >
+                <span>📋</span>
+                <span>
+                  {tarea.juntaOrigen.area === "GLOBAL" ? "Global" : tarea.juntaOrigen.area.charAt(0) + tarea.juntaOrigen.area.slice(1).toLowerCase()}
+                  {" · "}
+                  {new Date(tarea.juntaOrigen.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                </span>
+              </a>
             )}
 
             {fecha && !isCompleted && (

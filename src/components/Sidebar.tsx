@@ -46,6 +46,7 @@ const NAV: NavSection[] = [
     items: [
       { key: "semaforo", label: "Semáforo del negocio", href: "/dashboard/semaforo" },
       { key: "agenda-semana", label: "Vista semanal", href: "/agenda/semana" },
+      { key: "juntas", label: "Juntas", href: "/juntas" },
       {
         key: "reportes",
         label: "Reportes semanales",
