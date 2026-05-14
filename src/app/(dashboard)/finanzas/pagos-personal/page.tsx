@@ -58,11 +58,19 @@ interface CicloData {
   cuentas: CuentaBancaria[];
 }
 
-// Representa uno o varios técnicos a pagar juntos (para "marcar todos")
-interface PagoTarget {
-  rows: NominaRow[];
-  totalMonto: number;
+interface PagoEntrada {
+  monto: string;
+  metodoPago: string;
+  cuentaOrigenId: string;
+  referencia: string;
 }
+
+const DEFAULT_ENTRADA: PagoEntrada = {
+  monto: "",
+  metodoPago: "TRANSFERENCIA",
+  cuentaOrigenId: "",
+  referencia: "",
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -129,14 +137,19 @@ export default function PagosPersonalPage() {
   const [data, setData] = useState<CicloData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Modal state
-  const [pagoTarget, setPagoTarget] = useState<PagoTarget | null>(null);
+  // Shared modal state
+  const [pagoTarget, setPagoTarget] = useState<NominaRow[] | null>(null);
   const [pagoFecha, setPagoFecha] = useState(new Date().toISOString().split("T")[0]);
-  const [pagoCuenta, setPagoCuenta] = useState("");
-  const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
-  const [pagoReferencia, setPagoReferencia] = useState("");
   const [pagoNotas, setPagoNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
+
+  // Multi-entry state (single technician)
+  const [pagoEntradas, setPagoEntradas] = useState<PagoEntrada[]>([{ ...DEFAULT_ENTRADA }]);
+
+  // Single-entry state (bulk / pay-all)
+  const [pagoMetodo, setPagoMetodo] = useState("TRANSFERENCIA");
+  const [pagoCuenta, setPagoCuenta] = useState("");
+  const [pagoReferencia, setPagoReferencia] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,33 +162,67 @@ export default function PagosPersonalPage() {
   useEffect(() => { load(); }, [load]);
 
   function abrirModalPago(rows: NominaRow[]) {
-    const totalMonto = rows.reduce((s, r) => s + r.total, 0);
-    setPagoTarget({ rows, totalMonto });
+    setPagoTarget(rows);
     setPagoFecha(new Date().toISOString().split("T")[0]);
-    setPagoCuenta("");
-    setPagoMetodo("TRANSFERENCIA");
-    setPagoReferencia("");
     setPagoNotas("");
+    if (rows.length === 1) {
+      setPagoEntradas([{ ...DEFAULT_ENTRADA, monto: String(rows[0].total) }]);
+    } else {
+      setPagoMetodo("TRANSFERENCIA");
+      setPagoCuenta("");
+      setPagoReferencia("");
+    }
+  }
+
+  function cerrarModal() {
+    if (!guardando) setPagoTarget(null);
   }
 
   async function confirmarPago() {
     if (!pagoTarget) return;
     setGuardando(true);
     try {
-      for (const row of pagoTarget.rows) {
+      if (pagoTarget.length === 1) {
+        const row = pagoTarget[0];
+        const validEntradas = pagoEntradas
+          .map((e) => ({
+            monto: parseFloat(e.monto) || 0,
+            metodoPago: e.metodoPago,
+            cuentaOrigenId: e.cuentaOrigenId || null,
+            referencia: e.referencia || null,
+          }))
+          .filter((e) => e.monto > 0);
+
         await fetch("/api/pagos-personal", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tecnicoId: row.tecnicoId,
             proyectoIds: row.pagos.map((p) => p.proyectoId),
-            cuentaOrigenId: pagoCuenta || null,
             fecha: pagoFecha,
-            metodoPago: pagoMetodo,
-            referencia: pagoReferencia || null,
             notas: pagoNotas || null,
+            entradas: validEntradas,
           }),
         });
+      } else {
+        for (const row of pagoTarget) {
+          await fetch("/api/pagos-personal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tecnicoId: row.tecnicoId,
+              proyectoIds: row.pagos.map((p) => p.proyectoId),
+              fecha: pagoFecha,
+              notas: pagoNotas || null,
+              entradas: [{
+                monto: row.total,
+                metodoPago: pagoMetodo,
+                cuentaOrigenId: pagoCuenta || null,
+                referencia: pagoReferencia || null,
+              }],
+            }),
+          });
+        }
       }
       setPagoTarget(null);
       await load();
@@ -197,6 +244,12 @@ export default function PagosPersonalPage() {
     { value: "", label: "— Sin cuenta —" },
     ...(data?.cuentas ?? []).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") })),
   ];
+
+  // Computed values for single-tech modal
+  const totalEntradas = pagoEntradas.reduce((s, e) => s + (parseFloat(e.monto) || 0), 0);
+  const singleRow = pagoTarget?.length === 1 ? pagoTarget[0] : null;
+  const restante = singleRow ? singleRow.total - totalEntradas : 0;
+  const isFull = singleRow ? Math.abs(restante) <= 0.01 : false;
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-6">
@@ -456,28 +509,30 @@ export default function PagosPersonalPage() {
 
       {/* ── Modal de pago ── */}
       {pagoTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.80)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget && !guardando) setPagoTarget(null); }}>
-          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md p-6">
+          onClick={(e) => { if (e.target === e.currentTarget) cerrarModal(); }}
+        >
+          <div className={`bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full ${singleRow ? "max-w-lg" : "max-w-md"} p-6 max-h-[90vh] overflow-y-auto`}>
 
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="text-white font-semibold">Registrar pago de nómina</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {pagoTarget.rows.length === 1
-                    ? pagoTarget.rows[0].tecnicoNombre
-                    : `${pagoTarget.rows.length} técnicos`}
+                  {pagoTarget.length === 1
+                    ? pagoTarget[0].tecnicoNombre
+                    : `${pagoTarget.length} técnicos`}
                 </p>
               </div>
-              <button onClick={() => setPagoTarget(null)} disabled={guardando}
+              <button onClick={cerrarModal} disabled={guardando}
                 className="text-gray-600 hover:text-white text-lg leading-none disabled:opacity-40">✕</button>
             </div>
 
             {/* Resumen de a quién se paga */}
-            <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1.5 max-h-40 overflow-y-auto">
-              {pagoTarget.rows.map(row => (
+            <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1.5 max-h-36 overflow-y-auto">
+              {pagoTarget.map(row => (
                 <div key={row.tecnicoId}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-white font-medium">{row.tecnicoNombre}</span>
@@ -491,57 +546,177 @@ export default function PagosPersonalPage() {
                   ))}
                 </div>
               ))}
-              <div className="border-t border-[#1a1a1a] pt-1.5 flex items-center justify-between">
-                <span className="text-xs text-gray-400 font-semibold">Total a pagar</span>
-                <span className="text-base text-white font-bold">{fmt(pagoTarget.totalMonto)}</span>
-              </div>
             </div>
 
-            {/* Campos del movimiento */}
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Fecha de pago *</label>
-                  <input type="date" value={pagoFecha} onChange={e => setPagoFecha(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <Combobox value={pagoMetodo} onChange={setPagoMetodo} options={METODOS}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Cuenta bancaria (cargo) *</label>
-                <Combobox value={pagoCuenta} onChange={setPagoCuenta} options={cuentaOpts}
-                  placeholder="Seleccionar cuenta..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Referencia / Folio de transferencia</label>
-                <input value={pagoReferencia} onChange={e => setPagoReferencia(e.target.value)}
-                  placeholder="Núm. de referencia, folio..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                <input value={pagoNotas} onChange={e => setPagoNotas(e.target.value)}
-                  placeholder="Opcional"
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
+            {/* Fecha (shared) */}
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 block mb-1">Fecha de pago *</label>
+              <input
+                type="date"
+                value={pagoFecha}
+                onChange={e => setPagoFecha(e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
 
-            <div className="flex gap-3 mt-5">
-              <button onClick={() => setPagoTarget(null)} disabled={guardando}
-                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-40">
+            {singleRow ? (
+              /* ── Multi-entry UI (single technician) ── */
+              <>
+                <div className="space-y-2 mb-3">
+                  {pagoEntradas.map((entrada, i) => (
+                    <div key={i} className="bg-[#0d0d0d] rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Pago {i + 1}</p>
+                        {pagoEntradas.length > 1 && (
+                          <button
+                            onClick={() => setPagoEntradas(prev => prev.filter((_, j) => j !== i))}
+                            className="text-gray-600 hover:text-red-400 text-sm transition-colors"
+                          >✕</button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                          <label className="text-xs text-gray-600 block mb-1">Monto *</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={entrada.monto}
+                            onChange={e => setPagoEntradas(prev => prev.map((x, j) => j === i ? { ...x, monto: e.target.value } : x))}
+                            placeholder="0.00"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 block mb-1">Método</label>
+                          <Combobox
+                            value={entrada.metodoPago}
+                            onChange={v => setPagoEntradas(prev => prev.map((x, j) => j === i ? { ...x, metodoPago: v } : x))}
+                            options={METODOS}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-gray-600 block mb-1">Cuenta</label>
+                          <Combobox
+                            value={entrada.cuentaOrigenId}
+                            onChange={v => setPagoEntradas(prev => prev.map((x, j) => j === i ? { ...x, cuentaOrigenId: v } : x))}
+                            options={cuentaOpts}
+                            placeholder="Sin cuenta"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600 block mb-1">Referencia</label>
+                          <input
+                            value={entrada.referencia}
+                            onChange={e => setPagoEntradas(prev => prev.map((x, j) => j === i ? { ...x, referencia: e.target.value } : x))}
+                            placeholder="Folio, ref..."
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={() => setPagoEntradas(prev => [...prev, { ...DEFAULT_ENTRADA }])}
+                    className="w-full py-2 border border-dashed border-[#333] hover:border-[#B3985B]/50 rounded-xl text-gray-500 hover:text-[#B3985B] text-xs transition-colors"
+                  >
+                    + Agregar otro pago
+                  </button>
+                </div>
+
+                {/* Running total */}
+                <div className="bg-[#0d0d0d] rounded-xl p-3 mb-4 space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Total adeudo</span>
+                    <span className="text-white font-semibold">{fmt(singleRow.total)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Registrando</span>
+                    <span className={`font-semibold ${totalEntradas > singleRow.total ? "text-red-400" : "text-[#B3985B]"}`}>
+                      {fmt(totalEntradas)}
+                    </span>
+                  </div>
+                  {isFull && totalEntradas > 0 && (
+                    <div className="flex justify-center pt-0.5">
+                      <span className="text-xs text-green-400">✓ Pago completo — se marcará como pagado</span>
+                    </div>
+                  )}
+                  {!isFull && restante > 0.01 && totalEntradas > 0 && (
+                    <div className="flex justify-between text-xs pt-0.5">
+                      <span className="text-yellow-500">Quedará pendiente</span>
+                      <span className="text-yellow-400">{fmt(restante)}</span>
+                    </div>
+                  )}
+                  {totalEntradas > singleRow.total + 0.01 && (
+                    <div className="flex justify-between text-xs pt-0.5">
+                      <span className="text-red-400">Excede el adeudo</span>
+                      <span className="text-red-400">{fmt(Math.abs(restante))}</span>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              /* ── Single-entry UI (bulk pay-all) ── */
+              <div className="space-y-3 mb-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                    <Combobox value={pagoMetodo} onChange={setPagoMetodo} options={METODOS}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Cuenta bancaria</label>
+                    <Combobox value={pagoCuenta} onChange={setPagoCuenta} options={cuentaOpts}
+                      placeholder="Sin cuenta"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                  <input value={pagoReferencia} onChange={e => setPagoReferencia(e.target.value)}
+                    placeholder="Núm. de referencia, folio..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+            )}
+
+            {/* Notas (shared) */}
+            <div className="mb-5">
+              <label className="text-xs text-gray-500 block mb-1">Notas</label>
+              <input
+                value={pagoNotas}
+                onChange={e => setPagoNotas(e.target.value)}
+                placeholder="Opcional"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={cerrarModal}
+                disabled={guardando}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors disabled:opacity-40"
+              >
                 Cancelar
               </button>
-              <button onClick={confirmarPago} disabled={guardando || !pagoFecha}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
-                {guardando ? "Registrando..." : `Confirmar pago · ${fmt(pagoTarget.totalMonto)}`}
+              <button
+                onClick={confirmarPago}
+                disabled={guardando || !pagoFecha || (singleRow ? totalEntradas <= 0 : false)}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors"
+              >
+                {guardando
+                  ? "Registrando..."
+                  : singleRow
+                    ? isFull
+                      ? `Confirmar pago · ${fmt(totalEntradas)}`
+                      : `Registrar pago parcial · ${fmt(totalEntradas)}`
+                    : `Confirmar pago · ${fmt(pagoTarget.reduce((s, r) => s + r.total, 0))}`}
               </button>
             </div>
 

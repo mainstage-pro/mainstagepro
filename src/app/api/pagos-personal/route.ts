@@ -126,7 +126,14 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// POST /api/pagos-personal — mark technician as paid + create movimiento
+interface PagoEntrada {
+  monto: number;
+  metodoPago: string;
+  cuentaOrigenId?: string | null;
+  referencia?: string | null;
+}
+
+// POST /api/pagos-personal — register technician payment(s)
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -135,19 +142,23 @@ export async function POST(req: NextRequest) {
   const {
     tecnicoId,
     proyectoIds,
-    cuentaOrigenId,
     fecha,
+    notas,
+    // Multi-entry format
+    entradas,
+    // Legacy single-entry fields (backward compat)
+    cuentaOrigenId,
     metodoPago = "TRANSFERENCIA",
     referencia,
-    notas,
   } = body as {
     tecnicoId: string;
     proyectoIds: string[];
-    cuentaOrigenId?: string;
     fecha?: string;
+    notas?: string;
+    entradas?: PagoEntrada[];
+    cuentaOrigenId?: string;
     metodoPago?: string;
     referencia?: string;
-    notas?: string;
   };
 
   if (!tecnicoId || !proyectoIds?.length) {
@@ -169,40 +180,90 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  const totalOwed = cxps.reduce((s, c) => s + c.monto, 0);
   const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
 
-  await prisma.$transaction(async (tx) => {
-    // Marcar slots de personal como pagado
-    await tx.proyectoPersonal.updateMany({
-      where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-      data: { estadoPago: "PAGADO" },
-    });
-
-    // Por cada CxP crear un movimiento y vincularla
-    for (const cxp of cxps) {
-      const mov = await tx.movimientoFinanciero.create({
-        data: {
-          tipo: "GASTO",
-          fecha: fechaPago,
-          concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
-          monto: cxp.monto,
-          metodoPago,
-          cuentaOrigenId: cuentaOrigenId || null,
-          referencia: referencia || null,
-          notas: notas || null,
-          proyectoId: cxp.proyectoId,
-          creadoPor: session.id,
-        },
-      });
-
-      await tx.cuentaPagar.update({
-        where: { id: cxp.id },
-        data: { estado: "LIQUIDADO", movimientoId: mov.id },
-      });
+  if (entradas && entradas.length > 0) {
+    // ── Multi-entry path ────────────────────────────────────────────────────
+    const validEntradas = entradas.filter((e) => e.monto > 0);
+    if (!validEntradas.length) {
+      return NextResponse.json({ error: "Al menos una entrada con monto > 0 es requerida" }, { status: 400 });
     }
 
-    // Si no había CxP (caso borde), solo marcar personal
-  });
+    const totalPagado = validEntradas.reduce((s, e) => s + e.monto, 0);
+    const fullyPaid = totalOwed > 0 ? totalPagado >= totalOwed - 0.01 : true;
+    const movIds: string[] = [];
 
-  return NextResponse.json({ ok: true, movimientosCreados: cxps.length });
+    await prisma.$transaction(async (tx) => {
+      // Create one movimiento per entrada
+      for (const entrada of validEntradas) {
+        const mov = await tx.movimientoFinanciero.create({
+          data: {
+            tipo: "GASTO",
+            fecha: fechaPago,
+            concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
+            monto: entrada.monto,
+            metodoPago: entrada.metodoPago || "TRANSFERENCIA",
+            cuentaOrigenId: entrada.cuentaOrigenId || null,
+            referencia: entrada.referencia || null,
+            notas: notas || null,
+            proyectoId: cxps[0]?.proyectoId ?? proyectoIds[0],
+            creadoPor: session.id,
+          },
+        });
+        movIds.push(mov.id);
+      }
+
+      if (fullyPaid) {
+        await tx.proyectoPersonal.updateMany({
+          where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
+          data: { estadoPago: "PAGADO" },
+        });
+
+        // Link each CxP to a distinct movimiento (unique constraint on movimientoId)
+        // Extra CxPs beyond the movimiento count get marked LIQUIDADO without a link
+        for (let i = 0; i < cxps.length; i++) {
+          const movId = movIds[i] ?? null;
+          await tx.cuentaPagar.update({
+            where: { id: cxps[i].id },
+            data: { estado: "LIQUIDADO", ...(movId ? { movimientoId: movId } : {}) },
+          });
+        }
+      }
+    });
+
+    return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid });
+  } else {
+    // ── Legacy single-entry path (one movimiento per CxP, original behavior) ─
+    await prisma.$transaction(async (tx) => {
+      await tx.proyectoPersonal.updateMany({
+        where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
+        data: { estadoPago: "PAGADO" },
+      });
+
+      for (const cxp of cxps) {
+        const mov = await tx.movimientoFinanciero.create({
+          data: {
+            tipo: "GASTO",
+            fecha: fechaPago,
+            concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
+            monto: cxp.monto,
+            metodoPago,
+            cuentaOrigenId: cuentaOrigenId || null,
+            referencia: referencia || null,
+            notas: notas || null,
+            proyectoId: cxp.proyectoId,
+            creadoPor: session.id,
+          },
+        });
+
+        await tx.cuentaPagar.update({
+          where: { id: cxp.id },
+          data: { estado: "LIQUIDADO", movimientoId: mov.id },
+        });
+      }
+    });
+
+    return NextResponse.json({ ok: true, movimientosCreados: cxps.length, fullyPaid: true });
+  }
 }
