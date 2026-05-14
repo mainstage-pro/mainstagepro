@@ -201,6 +201,7 @@ export default function PagosPersonalPage() {
             proyectoIds: row.pagos.map((p) => p.proyectoId),
             fecha: pagoFecha,
             notas: pagoNotas || null,
+            totalOwed: row.total,
             entradas: validEntradas,
           }),
         });
@@ -214,6 +215,7 @@ export default function PagosPersonalPage() {
               proyectoIds: row.pagos.map((p) => p.proyectoId),
               fecha: pagoFecha,
               notas: pagoNotas || null,
+              totalOwed: row.total,
               entradas: [{
                 monto: row.total,
                 metodoPago: pagoMetodo,

@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
     notas,
     // Multi-entry format
     entradas,
+    totalOwed: totalOwedFromClient,
     // Legacy single-entry fields (backward compat)
     cuentaOrigenId,
     metodoPago = "TRANSFERENCIA",
@@ -156,6 +157,7 @@ export async function POST(req: NextRequest) {
     fecha?: string;
     notas?: string;
     entradas?: PagoEntrada[];
+    totalOwed?: number;
     cuentaOrigenId?: string;
     metodoPago?: string;
     referencia?: string;
@@ -180,7 +182,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  const totalOwed = cxps.reduce((s, c) => s + c.monto, 0);
+  // Prefer client-provided totalOwed (matches tarifaAcordada shown in UI)
+  // over CxP total, which may differ if CxPs were created with different amounts
+  const cxpTotal = cxps.reduce((s, c) => s + c.monto, 0);
+  const totalOwed = totalOwedFromClient ?? cxpTotal;
   const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
 
   if (entradas && entradas.length > 0) {
