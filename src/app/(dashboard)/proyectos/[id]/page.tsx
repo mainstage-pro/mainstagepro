@@ -28,7 +28,7 @@ interface Personal {
   rolTecnico: { nombre: string } | null;
 }
 interface CatFinanciera { id: string; nombre: string; tipo: string }
-interface Proveedor { id: string; nombre: string; telefono: string | null; giro: string | null }
+interface Proveedor { id: string; nombre: string; empresa: string | null; compania: { id: string; nombre: string } | null; telefono: string | null; giro: string | null }
 interface CheckItem { id: string; item: string; completado: boolean; orden: number; tipo: string }
 interface Archivo { id: string; tipo: string; nombre: string; url: string; createdAt: string }
 interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; usuario: string }
@@ -36,7 +36,7 @@ interface CxC { id: string; concepto: string; tipoPago: string; monto: number; m
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
-interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
+interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
@@ -423,7 +423,7 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
         <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
-        {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.nombre}</p>}
+        {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.empresa || eq.proveedor.nombre}</p>}
       </div>
       <div className="text-center shrink-0">
         <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
@@ -5680,7 +5680,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-white text-sm">{g.concepto}</p>
                             {g.categoria && <span className="text-xs px-1.5 py-0.5 bg-[#222] text-gray-400 rounded">{g.categoria.nombre}</span>}
-                            {g.proveedor && <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>}
+                            {g.proveedor && <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.empresa || g.proveedor.nombre}</span>}
                           </div>
                           <p className="text-gray-600 text-xs">Pagó {fmtDate(g.fecha)} · {g.metodoPago}{g.cuentaOrigen ? ` · ${g.cuentaOrigen.nombre}` : ""}{g.referencia ? ` · Ref: ${g.referencia}` : ""}</p>
                         </div>
@@ -5861,7 +5861,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
                   <Combobox value={gastoProveedor} onChange={v => setGastoProveedor(v)}
-                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.compania?.nombre || p.empresa || p.nombre }))]}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
@@ -5980,7 +5980,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
                   <Combobox value={editGastoForm.proveedorId} onChange={v => setEditGastoForm(p => ({ ...p, proveedorId: v }))}
-                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.compania?.nombre || p.empresa || p.nombre }))]}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>

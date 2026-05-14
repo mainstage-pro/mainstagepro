@@ -33,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
     include: {
       categoria: { select: { id: true, nombre: true } },
-      proveedor: { select: { id: true, nombre: true } },
+      proveedor: { select: { id: true, nombre: true, empresa: true } },
       cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
     },
   });

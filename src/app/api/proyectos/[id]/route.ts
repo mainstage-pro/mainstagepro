@@ -65,7 +65,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         equipos: {
           include: {
             equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
-            proveedor: { select: { nombre: true, telefono: true } },
+            proveedor: { select: { nombre: true, empresa: true, telefono: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
           },
           orderBy: { id: "asc" },
@@ -83,7 +83,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { fecha: "desc" },
           include: {
             categoria: { select: { id: true, nombre: true } },
-            proveedor: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true, empresa: true } },
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
@@ -120,7 +120,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         equipos: {
           include: {
             equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
-            proveedor: { select: { nombre: true, telefono: true } },
+            proveedor: { select: { nombre: true, empresa: true, telefono: true } },
           },
           orderBy: { id: "asc" },
         },
@@ -137,7 +137,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { fecha: "desc" },
           include: {
             categoria: { select: { id: true, nombre: true } },
-            proveedor: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true, empresa: true } },
             cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
