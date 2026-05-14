@@ -169,12 +169,13 @@ export default function CajaChicaPage() {
   const [movs, setMovs]             = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading]       = useState(true);
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const [formTipo, setFormTipo] = useState<"GASTO" | "RECARGA" | null>(null);
   const [guardando, setGuardando]   = useState(false);
   const [editando, setEditando]     = useState<Movimiento | null>(null);
+  const [cuentas, setCuentas]       = useState<{ id: string; nombre: string }[]>([]);
 
   const [form, setForm] = useState({
-    concepto: "", monto: "", fecha: hoy(), categoriaId: "", notas: "",
+    concepto: "", monto: "", fecha: hoy(), categoriaId: "", notas: "", cuentaOrigenId: "",
   });
 
   // ── Carga ─────────────────────────────────────────────────────────────────
@@ -182,13 +183,15 @@ export default function CajaChicaPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rc, rcat] = await Promise.all([
+      const [rc, rcat, rcuentas] = await Promise.all([
         fetch("/api/finanzas/caja-chica", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
       ]);
       setSaldo(rc.saldo ?? 0);
       setMovs(rc.movimientos ?? []);
       setCategorias((rcat.categorias ?? []).filter((c: Categoria) => c.tipo === "GASTO"));
+      setCuentas((rcuentas.cuentas ?? []).filter((c: { id: string }) => c.id !== "caja-chica-mainstage"));
     } catch {
       toast.error("Error cargando caja chica");
     } finally {
@@ -199,6 +202,18 @@ export default function CajaChicaPage() {
   useEffect(() => { load(); }, [load]);
 
   // ── Guardar gasto ─────────────────────────────────────────────────────────
+
+  function abrirForm(tipo: "GASTO" | "RECARGA") {
+    setFormTipo(tipo);
+    setForm({
+      concepto: tipo === "RECARGA" ? "Recarga caja chica" : "",
+      monto: "",
+      fecha: hoy(),
+      categoriaId: "",
+      notas: "",
+      cuentaOrigenId: "",
+    });
+  }
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -211,13 +226,12 @@ export default function CajaChicaPage() {
       const r = await fetch("/api/finanzas/caja-chica", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, tipo: formTipo }),
       });
       const data = await r.json();
       if (!r.ok) { toast.error(data.error ?? "Error"); return; }
-      toast.success("Gasto registrado");
-      setForm({ concepto: "", monto: "", fecha: hoy(), categoriaId: "", notas: "" });
-      setMostrarForm(false);
+      toast.success(formTipo === "RECARGA" ? "Recarga registrada" : "Gasto registrado");
+      setFormTipo(null);
       await load();
     } finally {
       setGuardando(false);
@@ -262,12 +276,20 @@ export default function CajaChicaPage() {
           <h1 className="text-xl font-bold text-white">Caja Chica</h1>
           <p className="text-gray-500 text-sm mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
-        <button
-          onClick={() => setMostrarForm(v => !v)}
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
-        >
-          {mostrarForm ? "Cancelar" : "+ Registrar gasto"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => formTipo === "RECARGA" ? setFormTipo(null) : abrirForm("RECARGA")}
+            className="bg-[#1a1a1a] border border-green-700/50 hover:bg-green-900/20 text-green-400 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            {formTipo === "RECARGA" ? "Cancelar" : "↓ Recarga"}
+          </button>
+          <button
+            onClick={() => formTipo === "GASTO" ? setFormTipo(null) : abrirForm("GASTO")}
+            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            {formTipo === "GASTO" ? "Cancelar" : "+ Registrar gasto"}
+          </button>
+        </div>
       </div>
 
       {/* ── Saldo ───────────────────────────────────────────────────────────── */}
@@ -312,16 +334,18 @@ export default function CajaChicaPage() {
       )}
 
       {/* ── Formulario ──────────────────────────────────────────────────────── */}
-      {mostrarForm && (
-        <form onSubmit={guardar} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-          <p className="text-sm font-semibold text-white mb-2">Registrar gasto</p>
+      {formTipo && (
+        <form onSubmit={guardar} className={`border rounded-xl p-5 space-y-4 ${formTipo === "RECARGA" ? "bg-[#0d1a0d] border-green-800/40" : "bg-[#111] border-[#1e1e1e]"}`}>
+          <p className={`text-sm font-semibold mb-2 ${formTipo === "RECARGA" ? "text-green-400" : "text-white"}`}>
+            {formTipo === "RECARGA" ? "↓ Registrar recarga a caja chica" : "Registrar gasto"}
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Concepto <span className="text-red-400">*</span></label>
               <input
                 className={inputCls}
-                placeholder="Ej. Compra de papelería, taxi, etc."
+                placeholder={formTipo === "RECARGA" ? "Ej. Recarga caja chica, depósito efectivo..." : "Ej. Compra de papelería, taxi, etc."}
                 value={form.concepto}
                 onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
               />
@@ -351,17 +375,29 @@ export default function CajaChicaPage() {
               />
             </div>
 
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Categoría</label>
-              <Combobox
-                value={form.categoriaId}
-                onChange={v => setForm(f => ({ ...f, categoriaId: v }))}
-                options={[{ value: "", label: "Sin categoría" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
-                className={inputCls}
-              />
-            </div>
+            {formTipo === "RECARGA" ? (
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-500 mb-1 block">Cuenta origen (opcional)</label>
+                <Combobox
+                  value={form.cuentaOrigenId}
+                  onChange={v => setForm(f => ({ ...f, cuentaOrigenId: v }))}
+                  options={[{ value: "", label: "— Sin cuenta (efectivo) —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre }))]}
+                  className={inputCls}
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">Categoría</label>
+                <Combobox
+                  value={form.categoriaId}
+                  onChange={v => setForm(f => ({ ...f, categoriaId: v }))}
+                  options={[{ value: "", label: "Sin categoría" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                  className={inputCls}
+                />
+              </div>
+            )}
 
-            <div>
+            <div className={formTipo === "RECARGA" ? "" : ""}>
               <label className="text-xs text-gray-500 mb-1 block">Notas</label>
               <input
                 className={inputCls}
@@ -376,13 +412,13 @@ export default function CajaChicaPage() {
             <button
               type="submit"
               disabled={guardando}
-              className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+              className={`disabled:opacity-50 text-sm font-semibold px-5 py-2 rounded-lg transition-colors ${formTipo === "RECARGA" ? "bg-green-700 hover:bg-green-600 text-white" : "bg-[#B3985B] hover:bg-[#b8963e] text-black"}`}
             >
-              {guardando ? "Guardando..." : "Registrar gasto"}
+              {guardando ? "Guardando..." : formTipo === "RECARGA" ? "Registrar recarga" : "Registrar gasto"}
             </button>
             <button
               type="button"
-              onClick={() => setMostrarForm(false)}
+              onClick={() => setFormTipo(null)}
               className="text-gray-400 hover:text-white text-sm px-4 py-2 rounded-lg border border-[#333] hover:border-[#555] transition-colors"
             >
               Cancelar
@@ -406,19 +442,19 @@ export default function CajaChicaPage() {
         ) : (
           <div className="divide-y divide-[#1a1a1a]">
             {movs.map(m => {
-              const esTrans  = m.tipo === "TRANSFERENCIA";
-              const esDeposito = esTrans && m.cuentaDestino?.id === "caja-chica-mainstage";
+              const esDeposito = m.cuentaDestino?.id === "caja-chica-mainstage";
+              const esTransSalida = m.tipo === "TRANSFERENCIA" && !esDeposito;
               const signo: "+" | "-" = esDeposito ? "+" : "-";
-              const colorMonto = esDeposito ? "text-green-400" : esTrans ? "text-orange-400" : "text-red-400";
-              const esEditable = !esTrans;
+              const colorMonto = esDeposito ? "text-green-400" : esTransSalida ? "text-orange-400" : "text-red-400";
+              const esEditable = m.tipo !== "TRANSFERENCIA";
 
               return (
                 <div key={m.id} className="group flex items-center gap-4 px-5 py-3 hover:bg-[#151515] transition-colors">
                   {/* Tipo badge */}
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    esDeposito ? "bg-green-900/40 text-green-300" : esTrans ? "bg-orange-900/40 text-orange-300" : "bg-red-900/40 text-red-300"
+                    esDeposito ? "bg-green-900/40 text-green-300" : esTransSalida ? "bg-orange-900/40 text-orange-300" : "bg-red-900/40 text-red-300"
                   }`}>
-                    {esDeposito ? "↓" : esTrans ? "↑" : "G"}
+                    {esDeposito ? "↓" : esTransSalida ? "↑" : "G"}
                   </div>
 
                   {/* Info */}
@@ -429,7 +465,7 @@ export default function CajaChicaPage() {
                       {m.categoria && (
                         <span className="text-[10px] text-gray-600 bg-[#1e1e1e] px-1.5 py-0.5 rounded">{m.categoria.nombre}</span>
                       )}
-                      {esTrans && m.cuentaOrigen && m.cuentaOrigen.id !== "caja-chica-mainstage" && (
+                      {esDeposito && m.cuentaOrigen && (
                         <span className="text-[10px] text-green-600">desde {m.cuentaOrigen.nombre}</span>
                       )}
                       {m.creadoPor && (
@@ -468,15 +504,6 @@ export default function CajaChicaPage() {
         )}
       </div>
 
-      {/* ── Instrucción de recarga ───────────────────────────────────────────── */}
-      <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
-        <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-2">¿Cómo recargar la caja chica?</p>
-        <p className="text-gray-500 text-sm">
-          Ve a <strong className="text-gray-400">Finanzas → Movimientos</strong> y registra una{" "}
-          <strong className="text-gray-400">Transferencia</strong> desde cualquier cuenta bancaria hacia la cuenta{" "}
-          <strong className="text-[#B3985B]">Caja Chica</strong>. El saldo se actualizará automáticamente.
-        </p>
-      </div>
 
       {/* ── Modal editar ────────────────────────────────────────────────────── */}
       {editando && (

@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { concepto, monto, fecha, categoriaId, notas } = body;
+  const { concepto, monto, fecha, categoriaId, notas, tipo = "GASTO", cuentaOrigenId: cuentaOrigenInput } = body;
 
   if (!concepto || !monto || !fecha) {
     return NextResponse.json({ error: "Concepto, monto y fecha son requeridos" }, { status: 400 });
@@ -99,6 +99,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
   }
 
+  // ── RECARGA: money entering caja chica ──────────────────────────────────────
+  if (tipo === "RECARGA") {
+    const movimiento = await prisma.movimientoFinanciero.create({
+      data: {
+        fecha: new Date(fecha),
+        tipo: "TRANSFERENCIA",
+        cuentaDestinoId: CUENTA_ID,
+        cuentaOrigenId: cuentaOrigenInput || null,
+        concepto,
+        monto: montoNum,
+        metodoPago: "TRANSFERENCIA",
+        notas: notas || null,
+        creadoPor: session.name ?? session.id,
+      },
+      include: {
+        categoria: { select: { id: true, nombre: true } },
+        cuentaOrigen:  { select: { id: true, nombre: true } },
+        cuentaDestino: { select: { id: true, nombre: true } },
+      },
+    });
+    const nuevoSaldo = (await getSaldo());
+    return NextResponse.json({ movimiento, nuevoSaldo }, { status: 201 });
+  }
+
+  // ── GASTO: money leaving caja chica ─────────────────────────────────────────
   const saldoActual = await getSaldo();
   if (montoNum > saldoActual) {
     return NextResponse.json({ error: `Saldo insuficiente. Disponible: $${saldoActual.toLocaleString("es-MX", { maximumFractionDigits: 0 })}` }, { status: 400 });
