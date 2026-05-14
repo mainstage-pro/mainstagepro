@@ -65,8 +65,8 @@ function nextMes(mes: string) {
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
 }
 
 export default function KanbanPage() {
@@ -89,11 +89,12 @@ export default function KanbanPage() {
 
   async function changeEstado(id: string, estado: string) {
     setPublicaciones(prev => prev.map(p => p.id === id ? { ...p, estado } : p));
-    await fetch(`/api/marketing/publicaciones/${id}`, {
+    const r = await fetch(`/api/marketing/publicaciones/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    if (!r.ok) await load();
   }
 
   function onDragStart(e: React.DragEvent, pub: Publicacion) {

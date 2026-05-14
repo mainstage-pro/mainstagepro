@@ -424,7 +424,9 @@ function fmtMXN(n: number) {
 
 function fmtDate(s: string | Date | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  const iso = s instanceof Date ? s.toISOString() : s;
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
 }
 
 function pct(n: number) {
@@ -484,6 +486,7 @@ interface CotizacionData {
   descuentoEspecialPct: number;
   descuentoEspecialNota?: string | null;
   descuentoFamilyFriendsPct: number;
+  descuentoFijoMonto?: number;
   montoDescuento: number;
   montoBeneficio: number;
   subtotalEquiposNeto: number;
@@ -504,8 +507,10 @@ interface CotizacionData {
   };
   creadaPor: { name: string } | null;
   lineas: Linea[];
+  incluirChofer?: boolean;
   tradeCalificado?: boolean;
   mainstageTradeData?: string | null;
+  planPagos?: string | null;
 }
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
@@ -629,10 +634,10 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
 }
 
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
-function SubtotalOperacion({ lineas }: { lineas: Linea[] }) {
+function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluirChofer?: boolean }) {
   const opLineas = lineas.filter(l => ["OPERACION_TECNICA", "DJ"].includes(l.tipo));
-  if (opLineas.length === 0) return null;
-  const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0);
+  const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0) + (incluirChofer ? 500 : 0);
+  if (subtotal === 0) return null;
 
   return (
     <View style={{ marginHorizontal: 40, marginTop: 8 }}>
@@ -684,8 +689,23 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 
 // ─── Documento principal ─────────────────────────────────────────────────────
 export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: CotizacionData; logoSrc?: string | null }) {
-  const anticipo    = c.granTotal * 0.5;
-  const liquidacion = c.granTotal * 0.5;
+  // Leer plan de pagos configurado; si no hay, usar 50/50 por defecto
+  type PagoPlanItem = { concepto: string; porcentaje: number; monto?: number; tipoPago: string };
+  let parsedPlan: { pagos?: PagoPlanItem[] } | null = null;
+  try { parsedPlan = c.planPagos ? JSON.parse(c.planPagos) : null; } catch { /* noop */ }
+  const pagosArr = parsedPlan?.pagos;
+  const pagoAnticipo = pagosArr?.find(p => p.tipoPago === "ANTICIPO") ?? pagosArr?.[0];
+  const pagoLiquidacion = pagosArr?.find(p => p.tipoPago === "LIQUIDACION") ?? (pagosArr && pagosArr.length > 1 ? pagosArr[pagosArr.length - 1] : undefined);
+
+  const anticipo = pagoAnticipo
+    ? (pagoAnticipo.monto && pagoAnticipo.monto > 0 ? pagoAnticipo.monto : Math.round(c.granTotal * pagoAnticipo.porcentaje / 100 * 100) / 100)
+    : c.granTotal * 0.5;
+  const liquidacion = pagoLiquidacion
+    ? (pagoLiquidacion.monto && pagoLiquidacion.monto > 0 ? pagoLiquidacion.monto : Math.round(c.granTotal * pagoLiquidacion.porcentaje / 100 * 100) / 100)
+    : c.granTotal * 0.5;
+  const anticipoPct = pagoAnticipo ? Math.round(pagoAnticipo.porcentaje) : 50;
+  const liquidacionPct = pagoLiquidacion ? Math.round(pagoLiquidacion.porcentaje) : 50;
+
   const tieneDescuento = c.montoDescuento > 0;
 
   // External equipment subtotal (merged into the equipment table, still needs its own totals line)
@@ -702,9 +722,13 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   if ((c.descuentoMultidiaPct ?? 0) > 0)
     discRows.push({ label: `Descuento multi-día (${Math.round(c.descuentoMultidiaPct * 100)}%)`, monto: sb * c.descuentoMultidiaPct });
   if ((c.descuentoFamilyFriendsPct ?? 0) > 0)
-    discRows.push({ label: `Family & Friends (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
+    discRows.push({ label: `Descuento especial (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
     discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
+  if ((c.descuentoPatrocinioPct ?? 0) > 0)
+    discRows.push({ label: `Patrocinio (${Math.round(c.descuentoPatrocinioPct * 100)}%)${c.descuentoPatrocinioNota ? ` · ${c.descuentoPatrocinioNota}` : ""}`, monto: sb * c.descuentoPatrocinioPct });
+  if ((c.descuentoFijoMonto ?? 0) > 0)
+    discRows.push({ label: "Descuento por monto fijo", monto: c.descuentoFijoMonto! });
   // Trade
   try {
     const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
@@ -721,7 +745,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   vigenciaDate.setDate(vigenciaDate.getDate() + c.vigenciaDias);
 
   const TERMINOS = [
-    `Se solicita un mínimo del 50% de anticipo ($${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) para reservar la fecha.`,
+    `Se solicita un anticipo del ${anticipoPct}% ($${anticipo.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) para reservar la fecha.`,
     `El saldo restante ($${liquidacion.toLocaleString("es-MX", { maximumFractionDigits: 0 })}) se debe liquidar como máximo 1 día antes del evento.`,
     `Esta cotización tiene una vigencia de ${c.vigenciaDias} días (vence el ${fmtDate(vigenciaDate)}).`,
     "El pago puede realizarse por transferencia o efectivo (coordinar entrega vía WhatsApp con el vendedor).",
@@ -794,10 +818,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         <TablaAdicionales lineas={c.lineas} />
 
         {/* ── OPERACIÓN TÉCNICA (subtotal global, sin desglose) ── */}
-        <SubtotalOperacion lineas={c.lineas} />
+        <SubtotalOperacion lineas={c.lineas} incluirChofer={c.incluirChofer} />
 
         {/* ── LOGÍSTICA (subtotal global, sin desglose) ── */}
-        <SubtotalLogistica lineas={c.lineas} />
+        {c.tipoServicio !== "RENTA" && <SubtotalLogistica lineas={c.lineas} />}
 
         {/* ── TOTALES ── */}
         <View style={s.totalesBloque}>
@@ -820,13 +844,13 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0))}</Text>
               </View>
             )}
-            {c.subtotalOperacion > 0 && (
+            {(c.subtotalOperacion + (c.incluirChofer ? 500 : 0)) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Operación técnica</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalOperacion)}</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalOperacion + (c.incluirChofer ? 500 : 0))}</Text>
               </View>
             )}
-            {(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
+            {c.tipoServicio !== "RENTA" && (c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Transporte y viáticos</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje)}</Text>
@@ -852,11 +876,11 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── ANTICIPOS ── */}
         <View style={s.anticipo}>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>ANTICIPO SUGERIDO (50%)</Text>
+            <Text style={s.anticipoLabel}>ANTICIPO ({anticipoPct}%)</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(anticipo)}</Text>
           </View>
           <View style={s.anticipoItem}>
-            <Text style={s.anticipoLabel}>SALDO A LIQUIDAR (50%)</Text>
+            <Text style={s.anticipoLabel}>SALDO A LIQUIDAR ({liquidacionPct}%)</Text>
             <Text style={s.anticipoMonto}>{fmtMXN(liquidacion)}</Text>
           </View>
         </View>

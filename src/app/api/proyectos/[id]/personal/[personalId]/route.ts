@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function diaSiguienteEvento(fecha: Date): Date {
+function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
   return d;
 }
 
@@ -18,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const data: Record<string, unknown> = {};
   if ("tecnicoId" in body) data.tecnicoId = body.tecnicoId || null;
+  if ("rolTecnicoId" in body) data.rolTecnicoId = body.rolTecnicoId || null;
   if ("participacion" in body) data.participacion = body.participacion || null;
   if ("confirmado" in body) data.confirmado = body.confirmado;
   if ("tarifaAcordada" in body) data.tarifaAcordada = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada) : null;
@@ -52,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     const rolNombre = personal.rolTecnico?.nombre ?? personal.tecnico?.rol?.nombre ?? "Técnico";
     const tecNombre = personal.tecnico?.nombre ?? "Sin nombre";
-    const fechaCompromiso = diaSiguienteEvento(proyecto?.fechaEvento ?? new Date());
+    const fechaCompromiso = proximoMiercolesTraEvento(proyecto?.fechaEvento ?? new Date());
 
     // Verificar que no exista ya una CxP para este técnico+proyecto
     const existente = await prisma.cuentaPagar.findFirst({

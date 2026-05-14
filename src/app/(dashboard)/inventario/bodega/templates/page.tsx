@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface Template { id: string; descripcion: string; categoria: string; orden: number; activo: boolean }
 
 const CATEGORIAS = ["AUDIO", "ILUMINACION", "VIDEO", "CABLES", "HERRAMIENTAS", "TRANSPORTES", "GENERAL"];
 
 export default function TemplatesPage() {
+  const toast = useToast();
   const confirm = useConfirm();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,9 +45,21 @@ export default function TemplatesPage() {
     if (!form.descripcion.trim()) return;
     setSaving(true);
     if (editId) {
-      await fetch(`/api/bodega/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(`/api/bodega/templates/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
-      await fetch("/api/bodega/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch("/api/bodega/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     }
     await load();
     cancelForm();
@@ -52,13 +67,23 @@ export default function TemplatesPage() {
   }
 
   async function toggleActivo(t: Template) {
-    await fetch(`/api/bodega/templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    const res = await fetch(`/api/bodega/templates/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !t.activo }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function deleteTemplate(id: string) {
     if (!await confirm({ message: "¿Eliminar este item del catálogo?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/bodega/templates/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/bodega/templates/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     await load();
   }
 
@@ -74,16 +99,13 @@ export default function TemplatesPage() {
           <h1 className="text-xl font-semibold text-white">Catálogo de items — Bodega</h1>
           <p className="text-[#6b7280] text-sm">{templates.filter(t => t.activo).length} items activos · Se copian al crear un nuevo checklist semanal</p>
         </div>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + Agregar item
-          </button>
-        )}
+        <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          + Agregar item
+        </button>
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar item" : "Nuevo item"}</p>
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar item" : "Nuevo item"}>
+        <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Descripción *</label>
@@ -111,10 +133,9 @@ export default function TemplatesPage() {
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
             </button>
-            <button onClick={cancelForm} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>

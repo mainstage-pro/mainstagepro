@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 type Rol = { id: string; nombre: string };
 type Tecnico = {
@@ -128,7 +129,7 @@ export default function TecnicosPage() {
       cuentaBancaria: t.cuentaBancaria ?? "",
       datosFiscales: t.datosFiscales ?? "",
       comentarios: t.comentarios ?? "",
-      habilidades: t.habilidades ? (JSON.parse(t.habilidades) as string[]).join(", ") : "",
+      habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades) as string[]).join(", "); } catch { return t.habilidades; } })() : "",
     });
     setCreating(false);
   }
@@ -219,8 +220,7 @@ export default function TecnicosPage() {
             {tecnicos.filter(t => !t.activo).length > 0 && ` · ${tecnicos.filter(t => !t.activo).length} inactivos`}
           </p>
         </div>
-        {!showForm && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
             <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5 gap-0.5">
               <button onClick={() => setView("card")} title="Tarjetas"
                 className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
@@ -242,14 +242,10 @@ export default function TecnicosPage() {
               + Nuevo técnico
             </button>
           </div>
-        )}
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-6 mb-6 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {creating ? "Nuevo técnico" : `Editando: ${editing?.nombre}`}
-          </p>
+      <Modal open={showForm} onClose={cancel} title={creating ? "Nuevo técnico" : "Editar técnico"}>
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
@@ -324,39 +320,37 @@ export default function TecnicosPage() {
             <button onClick={cancel} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cerrar</button>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {!showForm && (
-        <div className="flex flex-wrap items-center gap-3 mb-5">
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
-            placeholder="Buscar técnico..." />
-          <Combobox
-            value={filterNivel}
-            onChange={v => setFilterNivel(v)}
-            options={[{ value: "TODOS", label: "Todos los niveles" }, { value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-          />
-          <Combobox
-            value={filterRol}
-            onChange={v => setFilterRol(v)}
-            options={[{ value: "TODOS", label: "Todos los roles" }, ...rolesUnicos.map(r => ({ value: r, label: r }))]}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-          />
-          <Combobox
-            value={sortBy}
-            onChange={v => setSortBy(v as SortKey)}
-            options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "nivel", label: "Ordenar: Nivel" }, { value: "rol", label: "Ordenar: Rol" }]}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-          />
-          {tecnicos.some(t => !t.activo) && (
-            <button onClick={() => setShowInactivos(!showInactivos)}
-              className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>
-              {showInactivos ? "Ocultar inactivos" : "Ver inactivos"}
-            </button>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
+          placeholder="Buscar técnico..." />
+        <Combobox
+          value={filterNivel}
+          onChange={v => setFilterNivel(v)}
+          options={[{ value: "TODOS", label: "Todos los niveles" }, { value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+          className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+        />
+        <Combobox
+          value={filterRol}
+          onChange={v => setFilterRol(v)}
+          options={[{ value: "TODOS", label: "Todos los roles" }, ...rolesUnicos.map(r => ({ value: r, label: r }))]}
+          className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+        />
+        <Combobox
+          value={sortBy}
+          onChange={v => setSortBy(v as SortKey)}
+          options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "nivel", label: "Ordenar: Nivel" }, { value: "rol", label: "Ordenar: Rol" }]}
+          className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+        />
+        {tecnicos.some(t => !t.activo) && (
+          <button onClick={() => setShowInactivos(!showInactivos)}
+            className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>
+            {showInactivos ? "Ocultar inactivos" : "Ver inactivos"}
+          </button>
+        )}
+      </div>
 
       {activos.length === 0 && !creating ? (
         <div className="text-center py-12 text-gray-600">
@@ -449,7 +443,7 @@ export default function TecnicosPage() {
       )}
 
       {/* ── RANKING ── */}
-      {view === "ranking" && !showForm && (
+      {view === "ranking" && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs text-gray-500">Ranking basado en evaluaciones internas de proyectos. Solo técnicos con al menos 1 proyecto evaluado tienen score.</p>
@@ -491,7 +485,7 @@ export default function TecnicosPage() {
                       <td className="px-4 py-3">
                         {r.ultimaFecha ? (
                           <div>
-                            <p className="text-gray-300 text-xs">{new Date(r.ultimaFecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" })}</p>
+                            <p className="text-gray-300 text-xs">{(() => { const iso = typeof r.ultimaFecha === "string" ? r.ultimaFecha : (r.ultimaFecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" }); })()}</p>
                             {r.diasSinTrabajar !== null && (
                               <p className={`text-[10px] ${r.diasSinTrabajar > 60 ? "text-red-400" : r.diasSinTrabajar > 30 ? "text-yellow-400" : "text-gray-600"}`}>
                                 hace {r.diasSinTrabajar}d
@@ -522,7 +516,7 @@ export default function TecnicosPage() {
       )}
 
       {/* ── DISPONIBILIDAD ── */}
-      {view === "disponibilidad" && !showForm && (
+      {view === "disponibilidad" && (
         <div>
           <p className="text-xs text-gray-500 mb-4">Proyectos asignados a cada técnico en los próximos 60 días. Click en un técnico para ver su historial completo.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

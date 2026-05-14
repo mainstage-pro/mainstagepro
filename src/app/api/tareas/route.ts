@@ -25,12 +25,15 @@ const SELECT = {
   proyectoTareaId: true,
   seccionId: true,
   carpetaId: true,
+  juntaOrigenId: true,
+  fechaCompletada: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
+  juntaOrigen:   { select: { id: true, area: true, fecha: true } },
   _count:        { select: { subtareas: true, comentarios: true, archivos: true } },
 };
 
@@ -67,17 +70,20 @@ export async function GET(req: NextRequest) {
   }
 
   if (vista === "hoy") {
-    const ahora = new Date();
-    ahora.setHours(23, 59, 59, 999);
-    where.fecha    = { lte: ahora };
+    // End of today in CST: get tomorrow's date in CST, use midnight UTC as exclusive upper bound
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const mananaCST = new Date(hoyCST);
+    mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
+    where.fecha    = { lt: mananaCST };
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
+    where.OR       = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   } else if (vista === "proximas") {
-    const manana = new Date();
-    manana.setHours(0, 0, 0, 0);
-    manana.setDate(manana.getDate() + 1);
+    const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+    const manana = new Date(hoyCST);
+    manana.setUTCDate(manana.getUTCDate() + 1);
     const en30 = new Date(manana);
-    en30.setDate(manana.getDate() + 30);
+    en30.setUTCDate(manana.getUTCDate() + 30);
     where.fecha  = { gte: manana, lte: en30 };
     where.estado = { not: "COMPLETADA" };
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
@@ -87,6 +93,16 @@ export async function GET(req: NextRequest) {
     where.iniciativaId    = null;
     where.parentId        = null;
     where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+  } else if (vista === "equipo") {
+    if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    where.proyectoTareaId = null;
+    where.iniciativaId    = null;
+    where.parentId        = null;
+    where.asignadoAId     = { not: null };
+  } else if (vista === "abandonadas") {
+    where.estado    = { notIn: ["COMPLETADA", "CANCELADA"] };
+    where.parentId  = null;
+    where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
   }
 
   const tareas = await prisma.tarea.findMany({
@@ -133,6 +149,19 @@ export async function POST(req: NextRequest) {
     },
     select: SELECT,
   });
+
+  // ── Notify assignee when task is created with an assignee ───────────────
+  if (asignadoAId && asignadoAId !== session.id) {
+    await prisma.notificacion.create({
+      data: {
+        usuarioId: asignadoAId,
+        tipo:      "TAREA",
+        titulo:    tarea.titulo,
+        mensaje:   `${session.name} te asignó esta tarea`,
+        url:       `/operaciones?open=${tarea.id}`,
+      },
+    });
+  }
 
   return NextResponse.json({ tarea }, { status: 201 });
 }

@@ -61,13 +61,13 @@ export function GraficaIngresos() {
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">
-          Ingresos vs Gastos · últimos 6 meses
+          Ingresos vs Gastos · {chartData.length === 1 ? "mes actual" : `últimos ${chartData.length} meses`}
         </p>
         <a href="/finanzas/reporte" className="text-[#B3985B] text-xs hover:underline">
           Ver reporte →
         </a>
       </div>
-      <ResponsiveContainer width="100%" height={180}>
+      <ResponsiveContainer width="100%" height={240}>
         <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }} barGap={3}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
           <XAxis

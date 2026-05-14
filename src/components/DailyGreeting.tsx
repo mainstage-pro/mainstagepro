@@ -344,7 +344,7 @@ export default function DailyGreeting({ nombre }: { nombre: string }) {
   return (
     <div>
       <h1 className="text-2xl font-bold text-white">
-        Hola, {primerNombre} 👋
+        Hola, {primerNombre}
       </h1>
       <p className="text-[#6b7280] text-sm mt-0.5">{fechaCapitalizada}</p>
       <p className="text-[#B3985B]/80 text-xs mt-2 italic max-w-sm leading-relaxed">

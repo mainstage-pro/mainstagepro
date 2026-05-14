@@ -566,8 +566,15 @@ function ProyectoTaskModal({
               {/* Title */}
               <textarea
                 ref={titleRef}
+                autoFocus={!activeId}
                 value={titulo}
                 onChange={e => { setTitulo(e.target.value); mark(); }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey && !inEditMode && titulo.trim()) {
+                    e.preventDefault();
+                    handleCreate().then(onClose);
+                  }
+                }}
                 placeholder="Título de la tarea"
                 className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder-[#2a2a2a] leading-snug"
                 rows={titulo.split("\n").length || 1}
@@ -832,7 +839,7 @@ function ProyectoTaskModal({
               {/* Create button — create mode only */}
               {!inEditMode && (
                 <button
-                  onClick={handleCreate}
+                  onClick={() => handleCreate().then(onClose)}
                   disabled={creating || !titulo.trim()}
                   className="w-full py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 text-black font-semibold text-sm transition-colors"
                 >

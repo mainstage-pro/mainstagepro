@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 interface Personal { id: string; nombre: string; puesto: string; salario: number | null; periodoPago: string; }
 interface TipoIncidencia { id: string; nombre: string; categoria: string; calculoTipo: string; valor: number; esDescuento: boolean; descripcion: string | null; activo: boolean; }
@@ -63,8 +64,10 @@ export default function IncidenciasPage() {
     if (!tipoForm.nombre.trim()) return;
     setSaving(true);
     const payload = { ...tipoForm, valor: parseFloat(tipoForm.valor)||0 };
-    if (editTipoId) await fetch(`/api/rrhh/tipos-incidencia/${editTipoId}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
-    else await fetch("/api/rrhh/tipos-incidencia",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    const rTipo = editTipoId
+      ? await fetch(`/api/rrhh/tipos-incidencia/${editTipoId}`,{ method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) })
+      : await fetch("/api/rrhh/tipos-incidencia",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    if (!rTipo.ok) { const d = await rTipo.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     await loadAll(); setShowTipoForm(false); setEditTipoId(null); setTipoForm(TIPO_EMPTY); setSaving(false);
   }
 
@@ -78,7 +81,8 @@ export default function IncidenciasPage() {
   async function saveInc() {
     if (!incForm.personalId || !incForm.tipoId || !incForm.fecha) return;
     setSaving(true);
-    await fetch("/api/rrhh/incidencias",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(incForm) });
+    const rInc = await fetch("/api/rrhh/incidencias",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(incForm) });
+    if (!rInc.ok) { const d = await rInc.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar"); setSaving(false); return; }
     await loadAll(); setShowIncForm(false); setIncForm(INC_EMPTY); setSaving(false);
   }
 
@@ -125,9 +129,8 @@ export default function IncidenciasPage() {
           </button>
         </div>
 
-        {showIncForm && (
-          <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva incidencia</p>
+        <Modal open={showIncForm} onClose={()=>{setShowIncForm(false);setIncForm(INC_EMPTY);}} title="Nueva incidencia" maxWidth="max-w-lg">
+          <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Empleado</label>
@@ -172,7 +175,7 @@ export default function IncidenciasPage() {
               <button onClick={()=>{setShowIncForm(false);setIncForm(INC_EMPTY);}} className="text-gray-500 hover:text-white text-sm px-3">Cancelar</button>
             </div>
           </div>
-        )}
+        </Modal>
 
         <div className="space-y-2">
           {incidencias.length === 0 ? (
@@ -193,7 +196,7 @@ export default function IncidenciasPage() {
                   {i.aplicada && <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded">Aplicada</span>}
                 </div>
                 <p className="text-gray-500 text-xs mt-0.5">
-                  {new Date(i.fecha).toLocaleDateString("es-MX",{day:"numeric",month:"long"})}
+                  {(() => { const [y,m,d] = i.fecha.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"long"}); })()}
                   {i.descripcion && ` · ${i.descripcion}`}
                   {i.periodoNomina && ` · nómina ${i.periodoNomina}`}
                 </p>
@@ -218,9 +221,8 @@ export default function IncidenciasPage() {
           </button>
         </div>
 
-        {showTipoForm && (
-          <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editTipoId?"Editar tipo":"Nuevo tipo de incidencia"}</p>
+        <Modal open={showTipoForm} onClose={()=>{setShowTipoForm(false);setEditTipoId(null);}} title={editTipoId?"Editar tipo":"Nuevo tipo de incidencia"} maxWidth="max-w-lg">
+          <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><label className="text-xs text-gray-500 mb-1 block">Nombre</label>
                 <input value={tipoForm.nombre} onChange={e=>setTipoForm(p=>({...p,nombre:e.target.value}))}
@@ -261,7 +263,7 @@ export default function IncidenciasPage() {
               <button onClick={()=>{setShowTipoForm(false);setEditTipoId(null);}} className="text-gray-500 hover:text-white text-sm px-3">Cancelar</button>
             </div>
           </div>
-        )}
+        </Modal>
 
         <div className="space-y-2">
           {tipos.length === 0 ? (

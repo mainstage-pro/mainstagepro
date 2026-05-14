@@ -34,6 +34,11 @@ const ETAPA_COLORS: Record<string, string> = {
 
 export default async function DashboardVentasPage() {
   const session = await getSession();
+  const isAdmin = session?.role === "ADMIN";
+  const userId = session?.id ?? "";
+  const tf = isAdmin ? {} : { responsableId: userId };
+  const cf = isAdmin ? {} : { trato: { responsableId: userId } };
+
   const ahora = new Date();
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
@@ -50,15 +55,16 @@ export default async function DashboardVentasPage() {
     cotizacionesVencen3dias,
     tratosRecientes,
     ventasReporte,
+    reporteAreaSemana,
   ] = await Promise.all([
-    prisma.trato.groupBy({ by: ["etapa"], _count: { _all: true }, _sum: { presupuestoEstimado: true } }),
-    prisma.cotizacion.count({ where: { createdAt: { gte: inicioMes, lte: finMes } } }),
+    prisma.trato.groupBy({ by: ["etapa"], _count: { _all: true }, _sum: { presupuestoEstimado: true }, where: tf }),
+    prisma.cotizacion.count({ where: { createdAt: { gte: inicioMes, lte: finMes }, ...cf } }),
     prisma.cotizacion.aggregate({
       _sum: { granTotal: true },
-      where: { createdAt: { gte: inicioMes, lte: finMes }, estado: "APROBADA" },
+      where: { createdAt: { gte: inicioMes, lte: finMes }, estado: "APROBADA", ...cf },
     }),
     prisma.cotizacion.findMany({
-      where: { estado: "ENVIADA" },
+      where: { estado: "ENVIADA", ...cf },
       include: { cliente: { select: { nombre: true, telefono: true } } },
       orderBy: { updatedAt: "asc" },
       take: 6,
@@ -67,24 +73,26 @@ export default async function DashboardVentasPage() {
       where: {
         etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] },
         fechaProximaAccion: { gte: ahora, lte: en7dias },
+        ...tf,
       },
       include: { cliente: { select: { nombre: true } }, responsable: { select: { name: true } } },
       orderBy: { fechaProximaAccion: "asc" },
       take: 5,
     }),
     prisma.cotizacion.findMany({
-      where: { estado: "ENVIADA", fechaVencimiento: { gte: ahora, lte: en3dias } },
+      where: { estado: "ENVIADA", fechaVencimiento: { gte: ahora, lte: en3dias }, ...cf },
       include: { cliente: { select: { nombre: true } } },
       orderBy: { fechaVencimiento: "asc" },
       take: 5,
     }),
     prisma.trato.findMany({
-      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] } },
+      where: { etapa: { in: ["DESCUBRIMIENTO", "OPORTUNIDAD"] }, ...tf },
       include: { cliente: { select: { nombre: true } }, responsable: { select: { name: true } } },
       orderBy: { updatedAt: "desc" },
       take: 8,
     }),
-    prisma.trato.count({ where: { etapa: "VENTA_CERRADA", updatedAt: { gte: inicioMes } } }),
+    prisma.trato.count({ where: { etapa: "VENTA_CERRADA", updatedAt: { gte: inicioMes }, ...tf } }),
+    isAdmin ? prisma.reporteAreaSemanal.findFirst({ where: { area: "VENTAS", semana: new Date(ahora.getTime() - ((ahora.getDay() + 6) % 7) * 86400000).toLocaleDateString("en-CA") } }).catch(() => null) : Promise.resolve(null),
   ]);
 
   // suppress unused variable warning
@@ -98,25 +106,44 @@ export default async function DashboardVentasPage() {
   const valorPipeline = (etapasMap.DESCUBRIMIENTO?.sum ?? 0) + (etapasMap.OPORTUNIDAD?.sum ?? 0);
   const valorAprobado = valorAprobadas._sum.granTotal ?? 0;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = s instanceof Date ? s.toISOString() : s;
+    const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+  };
   const diasSinRespuesta = (s: string | Date) => Math.floor((ahora.getTime() - new Date(s).getTime()) / 86400000);
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">Dashboard · Ventas</p>
+          <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">
+            {isAdmin ? "Dashboard · Ventas General" : "Mi Dashboard · Ventas"}
+          </p>
           <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
-        <div className="flex gap-2 text-[10px]">
+        <div className="flex items-center gap-2 flex-wrap">
           {cotizacionesVencen3dias.length > 0 && (
-            <span className="bg-orange-900/20 border border-orange-800/40 text-orange-400 px-3 py-1.5 rounded-lg font-semibold">
+            <span className="bg-orange-900/20 border border-orange-800/40 text-orange-400 px-3 py-1.5 rounded-lg font-semibold text-[10px]">
               ⚡ {cotizacionesVencen3dias.length} cots. vencen en 3 días
             </span>
           )}
+          <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            + Nuevo trato
+          </Link>
         </div>
       </div>
+
+      {/* Alerta reporte semanal (solo admin/director de ventas) */}
+      {isAdmin && !reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Ventas pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

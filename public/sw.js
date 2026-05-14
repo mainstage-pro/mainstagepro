@@ -1,7 +1,7 @@
 // Mainstage Pro — Service Worker
 // Estrategia: Network-first para todo (datos siempre frescos) + cola offline para mutaciones
 
-const CACHE_SHELL = "msp-shell-v4";
+const CACHE_SHELL = "msp-shell-v6";
 const DB_NAME     = "msp-offline-queue";
 const DB_VERSION  = 1;
 const SYNC_TAG    = "msp-sync";
@@ -69,7 +69,9 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_SHELL).then((cache) =>
       cache.addAll([
         "/offline",
-        "/logo-icon.png",
+        "/pwa-icon-192.png",
+        "/pwa-icon-512.png",
+        "/pwa-apple-touch-icon.png",
         "/manifest.json",
       ]).catch(() => {})
     ).then(() => self.skipWaiting())
@@ -103,8 +105,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Archivos estáticos (imágenes, íconos, manifest) → cache-first
-  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|json|woff2?)$/)) {
+  // Manifest → siempre desde red para que los íconos se actualicen
+  if (url.pathname === "/manifest.json") {
+    event.respondWith(networkFirstNoCache(req));
+    return;
+  }
+
+  // Archivos estáticos (imágenes, íconos) → cache-first
+  if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|woff2?)$/)) {
     event.respondWith(cacheFirst(req));
     return;
   }
@@ -220,27 +228,32 @@ self.addEventListener("sync", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SYNC_NOW") {
-    syncQueue().then(() => {
-      self.clients.matchAll().then((clients) => {
-        clients.forEach((c) => c.postMessage({ type: "SYNC_DONE" }));
-      });
-    });
+    syncQueue();
   }
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });
 
+const FETCH_TIMEOUT_MS = 15000;
+
+function fetchWithTimeout(url, options) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() =>
+    clearTimeout(timer)
+  );
+}
+
 async function syncQueue() {
   const items = await dequeueAll();
-  if (items.length === 0) return;
 
   for (const item of items) {
     try {
       const headers = { ...item.headers };
       delete headers["content-length"];
 
-      const res = await fetch(item.url, {
+      const res = await fetchWithTimeout(item.url, {
         method: item.method,
         headers,
         body: item.body || undefined,
@@ -250,7 +263,7 @@ async function syncQueue() {
         await removeFromQueue(item.id);
       }
     } catch {
-      // Dejar en cola para el próximo intento
+      // Timeout o error de red — dejar en cola para el próximo intento
     }
   }
 

@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
+import { BackButton } from "@/components/BackButton";
 
 interface Linea {
   id: string;
@@ -109,7 +110,8 @@ const TIPO_LINEA_LABELS: Record<string, string> = {
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function CotizacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -134,6 +136,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [renderNotas, setRenderNotas] = useState("");
   const [editingPlan, setEditingPlan] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [montoAnticipo, setMontoAnticipo] = useState<string>("");
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
@@ -401,11 +404,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
   const lineasOp = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
   const lineasLog = cot.lineas.filter((l) => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
+  const lineasOcasional = cot.lineas.filter((l) => l.tipo === "OTRO");
 
   const subtotalEquipo = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
   const subtotalExterno = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
   const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
   const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
+  const subtotalOcasional = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
 
   // Notas por sección (guardadas en notasSecciones JSON)
   const notasSecciones: Record<string, string> = cot.notasSecciones
@@ -426,7 +431,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   const renderEquipos = cot.lineas
     .filter(l => !["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
-    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${l.descripcion}${l.marca ? ` (${l.marca})` : ""}`)
+    .map(l => `• ${l.cantidad > 1 ? `${l.cantidad}x ` : ""}${l.marca || l.descripcion}${l.marca ? ` (${l.descripcion})` : ""}`)
     .join("\n");
 
   const buildRenderMsg = () => [
@@ -435,7 +440,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       `📋 *Evento:* ${cot.nombreEvento ?? "Sin nombre"} · ${cot.tipoEvento ?? cot.trato.tipoEvento ?? ""}`,
       `📍 *Venue:* ${cot.lugarEvento ?? cot.trato.lugarEstimado ?? "Por confirmar"}`,
       cot.fechaEvento ? `📅 *Fecha de evento:* ${new Date(cot.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}` : null,
-      renderFecha ? `⏰ *Render necesario para:* ${new Date(renderFecha).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}` : null,
+      renderFecha ? `⏰ *Render necesario para:* ${(() => { const [y, m, d] = renderFecha.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); })()}` : null,
       ``,
       `🎛️ *Rider de equipos:*`,
       renderEquipos || "Ver cotización adjunta",
@@ -456,6 +461,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   return (
     <>
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
+      <div className="mb-2"><BackButton /></div>
 
       {/* Tabs de opciones */}
       {(tieneOpciones || opciones.length > 0) && (
@@ -545,6 +551,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </svg>
             Presentación
           </a>
+          <Link href={`/contratos/${cot.trato.id}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Contrato
+          </Link>
           <button onClick={sharePdf} disabled={sharingPdf}
             className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
             {sharingPdf ? (
@@ -668,6 +681,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold">Links</p>
           {presentacionToken && (() => {
             const presUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/presentacion/${cot.id}?token=${presentacionToken}`;
+            const tel = cot.cliente.telefono?.replace(/\D/g, "");
+            const waMsg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la presentación de tu cotización${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}:\n\n${presUrl}`;
             return (
               <div className="flex gap-2 items-center">
                 <span className="text-[10px] text-gray-600 w-20 shrink-0">Presentación</span>
@@ -676,6 +691,17 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
                   {presCopiado ? "✓" : "Copiar"}
                 </button>
+                {tel && (
+                  <a href={`https://wa.me/52${tel}?text=${encodeURIComponent(waMsg)}`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="shrink-0 bg-green-800 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                    </svg>
+                    WA
+                  </a>
+                )}
               </div>
             );
           })()}
@@ -731,6 +757,57 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </button>
           ))}
         </div>
+
+        {/* Progreso de completitud */}
+        {(() => {
+          const checks = [
+            {
+              label: "Descubrimiento",
+              items: [
+                { ok: !!cot.fechaEvento, label: "Fecha" },
+                { ok: !!(cot.lugarEvento || cot.trato.lugarEstimado), label: "Lugar" },
+                { ok: !!cot.tipoServicio, label: "Tipo de servicio" },
+                { ok: !!cot.trato.notas?.trim(), label: "Notas" },
+              ],
+            },
+            {
+              label: "Cotización",
+              items: [
+                { ok: cot.lineas.length > 0, label: "Partidas" },
+                { ok: !!cot.nombreEvento, label: "Nombre" },
+                { ok: !!cot.planPagos, label: "Plan de pagos" },
+                { ok: cot.estado !== "BORRADOR", label: "Enviada" },
+              ],
+            },
+          ];
+
+          return (
+            <div className="mt-4 pt-4 border-t border-[#1a1a1a] space-y-3">
+              {checks.map(({ label, items }) => {
+                const pct = Math.round(items.filter(i => i.ok).length / items.length * 100);
+                const faltantes = items.filter(i => !i.ok).map(i => i.label);
+                const color = pct >= 80 ? "bg-green-500" : pct >= 40 ? "bg-yellow-500" : "bg-red-500";
+                const textColor = pct >= 80 ? "text-green-400" : pct >= 40 ? "text-yellow-400" : "text-red-400";
+                return (
+                  <div key={label}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-wider">{label}</span>
+                      <div className="flex items-center gap-2">
+                        {faltantes.length > 0 && (
+                          <span className="text-[9px] text-gray-600">Falta: {faltantes.join(" · ")}</span>
+                        )}
+                        <span className={`text-[11px] font-semibold tabular-nums ${textColor}`}>{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-[#222] rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -777,8 +854,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                           )}
                           <div>
-                          <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.descripcion}</span>
-                          {l.marca && <span className="text-gray-500 text-xs ml-2">{l.marca}</span>}
+                          <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.marca || l.descripcion}</span>
+                          {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400 text-xs">
@@ -808,7 +885,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 if ((cot.descuentoMultidiaPct ?? 0) > 0)
                   rows.push({ label: `Descuento multi-día (${Math.round(cot.descuentoMultidiaPct * 100)}%)`, pct: cot.descuentoMultidiaPct, monto: sb * cot.descuentoMultidiaPct, color: "text-red-400" });
                 if ((cot.descuentoFamilyFriendsPct ?? 0) > 0)
-                  rows.push({ label: `Family & Friends (${Math.round(cot.descuentoFamilyFriendsPct * 100)}%)`, pct: cot.descuentoFamilyFriendsPct, monto: sb * cot.descuentoFamilyFriendsPct, color: "text-red-400" });
+                  rows.push({ label: `Descuento especial (${Math.round(cot.descuentoFamilyFriendsPct * 100)}%)`, pct: cot.descuentoFamilyFriendsPct, monto: sb * cot.descuentoFamilyFriendsPct, color: "text-red-400" });
                 if ((cot.descuentoEspecialPct ?? 0) > 0)
                   rows.push({ label: `Descuento especial (${Math.round(cot.descuentoEspecialPct * 100)}%)${cot.descuentoEspecialNota ? ` · ${cot.descuentoEspecialNota}` : ""}`, pct: cot.descuentoEspecialPct, monto: sb * cot.descuentoEspecialPct, color: "text-red-400" });
 
@@ -860,8 +937,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               {lineasExterno.map((l) => (
                 <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
                   <div>
-                    <span className="text-white">{l.descripcion}</span>
-                    {l.marca && <span className="text-gray-500 text-xs ml-2">{l.marca}</span>}
+                    <span className="text-white">{l.marca || l.descripcion}</span>
+                    {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
                   </div>
                   <div className="flex items-center gap-4 text-gray-400 text-xs">
                     <span>{l.cantidad} × {l.dias}d</span>
@@ -901,7 +978,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           )}
 
           {/* Logística */}
-          {lineasLog.length > 0 && (
+          {lineasLog.length > 0 && cot.tipoServicio !== "RENTA" && (
             <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
               <div className="px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Logística y Viáticos</h3>
@@ -921,9 +998,29 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
+          {lineasOcasional.length > 0 && (
+            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos y conceptos adicionales</h3>
+              </div>
+              {lineasOcasional.map((l) => (
+                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                  <span className="text-gray-300">{l.descripcion}
+                    <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
+                  </span>
+                  <span className="text-white font-medium">{formatCurrency(l.subtotal)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal adicionales</span>
+                <span className="text-white font-bold">{formatCurrency(subtotalOcasional)}</span>
+              </div>
+            </div>
+          )}
+
           {/* ── Plan de pagos ── */}
           {cot.estado !== "APROBADA" && cot.estado !== "RECHAZADA" && (() => {
-            type Cuota = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
+            type Cuota = { concepto: string; porcentaje: number; monto?: number; diasAntes: number; tipoPago: string };
             const ESQUEMAS: { label: string; key: string; pagos: Cuota[] }[] = [
               { label: "50% + 50%", key: "50_50", pagos: [
                 { concepto: "Anticipo 50% — ", porcentaje: 50, diasAntes: -3, tipoPago: "ANTICIPO" },
@@ -936,17 +1033,30 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               { label: "100% adelanto", key: "100_ADELANTO", pagos: [
                 { concepto: "Pago total — ", porcentaje: 100, diasAntes: -3, tipoPago: "ANTICIPO" },
               ]},
-              { label: "3 pagos (30/40/30)", key: "3_PAGOS", pagos: [
-                { concepto: "Anticipo 30% — ", porcentaje: 30, diasAntes: -7, tipoPago: "ANTICIPO" },
-                { concepto: "Segundo pago 40% — ", porcentaje: 40, diasAntes: -3, tipoPago: "LIQUIDACION" },
-                { concepto: "Liquidación 30% — ", porcentaje: 30, diasAntes: 1, tipoPago: "LIQUIDACION" },
-              ]},
             ];
 
-            let currentPlan: { esquema?: string; pagos?: Cuota[] } | null = null;
+            let currentPlan: { esquema?: string; pagos?: Cuota[]; montoAnticipo?: number } | null = null;
             try { currentPlan = cot.planPagos ? JSON.parse(cot.planPagos) : null; } catch { /* noop */ }
             const activeKey = currentPlan?.esquema ?? "50_50";
             const activePagos = currentPlan?.pagos ?? ESQUEMAS[0].pagos;
+
+            // Monto anticipo input value — use local state or fall back to stored value
+            const montoAnticipoVal = montoAnticipo !== ""
+              ? Number(montoAnticipo)
+              : (activeKey === "MONTO_MANUAL" && currentPlan?.montoAnticipo ? currentPlan.montoAnticipo : Math.round(cot.granTotal * 0.5));
+            const montoLiquidacion = Math.max(0, Math.round((cot.granTotal - montoAnticipoVal) * 100) / 100);
+
+            const saveManual = (monto: number) => {
+              const liq = Math.max(0, Math.round((cot.granTotal - monto) * 100) / 100);
+              savePlan({
+                esquema: "MONTO_MANUAL",
+                montoAnticipo: monto,
+                pagos: [
+                  { concepto: "Anticipo — ", monto, porcentaje: Math.round(monto / cot.granTotal * 100), diasAntes: -3, tipoPago: "ANTICIPO" },
+                  { concepto: "Liquidación — ", monto: liq, porcentaje: Math.round(liq / cot.granTotal * 100), diasAntes: 1, tipoPago: "LIQUIDACION" },
+                ],
+              });
+            };
 
             return (
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
@@ -963,29 +1073,42 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
                 {!editingPlan ? (
                   <div className="px-4 py-3 space-y-1.5">
-                    {activePagos.map((p, i) => {
-                      const pct = `${p.porcentaje}%`;
-                      const fechaDesc = p.diasAntes <= 0
-                        ? `${Math.abs(p.diasAntes)} días tras aprobar`
-                        : p.diasAntes === 1 ? "1 día antes del evento"
-                        : `${p.diasAntes} días antes del evento`;
-                      const monto = Math.round(cot.granTotal * (p.porcentaje / 100));
-                      return (
-                        <div key={i} className="flex items-center justify-between text-xs">
-                          <span className="text-gray-400">
-                            {p.concepto.replace(" — ", "") || `Pago ${i+1}`}
-                            <span className="text-gray-700 ml-2">· {fechaDesc}</span>
-                          </span>
-                          <span className="text-white font-medium">{pct} · {formatCurrency(monto)}</span>
+                    {activeKey === "MONTO_MANUAL" ? (
+                      <>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Anticipo <span className="text-gray-700 ml-2">· 3 días tras aprobar</span></span>
+                          <span className="text-white font-medium">{formatCurrency(montoAnticipoVal)}</span>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Liquidación <span className="text-gray-700 ml-2">· 1 día antes del evento</span></span>
+                          <span className="text-white font-medium">{formatCurrency(montoLiquidacion)}</span>
+                        </div>
+                      </>
+                    ) : (
+                      activePagos.map((p, i) => {
+                        const fechaDesc = p.diasAntes <= 0
+                          ? `${Math.abs(p.diasAntes)} días tras aprobar`
+                          : p.diasAntes === 1 ? "1 día antes del evento"
+                          : `${p.diasAntes} días antes del evento`;
+                        const monto = Math.round(cot.granTotal * (p.porcentaje / 100));
+                        return (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">
+                              {p.concepto.replace(" — ", "") || `Pago ${i+1}`}
+                              <span className="text-gray-700 ml-2">· {fechaDesc}</span>
+                            </span>
+                            <span className="text-white font-medium">{p.porcentaje}% · {formatCurrency(monto)}</span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 ) : (
                   <div className="px-4 py-4 space-y-4">
+                    {/* Esquemas predefinidos + monto manual */}
                     <div className="flex gap-2 flex-wrap">
                       {ESQUEMAS.map(s => (
-                        <button key={s.key} onClick={() => savePlan({ esquema: s.key, pagos: s.pagos })}
+                        <button key={s.key} onClick={() => { setMontoAnticipo(""); savePlan({ esquema: s.key, pagos: s.pagos }); }}
                           disabled={savingPlan}
                           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                             activeKey === s.key
@@ -995,42 +1118,93 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                           {s.label}
                         </button>
                       ))}
+                      <button
+                        disabled={savingPlan}
+                        onClick={() => {
+                          const inicial = currentPlan?.esquema === "MONTO_MANUAL" && currentPlan?.montoAnticipo
+                            ? currentPlan.montoAnticipo
+                            : Math.round(cot.granTotal * 0.5);
+                          setMontoAnticipo(String(inicial));
+                          saveManual(inicial);
+                        }}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                          activeKey === "MONTO_MANUAL"
+                            ? "bg-[#B3985B]/15 border-[#B3985B]/50 text-[#B3985B]"
+                            : "border-[#333] text-gray-500 hover:text-white hover:border-[#444]"
+                        }`}>
+                        Monto manual
+                      </button>
                     </div>
-                    <div className="space-y-2">
-                      {activePagos.map((p, i) => (
-                        <div key={i} className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_80px_120px]">
-                          <input
-                            defaultValue={p.concepto.replace(" — ", "")}
-                            onBlur={e => {
-                              const updated = activePagos.map((q, j) => j === i ? { ...q, concepto: `${e.target.value} — ` } : q);
-                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
-                            }}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
-                          />
-                          <div className="relative">
-                            <input type="number" min="1" max="100"
-                              defaultValue={p.porcentaje}
+
+                    {/* Editor según esquema activo */}
+                    {activeKey === "MONTO_MANUAL" ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Anticipo</p>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                              <input
+                                type="number"
+                                min="0"
+                                max={cot.granTotal}
+                                value={montoAnticipo !== "" ? montoAnticipo : montoAnticipoVal}
+                                onChange={e => setMontoAnticipo(e.target.value)}
+                                onBlur={e => {
+                                  const val = Math.max(0, Math.min(Number(e.target.value) || 0, cot.granTotal));
+                                  setMontoAnticipo(String(val));
+                                  saveManual(val);
+                                }}
+                                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg pl-6 pr-2.5 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Liquidación (automático)</p>
+                            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2.5 py-2 text-xs text-gray-400">
+                              {formatCurrency(montoLiquidacion)}
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-700">Anticipo: 3 días tras aprobar · Liquidación: 1 día antes del evento</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {activePagos.map((p, i) => (
+                          <div key={i} className="grid gap-2 grid-cols-1 sm:grid-cols-[1fr_80px_120px]">
+                            <input
+                              defaultValue={p.concepto.replace(" — ", "")}
                               onBlur={e => {
-                                const updated = activePagos.map((q, j) => j === i ? { ...q, porcentaje: parseInt(e.target.value) || q.porcentaje } : q);
+                                const updated = activePagos.map((q, j) => j === i ? { ...q, concepto: `${e.target.value} — ` } : q);
                                 savePlan({ esquema: "PERSONALIZADO", pagos: updated });
                               }}
-                              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                              className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
                             />
-                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
+                            <div className="relative">
+                              <input type="number" min="1" max="100"
+                                defaultValue={p.porcentaje}
+                                onBlur={e => {
+                                  const updated = activePagos.map((q, j) => j === i ? { ...q, porcentaje: parseInt(e.target.value) || q.porcentaje } : q);
+                                  savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                                }}
+                                className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">%</span>
+                            </div>
+                            <Combobox
+                              value={String(p.diasAntes)}
+                              onChange={v => {
+                                const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(v) } : q);
+                                savePlan({ esquema: "PERSONALIZADO", pagos: updated });
+                              }}
+                              options={[{ value: "-3", label: "3d tras aprobar" }, { value: "-7", label: "7d tras aprobar" }, { value: "-14", label: "14d tras aprobar" }, { value: "30", label: "30d antes evento" }, { value: "15", label: "15d antes evento" }, { value: "7", label: "7d antes evento" }, { value: "1", label: "1d antes evento" }]}
+                              className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
+                            />
                           </div>
-                          <Combobox
-                            value={String(p.diasAntes)}
-                            onChange={v => {
-                              const updated = activePagos.map((q, j) => j === i ? { ...q, diasAntes: parseInt(v) } : q);
-                              savePlan({ esquema: "PERSONALIZADO", pagos: updated });
-                            }}
-                            options={[{ value: "-3", label: "3d tras aprobar" }, { value: "-7", label: "7d tras aprobar" }, { value: "-14", label: "14d tras aprobar" }, { value: "30", label: "30d antes evento" }, { value: "15", label: "15d antes evento" }, { value: "7", label: "7d antes evento" }, { value: "1", label: "1d antes evento" }]}
-                            className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-gray-700">Los montos se calculan automáticamente sobre el gran total al aprobar</p>
+                        ))}
+                        <p className="text-[10px] text-gray-700">Los montos se calculan automáticamente sobre el gran total al aprobar</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1056,6 +1230,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   <div className="flex items-center gap-2">
                     <span className="text-sm">🤝</span>
                     <p className="text-white text-sm font-semibold">Mainstage Trade</p>
+                    {tradeUrl && (
+                      <a href={tradeUrl} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1 rounded-lg transition-colors">
+                        Ver planes
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
                   {tradeNivel && (
                     <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-0.5 rounded-full font-medium">

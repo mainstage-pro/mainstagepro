@@ -44,17 +44,18 @@ export async function POST(req: NextRequest) {
   });
   if (!proyecto) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
 
-  // Fecha de compromiso = día siguiente al evento si no se envía explícitamente
-  function diaSiguienteEvento(fecha: Date): Date {
+  function proximoMiercolesTraEvento(fecha: Date): Date {
     const d = new Date(fecha);
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + 1);
+    const dow = d.getDay();
+    d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
     return d;
   }
 
   const fechaPago = fechaCompromiso
     ? new Date(fechaCompromiso)
-    : diaSiguienteEvento(proyecto.fechaEvento);
+    : proximoMiercolesTraEvento(proyecto.fechaEvento);
 
   const montoNum = parseFloat(monto);
 

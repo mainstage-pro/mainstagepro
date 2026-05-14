@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface Proveedor { id: string; nombre: string; empresa: string | null; telefono: string | null }
 interface Proyecto  { id: string; nombre: string; numeroProyecto: string }
@@ -28,7 +30,8 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const EMPTY_FORM = {
@@ -37,6 +40,7 @@ const EMPTY_FORM = {
 };
 
 export default function OrdenesCompraPage() {
+  const toast = useToast();
   const [ordenes, setOrdenes] = useState<Orden[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
@@ -75,6 +79,12 @@ export default function OrdenesCompraPage() {
         montoIva: parseFloat(form.montoIva || "0"),
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     const d = await res.json();
     if (d.orden) {
       setOrdenes(prev => [d.orden, ...prev]);
@@ -90,6 +100,11 @@ export default function OrdenesCompraPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado, ...(estado === "RECIBIDA" ? { fechaEntrega: new Date().toISOString() } : {}) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     const d = await res.json();
     if (d.orden) {
       setOrdenes(prev => prev.map(o => o.id === orden.id ? d.orden : o));
@@ -100,11 +115,16 @@ export default function OrdenesCompraPage() {
   async function guardarNotas(id: string, notas: string) {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      await fetch(`/api/ordenes-compra/${id}`, {
+      const res = await fetch(`/api/ordenes-compra/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notas }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        return;
+      }
       setAutoSaved(true);
       setTimeout(() => setAutoSaved(false), 2000);
     }, 1200);
@@ -122,19 +142,17 @@ export default function OrdenesCompraPage() {
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Órdenes de compra</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {ordenes.filter(o => o.estado === "PENDIENTE").length} pendientes · {fmt(totales.pendiente + totales.confirmada)} comprometido
           </p>
         </div>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + Nueva orden
-          </button>
-        )}
+        <button onClick={() => setShowForm(true)}
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          + Nueva orden
+        </button>
       </div>
 
       {/* Resumen por estado */}
@@ -154,73 +172,70 @@ export default function OrdenesCompraPage() {
       </div>
 
       {/* Formulario nueva orden */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva orden de compra</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nueva orden de compra">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Proveedor *</label>
+            <Combobox
+              value={form.proveedorId}
+              onChange={v => setForm(p => ({ ...p, proveedorId: v }))}
+              options={[{ value: "", label: "Seleccionar proveedor..." }, ...proveedores.map(p => ({ value: p.id, label: `${p.nombre}${p.empresa ? ` — ${p.empresa}` : ""}` }))]}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Proyecto vinculado</label>
+            <Combobox
+              value={form.proyectoId}
+              onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
+              options={[{ value: "", label: "Sin proyecto" }, ...proyectos.slice(0, 30).map(p => ({ value: p.id, label: `${p.numeroProyecto} — ${p.nombre}` }))]}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Descripción del servicio/producto *</label>
+            <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
+              placeholder="Ej: Renta de sistema de audio LS9 para evento..."
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Fecha requerida</label>
+            <input type="date" value={form.fechaRequerida} onChange={e => setForm(p => ({ ...p, fechaRequerida: e.target.value }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Proveedor *</label>
-              <Combobox
-                value={form.proveedorId}
-                onChange={v => setForm(p => ({ ...p, proveedorId: v }))}
-                options={[{ value: "", label: "Seleccionar proveedor..." }, ...proveedores.map(p => ({ value: p.id, label: `${p.nombre}${p.empresa ? ` — ${p.empresa}` : ""}` }))]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Proyecto vinculado</label>
-              <Combobox
-                value={form.proyectoId}
-                onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
-                options={[{ value: "", label: "Sin proyecto" }, ...proyectos.slice(0, 30).map(p => ({ value: p.id, label: `${p.numeroProyecto} — ${p.nombre}` }))]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Descripción del servicio/producto *</label>
-              <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
-                placeholder="Ej: Renta de sistema de audio LS9 para evento..."
+              <label className="text-xs text-gray-500 mb-1 block">Monto</label>
+              <input type="number" value={form.monto} onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} placeholder="0"
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
             <div>
-              <label className="text-xs text-gray-500 mb-1 block">Fecha requerida</label>
-              <input type="date" value={form.fechaRequerida} onChange={e => setForm(p => ({ ...p, fechaRequerida: e.target.value }))}
+              <label className="text-xs text-gray-500 mb-1 block">IVA</label>
+              <input type="number" value={form.montoIva} onChange={e => setForm(p => ({ ...p, montoIva: e.target.value }))} placeholder="0"
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">Monto</label>
-                <input type="number" value={form.monto} onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} placeholder="0"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div>
-                <label className="text-xs text-gray-500 mb-1 block">IVA</label>
-                <input type="number" value={form.montoIva} onChange={e => setForm(p => ({ ...p, montoIva: e.target.value }))} placeholder="0"
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Notas internas</label>
-              <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} rows={2}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
             </div>
           </div>
-          <div className="flex gap-3 items-center">
-            <button onClick={crear} disabled={saving || !form.proveedorId || !form.descripcion}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
-              {saving ? "Creando..." : "Crear orden"}
-            </button>
-            <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm">Cancelar</button>
-            {form.monto && (
-              <span className="text-gray-400 text-sm ml-auto">
-                Total: <span className="text-white font-semibold">
-                  {fmt(parseFloat(form.monto || "0") + parseFloat(form.montoIva || "0"))}
-                </span>
-              </span>
-            )}
+          <div className="md:col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Notas internas</label>
+            <textarea value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))} rows={2}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
           </div>
         </div>
-      )}
+        <div className="flex gap-3 items-center mt-4">
+          <button onClick={crear} disabled={saving || !form.proveedorId || !form.descripcion}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
+            {saving ? "Creando..." : "Crear orden"}
+          </button>
+          <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm">Cancelar</button>
+          {form.monto && (
+            <span className="text-gray-400 text-sm ml-auto">
+              Total: <span className="text-white font-semibold">
+                {fmt(parseFloat(form.monto || "0") + parseFloat(form.montoIva || "0"))}
+              </span>
+            </span>
+          )}
+        </div>
+      </Modal>
 
       {/* Filtro estado */}
       <div className="flex items-center gap-2 flex-wrap">

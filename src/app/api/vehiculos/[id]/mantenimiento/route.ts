@@ -42,6 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       estatus: body.estatus || "COMPLETADO",
       costo: body.costo ? parseFloat(body.costo) : null,
       comentarios: body.comentarios || null,
+      fotos: Array.isArray(body.fotos) ? body.fotos : [],
     },
   });
 

@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+// Add vendedorId column lazily on first request (safe to run multiple times)
+let _vendedorColReady = false;
+async function ensureVendedorId() {
+  if (_vendedorColReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
+    );
+  } catch { /* column already exists */ }
+  _vendedorColReady = true;
+}
+
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -9,19 +21,35 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const responsableId = searchParams.get("responsableId");
 
+  const tipoProspecto = searchParams.get("tipoProspecto");
+
+  const filtro = searchParams.get("filtro");
+
   const where: Record<string, unknown> = {};
   if (responsableId) where.responsableId = responsableId;
-  // Vendedores (área VENTAS) solo ven sus propios tratos
-  if (session.role !== "ADMIN" && (session as { area?: string }).area === "VENTAS") where.responsableId = session.id;
+  if (tipoProspecto) where.tipoProspecto = tipoProspecto;
+  if (filtro === "enfriados") {
+    where.etapa     = { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] };
+    where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
+  }
 
   const tratos = await prisma.trato.findMany({
     where,
     select: {
       id: true, etapa: true, tipoEvento: true, nombreEvento: true,
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
-      origenLead: true, fechaProximaAccion: true, createdAt: true,
+      origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
+      tipoProspecto: true, nurturingData: true, proximaAccion: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
+      cotizaciones: {
+        select: {
+          id: true, numeroCotizacion: true, estado: true, granTotal: true,
+          fechaEvento: true, createdAt: true, opcionLetra: true, grupoId: true,
+          proyecto: { select: { id: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -32,6 +60,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureVendedorId();
 
   try {
     const body = await request.json();
@@ -61,6 +91,7 @@ export async function POST(request: NextRequest) {
       data: {
         clienteId,
         responsableId: body.responsableId || session.id,
+        vendedorId: body.vendedorId || session.id,
         tipoEvento: body.tipoEvento || "OTRO",
         tipoLead: body.tipoLead || "INBOUND",
         origenLead: body.origenLead || "ORGANICO",

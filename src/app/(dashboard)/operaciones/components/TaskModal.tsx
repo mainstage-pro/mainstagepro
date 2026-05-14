@@ -5,6 +5,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -23,6 +24,7 @@ function subtareaToItem(s: Subtarea): TareaItem {
     fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
     recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
     _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
+    createdAt: new Date().toISOString(), fechaCompletada: null,
   };
 }
 
@@ -72,10 +74,6 @@ const PRIOS: { key: string; label: string; color: string }[] = [
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
 ];
 
-const AREA_LABELS: Record<string, string> = {
-  VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
-  MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General",
-};
 
 function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
   return (
@@ -91,11 +89,11 @@ export default function TaskModal({
   tarea, loading, usuarios, proyectos, iniciativas, sessionId,
   onClose, onSave, onComplete, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
+  const toast = useToast();
   const [titulo, setTitulo]           = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [notas, setNotas]             = useState("");
   const [prioridad, setPrioridad]     = useState("MEDIA");
-  const [area, setArea]               = useState("GENERAL");
   const [asignadoAId, setAsignadoAId] = useState("");
   const [proyectoId, setProyectoId]   = useState("");
   const [iniciativaId, setIniciativaId] = useState("");
@@ -116,6 +114,13 @@ export default function TaskModal({
   const [saving, setSaving]           = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
+  const descRef  = useRef<HTMLTextAreaElement>(null);
+
+  function autoResize(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
 
   // Reset state when task changes
   useEffect(() => {
@@ -124,7 +129,6 @@ export default function TaskModal({
     setDescripcion(tarea.descripcion ?? "");
     setNotas(tarea.notas ?? "");
     setPrioridad(tarea.prioridad);
-    setArea(tarea.area);
     setAsignadoAId(tarea.asignadoA?.id ?? "");
     setProyectoId(tarea.proyectoTarea?.id ?? "");
     setIniciativaId(tarea.iniciativa?.id ?? "");
@@ -139,6 +143,9 @@ export default function TaskModal({
     setArchivosLocal(tarea.archivos ?? []);
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [tarea?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { autoResize(titleRef.current); }, [titulo]);
+  useEffect(() => { autoResize(descRef.current);  }, [descripcion]);
 
   // Keyboard: Escape closes
   useEffect(() => {
@@ -206,7 +213,12 @@ export default function TaskModal({
 
   async function eliminarComentario(cid: string) {
     if (!tarea) return;
-    await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setComentariosLocal(prev => prev.filter(c => c.id !== cid));
   }
 
@@ -245,7 +257,12 @@ export default function TaskModal({
 
   async function eliminarArchivo(aid: string) {
     if (!tarea) return;
-    await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setArchivosLocal(prev => prev.filter(a => a.id !== aid));
   }
 
@@ -342,19 +359,20 @@ export default function TaskModal({
               <textarea
                 ref={titleRef}
                 value={titulo}
-                onChange={e => { setTitulo(e.target.value); mark(); }}
+                onChange={e => { setTitulo(e.target.value); mark(); autoResize(e.target); }}
                 placeholder="Título de la tarea"
-                className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder-[#2a2a2a] leading-snug"
-                rows={titulo.split("\n").length || 1}
+                className="w-full bg-transparent text-white text-xl font-semibold resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-snug"
+                rows={1}
               />
 
               {/* Description */}
               <textarea
+                ref={descRef}
                 value={descripcion}
-                onChange={e => { setDescripcion(e.target.value); mark(); }}
+                onChange={e => { setDescripcion(e.target.value); mark(); autoResize(e.target); }}
                 placeholder="Añade una descripción…"
-                className="w-full bg-transparent text-sm text-[#777] resize-none focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
-                rows={3}
+                className="w-full bg-transparent text-sm text-[#777] resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
+                rows={1}
               />
 
               {/* ── Subtareas ── */}
@@ -392,18 +410,6 @@ export default function TaskModal({
                       prioridad: d.prioridad, fecha: d.fecha, fechaVencimiento: null, _count: { subtareas: 0 }
                     }]);
                   }}
-                />
-              </div>
-
-              {/* ── Notas ── */}
-              <div>
-                <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-2">Notas</p>
-                <textarea
-                  value={notas}
-                  onChange={e => { setNotas(e.target.value); mark(); }}
-                  placeholder="Notas adicionales…"
-                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2.5 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a] leading-relaxed"
-                  rows={4}
                 />
               </div>
 

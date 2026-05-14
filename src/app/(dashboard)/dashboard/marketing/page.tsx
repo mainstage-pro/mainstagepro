@@ -28,18 +28,21 @@ export default async function DashboardMarketingPage() {
   const ahora = new Date();
   const en7dias = new Date(ahora.getTime() + 7 * 86400000);
   const en14dias = new Date(ahora.getTime() + 14 * 86400000);
-  const mesISO = ahora.toISOString().slice(0, 7);
   const mes = ahora.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
-  const mesStart = new Date(`${mesISO}-01`);
-  const mesEnd = new Date(mesStart);
-  mesEnd.setMonth(mesEnd.getMonth() + 1);
+  const mesStart = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
+  const mesEnd   = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 1);
+
+  const lunDelta = (ahora.getDay() + 6) % 7;
+  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
+  const lunesStr = lunesDate.toLocaleDateString("en-CA");
 
   const [
     pubsPorEstado,
     pubsProximas7,
     campanasActivas,
     proyectosContenido,
+    reporteAreaSemana,
   ] = await Promise.all([
     prisma.publicacion.groupBy({
       by: ["estado"],
@@ -62,6 +65,7 @@ export default async function DashboardMarketingPage() {
       orderBy: { fechaEvento: "asc" },
       take: 5,
     }),
+    prisma.reporteAreaSemanal.findFirst({ where: { area: "MARKETING", semana: lunesStr } }).catch(() => null),
   ]);
 
   const pubsMap = Object.fromEntries(pubsPorEstado.map((p) => [p.estado, p._count._all]));
@@ -71,7 +75,12 @@ export default async function DashboardMarketingPage() {
   const listos = pubsMap.LISTO ?? 0;
   const pctCumplimiento = totalPubs > 0 ? Math.round((publicadas / totalPubs) * 100) : 0;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = typeof s === "string" ? s : s.toISOString();
+    const [y, mo, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, mo - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" });
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -87,6 +96,15 @@ export default async function DashboardMarketingPage() {
           </Link>
         )}
       </div>
+
+      {/* Alerta reporte semanal */}
+      {!reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Marketing pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

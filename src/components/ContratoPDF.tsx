@@ -18,7 +18,7 @@ const s = StyleSheet.create({
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
     paddingTop: 36,
-    paddingBottom: 90,
+    paddingBottom: 100,
     paddingHorizontal: 0,
     fontSize: 9,
     color: BLACK,
@@ -269,9 +269,15 @@ const s = StyleSheet.create({
     color: GRAY,
     lineHeight: 1.5,
   },
+  clausulaTextoBlock: {
+    fontSize: 8,
+    color: GRAY,
+    lineHeight: 1.5,
+  },
   clausulaBold: {
     fontFamily: "Helvetica-Bold",
     color: BLACK,
+    lineHeight: 1.5,
   },
   // ── Firmas ───────────────────────────────────────────────────────────────────
   firmasBloque: {
@@ -348,14 +354,11 @@ const s = StyleSheet.create({
     textAlign: "right",
   },
   confidencial: {
-    position: "absolute",
-    bottom: 46,
-    left: 40,
-    right: 40,
     fontSize: 7,
     color: "#555",
     textAlign: "center",
     fontFamily: "Helvetica-Oblique",
+    marginTop: 5,
   },
   // ── Nota de alerta ───────────────────────────────────────────────────────────
   nota: {
@@ -535,6 +538,9 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
   const subtotalLogistica = lineasAll
     .filter(l => TIPOS_LOGISTICA.includes(l.tipo) && !l.esIncluido)
     .reduce((sum, l) => sum + l.subtotal, 0);
+  const totalBruto = lineasAll
+    .filter(l => !l.esIncluido)
+    .reduce((sum, l) => sum + l.subtotal, 0);
 
   const linkCot = cotizacion ? `${appUrl}/cotizaciones/${cotizacion.numeroCotizacion}` : "";
 
@@ -594,7 +600,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 1. OBJETO Y DATOS DEL EVENTO ── */}
         <SeccionTitulo num="1" titulo="Objeto y Datos del Evento" />
         <View style={s.secBody}>
-          <Text style={{ ...s.clausulaTexto, marginBottom: 8 }}>
+          <Text style={{ ...s.clausulaTextoBlock, marginBottom: 8 }}>
             EL PROVEEDOR prestará servicios de{" "}
             <Text style={s.clausulaBold}>
               {TIPO_SERVICIO[trato.tipoServicio ?? ""] || "producción técnica y/o renta de equipo"}
@@ -683,30 +689,18 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
             )}
 
             {/* Resumen financiero */}
-            <View style={s.resumenBloque}>
+            <View style={s.resumenBloque} wrap={false}>
               <View style={s.resumenTabla}>
+                {totalBruto > 0 && (
+                  <View style={s.resFila}>
+                    <Text style={s.resLabel}>Subtotal</Text>
+                    <Text style={s.resMonto}>{fmtMXN(totalBruto)}</Text>
+                  </View>
+                )}
                 {cotizacion!.descuentoTotalPct > 0 && (
                   <View style={s.resFila}>
                     <Text style={s.resLabel}>Descuento ({cotizacion!.descuentoTotalPct.toFixed(1)}%)</Text>
                     <Text style={{ ...s.resMonto, ...s.resDescuento }}>−{fmtMXN(cotizacion!.montoDescuento)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalTransporte > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Transporte</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalTransporte)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalHospedaje > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Hospedaje</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalHospedaje)}</Text>
-                  </View>
-                )}
-                {cotizacion!.subtotalComidas > 0 && (
-                  <View style={s.resFila}>
-                    <Text style={s.resLabel}>Alimentación</Text>
-                    <Text style={s.resMonto}>{fmtMXN(cotizacion!.subtotalComidas)}</Text>
                   </View>
                 )}
                 {cotizacion!.aplicaIva && (
@@ -753,7 +747,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         <SeccionTitulo num="2" titulo="Precio, Anticipo, Saldo y Cancelaciones" />
 
         {/* Bloque anticipo / saldo */}
-        <View style={s.pagoBloque}>
+        <View style={s.pagoBloque} wrap={false}>
           <View style={s.pagoItem}>
             <Text style={s.pagoLabel}>MONTO TOTAL</Text>
             <Text style={s.pagoMonto}>{fmtMXN(granTotal)}</Text>
@@ -818,7 +812,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 6. RETRASOS ── */}
         <SeccionTitulo num="6" titulo="Retrasos Imputables a Mainstage Producciones" />
         <View style={s.clausulaBloque}>
-          <Text style={{ ...s.clausulaTexto, paddingLeft: 0 }}>
+          <Text style={s.clausulaTextoBlock}>
             En caso de retraso imputable únicamente a EL PROVEEDOR, este compensará cumpliendo las horas pactadas siempre que lo permitan las políticas del venue y las condiciones de seguridad, sin otro tipo de penalización económica.
           </Text>
         </View>
@@ -833,21 +827,21 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
 
         <SeccionTitulo num="8" titulo="Fotografía y Medios" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             EL PROVEEDOR se reserva el derecho de documentar fotográfica y audiovisualmente el montaje y evento para portafolio y promoción institucional. Si EL CLIENTE desea restringir este derecho, deberá notificarlo por escrito antes de la firma del contrato.
           </Text>
         </View>
 
         <SeccionTitulo num="9" titulo="Caso Fortuito y Fuerza Mayor" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             Ninguna parte será responsable por incumplimiento derivado de desastres naturales, actos de autoridad, pandemia, huelgas o cualquier evento fuera del control razonable de las partes. Ambas acordarán de buena fe una solución que minimice perjuicios.
           </Text>
         </View>
 
         <SeccionTitulo num="10" titulo="Jurisdicción y Ley Aplicable" />
         <View style={s.clausulaBloque}>
-          <Text style={s.clausulaTexto}>
+          <Text style={s.clausulaTextoBlock}>
             El presente contrato se rige por las leyes de los Estados Unidos Mexicanos. Las partes se someten a los tribunales competentes de la ciudad donde tenga lugar el evento o, en su defecto, a los de la Ciudad de Querétaro, renunciando a cualquier otro fuero.
           </Text>
         </View>
@@ -856,7 +850,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         {/* ── 11. ACEPTACIÓN Y FIRMAS ── */}
         <SeccionTitulo num="11" titulo="Aceptación" />
         <View style={s.secBody}>
-          <Text style={{ ...s.clausulaTexto, marginBottom: 4 }}>
+          <Text style={{ ...s.clausulaTextoBlock, marginBottom: 4 }}>
             Leído el presente contrato, las partes manifiestan su conformidad y lo aceptan como documento legalmente vinculante, firmándolo en{" "}
             <Text style={s.clausulaBold}>{trato.lugarEstimado || "_______________"}</Text>, el día{" "}
             <Text style={s.clausulaBold}>{hoy}</Text>.
@@ -864,7 +858,7 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         </View>
 
         {/* Firmas */}
-        <View style={s.firmasBloque}>
+        <View style={s.firmasBloque} wrap={false}>
           {/* Cliente */}
           <View style={s.firmaCol}>
             <Text style={s.firmaRol}>El Cliente</Text>
@@ -891,18 +885,18 @@ export function ContratoPDF({ trato, cotizacion, appUrl = "", logoSrc }: Contrat
         </View>
 
         {/* Nota vigencia */}
-        <View style={s.nota}>
+        <View style={s.nota} wrap={false}>
           <Text style={s.notaTitulo}>NOTA IMPORTANTE</Text>
           <Text style={s.notaTexto}>
             Este contrato es válido únicamente con la firma autógrafa de ambas partes y el pago del anticipo correspondiente. La cotización de referencia ({cotizacion?.numeroCotizacion ?? "—"}) forma parte integral del mismo.
             {linkCot ? `  Consulta en línea: ${linkCot}` : ""}
           </Text>
+          <Text style={s.confidencial}>
+            Documento confidencial · Uso exclusivo de las partes firmantes · Generado por Mainstage Pro
+          </Text>
         </View>
 
         {/* Footer pág 2 */}
-        <Text style={s.confidencial}>
-          Documento confidencial generado por Mainstage Pro · Uso exclusivo de las partes firmantes
-        </Text>
         <View style={s.footer}>
           <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
           <Text style={s.footerCenter}>Producción técnica profesional · Audio · Iluminación · Video</Text>

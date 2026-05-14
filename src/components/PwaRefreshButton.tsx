@@ -1,0 +1,19 @@
+"use client";
+
+export default function PwaRefreshButton() {
+  return (
+    <button
+      onClick={() => window.location.reload()}
+      aria-label="Actualizar"
+      className="fixed right-4 z-[10000] w-10 h-10 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center text-[#B3985B] shadow-xl hover:bg-[#1a1a1a] hover:border-[#B3985B]/40 active:scale-90 transition-all duration-150"
+      style={{ bottom: "calc(5rem + env(safe-area-inset-bottom, 0px))" }}
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+        <path d="M21 3v5h-5"/>
+        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+        <path d="M8 16H3v5"/>
+      </svg>
+    </button>
+  );
+}

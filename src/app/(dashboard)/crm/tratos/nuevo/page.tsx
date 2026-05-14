@@ -51,6 +51,12 @@ const ORIGEN_OPTIONS = [
   { value: "OTRO",       label: "Otro" },
 ];
 
+const ORIGENES_OUTBOUND = [
+  { id: "REDES_SOCIALES", icon: "📱", label: "Redes sociales",  desc: "Instagram DM, LinkedIn, WhatsApp" },
+  { id: "BASE_DATOS",     icon: "📋", label: "Base de datos",   desc: "Lista, directorio, búsqueda" },
+  { id: "NETWORKING",     icon: "🤝", label: "Networking",      desc: "Evento, referencia interna, contacto personal" },
+];
+
 const ORIGEN_VENTA_OPTIONS = [
   { value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" },
   { value: "PUBLICIDAD",     label: "Lead por publicidad (5%)" },
@@ -63,6 +69,7 @@ export default function NuevoTratoPage() {
   const [step, setStep] = useState<0|1|2>(0);
   const [tipoProspecto, setTipoProspecto] = useState<"ACTIVO"|"NURTURING"|"">("");
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
   const [clienteQuery, setClienteQuery] = useState("");
   const [clienteDropdown, setClienteDropdown] = useState(false);
@@ -75,11 +82,15 @@ export default function NuevoTratoPage() {
     rutaEntrada: "DESCUBRIR",
     canalAtencion: "WHATSAPP",
     origenLead: "ORGANICO", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
+    vendedorId: "",  // "" = yo (el usuario logueado)
   });
   const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
   const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", nombreEvento:"", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
 
-  useEffect(() => { fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[])); }, []);
+  useEffect(() => {
+    fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[]));
+    fetch("/api/usuarios-activos").then(r=>r.json()).then(d=>setUsuarios(d.usuarios||[]));
+  }, []);
 
   function validarCliente() {
     if (modoCliente==="existente" && !s1.clienteId) { setError("Selecciona un cliente"); return false; }
@@ -89,9 +100,11 @@ export default function NuevoTratoPage() {
 
   async function crearNurturing() {
     if (!validarCliente()) return;
+    if (!s1.origenLead) { setError("Selecciona cómo encontraste al prospecto"); return; }
     setLoading(true); setError("");
     const payload: Record<string,unknown> = {
       ...s1,
+      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
       tipoProspecto: "NURTURING",
       canalAtencion: null,
     };
@@ -110,6 +123,7 @@ export default function NuevoTratoPage() {
     const payload: Record<string,unknown> = {
       ...s1,
       ...(sinDetalles ? {} : s2),
+      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
       tipoProspecto: "ACTIVO",
       asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
     };
@@ -165,7 +179,7 @@ export default function NuevoTratoPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <button
-                onClick={() => { setTipoProspecto("NURTURING"); setS1(p => ({ ...p, tipoLead: "OUTBOUND" })); setStep(1); }}
+                onClick={() => { setTipoProspecto("NURTURING"); setS1(p => ({ ...p, tipoLead: "OUTBOUND", origenLead: "" })); setStep(1); }}
                 className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
                 <div className="text-3xl mb-3">🌱</div>
                 <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
@@ -298,22 +312,48 @@ export default function NuevoTratoPage() {
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
-                <Combobox
-                  value={s1.origenLead}
-                  onChange={v => setS1(p => ({ ...p, origenLead: v }))}
-                  options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
-                <Combobox
-                  value={s1.tipoLead}
-                  onChange={v => setS1(p => ({ ...p, tipoLead: v }))}
-                  options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
+              {tipoProspecto === "NURTURING" ? (
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-500 mb-2 block">¿Cómo lo encontraste? *</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {ORIGENES_OUTBOUND.map(o => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => setS1(p => ({ ...p, origenLead: o.id }))}
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
+                          s1.origenLead === o.id
+                            ? "border-emerald-600 bg-emerald-950/40 text-emerald-300"
+                            : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-gray-300"
+                        }`}
+                      >
+                        <span className="text-xl">{o.icon}</span>
+                        <span className="text-xs font-medium">{o.label}</span>
+                        <span className="text-[10px] text-gray-600 leading-tight">{o.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
+                    <Combobox
+                      value={s1.origenLead}
+                      onChange={v => setS1(p => ({ ...p, origenLead: v }))}
+                      options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                  <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
+                    <Combobox
+                      value={s1.tipoLead}
+                      onChange={v => setS1(p => ({ ...p, tipoLead: v }))}
+                      options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                </>
+              )}
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Origen de venta (comisiones)</label>
                 <Combobox
                   value={s1.origenVenta}
@@ -321,6 +361,18 @@ export default function NuevoTratoPage() {
                   options={ORIGEN_VENTA_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500 mb-1 block">Comisión para</label>
+                <Combobox
+                  value={s1.vendedorId}
+                  onChange={v => setS1(p => ({ ...p, vendedorId: v }))}
+                  options={[{ value: "", label: "Yo (quien captura)" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                {s1.vendedorId && (
+                  <p className="text-xs text-[#B3985B] mt-1">La comisión irá a {usuarios.find(u => u.id === s1.vendedorId)?.name} — tú sigues como responsable de gestionar el trato.</p>
+                )}
               </div>
             </div>
           </div>

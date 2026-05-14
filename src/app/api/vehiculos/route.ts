@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, marca, modelo, anio, placas, color, kilometraje, notas } = body;
+  const { nombre, marca, modelo, anio, placas, color, kilometraje, notas, fotos } = body;
 
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       color: color || null,
       kilometraje: kilometraje ? parseInt(kilometraje) : null,
       notas: notas || null,
+      fotos: Array.isArray(fotos) ? fotos : [],
     },
   });
 

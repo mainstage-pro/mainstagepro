@@ -77,8 +77,24 @@ interface LineaLogistica {
   concepto: string; precioUnitario: number; cantidad: number; dias: number; subtotal: number;
 }
 
+interface JornadaSlot {
+  id: string;
+  rolId: string;
+  rolNombre: string;
+  cantidad: number;
+  nivel: string;    // AAA | AA | A
+  jornada: string;  // CORTA | MEDIA | LARGA
+  tarifa: number;
+}
+
+interface Jornada {
+  id: string;
+  fecha: string;   // YYYY-MM-DD
+  tipo: string;    // MONTAJE | OPERACION | DESMONTAJE | OTRO
+  slots: JornadaSlot[];
+}
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const DJ_TARIFAS: Record<string, number> = { AAA: 600, AA: 500, A: 400 };
 
 const CONCEPTOS_COMIDA = [
   { label: "1 comida por persona", precio: 150 },
@@ -107,6 +123,11 @@ function getRolTarifa(rol: RolTecnico, nivel: string, jornada: string): number {
     const key = `tarifaPlana${nivel}` as keyof RolTecnico;
     return (rol[key] as number | null) ?? 0;
   }
+  if (rol.tipoPago === "POR_HORA") {
+    const key = `tarifaHora${nivel}` as keyof RolTecnico;
+    return (rol[key] as number | null) ?? 0;
+  }
+  // POR_JORNADA: tarifa por nivel + tipo de jornada
   const j = jornada.charAt(0) + jornada.slice(1).toLowerCase();
   const key = `tarifa${nivel}${j}` as keyof RolTecnico;
   return (rol[key] as number | null) ?? 0;
@@ -178,6 +199,11 @@ function CotizadorForm() {
   const [plantillas, setPlantillas] = useState<{ id: string; nombre: string; tipoEvento: string | null; lineas: unknown[] }[]>([]);
   const [showPlantillas, setShowPlantillas] = useState(false);
   const [cargandoPlantilla, setCargandoPlantilla] = useState(false);
+  // Grupos de equipo (paquetes recomendados por tipo de evento y asistentes)
+  type GrupoItem = { id: string; descripcion: string; cantidad: number; esOpcional: boolean; notas: string | null; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number; cantidadTotal: number } | null };
+  type GrupoEquipo = { id: string; nombre: string; tipoEvento: string; capacidadMin: number; capacidadMax: number; descripcion: string | null; items: GrupoItem[] };
+  const [grupos, setGrupos] = useState<GrupoEquipo[]>([]);
+  const [loadingGrupos, setLoadingGrupos] = useState(false);
 
   const [evento, setEvento] = useState({
     nombreEvento: "",
@@ -203,8 +229,8 @@ function CotizadorForm() {
   // Selectores rápidos
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
-  const [selRol, setSelRol] = useState(""); const [selRolNivel, setSelRolNivel] = useState("AA"); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1");
-  const [selDJNivel, setSelDJNivel] = useState("AA"); const [selDJHoras, setSelDJHoras] = useState("4");
+  const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
+  const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA");
   const [logConcepto, setLogConcepto] = useState({ COMIDA: CONCEPTOS_COMIDA[0].label, TRANSPORTE: CONCEPTOS_TRANSPORTE[0].label, HOSPEDAJE: CONCEPTOS_HOSPEDAJE[0].label });
   const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
   const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
@@ -219,6 +245,9 @@ function CotizadorForm() {
   const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
+  const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
+  const [zonaEvento, setZonaEvento] = useState<"LOCAL"|"BAJIO"|"NACIONAL">("LOCAL");
+  const [numTecnicosZona, setNumTecnicosZona] = useState(0);
   const [selOcDesc, setSelOcDesc] = useState("");
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
@@ -238,10 +267,17 @@ function CotizadorForm() {
   const [especialActivo, setEspecialActivo] = useState(false); // renombrado de Family & Friends
   const [especialEdit, setEspecialEdit] = useState(false);
   const [dFamilyFriends, setDFamilyFriends] = useState("10"); // % fijo por defecto
+  const [descuentoFijoActivo, setDescuentoFijoActivo] = useState(false);
+  const [descuentoFijoMonto, setDescuentoFijoMonto] = useState("");
   const [aplicaIva, setAplicaIva] = useState(false);
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
   const [observaciones, setObservaciones] = useState("");
+  // Descuentos que no tienen control de UI — se preservan al editar (especial, patrocinio)
+  const [dEspecialPreservado, setDEspecialPreservado] = useState(0);
+  const [dPatrocinioPreservado, setDPatrocinioPreservado] = useState(0);
+  const [dEspecialNotaPreservada, setDEspecialNotaPreservada] = useState<string | null>(null);
+  const [dPatrocinioNotaPreservada, setDPatrocinioNotaPreservada] = useState<string | null>(null);
 
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
@@ -314,6 +350,10 @@ function CotizadorForm() {
         if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
         if ((cot.descuentoMultidiaPct ?? 0) > 0) { setMultidiaActivo(true); }
         if ((cot.descuentoFamilyFriendsPct ?? 0) > 0) { setEspecialActivo(true); setDFamilyFriends(String(Math.round(cot.descuentoFamilyFriendsPct * 100))); }
+        if ((cot.descuentoFijoMonto ?? 0) > 0) { setDescuentoFijoActivo(true); setDescuentoFijoMonto(String(cot.descuentoFijoMonto)); }
+        // Preservar descuentos sin control de UI (especial, patrocinio)
+        if ((cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
+        if ((cot.descuentoPatrocinioPct ?? 0) > 0) { setDPatrocinioPreservado(cot.descuentoPatrocinioPct); setDPatrocinioNotaPreservada(cot.descuentoPatrocinioNota ?? null); }
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -332,7 +372,7 @@ function CotizadorForm() {
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
           proveedorId: l.proveedorId ?? null,
         })));
-        setLineasOp(lineas.filter((l: {tipo:string}) => l.tipo === "OPERACION_TECNICA").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
+        setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada" && l.notas !== "zona:bonus").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
           descripcion: l.descripcion, nivel: l.nivel ?? "AA", jornada: l.jornada ?? "MEDIA",
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
@@ -350,6 +390,14 @@ function CotizadorForm() {
           id: uid(), descripcion: l.descripcion,
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
         })));
+        if (cot.jornadasPlan) {
+          try {
+            const jp: Jornada[] = JSON.parse(cot.jornadasPlan);
+            setJornadasPlan(jp.map(j => ({ ...j, id: j.id || uid(), slots: j.slots.map(s => ({ ...s, id: s.id || uid() })) })));
+          } catch { /* ignore */ }
+        }
+        if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
+        if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
         return;
       }
 
@@ -367,6 +415,8 @@ function CotizadorForm() {
           tipoServicio: t.tipoServicio || prev.tipoServicio,
           fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : prev.fechaEvento,
           lugarEvento: t.lugarEstimado || prev.lugarEvento,
+          diasEquipo: t.diasServicio ? String(t.diasServicio) : prev.diasEquipo,
+          diasOperacion: t.diasServicio ? String(t.diasServicio) : prev.diasOperacion,
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
@@ -430,6 +480,37 @@ function CotizadorForm() {
     }
     return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [equipos]);
+
+  // ── Grupos de equipo: cargar cuando cambia tipo de evento o asistentes ──
+  useEffect(() => {
+    if (!evento.tipoEvento || !asistentesEstimados || asistentesEstimados <= 0) { setGrupos([]); return; }
+    setLoadingGrupos(true);
+    const qs = new URLSearchParams({ tipoEvento: evento.tipoEvento, asistentes: String(asistentesEstimados) });
+    fetch(`/api/grupos-equipo?${qs}`)
+      .then(r => r.json())
+      .then(d => { setGrupos(d.grupos ?? []); setLoadingGrupos(false); })
+      .catch(() => setLoadingGrupos(false));
+  }, [evento.tipoEvento, asistentesEstimados]);
+
+  function agregarPaquete(grupo: GrupoEquipo) {
+    const diasEq = parseInt(evento.diasEquipo) || 1;
+    const nuevasLineas: LineaEquipo[] = [];
+    for (const item of grupo.items) {
+      const eq = item.equipo
+        ? equipos.find(e => e.id === item.equipo!.id)
+        : matchInventario(item.descripcion);
+      if (!eq || lineasEquipo.some(l => l.equipoId === eq.id) || nuevasLineas.some(l => l.equipoId === eq.id)) continue;
+      const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+      nuevasLineas.push({
+        id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
+        marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+        cantidad: item.cantidad, dias: diasEq,
+        precioUnitario: precio, subtotal: precio * item.cantidad * diasEq,
+        categoria: eq.categoria.nombre,
+      });
+    }
+    if (nuevasLineas.length > 0) setLineasEquipo(prev => [...prev, ...nuevasLineas]);
+  }
 
   // ── Agregar equipo ──
   async function agregarEquipo() {
@@ -497,13 +578,13 @@ function CotizadorForm() {
     const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
     if (!rol) return;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
-    // Si ya existe ese rol exacto con mismo nivel/jornada, no duplicar
-    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.nivel === selRolNivel && l.jornada === selRolJornada);
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
+    const yaExiste = lineasOp.some(l => l.rolTecnicoId === rol.id && l.jornada === selRolJornada);
     if (yaExiste) return;
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad, dias,
+      nivel, jornada: selRolJornada, cantidad, dias,
       precioUnitario: tarifa, subtotal: tarifa * cantidad * dias,
     }]);
   }
@@ -628,10 +709,11 @@ function CotizadorForm() {
     if (!rol) return;
     const cant = parseFloat(selRolCant) || 1;
     const dias = parseInt(evento.diasOperacion) || 1;
-    const tarifa = getRolTarifa(rol, selRolNivel, selRolJornada);
+    const nivel = rol.tipoPago === "POR_JORNADA" ? "AAA" : selRolNivel;
+    const tarifa = getRolTarifa(rol, nivel, selRolJornada);
     setLineasOp(prev => [...prev, {
       id: uid(), rolTecnicoId: rol.id, descripcion: rol.nombre,
-      nivel: selRolNivel, jornada: selRolJornada, cantidad: cant, dias,
+      nivel, jornada: selRolJornada, cantidad: cant, dias,
       precioUnitario: tarifa, subtotal: tarifa * cant * dias,
     }]);
     setSelRol(""); setSelRolCant("1");
@@ -649,7 +731,9 @@ function CotizadorForm() {
   // ── Agregar DJ ──
   function agregarDJ() {
     const horas = parseFloat(selDJHoras) || 1;
-    const tarifa = DJ_TARIFAS[selDJNivel] ?? 0;
+    const djRol = roles.find(r => r.nombre === "DJ");
+    const tarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
+    const tarifa = djRol ? ((djRol[tarifaKey] as number | null) ?? 0) : 0;
     setLineasDJ(prev => [...prev, {
       id: uid(), nivel: selDJNivel, horas, tarifa, subtotal: tarifa * horas,
     }]);
@@ -662,7 +746,10 @@ function CotizadorForm() {
     const subtotalExternos = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
     const costoExternos = lineasExterno.reduce((s, l) => s + l.costoTotal, 0);
 
-    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0);
+    const subtotalJornadas = jornadasPlan.flatMap(j => j.slots).reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0);
+    const zonaBonus = zonaEvento === "BAJIO" ? 500 : zonaEvento === "NACIONAL" ? 800 : 0;
+    const bonusZonaTotal = zonaBonus * numTecnicosZona;
+    const subtotalOperacion = lineasOp.reduce((s, l) => s + l.subtotal, 0) + subtotalJornadas + bonusZonaTotal;
     const subtotalDJ = lineasDJ.reduce((s, l) => s + l.subtotal, 0);
     const subtotalTransporte = lineasLog.filter(l => l.tipo === "TRANSPORTE").reduce((s, l) => s + l.subtotal, 0);
     const subtotalComidas = lineasLog.filter(l => l.tipo === "COMIDA").reduce((s, l) => s + l.subtotal, 0);
@@ -680,7 +767,7 @@ function CotizadorForm() {
     const dMultidia = multidiaActivo ? (dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia) : 0;
     const dFF = especialActivo ? (dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0.10) : 0;
 
-    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF;
+    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF + dEspecialPreservado + dPatrocinioPreservado;
     const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
     const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
 
@@ -693,7 +780,8 @@ function CotizadorForm() {
 
     // Total incluye equipos propios (con descuento) + externos (con/sin descuento) + ocasionales + operación + logística
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const montoDescuentoFijo = descuentoFijoActivo ? (parseFloat(descuentoFijoMonto) || 0) : 0;
+    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer - montoDescuentoFijo;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
 
@@ -719,12 +807,16 @@ function CotizadorForm() {
       autoVolumen, autoB2B, autoMultidia,
       dB2B, dVolumen, dMultidia, dFF,
       descuentoTotalPct, montoDescuento,
+      montoDescuentoFijo,
       subtotalEquiposNeto, total, montoIva, granTotal,
       costos, utilidad, pctUtilidad, semaforo,
+      zonaBonus, bonusZonaTotal,
     };
-  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, evento.diasEquipo,
+  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan, evento.diasEquipo,
     b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
-    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales]);
+    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
+    dEspecialPreservado, dPatrocinioPreservado, descuentoFijoActivo, descuentoFijoMonto,
+    zonaEvento, numTecnicosZona]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -757,6 +849,21 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: l.precioUnitario,
         subtotal: l.subtotal, esExterno: false, esIncluido: false, rolTecnicoId: l.rolTecnicoId,
       })),
+      ...jornadasPlan.flatMap(j =>
+        j.slots
+          .filter(s => s.rolId && s.tarifa > 0)
+          .map(s => ({
+            tipo: "OPERACION_TECNICA",
+            descripcion: `${s.rolNombre} (${j.tipo === "MONTAJE" ? "Montaje" : j.tipo === "OPERACION" ? "Operación" : j.tipo === "DESMONTAJE" ? "Desmontaje" : j.tipo}${j.fecha ? ` · ${j.fecha}` : ""})`,
+            nivel: s.nivel, jornada: s.jornada,
+            cantidad: s.cantidad, dias: 1,
+            precioUnitario: s.tarifa, costoUnitario: s.tarifa,
+            subtotal: s.tarifa * s.cantidad,
+            esExterno: false, esIncluido: false,
+            rolTecnicoId: s.rolId,
+            notas: "from:jornada",
+          }))
+      ),
       ...lineasDJ.map(l => ({
         tipo: "DJ", descripcion: `DJ ${l.nivel} (${l.horas}h)`,
         nivel: l.nivel, cantidad: l.horas, dias: 1,
@@ -773,22 +880,34 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: 0,
         subtotal: l.subtotal, esExterno: false, esIncluido: false,
       })),
+      ...(resumen.bonusZonaTotal > 0 ? [{
+        tipo: "OPERACION_TECNICA",
+        descripcion: `Extra de zona ${zonaEvento === "BAJIO" ? "Bajío" : "Nacional"} · ${numTecnicosZona} técnico${numTecnicosZona !== 1 ? "s" : ""}`,
+        cantidad: numTecnicosZona, dias: 1,
+        precioUnitario: resumen.zonaBonus, costoUnitario: resumen.zonaBonus,
+        subtotal: resumen.bonusZonaTotal, esExterno: false, esIncluido: false,
+        notas: "zona:bonus",
+      }] : []),
     ];
 
     const payload = {
       tratoId: tId, clienteId: cId, ...evento,
+      zonaEvento,
+      numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
-      descuentoPatrocinioNota: null,
-      descuentoEspecialNota: null,
+      jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
+      descuentoPatrocinioNota: dPatrocinioNotaPreservada,
+      descuentoEspecialNota: dEspecialNotaPreservada,
       observaciones,
       lineas: todasLineas,
       subtotalEquiposBruto: resumen.subtotalEquiposBruto,
       descuentoB2bPct: resumen.dB2B,
       descuentoVolumenPct: resumen.dVolumen,
       descuentoMultidiaPct: resumen.dMultidia,
-      descuentoPatrocinioPct: 0,
-      descuentoEspecialPct: 0,
+      descuentoPatrocinioPct: dPatrocinioPreservado,
+      descuentoEspecialPct: dEspecialPreservado,
       descuentoFamilyFriendsPct: resumen.dFF,
+      descuentoFijoMonto: resumen.montoDescuentoFijo,
       descuentoTotalPct: resumen.descuentoTotalPct,
       montoDescuento: resumen.montoDescuento,
       montoBeneficio: resumen.montoDescuento,
@@ -1096,6 +1215,78 @@ function CotizadorForm() {
             </details>
           )}
 
+          {/* ── Paquetes de equipo recomendados ── */}
+          {(grupos.length > 0 || loadingGrupos) && evento.tipoEvento && asistentesEstimados && asistentesEstimados > 0 && (
+            <details className="bg-[#0d0d0d] border border-[#2a1f0d] rounded-xl group" open>
+              <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
+                <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Paquetes de equipo</span>
+                <span className="text-gray-500 text-xs">Selecciona un paquete completo de un solo clic</span>
+                <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver paquetes</span>
+                <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
+              </summary>
+              <div className="px-5 pb-5">
+                {loadingGrupos ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[...Array(2)].map((_, i) => <div key={i} className="h-24 bg-[#111] rounded-lg animate-pulse" />)}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {grupos.map(grupo => {
+                      const matchCount = grupo.items.filter(item => {
+                        const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
+                        return !!eq;
+                      }).length;
+                      const yaAgregado = grupo.items.some(item => {
+                        const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
+                        return eq && lineasEquipo.some(l => l.equipoId === eq.id);
+                      });
+                      return (
+                        <div key={grupo.id} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div>
+                              <p className="text-white font-medium text-xs">{grupo.nombre}</p>
+                              {grupo.descripcion && <p className="text-[#555] text-[10px] mt-0.5">{grupo.descripcion}</p>}
+                            </div>
+                            <button
+                              onClick={() => agregarPaquete(grupo)}
+                              disabled={matchCount === 0}
+                              className="shrink-0 text-[10px] px-2.5 py-1 rounded bg-[#B3985B]/20 text-[#B3985B] hover:bg-[#B3985B]/35 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium leading-5"
+                            >
+                              {yaAgregado ? "Actualizar" : "+ Agregar paquete"}
+                            </button>
+                          </div>
+                          <div className="space-y-1">
+                            {grupo.items.map((item, i) => {
+                              const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
+                              const yaEn = eq ? lineasEquipo.some(l => l.equipoId === eq.id) : false;
+                              return (
+                                <div key={i} className={`flex items-start gap-1.5 text-xs ${item.esOpcional ? "opacity-50" : ""}`}>
+                                  <span className="text-[#B3985B] font-mono w-5 text-right shrink-0 pt-0.5">{item.cantidad}×</span>
+                                  <span className={`flex-1 leading-snug ${eq ? "text-gray-300" : "text-[#555]"}`}>
+                                    {item.descripcion}
+                                    {item.esOpcional && <span className="ml-1 text-[10px] text-[#555]">opcional</span>}
+                                    {item.notas && <span className="ml-1 text-[10px] text-[#555]">— {item.notas}</span>}
+                                  </span>
+                                  {yaEn && <span className="shrink-0 text-[10px] text-green-500 leading-5">✓</span>}
+                                  {!eq && <span className="shrink-0 text-[10px] text-[#444] leading-5">—</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {matchCount < grupo.items.length && (
+                            <p className="text-[#444] text-[10px] mt-2 pt-2 border-t border-[#1a1a1a]">
+                              {grupo.items.length - matchCount} equipo{grupo.items.length - matchCount !== 1 ? "s" : ""} sin coincidencia en inventario
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
             {/* Selector */}
@@ -1187,7 +1378,7 @@ function CotizadorForm() {
                           <div className="flex items-center gap-2 px-3 py-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-white text-sm truncate">{l.descripcion}</p>
+                                <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
                                 {esPrecioEspecialActivo && (
                                   <span
                                     title={precioOriginalCliente != null ? `Precio especial (lista original: ${formatCurrency(precioOriginalCliente)})` : "Precio especial de este cliente"}
@@ -1199,7 +1390,7 @@ function CotizadorForm() {
                                   <span title="Precio modificado manualmente en esta cotización" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
                                 )}
                               </div>
-                              {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
+                              {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                             </div>
                             <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
                             <NumSelect value={l.dias} onChange={v => updateEquipo(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
@@ -1364,7 +1555,7 @@ function CotizadorForm() {
                 <SearchableSelect
                   options={equiposExternos.map(eq => ({
                     value: eq.id,
-                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
+                    label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""} — cliente: ${formatCurrency(eq.precioRenta)} / costo: ${formatCurrency(eq.costoProveedor ?? 0)}`,
                   }))}
                   value={selExt}
                   onChange={setSelExt}
@@ -1389,8 +1580,8 @@ function CotizadorForm() {
                 {lineasExterno.map(l => (
                   <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm truncate">{l.descripcion}</p>
-                      {l.marca && <p className="text-gray-500 text-xs">{l.marca}</p>}
+                      <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                      {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
                     <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
@@ -1473,137 +1664,189 @@ function CotizadorForm() {
             )}
           </Seccion>
 
-          {/* ── Sugerencias de técnicos ── */}
-          {evento.tipoEvento && (() => {
-            const cats = [...new Set(lineasEquipo.map(l => l.categoria))];
-            const sugs = getSugerenciasTecnicos(evento.tipoEvento, asistentesEstimados ?? 0, cats);
-            return (
-              <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
-                <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
-                  <span className="text-[#B3985B] text-sm font-semibold">Sugerencias de personal técnico</span>
-                  <span className="text-gray-500 text-xs">basado en equipos y tamaño del evento</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="ml-auto text-[#555] group-open:rotate-180 transition-transform"><path d="M6 9l6 6 6-6"/></svg>
-                </summary>
-                <div className="px-5 pb-5">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {sugs.map(grupo => (
-                      <div key={grupo.categoria} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
-                        <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.categoria}</p>
-                        <div className="space-y-2">
-                          {grupo.items.map(item => {
-                            const kw = item.rolKeyword.toLowerCase();
-                            const rol = roles.find(r => r.nombre.toLowerCase().includes(kw));
-                            const yaAgregado = lineasOp.some(l => l.rolTecnicoId === rol?.id);
-                            return (
-                              <div key={item.rolKeyword} className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className={`text-sm ${item.esOpcional ? "text-gray-500" : "text-white"}`}>
-                                    {rol ? rol.nombre : <span className="text-gray-600 italic">{item.rolKeyword} (sin rol)</span>}
-                                    {item.esOpcional && <span className="text-[#555] text-[10px] ml-1">opcional</span>}
-                                  </p>
-                                  <p className="text-gray-600 text-[10px]">{item.motivo}</p>
-                                </div>
-                                {rol && (
-                                  item.isStagehands ? (
-                                    <div className="flex gap-1 shrink-0">
-                                      {[1, 2, 4, 6, 8].map(n => {
-                                        const yaEsteN = lineasOp.some(l => l.rolTecnicoId === rol.id && l.cantidad === n);
-                                        return (
-                                          <button
-                                            key={n}
-                                            onClick={() => agregarSugerenciaTecnico(item.rolKeyword, n)}
-                                            disabled={yaEsteN}
-                                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
-                                              yaEsteN
-                                                ? "text-green-500 bg-green-900/20 cursor-default"
-                                                : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
-                                            }`}
-                                          >
-                                            {yaEsteN ? `✓${n}` : `×${n}`}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => agregarSugerenciaTecnico(item.rolKeyword, item.cantidad)}
-                                      disabled={yaAgregado}
-                                      className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-                                        yaAgregado
-                                          ? "text-green-500 bg-green-900/20 cursor-default"
-                                          : "text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B] hover:text-black"
-                                      }`}
-                                    >
-                                      {yaAgregado ? "✓ Agregado" : "+ Agregar"}
-                                    </button>
-                                  )
-                                )}
-                              </div>
-                            );
-                          })}
+          {/* ── Operación técnica ── */}
+          <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
+            {/* Zona selector + técnicos */}
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <span className="text-xs text-gray-500">Zona del evento:</span>
+              {(["LOCAL", "BAJIO", "NACIONAL"] as const).map(z => (
+                <button
+                  key={z}
+                  type="button"
+                  onClick={() => { setZonaEvento(z); if (z === "LOCAL") setNumTecnicosZona(0); }}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${zonaEvento === z ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B]"}`}
+                >
+                  {z === "LOCAL" ? "Local" : z === "BAJIO" ? "Bajío +$500" : "Nacional +$800"}
+                </button>
+              ))}
+              {zonaEvento !== "LOCAL" && (
+                <>
+                  <span className="text-xs text-gray-500 ml-1">·</span>
+                  <span className="text-xs text-gray-500">Técnicos:</span>
+                  <input
+                    type="number" min="0" max="50" value={numTecnicosZona || ""}
+                    onChange={e => setNumTecnicosZona(parseInt(e.target.value) || 0)}
+                    placeholder="0"
+                    className="w-14 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-sm text-center focus:outline-none focus:border-[#B3985B]"
+                  />
+                  {numTecnicosZona > 0 && (
+                    <span className="text-xs text-[#B3985B]">= +{resumen.bonusZonaTotal.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+                  )}
+                </>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
+            {jornadasPlan.map((jornada, ji) => (
+              <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
+                {/* Header de la jornada */}
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <input
+                    type="date"
+                    value={jornada.fecha}
+                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, fecha: e.target.value } : j))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <select
+                    value={jornada.tipo}
+                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, tipo: e.target.value } : j))}
+                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  >
+                    <option value="MONTAJE">Montaje</option>
+                    <option value="OPERACION">Operación del evento</option>
+                    <option value="DESMONTAJE">Desmontaje</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                  <button
+                    onClick={() => setJornadasPlan(p => p.filter((_, i) => i !== ji))}
+                    className="ml-auto text-gray-600 hover:text-red-400 text-sm transition-colors"
+                  >
+                    × Quitar día
+                  </button>
+                </div>
+
+                {/* Slots de técnicos */}
+                {jornada.slots.length > 0 && (
+                  <div className="mb-2 space-y-1.5">
+                    {jornada.slots.map((slot, si) => (
+                      <div key={slot.id} className="flex items-center gap-2 flex-wrap py-1.5 border-b border-[#1a1a1a] last:border-0">
+                        <div className="flex-1 min-w-[140px]">
+                          <select
+                            value={slot.rolId}
+                            onChange={e => {
+                              const rol = roles.find(r => r.id === e.target.value);
+                              setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                                ...j,
+                                slots: j.slots.map((s, k) => k === si ? { ...s, rolId: e.target.value, rolNombre: rol?.nombre ?? "" } : s)
+                              } : j));
+                            }}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                          >
+                            <option value="">— Rol —</option>
+                            {roles.filter(r => r.nombre !== "DJ").map(r => (
+                              <option key={r.id} value={r.id}>{r.nombre}</option>
+                            ))}
+                          </select>
                         </div>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[10px] text-gray-500 whitespace-nowrap">Cant.</label>
+                          <input
+                            type="number" min="1" max="20" value={slot.cantidad}
+                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, cantidad: parseInt(e.target.value) || 1 } : s)
+                            } : j))}
+                            className="w-12 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs text-center focus:outline-none"
+                          />
+                        </div>
+                        <select
+                          value={slot.jornada}
+                          onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                            ...j, slots: j.slots.map((s, k) => k === si ? { ...s, jornada: e.target.value } : s)
+                          } : j))}
+                          className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs focus:outline-none"
+                        >
+                          <option value="CORTA">0–8 hrs</option>
+                          <option value="MEDIA">8–12 hrs</option>
+                          <option value="LARGA">12+ hrs</option>
+                        </select>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-gray-500">$</span>
+                          <input
+                            type="number" min="0" value={slot.tarifa}
+                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, tarifa: parseFloat(e.target.value) || 0 } : s)
+                            } : j))}
+                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none"
+                            placeholder="Tarifa"
+                          />
+                        </div>
+                        <button
+                          onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                            ...j, slots: j.slots.filter((_, k) => k !== si)
+                          } : j))}
+                          className="text-gray-600 hover:text-red-400 text-base leading-none"
+                        >×</button>
                       </div>
                     ))}
                   </div>
-                  <p className="text-gray-600 text-[10px] mt-3">Nivel y jornada se toman del selector activo. Ajusta antes de agregar si es necesario.</p>
-                </div>
-              </details>
-            );
-          })()}
+                )}
 
-          {/* ── Operación técnica ── */}
-          <Seccion titulo="Operación técnica" hint="sin descuento">
-            <div className="flex gap-2 mb-3">
-              <SearchableSelect
-                value={selRol}
-                onChange={setSelRol}
-                placeholder="— Buscar rol —"
-                options={roles.filter(r => r.nombre !== "DJ").map(r => ({ value: r.id, label: r.nombre }))}
-                className="flex-1"
-              />
-              <Combobox
-                value={selRolNivel}
-                onChange={v => setSelRolNivel(v)}
-                options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-              />
-              <Combobox
-                value={selRolJornada}
-                onChange={v => setSelRolJornada(v)}
-                options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                className="w-36 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
-              />
-              <NumSelect value={selRolCant} onChange={setSelRolCant} max={20} className="w-16 py-2" title="Cantidad" />
-              <button onClick={agregarRol} disabled={!selRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
-            </div>
-            {lineasOp.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin técnicos agregados</p> : lineasOp.map(l => (
-              <div key={l.id} className="flex items-center gap-3 py-2 border-b border-[#1a1a1a]">
-                <div className="flex-1">
-                  <p className="text-white text-sm">{l.descripcion}</p>
-                  <p className="text-gray-500 text-xs">{l.nivel} · {JORNADA_LABELS[l.jornada] ?? l.jornada} · {l.dias} día(s) · ×{l.cantidad}</p>
-                </div>
-                <input type="number" value={l.precioUnitario} onChange={e => updateOp(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" />
-                <span className="w-24 text-right text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
-                <button onClick={() => setLineasOp(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
+                {jornada.slots.length > 0 && (
+                  <div className="flex justify-between px-1 py-1.5 mt-1 mb-2 border-t border-[#1a1a1a]">
+                    <span className="text-[10px] text-gray-500">Subtotal día</span>
+                    <span className="text-xs font-semibold text-white">{formatCurrency(jornada.slots.reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0))}</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
+                    ...j, slots: [...j.slots, { id: uid(), rolId: "", rolNombre: "", cantidad: 1, nivel: "AA", jornada: "MEDIA", tarifa: 0 }]
+                  } : j))}
+                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-2 py-1 rounded-lg transition-colors"
+                >
+                  + Agregar técnico
+                </button>
               </div>
             ))}
+
+            <button
+              onClick={() => setJornadasPlan(p => [...p, { id: uid(), fecha: evento.fechaEvento || "", tipo: "OPERACION", slots: [] }])}
+              className="w-full py-2 border border-dashed border-[#333] hover:border-[#B3985B] rounded-xl text-gray-500 hover:text-[#B3985B] text-sm transition-colors"
+            >
+              + Agregar día
+            </button>
+
+            {resumen.bonusZonaTotal > 0 && (
+              <div className="mt-3 flex items-center justify-between px-3 py-2.5 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-xl">
+                <div>
+                  <span className="text-[#B3985B] text-sm font-medium">Extra de zona {zonaEvento === "BAJIO" ? "Bajío" : "Nacional"}</span>
+                  <span className="text-gray-500 text-xs ml-2">{numTecnicosZona} técnico{numTecnicosZona !== 1 ? "s" : ""} × {resumen.zonaBonus.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+                </div>
+                <span className="text-white font-semibold text-sm">{resumen.bonusZonaTotal.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
+              </div>
+            )}
           </Seccion>
 
           {/* ── Servicio de DJ ── */}
           <Seccion titulo="Servicio de DJ" hint="cobro por hora · sin descuento">
-            <div className="flex gap-2 mb-3">
-              <Combobox
-                value={selDJNivel}
-                onChange={v => setSelDJNivel(v)}
-                options={[{ value: "AAA", label: `AAA — ${formatCurrency(DJ_TARIFAS.AAA)}/hr` }, { value: "AA", label: `AA — ${formatCurrency(DJ_TARIFAS.AA)}/hr` }, { value: "A", label: `A — ${formatCurrency(DJ_TARIFAS.A)}/hr` }]}
-                className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-              <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
-              <div className="flex-1 flex items-center text-gray-400 text-sm">
-                Total: {formatCurrency((DJ_TARIFAS[selDJNivel] ?? 0) * (parseFloat(selDJHoras) || 0))}
-              </div>
-              <button onClick={agregarDJ} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm">+ Agregar</button>
-            </div>
+            {(() => {
+              const djRol = roles.find(r => r.nombre === "DJ");
+              const djTarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
+              const djTarifa = djRol ? ((djRol[djTarifaKey] as number | null) ?? 0) : 0;
+              return (
+                <div className="flex gap-2 mb-3">
+                  <Combobox
+                    value={selDJNivel}
+                    onChange={v => setSelDJNivel(v)}
+                    options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                    className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
+                  />
+                  <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
+                  <div className="flex-1 flex items-center text-gray-400 text-sm">
+                    {formatCurrency(djTarifa)}/hr · Total: {formatCurrency(djTarifa * (parseFloat(selDJHoras) || 0))}
+                  </div>
+                  <button onClick={agregarDJ} disabled={!djRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
+                </div>
+              );
+            })()}
             {lineasDJ.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin DJ agregado</p> : lineasDJ.map(l => (
               <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a]">
                 <p className="text-white text-sm">DJ {l.nivel} · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
@@ -1823,6 +2066,30 @@ function CotizadorForm() {
                   <span className="text-gray-700 text-xs flex-1 italic">Inactivo · se activa automáticamente en tratos Family & Friends</span>
                 )}
               </div>
+              {/* Descuento fijo en MXN */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setDescuentoFijoActivo(v => !v)}
+                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${descuentoFijoActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${descuentoFijoActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${descuentoFijoActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  </span>
+                  Desc. fijo $
+                </button>
+                {descuentoFijoActivo ? (
+                  <>
+                    <span className="text-gray-500 text-xs flex-1">Monto fijo en MXN</span>
+                    <input type="number" min="0" step="1"
+                      value={descuentoFijoMonto} onChange={e => setDescuentoFijoMonto(e.target.value)}
+                      placeholder="0"
+                      className="w-28 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(parseFloat(descuentoFijoMonto) || 0)}</span>
+                  </>
+                ) : (
+                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · descuento por cantidad fija en MXN</span>
+                )}
+              </div>
+
               {/* Total descuento */}
               <div className="flex items-center justify-between pt-2 border-t border-[#222]">
                 <span className="text-white text-sm font-medium">Descuento total</span>
@@ -1881,6 +2148,7 @@ function CotizadorForm() {
               <div className="flex justify-between text-gray-400"><span>Equipos bruto</span><span>{formatCurrency(resumen.subtotalEquiposBruto)}</span></div>
               {resumen.montoDescuento > 0 && <div className="flex justify-between text-red-400"><span>Descuento ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.montoDescuento)}</span></div>}
               <div className="flex justify-between text-white"><span>Equipos neto</span><span>{formatCurrency(resumen.subtotalEquiposNeto)}</span></div>
+              {resumen.montoDescuentoFijo > 0 && <div className="flex justify-between text-red-400"><span>Descuento fijo</span><span>-{formatCurrency(resumen.montoDescuentoFijo)}</span></div>}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.descuentoMontaAdicionales > 0 && <div className="flex justify-between text-red-400"><span>Desc. adicionales ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.descuentoMontaAdicionales)}</span></div>}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getQueueSize, requestSync } from "@/lib/offline-queue";
+import { getQueueSize, requestSync, clearQueue } from "@/lib/offline-queue";
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useOnlineStatus() {
@@ -72,12 +72,34 @@ export function useOnlineStatus() {
     };
   }, [refreshQueue]);
 
-  return { online, queueSize, syncing, justSynced };
+  const syncWatchdog = useCallback(() => {
+    const t = setTimeout(() => {
+      setSyncing(false);
+      refreshQueue();
+    }, 30_000);
+    return t;
+  }, [refreshQueue]);
+
+  function retry() {
+    if (syncing) return;
+    setSyncing(true);
+    requestSync();
+    const t = syncWatchdog();
+    return () => clearTimeout(t);
+  }
+
+  async function discard() {
+    await clearQueue();
+    setSyncing(false);
+    setQueueSize(0);
+  }
+
+  return { online, queueSize, syncing, justSynced, retry, discard };
 }
 
 // ── Banner visual ─────────────────────────────────────────────────────────────
 export default function OfflineProvider() {
-  const { online, queueSize, syncing, justSynced } = useOnlineStatus();
+  const { online, queueSize, syncing, justSynced, retry, discard } = useOnlineStatus();
 
   // Registrar el SW
   useEffect(() => {
@@ -134,6 +156,12 @@ export default function OfflineProvider() {
           <>
             <span className="text-base animate-spin inline-block">↻</span>
             <span>Sincronizando cambios…</span>
+            <button
+              onClick={discard}
+              className="ml-1 px-2 py-0.5 rounded-full bg-yellow-200/20 hover:bg-yellow-200/40 text-yellow-200 text-xs font-semibold transition-colors"
+            >
+              Descartar
+            </button>
           </>
         )}
         {online && !syncing && justSynced && (
@@ -146,6 +174,18 @@ export default function OfflineProvider() {
           <>
             <span className="text-base">⏳</span>
             <span>{queueSize} cambio{queueSize !== 1 ? "s" : ""} pendiente{queueSize !== 1 ? "s" : ""} de sincronizar</span>
+            <button
+              onClick={retry}
+              className="ml-1 px-2 py-0.5 rounded-full bg-orange-200/20 hover:bg-orange-200/40 text-orange-200 text-xs font-semibold transition-colors"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={discard}
+              className="px-2 py-0.5 rounded-full bg-orange-200/10 hover:bg-orange-200/30 text-orange-300/70 text-xs font-semibold transition-colors"
+            >
+              Descartar
+            </button>
           </>
         )}
       </div>

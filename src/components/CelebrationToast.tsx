@@ -45,7 +45,7 @@ export function CelebrationToast({ type, onDone }: Props) {
   }, [type, onDone]);
 
   return (
-    <div className={`fixed bottom-6 right-6 z-[200] transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
+    <div className={`fixed right-4 z-[200] transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`} style={{ bottom: "calc(env(safe-area-inset-bottom) + 180px)" }}>
       {type === "venta" ? (
         <div className="bg-[#B3985B] text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/60 max-w-xs">
           <p className="text-xs font-bold uppercase tracking-wider mb-0.5">¡Venta cerrada! 🎉</p>

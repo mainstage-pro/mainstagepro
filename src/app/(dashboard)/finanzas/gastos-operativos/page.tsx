@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonTable } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface GastoRow {
   id: string;
@@ -39,7 +40,8 @@ function fmt(n: number) {
 }
 function fmtDate(s?: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
 }
 function getDayOfWeek(s?: string | null) {
   if (!s) return null;
@@ -64,6 +66,7 @@ function groupByWeek(gastos: GastoRow[]) {
 }
 
 export default function GastosOperativosPage() {
+  const toast = useToast();
   const [gastos, setGastos] = useState<GastoRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -81,11 +84,17 @@ export default function GastosOperativosPage() {
 
   async function toggleEntregado(g: GastoRow) {
     setToggling(g.id);
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setToggling(null);
+      return;
+    }
     await load();
     setToggling(null);
   }

@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { BackButton } from "@/components/BackButton";
 
 interface Puesto {
   id: string; titulo: string; area: string; descripcion?: string | null;
@@ -55,7 +56,8 @@ function fmt(n: number) {
 }
 function fmtDate(s?: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX",{day:"2-digit",month:"short",year:"numeric"});
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function CandidatoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -133,7 +135,13 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   async function saveCandidato() {
     if (editTimer.current) clearTimeout(editTimer.current);
     setSaving(true);
-    await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, { method:"PATCH", headers:{"Content-Type":"application/json"}, body: JSON.stringify(edit) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load(); setEdit({}); editLoaded.current = false; setSaving(false);
   }
 
@@ -143,20 +151,31 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     const post = candidato?.postulaciones[0];
     if (!post) { setSaving(false); return; }
     const bens = propEdit.beneficios.split(/[\n,]/).map(x=>x.trim()).filter(Boolean);
-    await fetch(`/api/rrhh/candidatos/${id}`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id, salarioPropuesto: propEdit.salarioPropuesto ? parseFloat(propEdit.salarioPropuesto) : null, fechaIngresoEstimada: propEdit.fechaIngresoEstimada || null, beneficios: bens, observaciones: propEdit.observaciones || null, notasEvaluacion: propEdit.notasEvaluacion || null }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     await load(); setSaving(false);
   }
 
   async function cambiarEtapa(etapa: string) {
     const post = candidato?.postulaciones[0];
     if (!post) return;
-    await fetch(`/api/rrhh/candidatos/${id}`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, {
       method:"PATCH", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id, etapa }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
@@ -165,10 +184,16 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     if (!post) return;
     if (!await confirm({ message: `¿Confirmar contratación de ${candidato?.nombre}? Se creará su expediente en Personal.`, confirmText: "Contratar", danger: false })) return;
     setSaving(true);
-    await fetch(`/api/rrhh/candidatos/${id}/contratar`, {
+    const res = await fetch(`/api/rrhh/candidatos/${id}/contratar`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ postulacionId: post.id }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     toast.success("Candidato contratado — expediente creado en Personal");
     await load(); setSaving(false);
   }
@@ -242,6 +267,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 flex-wrap">
         <div className="flex-1 min-w-0">

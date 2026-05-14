@@ -36,17 +36,25 @@ export default async function DashboardProduccionPage() {
   // suppress unused variable warning
   void fmt;
 
+  const lunDelta = (ahora.getDay() + 6) % 7;
+  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
+  const lunesStr = lunesDate.toLocaleDateString("en-CA");
+
   const [
     proyectosPorEstado,
     proyectosProximos,
     equiposMantenimiento,
     proyectosSinPersonal,
     proximoEvento,
+    proyectosSinPlan,
+    reporteAreaSemana,
   ] = await Promise.all([
     prisma.proyecto.groupBy({ by: ["estado"], _count: { _all: true } }),
     prisma.proyecto.findMany({
       where: { estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] }, fechaEvento: { gte: ahora, lte: en30dias } },
-      include: {
+      select: {
+        id: true, nombre: true, estado: true, fechaEvento: true, numeroProyecto: true,
+        planProduccionAprobado: true,
         cliente: { select: { nombre: true } },
         personal: { select: { confirmado: true } },
         checklist: { select: { completado: true } },
@@ -67,6 +75,17 @@ export default async function DashboardProduccionPage() {
       include: { cliente: { select: { nombre: true } } },
       orderBy: { fechaEvento: "asc" },
     }),
+    // Proyectos en 72h sin plan aprobado
+    prisma.proyecto.findMany({
+      where: {
+        estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] },
+        fechaEvento: { gte: ahora, lte: new Date(ahora.getTime() + 72 * 3600000) },
+        planProduccionAprobado: false,
+      },
+      select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true },
+      orderBy: { fechaEvento: "asc" },
+    }).catch(() => []),
+    prisma.reporteAreaSemanal.findFirst({ where: { area: "PRODUCCION", semana: lunesStr } }).catch(() => null),
   ]);
 
   // suppress unused
@@ -75,11 +94,17 @@ export default async function DashboardProduccionPage() {
   const estadosMap = Object.fromEntries(proyectosPorEstado.map(p => [p.estado, p._count._all]));
   const activos = (estadosMap.PLANEACION ?? 0) + (estadosMap.CONFIRMADO ?? 0) + (estadosMap.EN_CURSO ?? 0);
 
+  const hoyStrProd = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const diasHasta = proximoEvento?.fechaEvento
-    ? Math.max(0, Math.floor((new Date(proximoEvento.fechaEvento).getTime() - ahora.getTime()) / 86400000))
+    ? Math.max(0, Math.round((new Date(new Date(proximoEvento.fechaEvento).toISOString().substring(0, 10)).getTime() - new Date(hoyStrProd).getTime()) / 86400000))
     : null;
 
-  const fmtDate = (s: string | Date | null) => s ? new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" }) : "—";
+  const fmtDate = (s: string | Date | null) => {
+    if (!s) return "—";
+    const iso = typeof s === "string" ? s : s.toISOString();
+    const [y, mo, d] = iso.substring(0, 10).split("-").map(Number);
+    return new Date(y, mo - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short" });
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -90,6 +115,11 @@ export default async function DashboardProduccionPage() {
           <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
         <div className="flex gap-2 text-[10px]">
+          {proyectosSinPlan.length > 0 && (
+            <Link href={`/proyectos/${proyectosSinPlan[0].id}/plan`} className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
+              🚨 {proyectosSinPlan.length} sin plan aprobado (72h)
+            </Link>
+          )}
           {proyectosSinPersonal > 0 && (
             <Link href="/proyectos" className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
               ⚠ {proyectosSinPersonal} sin personal confirmado
@@ -102,6 +132,15 @@ export default async function DashboardProduccionPage() {
           )}
         </div>
       </div>
+
+      {/* Alerta reporte semanal */}
+      {!reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Producción pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -123,7 +162,7 @@ export default async function DashboardProduccionPage() {
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1a1a1a]">
-                {["Evento", "Cliente", "Fecha", "Personal", "Checklist", "Estado"].map(h => (
+                {["Evento", "Cliente", "Fecha", "Personal", "Checklist", "Plan", "Estado"].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-2 font-medium">{h}</th>
                 ))}
               </tr>
@@ -134,7 +173,8 @@ export default async function DashboardProduccionPage() {
                 const confirmados = p.personal.filter(x => x.confirmado).length;
                 const checkOk = p.checklist.filter(x => x.completado).length;
                 const checkTotal = p.checklist.length;
-                const dias = Math.max(0, Math.floor((new Date(p.fechaEvento).getTime() - ahora.getTime()) / 86400000));
+                const evStrProd = new Date(p.fechaEvento).toISOString().substring(0, 10);
+                const dias = Math.max(0, Math.round((new Date(evStrProd).getTime() - new Date(hoyStrProd).getTime()) / 86400000));
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`} className="contents">
                     <tr className="hover:bg-[#1a1a1a] transition-colors">
@@ -155,6 +195,12 @@ export default async function DashboardProduccionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
+                        <Link href={`/proyectos/${p.id}/plan`} onClick={e => e.stopPropagation()}
+                          className={`text-[10px] font-bold ${p.planProduccionAprobado ? "text-green-400" : dias <= 3 ? "text-red-400 underline" : "text-[#555] hover:text-[#B3985B]"}`}>
+                          {p.planProduccionAprobado ? "Aprobado" : "Ver plan"}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado] ?? "bg-gray-800 text-gray-400"}`}>
                           {p.estado}
                         </span>
@@ -170,12 +216,15 @@ export default async function DashboardProduccionPage() {
 
       {/* Quick actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
+        {([
           { href: "/inventario/disponibilidad", label: "Disponibilidad", desc: "Ver equipos disponibles" },
           { href: "/inventario/recolecciones", label: "Recolecciones", desc: "Pendientes de recolectar" },
           { href: "/inventario/mantenimiento", label: "Mantenimiento", desc: "Estado de equipos" },
           { href: "/inventario/checklist", label: "Checklist semanal", desc: "Revisión de inventario" },
-        ].map(a => (
+          proximoEvento
+            ? { href: `/proyectos/${proximoEvento.id}/plan`, label: "Plan de producción", desc: proximoEvento.nombre }
+            : { href: "/proyectos", label: "Plan de producción", desc: "Sin eventos próximos" },
+        ] as { href: string; label: string; desc: string }[]).map(a => (
           <Link key={a.href} href={a.href} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
             <p className="text-white text-sm font-semibold">{a.label}</p>
             <p className="text-gray-500 text-xs mt-0.5">{a.desc}</p>

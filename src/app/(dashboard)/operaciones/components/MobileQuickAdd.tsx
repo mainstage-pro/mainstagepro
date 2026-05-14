@@ -86,12 +86,14 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
     };
   }, []);
 
-  // Reset state when opened
+  // Reset state when opened + auto-focus textarea
   useEffect(() => {
     if (open) {
       setTitulo(""); setDescripcion(""); setFecha("");
       setPrioridad("MEDIA"); setProyectoId(defaultProyectoId);
       setAsignadoId(null); setPanel(null); setDetIgnorada(false);
+      // Focus immediately (works on desktop; on iOS the parent uses flushSync first)
+      titleRef.current?.focus();
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -102,6 +104,23 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
   }, [open, onClose]);
+
+  // Re-focus textarea when panel closes so keyboard comes back
+  const prevPanel = useRef<Panel>(null);
+  useEffect(() => {
+    if (prevPanel.current !== null && panel === null && open) {
+      // Small delay so the panel unmount animation doesn't interfere
+      const t = setTimeout(() => titleRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+    prevPanel.current = panel;
+  }, [panel, open]);
+
+  // Close panel and restore focus/keyboard
+  function closePanel() {
+    setPanel(null);
+    // Timeout handled by the useEffect above
+  }
 
   const deteccion = useMemo(() => {
     if (detIgnorada || !titulo || fecha) return null;
@@ -148,21 +167,33 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
         }}
         aria-hidden={!open}
       >
-        {/* Handle bar — always visible */}
-        <div className="flex justify-center pt-2.5 pb-1 shrink-0">
+        {/* Handle bar + X (discard) button */}
+        <div className="flex items-center justify-between px-3 pt-2.5 pb-1 shrink-0">
+          <div className="w-8" />
           <div className="w-8 h-1 rounded-full bg-[#333]" />
+          <button
+            onMouseDown={e => e.preventDefault()}
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-[#444] hover:text-white hover:bg-[#1e1e1e] transition-all active:scale-95"
+            aria-label="Descartar"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
 
         {/* Scrollable content area: input + panel */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {/* Textarea */}
-          <div className="px-4 pt-2 pb-1">
+          <div className="px-4 pt-1 pb-1">
             <textarea
               ref={titleRef}
               value={titulo}
               onChange={e => setTitulo(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
               placeholder="Nombre de la tarea"
+              inputMode="text"
               className="w-full bg-transparent text-white text-[17px] placeholder-[#3a3a3a] focus:outline-none resize-none leading-snug"
               rows={titulo.split("\n").length || 1}
             />
@@ -182,7 +213,10 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
                 {deteccion.fecha ? formatDisplay(deteccion.fecha) : (
                   (() => { try { return formatearRecurrencia(JSON.parse(deteccion.recurrencia!)); } catch { return ""; } })()
                 )}
-                <button onClick={() => setDetIgnorada(true)} className="text-[#B3985B]/50 hover:text-red-400 ml-0.5">×</button>
+                <button
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => setDetIgnorada(true)}
+                  className="text-[#B3985B]/50 hover:text-red-400 ml-0.5">×</button>
               </span>
             </div>
           )}
@@ -198,7 +232,9 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
                       { label: "Hoy",    iso: toISO(new Date()) },
                       { label: "Mañana", iso: toISO(new Date(Date.now() + 86400000)) },
                     ].map(opt => (
-                      <button key={opt.label} onClick={() => { setFecha(opt.iso); setPanel(null); }}
+                      <button key={opt.label}
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setFecha(opt.iso); closePanel(); }}
                         className={`flex-1 py-2 rounded-xl text-sm font-medium border transition-all ${
                           fecha === opt.iso
                             ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"
@@ -208,20 +244,24 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
                       </button>
                     ))}
                     {fecha && (
-                      <button onClick={() => { setFecha(""); setPanel(null); }}
+                      <button
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => { setFecha(""); closePanel(); }}
                         className="px-3 py-2 rounded-xl text-sm border border-[#1e1e1e] text-[#444] hover:text-red-400">
                         Quitar
                       </button>
                     )}
                   </div>
-                  <DatePicker value={fecha} onChange={val => { setFecha(val); if (val) setPanel(null); }} size="sm" />
+                  <DatePicker value={fecha} onChange={val => { setFecha(val); if (val) closePanel(); }} size="sm" />
                 </div>
               )}
 
               {panel === "prioridad" && (
                 <div className="grid grid-cols-4 gap-1.5 p-3">
                   {PRIOS.map(p => (
-                    <button key={p.key} onClick={() => { setPrioridad(p.key); setPanel(null); }}
+                    <button key={p.key}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { setPrioridad(p.key); closePanel(); }}
                       className="flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs font-medium transition-all"
                       style={{
                         borderColor: prioridad === p.key ? p.color + "60" : "#1a1a1a",
@@ -239,13 +279,17 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
 
               {panel === "proyecto" && (
                 <div className="max-h-52 overflow-y-auto py-1.5">
-                  <button onClick={() => { setProyectoId(null); setPanel(null); }}
+                  <button
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { setProyectoId(null); closePanel(); }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${!proyectoId ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
                     <span className="w-2 h-2 rounded-full bg-[#333] shrink-0" />
                     Bandeja de entrada
                   </button>
                   {proyectos.map(p => (
-                    <button key={p.id} onClick={() => { setProyectoId(p.id); setPanel(null); }}
+                    <button key={p.id}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { setProyectoId(p.id); closePanel(); }}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${proyectoId === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
                       {p.nombre}
@@ -256,13 +300,17 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
 
               {panel === "asignar" && (
                 <div className="max-h-52 overflow-y-auto py-1.5">
-                  <button onClick={() => { setAsignadoId(null); setPanel(null); }}
+                  <button
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => { setAsignadoId(null); closePanel(); }}
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${!asignadoId ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
                     <span className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs text-[#444]">—</span>
                     Sin asignar
                   </button>
                   {usuarios.map(u => (
-                    <button key={u.id} onClick={() => { setAsignadoId(u.id); setPanel(null); }}
+                    <button key={u.id}
+                      onMouseDown={e => e.preventDefault()}
+                      onClick={() => { setAsignadoId(u.id); closePanel(); }}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${asignadoId === u.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-[#555] hover:text-white hover:bg-[#111]"}`}>
                       <span className="w-7 h-7 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-xs text-[#B3985B] font-bold shrink-0">
                         {u.name.charAt(0).toUpperCase()}
@@ -276,62 +324,46 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
           )}
         </div>
 
-        {/* Chips toolbar — always visible, never scrolled off */}
-        <div className="shrink-0 flex items-center gap-1 px-3 py-2.5 border-t border-[#1a1a1a] overflow-x-auto bg-[#111]" style={{ scrollbarWidth: "none" }}>
-          {/* Fecha */}
-          <ChipBtn
-            icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
-            label={dateLabel ?? "Fecha"}
-            active={hasDate}
-            activeColor="#B3985B"
-            isOpen={panel === "fecha"}
-            onClick={() => setPanel(panel === "fecha" ? null : "fecha")}
-          />
-
-          {/* Prioridad */}
-          <ChipBtn
-            icon={<svg width="13" height="13" viewBox="0 0 24 24" fill={prioridad !== "BAJA" ? prio.color + "30" : "none"} stroke={prioridad !== "BAJA" ? prio.color : "#555"} strokeWidth="1.5" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
-            label={prioridad !== "MEDIA" ? prio.label : "Prioridad"}
-            active={prioridad !== "MEDIA"}
-            activeColor={prio.color}
-            isOpen={panel === "prioridad"}
-            onClick={() => setPanel(panel === "prioridad" ? null : "prioridad")}
-          />
-
-          {/* Proyecto */}
-          {proyectos.length > 0 && (
+        {/* Two-row toolbar */}
+        <div className="shrink-0 border-t border-[#1a1a1a] bg-[#111]">
+          {/* Row 1: chips */}
+          <div className="flex items-center gap-1 px-3 pt-2.5 pb-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
             <ChipBtn
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={proyInfo?.color ?? "currentColor"} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
-              label={proyInfo?.nombre ?? "Proyecto"}
-              active={!!proyInfo}
-              activeColor={proyInfo?.color ?? "#B3985B"}
-              isOpen={panel === "proyecto"}
-              onClick={() => setPanel(panel === "proyecto" ? null : "proyecto")}
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+              label={dateLabel ?? "Fecha"} active={hasDate} activeColor="#B3985B"
+              isOpen={panel === "fecha"} onClick={() => setPanel(panel === "fecha" ? null : "fecha")}
             />
-          )}
-
-          {/* Asignar */}
-          {usuarios.length > 0 && (
             <ChipBtn
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
-              label={userInfo ? userInfo.name.split(" ")[0] : "Asignar"}
-              active={!!userInfo}
-              activeColor="#B3985B"
-              isOpen={panel === "asignar"}
-              onClick={() => setPanel(panel === "asignar" ? null : "asignar")}
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill={prioridad !== "BAJA" ? prio.color + "30" : "none"} stroke={prioridad !== "BAJA" ? prio.color : "#555"} strokeWidth="1.5" strokeLinecap="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>}
+              label={prioridad !== "MEDIA" ? prio.label : "Prioridad"} active={prioridad !== "MEDIA"} activeColor={prio.color}
+              isOpen={panel === "prioridad"} onClick={() => setPanel(panel === "prioridad" ? null : "prioridad")}
             />
-          )}
-
-          <div className="flex-1 min-w-[8px]" />
-
-          {/* Agregar button — always visible */}
-          <button
-            onClick={submit}
-            disabled={!titulo.trim()}
-            className="shrink-0 px-4 py-1.5 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
-          >
-            Agregar
-          </button>
+            {proyectos.length > 0 && (
+              <ChipBtn
+                icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={proyInfo?.color ?? "currentColor"} strokeWidth="1.5" strokeLinecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
+                label={proyInfo?.nombre ?? "Proyecto"} active={!!proyInfo} activeColor={proyInfo?.color ?? "#B3985B"}
+                isOpen={panel === "proyecto"} onClick={() => setPanel(panel === "proyecto" ? null : "proyecto")}
+              />
+            )}
+            {usuarios.length > 0 && (
+              <ChipBtn
+                icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>}
+                label={userInfo ? userInfo.name.split(" ")[0] : "Asignar"} active={!!userInfo} activeColor="#B3985B"
+                isOpen={panel === "asignar"} onClick={() => setPanel(panel === "asignar" ? null : "asignar")}
+              />
+            )}
+          </div>
+          {/* Row 2: Agregar */}
+          <div className="flex items-center justify-end px-3 pb-3">
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={submit}
+              disabled={!titulo.trim()}
+              className="px-5 py-2 bg-[#B3985B] text-black text-sm font-bold rounded-full transition-all disabled:opacity-25 active:scale-95"
+            >
+              Agregar
+            </button>
+          </div>
         </div>
       </div>
     </>
@@ -346,6 +378,7 @@ function ChipBtn({ icon, label, active, activeColor, isOpen, onClick }: {
 }) {
   return (
     <button
+      onMouseDown={e => e.preventDefault()}
       onClick={onClick}
       className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
         isOpen ? "border-[#2a2a2a] bg-[#1a1a1a] text-white" : ""

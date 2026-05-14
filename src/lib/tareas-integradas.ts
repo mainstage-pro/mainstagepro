@@ -40,7 +40,7 @@ function sev(dias: number): SeveridadTarea {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
   const now         = new Date();
-  const inicioDeHoy = new Date(now); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(now.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const en30        = new Date(now.getTime() + 30 * 86400000);
 
   const [tratos, cxcs, cxps, proyectos, equipos] = await Promise.all([

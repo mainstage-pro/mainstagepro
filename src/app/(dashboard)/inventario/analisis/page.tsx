@@ -49,7 +49,8 @@ function fmtMXN(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 function getMeses() {
   const list: { value: string; label: string }[] = [];
@@ -82,6 +83,17 @@ function AlertaBadge({ alerta, diasSinRenta }: { alerta: EquipoStat["alerta"]; d
 
 type SortField = "vecesAprobadas" | "revenueGenerado" | "diasSinRenta" | "descripcion" | "totalRentasHistoricas";
 
+function SortBtn({ field, label, current, dir, onToggle }: {
+  field: SortField; label: string; current: SortField; dir: "asc" | "desc"; onToggle: (f: SortField) => void;
+}) {
+  return (
+    <button onClick={() => onToggle(field)} className={`text-left text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 hover:text-white transition-colors ${current === field ? "text-[#B3985B]" : "text-gray-500"}`}>
+      {label}
+      {current === field && <span>{dir === "desc" ? "↓" : "↑"}</span>}
+    </button>
+  );
+}
+
 export default function AnalisisInventarioPage() {
   const meses = getMeses();
   const [mes, setMes] = useState(meses[0].value);
@@ -97,6 +109,7 @@ export default function AnalisisInventarioPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/inventario/analisis?mes=${m}`, { cache: "no-store" });
+      if (!res.ok) return;
       const json = await res.json();
       setData(json);
     } finally {
@@ -155,12 +168,6 @@ export default function AnalisisInventarioPage() {
     { key: "socios", label: `Socios & Inversión` },
   ] as const;
 
-  const SortBtn = ({ field, label }: { field: SortField; label: string }) => (
-    <button onClick={() => toggleSort(field)} className={`text-left text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 hover:text-white transition-colors ${sortField === field ? "text-[#B3985B]" : "text-gray-500"}`}>
-      {label}
-      {sortField === field && <span>{sortDir === "desc" ? "↓" : "↑"}</span>}
-    </button>
-  );
 
   return (
     <div className="p-6 max-w-[1400px] mx-auto space-y-6">
@@ -248,12 +255,12 @@ export default function AnalisisInventarioPage() {
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
-                  <th className="text-left p-3 pl-4 w-[30%]"><SortBtn field="descripcion" label="Equipo" /></th>
+                  <th className="text-left p-3 pl-4 w-[30%]"><SortBtn field="descripcion" label="Equipo" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
                   <th className="text-left p-3 hidden md:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Categoría</span></th>
-                  <th className="text-center p-3"><SortBtn field="vecesAprobadas" label="Aprobado" /></th>
+                  <th className="text-center p-3"><SortBtn field="vecesAprobadas" label="Aprobado" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
                   <th className="text-center p-3 hidden lg:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Cotizado</span></th>
-                  <th className="text-right p-3"><SortBtn field="revenueGenerado" label="Revenue" /></th>
-                  <th className="text-right p-3 hidden lg:table-cell"><SortBtn field="totalRentasHistoricas" label="Histórico" /></th>
+                  <th className="text-right p-3"><SortBtn field="revenueGenerado" label="Revenue" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
+                  <th className="text-right p-3 hidden lg:table-cell"><SortBtn field="totalRentasHistoricas" label="Histórico" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
                   <th className="text-left p-3 hidden xl:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Última renta</span></th>
                   <th className="p-3 pr-4"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Estado</span></th>
                 </tr>

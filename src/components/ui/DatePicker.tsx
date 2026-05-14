@@ -133,13 +133,13 @@ export default function DatePicker({
   const szCls = size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm";
 
   const popup = open && typeof document !== "undefined" ? createPortal(
-    <div ref={calRef} style={style}
+    <div ref={calRef} style={style} onClick={e => e.stopPropagation()}
       className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
 
       {/* Quick chips */}
       <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
         {chips.map(c => (
-          <button key={c.iso} onClick={() => { onChange(c.iso); setOpen(false); }}
+          <button key={c.iso} onClick={() => { onChange(c.iso); setOpen(false); onClose?.(); }}
             className={`flex-1 py-1 rounded-lg text-[12px] font-medium border transition-all ${
               value === c.iso
                 ? "bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]"

@@ -5,6 +5,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 interface Categoria {
   id: string;
@@ -58,9 +59,21 @@ export default function CategoriasPage() {
     if (!form.nombre.trim()) return;
     setSaving(true);
     if (editId) {
-      await fetch(`/api/categorias-financieras/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(`/api/categorias-financieras/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
-      await fetch("/api/categorias-financieras", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch("/api/categorias-financieras", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     }
     await load();
     cancelForm();
@@ -69,7 +82,12 @@ export default function CategoriasPage() {
 
   async function deleteCategoria(id: string) {
     if (!await confirm({ message: "¿Eliminar esta categoría? Los movimientos vinculados perderán la categoría.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/categorias-financieras/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/categorias-financieras/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Categoría eliminada");
     await load();
   }
@@ -86,53 +104,46 @@ export default function CategoriasPage() {
           <h1 className="text-xl font-semibold text-white">Categorías Financieras</h1>
           <p className="text-[#6b7280] text-sm">{categorias.length} categoría{categorias.length !== 1 ? "s" : ""}</p>
         </div>
-        {!showForm && (
-          <button onClick={() => setShowForm(true)}
+        <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nueva categoría
           </button>
-        )}
       </div>
 
-      {/* Formulario */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {editId ? "Editar categoría" : "Nueva categoría"}
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
-              <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
-                placeholder="Ej: Honorarios técnicos"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
-              <Combobox
-                value={form.tipo}
-                onChange={v => setForm(p => ({ ...p, tipo: v }))}
-                options={TIPOS.map(t => ({ value: t, label: t }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-          </div>
-          <div className="w-32">
-            <label className="text-xs text-gray-500 mb-1 block">Orden</label>
-            <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
+      <Modal
+        open={showForm}
+        onClose={cancelForm}
+        title={editId ? "Editar categoría" : "Nueva categoría"}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
+            <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
+              placeholder="Ej: Honorarios técnicos"
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
           </div>
-          <div className="flex gap-3 pt-1">
-            <button onClick={save} disabled={saving || !form.nombre.trim()}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving ? "Guardando..." : editId ? "Actualizar" : "Crear"}
-            </button>
-            <button onClick={cancelForm} className="text-gray-500 hover:text-white text-sm transition-colors px-3">
-              Cancelar
-            </button>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
+            <Combobox
+              value={form.tipo}
+              onChange={v => setForm(p => ({ ...p, tipo: v }))}
+              options={TIPOS.map(t => ({ value: t, label: t }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
           </div>
         </div>
-      )}
+        <div className="w-32 mt-4">
+          <label className="text-xs text-gray-500 mb-1 block">Orden</label>
+          <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
+            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+        </div>
+        <div className="flex gap-3 mt-4">
+          <button onClick={save} disabled={saving || !form.nombre.trim()}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+            {saving ? "Guardando..." : editId ? "Actualizar" : "Crear"}
+          </button>
+        </div>
+      </Modal>
 
       {/* Lista agrupada por tipo */}
       {loading ? (

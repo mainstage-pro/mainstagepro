@@ -61,8 +61,8 @@ export default function PlantillasPage() {
             {loading ? "Cargando..." : `${plantillas.length} plantilla${plantillas.length !== 1 ? "s" : ""} activa${plantillas.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link href="/cotizaciones/nuevo" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
-          + Nueva cotización
+        <Link href="/crm/tratos" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          Ir a Tratos →
         </Link>
       </div>
 

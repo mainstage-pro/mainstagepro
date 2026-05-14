@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface Mantenimiento {
   id: string;
@@ -19,6 +21,7 @@ interface Mantenimiento {
   estatus: string;
   costo: number | null;
   comentarios: string | null;
+  fotos: string[];
 }
 
 interface Vehiculo {
@@ -34,6 +37,7 @@ interface Vehiculo {
   proximoServicioFecha: string | null;
   activo: boolean;
   notas: string | null;
+  fotos: string[];
   mantenimientos: Mantenimiento[];
 }
 
@@ -49,10 +53,7 @@ const TIPO_COLORS: Record<string, string> = {
   OTRO: "text-gray-500 bg-[#1a1a1a]",
 };
 const PRIORIDAD_COLORS: Record<string, string> = {
-  BAJA: "text-gray-500",
-  NORMAL: "text-blue-400",
-  ALTA: "text-yellow-400",
-  URGENTE: "text-red-400",
+  BAJA: "text-gray-500", NORMAL: "text-blue-400", ALTA: "text-yellow-400", URGENTE: "text-red-400",
 };
 const ESTATUS_COLORS: Record<string, string> = {
   PENDIENTE: "bg-yellow-900/30 text-yellow-400",
@@ -62,46 +63,124 @@ const ESTATUS_COLORS: Record<string, string> = {
 
 const EMPTY_MANT = {
   fecha: new Date().toISOString().split("T")[0],
-  km: "",
-  tipoRegistro: "SERVICIO",
-  servicio: "",
-  aceite: "",
-  anticongelante: "",
-  estadoLlantas: "",
-  proximoKm: "",
-  proximaFecha: "",
-  prioridad: "NORMAL",
-  estatus: "COMPLETADO",
-  costo: "",
-  comentarios: "",
+  km: "", tipoRegistro: "SERVICIO", servicio: "",
+  aceite: "", anticongelante: "", estadoLlantas: "",
+  proximoKm: "", proximaFecha: "", prioridad: "NORMAL",
+  estatus: "COMPLETADO", costo: "", comentarios: "",
 };
-
 const EMPTY_VEH = { nombre: "", marca: "", modelo: "", anio: "", placas: "", color: "", kilometraje: "", notas: "" };
+
+async function compressImage(file: File, maxPx = 1400): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 function fmtKm(n: number | null) {
   if (!n) return "—";
   return `${n.toLocaleString("es-MX")} km`;
 }
 
+function FotoGrid({ fotos, onRemove, small }: { fotos: string[]; onRemove?: (i: number) => void; small?: boolean }) {
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  if (fotos.length === 0) return null;
+  return (
+    <>
+      <div className={`flex flex-wrap gap-2 mt-2`}>
+        {fotos.map((f, i) => (
+          <div key={i} className="relative group">
+            <img
+              src={f}
+              alt=""
+              onClick={() => setLightbox(f)}
+              className={`object-cover rounded-lg cursor-pointer border border-[#2a2a2a] hover:border-[#B3985B]/50 transition-colors ${small ? "w-16 h-16" : "w-20 h-20"}`}
+            />
+            {onRemove && (
+              <button
+                onClick={() => onRemove(i)}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-600 hover:bg-red-500 text-white rounded-full text-[9px] font-bold leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-w-full max-h-full object-contain rounded-xl" />
+        </div>
+      )}
+    </>
+  );
+}
+
+function FotoUpload({ fotos, onChange, label = "Agregar fotos" }: { fotos: string[]; onChange: (f: string[]) => void; label?: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [compressing, setCompressing] = useState(false);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setCompressing(true);
+    const compressed = await Promise.all(files.map(f => compressImage(f)));
+    onChange([...fotos, ...compressed]);
+    setCompressing(false);
+    e.target.value = "";
+  }
+
+  return (
+    <div>
+      <input ref={ref} type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+      <button
+        type="button"
+        onClick={() => ref.current?.click()}
+        disabled={compressing}
+        className="text-[10px] text-gray-500 hover:text-white border border-dashed border-[#333] hover:border-[#B3985B]/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+        {compressing ? "Comprimiendo..." : `📷 ${label}`}
+      </button>
+    </div>
+  );
+}
+
 export default function VehiculosPage() {
+  const toast = useToast();
   const confirm = useConfirm();
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showVehForm, setShowVehForm] = useState(false);
   const [vehForm, setVehForm] = useState(EMPTY_VEH);
+  const [vehFotos, setVehFotos] = useState<string[]>([]);
   const [savingVeh, setSavingVeh] = useState(false);
   const [showMantForm, setShowMantForm] = useState(false);
   const [mantForm, setMantForm] = useState(EMPTY_MANT);
+  const [mantFotos, setMantFotos] = useState<string[]>([]);
   const [savingMant, setSavingMant] = useState(false);
   const [deletingMant, setDeletingMant] = useState<string | null>(null);
+  const [uploadingMantFotos, setUploadingMantFotos] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -115,7 +194,6 @@ export default function VehiculosPage() {
 
   const selected = vehiculos.find(v => v.id === selectedId) ?? null;
 
-  // Alertas de servicio próximo
   function alertaServicio(v: Vehiculo): "urgente" | "proximo" | null {
     if (!v.activo) return null;
     const hoy = new Date();
@@ -138,12 +216,13 @@ export default function VehiculosPage() {
     const res = await fetch("/api/vehiculos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(vehForm),
+      body: JSON.stringify({ ...vehForm, fotos: vehFotos }),
     });
     const data = await res.json();
     setSavingVeh(false);
     if (res.ok) {
       setVehForm(EMPTY_VEH);
+      setVehFotos([]);
       setShowVehForm(false);
       await load();
       setSelectedId(data.vehiculo.id);
@@ -153,31 +232,84 @@ export default function VehiculosPage() {
   async function saveMantenimiento() {
     if (!selectedId || !mantForm.servicio.trim()) return;
     setSavingMant(true);
-    await fetch(`/api/vehiculos/${selectedId}/mantenimiento`, {
+    const res = await fetch(`/api/vehiculos/${selectedId}/mantenimiento`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mantForm),
+      body: JSON.stringify({ ...mantForm, fotos: mantFotos }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingMant(false);
+      return;
+    }
     setSavingMant(false);
     setMantForm(EMPTY_MANT);
+    setMantFotos([]);
     setShowMantForm(false);
+    await load();
+  }
+
+  async function addFotosMantenimiento(mantId: string, nuevas: string[]) {
+    const mant = selected?.mantenimientos.find(m => m.id === mantId);
+    if (!mant || !selectedId) return;
+    setUploadingMantFotos(mantId);
+    await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fotos: [...mant.fotos, ...nuevas] }),
+    });
+    await load();
+    setUploadingMantFotos(null);
+  }
+
+  async function removeFotoMantenimiento(mantId: string, idx: number) {
+    const mant = selected?.mantenimientos.find(m => m.id === mantId);
+    if (!mant || !selectedId) return;
+    const nuevas = mant.fotos.filter((_, i) => i !== idx);
+    await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fotos: nuevas }),
+    });
+    await load();
+  }
+
+  async function updateVehFotos(fotos: string[]) {
+    if (!selectedId) return;
+    await fetch(`/api/vehiculos/${selectedId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fotos }),
+    });
     await load();
   }
 
   async function deleteMantenimiento(mantId: string) {
     if (!selectedId || !await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
     setDeletingMant(mantId);
-    await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, { method: "DELETE" });
+    const res = await fetch(`/api/vehiculos/${selectedId}/mantenimiento/${mantId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      setDeletingMant(null);
+      return;
+    }
     setDeletingMant(null);
     await load();
   }
 
   async function toggleActivo(v: Vehiculo) {
-    await fetch(`/api/vehiculos/${v.id}`, {
+    const res = await fetch(`/api/vehiculos/${v.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !v.activo }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
@@ -193,7 +325,7 @@ export default function VehiculosPage() {
           <h1 className="text-xl font-semibold text-white">Vehículos</h1>
           <p className="text-[#6b7280] text-sm">Bitácora de mantenimiento</p>
         </div>
-        <button onClick={() => setShowVehForm(true)}
+        <button onClick={() => { setShowVehForm(true); setVehFotos([]); }}
           className="bg-[#B3985B] hover:bg-[#d4b068] text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
           + Vehículo
         </button>
@@ -230,51 +362,56 @@ export default function VehiculosPage() {
       )}
 
       {/* Formulario nuevo vehículo */}
-      {showVehForm && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5 mb-5">
-          <p className="text-white font-semibold mb-4">Nuevo vehículo</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-            {[
-              { key: "nombre", label: "Nombre / Alias *", placeholder: "Ej. Sprinter Negra" },
-              { key: "marca", label: "Marca", placeholder: "Mercedes-Benz" },
-              { key: "modelo", label: "Modelo", placeholder: "Sprinter 316" },
-              { key: "anio", label: "Año", placeholder: "2022" },
-              { key: "placas", label: "Placas", placeholder: "ABC-123-D" },
-              { key: "color", label: "Color", placeholder: "Negro" },
-              { key: "kilometraje", label: "Km actuales", placeholder: "45000" },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
-                <input
-                  value={vehForm[f.key as keyof typeof vehForm]}
-                  onChange={e => setVehForm(p => ({ ...p, [f.key]: e.target.value }))}
-                  placeholder={f.placeholder}
-                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                />
-              </div>
-            ))}
-            <div className="col-span-2">
-              <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+      <Modal open={showVehForm} onClose={() => { setShowVehForm(false); setVehFotos([]); }} title="Nuevo vehículo">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {[
+            { key: "nombre", label: "Nombre / Alias *", placeholder: "Ej. Sprinter Negra" },
+            { key: "marca", label: "Marca", placeholder: "Mercedes-Benz" },
+            { key: "modelo", label: "Modelo", placeholder: "Sprinter 316" },
+            { key: "anio", label: "Año", placeholder: "2022" },
+            { key: "placas", label: "Placas", placeholder: "ABC-123-D" },
+            { key: "color", label: "Color", placeholder: "Negro" },
+            { key: "kilometraje", label: "Km actuales", placeholder: "45000" },
+          ].map(f => (
+            <div key={f.key}>
+              <label className="text-xs text-gray-500 mb-1 block">{f.label}</label>
               <input
-                value={vehForm.notas}
-                onChange={e => setVehForm(p => ({ ...p, notas: e.target.value }))}
-                placeholder="Observaciones generales del vehículo"
+                value={vehForm[f.key as keyof typeof vehForm]}
+                onChange={e => setVehForm(p => ({ ...p, [f.key]: e.target.value }))}
+                placeholder={f.placeholder}
                 className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
               />
             </div>
-          </div>
-          <div className="flex gap-3">
-            <button onClick={saveVehiculo} disabled={savingVeh || !vehForm.nombre.trim()}
-              className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-              {savingVeh ? "Guardando..." : "Agregar vehículo"}
-            </button>
-            <button onClick={() => setShowVehForm(false)}
-              className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
-              Cancelar
-            </button>
+          ))}
+          <div className="col-span-2">
+            <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+            <input
+              value={vehForm.notas}
+              onChange={e => setVehForm(p => ({ ...p, notas: e.target.value }))}
+              placeholder="Observaciones generales del vehículo"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+            />
           </div>
         </div>
-      )}
+        {/* Fotos del vehículo */}
+        <div className="mb-4">
+          <label className="text-xs text-gray-500 mb-2 block">Fotos del vehículo</label>
+          <FotoGrid fotos={vehFotos} onRemove={i => setVehFotos(prev => prev.filter((_, idx) => idx !== i))} />
+          <div className="mt-2">
+            <FotoUpload fotos={vehFotos} onChange={setVehFotos} />
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <button onClick={saveVehiculo} disabled={savingVeh || !vehForm.nombre.trim()}
+            className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+            {savingVeh ? "Guardando..." : "Agregar vehículo"}
+          </button>
+          <button onClick={() => { setShowVehForm(false); setVehFotos([]); }}
+            className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </Modal>
 
       {loading ? (
         <div className="flex justify-center py-20">
@@ -293,24 +430,30 @@ export default function VehiculosPage() {
               const alerta = alertaServicio(v);
               return (
                 <button key={v.id} onClick={() => setSelectedId(v.id)}
-                  className={`w-full text-left bg-[#111] border rounded-xl px-4 py-3 transition-colors ${
+                  className={`w-full text-left bg-[#111] border rounded-xl overflow-hidden transition-colors ${
                     selectedId === v.id ? "border-[#B3985B]/50 bg-[#B3985B]/5" :
                     alerta === "urgente" ? "border-red-900/50 hover:border-red-700/50" :
                     alerta === "proximo" ? "border-yellow-900/40 hover:border-yellow-700/50" :
                     "border-[#222] hover:border-[#333]"
                   } ${!v.activo ? "opacity-50" : ""}`}>
-                  <div className="flex items-center justify-between">
-                    <p className="text-white text-sm font-medium truncate">{v.nombre}</p>
-                    {alerta === "urgente" && <span className="text-red-400 text-xs shrink-0">⚠ Vencido</span>}
-                    {alerta === "proximo" && <span className="text-yellow-400 text-xs shrink-0">⏰ Pronto</span>}
-                  </div>
-                  <p className="text-gray-600 text-xs mt-0.5">
-                    {[v.marca, v.modelo, v.anio].filter(Boolean).join(" ")}
-                    {v.placas && ` · ${v.placas}`}
-                  </p>
-                  {v.kilometraje && (
-                    <p className="text-gray-700 text-xs mt-1">{fmtKm(v.kilometraje)}</p>
+                  {/* Foto principal del vehículo si existe */}
+                  {v.fotos.length > 0 && (
+                    <img src={v.fotos[0]} alt="" className="w-full h-24 object-cover" />
                   )}
+                  <div className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-white text-sm font-medium truncate">{v.nombre}</p>
+                      {alerta === "urgente" && <span className="text-red-400 text-xs shrink-0">⚠</span>}
+                      {alerta === "proximo" && <span className="text-yellow-400 text-xs shrink-0">⏰</span>}
+                    </div>
+                    <p className="text-gray-600 text-xs mt-0.5">
+                      {[v.marca, v.modelo, v.anio].filter(Boolean).join(" ")}
+                      {v.placas && ` · ${v.placas}`}
+                    </p>
+                    {v.kilometraje && (
+                      <p className="text-gray-700 text-xs mt-1">{fmtKm(v.kilometraje)}</p>
+                    )}
+                  </div>
                 </button>
               );
             })}
@@ -336,7 +479,7 @@ export default function VehiculosPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => { setShowMantForm(true); setMantForm(EMPTY_MANT); }}
+                      <button onClick={() => { setShowMantForm(true); setMantForm(EMPTY_MANT); setMantFotos([]); }}
                         className="text-xs bg-[#B3985B] hover:bg-[#d4b068] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
                         + Registro
                       </button>
@@ -373,112 +516,135 @@ export default function VehiculosPage() {
                   {selected.notas && (
                     <p className="text-gray-600 text-xs mt-3 bg-[#0d0d0d] rounded-lg px-3 py-2">{selected.notas}</p>
                   )}
+
+                  {/* Galería de fotos del vehículo */}
+                  {(selected.fotos.length > 0) && (
+                    <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Fotos del vehículo</p>
+                      <FotoGrid
+                        fotos={selected.fotos}
+                        onRemove={i => updateVehFotos(selected.fotos.filter((_, idx) => idx !== i))}
+                      />
+                    </div>
+                  )}
+                  <div className="mt-3">
+                    <FotoUpload
+                      fotos={selected.fotos}
+                      onChange={updateVehFotos}
+                      label={selected.fotos.length > 0 ? "Agregar más fotos" : "Agregar fotos"}
+                    />
+                  </div>
                 </div>
 
                 {/* Formulario nuevo registro */}
-                {showMantForm && (
-                  <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
-                    <p className="text-white font-semibold mb-4">Nuevo registro de mantenimiento</p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
-                        <input type="date" value={mantForm.fecha}
-                          onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
-                        <Combobox
-                          value={mantForm.tipoRegistro}
-                          onChange={v => setMantForm(p => ({ ...p, tipoRegistro: v }))}
-                          options={Object.entries(TIPO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Km al registrar</label>
-                        <input value={mantForm.km} onChange={e => setMantForm(p => ({ ...p, km: e.target.value }))}
-                          placeholder="45000" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div className="col-span-2 md:col-span-3">
-                        <label className="text-xs text-gray-500 mb-1 block">Servicio / trabajo realizado *</label>
-                        <input value={mantForm.servicio} onChange={e => setMantForm(p => ({ ...p, servicio: e.target.value }))}
-                          placeholder="Cambio de aceite y filtros, revisión general..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">N. Aceite</label>
-                        <input value={mantForm.aceite} onChange={e => setMantForm(p => ({ ...p, aceite: e.target.value }))}
-                          placeholder="5W-30 sintético"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">N. Anticongelante</label>
-                        <input value={mantForm.anticongelante} onChange={e => setMantForm(p => ({ ...p, anticongelante: e.target.value }))}
-                          placeholder="OAT verde"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Estado de llantas</label>
-                        <input value={mantForm.estadoLlantas} onChange={e => setMantForm(p => ({ ...p, estadoLlantas: e.target.value }))}
-                          placeholder="Bueno / Desgaste leve..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (Km)</label>
-                        <input value={mantForm.proximoKm} onChange={e => setMantForm(p => ({ ...p, proximoKm: e.target.value }))}
-                          placeholder="50000" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (fecha)</label>
-                        <input type="date" value={mantForm.proximaFecha} onChange={e => setMantForm(p => ({ ...p, proximaFecha: e.target.value }))}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Costo</label>
-                        <input value={mantForm.costo} onChange={e => setMantForm(p => ({ ...p, costo: e.target.value }))}
-                          placeholder="1500" type="number"
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
-                        <Combobox
-                          value={mantForm.prioridad}
-                          onChange={v => setMantForm(p => ({ ...p, prioridad: v }))}
-                          options={[{ value: "BAJA", label: "Baja" }, { value: "NORMAL", label: "Normal" }, { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Urgente" }]}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs text-gray-500 mb-1 block">Estatus</label>
-                        <Combobox
-                          value={mantForm.estatus}
-                          onChange={v => setMantForm(p => ({ ...p, estatus: v }))}
-                          options={[{ value: "COMPLETADO", label: "Completado" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "PENDIENTE", label: "Pendiente" }]}
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-                        />
-                      </div>
-                      <div className="col-span-2 md:col-span-3">
-                        <label className="text-xs text-gray-500 mb-1 block">Comentarios</label>
-                        <input value={mantForm.comentarios} onChange={e => setMantForm(p => ({ ...p, comentarios: e.target.value }))}
-                          placeholder="Notas adicionales, taller, mecánico..."
-                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
+                <Modal open={showMantForm} onClose={() => { setShowMantForm(false); setMantFotos([]); }} title="Nuevo registro de mantenimiento" maxWidth="max-w-3xl">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+                      <input type="date" value={mantForm.fecha}
+                        onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
                     </div>
-                    <div className="flex gap-3">
-                      <button onClick={saveMantenimiento} disabled={savingMant || !mantForm.servicio.trim()}
-                        className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
-                        {savingMant ? "Guardando..." : "Guardar registro"}
-                      </button>
-                      <button onClick={() => setShowMantForm(false)}
-                        className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
-                        Cancelar
-                      </button>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
+                      <Combobox
+                        value={mantForm.tipoRegistro}
+                        onChange={v => setMantForm(p => ({ ...p, tipoRegistro: v }))}
+                        options={Object.entries(TIPO_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Km al registrar</label>
+                      <input value={mantForm.km} onChange={e => setMantForm(p => ({ ...p, km: e.target.value }))}
+                        placeholder="45000" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-1 block">Servicio / trabajo realizado *</label>
+                      <input value={mantForm.servicio} onChange={e => setMantForm(p => ({ ...p, servicio: e.target.value }))}
+                        placeholder="Cambio de aceite y filtros, revisión general..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">N. Aceite</label>
+                      <input value={mantForm.aceite} onChange={e => setMantForm(p => ({ ...p, aceite: e.target.value }))}
+                        placeholder="5W-30 sintético"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">N. Anticongelante</label>
+                      <input value={mantForm.anticongelante} onChange={e => setMantForm(p => ({ ...p, anticongelante: e.target.value }))}
+                        placeholder="OAT verde"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Estado de llantas</label>
+                      <input value={mantForm.estadoLlantas} onChange={e => setMantForm(p => ({ ...p, estadoLlantas: e.target.value }))}
+                        placeholder="Bueno / Desgaste leve..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (Km)</label>
+                      <input value={mantForm.proximoKm} onChange={e => setMantForm(p => ({ ...p, proximoKm: e.target.value }))}
+                        placeholder="50000" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Próximo servicio (fecha)</label>
+                      <input type="date" value={mantForm.proximaFecha} onChange={e => setMantForm(p => ({ ...p, proximaFecha: e.target.value }))}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Costo</label>
+                      <input value={mantForm.costo} onChange={e => setMantForm(p => ({ ...p, costo: e.target.value }))}
+                        placeholder="1500" type="number"
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Prioridad</label>
+                      <Combobox
+                        value={mantForm.prioridad}
+                        onChange={v => setMantForm(p => ({ ...p, prioridad: v }))}
+                        options={[{ value: "BAJA", label: "Baja" }, { value: "NORMAL", label: "Normal" }, { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Urgente" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 mb-1 block">Estatus</label>
+                      <Combobox
+                        value={mantForm.estatus}
+                        onChange={v => setMantForm(p => ({ ...p, estatus: v }))}
+                        options={[{ value: "COMPLETADO", label: "Completado" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "PENDIENTE", label: "Pendiente" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-1 block">Comentarios</label>
+                      <input value={mantForm.comentarios} onChange={e => setMantForm(p => ({ ...p, comentarios: e.target.value }))}
+                        placeholder="Notas adicionales, taller, mecánico..."
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    {/* Fotos del registro */}
+                    <div className="col-span-2 md:col-span-3">
+                      <label className="text-xs text-gray-500 mb-2 block">Fotos del registro</label>
+                      <FotoGrid fotos={mantFotos} onRemove={i => setMantFotos(prev => prev.filter((_, idx) => idx !== i))} />
+                      <div className="mt-2">
+                        <FotoUpload fotos={mantFotos} onChange={setMantFotos} label="Adjuntar fotos" />
+                      </div>
                     </div>
                   </div>
-                )}
+                  <div className="flex gap-3">
+                    <button onClick={saveMantenimiento} disabled={savingMant || !mantForm.servicio.trim()}
+                      className="bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+                      {savingMant ? "Guardando..." : "Guardar registro"}
+                    </button>
+                    <button onClick={() => { setShowMantForm(false); setMantFotos([]); }}
+                      className="text-sm text-gray-500 hover:text-white border border-[#333] px-4 py-2 rounded-xl transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                </Modal>
 
                 {/* Bitácora de registros */}
                 <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
@@ -524,6 +690,21 @@ export default function VehiculosPage() {
                               {m.comentarios && (
                                 <p className="text-gray-700 text-xs mt-1.5">{m.comentarios}</p>
                               )}
+                              {/* Fotos del registro */}
+                              {m.fotos.length > 0 && (
+                                <FotoGrid
+                                  fotos={m.fotos}
+                                  small
+                                  onRemove={i => removeFotoMantenimiento(m.id, i)}
+                                />
+                              )}
+                              <div className="mt-2">
+                                <FotoUpload
+                                  fotos={m.fotos}
+                                  onChange={nuevas => addFotosMantenimiento(m.id, nuevas.slice(m.fotos.length))}
+                                  label={uploadingMantFotos === m.id ? "Guardando..." : "Adjuntar fotos"}
+                                />
+                              </div>
                             </div>
                             <button onClick={() => deleteMantenimiento(m.id)} disabled={deletingMant === m.id}
                               className="text-red-900 hover:text-red-500 text-xs transition-colors shrink-0">

@@ -20,6 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("referencia" in body) data.referencia = body.referencia || null;
   if ("metodoPago" in body) data.metodoPago = body.metodoPago;
   if ("categoriaId" in body) data.categoriaId = body.categoriaId || null;
+  if ("cuentaOrigenId" in body) data.cuentaOrigenId = body.cuentaOrigenId || null;
+  if ("cuentaDestinoId" in body) data.cuentaDestinoId = body.cuentaDestinoId || null;
 
   const updated = await prisma.movimientoFinanciero.update({ where: { id }, data });
   return NextResponse.json({ movimiento: updated });
@@ -33,12 +35,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const mov = await prisma.movimientoFinanciero.findUnique({
     where: { id },
-    select: { cuentaCobrar: { select: { id: true } }, cuentaPagar: { select: { id: true } } },
+    select: { abono: { select: { id: true } }, cuentaPagar: { select: { id: true } } },
   });
   if (!mov) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   // Only allow deleting movements not linked to CxC/CxP (those need to be reversed via anular)
-  if (mov.cuentaCobrar || mov.cuentaPagar) {
+  if (mov.abono || mov.cuentaPagar) {
     return NextResponse.json({ error: "Este movimiento está vinculado a un cobro o pago. Usa la opción Anular desde cobros y pagos." }, { status: 400 });
   }
 

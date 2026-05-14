@@ -94,17 +94,27 @@ export default function VehiculosPage() {
   }
 
   async function toggleActivo(v: Vehiculo) {
-    await fetch(`/api/vehiculos/${v.id}`, {
+    const r = await fetch(`/api/vehiculos/${v.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activo: !v.activo }),
     });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     load();
   }
 
   async function eliminar(v: Vehiculo) {
     const ok = await confirm({ message: `¿Eliminar "${v.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
-    await fetch(`/api/vehiculos/${v.id}`, { method: "DELETE" });
+    const r = await fetch(`/api/vehiculos/${v.id}`, { method: "DELETE" });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Vehículo eliminado");
     load();
   }
@@ -257,7 +267,7 @@ function VehiculoCard({ v, onEdit, onToggle, onDelete }: {
           <div className="flex items-center gap-4 mt-2 text-xs text-gray-600 flex-wrap">
             {v.kilometraje && <span>🛣 {v.kilometraje.toLocaleString("es-MX")} km</span>}
             {ultimoMant && (
-              <span>🔧 Último mant: {new Date(ultimoMant.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })} — {ultimoMant.tipo}</span>
+              <span>🔧 Último mant: {(() => { const iso = typeof ultimoMant.fecha === "string" ? ultimoMant.fecha : (ultimoMant.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }); })()} — {ultimoMant.tipo}</span>
             )}
           </div>
           {v.notas && <p className="text-gray-600 text-xs mt-2">{v.notas}</p>}

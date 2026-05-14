@@ -5,6 +5,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -23,6 +24,7 @@ function subtareaToItem(s: Subtarea): TareaItem {
     fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
     recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
     _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
+    createdAt: new Date().toISOString(), fechaCompletada: null,
   };
 }
 interface Comentario {
@@ -83,6 +85,7 @@ export default function TaskPanel({
   tarea, usuarios, proyectos, iniciativas, sessionId,
   onClose, onSave, onComplete, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
+  const toast = useToast();
   const [titulo, setTitulo]       = useState(tarea.titulo);
   const [descripcion, setDescripcion] = useState(tarea.descripcion ?? "");
   const [notas, setNotas]         = useState(tarea.notas ?? "");
@@ -108,6 +111,14 @@ export default function TaskPanel({
   const [dirty, setDirty]                   = useState(false);
   const [saving, setSaving]                 = useState(false);
   const pendingSave = useRef<(() => void) | null>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const descRef  = useRef<HTMLTextAreaElement>(null);
+
+  function autoResize(el: HTMLTextAreaElement | null) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }
 
   // Auto-save when switching to another task if dirty
   useEffect(() => {
@@ -132,6 +143,10 @@ export default function TaskPanel({
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
   }, [tarea.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-resize textareas whenever content or tarea changes
+  useEffect(() => { autoResize(titleRef.current); }, [titulo]);
+  useEffect(() => { autoResize(descRef.current);  }, [descripcion]);
 
   async function handleSave() {
     setSaving(true);
@@ -186,7 +201,12 @@ export default function TaskPanel({
   }
 
   async function eliminarComentario(cid: string) {
-    await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/comentarios/${cid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setComentariosLocal(prev => prev.filter(c => c.id !== cid));
   }
 
@@ -224,7 +244,12 @@ export default function TaskPanel({
   }
 
   async function eliminarArchivo(aid: string) {
-    await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    const res = await fetch(`/api/tareas/${tarea.id}/archivos/${aid}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setArchivosLocal(prev => prev.filter(a => a.id !== aid));
   }
 
@@ -284,20 +309,22 @@ export default function TaskPanel({
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Title */}
         <textarea
+          ref={titleRef}
           value={titulo}
-          onChange={e => { setTitulo(e.target.value); mark(); }}
-          className="w-full bg-transparent text-white text-lg font-medium resize-none focus:outline-none placeholder-[#444] leading-snug"
+          onChange={e => { setTitulo(e.target.value); mark(); autoResize(e.target); }}
+          className="w-full bg-transparent text-white text-lg font-medium resize-none overflow-hidden focus:outline-none placeholder-[#444] leading-snug"
           placeholder="Título de la tarea"
-          rows={titulo.split("\n").length || 1}
+          rows={1}
         />
 
         {/* Description */}
         <textarea
+          ref={descRef}
           value={descripcion}
-          onChange={e => { setDescripcion(e.target.value); mark(); }}
+          onChange={e => { setDescripcion(e.target.value); mark(); autoResize(e.target); }}
           placeholder="Descripción…"
-          className="w-full bg-transparent text-sm text-[#888] resize-none focus:outline-none placeholder-[#333] leading-relaxed"
-          rows={3}
+          className="w-full bg-transparent text-sm text-[#888] resize-none overflow-hidden focus:outline-none placeholder-[#333] leading-relaxed"
+          rows={1}
         />
 
         {/* Meta fields */}

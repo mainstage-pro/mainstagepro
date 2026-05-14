@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -66,6 +67,7 @@ const EMPTY_FORM = {
 };
 
 export default function MetricasPage() {
+  const toast = useToast();
   const [metricas, setMetricas] = useState<MetricaOrganica[]>([]);
   const [loading, setLoading] = useState(true);
   const [mes, setMes] = useState(getMes);
@@ -105,7 +107,7 @@ export default function MetricasPage() {
 
   async function handleSave() {
     setSaving(true);
-    await fetch("/api/marketing/metricas", {
+    const r = await fetch("/api/marketing/metricas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -119,6 +121,12 @@ export default function MetricasPage() {
         notas: form.notas || null,
       }),
     });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar métricas");
+      setSaving(false);
+      return;
+    }
     await load();
     setSaving(false);
     setShowForm(false);

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   const publicaciones = await prisma.publicacion.findMany({
     where,
-    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true } } },
+    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true, enFacebook: true, enInstagram: true, enTiktok: true, enYoutube: true } } },
     orderBy: { fecha: "asc" },
   });
   return NextResponse.json({ publicaciones });
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       estado: estado ?? "PENDIENTE",
       comentarios: comentarios || null,
     },
-    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true } } },
+    include: { tipo: { select: { id: true, nombre: true, formato: true, enFeedIG: true, enFacebook: true, enInstagram: true, enTiktok: true, enYoutube: true } } },
   });
   return NextResponse.json({ publicacion: pub }, { status: 201 });
 }

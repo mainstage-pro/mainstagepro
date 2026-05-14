@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
+import { useToast } from "@/components/Toast";
 
 interface Venue {
   id: string;
@@ -88,6 +89,7 @@ async function comprimirImagen(file: File, maxW = 1200, quality = 0.75): Promise
 
 export default function VenuesPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -195,12 +197,24 @@ export default function VenuesPage() {
       const res = await fetch(`/api/venues/${editing.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
       const d = await res.json();
       setVenues(prev => prev.map(v => v.id === editing.id ? d.venue : v));
     } else {
       const res = await fetch("/api/venues", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
       const d = await res.json();
       setVenues(prev => [...prev, d.venue]);
     }
@@ -210,7 +224,12 @@ export default function VenuesPage() {
 
   async function eliminar(id: string) {
     if (!await confirm({ message: "¿Eliminar este venue?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/venues/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/venues/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setVenues(prev => prev.filter(v => v.id !== id));
   }
 

@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
+import { BadgeDias } from "@/components/ui/BadgeDias";
 
 export interface TareaItem {
   id: string;
@@ -16,7 +17,11 @@ export interface TareaItem {
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
+  juntaOrigenId?: string | null;
+  juntaOrigen?: { id: string; area: string; fecha: string } | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
+  createdAt: string;
+  fechaCompletada?: string | null;
 }
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string }> = {
@@ -25,6 +30,13 @@ const PRIO: Record<string, { ring: string; dot: string; glow: string }> = {
   MEDIA:   { ring: "border-[#B3985B]/60",  dot: "bg-[#B3985B]",  glow: "shadow-[#B3985B]/20" },
   BAJA:    { ring: "border-[#2a2a2a]",     dot: "bg-[#333]",     glow: "" },
 };
+
+const PRIO_OPTIONS = [
+  { key: "URGENTE", label: "Urgente",  color: "#f87171" },
+  { key: "ALTA",    label: "Alta",     color: "#fb923c" },
+  { key: "MEDIA",   label: "Media",    color: "#B3985B" },
+  { key: "BAJA",    label: "Baja",     color: "#4b5563" },
+];
 
 function formatFecha(iso: string): { label: string; cls: string } {
   const d   = new Date(iso.substring(0, 10) + "T00:00:00");
@@ -41,31 +53,96 @@ function formatFecha(iso: string): { label: string; cls: string } {
 
 interface Props {
   tarea: TareaItem;
-  onComplete: (id: string) => void;
-  onSelect:   (id: string) => void;
-  onDelete:   (id: string) => void;
-  onDateChange?: (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
-  isSelected: boolean;
-  showProject?: boolean;
-  depth?: number;
-  draggable?: boolean;
-  onDragStart?: (id: string) => void;
-  onDragEnd?: () => void;
-  onDrop?: (targetId: string) => void;
-  isDragOver?: boolean;
+  onComplete:        (id: string) => void;
+  onSelect:          (id: string) => void;
+  onDelete:          (id: string) => void;
+  onDateChange?:     (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
+  onPriorityChange?: (id: string, prioridad: string) => void;
+  onAssign?:         (id: string, userId: string | null) => void;
+  onProjectChange?:  (id: string, proyectoId: string | null) => void;
+  users?:            { id: string; name: string }[];
+  projects?:         { id: string; nombre: string; color: string | null }[];
+  isSelected:        boolean;
+  showProject?:      boolean;
+  depth?:            number;
+  draggable?:        boolean;
+  onDragStart?:      (id: string) => void;
+  onDragEnd?:        () => void;
+  onDrop?:           (targetId: string) => void;
+  isDragOver?:       boolean;
+  isBeingDragged?:   boolean;
+  multiSelected?:    boolean;
+  onMultiSelect?:    (id: string) => void;
+  onExtract?:        () => void;
+  onExtractChild?:   (tarea: TareaItem) => void;
+  onMoveToNoSection?: (id: string) => void;
 }
 
-export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDateChange, isSelected, showProject = false, depth = 0, draggable: isDraggable = false, onDragStart, onDragEnd, onDrop, isDragOver = false }: Props) {
+// ── Pequeño botón de acción ─────────────────────────────────────────────────
+function ActionBtn({ title, onClick, children, active }: {
+  title: string; onClick: (e: React.MouseEvent) => void;
+  children: React.ReactNode; active?: boolean;
+}) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all
+        ${active
+          ? "bg-[#B3985B]/15 text-[#B3985B]"
+          : "text-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a]"
+        }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function TaskItem({
+  tarea, onComplete, onSelect, onDelete, onDateChange,
+  onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
+  isSelected, showProject = false, depth = 0,
+  draggable: isDraggable = false,
+  onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
+  multiSelected = false, onMultiSelect,
+  onExtract, onExtractChild, onMoveToNoSection,
+}: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
   const [dragOver,      setDragOver]      = useState(false);
   const [editingDate,   setEditingDate]   = useState<"fecha" | "fechaVencimiento" | null>(null);
-  const [localFecha,    setLocalFecha]    = useState(tarea.fecha    ? tarea.fecha.substring(0, 10)            : "");
+  const [localFecha,    setLocalFecha]    = useState(tarea.fecha            ? tarea.fecha.substring(0, 10)            : "");
   const [localFechaVen, setLocalFechaVen] = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
   const [expanded,      setExpanded]      = useState(false);
   const [subtareasExp,  setSubtareasExp]  = useState<TareaItem[]>([]);
   const [loadingExp,    setLoadingExp]    = useState(false);
+  const [subtaskCount,  setSubtaskCount]  = useState(tarea._count.subtareas);
+  const [showMore,      setShowMore]      = useState(false);
+  const [showAssign,    setShowAssign]    = useState(false);
+  const [showProyecto,  setShowProyecto]  = useState(false);
+
+  const moreRef          = useRef<HTMLDivElement>(null);
+  const assignRef        = useRef<HTMLDivElement>(null);
+  const mobileAssignRef  = useRef<HTMLDivElement>(null);
+  const proyectoRef      = useRef<HTMLDivElement>(null);
+
   const isCompleted = tarea.estado === "COMPLETADA";
+  const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
+
+  // Cerrar dropdowns al hacer click fuera
+  useEffect(() => {
+    if (!showMore && !showAssign && !showProyecto) return;
+    function handle(e: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
+      if (
+        assignRef.current && !assignRef.current.contains(e.target as Node) &&
+        (!mobileAssignRef.current || !mobileAssignRef.current.contains(e.target as Node))
+      ) setShowAssign(false);
+      if (proyectoRef.current && !proyectoRef.current.contains(e.target as Node)) setShowProyecto(false);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [showMore, showAssign, showProyecto]);
 
   async function toggleSubtareas(e: React.MouseEvent) {
     e.stopPropagation();
@@ -78,12 +155,6 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
     }
     setExpanded(prev => !prev);
   }
-  const prio = PRIO[tarea.prioridad] ?? PRIO.BAJA;
-
-  const recurrenciaDisplay = (() => {
-    if (!tarea.recurrencia) return null;
-    try { return formatearRecurrencia(JSON.parse(tarea.recurrencia)); } catch { return null; }
-  })();
 
   async function handleComplete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -92,80 +163,100 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
     await onComplete(tarea.id);
   }
 
-  const fecha    = tarea.fecha            ? formatFecha(tarea.fecha) : null;
+  const prio    = PRIO[tarea.prioridad] ?? PRIO.BAJA;
+  const fecha   = tarea.fecha            ? formatFecha(tarea.fecha) : null;
   const fechaVen = tarea.fechaVencimiento ? formatFecha(tarea.fechaVencimiento) : null;
-
   const showDrop = dragOver || isDragOver;
+
+  const recurrenciaDisplay = (() => {
+    if (!tarea.recurrencia) return null;
+    try { return formatearRecurrencia(JSON.parse(tarea.recurrencia)); } catch { return null; }
+  })();
 
   return (
   <>
     <div
-      role="button"
-      tabIndex={0}
-      aria-selected={isSelected}
-      className={`group flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
+      role="button" tabIndex={0} aria-selected={isSelected}
+      draggable={isDraggable}
+      className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
+        isBeingDragged ? "opacity-30 scale-[0.98]" : ""
+      } ${
         showDrop
-          ? "bg-[#B3985B]/8 ring-1 ring-[#B3985B]/30"
-          : isSelected
-          ? "bg-[#111] ring-1 ring-[#B3985B]/20"
-          : hovered
-          ? "bg-[#0d0d0d]"
-          : ""
+          ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
+          : multiSelected ? "bg-[#B3985B]/[0.07] ring-1 ring-[#B3985B]/30 border-l-2 border-[#B3985B]/50"
+          : isSelected ? "bg-[#111] ring-1 ring-[#B3985B]/20"
+          : hovered  ? "bg-[#0d0d0d]" : ""
       }`}
       style={{ paddingLeft: depth > 0 ? `${12 + depth * 22}px` : undefined }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={() => onSelect(tarea.id)}
+      onClick={e => {
+        if ((e.metaKey || e.ctrlKey) && onMultiSelect) { onMultiSelect(tarea.id); return; }
+        onSelect(tarea.id);
+      }}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
-      onDragOver={e => { e.preventDefault(); e.stopPropagation(); setDragOver(true); }}
+      onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(tarea.id); } : undefined}
+      onDragEnd={isDraggable ? () => { onDragEnd?.(); setDragOver(false); } : undefined}
+      onDragOver={e => { if (!onDrop) return; e.preventDefault(); e.stopPropagation(); if (!isBeingDragged) setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onDrop?.(tarea.id); }}
     >
-      {/* ── Drag handle (visible on hover when draggable) ──────────────── */}
+      {/* ── Drag handle (visual indicator only) ───────────────────────── */}
       {isDraggable && (
         <div
-          draggable
-          onDragStart={e => { e.stopPropagation(); onDragStart?.(tarea.id); }}
-          onDragEnd={() => { onDragEnd?.(); setDragOver(false); }}
-          className="mt-[4px] shrink-0 w-3 flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
+          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 transition-opacity cursor-grab -ml-1"
           onClick={e => e.stopPropagation()}
         >
           {[0,1,2].map(i => (
             <span key={i} className="flex gap-[3px]">
-              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
-              <span className="w-[3px] h-[3px] rounded-full bg-[#444]" />
+              <span className="w-[3.5px] h-[3.5px] rounded-full bg-[#666]" />
+              <span className="w-[3.5px] h-[3.5px] rounded-full bg-[#666]" />
             </span>
           ))}
         </div>
       )}
 
-      {/* ── Circle checkbox ────────────────────────────────────────────── */}
-      <button
-        onClick={handleComplete}
-        className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
-          isCompleted
-            ? "border-[#333] bg-[#1f1f1f]"
-            : completing
-            ? `${prio.ring} bg-[#B3985B]/10 animate-pulse`
-            : `${prio.ring} hover:bg-[#111] ${hovered || isSelected ? "shadow-md " + prio.glow : ""}`
-        }`}
-        aria-label="Completar"
-      >
-        {isCompleted && (
-          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
+      {/* ── Subtarea drop indicator ────────────────────────────────────── */}
+      {showDrop && !isCompleted && (
+        <span className="absolute top-1.5 right-2 flex items-center gap-1 text-[10px] font-semibold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-full px-2 py-0.5 pointer-events-none z-10 select-none">
+          ↳ subtarea
+        </span>
+      )}
+
+      {/* ── Circle checkbox ───────────────────────────────────────────── */}
+      {multiSelected ? (
+        <div
+          onClick={e => { e.stopPropagation(); onMultiSelect?.(tarea.id); }}
+          className="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full bg-[#B3985B] border-2 border-[#B3985B] flex items-center justify-center cursor-pointer"
+        >
+          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5">
             <path d="M2 6l3 3 5-5"/>
           </svg>
-        )}
-        {!isCompleted && !completing && (hovered || isSelected) && (
-          <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-50`} />
-        )}
-      </button>
+        </div>
+      ) : (
+        <button
+          onClick={handleComplete}
+          className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+            isCompleted  ? "border-[#333] bg-[#1f1f1f]"
+            : completing ? `${prio.ring} bg-[#B3985B]/10 animate-pulse`
+            : `${prio.ring} hover:bg-[#111] ${(hovered || isSelected) ? "shadow-md " + prio.glow : ""}`
+          }`}
+          aria-label="Completar"
+        >
+          {isCompleted && (
+            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
+              <path d="M2 6l3 3 5-5"/>
+            </svg>
+          )}
+          {!isCompleted && !completing && (hovered || isSelected) && (
+            <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-50`} />
+          )}
+        </button>
+      )}
 
-      {/* ── Content ────────────────────────────────────────────────────── */}
+      {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[15px] leading-snug transition-colors ${
-          isCompleted ? "line-through text-[#333]" : "text-[#d0d0d0]"
-        }`}>
+        <p className={`text-[15px] leading-snug transition-colors ${isCompleted ? "line-through text-[#333]" : "text-[#d0d0d0]"}`}>
           {tarea.titulo}
         </p>
 
@@ -179,30 +270,40 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {showProject && tarea.proyectoTarea && (
-              <span className="flex items-center gap-1 text-[12px] text-[#444] font-medium">
+              <span className="flex items-center gap-1 text-[13px] text-[#444] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0"
                   style={{ backgroundColor: tarea.proyectoTarea.color ?? "#444" }} />
                 {tarea.proyectoTarea.nombre}
               </span>
             )}
 
+            {tarea.juntaOrigen && (
+              <a
+                href={`/juntas/${tarea.juntaOrigen.id}/reporte`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center gap-1 text-[12px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
+                title="Ver reporte de la junta"
+              >
+                <span>📋</span>
+                <span>
+                  {tarea.juntaOrigen.area === "GLOBAL" ? "Global" : tarea.juntaOrigen.area.charAt(0) + tarea.juntaOrigen.area.slice(1).toLowerCase()}
+                  {" · "}
+                  {new Date(tarea.juntaOrigen.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                </span>
+              </a>
+            )}
+
             {fecha && !isCompleted && (
               <span className="relative">
-                {editingDate === "fecha" ? (
-                  <DatePicker
-                    value={localFecha}
-                    onChange={val => {
-                      setLocalFecha(val);
-                      onDateChange?.(tarea.id, "fecha", val);
-                    }}
+                {editingDate === "fecha" && (
+                  <DatePicker value={localFecha}
+                    onChange={val => { setLocalFecha(val); onDateChange?.(tarea.id, "fecha", val); }}
                     onClose={() => setEditingDate(null)}
-                    autoOpen hideTrigger showClear
-                    className="absolute"
-                  />
-                ) : null}
+                    autoOpen hideTrigger showClear className="absolute" />
+                )}
                 <button
                   onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
-                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -216,21 +317,15 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
 
             {fechaVen && !isCompleted && (
               <span className="relative">
-                {editingDate === "fechaVencimiento" ? (
-                  <DatePicker
-                    value={localFechaVen}
-                    onChange={val => {
-                      setLocalFechaVen(val);
-                      onDateChange?.(tarea.id, "fechaVencimiento", val);
-                    }}
+                {editingDate === "fechaVencimiento" && (
+                  <DatePicker value={localFechaVen}
+                    onChange={val => { setLocalFechaVen(val); onDateChange?.(tarea.id, "fechaVencimiento", val); }}
                     onClose={() => setEditingDate(null)}
-                    autoOpen hideTrigger showClear
-                    className="absolute"
-                  />
-                ) : null}
+                    autoOpen hideTrigger showClear className="absolute" />
+                )}
                 <button
                   onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
-                  className={`inline-flex items-center gap-1 text-[12px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
                 >
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -241,8 +336,8 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
             )}
 
             {recurrenciaDisplay && (
-              <span className="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-1 text-[13px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
                   <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
@@ -250,25 +345,10 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
               </span>
             )}
 
-            {tarea._count.subtareas > 0 && (
-              <button onClick={toggleSubtareas}
-                className="inline-flex items-center gap-1 text-[12px] text-[#444] hover:text-[#B3985B] transition-colors">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                  <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
-                  <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
-                {tarea._count.subtareas}
-                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-            )}
 
             {tarea._count.comentarios > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
                 {tarea._count.comentarios}
@@ -276,52 +356,399 @@ export default function TaskItem({ tarea, onComplete, onSelect, onDelete, onDate
             )}
 
             {tarea._count.archivos > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-[12px] text-[#444]">
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
                 {tarea._count.archivos}
               </span>
             )}
+
+            {tarea.asignadoA && !isCompleted && (
+              <span className="group/av relative inline-flex items-center cursor-default">
+                <span className="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold shrink-0 select-none">
+                  {tarea.asignadoA.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[12px] text-white whitespace-nowrap opacity-0 group-hover/av:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
+                  {tarea.asignadoA.name}
+                </span>
+              </span>
+            )}
+
+            <BadgeDias
+              inicio={tarea.createdAt}
+              fin={tarea.fechaCompletada}
+              tipo="tarea"
+              cerrado={isCompleted}
+              labelCerrado={isCompleted ? "completada" : undefined}
+            />
           </div>
+        )}
+
+        {/* ── Expandir subtareas ────────────────────────────────────────── */}
+        {subtaskCount > 0 && (
+          <button
+            onClick={toggleSubtareas}
+            className={`flex items-center gap-1.5 mt-1.5 text-[12px] font-medium transition-colors ${
+              expanded ? "text-[#B3985B]" : "text-[#3a3a3a] hover:text-[#B3985B]"
+            }`}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+            {subtaskCount} subtarea{subtaskCount !== 1 ? "s" : ""}
+          </button>
         )}
       </div>
 
-      {/* ── Right actions ─────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 mt-0.5 shrink-0">
-        {tarea.asignadoA && (
-          <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] text-[11px] text-[#B3985B] flex items-center justify-center font-medium">
-            {tarea.asignadoA.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(tarea.id); }}
-          className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded-md text-[#2a2a2a] hover:text-red-400 hover:bg-red-950/20 transition-all"
-          aria-label="Eliminar"
+      {/* ══════════════════════════════════════════════════════════════════
+          MÓVIL: solo avatar del asignado
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="flex md:hidden items-center shrink-0" ref={mobileAssignRef} onClick={e => e.stopPropagation()}>
+        <div className="relative">
+          <button
+            onClick={() => setShowAssign(v => !v)}
+            className="w-7 h-7 rounded-full flex items-center justify-center"
+            title={tarea.asignadoA ? tarea.asignadoA.name : "Asignar"}
+          >
+            {tarea.asignadoA ? (
+              <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold">
+                {tarea.asignadoA.name.charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <span className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[#444] flex items-center justify-center">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+            )}
+          </button>
+          {showAssign && (
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+              <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
+              {tarea.asignadoA && (
+                <button onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                  Sin asignar
+                </button>
+              )}
+              {users.length === 0 && !tarea.asignadoA && (
+                <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>
+              )}
+              {users.map(u => (
+                <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
+                  <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </span>
+                  {u.name}
+                  {tarea.asignadoA?.id === u.id && (
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ESCRITORIO: barra de acciones completa (estilo Todoist)
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className={`hidden md:flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
+        onClick={e => e.stopPropagation()}>
+
+        {/* ── Calendario ─────────────────────────────────────── */}
+        <span className="relative">
+          {editingDate === "fechaVencimiento" && onDateChange && (
+            <DatePicker
+              value={localFechaVen}
+              onChange={val => { setLocalFechaVen(val); onDateChange(tarea.id, "fechaVencimiento", val); }}
+              onClose={() => setEditingDate(null)}
+              autoOpen hideTrigger showClear
+              className="absolute right-0 top-8 z-50"
+            />
+          )}
+          <ActionBtn
+            title={tarea.fechaVencimiento ? `Vence: ${formatFecha(tarea.fechaVencimiento).label}` : "Agendar fecha"}
+            active={!!tarea.fechaVencimiento}
+            onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </ActionBtn>
+        </span>
+
+        {/* ── Asignar ────────────────────────────────────────── */}
+        <span className="relative" ref={assignRef}>
+          <ActionBtn
+            title={tarea.asignadoA ? `Asignado: ${tarea.asignadoA.name}` : "Asignar"}
+            active={!!tarea.asignadoA}
+            onClick={e => { e.stopPropagation(); setShowAssign(v => !v); setShowMore(false); }}
+          >
+            {tarea.asignadoA ? (
+              <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 text-[11px] text-[#B3985B] flex items-center justify-center font-semibold leading-none">
+                {tarea.asignadoA.name.charAt(0).toUpperCase()}
+              </span>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            )}
+          </ActionBtn>
+
+          {showAssign && (
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+              <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
+              {tarea.asignadoA && (
+                <button
+                  onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors"
+                >
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                  Sin asignar
+                </button>
+              )}
+              {users.length === 0 && !tarea.asignadoA && (
+                <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>
+              )}
+              {users.map(u => (
+                <button key={u.id}
+                  onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}
+                >
+                  <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
+                    {u.name.charAt(0).toUpperCase()}
+                  </span>
+                  {u.name}
+                  {tarea.asignadoA?.id === u.id && (
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+
+        {/* ── Proyecto ───────────────────────────────────────── */}
+        <span className="relative" ref={proyectoRef}>
+          <ActionBtn
+            title={tarea.proyectoTarea ? tarea.proyectoTarea.nombre : "Asignar proyecto"}
+            active={!!tarea.proyectoTarea}
+            onClick={e => { e.stopPropagation(); setShowProyecto(v => !v); setShowMore(false); setShowAssign(false); }}
+          >
+            {tarea.proyectoTarea ? (
+              <span className="w-4 h-4 rounded-sm shrink-0"
+                style={{ backgroundColor: tarea.proyectoTarea.color ?? "#555" }} />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+              </svg>
+            )}
+          </ActionBtn>
+
+          {showProyecto && (
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
+              <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Proyecto</p>
+              <button
+                onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
+                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${!tarea.proyectoTarea ? "text-[#B3985B]" : "text-[#555] hover:text-[#bbb]"}`}
+              >
+                <span className="w-3 h-3 rounded-sm bg-[#2a2a2a] shrink-0" />
+                Bandeja de entrada
+                {!tarea.proyectoTarea && (
+                  <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M20 6L9 17l-5-5"/>
+                  </svg>
+                )}
+              </button>
+              {projects.map(p => (
+                <button key={p.id}
+                  onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.proyectoTarea?.id === p.id ? "text-[#B3985B]" : "text-[#ccc] hover:text-white"}`}
+                >
+                  <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
+                  {p.nombre}
+                  {tarea.proyectoTarea?.id === p.id && (
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </span>
+
+        {/* ── Comentar ───────────────────────────────────────── */}
+        <ActionBtn
+          title={tarea._count.comentarios > 0 ? `${tarea._count.comentarios} comentario${tarea._count.comentarios !== 1 ? "s" : ""}` : "Comentar"}
+          active={tarea._count.comentarios > 0}
+          onClick={() => onSelect(tarea.id)}
         >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          <span className="relative flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            {tarea._count.comentarios > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 text-[9px] text-[#B3985B] font-bold leading-none">
+                {tarea._count.comentarios}
+              </span>
+            )}
+          </span>
+        </ActionBtn>
+
+        {/* ── Editar ─────────────────────────────────────────── */}
+        <ActionBtn title="Editar tarea" onClick={() => onSelect(tarea.id)}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-        </button>
+        </ActionBtn>
+
+        {/* ── Más opciones (⋮) ───────────────────────────────── */}
+        <span className="relative" ref={moreRef}>
+          <ActionBtn
+            title="Más opciones"
+            active={showMore}
+            onClick={e => { e.stopPropagation(); setShowMore(v => !v); setShowAssign(false); }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="5"  r="1" fill="currentColor"/>
+              <circle cx="12" cy="12" r="1" fill="currentColor"/>
+              <circle cx="12" cy="19" r="1" fill="currentColor"/>
+            </svg>
+          </ActionBtn>
+
+          {showMore && (
+            <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1.5 min-w-[180px]">
+
+              {/* Prioridad */}
+              {onPriorityChange && (
+                <>
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-0.5 pb-1.5">Prioridad</p>
+                  <div className="flex items-center gap-1 px-3 pb-2">
+                    {PRIO_OPTIONS.map(p => (
+                      <button key={p.key} title={p.label}
+                        onClick={() => { onPriorityChange(tarea.id, p.key); setShowMore(false); }}
+                        className={`flex-1 flex items-center justify-center py-1.5 rounded-lg border transition-all ${
+                          tarea.prioridad === p.key
+                            ? "border-current bg-current/10"
+                            : "border-[#2a2a2a] hover:border-current/50 hover:bg-current/5"
+                        }`}
+                        style={{ color: p.color }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+                          <line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" strokeWidth="2" fill="none"/>
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+
+              {/* Opciones generales */}
+              <button
+                onClick={() => { onSelect(tarea.id); setShowMore(false); }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+                Abrir detalle
+              </button>
+
+              <div className="border-t border-[#1f1f1f] my-1" />
+
+              {onExtract && (
+                <>
+                  <button
+                    onClick={() => { onExtract(); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
+                      <path d="M5 20h14"/>
+                    </svg>
+                    Convertir en tarea independiente
+                  </button>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+
+              {onMoveToNoSection && tarea.seccion && (
+                <>
+                  <button
+                    onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
+                    </svg>
+                    Quitar de sección
+                  </button>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+
+              <button
+                onClick={() => { onDelete(tarea.id); setShowMore(false); }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                </svg>
+                Eliminar tarea
+              </button>
+            </div>
+          )}
+        </span>
       </div>
     </div>
 
-    {/* ── Expanded subtareas ────────────────────────────────────────── */}
+    {/* ── Subtareas expandidas ──────────────────────────────────────── */}
     {expanded && (
-      <div>
-        {loadingExp && (
-          <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>
-        )}
+      <div className="ml-6 border-l border-[#1a1a1a] pl-2 mt-0.5">
+        {loadingExp && <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>}
         {subtareasExp.map(sub => (
-          <TaskItem
-            key={sub.id}
-            tarea={sub}
-            depth={(depth ?? 0) + 1}
+          <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1}
             isSelected={false}
-            onComplete={onComplete}
-            onSelect={onSelect}
-            onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); }}
+            onComplete={onComplete} onSelect={onSelect}
+            onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); setSubtaskCount(c => Math.max(0, c - 1)); }}
             onDateChange={onDateChange}
+            onPriorityChange={onPriorityChange}
+            onAssign={onAssign}
+            onProjectChange={onProjectChange}
+            users={users}
+            projects={projects}
+            onExtract={async () => {
+              const res = await fetch(`/api/tareas/${sub.id}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentId: null }),
+              });
+              if (!res.ok) return;
+              setSubtareasExp(prev => prev.filter(s => s.id !== sub.id));
+              setSubtaskCount(c => Math.max(0, c - 1));
+              onExtractChild?.(sub);
+            }}
           />
         ))}
       </div>

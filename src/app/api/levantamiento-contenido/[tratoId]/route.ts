@@ -76,3 +76,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tra
 
   return NextResponse.json({ levantamiento });
 }
+
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ tratoId: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { tratoId } = await params;
+  const body = await req.json();
+  const { scoreFotoVideo, recomendacionFotoVideo } = body;
+
+  const levantamiento = await prisma.levantamientoContenido.update({
+    where: { tratoId },
+    data: {
+      scoreFotoVideo: scoreFotoVideo ?? null,
+      recomendacionFotoVideo: recomendacionFotoVideo ?? null,
+    },
+  });
+
+  return NextResponse.json({ levantamiento });
+}

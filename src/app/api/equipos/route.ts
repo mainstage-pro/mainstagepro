@@ -13,7 +13,7 @@ const EQUIPO_SELECT = {
   cantidadTotal: true,
   estado: true,
   proveedorDefaultId: true,
-  proveedorDefault: { select: { id: true, nombre: true } },
+  proveedorDefault: { select: { id: true, nombre: true, empresa: true } },
   categoria: { select: { id: true, nombre: true, orden: true } },
   notas: true,
   activo: true,
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl } = body;
+  const { descripcion, categoriaId, marca, modelo, tipo, precioRenta, costoProveedor, costoInternoEstimado, cantidadTotal, proveedorDefaultId, notas, amperajeRequerido, voltajeRequerido, imagenUrl } = body;
 
   if (!descripcion || !categoriaId) {
     return NextResponse.json({ error: "descripcion y categoriaId son requeridos" }, { status: 400 });
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       tipo: tipo || "PROPIO",
       precioRenta: parseFloat(precioRenta) || 0,
       costoProveedor: costoProveedor !== "" && costoProveedor != null ? parseFloat(costoProveedor) : null,
+      costoInternoEstimado: costoInternoEstimado !== "" && costoInternoEstimado != null ? parseFloat(costoInternoEstimado) : null,
       cantidadTotal: parseInt(cantidadTotal) || 1,
       proveedorDefaultId: proveedorDefaultId || null,
       notas: notas || null,

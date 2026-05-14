@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
 
 interface Equipo {
   id: string; tipo: string; cantidad: number;
@@ -62,6 +63,7 @@ function parseProtocolo(raw: string | null): ProtocoloData | null {
 }
 
 export default function RecoleccionesPage() {
+  const toast = useToast();
   const [proyectos, setProyectos]   = useState<Proyecto[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filtro, setFiltro]         = useState<"todas" | "pendientes" | "completadas">("pendientes");
@@ -114,10 +116,16 @@ export default function RecoleccionesPage() {
       itemsVerificados: pItems,
       timestamp: new Date().toISOString(),
     };
-    await fetch(`/api/proyectos/${modal.proy.id}`, {
+    const res = await fetch(`/api/proyectos/${modal.proy.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recoleccionStatus: "EN_CAMINO", protocoloSalida: JSON.stringify(protocolo) }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGuardando(false);
+      return;
+    }
     setProyectos(prev => prev.map(p => p.id === modal.proy.id
       ? { ...p, recoleccionStatus: "EN_CAMINO", protocoloSalida: JSON.stringify(protocolo) } : p));
     setModal(null); setGuardando(false);
@@ -134,7 +142,7 @@ export default function RecoleccionesPage() {
       itemsVerificados: pItems,
       timestamp: new Date().toISOString(),
     };
-    await fetch(`/api/proyectos/${modal.proy.id}`, {
+    const res = await fetch(`/api/proyectos/${modal.proy.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         recoleccionStatus: "COMPLETADA",
@@ -143,18 +151,57 @@ export default function RecoleccionesPage() {
         protocoloEntrada: JSON.stringify(protocolo),
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGuardando(false);
+      return;
+    }
     setProyectos(prev => prev.map(p => p.id === modal.proy.id
       ? { ...p, recoleccionStatus: "COMPLETADA", recoleccionFechaReal: new Date().toISOString(), protocoloEntrada: JSON.stringify(protocolo) } : p));
     setModal(null); setGuardando(false);
   }
 
+  async function saltarSalida(proyId: string) {
+    const res = await fetch(`/api/proyectos/${proyId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recoleccionStatus: "EN_CAMINO" }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
+    setProyectos(prev => prev.map(p => p.id === proyId ? { ...p, recoleccionStatus: "EN_CAMINO" } : p));
+  }
+
+  async function saltarEntrada(proyId: string) {
+    const res = await fetch(`/api/proyectos/${proyId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recoleccionStatus: "COMPLETADA", recoleccionFechaReal: new Date().toISOString() }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
+    setProyectos(prev => prev.map(p => p.id === proyId
+      ? { ...p, recoleccionStatus: "COMPLETADA", recoleccionFechaReal: new Date().toISOString() } : p));
+  }
+
   async function reabrir() {
     if (!modal) return;
     setGuardando(true);
-    await fetch(`/api/proyectos/${modal.proy.id}`, {
+    const res = await fetch(`/api/proyectos/${modal.proy.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ recoleccionStatus: "PENDIENTE" }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGuardando(false);
+      return;
+    }
     setProyectos(prev => prev.map(p => p.id === modal.proy.id ? { ...p, recoleccionStatus: "PENDIENTE" } : p));
     setModal(null); setGuardando(false);
   }
@@ -325,10 +372,16 @@ export default function RecoleccionesPage() {
                       <div className="space-y-2">
                         {/* Protocolo de salida */}
                         {!salida ? (
-                          <button onClick={() => openModal(p, "salida")}
-                            className="w-full py-2 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
-                            📋 Protocolo de salida
-                          </button>
+                          <div className="space-y-1">
+                            <button onClick={() => openModal(p, "salida")}
+                              className="w-full py-2 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
+                              📋 Protocolo de salida
+                            </button>
+                            <button onClick={() => saltarSalida(p.id)}
+                              className="w-full text-center text-[10px] text-gray-600 hover:text-gray-400 transition-colors py-0.5">
+                              Saltar — marcar como en camino
+                            </button>
+                          </div>
                         ) : (
                           <button onClick={() => openModal(p, "ver_salida")}
                             className="w-full text-left px-3 py-2 rounded-lg bg-blue-900/20 border border-blue-800/30">
@@ -340,10 +393,16 @@ export default function RecoleccionesPage() {
                           </button>
                         )}
                         {/* Protocolo de entrada */}
-                        <button onClick={() => openModal(p, "entrada")}
-                          className="w-full py-2 rounded-lg bg-green-900/30 border border-green-800/40 text-green-400 text-xs font-semibold hover:bg-green-900/50 transition-colors">
-                          ✓ Protocolo de entrada / Recibir equipo
-                        </button>
+                        <div className="space-y-1">
+                          <button onClick={() => openModal(p, "entrada")}
+                            className="w-full py-2 rounded-lg bg-green-900/30 border border-green-800/40 text-green-400 text-xs font-semibold hover:bg-green-900/50 transition-colors">
+                            ✓ Protocolo de entrada / Recibir equipo
+                          </button>
+                          <button onClick={() => saltarEntrada(p.id)}
+                            className="w-full text-center text-[10px] text-gray-600 hover:text-gray-400 transition-colors py-0.5">
+                            Saltar — marcar como recibido
+                          </button>
+                        </div>
                         {p.recoleccionNotas && (
                           <p className="text-gray-500 text-xs italic">"{p.recoleccionNotas}"</p>
                         )}

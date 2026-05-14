@@ -2,10 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+let _vendedorColReady = false;
+async function ensureVendedorId() {
+  if (_vendedorColReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
+    );
+  } catch { /* already exists */ }
+  _vendedorColReady = true;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureVendedorId();
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({
@@ -13,6 +25,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, telefono: true, correo: true } },
       responsable: { select: { id: true, name: true } },
+      vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
       cotizaciones: {
         select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true, proyecto: { select: { id: true } } },
@@ -31,20 +44,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureVendedorId();
   const { id } = await params;
   const body = await request.json();
 
   const allowed = [
+    "clienteId",
     "etapa", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
-    "origenVenta", "vendedorOrigenId", "responsableId",
+    "origenVenta", "vendedorOrigenId", "responsableId", "vendedorId",
     // Scouting
     "scoutingData",
     // Nurturing
     "tipoProspecto", "nurturingData",
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
+    "diasServicio",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",
     // Horarios del evento
@@ -79,17 +95,89 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia
+  let cambioAVentaPerdida = false;
   if (body.etapa) {
     const current = await prisma.trato.findUnique({ where: { id }, select: { etapa: true, fechaCierre: true } });
     if (current && current.etapa !== body.etapa) {
       data.etapaCambiadaEn = new Date();
-      if (body.etapa === "VENTA_CERRADA" && !current.fechaCierre) {
+      if (["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && !current.fechaCierre) {
         data.fechaCierre = new Date();
+      }
+      if (body.etapa === "VENTA_PERDIDA") {
+        cambioAVentaPerdida = true;
       }
     }
   }
 
   const trato = await prisma.trato.update({ where: { id }, data });
+
+  // ── Cancelar CxC pendientes cuando el trato se pierde ───────────────────────
+  if (cambioAVentaPerdida) {
+    // Buscar proyecto y cotizaciones del trato
+    const tratoConRelaciones = await prisma.trato.findUnique({
+      where: { id },
+      select: {
+        proyecto: { select: { id: true } },
+        cotizaciones: { select: { id: true } },
+      },
+    });
+
+    const proyectoId = tratoConRelaciones?.proyecto?.id;
+    const cotizacionIds = tratoConRelaciones?.cotizaciones.map(c => c.id) ?? [];
+
+    // Cancelar CxC PENDIENTE ligadas al proyecto o cotizaciones (no tocar PARCIAL ni LIQUIDADO)
+    await prisma.cuentaCobrar.updateMany({
+      where: {
+        estado: "PENDIENTE",
+        OR: [
+          ...(proyectoId ? [{ proyectoId }] : []),
+          ...(cotizacionIds.length > 0 ? [{ cotizacionId: { in: cotizacionIds } }] : []),
+        ],
+      },
+      data: {
+        estado: "CANCELADO",
+        notas: `Cancelado automáticamente — trato marcado como Venta Perdida`,
+      },
+    });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
+  // ── Cascade a cotizaciones y proyectos ──────────────────────────────────────
+  const cotUpdate: Record<string, unknown> = {};
+  const proyUpdate: Record<string, unknown> = {};
+
+  if ("nombreEvento" in body && body.nombreEvento) {
+    cotUpdate.nombreEvento = body.nombreEvento;
+    proyUpdate.nombre = body.nombreEvento;
+  }
+  if ("fechaEventoEstimada" in body && body.fechaEventoEstimada) {
+    cotUpdate.fechaEvento = new Date(body.fechaEventoEstimada);
+    proyUpdate.fechaEvento = new Date(body.fechaEventoEstimada);
+  }
+  if ("tipoEvento" in body && body.tipoEvento) {
+    cotUpdate.tipoEvento = body.tipoEvento;
+    proyUpdate.tipoEvento = body.tipoEvento;
+  }
+  if ("tipoServicio" in body && body.tipoServicio) {
+    cotUpdate.tipoServicio = body.tipoServicio;
+    proyUpdate.tipoServicio = body.tipoServicio;
+  }
+  if ("lugarEstimado" in body && body.lugarEstimado) {
+    cotUpdate.lugarEvento = body.lugarEstimado;
+    proyUpdate.lugarEvento = body.lugarEstimado;
+  }
+
+  if (Object.keys(cotUpdate).length > 0) {
+    await prisma.cotizacion.updateMany({ where: { tratoId: id }, data: cotUpdate });
+  }
+  if (Object.keys(proyUpdate).length > 0) {
+    await prisma.proyecto.updateMany({
+      where: { tratoId: id, estado: { not: "COMPLETADO" } },
+      data: proyUpdate,
+    });
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   return NextResponse.json({ trato });
 }
 
@@ -98,6 +186,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  // Snapshot del trato antes de eliminar (para el log)
+  const tratoSnap = await prisma.trato.findUnique({
+    where: { id },
+    select: { nombreEvento: true, cliente: { select: { nombre: true } }, etapa: true },
+  });
 
   // Eliminar en orden para respetar foreign keys:
   // 1. Archivos del trato (ya tienen Cascade pero por si acaso)
@@ -112,7 +206,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
       if (proyecto) {
         // Romper FK CxC/CxP → MovimientoFinanciero antes de borrar movimientos
-        await tx.cuentaCobrar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
+        await tx.abono.updateMany({ where: { cuentaCobrar: { proyectoId: proyecto.id } }, data: { movimientoId: null } });
         await tx.cuentaPagar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });
         await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: proyecto.id } });
         await tx.cuentaCobrar.deleteMany({ where: { proyectoId: proyecto.id } });
@@ -147,6 +241,14 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       // 5. Borrar el trato (archivos tienen Cascade en DB)
       await tx.trato.delete({ where: { id } });
     });
+
+    // Log de auditoría post-eliminación
+    const desc = tratoSnap
+      ? `Trato eliminado — Cliente: ${tratoSnap.cliente?.nombre ?? "?"}, Evento: ${tratoSnap.nombreEvento ?? "sin nombre"}, Etapa: ${tratoSnap.etapa}`
+      : `Trato eliminado (id: ${id})`;
+    await prisma.actividadUsuario.create({
+      data: { userId: session.id, accion: "ELIMINAR", entidad: "trato", entidadId: id, descripcion: desc },
+    }).catch(() => {});
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("[DELETE /api/tratos]", msg);

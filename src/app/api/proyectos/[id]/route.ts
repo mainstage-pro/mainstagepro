@@ -5,6 +5,15 @@ import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken } from "@/lib/tokens";
 
+function proximoMiercolesTraEvento(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
+  return d;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -34,7 +43,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
         encargado: { select: { id: true, name: true } },
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        cotizacion: {
+          select: {
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
+            subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
+            notasSecciones: true, observaciones: true,
+            lineas: {
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              orderBy: { id: "asc" },
+            },
+          },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -44,7 +64,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         equipos: {
           include: {
-            equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
+            equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } }, accesorios: { select: { id: true, nombre: true, categoria: true }, orderBy: { createdAt: "asc" } } } },
             proveedor: { select: { nombre: true, telefono: true } },
             riderAccesorios: { orderBy: { orden: "asc" } },
           },
@@ -57,16 +77,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { createdAt: "desc" },
         },
         cuentasCobrar: true,
-        cuentasPagar: true,
+        cuentasPagar: { orderBy: [{ estado: "desc" }, { fechaCompromiso: "asc" }] },
         movimientos: {
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
           include: {
-            categoria: { select: { nombre: true } },
-            proveedor: { select: { nombre: true } },
+            categoria: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true } },
+            cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
-        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
       },
     });
   } catch {
@@ -77,7 +98,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true } },
         encargado: { select: { id: true, name: true } },
         trato: { select: { tipoEvento: true, tipoServicio: true, ideasReferencias: true, notas: true, familyAndFriends: true, tradeCalificado: true, ventanaMontajeInicio: true, ventanaMontajeFin: true, responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true, subtotalComidas: true } },
+        cotizacion: {
+          select: {
+            id: true, numeroCotizacion: true, granTotal: true, aplicaIva: true, diasComidas: true,
+            subtotalComidas: true, subtotalOperacion: true, subtotalTransporte: true,
+            subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
+            notasSecciones: true, observaciones: true,
+            lineas: {
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              orderBy: { id: "asc" },
+            },
+          },
+        },
         personal: {
           include: {
             tecnico: { select: { id: true, nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -99,22 +131,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           orderBy: { createdAt: "desc" },
         },
         cuentasCobrar: true,
-        cuentasPagar: true,
+        cuentasPagar: { orderBy: [{ estado: "desc" }, { fechaCompromiso: "asc" }] },
         movimientos: {
           where: { tipo: "GASTO" },
           orderBy: { fecha: "desc" },
           include: {
-            categoria: { select: { nombre: true } },
-            proveedor: { select: { nombre: true } },
+            categoria: { select: { id: true, nombre: true } },
+            proveedor: { select: { id: true, nombre: true } },
+            cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
           },
         },
-        cierreFinanciero: { select: { cerradoEn: true, notas: true } },
+        cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
       },
     });
     // Normalize fallback: add empty arrays for new fields
     if (proyecto) {
       proyecto = {
         ...proyecto,
+        cotizacion: proyecto.cotizacion ? { ...(proyecto.cotizacion as Record<string, unknown>), lineas: [] } : null,
         equipos: proyecto.equipos.map((e: Record<string, unknown>) => ({
           ...e,
           riderAccesorios: [],
@@ -143,11 +177,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
-    "notasPortal", "responsables",
+    "notasPortal", "responsables", "proveedoresRenta", "equiposRiderExtra", "zona",
+    "planProduccion",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
-  const booleanFields = ["choferExterno"];
+  const booleanFields = ["choferExterno", "aplicaCatering"];
   const numberFields = ["choferCosto"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
@@ -159,6 +194,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       } else {
         data[key] = body[key] || null;
       }
+    }
+  }
+  // planProduccionAprobado — boolean especial con timestamp
+  if ("planProduccionAprobado" in body) {
+    data["planProduccionAprobado"] = Boolean(body["planProduccionAprobado"]);
+    if (body["planProduccionAprobado"]) {
+      data["planProduccionAprobadoEn"] = new Date();
     }
   }
   // Campos de chofer
@@ -194,8 +236,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         where: { proyectoId: id, concepto: { contains: "Chofer" }, tipoAcreedor: "OTRO" },
       });
       const fechaEvento = proyecto.fechaEvento ?? new Date();
-      const fechaCompromiso = new Date(fechaEvento);
-      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1); // día siguiente al evento
+      const fechaCompromiso = proximoMiercolesTraEvento(fechaEvento);
       if (cxpExistente) {
         await prisma.cuentaPagar.update({
           where: { id: cxpExistente.id },
@@ -235,22 +276,39 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
 
     if (personalPendiente.length > 0) {
-      // Fecha compromiso: día siguiente al evento
-      const fechaCompromiso = new Date(proyecto.fechaEvento ?? new Date());
-      fechaCompromiso.setDate(fechaCompromiso.getDate() + 1);
-
-      await prisma.cuentaPagar.createMany({
-        data: personalPendiente.map(p => ({
-          tipoAcreedor: "TECNICO",
-          tecnicoId: p.tecnicoId ?? undefined,
-          proyectoId: id,
-          concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
-          monto: p.tarifaAcordada!,
-          fechaCompromiso,
-          estado: "PENDIENTE",
-        })),
-        skipDuplicates: true,
+      // Contar CxP existentes por técnico para no duplicar las creadas al asignar
+      const cxpExistentes = await prisma.cuentaPagar.findMany({
+        where: { proyectoId: id, tipoAcreedor: "TECNICO", tecnicoId: { not: null } },
+        select: { tecnicoId: true },
       });
+      const cxpPorTecnico = new Map<string, number>();
+      for (const c of cxpExistentes) {
+        if (c.tecnicoId) cxpPorTecnico.set(c.tecnicoId, (cxpPorTecnico.get(c.tecnicoId) ?? 0) + 1);
+      }
+      // Contar entradas de personal por técnico para comparar
+      const personalPorTecnico = new Map<string, number>();
+      const personalSinCxP = personalPendiente.filter(p => {
+        if (!p.tecnicoId) return true;
+        const existentes = cxpPorTecnico.get(p.tecnicoId) ?? 0;
+        const visto = personalPorTecnico.get(p.tecnicoId) ?? 0;
+        personalPorTecnico.set(p.tecnicoId, visto + 1);
+        return visto >= existentes;
+      });
+
+      if (personalSinCxP.length > 0) {
+        const fechaCompromiso = proximoMiercolesTraEvento(proyecto.fechaEvento ?? new Date());
+        await prisma.cuentaPagar.createMany({
+          data: personalSinCxP.map(p => ({
+            tipoAcreedor: "TECNICO",
+            tecnicoId: p.tecnicoId ?? undefined,
+            proyectoId: id,
+            concepto: `Honorarios - ${p.tecnico?.nombre ?? "Técnico"} (${p.rolTecnico?.nombre ?? p.participacion ?? "Operación"}) · ${proyecto.numeroProyecto}`,
+            monto: p.tarifaAcordada!,
+            fechaCompromiso,
+            estado: "PENDIENTE",
+          })),
+        });
+      }
     }
   }
 
@@ -276,9 +334,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   await prisma.$transaction(async (tx) => {
-    // 1. Romper FK de CxC → Movimiento antes de borrar movimientos
-    await tx.cuentaCobrar.updateMany({
-      where: { proyectoId: id },
+    // 1. Romper FK de Abono → Movimiento antes de borrar movimientos
+    await tx.abono.updateMany({
+      where: { cuentaCobrar: { proyectoId: id } },
       data: { movimientoId: null },
     });
 
@@ -291,7 +349,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     // 3. Borrar movimientos financieros del proyecto
     await tx.movimientoFinanciero.deleteMany({ where: { proyectoId: id } });
 
-    // 4. Borrar CxC y CxP ligadas al proyecto
+    // 4. Borrar CxC y CxP ligadas al proyecto (abonos se eliminan en cascada)
     await tx.cuentaCobrar.deleteMany({ where: { proyectoId: id } });
     await tx.cuentaPagar.deleteMany({ where: { proyectoId: id } });
 

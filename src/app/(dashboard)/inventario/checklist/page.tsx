@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
 
 interface ChecklistResumen {
   id: string; semana: string; fechaInicio: string; estado: string;
@@ -28,13 +29,15 @@ function isoWeek(date: Date): string {
 }
 
 function fechaLabel(fechaInicio: string) {
-  return new Date(fechaInicio).toLocaleDateString("es-MX", {
+  const [y, m, d] = fechaInicio.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 }
 
 export default function BodegaPage() {
   const router = useRouter();
+  const toast = useToast();
   const [checklists, setChecklists] = useState<ChecklistResumen[]>([]);
   const [loading, setLoading] = useState(true);
   const [creando, setCreando] = useState(false);
@@ -55,7 +58,11 @@ export default function BodegaPage() {
     });
     const d = await r.json();
     setCreando(false);
-    if (d.checklist?.id) router.push(`/inventario/checklist/${d.checklist.id}`);
+    if (!r.ok || !d.checklist?.id) {
+      toast.error(d.error ?? "Error al crear checklist");
+      return;
+    }
+    router.push(`/inventario/checklist/${d.checklist.id}`);
   }
 
   const semanaActual = isoWeek(new Date());

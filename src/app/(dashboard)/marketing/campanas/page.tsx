@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -11,13 +13,15 @@ interface TipoCampana {
   publicoEdadMin: number; publicoEdadMax: number; publicoGenero: string;
   ubicaciones: string; cta: string; copyReferencia: string | null;
   pixelEvento: string | null; descripcion: string | null;
+  grupo: string | null;
   color: string; activo: boolean; orden: number;
 }
 
 // Categorías del documento
-const OBJETIVOS = ["INFORMATIVO","VENTA","ENTRETENIMIENTO","POSICIONAMIENTO"];
+const OBJETIVOS = ["INFORMATIVO","TIPO_SERVICIO","VENTA","ENTRETENIMIENTO","POSICIONAMIENTO"];
 const OBJ_LABEL: Record<string,string> = {
-  INFORMATIVO:"Informativo", VENTA:"Venta", ENTRETENIMIENTO:"Entretenimiento", POSICIONAMIENTO:"Posicionamiento",
+  INFORMATIVO:"Informativo", TIPO_SERVICIO:"Tipo de servicio",
+  VENTA:"Venta", ENTRETENIMIENTO:"Entretenimiento", POSICIONAMIENTO:"Posicionamiento",
 };
 const OBJ_META = ["RECONOCIMIENTO","TRAFICO","INTERACCION","LEADS","VENTAS"];
 const OBJ_META_LABEL: Record<string,string> = {
@@ -59,14 +63,14 @@ type FormState = {
   canal:string; duracionDias:string; presupuestoEstimado:string;
   publicoEdadMin:string; publicoEdadMax:string; publicoGenero:string;
   ubicaciones:string[]; cta:string; copyReferencia:string; pixelEvento:string;
-  descripcion:string; color:string;
+  descripcion:string; grupo:string; color:string;
 };
 const EMPTY: FormState = {
   nombre:"", objetivo:"INFORMATIVO", objetivoMeta:"RECONOCIMIENTO", formato:"VIDEO", recurrencia:"MENSUAL",
   canal:"META", duracionDias:"30", presupuestoEstimado:"",
   publicoEdadMin:"25", publicoEdadMax:"55", publicoGenero:"TODOS",
   ubicaciones:["FEED_IG","REELS_IG","STORIES_IG"], cta:"MAS_INFORMACION",
-  copyReferencia:"", pixelEvento:"", descripcion:"", color:"#B3985B",
+  copyReferencia:"", pixelEvento:"", descripcion:"", grupo:"", color:"#B3985B",
 };
 
 // ── 14 campañas del documento ───────────────────────────────────────────────
@@ -78,7 +82,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:25, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG,STORIES_IG", cta:"MAS_INFORMACION",
     copyReferencia:"¿Próximo evento? Somos la producción técnica de confianza. Audio, iluminación y video profesional para que todo salga perfecto.",
-    pixelEvento:"ViewContent", color:"#3B82F6",
+    pixelEvento:"ViewContent", grupo:"Servicios generales", color:"#3B82F6",
     descripcion:"Campaña de reconocimiento de marca con video de producción. Muestra los servicios generales de Mainstage Pro.",
   },
   {
@@ -87,7 +91,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:25, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,STORIES_IG", cta:"MAS_INFORMACION",
     copyReferencia:"Conoce todo lo que hacemos: renta de equipo, producción técnica y dirección integral. Un solo proveedor para todo tu evento.",
-    pixelEvento:"ViewContent", color:"#6366F1",
+    pixelEvento:"ViewContent", grupo:"Servicios generales", color:"#6366F1",
     descripcion:"Carrusel informativo de servicios. Cada card presenta un servicio con foto + descripción corta.",
   },
   {
@@ -96,34 +100,34 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:25, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_IG,STORIES_IG", cta:"MAS_INFORMACION",
     copyReferencia:"Mainstage Pro: producción técnica que hace la diferencia en cada evento.",
-    pixelEvento:"ViewContent", color:"#8B5CF6",
+    pixelEvento:"ViewContent", grupo:"Servicios generales", color:"#8B5CF6",
     descripcion:"Imagen de posicionamiento con frase de marca. Simple, elegante y directa.",
   },
   {
-    nombre:"Renta de equipo", objetivo:"INFORMATIVO", objetivoMeta:"TRAFICO",
+    nombre:"Renta de equipo", objetivo:"TIPO_SERVICIO", objetivoMeta:"TRAFICO",
     formato:"IMAGEN", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:2000,
     publicoEdadMin:25, publicoEdadMax:50, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,STORIES_IG", cta:"MAS_INFORMACION",
     copyReferencia:"Equipo de audio, iluminación y video disponible para renta. Consigue exactamente lo que necesitas para tu producción.",
-    pixelEvento:"Lead", color:"#14B8A6",
+    pixelEvento:"Lead", grupo:null, color:"#14B8A6",
     descripcion:"Campaña de tráfico para el servicio de renta de equipo. Dirige al cliente a la página de catálogo o cotización.",
   },
   {
-    nombre:"Producción técnica", objetivo:"INFORMATIVO", objetivoMeta:"TRAFICO",
+    nombre:"Producción técnica", objetivo:"TIPO_SERVICIO", objetivoMeta:"TRAFICO",
     formato:"VIDEO", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:2500,
     publicoEdadMin:25, publicoEdadMax:50, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG", cta:"COTIZAR",
     copyReferencia:"Producción técnica integral: armamos, operamos y desmontamos. Tú solo disfruta el evento.",
-    pixelEvento:"Lead", color:"#10B981",
+    pixelEvento:"Lead", grupo:null, color:"#10B981",
     descripcion:"Video que muestra el proceso completo de producción técnica desde el armado hasta el desmontaje.",
   },
   {
-    nombre:"Dirección técnica integral", objetivo:"INFORMATIVO", objetivoMeta:"RECONOCIMIENTO",
+    nombre:"Dirección técnica integral", objetivo:"TIPO_SERVICIO", objetivoMeta:"RECONOCIMIENTO",
     formato:"VIDEO", recurrencia:"MENSUAL", canal:"META", duracionDias:30, presupuestoEstimado:3000,
     publicoEdadMin:30, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG", cta:"CONTACTAR",
     copyReferencia:"La dirección técnica integral que tu evento necesita. Coordinamos cada detalle técnico para que nada falle en el momento más importante.",
-    pixelEvento:"Lead", color:"#F59E0B",
+    pixelEvento:"Lead", grupo:null, color:"#F59E0B",
     descripcion:"Campaña dirigida a empresas y organizadores que buscan un solo punto de contacto para toda la producción.",
   },
   {
@@ -132,7 +136,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:25, publicoEdadMax:45, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,REELS_IG,STORIES_IG", cta:"COTIZAR",
     copyReferencia:"¿Concierto, festival o evento musical? Tenemos el equipo y el personal técnico para hacerlo sonar y verse increíble. Cotiza ahora.",
-    pixelEvento:"Lead", color:"#EF4444",
+    pixelEvento:"Lead", grupo:"Tipo de evento", color:"#EF4444",
     descripcion:"Campaña de generación de leads para eventos musicales. Formulario de Meta Ads integrado para capturar contactos.",
   },
   {
@@ -141,7 +145,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:25, publicoEdadMax:45, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,STORIES_IG", cta:"COTIZAR",
     copyReferencia:"XV años, bodas, graduaciones y más. Haz que tu evento social sea memorable con producción técnica que no falla.",
-    pixelEvento:"Lead", color:"#EC4899",
+    pixelEvento:"Lead", grupo:"Tipo de evento", color:"#EC4899",
     descripcion:"Campaña de leads para eventos sociales (XV años, bodas, graduaciones). Segmentación por edad e intereses de celebración.",
   },
   {
@@ -150,7 +154,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:28, publicoEdadMax:55, publicoGenero:"TODOS",
     ubicaciones:"FEED_FB,FEED_IG,STORIES_IG", cta:"COTIZAR",
     copyReferencia:"Congresos, lanzamientos, convenciones y eventos corporativos. Producción técnica que refleja la imagen de tu empresa.",
-    pixelEvento:"Lead", color:"#F97316",
+    pixelEvento:"Lead", grupo:"Tipo de evento", color:"#F97316",
     descripcion:"Campaña B2B orientada a empresas. Segmentación por cargo (dueños, directores, gerentes de marketing).",
   },
   {
@@ -159,7 +163,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:18, publicoEdadMax:35, publicoGenero:"TODOS",
     ubicaciones:"REELS_IG,REELS_FB,STORIES_IG", cta:"VER_MAS",
     copyReferencia:"🎶 Así suena la producción de Mainstage Pro en eventos musicales. ¿Cuándo es tu próximo show?",
-    pixelEvento:null, color:"#B3985B",
+    pixelEvento:null, grupo:"Tipo de evento", color:"#B3985B",
     descripcion:"Reel estilo TikTok de eventos musicales. Edición dinámica con cortes rápidos, texto en pantalla y música de tendencia.",
   },
   {
@@ -168,7 +172,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:18, publicoEdadMax:40, publicoGenero:"TODOS",
     ubicaciones:"REELS_IG,REELS_FB,STORIES_IG", cta:"VER_MAS",
     copyReferencia:"✨ La producción detrás de los momentos más especiales. Bodas, XV años y eventos que no se olvidan.",
-    pixelEvento:null, color:"#F59E0B",
+    pixelEvento:null, grupo:"Tipo de evento", color:"#F59E0B",
     descripcion:"Reel de eventos sociales con corte emocional. Highlights de los mejores momentos producidos.",
   },
   {
@@ -177,7 +181,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:22, publicoEdadMax:45, publicoGenero:"TODOS",
     ubicaciones:"REELS_IG,REELS_FB,STORIES_IG", cta:"VER_MAS",
     copyReferencia:"🏢 Behind the scenes: así producimos eventos corporativos de alto impacto.",
-    pixelEvento:null, color:"#F97316",
+    pixelEvento:null, grupo:"Tipo de evento", color:"#F97316",
     descripcion:"Reel de eventos empresariales con enfoque profesional. Muestra el behind the scenes de producción corporativa.",
   },
   {
@@ -186,7 +190,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:20, publicoEdadMax:45, publicoGenero:"TODOS",
     ubicaciones:"FEED_IG,STORIES_IG", cta:"VER_MAS",
     copyReferencia:"Post semanal de posicionamiento de marca: foto o gráfica de un evento reciente o mensaje aspiracional.",
-    pixelEvento:null, color:"#6366F1",
+    pixelEvento:null, grupo:"Semanal", color:"#6366F1",
     descripcion:"Post semanal de presencia de marca. Imagen estática con alta producción visual y copy corto.",
   },
   {
@@ -195,7 +199,7 @@ const SUGERIDOS: Sugerido[] = [
     publicoEdadMin:18, publicoEdadMax:40, publicoGenero:"TODOS",
     ubicaciones:"REELS_IG,FEED_IG", cta:"VER_MAS",
     copyReferencia:"Reel semanal de posicionamiento: video corto estilo TikTok de un evento reciente o contenido de valor de la industria.",
-    pixelEvento:null, color:"#B3985B",
+    pixelEvento:null, grupo:"Semanal", color:"#B3985B",
     descripcion:"Reel semanal de posicionamiento orgánico. Bajo presupuesto pero alta frecuencia para mantenerse top of mind.",
   },
 ];
@@ -226,6 +230,7 @@ function UbicTag({ k }: { k: string }) {
 
 export default function TiposCampanaPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [tipos, setTipos] = useState<TipoCampana[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -270,6 +275,7 @@ export default function TiposCampanaPage() {
       copyReferencia: t.copyReferencia ?? "",
       pixelEvento: t.pixelEvento ?? "",
       descripcion: t.descripcion ?? "",
+      grupo: t.grupo ?? "",
       color: t.color,
     });
     setEditId(t.id);
@@ -300,11 +306,13 @@ export default function TiposCampanaPage() {
       copyReferencia: form.copyReferencia || null,
       pixelEvento: form.pixelEvento || null,
       descripcion: form.descripcion || null,
+      grupo: form.grupo || null,
       color: form.color,
     };
     const url = editId ? `/api/marketing/tipos-campana/${editId}` : "/api/marketing/tipos-campana";
     const method = editId ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     cancelForm();
     await load();
     setSaving(false);
@@ -363,18 +371,16 @@ export default function TiposCampanaPage() {
               {seeding ? "Cargando…" : "Cargar del documento"}
             </button>
           )}
-          <button onClick={() => { cancelForm(); setShowForm(s => !s); }}
+          <button onClick={() => { cancelForm(); setShowForm(true); }}
             className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 transition-opacity">
-            {showForm && !editId ? "Cancelar" : "+ Nueva campaña"}
+            + Nueva campaña
           </button>
         </div>
       </div>
 
       {/* ── Formulario ──────────────────────────────────────────────────────────── */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-5">
-          <h2 className="text-sm font-semibold text-white">{editId ? "Editar campaña" : "Nueva campaña Meta Ads"}</h2>
-
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar campaña" : "Nueva campaña Meta Ads"}>
+        <div className="space-y-5">
           {/* Nombre + color */}
           <div className="space-y-2">
             <label className="text-xs text-white/40 uppercase tracking-wider">Nombre y color</label>
@@ -522,6 +528,14 @@ export default function TiposCampanaPage() {
             </div>
           </div>
 
+          {/* Sección / Grupo */}
+          <div>
+            <label className="block text-xs text-white/40 mb-1">Sección (agrupa campañas del mismo tipo)</label>
+            <input value={form.grupo} onChange={e => setForm(f => ({ ...f, grupo: e.target.value }))}
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]"
+              placeholder="Ej: Servicios generales, Tipo de servicio, Tipo de evento…" />
+          </div>
+
           {/* Copy de referencia */}
           <div>
             <label className="block text-xs text-white/40 mb-1">Copy de referencia</label>
@@ -553,16 +567,13 @@ export default function TiposCampanaPage() {
           </div>
 
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={cancelForm} className="text-xs px-4 py-2 rounded-lg border border-white/10 text-white/50 hover:text-white transition-colors">
-              Cancelar
-            </button>
             <button onClick={save} disabled={saving || !form.nombre.trim()}
               className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 disabled:opacity-50 transition-opacity">
               {saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear campaña"}
             </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading && <div className="text-white/30 text-sm text-center py-12">Cargando…</div>}
 
@@ -581,80 +592,123 @@ export default function TiposCampanaPage() {
         </div>
       )}
 
-      {/* Lista activos */}
+      {/* Lista activos — agrupada por objetivo → sub-grupo */}
       {!loading && activos.length > 0 && (
-        <div className="space-y-2">
-          {activos.map(t => {
-            const ubics = t.ubicaciones ? t.ubicaciones.split(",").filter(Boolean) : [];
-            const expanded = expandedId === t.id;
-            return (
-              <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                <div style={{ height: 2, background: t.color }} />
-                <div className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: t.color }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button onClick={() => setExpandedId(expanded ? null : t.id)}
-                          className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors text-left">
-                          {t.nombre}
-                        </button>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${OBJ_META_COLOR[t.objetivoMeta] ?? "bg-white/10 text-white/50"}`}>
-                          {OBJ_META_LABEL[t.objetivoMeta]}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
-                          {FORMATO_ICON[t.formato]} {FORMATO_LABEL[t.formato]}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
-                          {REC_LABEL[t.recurrencia]}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-white/30 flex-wrap">
-                        <span>{t.publicoEdadMin}–{t.publicoEdadMax} años · {GENERO_LABEL[t.publicoGenero]}</span>
-                        <span>{t.duracionDias} días</span>
-                        {t.presupuestoEstimado && <span className="text-[#B3985B]/70">${t.presupuestoEstimado.toLocaleString("es-MX")} MXN</span>}
-                        <span>{CTA_LABEL[t.cta]}</span>
-                      </div>
-                      {ubics.length > 0 && (
-                        <div className="flex gap-1 flex-wrap mt-1.5">
-                          {ubics.map(u => <UbicTag key={u} k={u} />)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => startEdit(t)} className="text-xs text-white/30 hover:text-white px-2 py-1 rounded transition-colors">Editar</button>
-                      <button onClick={() => toggleActivo(t)} className="text-xs text-white/30 hover:text-yellow-400 px-2 py-1 rounded transition-colors">Pausar</button>
-                      <button onClick={() => del(t)} className="text-xs text-white/30 hover:text-red-400 px-2 py-1 rounded transition-colors">Eliminar</button>
-                      <button onClick={() => setExpandedId(expanded ? null : t.id)}
-                        className="text-white/25 hover:text-white p-1 transition-colors">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <polyline points={expanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+        <div className="space-y-8">
+          {OBJETIVOS.filter(obj => activos.some(t => t.objetivo === obj)).map(obj => {
+            const enObjetivo = activos.filter(t => t.objetivo === obj);
+            // Sub-grupos dentro del objetivo (orden de aparición, sin grupo al final)
+            const subGrupos = Array.from(
+              new Set(enObjetivo.map(t => t.grupo ?? ""))
+            );
+            const conGrupo   = subGrupos.filter(g => g !== "");
+            const sinGrupo   = subGrupos.includes("") ? [""] : [];
+            const gruposOrdenados = [...conGrupo, ...sinGrupo];
 
-                  {expanded && (
-                    <div className="mt-4 pt-4 border-t border-white/[0.05] space-y-3">
-                      {t.copyReferencia && (
-                        <div>
-                          <p className="text-xs text-white/25 mb-1">Copy de referencia</p>
-                          <p className="text-white/60 text-xs leading-relaxed italic">"{t.copyReferencia}"</p>
+            return (
+              <div key={obj}>
+                {/* Encabezado de objetivo */}
+                <div className="flex items-center gap-3 mb-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-[#B3985B]">
+                    {OBJ_LABEL[obj]}
+                  </p>
+                  <span className="text-xs text-white/20">{enObjetivo.length} campaña{enObjetivo.length !== 1 ? "s" : ""}</span>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
+
+                <div className="space-y-5">
+                  {gruposOrdenados.map(subGrupo => {
+                    const campanas = enObjetivo.filter(t => (t.grupo ?? "") === subGrupo);
+                    return (
+                      <div key={subGrupo || "__sin_grupo"}>
+                        {/* Sub-encabezado de grupo (solo si hay más de un grupo en este objetivo) */}
+                        {gruposOrdenados.length > 1 && (
+                          <div className="flex items-center gap-2 mb-2 pl-1">
+                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                            <p className="text-xs text-white/35 font-medium">
+                              {subGrupo || "Sin sección"}
+                            </p>
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          {campanas.map(t => {
+                    const ubics = t.ubicaciones ? t.ubicaciones.split(",").filter(Boolean) : [];
+                    const expanded = expandedId === t.id;
+                    return (
+                      <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                        <div style={{ height: 2, background: t.color }} />
+                        <div className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: t.color }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <button onClick={() => setExpandedId(expanded ? null : t.id)}
+                                  className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors text-left">
+                                  {t.nombre}
+                                </button>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${OBJ_META_COLOR[t.objetivoMeta] ?? "bg-white/10 text-white/50"}`}>
+                                  {OBJ_META_LABEL[t.objetivoMeta]}
+                                </span>
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
+                                  {FORMATO_ICON[t.formato]} {FORMATO_LABEL[t.formato]}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
+                                  {REC_LABEL[t.recurrencia]}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 mt-1 text-xs text-white/30 flex-wrap">
+                                <span>{t.publicoEdadMin}–{t.publicoEdadMax} años · {GENERO_LABEL[t.publicoGenero]}</span>
+                                <span>{t.duracionDias} días</span>
+                                {t.presupuestoEstimado && <span className="text-[#B3985B]/70">${t.presupuestoEstimado.toLocaleString("es-MX")} MXN</span>}
+                                <span>{CTA_LABEL[t.cta]}</span>
+                              </div>
+                              {ubics.length > 0 && (
+                                <div className="flex gap-1 flex-wrap mt-1.5">
+                                  {ubics.map(u => <UbicTag key={u} k={u} />)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => startEdit(t)} className="text-xs text-white/30 hover:text-white px-2 py-1 rounded transition-colors">Editar</button>
+                              <button onClick={() => toggleActivo(t)} className="text-xs text-white/30 hover:text-yellow-400 px-2 py-1 rounded transition-colors">Pausar</button>
+                              <button onClick={() => del(t)} className="text-xs text-white/30 hover:text-red-400 px-2 py-1 rounded transition-colors">Eliminar</button>
+                              <button onClick={() => setExpandedId(expanded ? null : t.id)}
+                                className="text-white/25 hover:text-white p-1 transition-colors">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <polyline points={expanded ? "18 15 12 9 6 15" : "6 9 12 15 18 9"}/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          {expanded && (
+                            <div className="mt-4 pt-4 border-t border-white/[0.05] space-y-3">
+                              {t.copyReferencia && (
+                                <div>
+                                  <p className="text-xs text-white/25 mb-1">Copy de referencia</p>
+                                  <p className="text-white/60 text-xs leading-relaxed italic">"{t.copyReferencia}"</p>
+                                </div>
+                              )}
+                              {t.descripcion && (
+                                <div>
+                                  <p className="text-xs text-white/25 mb-1">Notas</p>
+                                  <p className="text-white/45 text-xs leading-relaxed">{t.descripcion}</p>
+                                </div>
+                              )}
+                              <div className="flex gap-4 text-xs text-white/30 flex-wrap">
+                                {t.pixelEvento && <span>Píxel: <span className="text-white/50">{t.pixelEvento}</span></span>}
+                                <span>CTA: <span className="text-white/50">{CTA_LABEL[t.cta]}</span></span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {t.descripcion && (
-                        <div>
-                          <p className="text-xs text-white/25 mb-1">Notas</p>
-                          <p className="text-white/45 text-xs leading-relaxed">{t.descripcion}</p>
-                        </div>
-                      )}
-                      <div className="flex gap-4 text-xs text-white/30 flex-wrap">
-                        <span>Objetivo doc: <span className="text-white/50">{OBJ_LABEL[t.objetivo]}</span></span>
-                        {t.pixelEvento && <span>Píxel: <span className="text-white/50">{t.pixelEvento}</span></span>}
-                        <span>CTA: <span className="text-white/50">{CTA_LABEL[t.cta]}</span></span>
                       </div>
-                    </div>
-                  )}
+                    );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

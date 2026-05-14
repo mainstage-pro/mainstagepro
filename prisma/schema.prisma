@@ -24,6 +24,7 @@ model User {
 
   tratos          Trato[]
   tratosOrigen    Trato[]            @relation("TratoVendedorOrigen")
+  tratosVendedor  Trato[]            @relation("TratoVendedor")
   proyectos       Proyecto[]
   cotizaciones    Cotizacion[]
   bitacoras       ProyectoBitacora[]
@@ -40,6 +41,13 @@ model User {
   versiones             VersionHistorial[] @relation("versiones")
   clientesVendedor      Cliente[]          @relation("ClientesVendedor")
   notificaciones        Notificacion[]
+  reportesArea          ReporteAreaSemanal[] @relation("ReportesAreaAutor")
+  juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
+  juntasParticipadas    JuntaParticipante[]
+  temasAdicionales      TemaAdicional[]      @relation("TemaAutor")
+  planTrabajoActividades PlanTrabajoActividad[] @relation("PlanTrabajoResponsable")
+  proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
+  backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
 
   @@map("users")
 }
@@ -184,6 +192,8 @@ model Trato {
   formEstado          String   @default("NO_ENVIADO") // NO_ENVIADO | ENVIADO | COMPLETADO
   formRespuestas      String?  // JSON con respuestas del prospecto
 
+  // ── Duración del servicio ────────────────────────────────────────────────
+  diasServicio       Int?     // días de renta de equipo — se usa para pre-llenar cotizaciones
   // ── Horarios del evento (capturados durante ventas) ─────────────────────
   horaInicioEvento   String?  // ej: "18:00"
   horaFinEvento      String?  // ej: "23:00"
@@ -213,6 +223,8 @@ model Trato {
   origenVenta         String   @default("CLIENTE_PROPIO") // CLIENTE_PROPIO | PUBLICIDAD | ASIGNADO
   vendedorOrigenId    String?
   vendedorOrigen      User?    @relation("TratoVendedorOrigen", fields: [vendedorOrigenId], references: [id])
+  vendedorId          String?
+  vendedor            User?    @relation("TratoVendedor", fields: [vendedorId], references: [id])
   fechaCierre         DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -277,6 +289,7 @@ model Cotizacion {
   descuentoEspecialPct        Float @default(0)
   descuentoEspecialNota       String?
   descuentoFamilyFriendsPct   Float @default(0)
+  descuentoFijoMonto          Float @default(0)
   descuentoTotalPct           Float @default(0)
   montoDescuento         Float @default(0)
   subtotalEquiposNeto    Float @default(0)
@@ -302,6 +315,9 @@ model Cotizacion {
   mainstageTradeData  String?  // JSON: { activo, pct, entregables[], checklist, nivelSeleccionado, nivelAplicado, bonoVariable, clienteSeleccionoEn }
   tradeToken          String?  @unique @map("trade_token")
   planPagos           String?  // JSON: esquema de pagos (porcentajes y fechas para CxC)
+  jornadasPlan        String?  // JSON: plan operativo de jornadas por fecha (JornadaPlan[])
+  zonaEvento          String   @default("LOCAL") // LOCAL | BAJIO | NACIONAL — afecta bonus de personal
+  numTecnicosZona     Int      @default(0)
   observaciones       String?
   terminosComerciales String?
   vigenciaDias        Int      @default(30)
@@ -381,8 +397,10 @@ model Proyecto {
   encargadoLugarContacto String?
   descripcionGeneral     String?
   detallesEspecificos    String?
-  encargadoCliente       String?  // Nombre del encargado de parte del cliente
+  encargadoCliente         String?  // Nombre del encargado de parte del cliente
+  encargadoClienteContacto String?  // Teléfono / contacto del encargado del cliente
   transportes            String?  // Descripción de transportes del evento
+  aplicaCatering         Boolean  @default(false) // Si el proyecto requiere catering de producción
   proveedorCatering      String?  // Proveedor de catering / alimentación producción
   contactosDireccion     String?  // Contactos de dirección y coordinación
   cronograma             String?
@@ -411,6 +429,12 @@ model Proyecto {
   portalToken            String?   @unique // Token público para portal de cliente
   notasPortal            String?   // Mensaje visible al cliente en su portal
   responsables           String?   // JSON: { produccion, logistica, finanzas, marketing } → { userId, nombre }
+  proveedoresRenta       String?   // JSON: [{ id, nombre, contacto, equipos: string[] }] — proveedores de subarriendo manuales
+  equiposRiderExtra      String?   // JSON: [{ id, descripcion, cantidad, notas?, completado }] — equipos fuera de cotización
+  planProduccion         String?   // JSON: plan completo de producción (briefing, equipos, personal, logística, cronograma)
+  planProduccionAprobado Boolean   @default(false) // true cuando el encargado aprueba el plan >= 72h antes
+  planProduccionAprobadoEn DateTime? // timestamp de aprobación
+  zona                   String    @default("LOCAL") // LOCAL | BAJIO | NACIONAL
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -441,6 +465,7 @@ model ProyectoPersonal {
   rolTecnicoId    String?
   rolTecnico      RolTecnico? @relation(fields: [rolTecnicoId], references: [id])
   participacion   String?  // OPERACION | MONTAJE | DESMONTAJE | TRANSPORTE | OTRO
+  fechaJornada    String?  // YYYY-MM-DD — fecha específica de la jornada (del plan de jornadas)
   nivel           String?  // AAA | AA | A
   jornada         String?  // CORTA | MEDIA | LARGA
   responsabilidad String?
@@ -480,6 +505,7 @@ model RiderAccesorio {
   proyectoEquipoId String
   proyectoEquipo   ProyectoEquipo @relation(fields: [proyectoEquipoId], references: [id], onDelete: Cascade)
   nombre           String
+  cantidad         Int            @default(1)
   categoria        String?        // cable | herramienta | consumible | soporte | otro
   completado       Boolean        @default(false)
   esSugerencia     Boolean        @default(false)
@@ -778,6 +804,7 @@ model CuentaBancaria {
   cuentasCobrar      CuentaCobrar[]
   cuentasPagar       CuentaPagar[]
   pagosNomina        PagoNomina[]
+  abonos             Abono[]
 
   @@map("cuentas_bancarias")
 }
@@ -819,9 +846,9 @@ model MovimientoFinanciero {
   creadoPor           String?
   createdAt           DateTime @default(now())
 
-  cuentaCobrar CuentaCobrar?
   cuentaPagar  CuentaPagar?
   pagoNomina   PagoNomina?
+  abono        Abono?
 
   @@map("movimientos_financieros")
 }
@@ -837,7 +864,7 @@ model CuentaCobrar {
   cotizacionId    String?
   cotizacion      Cotizacion? @relation(fields: [cotizacionId], references: [id])
   concepto        String
-  tipoPago        String   @default("ANTICIPO") // ANTICIPO | LIQUIDACION | OTRO
+  tipoPago        String   @default("TOTAL") // TOTAL | ANTICIPO | LIQUIDACION | OTRO
   monto           Float
   fechaCompromiso DateTime
   fechaCobroReal  DateTime?
@@ -845,15 +872,33 @@ model CuentaCobrar {
   montoCobrado    Float    @default(0)
   cuentaDestinoId String?
   cuentaDestino   CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
-  movimientoId    String?  @unique
-  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?
   montoOriginal   Float?   // monto al momento de la creación, antes de ajustes
   ajustesLog      String?  // JSON: [{fecha, de, a, motivo, usuario}]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  abonos          Abono[]
+
   @@map("cuentas_cobrar")
+}
+
+model Abono {
+  id               String   @id @default(cuid())
+  cuentaCobrarId   String
+  cuentaCobrar     CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id], onDelete: Cascade)
+  monto            Float
+  fecha            DateTime
+  metodoPago       String   @default("TRANSFERENCIA") // TRANSFERENCIA | EFECTIVO | TARJETA | CHEQUE
+  notas            String?
+  cuentaDestinoId  String?
+  cuentaDestino    CuentaBancaria? @relation(fields: [cuentaDestinoId], references: [id])
+  movimientoId     String?  @unique
+  movimiento       MovimientoFinanciero? @relation(fields: [movimientoId], references: [id], onDelete: SetNull)
+  creadoPor        String?
+  createdAt        DateTime @default(now())
+
+  @@map("abonos")
 }
 
 model CuentaPagar {
@@ -1049,6 +1094,8 @@ model PersonalInterno {
   asistencias   Asistencia[]
   incidencias   Incidencia[]
   evaluaciones  EvaluacionEmpleado[]
+  encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
+  capacitaciones CapacitacionParticipante[]
 
   @@map("personal_interno")
 }
@@ -1195,16 +1242,18 @@ model ChecklistBodega {
 }
 
 model ChecklistBodegaItem {
-  id          String          @id @default(cuid())
-  checklistId String
-  checklist   ChecklistBodega @relation(fields: [checklistId], references: [id], onDelete: Cascade)
-  descripcion String
-  categoria   String          @default("GENERAL")
-  estado      String          @default("PENDIENTE") // PENDIENTE | OK | FALTA | DAÑADO | EN_REPARACION
-  notas       String?
-  equipoId    String?
-  equipo      Equipo?         @relation(fields: [equipoId], references: [id])
-  orden       Int             @default(0)
+  id                String          @id @default(cuid())
+  checklistId       String
+  checklist         ChecklistBodega @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  descripcion       String
+  categoria         String          @default("GENERAL")
+  estado            String          @default("PENDIENTE") // PENDIENTE | EN_BODEGA | EN_RENTA_O_USO | EXTRAVIADO | PERDIDO
+  notas             String?
+  equipoId          String?
+  equipo            Equipo?         @relation(fields: [equipoId], references: [id])
+  orden             Int             @default(0)
+  cantidadEsperada  Int?
+  cantidadContada   Int?
 
   @@map("checklist_bodega_items")
 }
@@ -1248,7 +1297,8 @@ model Publicacion {
   enTiktok       Boolean        @default(false)
   enYoutube      Boolean        @default(false)
   materialLink   String?
-  portadaUrl     String?        // URL de imagen de portada (para feed IG)
+  portadaUrl     String?        // URL de imagen de portada opción A (feed IG)
+  portadaUrlB    String?        // URL de imagen de portada opción B (A/B test)
   colaboradores  String?
   estado         String         @default("PENDIENTE")
   comentarios    String?
@@ -1262,12 +1312,94 @@ model Publicacion {
   @@map("publicaciones")
 }
 
+// ─── ENCUESTA SATISFACCIÓN EQUIPO ────────────────────────────────────────────
+// Los empleados/freelancers responden cómo perciben trabajar en Mainstage
+
+model EncuestaSatisfaccionEquipo {
+  id          String    @id @default(cuid())
+  personalId  String
+  personal    PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  periodo     String    // ej. "Q1-2026" o "2026-05"
+  token       String    @unique @default(cuid())
+  enviada     Boolean   @default(false)
+  respondida  Boolean   @default(false)
+  respondidaEn DateTime?
+
+  // Criterios 1-10
+  claridadInstrucciones  Int?  // ¿Las instrucciones de trabajo son claras?
+  pagosPuntuales         Int?  // ¿Los pagos son puntuales?
+  tratoJusto             Int?  // ¿Sientes que te tratan de forma justa?
+  organizacion           Int?  // ¿Mainstage está bien organizada?
+  comunicacion           Int?  // ¿La comunicación contigo es fluida?
+  herramientas           Int?  // ¿Tienes los equipos/herramientas que necesitas?
+  crecimiento            Int?  // ¿Sientes que puedes crecer aquí?
+  ambiente               Int?  // ¿Cómo es el ambiente de trabajo?
+
+  // NPS 0-10
+  probabilidadRecomendar Int?  // ¿Recomendarías trabajar en Mainstage?
+
+  // Texto libre
+  loMejor         String?  // ¿Qué es lo que más valoras de trabajar en Mainstage?
+  loMejorable     String?  // ¿Qué cambiarías?
+  comentarios     String?
+
+  promedioCalculado Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([personalId, periodo])
+  @@map("encuestas_satisfaccion_equipo")
+}
+
+// Capacitaciones del equipo
+model Capacitacion {
+  id          String   @id @default(cuid())
+  titulo      String
+  descripcion String?
+  area        String   @default("GENERAL") // área responsable
+  tipo        String   @default("TECNICA") // TECNICA | SEGURIDAD | PROCEDIMIENTOS | DESARROLLO | INDUCCION
+  modalidad   String   @default("PRESENCIAL") // PRESENCIAL | VIRTUAL | AUTOAPRENDIZAJE
+  fechaInicio DateTime
+  fechaFin    DateTime?
+  duracionHrs Float?
+  instructor  String?
+  material    String?  // URL o descripción del material
+  estado      String   @default("PROGRAMADA") // PROGRAMADA | EN_CURSO | COMPLETADA | CANCELADA
+  obligatoria Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participantes CapacitacionParticipante[]
+  @@map("capacitaciones")
+}
+
+model CapacitacionParticipante {
+  id              String       @id @default(cuid())
+  capacitacionId  String
+  capacitacion    Capacitacion @relation(fields: [capacitacionId], references: [id], onDelete: Cascade)
+  personalId      String
+  personal        PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  asistio         Boolean      @default(false)
+  calificacion    Float?
+  notas           String?
+  createdAt       DateTime     @default(now())
+
+  @@unique([capacitacionId, personalId])
+  @@map("capacitacion_participantes")
+}
+
 // ─── CONFIGURACIÓN DE LA APP ─────────────────────────────────────────────────
 
 model AppConfig {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String
+  id           String  @id @default(cuid())
+  key          String  @unique
+  value        String
+  section      String  @default("general")
+  label        String  @default("")
+  description  String?
+  type         String  @default("text")
+  defaultValue String?
+  orden        Int     @default(0)
   @@map("app_config")
 }
 
@@ -1326,6 +1458,7 @@ model Vehiculo {
   proximoServicioFecha DateTime? // Fecha del próximo servicio programado
   activo               Boolean   @default(true)
   notas                String?
+  fotos                String[]  @default([])
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   mantenimientos       MantenimientoVehiculo[]
@@ -1349,6 +1482,7 @@ model MantenimientoVehiculo {
   estatus        String    @default("COMPLETADO") // PENDIENTE | EN_PROCESO | COMPLETADO
   costo          Float?
   comentarios    String?
+  fotos          String[]  @default([])
   createdAt      DateTime  @default(now())
   @@map("mantenimiento_vehiculos")
 }
@@ -1409,6 +1543,18 @@ model Tarea {
   // ── Content ──────────────────────────────────────────────────────────────
   notas            String?
   etiquetas        String?    // JSON string[]
+  // ── Origen ───────────────────────────────────────────────────────────────
+  juntaOrigenId    String?
+  juntaOrigen      Junta?             @relation("JuntaOrigen", fields: [juntaOrigenId], references: [id], onDelete: SetNull)
+  // ── Plan de trabajo ───────────────────────────────────────────────────────
+  origenPlan        Boolean  @default(false)
+  planActividadId   String?
+  planActividad     PlanTrabajoActividad? @relation("TareasDePlan", fields: [planActividadId], references: [id], onDelete: SetNull)
+  // ── Proyecto interno ─────────────────────────────────────────────────────
+  proyectoInternoId String?
+  proyectoInterno   ProyectoInterno? @relation("TareasDeProyectoInterno", fields: [proyectoInternoId], references: [id], onDelete: SetNull)
+  faseInternaId     String?
+  faseInterna       FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
@@ -1710,6 +1856,7 @@ model TipoCampana {
   copyReferencia      String?
   pixelEvento         String?
   descripcion         String?
+  grupo               String?  // Sub-sección libre: "Servicios generales", "Tipo de servicio", "Tipo de evento", etc.
   color               String   @default("#B3985B")
   activo              Boolean  @default(true)
   orden               Int      @default(0)
@@ -1832,6 +1979,8 @@ model LevantamientoContenido {
   colaboradoresCamara         Boolean?
   colaboradoresNombres        String?
   notasAdicionales            String?
+  scoreFotoVideo              Int?
+  recomendacionFotoVideo      String?
 
   activos   ActivoEvento[]
 
@@ -2179,6 +2328,25 @@ model ReporteSemanal {
   @@map("reportes_semanales")
 }
 
+// Reporte semanal por área (lo llena cada responsable de área cada lunes)
+model ReporteAreaSemanal {
+  id          String   @id @default(cuid())
+  area        String   // VENTAS | PRODUCCION | MARKETING | ADMINISTRACION | RRHH | DIRECCION
+  semana      String   // Lunes de la semana: "2026-05-04"
+  autorId     String
+  autor       User     @relation("ReportesAreaAutor", fields: [autorId], references: [id])
+  resultados  String   @default("") // Texto libre: logros de la semana
+  kpis        String   @default("[]") // JSON: [{ nombre, valor, meta?, unidad? }]
+  compromisos String   @default("") // Texto libre: qué se compromete para la siguiente semana
+  bloqueo     String?  // Texto libre: qué está bloqueando (opcional)
+  revisado    Boolean  @default(false) // Dirección revisó el reporte
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([area, semana])
+  @@map("reportes_area_semanal")
+}
+
 // ─── MÉTRICAS ORGÁNICAS ───────────────────────────────────────────────────────
 
 model MetricaOrganica {
@@ -2231,4 +2399,179 @@ model Notificacion {
 
   @@index([usuarioId, leida])
   @@map("notificaciones")
+}
+
+// ─── JUNTAS ───────────────────────────────────────────────────────────────────
+
+model Junta {
+  id            String   @id @default(cuid())
+  titulo        String
+  area          String   // GLOBAL | DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  tipo          String   // GLOBAL_SEMANAL | AREA_SEMANAL | REVISION_MENSUAL | EXTRAORDINARIA | CAPACITACION
+  fecha         DateTime
+  duracionMin   Int      @default(45)
+  estado        String   @default("PROGRAMADA") // PROGRAMADA | EN_CURSO | COMPLETADA | CANCELADA
+  facilitadorId String
+  facilitador   User     @relation("JuntaFacilitador", fields: [facilitadorId], references: [id])
+
+  notas         String?  @db.Text
+  resumen       String?  @db.Text
+
+  agendaItems      AgendaItem[]
+  tareas           Tarea[]            @relation("JuntaOrigen")
+  participantes    JuntaParticipante[]
+  temasAdicionales TemaAdicional[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([fecha])
+  @@index([area, fecha])
+  @@map("juntas")
+}
+
+model AgendaItem {
+  id          String   @id @default(cuid())
+  juntaId     String
+  junta       Junta    @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  orden       Int
+  tipo        String   // RESULTADOS | COMPROMISOS | BLOQUEO | DECISION | ACUERDO | AVISO | RECONOCIMIENTO | KPI_REVIEW | CUSTOM
+  titulo      String
+  descripcion String?
+  placeholder String?  @db.Text
+  respuesta   String?  @db.Text
+  completado  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  @@map("agenda_items")
+}
+
+model JuntaParticipante {
+  id      String  @id @default(cuid())
+  juntaId String
+  userId  String
+  junta   Junta   @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+  asistio Boolean @default(false)
+
+  @@unique([juntaId, userId])
+  @@map("junta_participantes")
+}
+
+model TemaAdicional {
+  id           String  @id @default(cuid())
+  juntaId      String
+  junta        Junta   @relation(fields: [juntaId], references: [id], onDelete: Cascade)
+  titulo       String
+  descripcion  String? @db.Text
+  propuestoPor String
+  autor        User    @relation("TemaAutor", fields: [propuestoPor], references: [id])
+  orden        Int     @default(0)
+
+  // Estado durante la junta
+  cubierto                Boolean  @default(false)
+  notas                   String?  @db.Text
+  pasadoSiguienteSemana   Boolean  @default(false)
+  agregadoEnJunta         Boolean  @default(false) // true si se agregó durante la junta, no antes
+
+  createdAt DateTime @default(now())
+
+  @@index([juntaId])
+  @@map("temas_adicionales")
+}
+
+// ─── PLAN DE TRABAJO ─────────────────────────────────────────────────────────
+
+model PlanTrabajoActividad {
+  id              String   @id @default(cuid())
+  area            String   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  responsableId   String
+  responsable     User     @relation("PlanTrabajoResponsable", fields: [responsableId], references: [id])
+  titulo          String
+  descripcion     String?  @db.Text
+  frecuencia      String   // DIARIO | LUNES_JUEVES | SEMANAL | POR_EVENTO | MENSUAL | TRIMESTRAL | SEMESTRAL | SEGUN_NECESIDAD
+  diasSemana      String?  // JSON: ["lunes","jueves"]
+  horaEspecifica  String?  // "10:30"
+  entregable      String
+  kpiVinculado    String?
+  origenSO        Boolean  @default(true)
+  seccionSO       String?
+  activa          Boolean  @default(true)
+  generarTareas   Boolean  @default(true)
+  ultimaTareaGeneradaAt DateTime?
+  orden           Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tareas          Tarea[]  @relation("TareasDePlan")
+
+  @@index([area, responsableId])
+  @@map("plan_trabajo_actividades")
+}
+
+// ─── PROYECTOS INTERNOS ───────────────────────────────────────────────────────
+
+model ProyectoInterno {
+  id              String   @id @default(cuid())
+  nombre          String
+  descripcion     String?  @db.Text
+  area            String   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  liderId         String
+  lider           User     @relation("ProyectoInternoLider", fields: [liderId], references: [id])
+  estado          String   @default("PLANIFICACION") // PLANIFICACION | ACTIVO | EN_PAUSA | COMPLETADO | CANCELADO
+  prioridad       String   @default("MEDIA")         // URGENTE | ALTA | MEDIA | BAJA
+  fechaInicio     DateTime?
+  fechaFin        DateTime?
+  porcentajeAvance Int     @default(0)
+  backlogItemId   String?
+  backlogItem     BacklogItem? @relation(fields: [backlogItemId], references: [id], onDelete: SetNull)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  fases           FaseProyectoInterno[]
+  tareas          Tarea[]  @relation("TareasDeProyectoInterno")
+
+  @@index([area, estado])
+  @@map("proyectos_internos")
+}
+
+model FaseProyectoInterno {
+  id          String          @id @default(cuid())
+  proyectoId  String
+  proyecto    ProyectoInterno @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  nombre      String
+  descripcion String?
+  orden       Int             @default(0)
+  completada  Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+
+  tareas      Tarea[]         @relation("TareasDeFase")
+
+  @@index([proyectoId])
+  @@map("fases_proyecto_interno")
+}
+
+// ─── BACKLOG ──────────────────────────────────────────────────────────────────
+
+model BacklogItem {
+  id          String    @id @default(cuid())
+  titulo      String
+  descripcion String?   @db.Text
+  area        String?   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  tipo        String    @default("IDEA") // IDEA | TAREA | PROYECTO
+  estado      String    @default("PENDIENTE") // PENDIENTE | EN_JUNTA | CONVERTIDO | DESCARTADO
+  creadoPorId String
+  creadoPor   User      @relation("BacklogCreadoPor", fields: [creadoPorId], references: [id])
+  procesadoEn String?   // "tarea" | "proyecto" | "junta" | "descartado"
+  procesadoAt DateTime?
+  tareaGeneradaId String?
+  juntaId     String?
+  createdAt   DateTime  @default(now())
+
+  proyectosGenerados ProyectoInterno[]
+
+  @@index([estado])
+  @@index([area, estado])
+  @@map("backlog_items")
 }

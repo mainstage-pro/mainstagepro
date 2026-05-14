@@ -11,6 +11,7 @@ interface NavChild {
   key?: string;
   label: string;
   href: string;
+  adminOnly?: boolean;
 }
 
 interface NavItem {
@@ -33,17 +34,29 @@ const NAV: NavSection[] = [
     key: "seccion-top",
     section: "",
     items: [
-      { key: "dashboard", label: "CEO Dashboard", href: "/dashboard" },
-      { key: "operaciones", label: "Gestión operativa", href: "/operaciones" },
+      { label: "Mi Dashboard", href: "/dashboard" },
+      { key: "operaciones",        label: "Gestión operativa", href: "/operaciones" },
+      { key: "plan-de-trabajo",    label: "Plan de trabajo",   href: "/plan-de-trabajo" },
+      { key: "proyectos-internos", label: "Proyectos",         href: "/proyectos-internos" },
+      { key: "backlog",            label: "Backlog",           href: "/backlog" },
     ],
   },
 
   // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
   {
     key: "seccion-direccion",
-    section: "DIRECCIÓN",
+    section: "Dirección",
     items: [
-      { key: "reportes", label: "Reportes semanales", href: "/reportes" },
+      { key: "semaforo", label: "Semáforo del negocio", href: "/dashboard/semaforo" },
+      { key: "juntas", label: "Juntas", href: "/juntas" },
+      {
+        key: "reportes",
+        label: "Reportes semanales",
+        children: [
+          { key: "reportes-auto", label: "Resumen automático", href: "/reportes" },
+          { key: "reportes-areas", label: "Reportes por área", href: "/reportes/areas" },
+        ],
+      },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       {
         key: "calendario",
@@ -54,6 +67,7 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
+      { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
     ],
   },
@@ -61,13 +75,14 @@ const NAV: NavSection[] = [
   // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
   {
     key: "seccion-administracion",
-    section: "ADMINISTRACIÓN",
+    section: "Administración",
     items: [
       {
         key: "finanzas",
         label: "Finanzas",
         children: [
           { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
+          { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
           { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
@@ -84,6 +99,8 @@ const NAV: NavSection[] = [
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
           { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
+          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/rrhh/satisfaccion" },
+          { key: "rrhh-capacitaciones", label: "Capacitaciones", href: "/rrhh/capacitaciones" },
           { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
         ],
       },
@@ -104,13 +121,14 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
+      { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
     ],
   },
 
   // ── MARKETING ──────────────────────────────────────────────────────────────
   {
     key: "seccion-marketing",
-    section: "MARKETING",
+    section: "Marketing",
     items: [
       {
         key: "contenido-organico",
@@ -139,11 +157,11 @@ const NAV: NavSection[] = [
   // ── VENTAS ─────────────────────────────────────────────────────────────────
   {
     key: "seccion-ventas",
-    section: "VENTAS",
+    section: "Ventas",
     items: [
-      { key: "crm-clientes", label: "Clientes", href: "/crm/clientes" },
-      { key: "crm-tratos", label: "Tratos", href: "/crm/tratos" },
-      { key: "cotizaciones", label: "Cotizaciones", href: "/cotizaciones" },
+      { key: "crm-clientes",   label: "Clientes",            href: "/crm/clientes" },
+      { key: "prospectos",      label: "Prospectos en frío",  href: "/prospectos" },
+      { key: "crm-tratos",     label: "Tratos",              href: "/crm/tratos" },
       { key: "cotizaciones-plantillas", label: "Plantillas", href: "/cotizaciones/plantillas" },
       {
         key: "comisiones",
@@ -162,20 +180,22 @@ const NAV: NavSection[] = [
   // ── PRODUCCIÓN ─────────────────────────────────────────────────────────────
   {
     key: "seccion-produccion",
-    section: "PRODUCCIÓN",
+    section: "Producción",
     items: [
-      { key: "proyectos", label: "Proyectos", href: "/proyectos" },
+      { key: "proyectos", label: "Proyectos/Eventos", href: "/proyectos" },
+      { key: "equipo-tareas", label: "Tareas del equipo", href: "/operaciones/equipo" },
       { key: "ordenes-compra", label: "Órdenes de compra", href: "/operaciones/ordenes-compra" },
       {
         key: "inventario",
         label: "Inventario",
         children: [
           { key: "inv-equipos", label: "Equipos", href: "/inventario/equipos" },
+          { key: "inv-maestro", label: "Inventario maestro", href: "/inventario/maestro" },
           { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
           { key: "inv-recolecciones", label: "Recolecciones", href: "/inventario/recolecciones" },
           { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
-          { key: "inv-vehiculos", label: "Vehículos", href: "/catalogo/vehiculos" },
+          { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
           { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
         ],
       },
@@ -237,7 +257,7 @@ function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
-  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas")) return "seccion-ventas";
+  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
   if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
@@ -248,9 +268,36 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
+  const storageKey = `sidebar-state-${user.id}`;
+
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
+  const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Restore persisted state on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (raw) {
+        const stored = JSON.parse(raw) as { openGroups?: string[]; openSections?: string[] };
+        if (stored.openGroups)   setOpenGroups(new Set(stored.openGroups));
+        if (stored.openSections) setOpenSections(new Set(stored.openSections));
+      }
+    } catch {}
+    setStateLoaded(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist whenever state changes (after initial load)
+  useEffect(() => {
+    if (!stateLoaded) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        openGroups:   [...openGroups],
+        openSections: [...openSections],
+      }));
+    } catch {}
+  }, [openGroups, openSections, stateLoaded, storageKey]);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
@@ -306,15 +353,15 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
               {section.section && (
                 <button
                   onClick={() => toggleSection(section.key)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-2 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
                 >
-                  <span className={`text-[13px] font-bold uppercase tracking-widest transition-colors ${
+                  <span className={`text-sm font-semibold tracking-wide transition-colors ${
                     isSectionActive && !isSectionOpen ? "text-white" : "text-white/50 group-hover:text-white/80"
                   }`}>
                     {sectionLabel}
                   </span>
                   <svg
-                    className={`w-4 h-4 text-white/40 group-hover:text-white/70 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
+                    className={`w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
                     fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -332,15 +379,18 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                       <div key={groupKey}>
                         <button
                           onClick={() => toggleGroup(groupKey)}
-                          className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                             isGroupActive
                               ? "text-white font-semibold"
                               : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                           }`}
                         >
-                          <span>{itemLabel}</span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <span className="flex-1 text-left">{itemLabel}</span>
                           <svg
-                            className={`w-3.5 h-3.5 transition-transform shrink-0 opacity-50 ${isOpen ? "rotate-90" : ""} ${isGroupActive ? "opacity-80" : ""}`}
+                            className={`w-3 h-3 transition-transform shrink-0 opacity-40 ${isOpen ? "rotate-90" : ""}`}
                             fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -348,7 +398,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.map((child) => {
+                            {item.children.filter(c => !c.adminOnly || isAdmin).map((child) => {
                               const childLabel = resolveLabel(child.key, child.label, labels);
                               return (
                                 <Link
@@ -373,12 +423,13 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     <Link
                       key={item.href}
                       href={item.href!}
-                      className={`flex items-center px-3 py-2 rounded-md text-sm transition-colors ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive(item.href!)
                           ? "bg-[#1a1a1a] text-white font-semibold"
                           : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                       }`}
                     >
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
                       {itemLabel}
                     </Link>
                   );
@@ -434,9 +485,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
         {navContent}
         <div className="px-3 py-3 border-t border-[#1a1a1a] shrink-0 space-y-1">
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
+            onClick={() => window.dispatchEvent(new CustomEvent("open-full-task"))}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black font-semibold text-sm transition-all"
-            title="Nueva tarea (⌘K)"
+            title="Nueva tarea"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -456,33 +507,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
 
       {/* MOBILE: barra superior */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-[60] h-14 bg-[#0d0d0d] border-b border-[#1a1a1a] flex items-center px-2 gap-1.5 max-w-full">
-        {/* Botón regresar — solo cuando no estamos en /dashboard */}
-        {pathname !== "/dashboard" && (
-          <button
-            onClick={() => router.back()}
-            className="w-9 h-9 flex items-center justify-center rounded-md text-[#888] hover:text-white hover:bg-[#1a1a1a] transition-colors shrink-0"
-            aria-label="Regresar"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-          </button>
-        )}
-        {/* Logo — centrado cuando hay botón de regreso, a la izquierda cuando no */}
-        <Link href="/dashboard" className={`flex-1 flex min-w-0 ${pathname !== "/dashboard" ? "justify-center" : "justify-start"}`}>
-          <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
-        </Link>
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent("open-quick-task"))}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black transition-all shrink-0"
-          aria-label="Nueva tarea"
-          title="Nueva tarea (⌘K)"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
-        <NotificacionesBell />
+        {/* LEFT: menu + notifications */}
         <button
           onClick={() => setMobileOpen(true)}
           className="w-9 h-9 flex flex-col items-center justify-center gap-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors shrink-0"
@@ -491,6 +516,21 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           <span className="w-5 h-px bg-[#888] block" />
           <span className="w-5 h-px bg-[#888] block" />
           <span className="w-5 h-px bg-[#888] block" />
+        </button>
+        <NotificacionesBell />
+        {/* RIGHT: logo + new task */}
+        <Link href="/dashboard" className="flex-1 flex min-w-0 justify-end">
+          <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
+        </Link>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("open-full-task"))}
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black transition-all shrink-0"
+          aria-label="Nueva tarea"
+          title="Nueva tarea"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
         </button>
       </header>
 

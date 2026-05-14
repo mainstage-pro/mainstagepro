@@ -22,6 +22,10 @@ export default async function DashboardRRHHPage() {
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const mes       = ahora.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
+  const lunDelta = (ahora.getDay() + 6) % 7;
+  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
+  const lunesStr = lunesDate.toLocaleDateString("en-CA");
+
   const [
     personalCount,
     personalActivo,
@@ -29,6 +33,8 @@ export default async function DashboardRRHHPage() {
     nominaPendiente,
     onboardingActivo,
     evaluacionesMes,
+    capacitacionesActivas,
+    reporteAreaSemana,
   ] = await Promise.all([
     prisma.personalInterno.count().catch(() => 0),
     prisma.personalInterno.count({ where: { activo: true } }).catch(() => 0),
@@ -36,6 +42,8 @@ export default async function DashboardRRHHPage() {
     prisma.pagoNomina.aggregate({ _sum: { monto: true }, where: { estado: "PENDIENTE" } }).catch(() => ({ _sum: { monto: 0 } })),
     prisma.onboardingPlan.count({ where: { estado: "EN_CURSO" } }).catch(() => 0),
     prisma.evaluacionEmpleado.count({ where: { fecha: { gte: inicioMes, lte: finMes } } }).catch(() => 0),
+    prisma.capacitacion.count({ where: { estado: { in: ["PROGRAMADA", "EN_CURSO"] } } }).catch(() => 0),
+    prisma.reporteAreaSemanal.findFirst({ where: { area: "RRHH", semana: lunesStr } }).catch(() => null),
   ]);
 
   const nominaTotal = (nominaPendiente as { _sum: { monto: number | null } })._sum?.monto ?? 0;
@@ -50,6 +58,15 @@ export default async function DashboardRRHHPage() {
           <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
       </div>
+
+      {/* Alerta reporte semanal */}
+      {!reporteAreaSemana && (
+        <Link href="/reportes/areas"
+          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
+          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de RR.HH. pendiente</p>
+          <p className="text-yellow-600 text-xs">Completar →</p>
+        </Link>
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -69,11 +86,11 @@ export default async function DashboardRRHHPage() {
           href="/rrhh/incidencias"
         />
         <KpiCard
-          label="Onboarding activo"
-          value={onboardingActivo}
-          sub="planes en curso"
-          color={onboardingActivo > 0 ? "text-[#B3985B]" : "text-white"}
-          href="/rrhh/onboarding"
+          label="Capacitaciones activas"
+          value={capacitacionesActivas}
+          sub="programadas / en curso"
+          color={capacitacionesActivas > 0 ? "text-[#B3985B]" : "text-white"}
+          href="/rrhh/capacitaciones"
         />
       </div>
 
@@ -103,12 +120,12 @@ export default async function DashboardRRHHPage() {
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { href: "/rrhh/personal",    label: "Personal",    desc: "Directorio del equipo" },
-              { href: "/rrhh/asistencia",  label: "Asistencia",  desc: "Registro de entradas" },
-              { href: "/rrhh/nomina",      label: "Nómina",      desc: "Pagos pendientes" },
-              { href: "/rrhh/incidencias", label: "Incidencias", desc: "Reporte del mes" },
-              { href: "/rrhh/puestos",     label: "Puestos",     desc: "Organigrama" },
-              { href: "/rrhh/evaluaciones",label: "Evaluaciones",desc: "Desempeño" },
+              { href: "/rrhh/personal",          label: "Personal",       desc: "Directorio del equipo" },
+              { href: "/rrhh/asistencia",         label: "Asistencia",     desc: "Registro de entradas" },
+              { href: "/rrhh/nomina",             label: "Nómina",         desc: "Pagos pendientes" },
+              { href: "/rrhh/incidencias",        label: "Incidencias",    desc: "Reporte del mes" },
+              { href: "/rrhh/capacitaciones",     label: "Capacitaciones", desc: "Ciclo de formación" },
+              { href: "/rrhh/satisfaccion",       label: "Satisfacción",   desc: "Encuestas equipo" },
             ].map(a => (
               <Link key={a.href} href={a.href}
                 className="flex flex-col px-3 py-2.5 rounded-lg bg-[#0d0d0d] border border-[#1a1a1a] hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">

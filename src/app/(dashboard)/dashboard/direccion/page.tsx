@@ -30,7 +30,7 @@ function StatCard({ label, value, sub, color = "text-white", href }: {
 export default async function DashboardDireccionPage() {
   const session = await getSession();
   const ahora       = new Date();
-  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const inicioMes   = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes      = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const finDeHoy    = new Date(ahora); finDeHoy.setHours(23, 59, 59, 999);
@@ -238,6 +238,34 @@ export default async function DashboardDireccionPage() {
             href="/finanzas/cxc"
           />
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SEMÁFORO (mini)
+      ══════════════════════════════════════════════════════════════════════ */}
+      <div>
+        <div className="flex items-center gap-3 mb-4">
+          <p className="text-[11px] font-bold text-[#3a3a3a] uppercase tracking-widest">SEMÁFORO DEL NEGOCIO</p>
+          <div className="flex-1 h-px bg-[#1a1a1a]" />
+          <Link href="/dashboard/semaforo" className="text-[#B3985B] text-xs hover:underline shrink-0">Ver detalle →</Link>
+        </div>
+        <Link
+          href="/dashboard/semaforo"
+          className="block bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-all"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-white text-sm font-semibold">Estado actual del negocio</p>
+              <p className="text-[#555] text-xs mt-1">Ventas · Producción · CxC · Flujo · Marketing · Equipo · CxP</p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
+              <span className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              <span className="text-[#B3985B] text-xs font-semibold ml-1">Ver →</span>
+            </div>
+          </div>
+        </Link>
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════

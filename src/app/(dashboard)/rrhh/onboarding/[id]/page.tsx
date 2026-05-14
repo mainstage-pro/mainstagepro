@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { BackButton } from "@/components/BackButton";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
@@ -148,6 +149,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
 
       {/* Header */}
       <div>
@@ -179,7 +181,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
             />
             {plan.fechaIngreso && (
               <p className="text-gray-600 text-xs mt-1">
-                Ingreso: {new Date(plan.fechaIngreso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                Ingreso: {(() => { const [y,m,d] = plan.fechaIngreso.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"long",year:"numeric"}); })()}
               </p>
             )}
           </div>

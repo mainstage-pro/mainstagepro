@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Config = {
@@ -192,6 +194,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
   configData: ConfigData; pagos: Pago[]; activos: Activo[]; onRefresh: () => void;
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const { config, socio, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso } = configData;
   const now = new Date();
   const mesActual = now.getMonth() + 1;
@@ -215,7 +218,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 
   async function saveEditPago(id: string) {
     setSavingPago(true);
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, {
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -226,14 +229,16 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
         pagadoEn: editPagoForm.estado === "PAGADO" ? new Date().toISOString() : null,
       }),
     });
+    setSavingPago(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
     await onRefresh();
     setEditandoPago(false);
-    setSavingPago(false);
   }
 
   async function eliminarPago(id: string) {
     if (!await confirm({ message: "¿Eliminar la obligación de este mes? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar"); return; }
     await onRefresh();
   }
 
@@ -286,6 +291,8 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: mesActual, anio: anioActual, utilidadMes: utilidad || undefined }),
     });
+    setSaving(false);
+    if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al registrar pago"); return; }
     const data = await r.json();
 
     // Auto-crear cuenta por pagar con fecha límite = último día del mes
@@ -308,7 +315,6 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
     await onRefresh();
     setCreando(false);
     setUtilidad("");
-    setSaving(false);
   }
 
   const creditoPorcentajePagado = config.creditoSaldoInicial > 0
@@ -531,6 +537,7 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 // ─── ACTIVOS TAB ─────────────────────────────────────────────────────────────
 function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () => void }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -553,19 +560,21 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
   async function save() {
     setSaving(true);
     const url = editId ? `/api/finanzas/hervam/activos/${editId}` : "/api/finanzas/hervam/activos";
-    await fetch(url, {
+    const res = await fetch(url, {
       method: editId ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...form, valorAdquisicion: parseFloat(form.valorAdquisicion) || 0, valorActual: parseFloat(form.valorActual) || 0 }),
     });
+    setSaving(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar activo"); return; }
     await onRefresh();
     cancel();
-    setSaving(false);
   }
 
   async function eliminar(id: string) {
     if (!await confirm({ message: "¿Eliminar este activo del inventario?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar activo"); return; }
     await onRefresh();
   }
 
@@ -581,46 +590,44 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
           <p className="text-white text-sm font-semibold">{activos.length} activos registrados</p>
           <p className="text-gray-500 text-xs">Valor total actual: <span className="text-[#B3985B] font-semibold">{fmt(totalActual)}</span></p>
         </div>
-        {!showForm && (
-          <button onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY); }}
+        <button onClick={() => { setShowForm(true); setEditId(null); setForm(EMPTY); }}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg">
             + Agregar activo
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{editId ? "Editar activo" : "Nuevo activo"}</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <Inp label="Nombre del activo *" value={form.nombre} onChange={v => s("nombre", v)} />
-            </div>
-            <div>
-              <label className="text-[11px] text-gray-500 mb-1 block">Categoría</label>
-              <Combobox
-                value={form.categoria}
-                onChange={v => s("categoria", v)}
-                options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <Inp label="Fecha de adquisición" value={form.fechaAdquisicion} onChange={v => s("fechaAdquisicion", v)} type="date" />
-            <Inp label="Valor de adquisición" hint="Cuánto costó originalmente" value={form.valorAdquisicion} onChange={v => s("valorAdquisicion", v)} type="number" prefix="$" />
-            <Inp label="Valor actual (en libros)" hint="Valor presente estimado" value={form.valorActual} onChange={v => s("valorActual", v)} type="number" prefix="$" />
-            <div className="col-span-2">
-              <Inp label="Descripción / notas" value={form.descripcion} onChange={v => s("descripcion", v)} />
-            </div>
+      <Modal
+        open={showForm}
+        onClose={cancel}
+        title={editId ? "Editar activo" : "Nuevo activo"}
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div className="col-span-2">
+            <Inp label="Nombre del activo *" value={form.nombre} onChange={v => s("nombre", v)} />
           </div>
-          <div className="flex gap-2">
-            <button onClick={save} disabled={saving || !form.nombre}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
-              {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
-            </button>
-            <button onClick={cancel} className="text-gray-500 text-sm px-3">Cancelar</button>
+          <div>
+            <label className="text-[11px] text-gray-500 mb-1 block">Categoría</label>
+            <Combobox
+              value={form.categoria}
+              onChange={v => s("categoria", v)}
+              options={Object.entries(CAT_LABELS).map(([k, v]) => ({ value: k, label: v }))}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <Inp label="Fecha de adquisición" value={form.fechaAdquisicion} onChange={v => s("fechaAdquisicion", v)} type="date" />
+          <Inp label="Valor de adquisición" hint="Cuánto costó originalmente" value={form.valorAdquisicion} onChange={v => s("valorAdquisicion", v)} type="number" prefix="$" />
+          <Inp label="Valor actual (en libros)" hint="Valor presente estimado" value={form.valorActual} onChange={v => s("valorActual", v)} type="number" prefix="$" />
+          <div className="col-span-2">
+            <Inp label="Descripción / notas" value={form.descripcion} onChange={v => s("descripcion", v)} />
           </div>
         </div>
-      )}
+        <div className="flex gap-2 mt-4">
+          <button onClick={save} disabled={saving || !form.nombre}
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg">
+            {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
+          </button>
+        </div>
+      </Modal>
 
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
         {activos.length === 0 ? (
@@ -646,7 +653,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
                       <td className="px-4 py-3">
                         <p className="text-white text-sm font-medium">{a.nombre}</p>
                         {a.descripcion && <p className="text-gray-500 text-xs">{a.descripcion}</p>}
-                        {a.fechaAdquisicion && <p className="text-gray-600 text-[10px]">{new Date(a.fechaAdquisicion).toLocaleDateString("es-MX")}</p>}
+                        {a.fechaAdquisicion && <p className="text-gray-600 text-[10px]">{(() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })()}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded">{CAT_LABELS[a.categoria] ?? a.categoria}</span>
@@ -823,6 +830,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
   pagos: Pago[]; configData: ConfigData; onRefresh: () => void;
 }) {
   const confirm = useConfirm();
+  const toast = useToast();
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ montoAcordado: "", montoPagado: "", estado: "", notas: "" });
   const [saving, setSaving] = useState(false);
@@ -837,7 +845,7 @@ function HistorialTab({ pagos, configData, onRefresh }: {
 
   async function saveEdit() {
     setSaving(true);
-    await fetch(`/api/finanzas/hervam/pagos/${editId}`, {
+    const res = await fetch(`/api/finanzas/hervam/pagos/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -848,14 +856,16 @@ function HistorialTab({ pagos, configData, onRefresh }: {
         pagadoEn: editForm.estado === "PAGADO" ? new Date().toISOString() : null,
       }),
     });
+    setSaving(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
     await onRefresh();
     setEditId(null);
-    setSaving(false);
   }
 
   async function deletePago(id: string) {
     if (!await confirm({ message: "¿Eliminar este registro? No se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/finanzas/hervam/pagos/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar"); return; }
     await onRefresh();
   }
 

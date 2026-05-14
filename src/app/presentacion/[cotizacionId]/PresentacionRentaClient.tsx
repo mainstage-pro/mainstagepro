@@ -181,11 +181,13 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 function fmtDateShort(s: string | null | undefined) {
   if (!s) return null;
-  return new Date(s).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function groupByCategory(lineas: Linea[]) {

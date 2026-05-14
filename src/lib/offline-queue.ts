@@ -47,3 +47,18 @@ export function requestSync() {
     navigator.serviceWorker.controller.postMessage({ type: "SYNC_NOW" });
   }
 }
+
+// Limpiar toda la cola (descarta cambios pendientes)
+export async function clearQueue(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("queue", "readwrite");
+      tx.objectStore("queue").clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror    = (e) => reject((e.target as IDBRequest).error);
+    });
+  } catch {
+    // ignorar
+  }
+}

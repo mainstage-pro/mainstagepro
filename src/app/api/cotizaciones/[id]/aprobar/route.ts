@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-function diaSiguienteEvento(fecha: Date): Date {
+function proximoLunesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (8 - dow) % 7);
+  return d;
+}
+
+function proximoMiercolesTraEvento(fecha: Date): Date {
+  const d = new Date(fecha);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 1);
+  const dow = d.getDay();
+  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
   return d;
 }
 
@@ -61,7 +72,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   if (!cot) return NextResponse.json({ error: "Cotización no encontrada" }, { status: 404 });
   if (cot.proyecto) {
-    // Ya existe el proyecto, redirigir sin crear otro
+    // Ya existe el proyecto — asegurarse de que el trato esté en VENTA_CERRADA y redirigir
+    if (cot.trato && cot.trato.etapa !== "VENTA_CERRADA") {
+      await prisma.trato.update({ where: { id: cot.trato.id }, data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date() } });
+    }
     return NextResponse.json({ proyectoId: cot.proyecto.id, yaExistia: true });
   }
 
@@ -76,31 +90,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const hoy = new Date();
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  // ── Leer plan de pagos (o usar default 50/50) ──────────────────────────────
-  // Convención diasAntes:
-  //   > 0  → días ANTES del evento  (ej: 3 = 3 días antes)
-  //   = 0  → día del evento
-  //   < 0  → días DESPUÉS del evento (ej: -1 = 1 día después = día siguiente)
-  type PagoPlan = { concepto: string; porcentaje: number; diasAntes: number; tipoPago: string };
-  let cuotas: PagoPlan[];
-  try {
-    const plan = cot.planPagos ? JSON.parse(cot.planPagos) : null;
-    cuotas = (plan?.pagos && plan.pagos.length > 0)
-      ? plan.pagos
-      : [
-          { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
-          { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
-        ];
-  } catch {
-    cuotas = [
-      { concepto: `Anticipo 50% — `, porcentaje: 50, diasAntes: 30, tipoPago: "ANTICIPO" },
-      { concepto: `Liquidación 50% — `, porcentaje: 50, diasAntes: -1, tipoPago: "LIQUIDACION" },
-    ];
-  }
-
-  function fechaPago(diasAntes: number): Date {
-    // Siempre relativo al evento: positivo = antes, negativo = después
-    return new Date(fechaEvento.getTime() - diasAntes * 24 * 60 * 60 * 1000);
+  // fecha de compromiso: lunes siguiente al evento
+  function fechaCxC(): Date {
+    return proximoLunesTraEvento(fechaEvento);
   }
 
   // Equipos propios y externos de la cotización para copiar al proyecto
@@ -112,6 +104,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const lineasPersonal = cot.lineas.filter(
     (l) => l.tipo === "OPERACION_TECNICA" && l.rolTecnicoId
   );
+
+  // Plan de jornadas operativas (si existe, reemplaza lineasPersonal para crear slots)
+  type JornadaSlotPlan = { rolId: string; rolNombre: string; cantidad: number; nivel: string; jornada: string; tarifa: number };
+  type JornadaPlan = { id: string; fecha: string; tipo: string; slots: JornadaSlotPlan[] };
+  let jornadasPlan: JornadaPlan[] = [];
+  try { jornadasPlan = cot.jornadasPlan ? JSON.parse(cot.jornadasPlan) : []; } catch { jornadasPlan = []; }
 
   // Ejecutar todo en una transacción
   let proyecto;
@@ -127,6 +125,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
         encargadoId: cot.creadaPorId,
         nombre: cot.nombreEvento || `Proyecto ${cot.numeroCotizacion}`,
         estado: "PLANEACION",
+        zona: cot.zonaEvento ?? "LOCAL",
         tipoEvento: cot.tipoEvento || cot.trato.tipoEvento || "OTRO",
         tipoServicio: cot.tipoServicio || cot.trato.tipoServicio,
         recoleccionStatus: (cot.tipoServicio || cot.trato.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
@@ -211,7 +210,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0
     );
     if (lineasExternas.length > 0) {
-      const fechaCxP = diaSiguienteEvento(fechaEvento);
+      const fechaCxP = proximoMiercolesTraEvento(fechaEvento);
       await tx.cuentaPagar.createMany({
         data: lineasExternas.map((l) => ({
           tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",
@@ -226,20 +225,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       });
     }
 
-    // 3. Expandir personal de la cotización: cada línea con cantidad N → N filas individuales
-    if (lineasPersonal.length > 0) {
-      const personalData = lineasPersonal.flatMap((l) =>
-        Array.from({ length: Math.max(1, Math.round(l.cantidad)) }, () => ({
-          proyectoId: proy.id,
-          rolTecnicoId: l.rolTecnicoId!,
-          nivel: l.nivel ?? null,
-          jornada: l.jornada ?? null,
-          tarifaAcordada: l.precioUnitario > 0 ? l.precioUnitario : null,
-          confirmado: false,
-        }))
-      );
-      await tx.proyectoPersonal.createMany({ data: personalData });
-    }
+    // 3. Personal: se deja en blanco — el coordinador lo arma desde el proyecto
+    //    usando las sugerencias y presupuesto de la cotización como referencia.
 
     // 4. Crear checklist base según tipo de servicio
     const tipoServicio = cot.tipoServicio || cot.trato.tipoServicio;
@@ -266,69 +253,19 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       } catch { /* ideasReferencias es texto plano, no JSON */ }
     }
 
-    // 5 & 6. Crear CxC según plan de pagos
-    let acumulado = 0;
-    for (let i = 0; i < cuotas.length; i++) {
-      const cuota = cuotas[i];
-      const esUltima = i === cuotas.length - 1;
-      const monto = esUltima
-        ? Math.round((cot.granTotal - acumulado) * 100) / 100
-        : Math.round(cot.granTotal * (cuota.porcentaje / 100) * 100) / 100;
-      acumulado += monto;
-      const concepto = cuota.concepto.endsWith(" — ")
-        ? `${cuota.concepto}${proy.nombre}`
-        : cuota.concepto || `Pago ${i + 1} — ${proy.nombre}`;
-      await tx.cuentaCobrar.create({
-        data: {
-          clienteId: cot.clienteId,
-          proyectoId: proy.id,
-          cotizacionId: cot.id,
-          concepto,
-          tipoPago: cuota.tipoPago || (i === 0 ? "ANTICIPO" : "LIQUIDACION"),
-          monto,
-          fechaCompromiso: fechaPago(cuota.diasAntes),
-          estado: "PENDIENTE",
-        },
-      });
-    }
-
-    // 5b. Crear gastos operativos desde cotización (comidas, transporte, hospedaje)
-    const gastosOpData: Array<{
-      proyectoId: string; tipo: string; concepto: string; monto: number; cantidad: number; notas: string | null;
-    }> = [];
-    if ((cot.subtotalComidas ?? 0) > 0) {
-      gastosOpData.push({
+    // 5. Crear una única CxC por el total del evento
+    await tx.cuentaCobrar.create({
+      data: {
+        clienteId: cot.clienteId,
         proyectoId: proy.id,
-        tipo: "COMIDA",
-        concepto: `Alimentación producción — ${cot.diasComidas} día${cot.diasComidas !== 1 ? "s" : ""}`,
-        monto: cot.subtotalComidas,
-        cantidad: 1,
-        notas: null,
-      });
-    }
-    if ((cot.subtotalTransporte ?? 0) > 0) {
-      gastosOpData.push({
-        proyectoId: proy.id,
-        tipo: "TRANSPORTE",
-        concepto: `Transporte producción — ${cot.diasTransporte} día${cot.diasTransporte !== 1 ? "s" : ""}`,
-        monto: cot.subtotalTransporte,
-        cantidad: 1,
-        notas: null,
-      });
-    }
-    if ((cot.subtotalHospedaje ?? 0) > 0) {
-      gastosOpData.push({
-        proyectoId: proy.id,
-        tipo: "HOSPEDAJE",
-        concepto: `Hospedaje producción — ${cot.diasHospedaje} día${cot.diasHospedaje !== 1 ? "s" : ""}`,
-        monto: cot.subtotalHospedaje,
-        cantidad: 1,
-        notas: null,
-      });
-    }
-    if (gastosOpData.length > 0) {
-      await tx.gastoOperativo.createMany({ data: gastosOpData });
-    }
+        cotizacionId: cot.id,
+        concepto: `Total — ${proy.nombre}`,
+        tipoPago: "TOTAL",
+        monto: cot.granTotal,
+        fechaCompromiso: fechaCxC(),
+        estado: "PENDIENTE",
+      },
+    });
 
     // 7. Entrada en bitácora
     await tx.proyectoBitacora.create({

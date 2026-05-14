@@ -4,9 +4,12 @@ import { formatCurrency } from "@/lib/cotizador";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
+import { GraficaFunnelVentas } from "@/components/GraficaFunnelVentas";
+import { GraficaPublicaciones } from "@/components/GraficaPublicaciones";
+import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
-import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import TareasHoyWidget from "@/components/TareasHoyWidget";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -28,7 +31,7 @@ export default async function DashboardPage() {
   }
 
   const ahora = new Date();
-  const inicioDeHoy = new Date(ahora); inicioDeHoy.setHours(0, 0, 0, 0);
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const en7dias   = new Date(ahora.getTime() + 7 * 86400000);
@@ -52,9 +55,10 @@ export default async function DashboardPage() {
     nominaPendiente,
     // ── ADMINISTRACIÓN ──────────────────────────
     cxcPendiente,
-    cxcVencidas,
+    cxcVencidaAgg,
     cxcVence7dias,
     cxpPendiente,
+    cxpVencidaAgg,
     cxpVence7dias,
     movimientosMes,
     cuentasBancarias,
@@ -65,11 +69,6 @@ export default async function DashboardPage() {
     pubsProximas,
     // ── COTIZACIONES SIN RESPUESTA ───────────────
     cotizacionesSinRespuesta,
-    // ── CAPITAL ─────────────────────────────────
-    hervamPagoMes,
-    hervamConfig,
-    sociosReporteMes,
-    sociosReportesPendientes,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -122,14 +121,15 @@ export default async function DashboardPage() {
 
     // ── ADMINISTRACIÓN ──────────────────────────
     prisma.cuentaCobrar.aggregate({
-      _sum: { monto: true },
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
-    prisma.cuentaCobrar.count({
+    prisma.cuentaCobrar.aggregate({
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       include: { cliente: { select: { nombre: true } }, empresa: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
       take: 4,
@@ -138,8 +138,12 @@ export default async function DashboardPage() {
       _sum: { monto: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
+    prisma.cuentaPagar.aggregate({
+      _sum: { monto: true },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
+    }),
     prisma.cuentaPagar.findMany({
-      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { gte: inicioDeHoy, lte: en7dias } },
       orderBy: { fechaCompromiso: "asc" },
       take: 4,
     }),
@@ -159,7 +163,7 @@ export default async function DashboardPage() {
 
     // ── ESTA SEMANA ─────────────────────────────
     prisma.proyecto.findMany({
-      where: { estado: { in: ["PLANEACION","CONFIRMADO","EN_CURSO"] }, fechaEvento: { gte: ahora, lte: en7dias } },
+      where: { estado: { in: ["PLANEACION","CONFIRMADO","EN_CURSO"] }, fechaEvento: { gte: inicioDeHoy, lte: en7dias } },
       include: {
         cliente: { select: { nombre: true } },
         personal: { where: { confirmado: false }, select: { id: true, tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } } },
@@ -199,19 +203,6 @@ export default async function DashboardPage() {
       take: 8,
     }),
 
-    // ── CAPITAL ─────────────────────────────────
-    prisma.hervamPago.findFirst({
-      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
-    }),
-    prisma.hervamConfig.findFirst(),
-    prisma.socioReporte.aggregate({
-      _sum: { totalFacturado: true, totalSocio: true, totalMainstage: true },
-      where: { mes: ahora.getMonth() + 1, anio: ahora.getFullYear() },
-    }),
-    prisma.socioReporte.count({
-      where: { estado: { not: "PAGADO" } },
-    }),
-
   ]);
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
@@ -238,7 +229,12 @@ export default async function DashboardPage() {
          - c.movimientosSalida.reduce((s, m)  => s + m.monto, 0),
   }));
   const totalDisponible = saldosPorCuenta.reduce((s, c) => s + c.saldo, 0);
+  const totalCxC        = (cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0);
+  const cxcVencMonto    = (cxcVencidaAgg._sum.monto ?? 0) - (cxcVencidaAgg._sum.montoCobrado ?? 0);
+  const cxcProxMonto    = totalCxC - cxcVencMonto;
   const totalCxP        = cxpPendiente._sum.monto ?? 0;
+  const cxpVencMonto    = cxpVencidaAgg._sum.monto ?? 0;
+  const cxpProxMonto    = totalCxP - cxpVencMonto;
   const disponibleNeto  = totalDisponible - totalCxP;
 
   const pubsMap: Record<string, number> = {};
@@ -256,6 +252,25 @@ export default async function DashboardPage() {
     CANCELADO:  "bg-red-900/40 text-red-400",
   };
 
+  // ── Abandono ───────────────────────────────────────────────────────────────
+  const limite15 = new Date(ahora.getTime() - 15 * 86400000);
+  const limite21 = new Date(ahora.getTime() - 21 * 86400000);
+  const [tareasAbandonadas, tratosEnfriados, tratosCriticos] = await Promise.all([
+    prisma.tarea.count({
+      where: { estado: { notIn: ["COMPLETADA", "CANCELADA"] }, parentId: null, createdAt: { lte: limite15 } },
+    }),
+    prisma.trato.count({
+      where: { etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] }, createdAt: { lte: limite15 } },
+    }),
+    prisma.trato.count({
+      where: {
+        etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
+        createdAt: { lte: limite21 },
+        fechaEventoEstimada: { lte: en7dias },
+      },
+    }),
+  ]);
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-8">
 
@@ -269,72 +284,6 @@ export default async function DashboardPage() {
           + Nuevo trato
         </Link>
       </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          CAPITAL
-      ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="CAPITAL" href="/socios">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* HERVAM */}
-          <Link href="/hervam" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Pulso HERVAM</p>
-              {hervamPagoMes ? (
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                  hervamPagoMes.estado === "PAGADO"   ? "text-green-400 bg-green-900/20 border-green-700/40" :
-                  hervamPagoMes.estado === "PARCIAL"  ? "text-yellow-400 bg-yellow-900/20 border-yellow-700/40" :
-                  hervamPagoMes.estado === "DIFERIDO" ? "text-orange-400 bg-orange-900/20 border-orange-700/40" :
-                                                        "text-red-400 bg-red-900/20 border-red-700/40"
-                }`}>{hervamPagoMes.estado}</span>
-              ) : (
-                <span className="text-[10px] text-gray-600">Sin registro</span>
-              )}
-            </div>
-            <div className="px-5 py-4 flex items-center justify-between">
-              <div>
-                <p className="text-gray-500 text-xs mb-0.5">Pago acordado {mes}</p>
-                <p className="text-2xl font-semibold text-white group-hover:text-[#B3985B] transition-colors">
-                  {hervamPagoMes ? formatCurrency(hervamPagoMes.montoAcordado) : "—"}
-                </p>
-              </div>
-              {hervamPagoMes && hervamPagoMes.montoPagado > 0 && hervamPagoMes.estado !== "PAGADO" && (
-                <div className="text-right">
-                  <p className="text-gray-600 text-[10px]">Pagado</p>
-                  <p className="text-green-400 text-sm font-semibold">{formatCurrency(hervamPagoMes.montoPagado)}</p>
-                </div>
-              )}
-            </div>
-          </Link>
-
-          {/* Socios de Activos */}
-          <Link href="/socios" className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#333] transition-colors group">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Socios de Activos</p>
-              {sociosReportesPendientes > 0 && (
-                <span className="text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-700/40 px-2 py-0.5 rounded font-bold">
-                  {sociosReportesPendientes} pendiente{sociosReportesPendientes !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-            <div className="px-5 py-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Facturado</p>
-                <p className="text-white font-semibold text-lg group-hover:text-[#B3985B] transition-colors">
-                  {formatCurrency(sociosReporteMes._sum.totalFacturado ?? 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">A socios</p>
-                <p className="text-white font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalSocio ?? 0)}</p>
-              </div>
-              <div>
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Mainstage</p>
-                <p className="text-[#B3985B] font-semibold text-lg">{formatCurrency(sociosReporteMes._sum.totalMainstage ?? 0)}</p>
-              </div>
-            </div>
-          </Link>
-        </div>
-      </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
@@ -356,13 +305,15 @@ export default async function DashboardPage() {
               {proyectosEstaSemana.length === 0 ? (
                 <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
               ) : proyectosEstaSemana.map(p => {
-                const dias = Math.ceil((new Date(new Date(p.fechaEvento!).toISOString().substring(0, 10) + "T12:00:00Z").getTime() - ahora.getTime()) / 86400000);
+                const hoyStrEvt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrEvt = p.fechaEvento!.toISOString().substring(0, 10);
+                const dias = Math.round((new Date(evStrEvt).getTime() - new Date(hoyStrEvt).getTime()) / 86400000);
                 const sinConfirmar = p.personal.length;
                 return (
                   <a key={p.id} href={`/proyectos/${p.id}`} className="block px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-white text-xs font-medium truncate">{p.nombre}</p>
-                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias <= 1 ? "bg-red-900/40 text-red-300" : dias <= 3 ? "bg-yellow-900/40 text-yellow-300" : "bg-[#1e1e1e] text-gray-400"}`}>
+                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias === 0 ? "bg-green-900/40 text-green-300" : dias === 1 ? "bg-yellow-900/40 text-yellow-300" : dias <= 3 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1e1e1e] text-gray-400"}`}>
                         {dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : `${dias}d`}
                       </span>
                     </div>
@@ -452,35 +403,46 @@ export default async function DashboardPage() {
                     </p>
                   </div>
                 ))}
+                <div className="flex items-center justify-between px-5 py-3 bg-[#0d0d0d]">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Total disponible</p>
+                  <p className={`text-sm font-bold ${totalDisponible >= 0 ? "text-[#B3985B]" : "text-red-400"}`}>
+                    {formatCurrency(totalDisponible)}
+                  </p>
+                </div>
               </div>
             )}
           </div>
 
           {/* CxC */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por cobrar</p>
-              <Link href="/finanzas/cxc" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+              <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
             </div>
-            <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-gray-500 text-xs">Total pendiente</p>
-              <p className="text-white font-bold">{formatCurrency(cxcPendiente._sum.monto ?? 0)}</p>
+            <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+                <p className={`text-sm font-bold ${cxcVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxcVencMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+                <p className="text-sm font-bold text-[#B3985B]">{formatCurrency(cxcProxMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+                <p className="text-sm font-bold text-white">{formatCurrency(totalCxC)}</p>
+              </div>
             </div>
-            {cxcVencidas > 0 && (
-              <Link href="/finanzas/cxc" className="px-5 py-3 flex items-center justify-between bg-red-900/10 hover:bg-red-900/20 transition-colors">
-                <p className="text-red-400 text-xs font-medium">Vencidas → ver detalle</p>
-                <p className="text-red-400 font-bold text-sm">{cxcVencidas}</p>
-              </Link>
-            )}
             <div className="divide-y divide-[#1a1a1a]">
               {cxcVence7dias.length === 0 ? (
-                <p className="text-gray-600 text-xs px-5 py-3">Sin vencimientos próximos</p>
+                <p className="text-gray-600 text-xs px-4 py-3">Sin vencimientos próximos</p>
               ) : cxcVence7dias.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-2.5">
-                  <p className="text-white text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
-                  <p className="text-yellow-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
-                  </p>
+                <div key={i} className="flex items-center justify-between px-4 py-2">
+                  <p className="text-gray-300 text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <p className="text-gray-600 text-[11px]">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}</p>
+                    <p className="text-green-400 text-xs font-semibold">{formatCurrency(c.monto)}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -488,23 +450,34 @@ export default async function DashboardPage() {
 
           {/* CxP */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por pagar</p>
-              <Link href="/finanzas/cxp" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+              <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
             </div>
-            <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-              <p className="text-gray-500 text-xs">Total pendiente</p>
-              <p className="text-white font-bold">{formatCurrency(totalCxP)}</p>
+            <div className="grid grid-cols-3 divide-x divide-[#1a1a1a] border-b border-[#1a1a1a]">
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Vencido</p>
+                <p className={`text-sm font-bold ${cxpVencMonto > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxpVencMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Próximo</p>
+                <p className="text-sm font-bold text-[#B3985B]">{formatCurrency(cxpProxMonto)}</p>
+              </div>
+              <div className="px-3 py-3">
+                <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Total</p>
+                <p className="text-sm font-bold text-white">{formatCurrency(totalCxP)}</p>
+              </div>
             </div>
             <div className="divide-y divide-[#1a1a1a]">
               {cxpVence7dias.length === 0 ? (
-                <p className="text-gray-600 text-xs px-5 py-3">Sin vencimientos próximos</p>
+                <p className="text-gray-600 text-xs px-4 py-3">Sin vencimientos próximos</p>
               ) : cxpVence7dias.map((c, i) => (
-                <div key={i} className="flex items-center justify-between px-5 py-2.5">
-                  <p className="text-white text-xs truncate">{c.concepto ?? "Pago"}</p>
-                  <p className="text-orange-400 text-xs font-medium ml-2 shrink-0">
-                    {new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}
-                  </p>
+                <div key={i} className="flex items-center justify-between px-4 py-2">
+                  <p className="text-gray-300 text-xs truncate">{c.concepto ?? "Pago"}</p>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <p className="text-gray-600 text-[11px]">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}</p>
+                    <p className="text-red-400 text-xs font-semibold">{formatCurrency(c.monto)}</p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -531,39 +504,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Barra de estados del mes */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-4">Estado del mes</p>
-            {totalPubsMes === 0 ? (
-              <div className="text-center py-4">
-                <p className="text-gray-600 text-sm">Sin publicaciones este mes</p>
-                <Link href="/marketing/calendario" className="text-[#B3985B] text-xs hover:underline mt-1 block">Agregar →</Link>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {[
-                  { estado: "PUBLICADO",  label: "Publicado",  color: "bg-green-500" },
-                  { estado: "LISTO",      label: "Listo",      color: "bg-yellow-500" },
-                  { estado: "EN_PROCESO", label: "En proceso", color: "bg-blue-500" },
-                  { estado: "PENDIENTE",  label: "Pendiente",  color: "bg-gray-600" },
-                  { estado: "CANCELADO",  label: "Cancelado",  color: "bg-red-700" },
-                ].filter(e => pubsMap[e.estado] > 0).map(({ estado, label, color }) => {
-                  const count = pubsMap[estado] ?? 0;
-                  return (
-                    <div key={estado}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-gray-400 text-xs">{label}</span>
-                        <span className="text-white text-xs font-semibold">{count}</span>
-                      </div>
-                      <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div className={`h-full ${color} rounded-full`} style={{ width: `${(count / totalPubsMes) * 100}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <GraficaPublicaciones pubsMap={pubsMap} total={totalPubsMes} />
 
           {/* Próximas publicaciones */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
@@ -579,7 +520,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0 flex-1">
                     <p className="text-white text-sm truncate">{p.tipo?.nombre ?? p.formato ?? "Sin tipo"}</p>
                     <p className="text-gray-500 text-xs">
-                      {new Date(p.fecha).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })}
+                      {(() => { const [y, m, d] = p.fecha.toISOString().substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }); })()}
                     </p>
                   </div>
                   <span className={`shrink-0 ml-3 text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_PUB_COLORS[p.estado] ?? "bg-gray-800 text-gray-400"}`}>
@@ -665,36 +606,7 @@ export default async function DashboardPage() {
           </div>
         )}
 
-        {/* Funnel */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
-          <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-3">Funnel</p>
-          {[
-            { etapa: "DESCUBRIMIENTO", label: "Descubrimiento", color: "bg-blue-500" },
-            { etapa: "OPORTUNIDAD",    label: "Oportunidad",    color: "bg-[#B3985B]" },
-            { etapa: "VENTA_CERRADA",  label: "Cerradas",       color: "bg-green-500" },
-            { etapa: "VENTA_PERDIDA",  label: "Perdidas",       color: "bg-red-600" },
-          ].map(({ etapa, label, color }) => {
-            const count    = etapasMap[etapa] ?? 0;
-            const maxCount = Math.max(...Object.values(etapasMap), 1);
-            return (
-              <div key={etapa}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-gray-400 text-xs">{label}</span>
-                  <span className="text-white text-sm font-semibold">{count}</span>
-                </div>
-                <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                  <div className={`h-full ${color} rounded-full`} style={{ width: `${(count / maxCount) * 100}%` }} />
-                </div>
-              </div>
-            );
-          })}
-          {tratosSeguimientoVencido > 0 && (
-            <Link href="/crm/tratos" className="flex items-center gap-2 mt-2 pt-3 border-t border-[#1a1a1a] text-xs text-yellow-400 hover:text-yellow-300 transition-colors">
-              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
-              {tratosSeguimientoVencido} trato{tratosSeguimientoVencido !== 1 ? "s" : ""} con seguimiento vencido
-            </Link>
-          )}
-        </div>
+        <GraficaFunnelVentas etapasMap={etapasMap} tratosSeguimientoVencido={tratosSeguimientoVencido} />
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
@@ -707,7 +619,7 @@ export default async function DashboardPage() {
           <KpiCard label="Completados" value={estadosMap.COMPLETADO ?? 0} sub="histórico" animate={{ amount: estadosMap.COMPLETADO ?? 0 }} href="/proyectos" />
           <KpiCard label="Equipos en mant." value={equiposMantenimiento}
             sub="fuera de servicio"
-            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} href="/inventario" />
+            subColor={equiposMantenimiento > 0 ? "text-yellow-400" : "text-gray-500"} href="/inventario/mantenimiento" />
           <KpiCard label="Nómina pendiente" value={formatCurrency(nominaPendiente._sum.monto ?? 0)}
             sub="por pagar"
             subColor={(nominaPendiente._sum.monto ?? 0) > 0 ? "text-yellow-400" : "text-gray-500"} href="/rrhh/nomina" />
@@ -715,29 +627,7 @@ export default async function DashboardPage() {
 
         {/* Estados + próximos eventos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Estados */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold mb-4">Por estado</p>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { estado: "PLANEACION", label: "Planeación",  color: "text-blue-400" },
-                { estado: "CONFIRMADO", label: "Confirmado",  color: "text-green-400" },
-                { estado: "EN_CURSO",   label: "En curso",    color: "text-yellow-400" },
-                { estado: "COMPLETADO", label: "Completados", color: "text-gray-400" },
-              ].map(({ estado, label, color }) => (
-                <Link key={estado} href="/proyectos" className="text-center bg-[#0d0d0d] rounded-lg py-3 hover:bg-[#151515] transition-colors block">
-                  <p className={`text-2xl font-bold ${color}`}>{estadosMap[estado] ?? 0}</p>
-                  <p className="text-gray-600 text-xs mt-0.5">{label}</p>
-                </Link>
-              ))}
-            </div>
-            {proyectosSinPersonal > 0 && (
-              <Link href="/proyectos" className="flex items-center gap-2 mt-4 pt-3 border-t border-[#1a1a1a] text-xs text-red-400 hover:text-red-300 transition-colors">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                {proyectosSinPersonal} proyecto{proyectosSinPersonal !== 1 ? "s" : ""} próximo{proyectosSinPersonal !== 1 ? "s" : ""} sin personal
-              </Link>
-            )}
-          </div>
+          <GraficaProyectos estadosMap={estadosMap} proyectosSinPersonal={proyectosSinPersonal} />
 
           {/* Próximos eventos */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
@@ -749,7 +639,9 @@ export default async function DashboardPage() {
               {proyectosProximos.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-6">Sin eventos próximos</p>
               ) : proyectosProximos.map(p => {
-                const dias = Math.ceil((new Date(new Date(p.fechaEvento).toISOString().substring(0, 10) + "T12:00:00Z").getTime() - ahora.getTime()) / 86400000);
+                const hoyStrPrx = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrPrx = p.fechaEvento.toISOString().substring(0, 10);
+                const dias = Math.round((new Date(evStrPrx).getTime() - new Date(hoyStrPrx).getTime()) / 86400000);
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`}
                     className="flex items-center justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
@@ -778,11 +670,47 @@ export default async function DashboardPage() {
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          OPERACIONES
+          ALERTAS DE ABANDONO
       ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="OPERACIONES" href="/operaciones/equipo">
-        <TareasPendientesWidget />
+      {(tareasAbandonadas > 0 || tratosEnfriados > 0 || tratosCriticos > 0) && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <p className="text-[11px] font-bold text-red-500/70 uppercase tracking-widest">Requieren atención</p>
+            <div className="flex-1 h-px bg-red-900/20" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {tareasAbandonadas > 0 && (
+              <Link href="/operaciones?vista=abandonadas" className="bg-[#111] border border-red-900/30 rounded-xl p-4 hover:border-red-800/50 transition-colors">
+                <p className="text-[10px] text-red-500/60 uppercase tracking-wider font-semibold mb-2">Tareas +15 días abiertas</p>
+                <p className="text-2xl font-bold text-red-400">{tareasAbandonadas}</p>
+                <p className="text-xs text-[#555] mt-1">sin completarse</p>
+              </Link>
+            )}
+            {tratosEnfriados > 0 && (
+              <Link href="/crm/tratos?filtro=enfriados" className="bg-[#111] border border-yellow-900/30 rounded-xl p-4 hover:border-yellow-800/50 transition-colors">
+                <p className="text-[10px] text-yellow-500/60 uppercase tracking-wider font-semibold mb-2">Tratos +15 días sin cerrar</p>
+                <p className="text-2xl font-bold text-yellow-400">{tratosEnfriados}</p>
+                <p className="text-xs text-[#555] mt-1">en pipeline activo</p>
+              </Link>
+            )}
+            {tratosCriticos > 0 && (
+              <Link href="/crm/tratos" className="bg-[#111] border border-red-900/40 rounded-xl p-4 hover:border-red-800/60 transition-colors">
+                <p className="text-[10px] text-red-500/70 uppercase tracking-wider font-semibold mb-2">Tratos críticos</p>
+                <p className="text-2xl font-bold text-red-300">{tratosCriticos}</p>
+                <p className="text-xs text-[#555] mt-1">+21d con evento próximo</p>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          GESTIÓN DE TAREAS POR ÁREA
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="GESTIÓN DE TAREAS" href="/operaciones">
+        <TareasHoyWidget />
       </Section>
+
     </div>
   );
 }

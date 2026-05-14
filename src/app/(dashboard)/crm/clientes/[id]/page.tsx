@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
+import { BackButton } from "@/components/BackButton";
 
 interface PrecioEspecial {
   equipoId: string;
@@ -84,7 +85,8 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 export default function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -161,11 +163,17 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     if (!selEqId || !nuevoPrecio) return;
     setGuardandoPrecio(true);
     const precioOriginal = equiposCatalogo.find(e => e.id === selEqId)?.precioRenta ?? null;
-    await fetch(`/api/clientes/${id}/precios-equipos`, {
+    const resPut = await fetch(`/api/clientes/${id}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId: selEqId, precio: parseFloat(nuevoPrecio), precioOriginal, nota: nuevaNota || null }),
     });
+    if (!resPut.ok) {
+      const d = await resPut.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGuardandoPrecio(false);
+      return;
+    }
     // Recargar
     const [preciosData] = await Promise.all([
       fetch(`/api/clientes/${id}/precios-equipos`).then((r) => r.json()),
@@ -195,18 +203,28 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   }
 
   async function eliminarPrecioEspecial(equipoId: string) {
-    await fetch(`/api/clientes/${id}/precios-equipos?equipoId=${equipoId}`, { method: "DELETE" });
+    const res = await fetch(`/api/clientes/${id}/precios-equipos?equipoId=${equipoId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setPreciosEspeciales((prev) => prev.filter((p) => p.equipoId !== equipoId));
   }
 
   async function guardarEdicionInline(equipoId: string) {
     const precio = parseFloat(editValor);
     if (isNaN(precio)) return;
-    await fetch(`/api/clientes/${id}/precios-equipos`, {
+    const res = await fetch(`/api/clientes/${id}/precios-equipos`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ equipoId, precio }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setPreciosEspeciales((prev) =>
       prev.map((p) => (p.equipoId === equipoId ? { ...p, precio } : p))
     );
@@ -220,6 +238,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     setSaving(true);
     formTimer.current = setTimeout(async () => {
       const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
       const d = await res.json();
       setCliente(prev => prev ? { ...prev, ...d.cliente } : prev);
       setAutoSaved(true); setSaving(false);
@@ -231,6 +255,12 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
     if (formTimer.current) clearTimeout(formTimer.current);
     setSaving(true);
     const res = await fetch(`/api/clientes/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     const d = await res.json();
     setCliente((prev) => prev ? { ...prev, ...d.cliente } : prev);
     formLoaded.current = false;
@@ -266,6 +296,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">

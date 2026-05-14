@@ -1,8 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const GOLD  = "#B3985B";
-const WA    = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
+const GOLD = "#B3985B";
+const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
+
+const HERO_SLIDES = [
+  { src: "/images/presentacion/musicales/Musicales-016.jpg",        label: "Musicales" },
+  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  label: "Sociales" },
+  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
+];
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useReveal(threshold = 0.12) {
@@ -76,9 +82,16 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
   );
 }
 
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
-  const scrolled = useScrollHeader();
+  const scrolled  = useScrollHeader();
+  const [heroIdx, setHeroIdx] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % HERO_SLIDES.length), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   return (
     <div className="bg-[#080808] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
@@ -108,30 +121,60 @@ export default function ServiciosClient() {
         </div>
       </nav>
 
-      {/* ── Hero ── */}
+      {/* ── Hero con slideshow ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Background image */}
-        <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/presentacion/hero-festival.png" alt="" draggable={false}
-               className="w-full h-full object-cover"
-               style={{ animation: "kenBurns 12s ease forwards" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.3) 0%, rgba(8,8,8,0.5) 40%, rgba(8,8,8,0.85) 80%, #080808 100%)" }} />
+        {/* Slideshow */}
+        {HERO_SLIDES.map((slide, i) => (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={slide.src}
+            src={slide.src}
+            alt=""
+            draggable={false}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{
+              opacity: i === heroIdx ? 1 : 0,
+              transform: i === heroIdx ? "scale(1.04)" : "scale(1)",
+              transition: "opacity 1.4s ease-in-out, transform 8s ease-out",
+              zIndex: i === heroIdx ? 1 : 0,
+            }}
+          />
+        ))}
+
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.25) 0%, rgba(8,8,8,0.45) 40%, rgba(8,8,8,0.82) 80%, #080808 100%)" }} />
+
+        {/* Slide type indicator */}
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+          {HERO_SLIDES.map((s, i) => (
+            <button
+              key={s.label}
+              onClick={() => setHeroIdx(i)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] tracking-widest uppercase transition-all duration-500"
+              style={{
+                background: i === heroIdx ? `${GOLD}25` : "transparent",
+                border: `1px solid ${i === heroIdx ? GOLD : "rgba(255,255,255,0.15)"}`,
+                color: i === heroIdx ? GOLD : "rgba(255,255,255,0.4)",
+              }}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+        <div className="relative z-20 text-center px-6 max-w-4xl mx-auto">
           <p className="text-[#B3985B] text-xs font-semibold tracking-[0.28em] uppercase mb-6"
              style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
             Mainstage Pro · Soluciones Audiovisuales
           </p>
           <h1 className="font-bold text-white leading-[1.0]"
               style={{ fontSize: "clamp(2.8rem,8vw,7rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
-            La técnica que hace<br />
-            <span style={{ color: GOLD }}>que todo funcione.</span>
+            Todo resuelto.<br />
+            <span style={{ color: GOLD }}>Tú solo disfruta.</span>
           </h1>
           <p className="text-white/60 mt-8 max-w-lg mx-auto"
              style={{ fontSize: "clamp(1rem,2vw,1.15rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Audio, luz, video y operadores. Un solo equipo. Desde 2019.
+            Audio, iluminación, video y operadores expertos. Un solo equipo que lo maneja todo — antes, durante y después de tu evento.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
@@ -148,7 +191,7 @@ export default function ServiciosClient() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40"
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40 z-20"
              style={{ animation: "fadeUp 1s ease forwards 1.2s" }}>
           <span className="text-xs tracking-[0.18em] uppercase text-white/50">Scroll</span>
           <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent" />
@@ -160,12 +203,12 @@ export default function ServiciosClient() {
         <R>
           <h2 className="font-bold text-white leading-[1.1]"
               style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
-            No somos un proveedor<br />
-            <span style={{ color: GOLD }}>más de equipo.</span>
+            Nuestro trabajo es que<br />
+            <span style={{ color: GOLD }}>tú no tengas que preocuparte.</span>
           </h2>
           <p className="text-white/50 mt-6 max-w-xl" style={{ fontSize: "clamp(1rem,1.8vw,1.15rem)" }}>
-            Somos el equipo técnico detrás de más de 750 eventos.<br className="hidden sm:block" />
-            Un solo responsable para que tú te enfoques en lo que importa.
+            Técnica impecable, operadores que saben lo que hacen y un solo responsable para cualquier cosa.
+            Así de simple.
           </p>
         </R>
       </section>
@@ -175,7 +218,7 @@ export default function ServiciosClient() {
         <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-10 sm:gap-4">
           <StatCount target={7}   suffix="+"  label="Años de experiencia" />
           <StatCount target={750} suffix="+"  label="Eventos realizados"  />
-          <StatCount target={3}   suffix=""   label="Zonas de servicio"   />
+          <StatCount target={5}   suffix=""   label="Zonas de servicio"   />
           <StatCount target={100} suffix="%"  label="Compromiso con cada evento" />
         </div>
       </section>
@@ -305,10 +348,10 @@ export default function ServiciosClient() {
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { title: "7 años en campo.", body: "Sabemos qué puede pasar. Y cómo anticiparlo." },
-              { title: "Operadores reales.", body: "Trabajan en eventos constantemente. Sin improvisar." },
-              { title: "Puntuales, siempre.", body: "Montados y calibrados antes del primer invitado." },
-              { title: "Un responsable.", body: "Cualquier ajuste, antes o durante. Una llamada." },
+              { title: "Llegas a disfrutar, no a resolver.", body: "Anticipamos cada detalle técnico antes del evento. Tú te enfocas en tus invitados." },
+              { title: "Operadores que viven en escena.",    body: "No enviamos asistentes sin experiencia. El que operó cientos de eventos es el que opera el tuyo." },
+              { title: "Todo listo antes del primero.",      body: "Sistema montado y calibrado antes de que llegue el primer invitado. Sin excusas." },
+              { title: "Una llamada lo resuelve todo.",      body: "Cualquier ajuste, cambio o emergencia: un solo responsable, antes y durante el evento." },
             ].map((item, i) => (
               <R key={item.title} delay={i * 90}>
                 <div className="rounded-2xl p-6 h-full"
@@ -330,23 +373,22 @@ export default function ServiciosClient() {
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Cómo trabajamos</p>
             <h2 className="font-bold text-white leading-tight mb-16"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              De cero a evento impecable —<br />en seis pasos
+              De cero a evento impecable —<br />en cinco pasos
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 mb-14">
             {[
-              { n: "1", title: "Contáctanos", body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
-              { n: "2", title: "Levantamiento técnico", body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
+              { n: "1", title: "Contáctanos",            body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
+              { n: "2", title: "Levantamiento técnico",  body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
               { n: "3", title: "Cotización personalizada", body: "Clara, sin letra chica. Ajustamos lo que necesites." },
               { n: "4", title: "Confirmación y reserva", body: "Contrato, anticipo y la fecha bloqueada en nuestra agenda." },
-              { n: "5", title: "Coordinación previa", body: "Revisamos el programa contigo. Llegamos listos." },
-              { n: "6", title: "Tú disfrutas.", body: "Montaje, operación y cierre. Todo en nuestras manos." },
+              { n: "5", title: "Coordinación previa",    body: "Revisamos el programa contigo. Llegamos listos para ejecutar." },
             ].map((step, i) => (
               <R key={step.n} delay={i * 80}>
                 <div className="flex gap-6">
                   <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-                       style={{ background: i === 5 ? GOLD : "rgba(179,152,91,0.1)", color: i === 5 ? "#000" : GOLD, border: `1px solid ${GOLD}25` }}>
+                       style={{ background: "rgba(179,152,91,0.1)", color: GOLD, border: `1px solid ${GOLD}25` }}>
                     {step.n}
                   </div>
                   <div>
@@ -357,26 +399,73 @@ export default function ServiciosClient() {
               </R>
             ))}
           </div>
+
+          {/* Frase final — no es paso */}
+          <R delay={400}>
+            <div className="rounded-2xl px-8 py-7 text-center"
+                 style={{ background: `rgba(179,152,91,0.06)`, border: `1px solid ${GOLD}22` }}>
+              <p className="font-bold text-white" style={{ fontSize: "clamp(1.3rem,3vw,2rem)", letterSpacing: "-0.02em" }}>
+                El día de tu evento,<br />
+                <span style={{ color: GOLD }}>solo disfruta.</span>
+              </p>
+            </div>
+          </R>
         </div>
       </section>
 
       {/* ── Zonas de servicio ── */}
-      <section className="py-16 px-6 border-t border-white/[0.04]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <section className="py-24 px-6 border-t border-white/[0.04]">
+        <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-white/30 text-xs tracking-[0.2em] uppercase">Zonas de servicio</p>
-            <p className="text-white text-lg font-medium mt-1">
-              Querétaro · San Miguel de Allende · Ciudad de México · El Bajío
+            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
+            <h2 className="font-bold text-white leading-tight mb-6"
+                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+              Donde trabajamos
+            </h2>
+            <p className="text-white/40 text-sm max-w-lg mb-16 leading-relaxed">
+              Nuestra base de operaciones está en el corazón de México. Producimos eventos en las principales ciudades del país y nos desplazamos a donde el proyecto lo requiera.
             </p>
           </R>
-          <R delay={100}>
-            <a href="/presentacion/inventario"
-               className="text-[#B3985B] text-sm font-semibold tracking-wide flex items-center gap-2 hover:gap-3 transition-all">
-              Ver inventario de equipo
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </a>
+
+          {/* Ciudades principales */}
+          <R delay={80}>
+            <div className="border-t border-white/[0.06]">
+              {[
+                { ciudad: "Querétaro",       detalle: "Base de operaciones",          primary: true  },
+                { ciudad: "León",            detalle: "Guanajuato · El Bajío",        primary: true  },
+                { ciudad: "San Miguel de Allende", detalle: "Guanajuato",             primary: false },
+                { ciudad: "Ciudad de México",detalle: "CDMX y Zona Metropolitana",    primary: true  },
+                { ciudad: "Puebla",          detalle: "Puebla · Tlaxcala",            primary: false },
+              ].map((z, i) => (
+                <div key={i} className="flex items-center justify-between py-5 border-b border-white/[0.06] group">
+                  <div className="flex items-center gap-4">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${z.primary ? "bg-[#B3985B]" : "bg-white/20"}`} />
+                    <span className={`font-semibold tracking-tight ${z.primary ? "text-white" : "text-white/50"}`}
+                          style={{ fontSize: "clamp(1.1rem,2.5vw,1.5rem)" }}>
+                      {z.ciudad}
+                    </span>
+                  </div>
+                  <span className="text-white/30 text-sm">{z.detalle}</span>
+                </div>
+              ))}
+            </div>
+          </R>
+
+          {/* Nota república */}
+          <R delay={180}>
+            <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+              <p className="text-white/25 text-sm leading-relaxed max-w-sm">
+                ¿Tu evento es fuera de estas ciudades?<br/>
+                Nos desplazamos a cualquier punto de la República.
+              </p>
+              <a href="/presentacion/inventario"
+                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all shrink-0">
+                Ver inventario de equipo
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </a>
+            </div>
           </R>
         </div>
       </section>
@@ -393,8 +482,8 @@ export default function ServiciosClient() {
             </div>
             <p className="font-bold text-white leading-[1.08]"
                style={{ fontSize: "clamp(2rem,6vw,5rem)", letterSpacing: "-0.03em" }}>
-              Tu evento merece técnica<br />
-              <span style={{ color: GOLD }}>que no se note — solo se sienta.</span>
+              Para que mañana,<br />
+              <span style={{ color: GOLD }}>todos sigan hablando de tu evento.</span>
             </p>
           </R>
         </div>

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -68,6 +70,7 @@ const FORM_EMPTY = {
 
 export default function CalendarioCampanasPage() {
   const confirm = useConfirm();
+  const toast = useToast();
   const [mes, setMes]               = useState(toMes(new Date()));
   const [ejecuciones, setEjecuciones] = useState<EjecucionCampana[]>([]);
   const [tipos, setTipos]           = useState<TipoCampana[]>([]);
@@ -168,20 +171,36 @@ export default function CalendarioCampanasPage() {
     };
     const url    = editId ? `/api/marketing/ejecuciones/${editId}` : "/api/marketing/ejecuciones";
     const method = editId ? "PATCH" : "POST";
-    await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     cancelForm(); await load(); setSaving(false);
   }
 
   async function patchEstado(id: string, estado: string) {
-    await fetch(`/api/marketing/ejecuciones/${id}`, {
+    const res = await fetch(`/api/marketing/ejecuciones/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setEjecuciones(prev => prev.map(e => e.id === id ? { ...e, estado } : e));
   }
 
   async function del(e: EjecucionCampana) {
     if (!await confirm({ message: `¿Eliminar "${e.nombre}"?`, danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/marketing/ejecuciones/${e.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/marketing/ejecuciones/${e.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setEjecuciones(prev => prev.filter(x => x.id !== e.id));
   }
 
@@ -286,10 +305,8 @@ export default function CalendarioCampanasPage() {
       )}
 
       {/* Form */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-white">{editId ? "Editar campaña" : "Programar campaña"}</h2>
-
+      <Modal open={showForm} onClose={cancelForm} title={editId ? "Editar campaña" : "Programar campaña"}>
+        <div className="space-y-4">
           {/* Tipo selector */}
           {!editId && (
             <div>
@@ -431,16 +448,13 @@ export default function CalendarioCampanasPage() {
           )}
 
           <div className="flex gap-2 justify-end pt-1">
-            <button onClick={cancelForm} className="text-xs px-4 py-2 rounded-lg border border-white/10 text-white/50 hover:text-white transition-colors">
-              Cancelar
-            </button>
             <button onClick={save} disabled={saving || !form.nombre.trim() || !form.fechaInicio || !form.fechaFin}
               className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 disabled:opacity-50 transition-opacity">
               {saving ? "Guardando…" : editId ? "Guardar cambios" : "Programar"}
             </button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {loading && <div className="text-white/30 text-sm text-center py-16">Cargando…</div>}
 

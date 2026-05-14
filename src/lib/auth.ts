@@ -23,7 +23,7 @@ export async function verifyPassword(
 export async function createToken(userId: string, role: string): Promise<string> {
   return new SignJWT({ userId, role })
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("24h")
+    .setExpirationTime("30d")
     .sign(SECRET);
 }
 

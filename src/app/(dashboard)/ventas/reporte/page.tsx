@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 interface Vendedor { id: string; name: string }
 interface DetalleComision {
@@ -49,7 +50,8 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 const ESTADO_COLOR: Record<string, string> = {
@@ -64,6 +66,7 @@ const ORIGEN_COLOR: Record<string, string> = {
 };
 
 export default function ReporteComisionesPage() {
+  const toast = useToast();
   const searchParams = useSearchParams();
   const [session, setSession] = useState<{ id: string; role: string } | null>(null);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -107,7 +110,7 @@ export default function ReporteComisionesPage() {
   async function registrarPago() {
     if (!data || !vendedorId) return;
     setRegistrandoPago(true);
-    await fetch("/api/ventas/reporte", {
+    const res = await fetch("/api/ventas/reporte", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -117,8 +120,13 @@ export default function ReporteComisionesPage() {
         notas: notasPago || null,
       }),
     });
-    setNotasPago("");
     setRegistrandoPago(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar pago");
+      return;
+    }
+    setNotasPago("");
     cargar();
   }
 

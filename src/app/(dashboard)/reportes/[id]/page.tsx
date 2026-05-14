@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { type ReporteData, generarMensajeWhatsApp, fmtMXN } from "@/lib/reportes";
+import { useToast } from "@/components/Toast";
+import { BackButton } from "@/components/BackButton";
 
 const CEO_WHATSAPP = "524461432565";
 
@@ -19,7 +21,8 @@ type Reporte = {
 };
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function ScoreBar({ pts, max, label, color }: { pts: number; max: number; label: string; color: string }) {
@@ -59,6 +62,7 @@ function SectionHeader({ label, emoji }: { label: string; emoji: string }) {
 
 export default function ReporteDetallePage() {
   const { id } = useParams<{ id: string }>();
+  const toast = useToast();
   const [reporte, setReporte] = useState<Reporte | null>(null);
   const [loading, setLoading] = useState(true);
   const [notas, setNotas] = useState("");
@@ -78,11 +82,17 @@ export default function ReporteDetallePage() {
   const guardarNotas = async () => {
     if (!reporte) return;
     setSavingNotas(true);
-    await fetch(`/api/reportes/${id}`, {
+    const res = await fetch(`/api/reportes/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notas }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingNotas(false);
+      return;
+    }
     setSavingNotas(false);
     setNotasSaved(true);
     setTimeout(() => setNotasSaved(false), 2000);
@@ -101,6 +111,7 @@ export default function ReporteDetallePage() {
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6 print:p-4">
+      <div className="mb-2"><BackButton /></div>
       {/* ── Encabezado ─────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4 print:hidden">
         <div>

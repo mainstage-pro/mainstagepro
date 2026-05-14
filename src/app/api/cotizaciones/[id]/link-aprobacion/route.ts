@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createExpiringToken } from "@/lib/tokens";
+import { getConfig } from "@/lib/config";
 
 // POST: genera o devuelve el token de aprobación
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -28,6 +29,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  const url = `${process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app"}/aprobacion/cotizacion/${token}`;
+  const appUrl = await getConfig("empresa.appUrl", process.env.NEXTAUTH_URL ?? "https://mainstagepro.vercel.app");
+  const url = `${appUrl}/aprobacion/cotizacion/${token}`;
   return NextResponse.json({ token, url });
 }

@@ -184,17 +184,11 @@ export default function NuevoMovimientoPage() {
                 <Combobox value={form.cuentaId} onChange={v => setForm(p => ({ ...p, cuentaId: v }))}
                   options={[{ value: "", label: "— Selecciona —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]} />
               </div>
-              {form.tipo === "ENTRE_CUENTAS" ? (
+              {form.tipo === "ENTRE_CUENTAS" && (
                 <div>
                   <label className={labelCls}>Cuenta destino</label>
                   <Combobox value={form.cuentaDestinoId} onChange={v => setForm(p => ({ ...p, cuentaDestinoId: v }))}
                     options={[{ value: "", label: "— Selecciona —" }, ...cuentas.filter(c => c.id !== form.cuentaId).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]} />
-                </div>
-              ) : (
-                <div>
-                  <label className={labelCls}>Método de pago</label>
-                  <Combobox value={form.metodoPago} onChange={v => setForm(p => ({ ...p, metodoPago: v }))}
-                    options={METODO_PAGO_OPTIONS} />
                 </div>
               )}
             </div>

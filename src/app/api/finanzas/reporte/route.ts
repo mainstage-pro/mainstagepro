@@ -66,6 +66,12 @@ export async function GET(req: NextRequest) {
   const cxcVencido = cxc.filter(c => new Date(c.fechaCompromiso) < inicioDeHoy).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxpVencido = cxp.filter(c => new Date(c.fechaCompromiso) < inicioDeHoy).reduce((s, c) => s + c.monto, 0);
 
+  // Solo devolver meses con movimientos + el mes actual (no rellenar vacíos históricos)
+  const mesActualKey = ahora.toISOString().slice(0, 7);
+  const porMesFiltrado = Object.values(porMes).filter(
+    m => m.mes === mesActualKey || m.ingresos > 0 || m.egresos > 0,
+  );
+
   return NextResponse.json({
     kpis: {
       ingresosMes, egresosMes,
@@ -76,7 +82,7 @@ export async function GET(req: NextRequest) {
       cxcTotal, cxcVencido,
       cxpTotal, cxpVencido,
     },
-    porMes: Object.values(porMes),
+    porMes: porMesFiltrado,
     porCategoria: Object.values(porCategoria).sort((a, b) => b.total - a.total),
     cuentas,
   });

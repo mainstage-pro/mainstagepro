@@ -20,7 +20,8 @@ const TIPO_SERVICIO_DESC: Record<string, string> = {
 };
 
 function fmtDateLong(s: string) {
-  return new Date(s).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function extraerCiudad(lugar: string): string {

@@ -11,6 +11,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -49,6 +50,7 @@ interface Trato {
   canalAtencion: string | null;
   nombreEvento: string | null;
   duracionEvento: string | null;
+  diasServicio: number | null;
   asistentesEstimados: number | null;
   serviciosInteres: string | null;
   ideasReferencias: string | null;
@@ -76,7 +78,10 @@ interface Trato {
     tipoCliente: string; clasificacion: string;
     telefono: string | null; correo: string | null;
   };
+  responsableId: string | null;
   responsable: { id: string; name: string } | null;
+  vendedorId: string | null;
+  vendedor: { id: string; name: string } | null;
   cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string; proyecto: { id: string } | null }>;
   archivos: TratoArchivo[];
 }
@@ -99,7 +104,15 @@ const TIPO_EVENTO_COLORS: Record<string, string> = {
 const ORIGEN_LABELS: Record<string, string> = {
   META_ADS: "Meta Ads", GOOGLE_ADS: "Google Ads", ORGANICO: "Orgánico",
   RECOMPRA: "Recompra", REFERIDO: "Referido", PROSPECCION: "Prospección", OTRO: "Otro",
+  INSTAGRAM_DM: "Instagram DM", LINKEDIN: "LinkedIn", BASE_DATOS: "Base de datos",
+  LLAMADA_FRIA: "Llamada fría", NETWORKING: "Networking", WHATSAPP_DIRECTO: "WhatsApp directo",
 };
+
+const ORIGENES_OUTBOUND = [
+  { id: "REDES_SOCIALES", icon: "📱", label: "Redes sociales",  desc: "Instagram DM, LinkedIn, WhatsApp" },
+  { id: "BASE_DATOS",     icon: "📋", label: "Base de datos",   desc: "Lista, directorio, búsqueda" },
+  { id: "NETWORKING",     icon: "🤝", label: "Networking",      desc: "Evento, referencia interna, contacto personal" },
+];
 const ESTADO_COT_COLORS: Record<string, string> = {
   BORRADOR: "bg-gray-700 text-gray-300", ENVIADA: "bg-blue-900/50 text-blue-300",
   APROBADA: "bg-green-900/50 text-green-300", RECHAZADA: "bg-red-900/50 text-red-300",
@@ -117,10 +130,17 @@ const CANALES = [
 ] as const;
 
 // Pasos del wizard de descubrimiento
-const PASOS_DISCOVERY = [
+const PASOS_DISCOVERY_FULL = [
   { id: 1, icon: "📋", label: "Básico" },
   { id: 2, icon: "✨", label: "Servicios" },
-  { id: 3, icon: "📸", label: "Contenido" },
+  { id: 3, icon: "📊", label: "Detalles" },
+  { id: 4, icon: "🗺️", label: "Scouting" },
+  { id: 5, icon: "📸", label: "Contenido" },
+];
+const PASOS_DISCOVERY_RENTA = [
+  { id: 1, icon: "📋", label: "Básico" },
+  { id: 2, icon: "📦", label: "Equipos y logística" },
+  { id: 3, icon: "✅", label: "Finalizar" },
 ];
 
 // Servicios por tipo de evento
@@ -187,7 +207,8 @@ function fmt(n: number) {
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 function getCanal(id: string) {
   return CANALES.find(c => c.id === id);
@@ -519,6 +540,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const confirm = useConfirm();
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
   const [trato, setTrato] = useState<Trato | null>(null);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -543,7 +565,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Nurturing state
   type NurturingLogEntry = { fecha: string; etapa: string; templateId: string; templateLabel: string };
-  type NurturingData = { etapa: string; temperatura: string; log: NurturingLogEntry[] };
+  type NurturingData = { etapa: string; temperatura: string; log: NurturingLogEntry[]; notas?: Record<string, string> };
   const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", temperatura: "FRIO", log: [] };
   const [nurturing, setNurturing] = useState<NurturingData>(NURTURING_EMPTY);
   const [savingNurturing, setSavingNurturing] = useState(false);
@@ -615,6 +637,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [savingTrade, setSavingTrade] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [skipGate, setSkipGate] = useState(false);
+  // Cambiar cliente del trato
+  const [cambiarCliente, setCambiarCliente] = useState(false);
+  const [clientesOpciones, setClientesOpciones] = useState<{ value: string; label: string }[]>([]);
+  const [savingCliente, setSavingCliente] = useState(false);
   const autoSaveDiscTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
@@ -627,6 +653,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     fechaEventoEstimada: "",
     lugarEstimado: "",
     asistentesEstimados: "",
+    diasServicio: "",
     presupuestoEstimado: "",
     tipoServicio: "",
     ideasReferencias: "",
@@ -669,6 +696,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     if (discForm.tipoServicio === "RENTA") setBriefAplica(false);
   }, [discForm.tipoServicio]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const PASOS_DISCOVERY = discForm.tipoServicio === "RENTA" ? PASOS_DISCOVERY_RENTA : PASOS_DISCOVERY_FULL;
+
   useEffect(() => {
     if (!scoutLoaded.current) { scoutLoaded.current = true; return; }
     autoSaveScouting(scoutingForm);
@@ -683,6 +712,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`trato-paso-${id}`, String(pasoActivo));
   }, [pasoActivo, id]);
+
+  useEffect(() => {
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -769,6 +802,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             fechaEventoEstimada: t.fechaEventoEstimada ? t.fechaEventoEstimada.split("T")[0] : "",
             lugarEstimado: t.lugarEstimado ?? "",
             asistentesEstimados: t.asistentesEstimados?.toString() ?? "",
+            diasServicio: t.diasServicio?.toString() ?? "",
             presupuestoEstimado: t.presupuestoEstimado?.toString() ?? "",
             tipoServicio: t.tipoServicio ?? "",
             ideasReferencias: t.tipoServicio !== "RENTA" ? (t.ideasReferencias ?? "") : "",
@@ -807,20 +841,25 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return null;
+    }
     return res.json();
   }
 
   async function seleccionarCanal(canal: string) {
     setSaving(true);
     const d = await patch({ canalAtencion: canal });
-    setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
+    if (d) setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
     setSaving(false);
   }
 
   async function guardarNurturing(data: NurturingData, extra?: Record<string, unknown>) {
     setSavingNurturing(true);
-    await patch({ nurturingData: JSON.stringify(data), ...extra });
-    setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data), ...extra } : prev);
+    const d = await patch({ nurturingData: JSON.stringify(data), ...extra });
+    if (d) setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data), ...extra } : prev);
     setSavingNurturing(false);
   }
 
@@ -854,6 +893,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
+      diasServicio: discForm.diasServicio ? parseInt(discForm.diasServicio) : null,
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
       tipoServicio: discForm.tipoServicio || null,
       notas: discForm.notas || null,
@@ -889,14 +929,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       payload.etapa = "OPORTUNIDAD";
     }
     const d = await patch(payload);
-    setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+    if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
     setSaving(false);
   }
 
   async function saveScouting() {
     setSavingScouting(true);
-    await patch({ scoutingData: JSON.stringify(scoutingForm) });
-    setTrato(prev => prev ? { ...prev, scoutingData: JSON.stringify(scoutingForm) } : prev);
+    const d = await patch({ scoutingData: JSON.stringify(scoutingForm) });
+    if (d) setTrato(prev => prev ? { ...prev, scoutingData: JSON.stringify(scoutingForm) } : prev);
     setSavingScouting(false);
   }
 
@@ -912,6 +952,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
         lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
         asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
+        diasServicio: form.diasServicio ? parseInt(form.diasServicio) : null,
         presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
         tipoServicio: form.tipoServicio || null,
         notas: form.notas || null,
@@ -958,7 +999,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   async function saveBrief() {
     setSavingBrief(true);
-    await fetch(`/api/levantamiento-contenido/${id}`, {
+    const res = await fetch(`/api/levantamiento-contenido/${id}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -966,6 +1007,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         colaboradoresCamara: briefForm.colaboradoresCamara === "SI" ? true : briefForm.colaboradoresCamara === "NO" ? false : null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingBrief(false);
+      return;
+    }
     setBriefGuardado(true);
     setSavingBrief(false);
   }
@@ -974,8 +1021,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     if (etapa === "VENTA_PERDIDA") { setModalPerdida(true); return; }
     setSaving(true);
     const d = await patch({ etapa });
-    setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
-    if (etapa === "VENTA_CERRADA") celebrate("venta");
+    if (d) {
+      setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+      if (etapa === "VENTA_CERRADA") celebrate("venta");
+    }
     setSaving(false);
   }
 
@@ -983,31 +1032,85 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(true);
     const motivoPerdida = [razonPerdida, notasPerdida].filter(Boolean).join(" — ");
     const d = await patch({ etapa: "VENTA_PERDIDA", motivoPerdida: motivoPerdida || null });
-    setTrato(prev => prev ? { ...prev, etapa: "VENTA_PERDIDA", motivoPerdida: d.trato.motivoPerdida, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
-    setModalPerdida(false);
-    setRazonPerdida("");
-    setNotasPerdida("");
+    if (d) {
+      setTrato(prev => prev ? { ...prev, etapa: "VENTA_PERDIDA", motivoPerdida: d.trato.motivoPerdida, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+      setModalPerdida(false);
+      setRazonPerdida("");
+      setNotasPerdida("");
+    }
     setSaving(false);
   }
 
   async function guardar() {
     setSaving(true);
     const d = await patch(form as Record<string, unknown>);
-    setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
-    setEditando(false);
+    if (d) {
+      setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+      setEditando(false);
+    }
     setSaving(false);
+  }
+
+  async function abrirCambiarCliente() {
+    if (clientesOpciones.length === 0) {
+      const r = await fetch("/api/clientes");
+      const d = await r.json();
+      setClientesOpciones(
+        (d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({
+          value: c.id,
+          label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
+        }))
+      );
+    }
+    setCambiarCliente(true);
+  }
+
+  async function confirmarCambioCliente(nuevoClienteId: string) {
+    if (!nuevoClienteId || nuevoClienteId === trato?.cliente.id) {
+      setCambiarCliente(false);
+      return;
+    }
+    setSavingCliente(true);
+    const res = await fetch(`/api/tratos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clienteId: nuevoClienteId }),
+    });
+    if (res.ok) {
+      // Reload full trato to get updated cliente object
+      const r2 = await fetch(`/api/tratos/${id}`);
+      const d2 = await r2.json();
+      if (d2.trato) setTrato(d2.trato);
+      toast.success("Cliente actualizado");
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al cambiar cliente");
+    }
+    setSavingCliente(false);
+    setCambiarCliente(false);
   }
 
   async function generarFormToken() {
     setGenerandoToken(true);
     const res = await fetch(`/api/tratos/${id}/form-token`, { method: "POST" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Error al guardar");
+      setGenerandoToken(false);
+      return;
+    }
     const data = await res.json();
     setTrato(prev => prev ? { ...prev, formToken: data.token, formEstado: "NO_ENVIADO" } : prev);
     setGenerandoToken(false);
   }
 
   async function marcarFormEnviado() {
-    await fetch(`/api/tratos/${id}/form-token`, { method: "PATCH" });
+    const res = await fetch(`/api/tratos/${id}/form-token`, { method: "PATCH" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setTrato(prev => prev ? { ...prev, formEstado: "ENVIADO" } : prev);
   }
 
@@ -1044,7 +1147,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function eliminarArchivo(archivoId: string) {
-    await fetch(`/api/tratos/${id}/archivos/${archivoId}`, { method: "DELETE" });
+    const res = await fetch(`/api/tratos/${id}/archivos/${archivoId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setArchivos(prev => prev.filter(a => a.id !== archivoId));
   }
 
@@ -1070,6 +1178,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5 pb-12">
+      <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1115,7 +1224,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               Contrato
             </Link>
           )}
-          <button onClick={() => { setForm(trato); setEditando(true); }}
+          <button onClick={async () => { setForm(trato); setEditando(true); if (clientesOpciones.length === 0) { const r = await fetch("/api/clientes"); const d = await r.json(); setClientesOpciones((d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({ value: c.id, label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre }))); } }}
             className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-xs transition-colors whitespace-nowrap">
             Editar
           </button>
@@ -1159,7 +1268,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <button
                   onClick={async () => {
                     const d = await patch({ tipoProspecto: "NURTURING", tipoLead: "OUTBOUND", origenLead: "PROSPECCION" });
-                    setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto, tipoLead: "OUTBOUND", origenLead: "PROSPECCION" } : prev);
+                    if (d) setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto, tipoLead: "OUTBOUND", origenLead: "PROSPECCION" } : prev);
                   }}
                   disabled={saving}
                   className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
@@ -1219,7 +1328,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={async () => {
               const next = trato.tipoProspecto === "NURTURING" ? "ACTIVO" : "NURTURING";
               const d = await patch({ tipoProspecto: next });
-              setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
+              if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
             }}
             className="ml-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
           >
@@ -1291,6 +1400,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
 
+        // Presentación principal según tipo de evento (para "Qué compartir")
+        const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
+        const COPY_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
+        const presentacionPrincipal: { label: string; url: string } | null =
+          trato.tipoEvento === "MUSICAL"     ? { label: "🎸 Presentación Eventos Musicales",    url: `${origin}/presentacion/evento/musical` }
+          : trato.tipoEvento === "SOCIAL"      ? { label: "🎊 Presentación Eventos Sociales",     url: `${origin}/presentacion/evento/social` }
+          : trato.tipoEvento === "EMPRESARIAL" ? { label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` }
+          : null;
+        const presentacionesSecundarias = [
+          { label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
+          { label: "🎛 Catálogo de Inventario",    url: `${origin}/presentacion/inventario` },
+        ];
+
         return (
           <div className="bg-[#0d0d0d] border-2 border-emerald-700/40 rounded-xl overflow-hidden">
 
@@ -1299,89 +1421,65 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-emerald-700/20 flex items-center justify-center text-lg">🌱</div>
                 <div>
-                  <p className="text-white font-semibold">Nurturing — Prospecto en frío</p>
-                  <p className="text-gray-500 text-xs">Construye confianza, comparte valor, sé paciente</p>
+                  <p className="text-white font-bold text-base">Prospección en frío</p>
+                  <p className="text-gray-500 text-xs">Outbound · construye confianza, comparte valor, sé paciente</p>
                 </div>
               </div>
-              <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
+              <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO" }); if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p); }}
                 className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
                 Cambiar a activo
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-6">
 
-              {/* ── Selector de tipo de evento (si no está definido) ── */}
-              {!trato.tipoEvento || trato.tipoEvento === "OTRO" ? (
-                <div className="bg-[#111] border border-emerald-900/40 rounded-xl p-4">
-                  <p className="text-xs text-emerald-400 font-semibold mb-1">¿Qué tipo de eventos organiza este prospecto?</p>
-                  <p className="text-[10px] text-gray-500 mb-3">Esto define qué guiones y cadencia usar en el seguimiento.</p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {[
-                      { id: "MUSICAL",     icon: "🎸", label: "Musical",    desc: "Conciertos, shows" },
-                      { id: "SOCIAL",      icon: "🎊", label: "Social",      desc: "Bodas, XV años" },
-                      { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial", desc: "Corporativos" },
-                      { id: "OTRO",        icon: "🎵", label: "General",     desc: "Mixto / otro" },
-                    ].map(te => (
-                      <button key={te.id}
-                        onClick={async () => { const d = await patch({ tipoEvento: te.id }); setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-[#333] text-gray-400 hover:border-emerald-700 hover:text-white text-left transition-colors">
-                        <span>{te.icon}</span>
-                        <div>
-                          <p className="text-xs font-semibold leading-none">{te.label}</p>
-                          <p className="text-[10px] text-gray-600 mt-0.5">{te.desc}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+              {/* ── Tipo de evento ── */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { id: "MUSICAL",     icon: "🎸", label: "Musical" },
+                    { id: "SOCIAL",      icon: "🎊", label: "Social" },
+                    { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
+                    { id: "OTRO",        icon: "📅", label: "Otro" },
+                  ].map(te => (
+                    <button key={te.id}
+                      onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${trato.tipoEvento === te.id ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                      <span>{te.icon}</span><span>{te.label}</span>
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                /* Tipo de evento definido — mostrar con opción de cambiar */
-                <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-lg px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">
-                      {trato.tipoEvento === "MUSICAL" ? "🎸" : trato.tipoEvento === "SOCIAL" ? "🎊" : trato.tipoEvento === "EMPRESARIAL" ? "🏢" : "🎵"}
-                    </span>
-                    <div>
-                      <span className="text-xs text-gray-400">Tipo de evento: </span>
-                      <span className="text-xs font-semibold text-white">
-                        {trato.tipoEvento === "MUSICAL" ? "Musical" : trato.tipoEvento === "SOCIAL" ? "Social" : trato.tipoEvento === "EMPRESARIAL" ? "Empresarial" : "General"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    {["MUSICAL","SOCIAL","EMPRESARIAL","OTRO"].filter(t => t !== trato.tipoEvento).map(te => (
-                      <button key={te}
-                        onClick={async () => { const d = await patch({ tipoEvento: te }); setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                        className="text-[10px] text-gray-600 hover:text-emerald-400 transition-colors px-1.5 py-1">
-                        {te === "MUSICAL" ? "🎸" : te === "SOCIAL" ? "🎊" : te === "EMPRESARIAL" ? "🏢" : "🎵"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              </div>
 
-              {/* ── Temperatura + Pipeline de etapas ── */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest shrink-0">Temperatura</label>
-                  <div className="flex gap-1.5 flex-1">
+              {/* ── Temperatura del lead + Etapa ── */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
+                {/* Temperatura */}
+                <div>
+                  <div className="flex items-baseline gap-2 mb-2">
+                    <p className="text-sm font-bold text-white">Temperatura del lead</p>
+                    <span className="text-[10px] text-gray-600">nivel de interés y apertura mostrados hasta ahora</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
                     {[
-                      { id: "FRIO",     icon: "❄️", label: "Frío",     cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
-                      { id: "TIBIO",    icon: "🌡️", label: "Tibio",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
-                      { id: "CALIENTE", icon: "🔥", label: "Caliente", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
+                      { id: "FRIO",     icon: "❄️", label: "Frío",     desc: "Sin respuesta o primera interacción",  cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
+                      { id: "TIBIO",    icon: "🌡️", label: "Tibio",    desc: "Respondió, mostró algo de interés",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
+                      { id: "CALIENTE", icon: "🔥", label: "Caliente", desc: "Tiene evento próximo o pidió cotizar", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
                     ].map(t => (
                       <button key={t.id}
                         onClick={() => { const u = { ...nurturing, temperatura: t.id }; setNurturing(u); guardarNurturing(u); }}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"}`}>
-                        {t.icon} {t.label}
+                        title={t.desc}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#555]"}`}>
+                        <span>{t.icon}</span>
+                        <span>{t.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
+                {/* Etapa del proceso */}
                 <div>
-                  <label className="text-[10px] text-gray-500 uppercase tracking-widest block mb-2">Etapa del proceso</label>
+                  <p className="text-sm font-bold text-white mb-2">Etapa del proceso</p>
                   <div className="flex gap-1 overflow-x-auto pb-1">
                     {NURTURING_ETAPAS.map((e, idx) => {
                       const currentIdx = NURTURING_ETAPAS.findIndex(x => x.id === nurturing.etapa);
@@ -1389,8 +1487,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       const isCurrent = e.id === nurturing.etapa;
                       return (
                         <button key={e.id}
-                          onClick={() => { const u = { ...nurturing, etapa: e.id }; setNurturing(u); guardarNurturing(u, { fechaProximaAccion: calcNextContact(e.id), proximaAccion: `Enviar guión etapa "${e.label}"` }); }}
-                          className={`flex-1 min-w-20 px-2 py-2 rounded-lg text-xs font-medium border transition-all text-center ${
+                          onClick={() => { const u = { ...nurturing, etapa: e.id }; setNurturing(u); guardarNurturing(u, { fechaProximaAccion: calcNextContact(e.id), proximaAccion: `Etapa "${e.label}" — enviar guión correspondiente` }); }}
+                          className={`flex-1 min-w-20 px-2 py-2.5 rounded-xl text-xs font-semibold border transition-all text-center ${
                             isCurrent ? "border-emerald-500 bg-emerald-900/40 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.12)]"
                             : isPast ? "border-emerald-900/40 bg-emerald-900/10 text-emerald-700"
                             : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#444]"
@@ -1404,20 +1502,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              {/* ── Próximo contacto auto-calculado ── */}
+              {/* ── Próximo contacto ── */}
               {trato.fechaProximaAccion && (() => {
                 const info = fmtProximoContacto(trato.fechaProximaAccion.split("T")[0]);
                 return (
-                  <div className="flex items-center gap-3 bg-[#0a1a0f] border border-emerald-900/40 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-3 bg-[#0a1a0f] border border-emerald-900/40 rounded-xl px-4 py-3">
                     <span className="text-lg shrink-0">🗓️</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">Próximo contacto programado</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">Próximo contacto</p>
                       <p className={`text-sm font-semibold ${info.color}`}>{info.label}</p>
-                      {trato.proximaAccion && <p className="text-[10px] text-gray-500 mt-0.5 truncate">{trato.proximaAccion}</p>}
                     </div>
                     {trato.responsable && (
                       <div className="text-right shrink-0">
-                        <p className="text-[10px] text-gray-600">Asignado a</p>
+                        <p className="text-[10px] text-gray-600">Responsable</p>
                         <p className="text-xs text-gray-400 font-medium">{trato.responsable.name.split(" ")[0]}</p>
                       </div>
                     )}
@@ -1425,53 +1522,90 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 );
               })()}
 
-              {/* ── Plan de acción de la etapa actual ── */}
+              {/* ── Plan de acción ── */}
               {playbook && (
-                <div className="bg-[#0a1a0f] border border-emerald-900/40 rounded-xl p-4">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-7 h-7 rounded-full bg-emerald-800/40 flex items-center justify-center text-sm shrink-0 mt-0.5">
-                      {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.icon}
-                    </div>
-                    <div>
-                      <p className="text-emerald-300 text-sm font-semibold">
-                        {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}
-                        <span className="ml-2 text-[10px] text-emerald-700 font-normal">{playbook.intervalo}</span>
-                      </p>
-                      <p className="text-gray-400 text-xs mt-1 leading-relaxed">{playbook.objetivo}</p>
-                    </div>
+                <div className="bg-[#0a1a0f] border border-emerald-900/40 rounded-xl p-5">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xl">{NURTURING_ETAPAS.find(e => e.id === etapaKey)?.icon}</span>
+                    <p className="text-base font-bold text-white">{NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}</p>
+                    <span className="text-[10px] text-emerald-700 ml-1">{playbook.intervalo}</span>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <p className="text-gray-300 text-sm leading-relaxed mb-5">{playbook.objetivo}</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Qué hacer */}
                     <div>
-                      <p className="text-[10px] text-emerald-700 uppercase tracking-widest mb-2 font-semibold">Qué hacer</p>
-                      <ul className="space-y-1.5">
-                        {playbook.acciones.map((a, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
-                            <span className="text-emerald-600 mt-0.5 shrink-0">›</span><span>{a}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-3">Qué hacer</p>
+                      {/* Acción principal */}
+                      <div className="flex items-start gap-2.5 bg-emerald-900/25 border border-emerald-900/50 rounded-xl px-3 py-2.5 mb-3">
+                        <span className="text-emerald-400 font-bold text-base shrink-0 leading-tight mt-0.5">→</span>
+                        <span className="text-sm text-white font-medium leading-snug">{playbook.acciones[0]}</span>
+                      </div>
+                      {/* Sugerencias */}
+                      {playbook.acciones.slice(1).length > 0 && (
+                        <div>
+                          <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">También puedes:</p>
+                          <ul className="space-y-1.5">
+                            {playbook.acciones.slice(1).map((a, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                                <span className="text-gray-700 mt-0.5 shrink-0">›</span><span>{a}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Qué compartir */}
                     <div>
-                      <p className="text-[10px] text-emerald-700 uppercase tracking-widest mb-2 font-semibold">Qué compartir</p>
-                      <ul className="space-y-1.5">
-                        {playbook.contenido.map((c, i) => (
-                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
-                            <span className="text-[#B3985B] mt-0.5 shrink-0">◆</span><span>{c}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-xs font-bold text-[#B3985B] uppercase tracking-widest mb-3">Qué compartir</p>
+                      {/* Presentación principal de la plataforma */}
+                      {(presentacionPrincipal ?? presentacionesSecundarias[0]) && (() => {
+                        const pres = presentacionPrincipal ?? presentacionesSecundarias[0];
+                        return (
+                          <button
+                            onClick={() => navigator.clipboard.writeText(pres.url)}
+                            className="w-full flex items-center justify-between gap-2 bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl px-3 py-2.5 mb-3 text-left hover:bg-[#B3985B]/15 transition-colors">
+                            <span className="text-sm text-white font-medium leading-snug">{pres.label}</span>
+                            <div className="flex items-center gap-1 text-[#B3985B] text-[10px] shrink-0">
+                              {COPY_ICON}<span>Copiar link</span>
+                            </div>
+                          </button>
+                        );
+                      })()}
+                      {/* Sugerencias de contenido */}
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-2">También puedes usar:</p>
+                        <ul className="space-y-1.5">
+                          {playbook.contenido.map((c, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-gray-500">
+                              <span className="text-gray-700 mt-0.5 shrink-0">›</span><span>{c}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Otras presentaciones secundarias */}
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {(presentacionPrincipal ? presentacionesSecundarias : presentacionesSecundarias.slice(1)).map(p => (
+                            <button key={p.url}
+                              onClick={() => navigator.clipboard.writeText(p.url)}
+                              className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-gray-300 bg-[#111] border border-[#2a2a2a] hover:border-[#444] px-2 py-1 rounded-lg transition-colors">
+                              <span>{p.label}</span>{COPY_ICON}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* ── Guiones WA — etapa actual + tipo de evento ── */}
-              <div className="border-t border-[#1a1a1a] pt-5">
+              {/* ── Guión estándar ── */}
+              <div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">
-                    Guiones WhatsApp — {NURTURING_ETAPAS.find(e => e.id === etapaKey)?.label}
+                  <p className="text-base font-bold text-white">
+                    Guión de contacto
                     {trato.tipoEvento && trato.tipoEvento !== "OTRO" && (
-                      <span className="ml-2 text-[#B3985B]">
+                      <span className="ml-2 text-sm text-emerald-600 font-normal">
                         · {trato.tipoEvento === "MUSICAL" ? "Musical" : trato.tipoEvento === "SOCIAL" ? "Social" : "Empresarial"}
                       </span>
                     )}
@@ -1479,58 +1613,68 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   {!num && <span className="text-[10px] text-orange-400">Sin teléfono en cliente</span>}
                 </div>
 
-                {tplsEvento.length > 0 ? (
-                  <div className="space-y-2">
-                    {tplsEvento.map(tpl => {
-                      const msg = tpl.msg(nombre, ctx);
-                      const yaEnviado = nurturing.log.some(l => l.templateId === tpl.id);
-                      return (
-                        <div key={tpl.id} className={`bg-[#111] border rounded-xl overflow-hidden ${yaEnviado ? "border-emerald-900/60" : "border-[#222]"}`}>
-                          <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a]">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-emerald-300">{tpl.icon} {tpl.label}</span>
-                              {yaEnviado && (
-                                <span className="text-[10px] text-emerald-600 bg-emerald-900/20 border border-emerald-900/40 px-1.5 py-0.5 rounded">
-                                  ✓ Enviado
-                                </span>
-                              )}
-                            </div>
-                            {num ? (
-                              <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
-                                target="_blank" rel="noopener noreferrer"
-                                onClick={() => registrarEnvioWA(tpl.id, tpl.label)}
-                                className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-800/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors">
-                                {WA_ICON} {yaEnviado ? "Reenviar" : "Enviar"}
-                              </a>
-                            ) : (
-                              <span className="text-[10px] text-gray-600">Sin teléfono</span>
-                            )}
-                          </div>
-                          <div className="px-4 py-3">
-                            <p className="text-gray-400 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
-                          </div>
+                {tplsEvento.length > 0 ? (() => {
+                  const tpl = tplsEvento[0];
+                  const msg = tpl.msg(nombre, ctx);
+                  const yaEnviado = nurturing.log.some(l => l.templateId === tpl.id);
+                  return (
+                    <div className={`bg-[#111] border rounded-xl overflow-hidden ${yaEnviado ? "border-emerald-900/60" : "border-[#222]"}`}>
+                      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-emerald-300">{tpl.icon} {tpl.label}</span>
+                          {yaEnviado && <span className="text-[10px] text-emerald-600 bg-emerald-900/20 border border-emerald-900/40 px-1.5 py-0.5 rounded">✓ Enviado</span>}
+                          <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#2a2a2a]">Guión base</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-gray-600 text-xs">Define el tipo de evento arriba para ver los guiones correspondientes.</p>
+                        {num ? (
+                          <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
+                            target="_blank" rel="noopener noreferrer"
+                            onClick={() => registrarEnvioWA(tpl.id, tpl.label)}
+                            className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-800/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                            {WA_ICON} {yaEnviado ? "Reenviar" : "Enviar WA"}
+                          </a>
+                        ) : (
+                          <span className="text-[10px] text-gray-600">Sin teléfono</span>
+                        )}
+                      </div>
+                      <div className="px-4 py-3">
+                        <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
+                      </div>
+                      <div className="px-4 py-3 bg-[#0a0a0a] border-t border-[#1a1a1a]">
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          Guión base — el vendedor puede adaptarlo según el contexto, siempre manteniendo el objetivo: <span className="text-gray-300 italic">{playbook?.objetivo}</span>
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })() : (
+                  <p className="text-gray-600 text-xs">Define el tipo de evento arriba para ver el guión correspondiente.</p>
                 )}
+              </div>
 
-                {playbook?.contenido && (
-                  <div className="mt-3 p-3 bg-[#111] border border-[#1e1e1e] rounded-lg flex flex-wrap gap-1.5">
-                    {playbook.contenido.map((c, i) => (
-                      <span key={i} className="text-[10px] text-gray-500 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-1 rounded">{c}</span>
-                    ))}
-                  </div>
-                )}
+              {/* ── Actividad y notas de seguimiento ── */}
+              <div>
+                <p className="text-base font-bold text-white mb-1">Actividad y notas</p>
+                <p className="text-xs text-gray-500 mb-3">Registra respuestas recibidas, avances, solicitudes o cualquier dato relevante en esta etapa.</p>
+                <textarea
+                  key={etapaKey}
+                  defaultValue={nurturing.notas?.[etapaKey] ?? ""}
+                  onBlur={e => {
+                    const notas = { ...(nurturing.notas ?? {}), [etapaKey]: e.target.value };
+                    const u = { ...nurturing, notas };
+                    setNurturing(u);
+                    guardarNurturing(u);
+                  }}
+                  rows={4}
+                  placeholder={`Ej: Respondió el ${new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short" })}, mostró interés en audio, dijo que tiene evento en junio...`}
+                  className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-emerald-700/60 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-gray-700 transition-colors"
+                />
               </div>
 
               {/* ── Historial de mensajes enviados ── */}
               {nurturing.log.length > 0 && (
                 <div className="border-t border-[#1a1a1a] pt-5">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
-                    Mensajes enviados ({nurturing.log.length})
+                  <p className="text-sm font-bold text-white mb-3">
+                    Historial de mensajes <span className="text-gray-600 font-normal text-xs">({nurturing.log.length})</span>
                   </p>
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                     {[...nurturing.log].reverse().map((entry, i) => {
@@ -1551,52 +1695,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              {/* ── Links de presentación para compartir ── */}
+              {/* ── Transición al pipeline de venta ── */}
               <div className="border-t border-[#1a1a1a] pt-5">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Presentaciones para compartir</p>
-                <div className="flex flex-wrap gap-2">
-                  {trato.tipoEvento && trato.tipoEvento !== "OTRO" && (() => {
-                    const tipo = trato.tipoEvento === "MUSICAL" ? "musical" : trato.tipoEvento === "SOCIAL" ? "social" : "empresarial";
-                    const url  = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/presentacion/evento/${tipo}`;
-                    const label = trato.tipoEvento === "MUSICAL" ? "🎸 Eventos Musicales" : trato.tipoEvento === "SOCIAL" ? "🎊 Eventos Sociales" : "🏢 Eventos Empresariales";
-                    return (
-                      <button
-                        onClick={() => { navigator.clipboard.writeText(url); }}
-                        className="flex items-center gap-2 text-xs bg-[#111] hover:bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-300 px-3 py-2 rounded-lg transition-all">
-                        <span>{label}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      </button>
-                    );
-                  })()}
-                  {[
-                    { label: "📋 Servicios", url: "/presentacion/servicios" },
-                    { label: "🎛 Inventario", url: "/presentacion/inventario" },
-                  ].map(item => {
-                    const fullUrl = `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}${item.url}`;
-                    return (
-                      <button key={item.url}
-                        onClick={() => { navigator.clipboard.writeText(fullUrl); }}
-                        className="flex items-center gap-2 text-xs bg-[#111] hover:bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-300 px-3 py-2 rounded-lg transition-all">
-                        <span>{item.label}</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-gray-600 mt-2">Clic para copiar el link y pegarlo en WhatsApp</p>
-              </div>
-
-              {/* ── Transición ── */}
-              <div className="border-t border-[#1a1a1a] pt-5">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">¿El prospecto ya está listo para avanzar?</p>
+                <p className="text-sm font-bold text-white mb-1">¿El prospecto ya está listo para avanzar?</p>
                 <p className="text-gray-600 text-xs mb-4">Cuando el prospecto tenga una necesidad concreta, pásalo al flujo de venta activo.</p>
                 <div className="grid grid-cols-2 gap-3">
-                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
+                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", canalAtencion: null }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
                     className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors">
                     <p className="font-semibold">🔍 Iniciar descubrimiento</p>
                     <p className="text-xs text-[#B3985B]/60 mt-0.5">Tienen necesidad, hay que calificarla</p>
                   </button>
-                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" }); setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
+                  <button onClick={async () => { const d = await patch({ tipoProspecto: "ACTIVO", rutaEntrada: "RIDER_DIRECTO", canalAtencion: "LLAMADA" }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
                     className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors">
                     <p className="font-semibold">📋 Tienen rider técnico</p>
                     <p className="text-xs text-blue-300/60 mt-0.5">Saben lo que necesitan, cotizar directo</p>
@@ -1741,16 +1850,32 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
 
+              {/* Días de servicio */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Días de servicio del equipo</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="1" max="30"
+                    value={discForm.diasServicio}
+                    onChange={e => setDiscForm(p => ({ ...p, diasServicio: e.target.value }))}
+                    placeholder="1"
+                    className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <span className="text-xs text-gray-500">día(s) · se pre-llena en la cotización</span>
+                </div>
+              </div>
+
               {/* Horarios del evento */}
               <div className="col-span-2 space-y-3">
                 {(() => {
                   const camposCliente: string[] = trato?.camposCliente ? JSON.parse(trato.camposCliente) : [];
-                  const Badge = ({ campo }: { campo: string }) =>
+                  const badge = (campo: string) =>
                     camposCliente.includes(campo)
                       ? <span className="ml-1.5 text-[9px] bg-blue-900/30 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded font-semibold">cliente</span>
                       : null;
                   return (
                     <>
+                      {discForm.tipoServicio !== "RENTA" && (
                       <div>
                         <label className="text-xs text-gray-400 block mb-2">
                           Horarios del evento
@@ -1758,19 +1883,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="flex items-center gap-3">
                           <div className="flex-1">
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Inicio del evento <Badge campo="horaInicioEvento" />
+                              Inicio del evento {badge("horaInicioEvento")}
                             </label>
                             <TimePicker value={discForm.horaInicioEvento} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Hora inicio" />
                           </div>
                           <span className="text-gray-600 text-sm pt-4">→</span>
                           <div className="flex-1">
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Fin del evento <Badge campo="horaFinEvento" />
+                              Fin del evento {badge("horaFinEvento")}
                             </label>
                             <TimePicker value={discForm.horaFinEvento} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Hora fin" />
                           </div>
                         </div>
                       </div>
+                      )}
 
                       <div>
                         {/* Ventana montaje/desmontaje — solo en Oportunidad+ (cuando cotización está siendo preparada) */}
@@ -1780,20 +1906,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                             <div className="flex items-center gap-3">
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Primer acceso <Badge campo="ventanaMontajeInicio" />
+                                  Primer acceso {badge("ventanaMontajeInicio")}
                                 </label>
                                 <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
                               </div>
                               <span className="text-gray-600 text-sm pt-4">→</span>
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Límite montaje <Badge campo="ventanaMontajeFin" />
+                                  Límite montaje {badge("ventanaMontajeFin")}
                                 </label>
                                 <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
                               </div>
                               <div className="flex-1">
                                 <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Salida desmontaje <Badge campo="horaTerminoMontaje" />
+                                  Salida desmontaje {badge("horaTerminoMontaje")}
                                 </label>
                                 <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
                               </div>
@@ -1807,7 +1933,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Coordinador del venue <Badge campo="contactoVenueNombre" />
+                              Coordinador del venue {badge("contactoVenueNombre")}
                             </label>
                             <input value={discForm.contactoVenueNombre}
                               onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
@@ -1816,7 +1942,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                           </div>
                           <div>
                             <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Teléfono coordinador <Badge campo="contactoVenueTelefono" />
+                              Teléfono coordinador {badge("contactoVenueTelefono")}
                             </label>
                             <input value={discForm.contactoVenueTelefono}
                               onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}
@@ -1839,26 +1965,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
-                {/* Categorías de equipo */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Categorías de equipo que necesita</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORIAS_RENTA.map(cat => (
-                      <button key={cat.id} onClick={() => toggleServicio(cat.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                          discForm.serviciosInteres.includes(cat.id)
-                            ? "border-[#B3985B] text-black bg-[#B3985B]"
-                            : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
-                        }`}>
-                        {cat.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Descripción de equipos */}
                 <div>
-                  <label className="text-xs text-gray-400 block mb-1">Descripción del equipo (o rider técnico)</label>
+                  <label className="text-xs text-gray-400 block mb-1">Descripción del equipo solicitado (rider o listado libre)</label>
                   <textarea value={discForm.rentaDescripcionEquipos}
                     onChange={e => setDiscForm(p => ({ ...p, rentaDescripcionEquipos: e.target.value }))}
                     rows={3} placeholder="Ej: 2 bafles EV EKX-15P, 1 sub EKX-18SP, 4 micrófonos inalámbricos Shure BLX..."
@@ -1993,6 +2102,85 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
+              {/* Referencias y archivos del cliente — solo en paso 2 para RENTA; en paso 3 para producción */}
+              {discForm.tipoServicio === "RENTA" && <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
+                {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
+                  const catMeta = {
+                    REFERENCIA: { label: "Referencias del cliente", icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+                    DOCUMENTO:  { label: "Otros documentos",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                  }[cat];
+                  const catArchivos = archivos.filter(a => a.tipo === cat);
+                  const uploading = uploadingTipo === cat;
+                  return (
+                    <div key={cat}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
+                          <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
+                        </div>
+                        <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                          {uploading ? "Subiendo..." : "+ Agregar"}
+                          <input type="file" className="hidden" accept={catMeta.accept} multiple onChange={e => subirArchivo(e, cat)} />
+                        </label>
+                      </div>
+                      {catArchivos.length === 0 ? (
+                        <p className="text-gray-700 text-[11px] italic">Sin archivos aún</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                          {catArchivos.map((a) => {
+                            const esImagen = /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
+                            return (
+                              <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                                {esImagen ? (
+                                  <a href={a.url} target="_blank" rel="noreferrer">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                                  </a>
+                                ) : (
+                                  <a href={a.url} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
+                                    <span className="text-xl">{/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}</span>
+                                    <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
+                                  </a>
+                                )}
+                                <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
+                                <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>}
+
+            </div>)} {/* /paso2 */}
+
+            {/* PASO 3: Detalles operativos (solo producción técnica / no-renta) */}
+            {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
+                  <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
+                    placeholder="300"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Ideas / Referencias (links)</label>
+                  <input value={discForm.ideasReferencias} onChange={e => setDiscForm(p => ({ ...p, ideasReferencias: e.target.value }))}
+                    placeholder="Instagram, Pinterest, YouTube..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notas del descubrimiento</label>
+                <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
+                  rows={4} placeholder="Detalles específicos, necesidades especiales, contexto del evento, expectativas del cliente..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+
               {/* Referencias y archivos del cliente */}
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
@@ -2046,10 +2234,80 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 })}
               </div>
 
-            </div>)} {/* /paso2 */}
+            </div>)} {/* /paso3 */}
 
-            {/* PASO 3: Brief de contenido */}
-            {pasoActivo === 3 && (<div className="space-y-4">
+
+            {/* PASO 4: Scouting del venue (solo producción técnica / no-renta) */}
+            {discForm.tipoServicio !== "RENTA" && pasoActivo === 4 && (<div className="space-y-4">
+              <>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-gray-300">¿Aplica scouting?</p>
+                  <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
+                  <button onClick={() => setScoutingAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
+                </div>
+                {scoutingAplica === false && <p className="text-gray-600 text-xs italic">No se requiere scouting presencial para este proyecto.</p>}
+                {(scoutingAplica === true || trato.scoutingData) && (<div className="space-y-5">
+                  <div className="flex gap-1">
+                    {(["form", "resumen"] as const).map(t => (
+                      <button key={t} onClick={() => setScoutingTab(t)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                        {t === "form" ? "Editar ficha" : "Ver resumen"}
+                      </button>
+                    ))}
+                  </div>
+                  {scoutingTab === "resumen" && trato.scoutingData && (() => {
+                    const s = scoutingForm;
+                    const row = (label: string, val: string) => val ? <div key={label} className="flex gap-2 text-sm"><span className="text-gray-500 min-w-[150px]">{label}</span><span className="text-white">{val}</span></div> : null;
+                    return <div className="space-y-4">
+                      {s.nombreVenue && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Venue</p><div className="space-y-1 pl-2">{row("Nombre", s.nombreVenue)}{row("Dirección", s.direccion)}{row("Contacto", s.contactoVenue)}</div></div>}
+                      {(s.largo || s.ancho) && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Espacio</p><div className="space-y-1 pl-2">{row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}{row("Altura", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}{row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}</div></div>}
+                      {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
+                    </div>;
+                  })()}
+                  {scoutingTab === "form" && <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Encargado del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                      <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del encargado" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas del scouting: accesos, restricciones, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                  </div>}
+                </div>)}
+              </>
+
+              {/* Fotos del venue — siempre visible */}
+              <div className="border-t border-[#1a1a1a] pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">Fotos del venue / scouting</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Fotos del lugar, accesos, instalaciones eléctricas, etc.</p>
+                  </div>
+                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "SCOUTING" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                    {uploadingTipo === "SCOUTING" ? "Subiendo..." : "+ Agregar fotos"}
+                    <input type="file" className="hidden" accept="image/*" multiple onChange={e => subirArchivo(e, "SCOUTING")} />
+                  </label>
+                </div>
+                {archivos.filter(a => a.tipo === "SCOUTING").length === 0 ? (
+                  <p className="text-gray-700 text-[11px] italic">Sin fotos aún</p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {archivos.filter(a => a.tipo === "SCOUTING").map((a) => (
+                      <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
+                        <a href={a.url} target="_blank" rel="noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
+                        </a>
+                        <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
+                        <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>)} {/* /paso4 */}
+
+            {/* PASO 5 (no-renta) / PASO 3 (renta): Brief de contenido */}
+            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 5) && (<div className="space-y-4">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
                 <button onClick={() => setBriefAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
@@ -2125,6 +2383,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     </button>
                   </div>
                 </div>
+                {discForm.tipoServicio !== "RENTA" && (
+                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-white font-medium">Realizar render para facilitar venta</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">Se habilitará el botón de solicitud en la cotización</p>
+                    </div>
+                    <button
+                      onClick={() => setDiscForm(p => ({ ...p, realizarRender: !p.realizarRender }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.realizarRender ? "bg-purple-600" : "bg-[#333]"}`}>
+                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.realizarRender ? "translate-x-5" : "translate-x-0"}`} />
+                    </button>
+                  </div>
+                </div>
+                )}
               </div>
 
               {/* CTA Hacer propuesta — solo en el último paso */}
@@ -2222,7 +2495,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {canalInfo && <p className="text-gray-500 text-xs">Canal: {canalInfo.icon} {canalInfo.label}</p>}
               </div>
             </div>
-            <button onClick={() => setTrato(prev => prev ? { ...prev, descubrimientoCompleto: false } : prev)}
+            <button onClick={async () => { const d = await patch({ descubrimientoCompleto: false }); if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev); }}
               className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
               Editar descubrimiento
             </button>
@@ -2375,6 +2648,41 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
+                <Combobox
+                  value={trato.cliente.id}
+                  onChange={async (nuevoId) => {
+                    if (!nuevoId || nuevoId === trato.cliente.id) return;
+                    setSavingCliente(true);
+                    const res = await fetch(`/api/tratos/${id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ clienteId: nuevoId }),
+                    });
+                    if (res.ok) {
+                      const r2 = await fetch(`/api/tratos/${id}`);
+                      const d2 = await r2.json();
+                      if (d2.trato) setTrato(d2.trato);
+                      toast.success("Cliente actualizado");
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      toast.error(d.error ?? "Error al cambiar cliente");
+                    }
+                    setSavingCliente(false);
+                  }}
+                  options={clientesOpciones}
+                  placeholder={clientesOpciones.length === 0 ? "Cargando clientes..." : "Buscar cliente..."}
+                  disabled={savingCliente}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nombre del evento / proyecto</label>
+                <input value={form.nombreEvento || ""} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
+                  placeholder="Ej: Boda García-López, Concierto Verano..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
@@ -2454,6 +2762,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ── Grid: Detalles + Sidebar ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Datos del evento (editable) */}
+        {trato.tipoProspecto !== "NURTURING" && (
         <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Detalles del trato</h2>
@@ -2486,14 +2795,43 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   <Combobox
                     value={trato.origenVenta}
                     onChange={async (v) => {
-                      await fetch(`/api/tratos/${trato.id}`, {
+                      const res = await fetch(`/api/tratos/${trato.id}`, {
                         method: "PATCH",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ origenVenta: v }),
                       });
+                      if (!res.ok) {
+                        const d = await res.json().catch(() => ({}));
+                        toast.error(d.error ?? "Error al guardar");
+                        return;
+                      }
                       setTrato(prev => prev ? { ...prev, origenVenta: v } : prev);
                     }}
                     options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10%)" }, { value: "PUBLICIDAD", label: "Publicidad (5%)" }, { value: "ASIGNADO", label: "Asignado empresa (5%+5%)" }]}
+                    className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs mb-1">Comisión para</p>
+                <div className="flex items-center gap-2">
+                  <Combobox
+                    value={trato.vendedorId ?? trato.responsableId ?? ""}
+                    onChange={async (v) => {
+                      const res = await fetch(`/api/tratos/${trato.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ vendedorId: v || null }),
+                      });
+                      if (!res.ok) {
+                        const d = await res.json().catch(() => ({}));
+                        toast.error(d.error ?? "Error al guardar");
+                        return;
+                      }
+                      const vendedor = usuarios.find(u => u.id === v) ?? null;
+                      setTrato(prev => prev ? { ...prev, vendedorId: v || null, vendedor } : prev);
+                    }}
+                    options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
                     className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>
@@ -2520,21 +2858,52 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
         </div>
+        )}
 
         {/* Sidebar cliente */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${trato.tipoProspecto === "NURTURING" ? "md:col-span-3 md:grid md:grid-cols-2" : ""}`}>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Cliente</h2>
-            <Link href={`/crm/clientes/${trato.cliente.id}`} className="block hover:opacity-80 transition-opacity">
-              <p className="text-white font-medium text-sm">{trato.cliente.nombre}</p>
-              {trato.cliente.empresa && <p className="text-gray-400 text-xs">{trato.cliente.empresa}</p>}
-            </Link>
-            {trato.cliente.telefono && <p className="text-gray-300 text-xs mt-2">{trato.cliente.telefono}</p>}
-            {trato.cliente.correo && <p className="text-gray-300 text-xs">{trato.cliente.correo}</p>}
-            <div className="flex gap-2 mt-3">
-              <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.tipoCliente}</span>
-              <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.clasificacion}</span>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Cliente</h2>
+              {!cambiarCliente && (
+                <button
+                  onClick={abrirCambiarCliente}
+                  className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                >
+                  Cambiar
+                </button>
+              )}
             </div>
+            {cambiarCliente ? (
+              <div className="space-y-2">
+                <Combobox
+                  value={trato.cliente.id}
+                  onChange={confirmarCambioCliente}
+                  options={clientesOpciones}
+                  placeholder="Buscar cliente..."
+                  disabled={savingCliente}
+                />
+                <button
+                  onClick={() => setCambiarCliente(false)}
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link href={`/crm/clientes/${trato.cliente.id}`} className="block hover:opacity-80 transition-opacity">
+                  <p className="text-white font-medium text-sm">{trato.cliente.nombre}</p>
+                  {trato.cliente.empresa && <p className="text-gray-400 text-xs">{trato.cliente.empresa}</p>}
+                </Link>
+                {trato.cliente.telefono && <p className="text-gray-300 text-xs mt-2">{trato.cliente.telefono}</p>}
+                {trato.cliente.correo && <p className="text-gray-300 text-xs">{trato.cliente.correo}</p>}
+                <div className="flex gap-2 mt-3">
+                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.tipoCliente}</span>
+                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.clasificacion}</span>
+                </div>
+              </>
+            )}
           </div>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <p className="text-xs text-gray-500 mb-1">Creado el</p>

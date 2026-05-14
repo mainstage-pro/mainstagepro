@@ -105,7 +105,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.fechaCompletada = data.estado === "COMPLETADA" ? new Date() : null;
   }
 
+  // Capture previous assignee before updating (only when assignment is being changed)
+  const prevAssignee = "asignadoAId" in data
+    ? await prisma.tarea.findUnique({ where: { id }, select: { asignadoAId: true } })
+    : null;
+
   const tarea = await prisma.tarea.update({ where: { id }, data, select: SELECT });
+
+  // ── Notify assignee when task is assigned to someone else ────────────────
+  if (
+    "asignadoAId" in data &&
+    data.asignadoAId &&
+    data.asignadoAId !== session.id &&
+    data.asignadoAId !== prevAssignee?.asignadoAId
+  ) {
+    await prisma.notificacion.create({
+      data: {
+        usuarioId: data.asignadoAId as string,
+        tipo:      "TAREA",
+        titulo:    tarea.titulo,
+        mensaje:   `${session.name} te asignó esta tarea`,
+        url:       `/operaciones?open=${id}`,
+      },
+    });
+  }
 
   // ── Recurrence: when completing a recurring task, spawn next occurrence ──
   let nextTarea = null;

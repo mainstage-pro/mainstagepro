@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
@@ -24,6 +24,14 @@ interface EmpresaItem {
   contactosProveedor: { id: string; nombre: string; telefono: string | null; correo: string | null }[];
 }
 
+interface AbonoItem {
+  id: string;
+  monto: number;
+  fecha: string;
+  metodoPago: string;
+  notas: string | null;
+}
+
 interface CxCItem {
   id: string;
   concepto: string;
@@ -34,8 +42,10 @@ interface CxCItem {
   tipoPago: string;
   cliente: { id: string; nombre: string; telefono: string | null } | null;
   empresa: { id: string; nombre: string; telefono: string | null } | null;
-  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cotizacion: { id: string; numeroCotizacion: string } | null;
+  cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
+  abonos: AbonoItem[];
 }
 
 interface CxPItem {
@@ -49,7 +59,8 @@ interface CxPItem {
   proveedor: { id: string; nombre: string; telefono: string | null } | null;
   empresa: { id: string; nombre: string; telefono: string | null } | null;
   socio: { id: string; nombre: string; email: string | null } | null;
-  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
+  cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
 }
 
 interface MovDirecto {
@@ -69,11 +80,50 @@ interface MovDirecto {
   cuentaDestino: { nombre: string } | null;
 }
 
+type ProyGrupo<T> = {
+  proyectoId: string | null;
+  proyectoNombre: string | null;
+  numeroProyecto: string | null;
+  fechaEvento: string | null;
+  items: T[];
+};
+function groupByProject<T extends { proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null }>(items: T[]): ProyGrupo<T>[] {
+  const map = new Map<string, ProyGrupo<T>>();
+  for (const item of items) {
+    const key = item.proyecto?.id ?? "__sin_proyecto__";
+    if (!map.has(key)) {
+      map.set(key, {
+        proyectoId: item.proyecto?.id ?? null,
+        proyectoNombre: item.proyecto?.nombre ?? null,
+        numeroProyecto: item.proyecto?.numeroProyecto ?? null,
+        fechaEvento: item.proyecto?.fechaEvento ?? null,
+        items: [],
+      });
+    }
+    map.get(key)!.items.push(item);
+  }
+  const grupos = Array.from(map.values());
+  const conProyecto = grupos.filter(g => g.proyectoId !== null);
+  const sinProyecto = grupos.filter(g => g.proyectoId === null);
+  return [...conProyecto, ...sinProyecto];
+}
+
+function splitGroups<T>(grupos: ProyGrupo<T>[], hoy: string): { proximos: ProyGrupo<T>[]; pasados: ProyGrupo<T>[] } {
+  const proximos = grupos
+    .filter(g => !g.fechaEvento || g.fechaEvento.substring(0, 10) >= hoy)
+    .sort((a, b) => (a.fechaEvento ?? "9999").localeCompare(b.fechaEvento ?? "9999"));
+  const pasados = grupos
+    .filter(g => !!g.fechaEvento && g.fechaEvento.substring(0, 10) < hoy)
+    .sort((a, b) => b.fechaEvento!.localeCompare(a.fechaEvento!));
+  return { proximos, pasados };
+}
+
 const ESTADO_COLORS: Record<string, string> = {
-  PENDIENTE: "bg-yellow-900/40 text-yellow-400",
-  PARCIAL: "bg-blue-900/40 text-blue-400",
-  LIQUIDADO: "bg-green-900/40 text-green-400",
-  VENCIDO: "bg-red-900/40 text-red-400",
+  PENDIENTE:  "bg-yellow-900/40 text-yellow-400",
+  PARCIAL:    "bg-blue-900/40 text-blue-400",
+  LIQUIDADO:  "bg-green-900/40 text-green-400",
+  VENCIDO:    "bg-red-900/40 text-red-400",
+  CANCELADO:  "bg-gray-800 text-gray-500",
 };
 
 const TIPO_LABELS: Record<string, string> = {
@@ -83,7 +133,7 @@ const TIPO_LABELS: Record<string, string> = {
 };
 
 function fmtDate(d: string) {
-  return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(d.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 }
 
 function waMsgCobro(nombre: string, monto: number, concepto: string): string {
@@ -217,7 +267,11 @@ export default function CobrosPagosPage() {
   const [modalMetodoPago, setModalMetodoPago] = useState("TRANSFERENCIA");
   const [confirmando, setConfirmando] = useState(false);
   const [anulando, setAnulando] = useState<string | null>(null);
+  const [marcandoLiquidado, setMarcandoLiquidado] = useState<string | null>(null);
+  const [expandedAbonos, setExpandedAbonos] = useState<Set<string>>(new Set());
   const [filtro, setFiltro] = useState<"todos" | "pendientes" | "liquidados">("pendientes");
+  const [sortBy, setSortBy] = useState<"fecha_asc" | "fecha_desc" | "monto_desc" | "monto_asc" | "nombre_asc">("fecha_asc");
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [cuentas, setCuentas] = useState<Array<{ id: string; nombre: string; banco: string | null }>>([]);
   // Nuevo registro
   const [showNuevo, setShowNuevo] = useState(false);
@@ -240,6 +294,10 @@ export default function CobrosPagosPage() {
   const [editConcepto, setEditConcepto] = useState("");
   const [editFecha, setEditFecha] = useState("");
   const [editMotivo, setEditMotivo] = useState("");
+  const [editClienteId, setEditClienteId] = useState("");
+  const [editCuentaId, setEditCuentaId] = useState("");
+  const [editProveedorId, setEditProveedorId] = useState("");
+  const [editTecnicoId, setEditTecnicoId] = useState("");
   const [guardandoEdit, setGuardandoEdit] = useState(false);
   // Recibos de técnicos
   const [showReciboModal, setShowReciboModal] = useState(false);
@@ -279,15 +337,18 @@ export default function CobrosPagosPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [rc, rp, rm] = await Promise.all([
-      fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()),
-      fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()),
-      fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()),
-    ]);
-    setCxc(Array.isArray(rc) ? rc : []);
-    setCxp(Array.isArray(rp) ? rp : []);
-    setMovDirectos(rm.movimientos ?? []);
-    setLoading(false);
+    try {
+      const [rc, rp, rm] = await Promise.all([
+        fetch("/api/cuentas-cobrar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
+        fetch("/api/cuentas-pagar", { cache: "no-store" }).then(r => r.json()).catch(() => []),
+        fetch("/api/movimientos?directos=true", { cache: "no-store" }).then(r => r.json()).catch(() => ({ movimientos: [] })),
+      ]);
+      setCxc(Array.isArray(rc) ? rc : []);
+      setCxp(Array.isArray(rp) ? rp : []);
+      setMovDirectos(rm.movimientos ?? []);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -306,7 +367,7 @@ export default function CobrosPagosPage() {
     try {
       if (nuevoForm.tipo === "cxc") {
         if (!nuevoForm.empresaId && !nuevoForm.clienteId) { toast.error("Selecciona una empresa o cliente"); setGuardandoNuevo(false); return; }
-        await fetch("/api/cuentas-cobrar", {
+        const r = await fetch("/api/cuentas-cobrar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -320,8 +381,9 @@ export default function CobrosPagosPage() {
             notas: nuevoForm.notas || null,
           }),
         });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxC"); return; }
       } else {
-        await fetch("/api/cuentas-pagar", {
+        const r = await fetch("/api/cuentas-pagar", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -337,6 +399,7 @@ export default function CobrosPagosPage() {
             proyectoId: nuevoForm.proyectoId || null,
           }),
         });
+        if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al crear CxP"); return; }
       }
       setShowNuevo(false);
       setNuevoForm({ ...NUEVO_REGISTRO_EMPTY });
@@ -358,30 +421,57 @@ export default function CobrosPagosPage() {
   const hoyStr = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,"0")}-${String(_d.getDate()).padStart(2,"0")}`;
 
   const isVencida = (fechaCompromiso: string, estado: string) =>
-    estado !== "LIQUIDADO" && fechaCompromiso.substring(0, 10) < hoyStr;
+    estado !== "LIQUIDADO" && estado !== "CANCELADO" && fechaCompromiso.substring(0, 10) < hoyStr;
 
   // Apply overdue status locally
   const enrichCxC = (c: CxCItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
   const enrichCxP = (c: CxPItem) => ({ ...c, esVencida: isVencida(c.fechaCompromiso, c.estado) });
 
-  const cxcList = cxc.map(enrichCxC).filter(c => {
-    if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-    if (filtro === "liquidados") return c.estado === "LIQUIDADO";
-    return true;
-  });
-  const cxpList = cxp.map(enrichCxP).filter(c => {
-    if (filtro === "pendientes") return c.estado !== "LIQUIDADO";
-    if (filtro === "liquidados") return c.estado === "LIQUIDADO";
-    return true;
-  });
+  function applySort<T extends { fechaCompromiso: string; monto: number }>(
+    items: T[],
+    getNombre: (item: T) => string,
+  ): T[] {
+    const arr = [...items];
+    switch (sortBy) {
+      case "fecha_asc":  return arr.sort((a, b) => a.fechaCompromiso.localeCompare(b.fechaCompromiso));
+      case "fecha_desc": return arr.sort((a, b) => b.fechaCompromiso.localeCompare(a.fechaCompromiso));
+      case "monto_desc": return arr.sort((a, b) => b.monto - a.monto);
+      case "monto_asc":  return arr.sort((a, b) => a.monto - b.monto);
+      case "nombre_asc": return arr.sort((a, b) => getNombre(a).localeCompare(getNombre(b)));
+      default: return arr;
+    }
+  }
+
+  const cxcList = applySort(
+    cxc.map(enrichCxC).filter(c => {
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
+      return true;
+    }),
+    c => c.empresa?.nombre ?? c.cliente?.nombre ?? "",
+  );
+  const cxpList = applySort(
+    cxp.map(enrichCxP).filter(c => {
+      if (filtro === "pendientes") return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO";
+      if (filtro === "liquidados") return c.estado === "LIQUIDADO" || c.estado === "CANCELADO";
+      return true;
+    }),
+    c => c.empresa?.nombre ?? c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.socio?.nombre ?? "",
+  );
 
   // Metrics
-  const cxcPend = cxc.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxcVenc = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
-  const cxcCobr = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
-  const cxpPend = cxp.filter(c => c.estado === "PENDIENTE").reduce((s, c) => s + c.monto, 0);
-  const cxpVenc = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
-  const cxpPagd = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxcPend  = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcVenc  = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcProx  = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+  const cxcCobr  = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxcVencN = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxcProxN = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxpPend  = cxp.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxpVenc  = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxpProx  = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxpPagd  = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+  const cxpVencN = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
+  const cxpProxN = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
 
   function openModal(item: CxCItem | CxPItem, tipo: "cobro" | "pago") {
     const cxcItem = item as CxCItem;
@@ -389,7 +479,8 @@ export default function CobrosPagosPage() {
       ? (cxcItem.empresa?.nombre ?? cxcItem.cliente?.nombre ?? "Cliente")
       : ((item as CxPItem).socio?.nombre ?? (item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
     setModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, nombre });
-    setModalMonto(String(item.monto));
+    const saldo = tipo === "cobro" ? item.monto - ((item as CxCItem).montoCobrado ?? 0) : item.monto;
+    setModalMonto(String(saldo));
     setModalNotas("");
     setModalFecha(new Date().toISOString().split("T")[0]);
     setModalCuentaId("");
@@ -402,6 +493,19 @@ export default function CobrosPagosPage() {
     setEditConcepto(item.concepto);
     setEditFecha(item.fechaCompromiso.slice(0, 10));
     setEditMotivo("");
+    if (tipo === "cxc") {
+      const cxcItem = item as CxCItem;
+      setEditClienteId(cxcItem.cliente?.id ?? "");
+      setEditCuentaId(cxcItem.cuentaDestino?.id ?? "");
+      setEditProveedorId("");
+      setEditTecnicoId("");
+    } else {
+      const cxpItem = item as CxPItem;
+      setEditClienteId("");
+      setEditCuentaId(cxpItem.cuentaOrigen?.id ?? "");
+      setEditProveedorId(cxpItem.proveedor?.id ?? "");
+      setEditTecnicoId(cxpItem.tecnico?.id ?? "");
+    }
   }
 
   async function guardarEdit() {
@@ -417,6 +521,14 @@ export default function CobrosPagosPage() {
     if (editConcepto !== editModal.concepto) body.concepto = editConcepto;
     if (editFecha !== editModal.fechaCompromiso) body.fechaCompromiso = editFecha;
     if (montoChanged) { body.monto = nuevoMonto; body.motivo = editMotivo.trim(); }
+    if (editModal.tipo === "cxc") {
+      body.clienteId = editClienteId || null;
+      body.cuentaDestinoId = editCuentaId || null;
+    } else {
+      body.cuentaOrigenId = editCuentaId || null;
+      body.proveedorId = editProveedorId || null;
+      body.tecnicoId = editTecnicoId || null;
+    }
     const endpoint = editModal.tipo === "cxc"
       ? `/api/cuentas-cobrar/${editModal.id}`
       : `/api/cuentas-pagar/${editModal.id}`;
@@ -438,7 +550,7 @@ export default function CobrosPagosPage() {
     const endpoint = modal.tipo === "cobro"
       ? `/api/cuentas-cobrar/${modal.id}/pagar`
       : `/api/cuentas-pagar/${modal.id}/pagar`;
-    await fetch(endpoint, {
+    const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -449,6 +561,12 @@ export default function CobrosPagosPage() {
         metodoPago: modalMetodoPago,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setConfirmando(false);
+      return;
+    }
     await load();
     setModal(null);
     setConfirmando(false);
@@ -462,7 +580,7 @@ export default function CobrosPagosPage() {
     const endpoint = tipo === "cobro"
       ? `/api/cuentas-cobrar/${id}/anular`
       : `/api/cuentas-pagar/${id}/anular`;
-    const res = await fetch(endpoint, { method: "POST" });
+    const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
     if (res.ok) {
       toast.success("Registro anulado — vuelve a estado Pendiente");
       await load();
@@ -470,6 +588,42 @@ export default function CobrosPagosPage() {
       toast.error("Error al anular");
     }
     setAnulando(null);
+  }
+
+  async function anularAbono(cxcId: string, abonoId: string) {
+    if (!await confirm({ message: "¿Eliminar este abono? El movimiento financiero asociado será eliminado.", danger: true, confirmText: "Eliminar abono" })) return;
+    setAnulando(abonoId);
+    const res = await fetch(`/api/cuentas-cobrar/${cxcId}/anular`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ abonoId }),
+    });
+    if (res.ok) {
+      toast.success("Abono eliminado");
+      await load();
+    } else {
+      toast.error("Error al eliminar abono");
+    }
+    setAnulando(null);
+  }
+
+  async function marcarCobradoManual(cxcItem: CxCItem) {
+    const msg = `El movimiento de ${formatCurrency(cxcItem.monto)} ya está registrado en Movimientos.\n\n¿Marcar esta cuenta como LIQUIDADA sin crear un movimiento adicional?`;
+    if (!await confirm({ message: msg, confirmText: "Marcar como cobrada" })) return;
+    setMarcandoLiquidado(cxcItem.id);
+    const res = await fetch(`/api/cuentas-cobrar/${cxcItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ marcarLiquidado: true, montoCobrado: cxcItem.monto }),
+    });
+    if (res.ok) {
+      toast.success("Cuenta marcada como cobrada");
+      await load();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al actualizar");
+    }
+    setMarcandoLiquidado(null);
   }
 
   async function eliminar(id: string, tipo: "cxc" | "cxp", liquidado: boolean) {
@@ -694,59 +848,82 @@ export default function CobrosPagosPage() {
       {pageTab === "cobros" && <>
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
           <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={openReciboModal}
-            className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
+            className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
             Recibos técnicos
           </button>
           <button
             onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setEmpresaQuery(""); setShowNuevo(true); }}
-            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
             + Nuevo registro
           </button>
         </div>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Por cobrar</p>
-          <p className="text-yellow-400 text-lg font-semibold">{formatCurrency(cxcPend)}</p>
+      {/* Resumen financiero */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+        {/* CxC */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por cobrar</p>
+            {cxcCobr > 0 && <p className="text-[11px] text-gray-600">cobrado: <span className="text-green-600/80 font-medium">{formatCurrency(cxcCobr)}</span></p>}
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a]">
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Vencido</p>
+              <p className={`text-base font-bold ${cxcVenc > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxcVenc)}</p>
+              {cxcVencN > 0 && <p className="text-[10px] text-red-500/60 mt-1">{cxcVencN} {cxcVencN === 1 ? "cobro" : "cobros"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{formatCurrency(cxcProx)}</p>
+              {cxcProxN > 0 && <p className="text-[10px] text-[#B3985B]/50 mt-1">{cxcProxN} {cxcProxN === 1 ? "cobro" : "cobros"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Total pendiente</p>
+              <p className="text-base font-bold text-white">{formatCurrency(cxcPend)}</p>
+            </div>
+          </div>
         </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Cobro vencido</p>
-          <p className="text-red-400 text-lg font-semibold">{formatCurrency(cxcVenc)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Cobrado</p>
-          <p className="text-green-400 text-lg font-semibold">{formatCurrency(cxcCobr)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Por pagar</p>
-          <p className="text-yellow-400 text-lg font-semibold">{formatCurrency(cxpPend)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Pago vencido</p>
-          <p className="text-red-400 text-lg font-semibold">{formatCurrency(cxpVenc)}</p>
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-          <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Pagado</p>
-          <p className="text-green-400 text-lg font-semibold">{formatCurrency(cxpPagd)}</p>
+        {/* CxP */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por pagar</p>
+            {cxpPagd > 0 && <p className="text-[11px] text-gray-600">pagado: <span className="text-green-600/80 font-medium">{formatCurrency(cxpPagd)}</span></p>}
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-[#1a1a1a]">
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Vencido</p>
+              <p className={`text-base font-bold ${cxpVenc > 0 ? "text-red-400" : "text-gray-700"}`}>{formatCurrency(cxpVenc)}</p>
+              {cxpVencN > 0 && <p className="text-[10px] text-red-500/60 mt-1">{cxpVencN} {cxpVencN === 1 ? "pago" : "pagos"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Próximo</p>
+              <p className="text-base font-bold text-[#B3985B]">{formatCurrency(cxpProx)}</p>
+              {cxpProxN > 0 && <p className="text-[10px] text-[#B3985B]/50 mt-1">{cxpProxN} {cxpProxN === 1 ? "pago" : "pagos"}</p>}
+            </div>
+            <div className="px-4 py-4">
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-2">Total pendiente</p>
+              <p className="text-base font-bold text-white">{formatCurrency(cxpPend)}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tabs + filtro */}
-      <div className="flex items-center justify-between mb-4 border-b border-[#1a1a1a] pb-0">
-        <div className="flex gap-1">
-          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length], ["directos", "Movimientos directos", movDirectos.length]] as const).map(([key, label, count]) => (
+      <div className="mb-4 border-b border-[#1a1a1a]">
+        {/* Tabs row — scrollable on mobile */}
+        <div className="flex gap-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {([["cobrar", "Por Cobrar", cxcList.length], ["pagar", "Por Pagar", cxpList.length], ["directos", "Movimientos", movDirectos.length]] as const).map(([key, label, count]) => (
             <button key={key} onClick={() => setTab(key)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              className={`shrink-0 px-4 py-2.5 text-sm font-medium transition-colors relative ${
                 tab === key
                   ? "text-[#B3985B] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-[#B3985B]"
                   : "text-[#555] hover:text-[#888]"
@@ -758,15 +935,47 @@ export default function CobrosPagosPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-1 pb-2">
+        {/* Filter row */}
+        <div className="flex items-center gap-1.5 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           {([["pendientes", "Pendientes"], ["liquidados", "Liquidados"], ["todos", "Todos"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setFiltro(key)}
-              className={`text-xs px-3 py-1 rounded-lg transition-colors ${
+              className={`shrink-0 text-xs px-3 py-1 rounded-lg transition-colors ${
                 filtro === key ? "bg-[#B3985B]/15 text-[#B3985B]" : "text-[#555] hover:text-white"
               }`}>
               {label}
             </button>
           ))}
+          {/* Sort button — only for CxC / CxP tabs */}
+          {tab !== "directos" && (
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowSortMenu(v => !v)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-lg border transition-colors ${showSortMenu ? "border-[#B3985B]/50 text-[#B3985B]" : "border-[#333] text-[#555] hover:text-white"}`}>
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                </svg>
+                Ordenar
+              </button>
+              {showSortMenu && (
+                <div className="absolute left-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
+                  onMouseLeave={() => setShowSortMenu(false)}>
+                  {([
+                    ["fecha_asc",  "Fecha de cobro: más cercana"],
+                    ["fecha_desc", "Fecha de cobro: más lejana"],
+                    ["monto_desc", "Monto: mayor a menor"],
+                    ["monto_asc",  "Monto: menor a mayor"],
+                    ["nombre_asc", "Nombre: A → Z"],
+                  ] as const).map(([key, label]) => (
+                    <button key={key}
+                      onClick={() => { setSortBy(key); setShowSortMenu(false); }}
+                      className={`w-full text-left px-4 py-2 text-xs transition-colors ${sortBy === key ? "text-[#B3985B]" : "text-gray-400 hover:text-white"}`}>
+                      {sortBy === key && <span className="mr-1.5">✓</span>}{label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -778,12 +987,64 @@ export default function CobrosPagosPage() {
         </div>
       ) : tab === "cobrar" ? (
         // ── CxC Cards ──
-        <div className="space-y-2">
+        <div className="space-y-4">
           {cxcList.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por cobrar</p>
             </div>
-          ) : cxcList.map(c => (
+          ) : (() => {
+            const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList), hoyStr);
+            let _cvLastMonth = "";
+            return [..._cp, ..._cv].map((grupo, idx) => {
+            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
+            const isPasado = idx >= _cp.length;
+            let monthHeader = null;
+            if (isPasado && grupo.fechaEvento) {
+              const mk = grupo.fechaEvento.substring(0, 7);
+              if (mk !== _cvLastMonth) {
+                _cvLastMonth = mk;
+                const [y, m] = mk.split("-");
+                const lbl = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+                monthHeader = (
+                  <div className="flex items-center gap-3 pt-3 pb-1">
+                    <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold capitalize">{lbl}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                );
+              }
+            }
+            return (
+            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
+              {idx === _cp.length && _cv.length > 0 && (
+                <div className="flex items-center gap-4 py-3">
+                  <div className="flex-1 h-px bg-[#161616]" />
+                  <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {_cv.length}</span>
+                  <div className="flex-1 h-px bg-[#161616]" />
+                </div>
+              )}
+              {monthHeader}
+              <div className={isPasado ? "opacity-50" : ""}>
+              {grupo.proyectoId ? (
+                <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                      {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                    </Link>
+                    {grupo.fechaEvento && (
+                      <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                    )}
+                  </div>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-yellow-400 shrink-0">
+                      {formatCurrency(totalGrupo)} pendiente
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 px-1">Sin proyecto</p>
+              )}
+              <div className="space-y-2">
+                {grupo.items.map(c => (
             <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
               <div className="flex items-start gap-3">
                 {/* Info principal */}
@@ -805,19 +1066,10 @@ export default function CobrosPagosPage() {
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_COLORS[c.estado] ?? "bg-gray-800 text-gray-400"}`}>
                       {c.estado}
                     </span>
-                    <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                      {TIPO_LABELS[c.tipoPago] ?? c.tipoPago}
-                    </span>
                     {c.esVencida && <span className="text-[10px] text-red-400 font-medium">⚠ Vencida</span>}
                   </div>
                   <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
                   <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                    {c.proyecto && (
-                      <Link href={`/proyectos/${c.proyecto.id}`}
-                        className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-                        {c.proyecto.numeroProyecto} · {c.proyecto.nombre}
-                      </Link>
-                    )}
                     {c.cotizacion && (
                       <Link href={`/cotizaciones/${c.cotizacion.id}`}
                         className="text-[10px] font-mono text-[#555] hover:text-[#B3985B] transition-colors">
@@ -827,30 +1079,94 @@ export default function CobrosPagosPage() {
                     <span className={`text-[10px] ${c.esVencida ? "text-red-400" : "text-[#555]"}`}>
                       Vence: {fmtDate(c.fechaCompromiso)}
                     </span>
-                    {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                      <span className="text-[10px] text-blue-400">
-                        Abonado: {formatCurrency(c.montoCobrado)}
-                      </span>
-                    )}
                   </div>
                 </div>
 
                 {/* Monto */}
                 <div className="text-right shrink-0">
-                  <p className="text-white font-semibold text-base">{formatCurrency(c.monto)}</p>
+                  {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" ? (
+                    <>
+                      <p className="text-yellow-400 font-semibold text-base">{formatCurrency(c.monto - c.montoCobrado)}</p>
+                      <p className="text-[10px] text-gray-600 mt-0.5">saldo de {formatCurrency(c.monto)}</p>
+                    </>
+                  ) : (
+                    <p className={`font-semibold text-base ${c.estado === "LIQUIDADO" ? "text-green-400" : "text-white"}`}>{formatCurrency(c.monto)}</p>
+                  )}
                 </div>
               </div>
 
+              {/* Barra de progreso */}
+              {c.monto > 0 && (
+                <div className="mt-2.5">
+                  <div className="flex justify-between text-[10px] text-gray-600 mb-1">
+                    <span>Cobrado: {formatCurrency(c.montoCobrado)}</span>
+                    <span>{Math.round((c.montoCobrado / c.monto) * 100)}%</span>
+                  </div>
+                  <div className="w-full bg-[#1a1a1a] rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all ${c.estado === "LIQUIDADO" ? "bg-green-500" : "bg-[#B3985B]"}`}
+                      style={{ width: `${Math.min(100, (c.montoCobrado / c.monto) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Historial de abonos (expandible) */}
+              {c.abonos && c.abonos.length > 0 && (
+                <div className="mt-2.5">
+                  <button
+                    onClick={() => setExpandedAbonos(prev => {
+                      const next = new Set(prev);
+                      next.has(c.id) ? next.delete(c.id) : next.add(c.id);
+                      return next;
+                    })}
+                    className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    <svg className={`w-3 h-3 transition-transform ${expandedAbonos.has(c.id) ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                    {c.abonos.length} {c.abonos.length === 1 ? "abono registrado" : "abonos registrados"}
+                  </button>
+                  {expandedAbonos.has(c.id) && (
+                    <div className="mt-2 space-y-1.5 pl-2 border-l border-[#2a2a2a]">
+                      {c.abonos.map(abono => (
+                        <div key={abono.id} className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                            <span className="text-[#B3985B] font-medium">{formatCurrency(abono.monto)}</span>
+                            <span>·</span>
+                            <span>{fmtDate(abono.fecha)}</span>
+                            <span className="bg-[#1a1a1a] px-1.5 py-0.5 rounded capitalize">
+                              {abono.metodoPago === "TRANSFERENCIA" ? "Transf." : abono.metodoPago === "EFECTIVO" ? "Efectivo" : abono.metodoPago}
+                            </span>
+                            {abono.notas && <span className="text-gray-700 truncate max-w-[120px]">{abono.notas}</span>}
+                          </div>
+                          <button
+                            onClick={() => anularAbono(c.id, abono.id)}
+                            disabled={anulando === abono.id}
+                            className="text-[10px] text-red-500/50 hover:text-red-400 transition-colors disabled:opacity-40"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Acciones */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
-                {c.estado !== "LIQUIDADO" && (
+                {c.estado === "CANCELADO" && (
+                  <p className="text-xs text-gray-600 italic">Cancelado — trato marcado como Venta Perdida</p>
+                )}
+                {c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && (
                   <>
                     <button onClick={() => openModal(c, "cobro")}
                       className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
-                      Confirmar cobro
+                      Registrar abono
                     </button>
                     <button onClick={() => openEdit(c, "cxc")}
                       className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
@@ -859,13 +1175,49 @@ export default function CobrosPagosPage() {
                       </svg>
                       Editar
                     </button>
+                    <button onClick={() => marcarCobradoManual(c)}
+                      disabled={marcandoLiquidado === c.id}
+                      title="El movimiento ya se registró por otra vía — solo actualiza el estado de esta cuenta"
+                      className="flex items-center gap-1.5 text-xs text-green-500/70 border border-green-900/30 hover:border-green-600/50 hover:text-green-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Ya cobré<span className="hidden sm:inline"> (sin movimiento)</span></span>
+                    </button>
+                  </>
+                )}
+                {/* Nota de cobro — visible para todas las CxC */}
+                <a href={`/api/cuentas-cobrar/${c.id}/nota`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/25 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Nota de cobro
+                </a>
+                {c.cotizacion && (
+                  <>
+                    <Link href={`/cotizaciones/${c.cotizacion.id}`}
+                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Ver cotización
+                    </Link>
+                    <a href={`/api/cotizaciones/${c.cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Cotización PDF
+                    </a>
                   </>
                 )}
                 {(() => {
                   const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
                   const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
-                  return c.estado !== "LIQUIDADO" && tel ? (
-                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, c.monto, c.concepto)}`}
+                  const saldo = c.monto - c.montoCobrado;
+                  return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && tel ? (
+                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, saldo, c.concepto)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -877,19 +1229,12 @@ export default function CobrosPagosPage() {
                   ) : null;
                 })()}
                 {c.estado === "LIQUIDADO" && (
-                  <>
-                    <a href={`/api/cuentas-cobrar/${c.id}/recibo`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Recibo PDF
-                    </a>
-                    <button onClick={() => anular(c.id, "cobro")} disabled={anulando === c.id}
-                      className="text-xs text-red-400/70 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
-                      {anulando === c.id ? "Anulando..." : "Anular cobro"}
-                    </button>
-                  </>
+                  <span className="text-xs text-green-400/60 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Liquidado
+                  </span>
                 )}
                 <button onClick={() => eliminar(c.id, "cxc", c.estado === "LIQUIDADO")}
                   className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
@@ -898,15 +1243,73 @@ export default function CobrosPagosPage() {
               </div>
             </div>
           ))}
+              </div>
+              </div>
+            </Fragment>
+          );
+          });
+          })()}
         </div>
       ) : (
         // ── CxP Cards ──
-        <div className="space-y-2">
+        <div className="space-y-4">
           {cxpList.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
               <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
             </div>
-          ) : cxpList.map(c => {
+          ) : (() => {
+            const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
+            let _pvLastMonth = "";
+            return [..._pp, ..._pv].map((grupo, idx) => {
+            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+            const isPasadoP = idx >= _pp.length;
+            let monthHeaderP = null;
+            if (isPasadoP && grupo.fechaEvento) {
+              const mk = grupo.fechaEvento.substring(0, 7);
+              if (mk !== _pvLastMonth) {
+                _pvLastMonth = mk;
+                const [y, m] = mk.split("-");
+                const lbl = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+                monthHeaderP = (
+                  <div className="flex items-center gap-3 pt-3 pb-1">
+                    <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold capitalize">{lbl}</span>
+                    <div className="flex-1 h-px bg-[#161616]" />
+                  </div>
+                );
+              }
+            }
+            return (
+            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
+              {idx === _pp.length && _pv.length > 0 && (
+                <div className="flex items-center gap-4 py-3">
+                  <div className="flex-1 h-px bg-[#161616]" />
+                  <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {_pv.length}</span>
+                  <div className="flex-1 h-px bg-[#161616]" />
+                </div>
+              )}
+              {monthHeaderP}
+              <div className={isPasadoP ? "opacity-50" : ""}>
+              {grupo.proyectoId ? (
+                <div className="flex items-center justify-between gap-2 mb-2 px-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
+                      {grupo.numeroProyecto} · {grupo.proyectoNombre}
+                    </Link>
+                    {grupo.fechaEvento && (
+                      <span className="text-[10px] text-gray-600">— Evento: {fmtDate(grupo.fechaEvento)}</span>
+                    )}
+                  </div>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-red-400 shrink-0">
+                      {formatCurrency(totalGrupo)} por pagar
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 px-1">Sin proyecto</p>
+              )}
+              <div className="space-y-2">
+                {grupo.items.map(c => {
             const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
@@ -925,12 +1328,6 @@ export default function CobrosPagosPage() {
                     </div>
                     <p className="text-[#9ca3af] text-xs">{c.concepto}</p>
                     <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                      {c.proyecto && (
-                        <Link href={`/proyectos/${c.proyecto.id}`}
-                          className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-                          {c.proyecto.numeroProyecto} · {c.proyecto.nombre}
-                        </Link>
-                      )}
                       <span className={`text-[10px] ${c.esVencida ? "text-red-400" : "text-[#555]"}`}>
                         Vence: {fmtDate(c.fechaCompromiso)}
                       </span>
@@ -988,6 +1385,14 @@ export default function CobrosPagosPage() {
                       </button>
                     </>
                   )}
+                  {/* Nota de pago — visible para todas las CxP */}
+                  <a href={`/api/cuentas-pagar/${c.id}/nota`} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/25 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-colors">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Nota de pago
+                  </a>
                   <button onClick={() => eliminar(c.id, "cxp", c.estado === "LIQUIDADO")}
                     className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
                     Eliminar
@@ -996,6 +1401,12 @@ export default function CobrosPagosPage() {
               </div>
             );
           })}
+              </div>
+              </div>
+            </Fragment>
+          );
+          });
+          })()}
         </div>
       )}
 
@@ -1057,16 +1468,16 @@ export default function CobrosPagosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-white font-semibold mb-1">
-              {modal.tipo === "cobro" ? "Confirmar cobro" : "Confirmar pago"}
+              {modal.tipo === "cobro" ? "Registrar abono" : "Confirmar pago"}
             </h3>
             <p className="text-gray-500 text-xs mb-4">{modal.concepto} · {modal.nombre}</p>
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Monto recibido / pagado</label>
+                <label className="text-xs text-gray-500 mb-1 block">Monto recibido</label>
                 <input type="number" step="0.01" min="0" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
-                <p className="text-[10px] text-gray-600 mt-1">Total: {formatCurrency(modal.monto)}</p>
+                <p className="text-[10px] text-gray-600 mt-1">Saldo: {formatCurrency(modal.monto)}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
@@ -1140,6 +1551,48 @@ export default function CobrosPagosPage() {
                 <input type="date" value={editFecha} onChange={e => setEditFecha(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
               </div>
+              {editModal.tipo === "cxc" && (
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Cliente</label>
+                  <Combobox
+                    value={editClienteId}
+                    onChange={setEditClienteId}
+                    options={[{ value: "", label: "— Sin cliente —" }, ...clientes.map(c => ({ value: c.id, label: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block">{editModal.tipo === "cxc" ? "Cuenta destino (cobro)" : "Cuenta origen (pago)"}</label>
+                <Combobox
+                  value={editCuentaId}
+                  onChange={setEditCuentaId}
+                  options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              {editModal.tipo === "cxp" && (
+                <>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Proveedor</label>
+                    <Combobox
+                      value={editProveedorId}
+                      onChange={v => { setEditProveedorId(v); if (v) setEditTecnicoId(""); }}
+                      options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre + (p.empresa ? ` · ${p.empresa}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Técnico</label>
+                    <Combobox
+                      value={editTecnicoId}
+                      onChange={v => { setEditTecnicoId(v); if (v) setEditProveedorId(""); }}
+                      options={[{ value: "", label: "— Sin técnico —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre + (t.celular ? ` · ${t.celular}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
+                </>
+              )}
               {parseFloat(editMonto) !== editModal.monto && (
                 <div>
                   <label className="text-xs text-[#B3985B] mb-1 block">Motivo del ajuste de monto (requerido)</label>

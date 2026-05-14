@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { SkeletonCards } from "@/components/Skeleton";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 interface PersonalInterno {
   id: string; nombre: string; puesto: string; departamento: string;
@@ -24,6 +26,7 @@ const DEPTO_COLORS: Record<string, string> = {
 function fmt(n: number) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n); }
 
 export default function PersonalPage() {
+  const toast = useToast();
   const [personal, setPersonal] = useState<PersonalInterno[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -43,7 +46,13 @@ export default function PersonalPage() {
   async function crear() {
     if (!form.nombre || !form.puesto) return;
     setSaving(true);
-    await fetch("/api/rrhh/personal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch("/api/rrhh/personal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al crear registro");
+      setSaving(false);
+      return;
+    }
     await load();
     setForm({ nombre: "", puesto: "", departamento: "GENERAL", tipo: "EMPLEADO", telefono: "", correo: "", salario: "", periodoPago: "MENSUAL", fechaIngreso: "", cuentaBancaria: "", datosFiscales: "", notas: "" });
     setShowForm(false);
@@ -90,18 +99,14 @@ export default function PersonalPage() {
             </button>
           </div>
           <Link href="/rrhh/nomina" className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">Nómina</Link>
-          {!showForm && (
-            <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
               + Agregar
             </button>
-          )}
         </div>
       </div>
 
       {/* Formulario */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-4">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva persona</p>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nueva persona">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
@@ -157,15 +162,13 @@ export default function PersonalPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-3 mt-4">
             <button onClick={crear} disabled={saving || !form.nombre || !form.puesto}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Crear"}
             </button>
-            <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Lista / Tarjetas */}
       {loading ? (

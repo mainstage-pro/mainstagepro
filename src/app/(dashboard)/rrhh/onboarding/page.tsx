@@ -139,7 +139,7 @@ function PlanCard({ plan, onEliminar }: { plan: Plan; onEliminar: (id: string, n
           <div className="text-right shrink-0">
             {plan.fechaIngreso && (
               <p className="text-white text-sm">
-                {new Date(plan.fechaIngreso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                {(() => { const [y,m,d] = plan.fechaIngreso.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"short",year:"numeric"}); })()}
               </p>
             )}
             <p className="text-gray-600 text-xs">fecha de ingreso</p>

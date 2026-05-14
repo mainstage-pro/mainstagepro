@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { HojaEntregaRentaPDF } from "@/components/HojaEntregaRentaPDF";
 import React from "react";
+import path from "path";
+import fs from "fs";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -14,7 +16,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
     include: {
-      cliente: { select: { nombre: true, empresa: true } },
+      cliente: { select: { nombre: true, empresa: true, telefono: true } },
+      trato: { select: { ideasReferencias: true } },
       equipos: {
         include: {
           equipo: {
@@ -32,14 +35,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
+  const logoSrc = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
   const proyectoData = {
     ...proyecto,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
+    tratoIdeasReferencias: proyecto.trato?.ideasReferencias ?? null,
   };
 
   const pdfStream = await ReactPDF.renderToStream(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(HojaEntregaRentaPDF, { proyecto: proyectoData as any }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(HojaEntregaRentaPDF, { proyecto: proyectoData as any, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const chunks: Uint8Array[] = [];

@@ -12,7 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       items: {
         orderBy: [{ categoria: "asc" }, { orden: "asc" }],
-        include: { equipo: { select: { descripcion: true } } },
+        include: { equipo: { select: { id: true, descripcion: true, cantidadTotal: true, estado: true } } },
       },
     },
   });

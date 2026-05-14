@@ -37,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       proximoServicioFecha: body.proximoServicioFecha !== undefined ? (body.proximoServicioFecha ? new Date(body.proximoServicioFecha) : null) : undefined,
       activo: body.activo !== undefined ? Boolean(body.activo) : undefined,
       notas: body.notas !== undefined ? (body.notas || null) : undefined,
+      fotos: body.fotos !== undefined ? (Array.isArray(body.fotos) ? body.fotos : []) : undefined,
     },
   });
 

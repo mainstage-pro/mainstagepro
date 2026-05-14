@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, use } from "react";
+import React, { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TimePicker from "@/components/ui/TimePicker";
@@ -12,13 +12,15 @@ import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
-interface RolTecnico { id: string; nombre: string; tarifaAAMedia: number | null; tarifaAACorta: number | null; tarifaAALarga: number | null }
+interface RolTecnico { id: string; nombre: string; tipoPago: string; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
 interface Personal {
   id: string; confirmado: boolean; estadoPago: string;
   participacion: string | null;
+  fechaJornada: string | null;
   nivel: string | null; jornada: string | null; responsabilidad: string | null;
   tarifaAcordada: number | null; notas: string | null;
   confirmToken: string | null; confirmRespuesta: string | null;
@@ -33,11 +35,11 @@ interface AjusteEntry { fecha: string; de: number; a: number; motivo: string; us
 interface CxC { id: string; concepto: string; tipoPago: string; monto: number; montoCobrado: number; estado: string; fechaCompromiso: string; montoOriginal: number | null; ajustesLog: string | null }
 interface CxP { id: string; concepto: string; monto: number; estado: string; fechaCompromiso: string; tipoAcreedor: string; montoOriginal: number | null; ajustesLog: string | null }
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
-interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null }
-interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoria: { nombre: string } | null; proveedor: { nombre: string } | null }
+interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
+interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
-interface RiderAccesorio { id: string; nombre: string; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -47,7 +49,7 @@ interface Proyecto {
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   lugarEvento: string | null; encargadoLugar: string | null; encargadoLugarContacto: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null;
-  encargadoCliente: string | null; transportes: string | null;
+  encargadoCliente: string | null; encargadoClienteContacto: string | null; transportes: string | null;
   proveedorCatering: string | null; contactosDireccion: string | null;
   reporteCatering: string | null;
   cronograma: string | null; contactosEmergencia: string | null; comentariosFinales: string | null;
@@ -56,9 +58,12 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
+  proveedoresRenta: string | null;
+  equiposRiderExtra: string | null;
+  zona: string;
   protocoloSalida: string | null;
   protocoloEntrada: string | null;
   recoleccionStatus: string;
@@ -67,6 +72,7 @@ interface Proyecto {
   choferNombre: string | null;
   choferExterno: boolean;
   choferCosto: number | null;
+  aplicaCatering: boolean;
   personal: Personal[];
   equipos: ProyectoEquipoItem[];
   checklist: CheckItem[];
@@ -75,7 +81,7 @@ interface Proyecto {
   cuentasPagar: CxP[];
   bitacora: Bitacora[];
   movimientos: Gasto[];
-  cierreFinanciero: { cerradoEn: string; notas: string | null } | null;
+  cierreFinanciero: { cerradoEn: string; notas: string | null; totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number; granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number } | null;
   portalToken: string | null;
   notasPortal: string | null;
   responsables: string | null;
@@ -102,7 +108,14 @@ const NIVEL_COLORS: Record<string, string> = {
 };
 
 function fmt(n: number) {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+function proximoLunesTraEvento(fechaStr: string): string {
+  const d = new Date(fechaStr.substring(0, 10) + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 1);
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() + (8 - dow) % 7);
+  return d.toISOString().substring(0, 10);
 }
 function fmtDate(s: string | null) {
   if (!s) return "—";
@@ -170,13 +183,19 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
 }
 
 // ─── Componente campo editable ────────────────────────────────────────────────
-function Campo({ label, value, field, onSave, type = "text", multiline = false }:
-  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean }) {
+function Campo({ label, value, field, onSave, type = "text", multiline = false, noLabel = false }:
+  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean }) {
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Sync external value changes (e.g. after load)
   useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
+
+  useEffect(() => {
+    if (!multiline || !textareaRef.current) return;
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+  }, [val, multiline]);
 
   function handleBlur() {
     if (dirty) { onSave(field, val); setDirty(false); }
@@ -186,9 +205,9 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false }
 
   return (
     <div>
-      <label className="text-gray-500 text-xs mb-1 block">{label}</label>
+      {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
       {multiline ? (
-        <textarea value={val} rows={3} className={inputCls + " resize-none"}
+        <textarea ref={textareaRef} value={val} rows={2} className={inputCls + " resize-none overflow-hidden"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
           onBlur={handleBlur} />
       ) : (
@@ -229,6 +248,234 @@ function CampoVenue({ label, value, field, onSave }: { label: string; value: str
   );
 }
 
+// ─── Sub-componentes de operación ────────────────────────────────────────────
+
+function SectionDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 pt-2">
+      <p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p>
+      <div className="flex-1 border-t border-[#1a1a1a]" />
+    </div>
+  );
+}
+
+function TableHeader({ cols }: { cols: string[] }) {
+  return (
+    <div className="grid gap-1 mb-1" style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
+      {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
+      <div />
+    </div>
+  );
+}
+
+function DocAccordion({ docKey, title, desc, tag, children, isOpen, onToggle }: {
+  docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode;
+  isOpen: boolean; onToggle: () => void;
+}) {
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <p className="text-white text-sm font-semibold">{title}</p>
+            {desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}
+          </div>
+          {tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}
+        </div>
+        <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      {isOpen && <div className="border-t border-[#222]">{children}</div>}
+    </div>
+  );
+}
+
+type ProtocoloData = { estado: string; responsable: string; hora: string; observaciones: string; fotos: string[] };
+const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
+const ESTADO_OPTS_PROTOCOLO = [
+  { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
+  { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
+  { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
+];
+
+async function comprimirFotoProtocolo(file: File): Promise<string> {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1200 / img.width);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.src = e.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function ProtocoloPanel({ tipo, data, onSave }: {
+  tipo: "salida" | "entrada";
+  data: ProtocoloData;
+  onSave: (tipo: "salida" | "entrada", data: ProtocoloData) => Promise<void>;
+}) {
+  const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
+  const icon = tipo === "salida" ? "🚚" : "🏠";
+  const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
+  const [local, setLocal] = useState<ProtocoloData>(data);
+  const [saving, setSaving] = useState(false);
+
+  const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const b64 = await comprimirFotoProtocolo(file);
+    const next = { ...local, fotos: [...local.fotos, b64] }; setLocal(next); await onSave(tipo, next); e.target.value = "";
+  };
+  const removeFoto = async (idx: number) => {
+    const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) };
+    setLocal(next); await onSave(tipo, next);
+  };
+  const save = async () => { setSaving(true); await onSave(tipo, local); setSaving(false); };
+
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">{icon}</span>
+          <div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div>
+        </div>
+        <div className="flex gap-2">
+          {ESTADO_OPTS_PROTOCOLO.map(opt => (
+            <button key={opt.id} onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); onSave(tipo, next); }}
+              className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="p-5 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label>
+            <input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))} placeholder="Nombre del técnico"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 block mb-1">Hora de verificación</label>
+            <input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))} placeholder="ej. 09:30"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 block mb-1">Observaciones</label>
+          <textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))} rows={3}
+            placeholder="Estado del equipo, daños, faltantes, notas..."
+            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label>
+            <label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">
+              + Agregar foto
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} />
+            </label>
+          </div>
+          {local.fotos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {local.fotos.map((foto, i) => (
+                <div key={i} className="relative group">
+                  <a href={foto} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" />
+                  </a>
+                  <button onClick={() => removeFoto(i)} className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <button onClick={save} disabled={saving} className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">
+          {saving ? "Guardando..." : "Guardar protocolo"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+type EquipoRowProps = {
+  eq: ProyectoEquipoItem;
+  proyectoId: string;
+  fichaCompleta: boolean;
+  fichaTooltip: string;
+  onToggleConfirmado: (id: string, confirmado: boolean) => void;
+  onEliminar: (id: string) => void;
+  onRefresh: () => Promise<void>;
+  onToastInfo: (msg: string) => void;
+};
+
+function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfirmado, onEliminar, onRefresh, onToastInfo }: EquipoRowProps) {
+  const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
+  return (
+    <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
+        <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
+        {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.nombre}</p>}
+      </div>
+      <div className="text-center shrink-0">
+        <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
+        <p className="text-gray-600 text-[10px]">cant.</p>
+      </div>
+      <div className="text-center shrink-0">
+        <p className="text-white text-sm">{eq.dias}</p>
+        <p className="text-gray-600 text-[10px]">días</p>
+      </div>
+      {costo !== null && (
+        <div className="text-right shrink-0">
+          <p className="text-yellow-400 text-sm font-semibold">{fmt(costo)}</p>
+          <p className="text-gray-600 text-[10px]">costo</p>
+        </div>
+      )}
+      <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+        {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>
+            {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
+          </span>
+        )}
+        <button onClick={() => onToggleConfirmado(eq.id, eq.confirmado)}
+          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
+          {eq.confirmado ? "Confirmado" : "Confirmar"}
+        </button>
+        {eq.tipo === "EXTERNO" && eq.proveedor && (
+          <button
+            disabled={!fichaCompleta}
+            title={fichaCompleta ? "Consultar disponibilidad al proveedor" : fichaTooltip}
+            onClick={async () => {
+              const res = await fetch(`/api/proyectos/${proyectoId}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
+              const d = await res.json();
+              if (d.whatsappUrl) {
+                window.open(d.whatsappUrl, "_blank");
+                await onRefresh();
+              } else if (d.token) {
+                const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
+                await navigator.clipboard.writeText(url).catch(() => {});
+                onToastInfo("Sin número registrado. Link copiado al portapapeles.");
+                await onRefresh();
+              }
+            }}
+            className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompleta ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+            📲 Proveedor
+          </button>
+        )}
+        <button onClick={() => onEliminar(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -240,14 +487,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<"resumen" | "operacion" | "tareas" | "finanzas" | "extras">("resumen");
-  const [operTab, setOperTab] = useState<"personal" | "logistica" | "cronograma">("personal");
+  const [tareasOpen, setTareasOpen] = useState(false);
+
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
   const [gastosLoaded, setGastosLoaded] = useState(false);
   const [showGastoOpForm, setShowGastoOpForm] = useState(false);
   const [gastoOpForm, setGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
   const [togglingGasto, setTogglingGasto] = useState<string | null>(null);
+  const [editingGastoOpId, setEditingGastoOpId] = useState<string | null>(null);
+  const [editGastoOpForm, setEditGastoOpForm] = useState({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+  const [savingEditGastoOp, setSavingEditGastoOp] = useState(false);
 
   // Evaluación interna
   type EvalData = {
@@ -279,11 +529,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [esquemaAnticipoFecha, setEsquemaAnticipoFecha] = useState("");
   const [esquemaLiqFecha, setEsquemaLiqFecha] = useState("");
   const [savingEsquema, setSavingEsquema] = useState(false);
+  const [syncingCxC, setSyncingCxC] = useState(false);
 
-  // Score foto/video
-  const [scoreFotoVideo, setScoreFotoVideo] = useState<number>(0);
-  const [recomendacionFotoVideo, setRecomendacionFotoVideo] = useState<string>("");
-  const [savingScore, setSavingScore] = useState(false);
 
   // Evaluación cliente
   type EvalClienteData = {
@@ -315,6 +562,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Checklist de cierre de evento (local, solo UI)
   const [cierreChecklist, setCierreChecklist] = useState({ desmontaje: false, bodega: false, evalCliente: false });
   const [showCierreFlow, setShowCierreFlow] = useState(false);
+  const [showAnuncioCierre, setShowAnuncioCierre] = useState(false);
 
   async function loadCierre() {
     setLoadingCierre(true);
@@ -328,11 +576,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function guardarCierre() {
     if (!cierreData) return;
     setSavingCierre(true);
-    await fetch(`/api/proyectos/${id}/cierre`, {
+    const res = await fetch(`/api/proyectos/${id}/cierre`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...cierreData.real, ...cierreData.estimado, desgloseCostos: cierreData.desgloseCostos, notas: cierreNotas }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingCierre(false);
+      return;
+    }
     setSavingCierre(false);
     setShowCierreModal(false);
     toast.success("Cierre financiero guardado");
@@ -347,7 +601,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function generarPortalToken() {
     setGenerandoToken(true);
-    await fetch(`/api/proyectos/${id}/portal-token`, { method: "POST" });
+    const res = await fetch(`/api/proyectos/${id}/portal-token`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar enlace");
+      setGenerandoToken(false);
+      return;
+    }
     setGenerandoToken(false);
     toast.success("Enlace de portal generado");
     await load();
@@ -357,7 +617,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const ok = await confirm({ message: "¿Revocar el enlace del portal? El cliente ya no podrá acceder con el enlace anterior.", danger: true, confirmText: "Revocar" });
     if (!ok) return;
     setRevocandoToken(true);
-    await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
+    const res = await fetch(`/api/proyectos/${id}/portal-token`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al revocar");
+      setRevocandoToken(false);
+      return;
+    }
     setRevocandoToken(false);
     toast.success("Enlace revocado");
     await load();
@@ -365,11 +631,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   async function guardarNotasPortal() {
     setSavingNotasPortal(true);
-    await fetch(`/api/proyectos/${id}`, {
+    const res = await fetch(`/api/proyectos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notasPortal: notasPortal || null }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSavingNotasPortal(false);
+      return;
+    }
     setSavingNotasPortal(false);
     toast.success("Notas del portal guardadas");
     await load();
@@ -434,8 +706,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [savingCatering, setSavingCatering] = useState(false);
   const cateringLoaded = useRef(false);
   const cateringTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const choferLoaded = useRef(false);
-  const choferTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Estado para documentos
   const [uploadingTipo, setUploadingTipo] = useState<string | null>(null);
@@ -457,7 +727,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showAddPersonal, setShowAddPersonal] = useState(false);
   const [selTecnico, setSelTecnico] = useState("");
   const [selRol, setSelRol] = useState("");
-  const [selNivel, setSelNivel] = useState("AA");
+  const [selNivel, setSelNivel] = useState("AAA");
   const [selJornada, setSelJornada] = useState("MEDIA");
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
@@ -465,6 +735,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [addingPersonal, setAddingPersonal] = useState(false);
   const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
+  const [showSugerencias, setShowSugerencias] = useState(false);
+  const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
 
   // Estados para nuevo técnico inline
   const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
@@ -490,9 +762,54 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderExpandido, setRiderExpandido] = useState<Record<string, boolean>>({});
   const [riderAddOpen, setRiderAddOpen] = useState<string | null>(null); // proyectoEquipoId
   const [riderAddNombre, setRiderAddNombre] = useState("");
+  const [riderAddCantidad, setRiderAddCantidad] = useState(1);
   const [riderAddCategoria, setRiderAddCategoria] = useState("");
   const [riderAddGuardar, setRiderAddGuardar] = useState(true);
   const [riderAddSaving, setRiderAddSaving] = useState(false);
+
+  // Proveedores de subarriendo (manuales)
+  type ProveedorRenta = { id: string; nombre: string; contacto: string; equipos: string[] };
+  const [proveedoresRentaData, setProveedoresRentaData] = useState<ProveedorRenta[]>([]);
+  const [addingProvRenta, setAddingProvRenta] = useState(false);
+  const [newProvNombre, setNewProvNombre] = useState("");
+  const [newProvContacto, setNewProvContacto] = useState("");
+  const [newProvEquipos, setNewProvEquipos] = useState("");
+
+  async function saveProveedoresRenta(data: ProveedorRenta[]) {
+    setProveedoresRentaData(data);
+    const body = JSON.stringify({ proveedoresRenta: JSON.stringify(data) });
+    const res = await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+    const d = await res.json();
+    if (d.proyecto) setProyecto(prev => prev ? { ...prev, proveedoresRenta: d.proyecto.proveedoresRenta } : prev);
+  }
+
+  // Equipos extra al rider (fuera de cotización)
+  type EquipoRiderExtra = { id: string; descripcion: string; cantidad: number; notas: string; completado: boolean; accesorios?: { id: string; nombre: string; cantidad: number }[] };
+  const [equiposRiderExtra, setEquiposRiderExtra] = useState<EquipoRiderExtra[]>([]);
+  const [addingEquipoExtra, setAddingEquipoExtra] = useState(false);
+  const [newExtraEquipoId, setNewExtraEquipoId] = useState("");
+  const [newExtraCant, setNewExtraCant] = useState(1);
+  const [newExtraNotas, setNewExtraNotas] = useState("");
+  const [extraEditId, setExtraEditId] = useState<string | null>(null);
+  const [extraEditDesc, setExtraEditDesc] = useState("");
+  const [extraEditCant, setExtraEditCant] = useState(1);
+  const [extraEditNotas, setExtraEditNotas] = useState("");
+  const [extraAddMode, setExtraAddMode] = useState<"inventario" | "manual">("inventario");
+  // Edición de cantidad en rider de carga
+  const [riderEquipoEditId, setRiderEquipoEditId] = useState<string | null>(null);
+  const [riderEquipoEditCant, setRiderEquipoEditCant] = useState(1);
+  const [newExtraManualDesc, setNewExtraManualDesc] = useState("");
+  const [extraAccOpen, setExtraAccOpen] = useState<string | null>(null);
+  const [extraAccNombre, setExtraAccNombre] = useState("");
+  const [extraAccCant, setExtraAccCant] = useState(1);
+
+  async function saveEquiposRiderExtra(data: EquipoRiderExtra[]) {
+    setEquiposRiderExtra(data);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ equiposRiderExtra: JSON.stringify(data) }),
+    });
+  }
 
   // Estados para bitácora
   const [notaBitacora, setNotaBitacora] = useState("");
@@ -511,11 +828,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [ajustando, setAjustando] = useState<string | null>(null);    // id de la cuenta en edición
   const [ajusteMonto, setAjusteMonto] = useState("");
   const [ajusteMotivo, setAjusteMotivo] = useState("");
+  const [ajusteFecha, setAjusteFecha] = useState("");
   const [ajusteHistorial, setAjusteHistorial] = useState<string | null>(null); // id cuyo historial está expandido
+  // Extra como gasto operativo al subir monto CxC
+  const [ajusteRegistrarExtra, setAjusteRegistrarExtra] = useState(false);
+  const [ajusteExtraTipo, setAjusteExtraTipo] = useState("OTRO");
+  const [ajusteExtraConcepto, setAjusteExtraConcepto] = useState("");
 
   // Estados para asignar técnico a fila sin asignar
   const [asignandoId, setAsignandoId] = useState<string | null>(null);
   const [selAsignar, setSelAsignar] = useState("");
+  const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
+  // Estado para editar slot de personal completo
+  const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
+  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "" });
+  const [savingPersonal, setSavingPersonal] = useState(false);
 
   // Estados para otros gastos
   const [showGastoForm, setShowGastoForm] = useState(false);
@@ -527,21 +854,37 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [gastoCategoria, setGastoCategoria] = useState("");
   const [gastoReferencia, setGastoReferencia] = useState("");
   const [gastoProveedor, setGastoProveedor] = useState("");
+  const [gastoCuenta, setGastoCuenta] = useState("");
   const [addingGasto, setAddingGasto] = useState(false);
+  const [editGasto, setEditGasto] = useState<Gasto | null>(null);
+  const [editGastoForm, setEditGastoForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "TRANSFERENCIA", categoriaId: "", proveedorId: "", cuentaOrigenId: "" });
+  const [editGastoEstado, setEditGastoEstado] = useState<"PENDIENTE" | "PAGADO">("PAGADO");
+  const [editingCxPId, setEditingCxPId] = useState<string | null>(null);
+  const [savingGasto, setSavingGasto] = useState(false);
+  const [gastoEstado, setGastoEstado] = useState<"PENDIENTE" | "PAGADO">("PENDIENTE");
+  const [refCotOpen, setRefCotOpen] = useState(true);
+  const [showGastoModal, setShowGastoModal] = useState(false);
+  const [marcarPagadoId, setMarcarPagadoId] = useState<string | null>(null);
+  const [marcarPagadoFecha, setMarcarPagadoFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [savingMarcarPagado, setSavingMarcarPagado] = useState(false);
+
+  // Estados para nueva CxP manual desde el proyecto
+  const [showNuevaCxP, setShowNuevaCxP] = useState(false);
+  const [nuevaCxPConcepto, setNuevaCxPConcepto] = useState("");
+  const [nuevaCxPMonto, setNuevaCxPMonto] = useState("");
+  const [nuevaCxPFecha, setNuevaCxPFecha] = useState(new Date().toISOString().split("T")[0]);
+  const [nuevaCxPTipo, setNuevaCxPTipo] = useState("OTRO");
+  const [nuevaCxPTecnicoId, setNuevaCxPTecnicoId] = useState("");
+  const [nuevaCxPProveedorId, setNuevaCxPProveedorId] = useState("");
+  const [nuevaCxPNotas, setNuevaCxPNotas] = useState("");
+  const [savingNuevaCxP, setSavingNuevaCxP] = useState(false);
 
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("section-resumen");
 
-  // Chofer asignado
-  const [choferEditando, setChoferEditando] = useState(false);
-  const [choferTipo, setChoferTipo] = useState<"INTERNO" | "EXTERNO">("INTERNO");
-  const [choferNombreInput, setChoferNombreInput] = useState("");
-  const [choferPersonalId, setChoferPersonalId] = useState("");
-  const [choferCostoInput, setChoferCostoInput] = useState("");
-  const [guardandoChofer, setGuardandoChofer] = useState(false);
   const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
-  const [vehiculoId, setVehiculoId] = useState("");
   const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
   type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
   const [responsables, setResponsables] = useState<Responsables>({ produccion: "", logistica: "", finanzas: "", marketing: "" });
@@ -554,6 +897,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     contactos: Array<{ nombre: string; tipo: "tecnico" | "proveedor"; waUrl: string | null }>;
   };
   const [pendingNotif, setPendingNotif] = useState<CambioNotif | null>(null);
+  const [directorioOpen, setDirectorioOpen] = useState(false);
 
   const KEY_CAMPOS: Record<string, string> = {
     fechaEvento: "Fecha del evento",
@@ -580,6 +924,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       const p = d.proyecto as Proyecto;
       setProyecto(p);
       setRiderEquipos(p.equipos ?? []);
+      try { setProveedoresRentaData(p.proveedoresRenta ? JSON.parse(p.proveedoresRenta) : []); } catch { /* ignore */ }
+      try { setEquiposRiderExtra(p.equiposRiderExtra ? JSON.parse(p.equiposRiderExtra) : []); } catch { /* ignore */ }
       setNotasPortal(p.notasPortal ?? "");
       try {
         const resp = p.responsables ? JSON.parse(p.responsables) : {};
@@ -610,31 +956,82 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ proyectoId: id, ...gastoOpForm, monto: parseFloat(gastoOpForm.monto), cantidad: parseInt(gastoOpForm.cantidad) || 1 }),
     });
-    if (r.ok) {
-      setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
-      setShowGastoOpForm(false);
-      loadGastosOp();
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
     }
+    setGastoOpForm({ tipo: "COMIDA", concepto: "", monto: "", cantidad: "1", notas: "" });
+    setShowGastoOpForm(false);
+    loadGastosOp();
   }
 
   async function toggleEntregadoOp(g: GastoOp) {
     setTogglingGasto(g.id);
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: g.id, entregado: !g.entregado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setTogglingGasto(null);
+      return;
+    }
     await loadGastosOp();
     setTogglingGasto(null);
   }
 
   async function eliminarGastoOp(gId: string) {
-    await fetch("/api/proyectos/gastos-operativos", {
+    const res = await fetch("/api/proyectos/gastos-operativos", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: gId }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     loadGastosOp();
+  }
+
+  async function editarGastoOp() {
+    if (!editingGastoOpId || !editGastoOpForm.concepto.trim() || !editGastoOpForm.monto) return;
+    setSavingEditGastoOp(true);
+    const res = await fetch("/api/proyectos/gastos-operativos", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: editingGastoOpId,
+        tipo: editGastoOpForm.tipo,
+        concepto: editGastoOpForm.concepto.trim(),
+        monto: parseFloat(editGastoOpForm.monto),
+        cantidad: parseInt(editGastoOpForm.cantidad) || 1,
+        notas: editGastoOpForm.notas || null,
+      }),
+    });
+    setSavingEditGastoOp(false);
+    if (res.ok) {
+      setEditingGastoOpId(null);
+      loadGastosOp();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al editar");
+    }
+  }
+
+  async function eliminarCxP(cxpId: string) {
+    const ok = await confirm({ message: "¿Eliminar esta cuenta por pagar? Esta acción no se puede deshacer." });
+    if (!ok) return;
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}`, { method: "DELETE" });
+    if (res.ok) {
+      setProyecto(prev => prev ? { ...prev, cuentasPagar: prev.cuentasPagar.filter(c => c.id !== cxpId) } : prev);
+      toast.success("CxP eliminada");
+    } else {
+      toast.error("Error al eliminar");
+    }
   }
 
   async function loadEval() {
@@ -677,16 +1074,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({ reportePostEvento: JSON.stringify(reportePostEvento) }),
     });
     setSavingReporte(false);
-  }
-
-  async function guardarScore() {
-    setSavingScore(true);
-    await fetch(`/api/proyectos/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scoreFotoVideo: scoreFotoVideo || null, recomendacionFotoVideo: recomendacionFotoVideo || null }),
-    });
-    await load();
-    setSavingScore(false);
   }
 
   async function agregarEquipo() {
@@ -753,6 +1140,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
+  async function actualizarCantidadEquipo(eqId: string, cantidad: number) {
+    await fetch(`/api/proyectos/${id}/equipos/${eqId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+    setRiderEquipos(prev => prev.map(e => e.id === eqId ? { ...e, cantidad } : e));
+    setRiderEquipoEditId(null);
+  }
+
   async function loadEvalCliente() {
     if (evalClienteLoaded) return;
     setLoadingEvalCliente(true);
@@ -800,27 +1196,36 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }, [id]);
 
-  // Lazy-load gastos operativos when Finanzas tab opens
+  // Lazy-load gastos operativos when proyecto loads
   useEffect(() => {
-    if (tab === "finanzas" && !gastosLoaded) loadGastosOp();
-  }, [tab]);
+    if (proyecto && !gastosLoaded) loadGastosOp();
+  }, [proyecto?.id]); // eslint-disable-line
 
-  // Lazy-load evaluación cliente when Operativo tab opens
+  // Lazy-load evaluación cliente when proyecto loads
   useEffect(() => {
-    if (tab === "extras") loadEvalCliente();
-  }, [tab]);
+    if (proyecto) loadEvalCliente();
+  }, [proyecto?.id]); // eslint-disable-line
 
-  // Auto-expand suggested docs on first open
+  // Docs start closed — user opens them manually
+
+  // Auto-calcular tarifa desde tabulador cuando cambia rol, jornada o nivel
   useEffect(() => {
-    if (tab !== "extras" || !proyecto || openDocs.size > 0) return;
-    const te = (proyecto.tipoEvento || "").toUpperCase();
-    const isMusical = te.includes("MUSICAL") || te.includes("CONCIERTO") || te.includes("FESTIVAL");
-    const isEmpresarial = te.includes("EMPRESARIAL") || te.includes("CORPORATIVO") || te.includes("CONGRESO") || te.includes("CONFERENCIA");
-    const suggested = isMusical ? ["inputList", "soundcheck", "runningOrder"] :
-      isEmpresarial ? ["avRundown", "requerimientosAV", "setupTecnico"] :
-      ["programaEvento", "indicacionesMusicales", "coordinacionProveedores"];
-    setOpenDocs(new Set(suggested));
-  }, [tab, proyecto]); // eslint-disable-line
+    if (!selRol || !proyecto) return;
+    const rol = roles.find(r => r.id === selRol);
+    if (!rol) return;
+    const zonaBonus = proyecto.zona === "BAJIO" ? 500 : proyecto.zona === "NACIONAL" ? 800 : 0;
+    let base: number | null = null;
+    if (rol.tipoPago === "POR_JORNADA") {
+      base = selJornada === "CORTA" ? rol.tarifaAAACorta : selJornada === "MEDIA" ? rol.tarifaAAAMedia : rol.tarifaAAALarga;
+    } else if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
+      const key = `tarifaPlana${selNivel}` as keyof RolTecnico;
+      base = rol[key] as number | null;
+    } else if (rol.tipoPago === "POR_HORA") {
+      const key = `tarifaHora${selNivel}` as keyof RolTecnico;
+      base = rol[key] as number | null;
+    }
+    if (base != null) setSelTarifa(String(base + zonaBonus));
+  }, [selRol, selJornada, selNivel, proyecto?.zona]); // eslint-disable-line
 
   // Check disponibilidad cuando cambia el técnico seleccionado
   useEffect(() => {
@@ -859,6 +1264,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     if (existeLiq) {
       setEsquemaLiqFecha(existeLiq.fechaCompromiso.slice(0, 10));
+    } else if (proyecto.fechaEvento) {
+      setEsquemaLiqFecha(proximoLunesTraEvento(proyecto.fechaEvento));
     }
   }, [editandoEsquema]);
 
@@ -877,8 +1284,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Sync JSON states when proyecto loads
   useEffect(() => {
     if (!proyecto) return;
-    setScoreFotoVideo(proyecto.scoreFotoVideo ?? 0);
-    setRecomendacionFotoVideo(proyecto.recomendacionFotoVideo ?? "");
     try {
       const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : [];
       setCronoRows(Array.isArray(parsed) ? parsed : []);
@@ -901,7 +1306,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       setCatering({ ...CATERING_EMPTY, ...c, personasCrew: autoPersonas, comidasPorDia: autoDias });
     } catch { setCatering(CATERING_EMPTY); }
     // Mark as loaded after a short delay so initial setState doesn't trigger auto-save
-    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; choferLoaded.current = true; }, 300);
+    setTimeout(() => { cronoLoaded.current = true; cateringLoaded.current = true; }, 300);
   }, [proyecto?.id]);
 
   // Auto-save cronograma
@@ -918,33 +1323,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
   }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save chofer
+  // ── Section nav — track active section via IntersectionObserver ──
   useEffect(() => {
-    if (!choferLoaded.current || !proyecto) return;
-    if (choferTimer.current) clearTimeout(choferTimer.current);
-    choferTimer.current = setTimeout(async () => {
-      let nombre = "";
-      let externo = false;
-      let costo: number | null = null;
-      if (choferTipo === "INTERNO") {
-        const p = proyecto.personal.find(p => p.id === choferPersonalId);
-        nombre = p?.tecnico?.nombre ?? "";
-        externo = false;
-      } else {
-        nombre = choferNombreInput;
-        externo = true;
-        costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
-      }
-      if (!nombre) return;
-      setGuardandoChofer(true);
-      const res = await fetch(`/api/proyectos/${id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ choferNombre: nombre, choferExterno: externo, choferCosto: costo }),
-      });
-      if (res.ok) setProyecto(prev => prev ? { ...prev, choferNombre: nombre, choferExterno: externo, choferCosto: costo } : prev);
-      setGuardandoChofer(false);
-    }, 1000);
-  }, [choferTipo, choferPersonalId, choferNombreInput, choferCostoInput]); // eslint-disable-line react-hooks/exhaustive-deps
+    const ids = ["section-resumen", "section-operacion", "section-extras", "section-finanzas"];
+    const observers: IntersectionObserver[] = [];
+    const visible = new Map<string, number>();
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        entries => {
+          entries.forEach(e => {
+            visible.set(id, e.intersectionRatio);
+          });
+          // pick the section with the highest visible ratio
+          let best = ids[0], bestRatio = -1;
+          ids.forEach(i => { const r = visible.get(i) ?? 0; if (r > bestRatio) { bestRatio = r; best = i; } });
+          setActiveSection(best);
+        },
+        { threshold: [0, 0.1, 0.3, 0.5, 0.8, 1.0] }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+    return () => observers.forEach(o => o.disconnect());
+  }, [proyecto?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Cambiar estado del proyecto ──
   async function cambiarEstado(estado: string) {
@@ -1001,7 +1404,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       if (d.evaluacion) {
         setEvalCliente(d.evaluacion);
         setEvalClienteLoaded(true);
-        setTab("extras");
+        document.getElementById("section-extras")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
       await load(); // recargar para mostrar el cierre generado
     }
@@ -1066,35 +1469,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Guardar cronograma (auto-sort por hora) ──
-  // ── Guardar chofer ──
-  async function guardarChofer() {
-    if (!proyecto) return;
-    setGuardandoChofer(true);
-    let nombre = "";
-    let externo = false;
-    let costo: number | null = null;
-    if (choferTipo === "INTERNO") {
-      // Buscar nombre del personal seleccionado
-      const p = proyecto.personal.find(p => p.id === choferPersonalId);
-      nombre = p?.tecnico?.nombre ?? choferNombreInput;
-      externo = false;
-      costo = null;
-    } else {
-      nombre = choferNombreInput;
-      externo = true;
-      costo = choferCostoInput ? parseFloat(choferCostoInput) : null;
-    }
-    const res = await fetch(`/api/proyectos/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ choferNombre: nombre || null, choferExterno: externo, choferCosto: costo }),
-    });
-    if (res.ok) {
-      setProyecto(prev => prev ? { ...prev, choferNombre: nombre || null, choferExterno: externo, choferCosto: costo } : prev);
-      setChoferEditando(false);
-    }
-    setGuardandoChofer(false);
-  }
-
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
     const sorted = [...rows].sort((a, b) => {
@@ -1349,6 +1723,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       body: JSON.stringify({
         proyectoEquipoId,
         nombre: riderAddNombre.trim(),
+        cantidad: riderAddCantidad,
         categoria: riderAddCategoria || null,
         guardarEnBiblioteca: riderAddGuardar,
       }),
@@ -1362,6 +1737,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       ));
     }
     setRiderAddNombre("");
+    setRiderAddCantidad(1);
     setRiderAddCategoria("");
     setRiderAddGuardar(true);
     setRiderAddOpen(null);
@@ -1386,6 +1762,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setRiderEquipos(prev => prev.map(e =>
       e.id === proyectoEquipoId
         ? { ...e, riderAccesorios: e.riderAccesorios.filter(a => a.id !== accesorioId) }
+        : e
+    ));
+  }
+
+  async function riderActualizarCantidad(proyectoEquipoId: string, accesorioId: string, cantidad: number) {
+    const res = await fetch(`/api/rider-accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cantidad }),
+    });
+    const d = await res.json();
+    setRiderEquipos(prev => prev.map(e =>
+      e.id === proyectoEquipoId
+        ? { ...e, riderAccesorios: e.riderAccesorios.map(a => a.id === accesorioId ? { ...a, cantidad: d.accesorio.cantidad } : a) }
         : e
     ));
   }
@@ -1445,11 +1834,85 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         responsabilidad: selResp || null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAddingPersonal(false);
+      return;
+    }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
-    setSelTecnico(""); setSelRol(""); setSelTarifa(""); setSelResp("");
+    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp("");
     setShowAddPersonal(false);
     setAddingPersonal(false);
+  }
+
+  // ── Agregar slot(s) desde sugerencia de cotización ──
+  async function agregarDesdeLinea(linea: NonNullable<NonNullable<typeof proyecto>["cotizacion"]>["lineas"][0]) {
+    setAgregandoLinea(linea.id);
+    const slots: Personal[] = [];
+    for (let i = 0; i < linea.cantidad; i++) {
+      const res = await fetch(`/api/proyectos/${id}/personal`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tecnicoId: null,
+          rolTecnicoId: linea.rolTecnicoId || null,
+          participacion: "OPERACION",
+          nivel: linea.nivel || "A",
+          jornada: linea.jornada || "MEDIA",
+          tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
+          responsabilidad: linea.descripcion || null,
+        }),
+      });
+      if (res.ok) { const d = await res.json(); slots.push(d.personal); }
+    }
+    setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, ...slots] } : prev);
+    setAgregandoLinea(null);
+  }
+
+  // ── Editar slot de personal completo ──
+  function abrirEditPersonal(p: Personal) {
+    setEditandoPersonalId(p.id);
+    setEditPersonalForm({
+      tecnicoId: p.tecnico?.id ?? "",
+      rolTecnicoId: "", // se rellena abajo buscando por nombre en roles
+      nivel: p.nivel ?? "A",
+      jornada: p.jornada ?? "MEDIA",
+      tarifa: p.tarifaAcordada != null ? String(p.tarifaAcordada) : "",
+      participacion: p.participacion ?? "OPERACION",
+      responsabilidad: p.responsabilidad ?? "",
+    });
+    // Buscar rolTecnicoId desde la lista de roles por nombre
+    const rolNombre = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre;
+    if (rolNombre) {
+      const found = roles.find(r => r.nombre === rolNombre);
+      if (found) setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: found.id }));
+    }
+  }
+
+  async function guardarEditPersonal(pId: string) {
+    setSavingPersonal(true);
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tecnicoId: editPersonalForm.tecnicoId || null,
+        rolTecnicoId: editPersonalForm.rolTecnicoId || null,
+        nivel: editPersonalForm.nivel || null,
+        jornada: editPersonalForm.jornada || null,
+        tarifaAcordada: editPersonalForm.tarifa ? parseFloat(editPersonalForm.tarifa) : null,
+        participacion: editPersonalForm.participacion || null,
+        responsabilidad: editPersonalForm.responsabilidad || null,
+      }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setProyecto(prev => prev ? { ...prev, personal: prev.personal.map(p => p.id === pId ? d.personal : p) } : prev);
+      setEditandoPersonalId(null);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+    }
+    setSavingPersonal(false);
   }
 
   // ── Confirmar/desconfirmar personal ──
@@ -1479,6 +1942,42 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     } : prev);
   }
 
+  // ── Marcar pago de personal (toggle PAGADO ↔ PENDIENTE) ──
+  const [marcandoPago, setMarcandoPago] = useState<Set<string>>(new Set());
+
+  async function togglePagoPersonal(pId: string, estadoActual: string) {
+    const nuevoEstado = estadoActual === "PAGADO" ? "PENDIENTE" : "PAGADO";
+    setMarcandoPago(prev => new Set([...prev, pId]));
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estadoPago: nuevoEstado }),
+    });
+    if (res.ok) {
+      setProyecto(prev => prev ? {
+        ...prev,
+        personal: prev.personal.map(p => p.id === pId ? { ...p, estadoPago: nuevoEstado } : p),
+      } : prev);
+    }
+    setMarcandoPago(prev => { const s = new Set(prev); s.delete(pId); return s; });
+  }
+
+  async function marcarTodosPagado() {
+    const pendientes = proyecto!.personal.filter(p => p.tecnico && p.estadoPago !== "PAGADO");
+    if (pendientes.length === 0) return;
+    pendientes.forEach(p => setMarcandoPago(prev => new Set([...prev, p.id])));
+    await Promise.all(pendientes.map(p =>
+      fetch(`/api/proyectos/${id}/personal/${p.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estadoPago: "PAGADO" }),
+      })
+    ));
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => pendientes.some(pp => pp.id === p.id) ? { ...p, estadoPago: "PAGADO" } : p),
+    } : prev);
+    setMarcandoPago(new Set());
+  }
+
   // ── Eliminar personal ──
   async function eliminarPersonal(pId: string) {
     await fetch(`/api/proyectos/${id}/personal/${pId}`, { method: "DELETE" });
@@ -1502,6 +2001,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSelAsignar("");
   }
 
+  // ── Desasignar técnico de slot (mantiene la fila) ──
+  async function desasignarTecnico(pId: string) {
+    const res = await fetch(`/api/proyectos/${id}/personal/${pId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tecnicoId: null }),
+    });
+    const d = await res.json();
+    setProyecto(prev => prev ? {
+      ...prev,
+      personal: prev.personal.map(p => p.id === pId ? d.personal : p),
+    } : prev);
+  }
+
+  // ── Agregar slot vacío a un grupo ──
+  async function agregarSlotVacio(participacion: string, fechaJornada: string | null) {
+    const res = await fetch(`/api/proyectos/${id}/personal`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ participacion, fechaJornada: fechaJornada || null }),
+    });
+    const d = await res.json();
+    if (d.personal) {
+      setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
+    }
+  }
+
+  // ── Crear técnico nuevo y asignarlo directamente al slot ──
+  async function crearTecnicoYAsignar() {
+    if (!nuevoTecNombre.trim() || !crearParaSlotId) return;
+    setCreandoTecnico(true);
+    const res = await fetch("/api/tecnicos", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: nuevoTecNombre.trim(),
+        celular: nuevoTecCelular.trim() || null,
+        rolId: nuevoTecRolId || null,
+        nivel: nuevoTecNivel,
+      }),
+    });
+    const d = await res.json();
+    if (d.tecnico) {
+      setTecnicos(prev => [...prev, d.tecnico].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+      await asignarTecnico(crearParaSlotId, d.tecnico.id);
+    }
+    setCrearParaSlotId(null);
+    setAsignandoId(null);
+    setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A");
+    setCreandoTecnico(false);
+  }
+
   // ── Registrar gasto directo ──
   async function agregarGasto() {
     if (!gastoConcepto.trim() || !gastoMonto) return;
@@ -1516,13 +2064,248 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         metodoPago: gastoMetodo,
         categoriaId: gastoCategoria || null,
         proveedorId: gastoProveedor || null,
+        cuentaOrigenId: gastoCuenta || null,
         referencia: gastoReferencia || null,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setAddingGasto(false);
+      return;
+    }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
-    setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setShowGastoForm(false);
+    setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia(""); setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
     setAddingGasto(false);
+  }
+
+  // ── Agregar gasto unificado (PENDIENTE=CxP, PAGADO=movimiento) ──
+  async function agregarGastoProy(): Promise<boolean> {
+    if (!gastoConcepto.trim() || !gastoMonto) return false;
+    setAddingGasto(true);
+    try {
+      if (gastoEstado === "PENDIENTE") {
+        const res = await fetch("/api/cuentas-pagar", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: gastoConcepto.trim(),
+            monto: parseFloat(gastoMonto),
+            fechaCompromiso: gastoFecha,
+            tipoAcreedor: gastoCategoria === "PROVEEDOR_EXTERNO" || gastoProveedor ? "PROVEEDOR" : "OTRO",
+            proveedorId: gastoProveedor || null,
+            notas: gastoNotas || null,
+            proyectoId: id,
+          }),
+        });
+        const d = await res.json();
+        if (res.ok && d.cxp) {
+          setProyecto(prev => prev ? {
+            ...prev,
+            cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+          } : prev);
+          toast.success("Gasto registrado");
+        } else {
+          toast.error(d.error ?? "Error al registrar");
+          return false;
+        }
+      } else {
+        const validCategoriaId = categorias.some(c => c.id === gastoCategoria) ? gastoCategoria : null;
+        const res = await fetch(`/api/proyectos/${id}/gastos`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: gastoConcepto.trim(),
+            monto: parseFloat(gastoMonto),
+            fecha: gastoFecha,
+            notas: gastoNotas || null,
+            metodoPago: gastoMetodo,
+            categoriaId: validCategoriaId,
+            proveedorId: gastoProveedor || null,
+            cuentaOrigenId: gastoCuenta || null,
+            referencia: gastoReferencia || null,
+          }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          toast.error(d.error ?? "Error al registrar");
+          return false;
+        }
+        const d = await res.json();
+        setProyecto(prev => prev ? { ...prev, movimientos: [d.gasto, ...prev.movimientos] } : prev);
+        toast.success("Gasto registrado");
+      }
+      setGastoConcepto(""); setGastoMonto(""); setGastoNotas(""); setGastoReferencia("");
+      setGastoCategoria(""); setGastoProveedor(""); setGastoCuenta(""); setShowGastoForm(false);
+      return true;
+    } finally {
+      setAddingGasto(false);
+    }
+  }
+
+  // ── Marcar CxP como pagado (mini modal) ──
+  async function marcarPagadoGasto(cxpId: string) {
+    setSavingMarcarPagado(true);
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}/pagar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha: marcarPagadoFecha }),
+    });
+    if (res.ok) {
+      await load();
+      toast.success("Marcado como pagado");
+    } else {
+      toast.error("Error al marcar como pagado");
+    }
+    setMarcarPagadoId(null);
+    setSavingMarcarPagado(false);
+  }
+
+  // ── Editar gasto directo ──
+  function abrirEditarGasto(g: Gasto) {
+    setEditGastoEstado("PAGADO");
+    setEditingCxPId(null);
+    setEditGasto(g);
+    setEditGastoForm({
+      concepto: g.concepto,
+      monto: String(g.monto),
+      fecha: g.fecha.slice(0, 10),
+      notas: g.notas ?? "",
+      referencia: g.referencia ?? "",
+      metodoPago: g.metodoPago,
+      categoriaId: g.categoria?.id ?? "",
+      proveedorId: g.proveedor?.id ?? "",
+      cuentaOrigenId: g.cuentaOrigen?.id ?? "",
+    });
+  }
+
+  // ── Editar CxP (pendiente) ──
+  function abrirEditarCxP(c: { id: string; concepto: string; monto: number; fechaCompromiso: string | null; tipoAcreedor: string }) {
+    setEditGastoEstado("PENDIENTE");
+    setEditingCxPId(c.id);
+    setEditGasto({ id: c.id, concepto: c.concepto, monto: c.monto, fecha: c.fechaCompromiso ?? new Date().toISOString().split("T")[0], notas: null, referencia: null, metodoPago: "TRANSFERENCIA", categoriaId: null, categoria: null, proveedorId: null, proveedor: null, cuentaOrigenId: null, cuentaOrigen: null });
+    setEditGastoForm({
+      concepto: c.concepto,
+      monto: String(c.monto),
+      fecha: c.fechaCompromiso ? c.fechaCompromiso.slice(0, 10) : new Date().toISOString().split("T")[0],
+      notas: "",
+      referencia: "",
+      metodoPago: "TRANSFERENCIA",
+      categoriaId: "",
+      proveedorId: "",
+      cuentaOrigenId: "",
+    });
+  }
+
+  async function guardarEdicionGasto() {
+    if (!editGasto) return;
+    setSavingGasto(true);
+
+    try {
+      const esEdicionCxP = editGastoEstado === "PENDIENTE" && editingCxPId;
+      const esCambioAPendiente = editGastoEstado === "PENDIENTE" && !editingCxPId;
+
+      if (esEdicionCxP) {
+        // PENDIENTE → PENDIENTE: editar CxP existente
+        const res = await fetch(`/api/cuentas-pagar/${editingCxPId}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: editGastoForm.concepto,
+            monto: parseFloat(editGastoForm.monto),
+            motivo: "Edición de gasto",
+            fechaCompromiso: editGastoForm.fecha,
+            notas: editGastoForm.notas || null,
+          }),
+        });
+        if (res.ok) {
+          setProyecto(prev => prev ? {
+            ...prev,
+            cuentasPagar: prev.cuentasPagar.map(c => c.id !== editingCxPId ? c : {
+              ...c,
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fechaCompromiso: editGastoForm.fecha,
+            }),
+          } : prev);
+        }
+      } else if (esCambioAPendiente) {
+        // PAGADO → PENDIENTE: eliminar movimiento + crear CxP
+        const delRes = await fetch(`/api/movimientos/${editGasto.id}`, { method: "DELETE" });
+        if (delRes.ok) {
+          const cxpRes = await fetch("/api/cuentas-pagar", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fechaCompromiso: editGastoForm.fecha,
+              tipoAcreedor: editGastoForm.proveedorId ? "PROVEEDOR" : "OTRO",
+              proveedorId: editGastoForm.proveedorId || null,
+              notas: editGastoForm.notas || null,
+              proyectoId: id,
+            }),
+          });
+          if (cxpRes.ok) {
+            const d = await cxpRes.json();
+            setProyecto(prev => prev ? {
+              ...prev,
+              movimientos: prev.movimientos.filter(m => m.id !== editGasto.id),
+              cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+            } : prev);
+          }
+        }
+      } else {
+        // PAGADO → PAGADO: editar movimiento existente
+        const res = await fetch(`/api/movimientos/${editGasto.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            concepto: editGastoForm.concepto,
+            monto: parseFloat(editGastoForm.monto),
+            fecha: editGastoForm.fecha,
+            notas: editGastoForm.notas || null,
+            referencia: editGastoForm.referencia || null,
+            metodoPago: editGastoForm.metodoPago,
+            categoriaId: editGastoForm.categoriaId || null,
+            proveedorId: editGastoForm.proveedorId || null,
+            cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+          }),
+        });
+        if (res.ok) {
+          const cuentaSeleccionada = cuentasBancarias.find(c => c.id === editGastoForm.cuentaOrigenId) ?? null;
+          const catSeleccionada = categorias.find(c => c.id === editGastoForm.categoriaId) ?? null;
+          const provSeleccionado = proveedores.find(p => p.id === editGastoForm.proveedorId) ?? null;
+          setProyecto(prev => prev ? {
+            ...prev,
+            movimientos: prev.movimientos.map(m => m.id !== editGasto.id ? m : {
+              ...m,
+              concepto: editGastoForm.concepto,
+              monto: parseFloat(editGastoForm.monto),
+              fecha: editGastoForm.fecha,
+              notas: editGastoForm.notas || null,
+              referencia: editGastoForm.referencia || null,
+              metodoPago: editGastoForm.metodoPago,
+              categoriaId: editGastoForm.categoriaId || null,
+              categoria: catSeleccionada ? { id: catSeleccionada.id, nombre: catSeleccionada.nombre } : null,
+              proveedorId: editGastoForm.proveedorId || null,
+              proveedor: provSeleccionado ? { id: provSeleccionado.id, nombre: provSeleccionado.nombre } : null,
+              cuentaOrigenId: editGastoForm.cuentaOrigenId || null,
+              cuentaOrigen: cuentaSeleccionada ? { id: cuentaSeleccionada.id, nombre: cuentaSeleccionada.nombre, banco: cuentaSeleccionada.banco } : null,
+            }),
+          } : prev);
+        }
+      }
+    } finally {
+      setEditGasto(null);
+      setEditingCxPId(null);
+      setSavingGasto(false);
+    }
+  }
+
+  async function eliminarMovimiento(movId: string) {
+    if (!confirm("¿Eliminar este gasto?")) return;
+    const res = await fetch(`/api/movimientos/${movId}`, { method: "DELETE" });
+    if (res.ok) {
+      setProyecto(prev => prev ? { ...prev, movimientos: prev.movimientos.filter(m => m.id !== movId) } : prev);
+    } else {
+      toast.error("Error al eliminar el gasto");
+    }
   }
 
   // ── Eliminar proyecto ──
@@ -1597,6 +2380,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSavingEsquema(false);
   }
 
+  // ── Sincronizar CxC desde cotización ──
+  async function sincronizarCxC() {
+    if (!proyecto) return;
+    setSyncingCxC(true);
+    const res = await fetch(`/api/proyectos/${id}/sincronizar-cxc`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      if (data.actualizadas > 0) {
+        toast.success(`${data.actualizadas} cuenta(s) actualizadas desde la cotización`);
+        await load();
+      } else {
+        toast.success(data.mensaje ?? "Las cuentas ya están sincronizadas");
+      }
+    } else {
+      toast.error(data.error ?? "Error al sincronizar");
+    }
+    setSyncingCxC(false);
+  }
+
   // ── Eliminar CxC individual ──
   async function eliminarCxC(cxcId: string) {
     if (!await confirm({ message: "¿Eliminar esta cuenta por cobrar?", danger: true, confirmText: "Eliminar" })) return;
@@ -1604,35 +2406,63 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     await load();
   }
 
-  // ── Ajustar monto CxC ──
-  async function ajustarMontoCxC(cxcId: string) {
+  // ── Ajustar monto/fecha CxC ──
+  async function ajustarMontoCxC(cxcId: string, montoActual: number) {
     const monto = parseFloat(ajusteMonto);
-    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
-    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const montoChanged = !isNaN(monto) && monto > 0 && monto !== montoActual;
+    if (montoChanged && (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5)) { toast.error("El motivo es obligatorio al ajustar el monto"); return; }
+    if (ajusteRegistrarExtra && !ajusteExtraConcepto.trim()) { toast.error("Escribe el concepto del gasto extra"); return; }
+    const payload: Record<string, unknown> = {};
+    if (montoChanged) { payload.monto = monto; payload.motivo = ajusteMotivo.trim(); }
+    if (ajusteFecha) payload.fechaCompromiso = ajusteFecha;
+    if (Object.keys(payload).length === 0) { toast.error("Sin cambios"); return; }
     const res = await fetch(`/api/cuentas-cobrar/${cxcId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
-    toast.success("Monto ajustado correctamente");
-    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
+    if (!res.ok) { toast.error(data.error ?? "Error al guardar"); return; }
+    // Registrar el excedente como gasto operativo si el usuario lo eligió
+    if (montoChanged && ajusteRegistrarExtra && monto > montoActual) {
+      const delta = Math.round((monto - montoActual) * 100) / 100;
+      await fetch("/api/proyectos/gastos-operativos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          proyectoId: id,
+          tipo: ajusteExtraTipo,
+          concepto: ajusteExtraConcepto.trim(),
+          monto: delta,
+          cantidad: 1,
+          notas: `Extra registrado desde ajuste CxC — motivo: ${ajusteMotivo.trim()}`,
+        }),
+      });
+      toast.success(`Guardado + gasto extra de ${fmt(delta)} registrado`);
+    } else {
+      toast.success("Guardado correctamente");
+    }
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo(""); setAjusteFecha("");
+    setAjusteRegistrarExtra(false); setAjusteExtraTipo("OTRO"); setAjusteExtraConcepto("");
     await load();
   }
 
-  // ── Ajustar monto CxP ──
-  async function ajustarMontoCxP(cxpId: string) {
+  // ── Ajustar monto/fecha CxP ──
+  async function ajustarMontoCxP(cxpId: string, montoActual: number) {
     const monto = parseFloat(ajusteMonto);
-    if (!monto || monto <= 0) { toast.error("Monto inválido"); return; }
-    if (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5) { toast.error("El motivo es obligatorio"); return; }
+    const montoChanged = !isNaN(monto) && monto > 0 && monto !== montoActual;
+    if (montoChanged && (!ajusteMotivo.trim() || ajusteMotivo.trim().length < 5)) { toast.error("El motivo es obligatorio al ajustar el monto"); return; }
+    const payload: Record<string, unknown> = {};
+    if (montoChanged) { payload.monto = monto; payload.motivo = ajusteMotivo.trim(); }
+    if (ajusteFecha) payload.fechaCompromiso = ajusteFecha;
+    if (Object.keys(payload).length === 0) { toast.error("Sin cambios"); return; }
     const res = await fetch(`/api/cuentas-pagar/${cxpId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ monto, motivo: ajusteMotivo.trim() }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (!res.ok) { toast.error(data.error ?? "Error al ajustar"); return; }
-    toast.success("Monto ajustado correctamente");
-    setAjustando(null); setAjusteMonto(""); setAjusteMotivo("");
+    if (!res.ok) { toast.error(data.error ?? "Error al guardar"); return; }
+    toast.success("Guardado correctamente");
+    setAjustando(null); setAjusteMonto(""); setAjusteMotivo(""); setAjusteFecha("");
     await load();
   }
 
@@ -1650,6 +2480,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setMontoPago("");
     setCuentaPagoId("");
     setMetodoPagoFinanzas("TRANSFERENCIA");
+  }
+
+  // ── Crear CxP manual desde el proyecto ──
+  async function crearNuevaCxP() {
+    if (!nuevaCxPConcepto.trim() || !nuevaCxPMonto || !nuevaCxPFecha) return;
+    setSavingNuevaCxP(true);
+    const res = await fetch("/api/cuentas-pagar", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        concepto: nuevaCxPConcepto.trim(),
+        monto: parseFloat(nuevaCxPMonto),
+        fechaCompromiso: nuevaCxPFecha,
+        tipoAcreedor: nuevaCxPTipo,
+        tecnicoId: nuevaCxPTipo === "TECNICO" ? (nuevaCxPTecnicoId || null) : null,
+        proveedorId: nuevaCxPTipo === "PROVEEDOR" ? (nuevaCxPProveedorId || null) : null,
+        notas: nuevaCxPNotas || null,
+        proyectoId: id,
+      }),
+    });
+    const d = await res.json();
+    if (res.ok && d.cxp) {
+      setProyecto(prev => prev ? {
+        ...prev,
+        cuentasPagar: [...prev.cuentasPagar, { id: d.cxp.id, concepto: d.cxp.concepto, monto: d.cxp.monto, estado: d.cxp.estado, fechaCompromiso: d.cxp.fechaCompromiso, tipoAcreedor: d.cxp.tipoAcreedor, montoOriginal: null, ajustesLog: null }],
+      } : prev);
+      toast.success("CxP registrada");
+      setNuevaCxPConcepto(""); setNuevaCxPMonto(""); setNuevaCxPFecha(new Date().toISOString().split("T")[0]);
+      setNuevaCxPTipo("OTRO"); setNuevaCxPTecnicoId(""); setNuevaCxPProveedorId(""); setNuevaCxPNotas("");
+      setShowNuevaCxP(false);
+    } else {
+      toast.error(d.error ?? "Error al crear CxP");
+    }
+    setSavingNuevaCxP(false);
   }
 
   async function anularMovimiento(id: string, tipo: "cobro" | "pago") {
@@ -1691,13 +2554,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const checkDone = checkOp.filter(c => c.completado).length;
   const checkPct = checkTotal > 0 ? (checkDone / checkTotal) * 100 : 0;
   const personalConfirmado = proyecto.personal.filter(p => p.confirmado).length;
-  const diasRestantes = Math.ceil((new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").getTime() - Date.now()) / 86400000);
+  const hoyStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const eventoStr = proyecto.fechaEvento.substring(0, 10);
+  const diasRestantes = Math.round((new Date(eventoStr).getTime() - new Date(hoyStr).getTime()) / 86400000);
   const totalCxC = proyecto.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
+  const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
+  const equiposTotal = proyecto.equipos?.length ?? 0;
+  const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
 
   return (
     <>
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5 pb-12">
+      <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1730,7 +2599,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {proyecto.horaInicioEvento && (
               <p className="text-gray-400 text-sm">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
             )}
-            {proyecto.lugarEvento && <p className="text-gray-500 text-xs mt-0.5">{proyecto.lugarEvento}</p>}
+            <p className="text-gray-500 text-xs mt-0.5">{proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}</p>
             {proyecto.cotizacion && (
               <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="text-[10px] text-[#B3985B] hover:underline block mt-1">
                 {proyecto.cotizacion.numeroCotizacion} · {fmt(proyecto.cotizacion.granTotal)}
@@ -1739,7 +2608,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Hoja de entrega — solo renta */}
-            {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") ? (
+            {esRenta ? (
               <a
                 href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
                 target="_blank"
@@ -1784,49 +2653,155 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </svg>
               Carta Responsiva
             </Link>
+            <button
+              onClick={() => setShowAnuncioCierre(true)}
+              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              Brief
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ── Estado pipeline (stepper lineal) ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Estado del proyecto</p>
-        {proyecto.estado === "CANCELADO" ? (
-          <div className="flex items-center gap-3">
-            <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-900/50 text-red-300">Cancelado</span>
-            <button onClick={() => cambiarEstado("PLANEACION")} disabled={saving} className="text-xs text-gray-500 hover:text-white transition-colors">Reactivar</button>
-          </div>
-        ) : (() => {
-          const STEPPER = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "COMPLETADO"] as const;
-          const STEPPER_LABELS: Record<string, string> = { PLANEACION: "Preparación", CONFIRMADO: "Confirmado", EN_CURSO: "En evento", COMPLETADO: "Finalizado" };
-          const idx = STEPPER.indexOf(proyecto.estado as typeof STEPPER[number]);
+      {/* ── Progreso del proyecto ── */}
+      {(() => {
+        const _transportesParsed: TransporteSlot[] = (() => { try { return proyecto.transportes ? JSON.parse(proyecto.transportes) : []; } catch { return []; } })();
+        const _cateringParsed: { proveedorId?: string } = (() => { try { return proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {}; } catch { return {}; } })();
+        const _cronoParsed: CronoRow[] = (() => { try { return proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { return []; } })();
+
+        const anticipoCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
+        const liquidacionCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
+
+        type CheckItem = { ok: boolean; label: string };
+        const infoChecks: CheckItem[] = [
+          { ok: !!proyecto.lugarEvento,                                             label: "Lugar del evento" },
+          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto, label: "Contacto cliente" },
+          { ok: !!proyecto.encargado,                                                label: "Responsable interno" },
+          ...(!esRenta ? [
+            { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,          label: "Horario" },
+            { ok: !!proyecto.fechaMontaje,                                           label: "Fecha montaje" },
+            { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,   label: "Enc. del lugar" },
+            { ok: !!proyecto.contactosDireccion,                                     label: "Contactos" },
+          ] : []),
+        ];
+        const prodChecks: CheckItem[] = [
+          { ok: proyecto.equipos.length > 0,                                         label: "Equipo registrado" },
+          ...(!esRenta ? [
+            { ok: proyecto.personal.length > 0,                                      label: "Personal asignado" },
+            { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),  label: "Personal confirmado" },
+            { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),     label: "Traslados" },
+            { ok: _cronoParsed.length > 0,                                           label: "Cronograma" },
+            ...(!proyecto.aplicaCatering ? [] : [
+              { ok: !!_cateringParsed.proveedorId,                                   label: "Catering" },
+            ]),
+          ] : []),
+        ];
+        const finChecks: CheckItem[] = [
+          { ok: !!proyecto.cotizacion,                                               label: "Cotización" },
+          { ok: proyecto.cuentasCobrar.length > 0,                                   label: "CxC registradas" },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,     label: "Anticipo cobrado" },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto, label: "Liquidación cobrada" },
+          ...(!esRenta && proyecto.personal.length > 0 ? [
+            { ok: proyecto.personal.filter(p => p.tecnico).every(p => p.estadoPago === "PAGADO"), label: "Personal pagado" },
+          ] : []),
+        ];
+
+        const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
+        const completados = allChecks.filter(c => c.ok).length;
+        const pct = Math.round((completados / allChecks.length) * 100);
+        const barColor = pct >= 85 ? "#10b981" : pct >= 55 ? "#B3985B" : "#ef4444";
+
+        const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO"] as const;
+        const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
+
+        function AreaCard({ title, checks, color }: { title: string; checks: CheckItem[]; color: string }) {
+          const done = checks.filter(c => c.ok).length;
+          const areaPct = checks.length > 0 ? Math.round((done / checks.length) * 100) : 100;
           return (
-            <div className="flex items-center gap-1">
-              {STEPPER.map((e, i) => (
-                <div key={e} className="flex items-center flex-1 min-w-0">
-                  <button
-                    onClick={() => !saving && e !== proyecto.estado && cambiarEstado(e)}
-                    disabled={saving || e === proyecto.estado}
-                    title={ESTADO_LABELS[e]}
-                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-medium text-center transition-colors truncate ${
-                      e === proyecto.estado ? ESTADO_COLORS[e] :
-                      i < idx ? "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#2a2a2a]" :
-                      "bg-[#0d0d0d] text-gray-600 hover:text-gray-400 border border-[#1a1a1a]"
-                    }`}>
-                    {i < idx ? "✓ " : ""}{STEPPER_LABELS[e]}
-                  </button>
-                  {i < STEPPER.length - 1 && <span className="text-gray-700 text-xs mx-0.5 shrink-0">›</span>}
-                </div>
-              ))}
-              <button onClick={() => cambiarEstado("CANCELADO")} disabled={saving}
-                className="ml-2 text-xs text-red-800 hover:text-red-500 px-2 py-1.5 border border-red-900/30 hover:border-red-700/50 rounded-lg transition-colors shrink-0"
-                title="Cancelar proyecto">
-                ✕
-              </button>
+            <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>{title}</span>
+                <span className="text-[10px] tabular-nums font-semibold" style={{ color: areaPct === 100 ? "#10b981" : areaPct >= 50 ? color : "#ef4444" }}>
+                  {done}/{checks.length}
+                </span>
+              </div>
+              <div className="h-1 bg-[#222] rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${areaPct}%`, backgroundColor: areaPct === 100 ? "#10b981" : color }} />
+              </div>
+              <div className="space-y-0.5">
+                {checks.map(c => (
+                  <div key={c.label} className={`flex items-center gap-1.5 text-[10px] ${c.ok ? "text-[#3a3a3a]" : "text-gray-500"}`}>
+                    <span className={`shrink-0 text-[9px] font-bold ${c.ok ? "text-[#2a2a2a]" : "text-red-500/70"}`}>
+                      {c.ok ? "✓" : "○"}
+                    </span>
+                    <span className={c.ok ? "line-through" : ""}>{c.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           );
-        })()}
-      </div>
+        }
+
+        const pendientes = allChecks.filter(c => !c.ok);
+
+        return (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xs text-gray-500 uppercase tracking-wider shrink-0">Avance</span>
+                <span className="text-2xl font-bold tabular-nums shrink-0" style={{ color: barColor }}>{pct}%</span>
+                {proyecto.estado === "CANCELADO" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/40 text-red-400 font-medium">Cancelado</span>
+                )}
+                {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
+                  <span className="text-[10px] text-gray-600 truncate hidden sm:block">
+                    Faltan: {pendientes.slice(0, 3).map(p => p.label).join(", ")}{pendientes.length > 3 ? ` +${pendientes.length - 3}` : ""}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {proyecto.estado !== "CANCELADO" ? (
+                  <select
+                    value={proyecto.estado}
+                    onChange={e => cambiarEstado(e.target.value)}
+                    disabled={saving}
+                    className="text-[11px] bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-gray-300 focus:outline-none focus:border-[#B3985B]">
+                    {ESTADO_OPTS.map(e => <option key={e} value={e}>{ESTADO_LABELS_SHORT[e]}</option>)}
+                  </select>
+                ) : (
+                  <button onClick={() => cambiarEstado("PLANEACION")} disabled={saving}
+                    className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] px-2 py-1 rounded-lg transition-colors">
+                    Reactivar
+                  </button>
+                )}
+                {proyecto.estado !== "CANCELADO" && (
+                  <button onClick={() => cambiarEstado("CANCELADO")} disabled={saving}
+                    className="text-xs text-red-800 hover:text-red-500 border border-red-900/30 hover:border-red-700/50 px-2 py-1 rounded-lg transition-colors"
+                    title="Cancelar proyecto">✕</button>
+                )}
+              </div>
+            </div>
+
+            {/* Barra global */}
+            <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${pct}%`, backgroundColor: barColor }} />
+            </div>
+
+            {/* 3 áreas */}
+            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
+              <AreaCard title="Información" checks={infoChecks} color="#60a5fa" />
+              <AreaCard title="Producción"  checks={prodChecks} color="#B3985B" />
+              <AreaCard title="Finanzas"    checks={finChecks}  color="#4ade80" />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── KPIs rápidos ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1837,20 +2812,30 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} />
           </div>
         </div>
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Personal</p>
-          <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
-          <p className="text-gray-600 text-xs">confirmados</p>
-        </div>
+        {esRenta ? (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <p className="text-gray-500 text-xs mb-1">Equipos</p>
+            <p className="text-white text-lg font-bold">{equiposConf}<span className="text-gray-500 font-normal text-sm">/{equiposTotal}</span></p>
+            <p className="text-gray-600 text-xs">confirmados</p>
+          </div>
+        ) : (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <p className="text-gray-500 text-xs mb-1">Personal</p>
+            <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
+            <p className="text-gray-600 text-xs">confirmados</p>
+          </div>
+        )}
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Cobrado</p>
           <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
           <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
         </div>
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Bitácora</p>
-          <p className="text-white text-lg font-bold">{proyecto.bitacora.length}</p>
-          <p className="text-gray-600 text-xs">entradas</p>
+          <p className="text-gray-500 text-xs mb-1">Días</p>
+          <p className={`text-lg font-bold ${diasRestantes < 0 ? "text-gray-500" : diasRestantes <= 7 ? "text-red-400" : diasRestantes <= 30 ? "text-yellow-400" : "text-white"}`}>
+            {diasRestantes < 0 ? "Pasado" : diasRestantes === 0 ? "¡Hoy!" : diasRestantes}
+          </p>
+          <p className="text-gray-600 text-xs">{diasRestantes < 0 ? `hace ${Math.abs(diasRestantes)}d` : diasRestantes === 0 ? "es hoy" : "para el evento"}</p>
         </div>
       </div>
 
@@ -1860,20 +2845,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const anticipoCobrado = anticipo ? anticipo.montoCobrado >= anticipo.monto : false;
         const equiposTotal = proyecto.equipos?.length ?? 0;
         const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
-        const fichaOk = !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
+        const fichaOk = esRenta
+          ? !!proyecto.lugarEvento
+          : !!(proyecto.horaInicioEvento && proyecto.horaFinEvento && proyecto.lugarEvento);
         const items = [
           {
             label: "Ficha",
             ok: fichaOk,
             warn: !fichaOk,
-            txt: fichaOk ? "Completa" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante",
+            txt: fichaOk ? "Completa" : (esRenta ? "lugar faltante" : [!proyecto.horaInicioEvento && "hora", !proyecto.lugarEvento && "lugar"].filter(Boolean).join(", ") + " faltante"),
           },
-          {
+          ...(!esRenta ? [{
             label: "Personal",
             ok: proyecto.personal.length > 0 && personalConfirmado === proyecto.personal.length,
             warn: proyecto.personal.length > 0 && personalConfirmado < proyecto.personal.length,
             txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
-          },
+          }] : []),
           {
             label: "Equipos",
             ok: equiposTotal > 0 && equiposConf === equiposTotal,
@@ -1896,42 +2883,61 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const allOk = items.every(i => i.ok);
         const anyWarn = items.some(i => i.warn);
         return (
-          <div className={`rounded-xl border px-4 py-3 flex flex-wrap gap-4 items-center ${allOk ? "bg-green-900/10 border-green-800/40" : anyWarn ? "bg-yellow-900/10 border-yellow-800/30" : "bg-[#111] border-[#222]"}`}>
-            <p className={`text-xs font-semibold uppercase tracking-wider shrink-0 ${allOk ? "text-green-400" : anyWarn ? "text-yellow-400" : "text-gray-500"}`}>
-              {allOk ? "✓ Evento listo" : anyWarn ? "⚠ Preparación incompleta" : "Preparación"}
+          <div className={`rounded-xl border px-5 py-3.5 bg-[#0d0d0d] flex flex-wrap items-center gap-x-6 gap-y-2.5 ${allOk ? "border-white/[0.08]" : "border-[#1a1a1a]"}`}>
+            <p className={`text-[10px] font-bold uppercase tracking-[0.14em] shrink-0 ${allOk ? "text-white" : "text-gray-600"}`}>
+              {allOk ? "✓ Listo" : "Preparación"}
             </p>
-            {items.map(item => (
-              <div key={item.label} className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full shrink-0 ${item.ok ? "bg-green-500" : item.warn ? "bg-yellow-500" : "bg-gray-600"}`} />
-                <span className="text-xs text-gray-400">{item.label}:</span>
-                <span className={`text-xs font-medium ${item.ok ? "text-green-400" : item.warn ? "text-yellow-400" : "text-gray-500"}`}>{item.txt}</span>
+            <span className="w-px h-3 bg-[#252525] shrink-0" />
+            {items.map((item, idx) => (
+              <div key={item.label} className="flex items-baseline gap-1.5">
+                <span className="text-[9px] uppercase tracking-[0.12em] text-gray-700 shrink-0">{item.label}</span>
+                <span className={`text-[11px] font-medium ${item.ok ? "text-white" : item.warn ? "text-gray-400" : "text-gray-600"}`}>{item.txt}</span>
+                {item.ok && <span className="text-[9px] text-gray-600">✓</span>}
               </div>
             ))}
           </div>
         );
       })()}
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1 flex-wrap">
-        {(["resumen", "operacion", "tareas", "finanzas", "extras"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-              tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
-            }`}>
-            {t === "resumen" ? "Resumen"
-              : t === "operacion" ? "Operación"
-              : t === "tareas" ? "Tareas"
-              : t === "finanzas" ? "Finanzas"
-              : "Operativo"}
-          </button>
-        ))}
-      </div>
 
-      {/* ────── TAB: RESUMEN ────── */}
-      {tab === "resumen" && (() => {
+      {/* ────── Sticky section nav ────── */}
+      {(() => {
+        const navItems = [
+          { id: "section-resumen",   label: "Resumen" },
+          { id: "section-operacion", label: "Operación" },
+          { id: "section-extras",    label: "Extras" },
+          { id: "section-finanzas",  label: "Finanzas" },
+        ];
+        return (
+          <div className="sticky top-0 z-30 -mx-3 md:-mx-6 px-3 md:px-6 py-2 bg-[#0a0a0a]/95 backdrop-blur-sm border-b border-[#1a1a1a]">
+            <div className="max-w-5xl mx-auto flex gap-1">
+              {navItems.map(item => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    const el = document.getElementById(item.id);
+                    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    activeSection === item.id
+                      ? "bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/40"
+                      : "text-gray-500 hover:text-gray-300 hover:bg-[#1a1a1a]"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ────── SECCIÓN: RESUMEN ────── */}
+      <div id="section-resumen" className="scroll-mt-14">
+      {(() => {
         const fichaCamposFaltantes: string[] = [];
-        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
-        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
+        if (!esRenta && !proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio");
+        if (!esRenta && !proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin");
         if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
         const fichaCompleta = fichaCamposFaltantes.length === 0;
         return (
@@ -1962,8 +2968,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white">{proyecto.cliente.telefono ?? "—"}</p>
                   {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
                 </div>
-                <Campo label="Encargado del cliente" value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
-                <div>
+                <div className="col-span-2">
                   <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
                   <Combobox
                     value={proyecto.encargado?.id ?? ""}
@@ -1972,162 +2977,113 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] hover:border-[#444] transition-colors"
                   />
                 </div>
+                {esRenta && (<>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del cliente</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoCliente", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoClienteContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
+                  </div>
+                  <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                </>)}
               </div>
             </div>
             {/* Evento */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
+
+              {/* Tipo de evento + servicio — badges estáticos */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {proyecto.tipoEvento && (() => {
+                  const TE: Record<string, string> = { MUSICAL: "🎸 Musical", SOCIAL: "🎊 Social", EMPRESARIAL: "🏢 Empresarial", OTRO: "📅 Otro" };
+                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
+                })()}
+                {proyecto.tipoServicio && (() => {
+                  const TS: Record<string, string> = { PRODUCCION_TECNICA: "🎛️ Producción técnica", RENTA: "📦 Renta de equipo", DIRECCION_TECNICA: "🎬 Dirección técnica" };
+                  return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TS[proyecto.tipoServicio] ?? proyecto.tipoServicio}</span>;
+                })()}
+                {!esRenta && (
+                  <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-400 text-xs">
+                    {proyecto.zona === "BAJIO" ? "📍 Bajío" : proyecto.zona === "NACIONAL" ? "✈️ Nacional" : "📍 Local"}
+                  </span>
+                )}
+              </div>
+
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
-                <Campo label="Encargado del lugar" value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
-                <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
-                <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
-                <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
-                <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
-                <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                <div className="col-span-2">
+                  <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                </div>
+                {!esRenta && (<>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-gray-500 text-xs">Encargado del lugar</p>
+                      <button
+                        onClick={async () => {
+                          await guardarCampo("encargadoLugar", proyecto.cliente.nombre);
+                          if (proyecto.cliente.telefono) await guardarCampo("encargadoLugarContacto", proyecto.cliente.telefono);
+                        }}
+                        className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] transition-colors"
+                        title="Usar datos del cliente"
+                      >
+                        → usar cliente
+                      </button>
+                    </div>
+                    <Campo label="Encargado del lugar" noLabel value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
+                  </div>
+                  <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
+                  <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
+                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                  <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
+                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                </>)}
               </div>
             </div>
             {/* Notas */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas del proyecto</p>
-              <Campo label="Descripción" value={proyecto.descripcionGeneral} field="descripcionGeneral" multiline onSave={guardarCampo} />
-            </div>
-            {/* ── Cierre del evento ── */}
-            {!["COMPLETADO", "CANCELADO"].includes(proyecto.estado) && (
-              <div className="bg-[#0d0d0d] border border-[#222] rounded-xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cierre del evento</p>
-                  {!showCierreFlow && (
-                    <button onClick={() => setShowCierreFlow(true)}
-                      className="text-xs px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] rounded-lg hover:bg-[#B3985B]/20 transition-colors">
-                      Iniciar cierre →
-                    </button>
-                  )}
-                </div>
-                {!showCierreFlow ? (
-                  <p className="text-xs text-gray-600">Cuando el evento termine, usa el flujo de cierre para confirmar desmontaje, equipo en bodega y enviar evaluaciones.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Checklist */}
-                    {([
-                      { key: "desmontaje", label: "Desmontaje completado en el venue" },
-                      { key: "bodega", label: "Equipo regresó a bodega y fue revisado" },
-                      { key: "evalCliente", label: "Evaluación enviada al cliente" },
-                    ] as { key: keyof typeof cierreChecklist; label: string }[]).map(item => (
-                      <button key={item.key} onClick={() => setCierreChecklist(p => ({ ...p, [item.key]: !p[item.key] }))}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left text-xs transition-colors ${cierreChecklist[item.key] ? "border-green-700/40 bg-green-900/10 text-green-300" : "border-[#2a2a2a] text-gray-500 hover:border-[#333] hover:text-gray-400"}`}>
-                        <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${cierreChecklist[item.key] ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
-                          {cierreChecklist[item.key] ? "✓" : ""}
-                        </span>
-                        {item.label}
-                      </button>
-                    ))}
-                    {/* Cierre financiero shortcut */}
-                    <button onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
-                      disabled={loadingCierre}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors disabled:opacity-40">
-                      <span className={`w-5 h-5 rounded border flex items-center justify-center text-[10px] flex-shrink-0 ${proyecto.cierreFinanciero ? "bg-green-600 border-green-600 text-white" : "border-[#444]"}`}>
-                        {proyecto.cierreFinanciero ? "✓" : "→"}
-                      </span>
-                      {loadingCierre ? "Calculando cierre…" : proyecto.cierreFinanciero ? "Cierre financiero registrado — ver detalle" : "Generar cierre financiero (real vs estimado)"}
-                    </button>
-                    {/* Eval interna shortcut */}
-                    <button onClick={() => setTab("extras")}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#2a2a2a] text-left text-xs text-gray-500 hover:border-[#333] hover:text-gray-400 transition-colors">
-                      <span className="w-5 h-5 rounded border border-[#444] flex items-center justify-center text-[10px]">→</span>
-                      Llenar evaluación interna del evento
-                    </button>
-                    {/* Botón cerrar */}
-                    <button
-                      disabled={!Object.values(cierreChecklist).every(Boolean) || saving}
-                      onClick={() => cambiarEstado("COMPLETADO")}
-                      className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-green-700 text-white hover:bg-green-600">
-                      {saving ? "Cerrando…" : "Marcar evento como COMPLETADO"}
-                    </button>
-                    {!Object.values(cierreChecklist).every(Boolean) && (
-                      <p className="text-[11px] text-gray-600 text-center">Marca los 3 pasos para habilitar el cierre</p>
-                    )}
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
+              {(() => {
+                let notasDesc: string | null = null;
+                try {
+                  if (esRenta) {
+                    const d = JSON.parse(proyecto.trato?.ideasReferencias ?? "{}");
+                    notasDesc = d?.notas ?? null;
+                  } else {
+                    notasDesc = (proyecto.trato as { notas?: string | null } | null)?.notas ?? null;
+                  }
+                } catch { /* ignore */ }
+                return notasDesc ? (
+                  <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Del descubrimiento</p>
+                    <p className="text-gray-400 text-xs whitespace-pre-wrap">{notasDesc}</p>
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* ── Nota rápida (bitácora) ── */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Nota rápida</p>
-              <div className="flex gap-2">
-                <input
-                  value={notaBitacora}
-                  onChange={e => setNotaBitacora(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); agregarNota(); } }}
-                  placeholder="Escribe una nota de seguimiento... (Enter para guardar)"
-                  className="flex-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-gray-600"
-                />
-                <button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()}
-                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors shrink-0">
-                  {addingNota ? "..." : "Guardar"}
-                </button>
-              </div>
-              {proyecto.bitacora.length > 0 && (
-                <div className="mt-3 space-y-1.5">
-                  {proyecto.bitacora.slice(0, 3).map(b => (
-                    <div key={b.id} className="flex items-start gap-2 text-xs">
-                      <span className="text-gray-600 shrink-0">{new Date(b.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}</span>
-                      <span className="text-gray-400 truncate">{b.contenido}</span>
-                    </div>
-                  ))}
-                  {proyecto.bitacora.length > 3 && (
-                    <button onClick={() => setTab("extras")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
-                      Ver {proyecto.bitacora.length - 3} entradas más →
-                    </button>
-                  )}
-                </div>
-              )}
+                ) : null;
+              })()}
             </div>
 
-            {/* Accesos rápidos */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
-              <div className="flex flex-wrap gap-3">
-                {proyecto.cotizacion && (
-                  <Link href={`/cotizaciones/${proyecto.cotizacion.id}`}
-                    className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-[#B3985B] hover:border-[#B3985B]/50 transition-colors">
-                    📄 Cotización
-                  </Link>
-                )}
-                {proyecto.cliente.telefono && (
-                  <a href={`https://wa.me/52${proyecto.cliente.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
-                    className="text-xs px-3 py-2 border border-green-800/40 rounded-lg text-green-400 hover:bg-green-900/20 transition-colors">
-                    💬 WhatsApp cliente
-                  </a>
-                )}
-                <button onClick={() => setTab("operacion")}
-                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
-                  👥 Personal y equipo →
-                </button>
-                <button onClick={() => setTab("finanzas")}
-                  className="text-xs px-3 py-2 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
-                  💰 Finanzas →
-                </button>
-                {(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
-                  <button onClick={() => setTab("extras")}
-                    className="text-xs px-3 py-2 border border-[#B3985B]/40 rounded-lg text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
-                    📦 Protocolo salida/entrada →
-                  </button>
-                )}
-              </div>
-            </div>
+
           </div>
         );
       })()}
+      </div>{/* /section-resumen */}
 
-      {/* ────── TAB: OPERACIÓN (Info) ────── */}
-      {tab === "operacion" && (() => {
+      {/* ────── SECCIÓN: OPERACIÓN ────── */}
+      <div id="section-operacion" className="scroll-mt-14">
+      {(() => {
         // Campos mínimos requeridos para habilitar invitaciones a técnicos y proveedores
         const fichaCamposFaltantes: string[] = [];
-        if (!proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
-        if (!proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin del evento");
+        if (!esRenta && !proyecto.horaInicioEvento) fichaCamposFaltantes.push("hora inicio del evento");
+        if (!esRenta && !proyecto.horaFinEvento) fichaCamposFaltantes.push("hora fin del evento");
         if (!proyecto.lugarEvento) fichaCamposFaltantes.push("lugar del evento");
         const fichaCompleta = fichaCamposFaltantes.length === 0;
         const fichaTooltip = fichaCompleta
@@ -2146,102 +3102,67 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
           <p className="text-xs text-gray-500 uppercase tracking-wider px-1">Haz clic en cualquier campo para editar</p>
 
-          {/* ── Sub-tabs Operación ── */}
-          <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1">
-            {([
-              { key: "personal", label: "Equipo & Personal" },
-              { key: "logistica", label: "Logística" },
-              { key: "cronograma", label: "Cronograma" },
-            ] as const).map(st => (
-              <button key={st.key} onClick={() => setOperTab(st.key)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  operTab === st.key ? "bg-[#222] text-white" : "text-gray-600 hover:text-gray-400"
-                }`}>
-                {st.label}
-              </button>
-            ))}
-          </div>
 
-          {/* ── Responsables por área ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
+
+          {/* ── Traslados (solo producción) ── */}
+          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Responsables por área</p>
-              {savingResp && <span className="text-xs text-gray-600">Guardando...</span>}
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {(["produccion", "logistica", "finanzas", "marketing"] as const).map(area => (
-                <div key={area}>
-                  <label className="text-gray-500 text-xs mb-1 block capitalize">{area}</label>
-                  <Combobox
-                    value={responsables[area]}
-                    onChange={v => {
-                      const next = { ...responsables, [area]: v };
-                      setResponsables(next);
-                      guardarResponsables(next);
-                    }}
-                    options={[{ value: "", label: "— Sin asignar —" }, ...usuariosActivos.map(u => ({ value: u.id, label: u.name + (u.area ? ` (${u.area})` : "") }))]}
-                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Chofer ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "personal" ? " hidden" : ""}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Chofer de producción</p>
-              {proyecto.choferNombre && (
-                <span className={`text-xs px-2 py-0.5 rounded-full ${proyecto.choferExterno ? "bg-orange-900/30 text-orange-400" : "bg-green-900/30 text-green-400"}`}>
-                  {proyecto.choferExterno ? "Externo" : "Interno"} · {proyecto.choferNombre}
-                </span>
-              )}
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Traslados</p>
+              {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
             <div className="space-y-3">
-              <div className="flex gap-3">
-                <button onClick={() => setChoferTipo("INTERNO")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "INTERNO" ? "bg-[#B3985B]/20 border-[#B3985B] text-[#B3985B]" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                  Del personal del proyecto
-                </button>
-                <button onClick={() => setChoferTipo("EXTERNO")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${choferTipo === "EXTERNO" ? "bg-orange-900/20 border-orange-700 text-orange-400" : "border-[#333] text-gray-400 hover:border-[#555]"}`}>
-                  Chofer externo
-                </button>
-              </div>
-              {choferTipo === "INTERNO" ? (
-                <Combobox
-                  value={choferPersonalId}
-                  onChange={v => setChoferPersonalId(v)}
-                  options={[{ value: "", label: "— Seleccionar del personal —" }, ...proyecto.personal.filter(p => p.tecnico).map(p => ({ value: p.id, label: p.tecnico!.nombre + " · " + (p.rolTecnico?.nombre ?? p.participacion ?? "Personal") }))]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              ) : (
-                <div className="space-y-2">
-                  <input value={choferNombreInput} onChange={e => setChoferNombreInput(e.target.value)}
-                    placeholder="Nombre del chofer externo"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  <input type="number" value={choferCostoInput} onChange={e => setChoferCostoInput(e.target.value)}
-                    placeholder="Costo ($) — genera CxP automáticamente"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              {transporteSlots.map((slot, i) => (
+                <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-xs text-gray-600 font-semibold">Vehículo {i + 1}</p>
+                    {transporteSlots.length > 1 && (
+                      <button onClick={() => { const n = transporteSlots.filter((_, idx) => idx !== i); setTransporteSlots(n); guardarTransportes(n); }}
+                        className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">Quitar</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
+                      <Combobox
+                        value={slot.vehiculoId}
+                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
+                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Chofer</label>
+                      <input
+                        list={`chofer-list-${i}`}
+                        value={slot.choferId}
+                        onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: e.target.value } : s); setTransporteSlots(n); }}
+                        onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Nombre o seleccionar..."
+                        autoComplete="off"
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
+                      <datalist id={`chofer-list-${i}`}>
+                        {tecnicos.map(t => <option key={t.id} value={t.nombre} />)}
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                      <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
+                        placeholder="Instrucciones, destino, etc."
+                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
                 </div>
-              )}
-              {vehiculos.length > 0 && (
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Vehículo asignado (opcional)</label>
-                  <Combobox
-                    value={vehiculoId}
-                    onChange={v => setVehiculoId(v)}
-                    options={[{ value: "", label: "— Sin vehículo específico —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              )}
-              {guardandoChofer && <p className="text-xs text-gray-600 text-center">Guardando...</p>}
+              ))}
+              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
+                className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
+                + Agregar vehículo
+              </button>
             </div>
-          </div>
+          </div>}
 
           {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
-          {operTab === "logistica" && (proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (() => {
+          {esRenta && (() => {
             // Leer datos de renta: primero de logisticaRenta del proyecto, luego del trato
             let rentaData: Record<string, string> = {};
             try {
@@ -2249,7 +3170,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 rentaData = JSON.parse(proyecto.logisticaRenta);
               } else if (proyecto.trato?.ideasReferencias) {
                 const d = JSON.parse(proyecto.trato.ideasReferencias);
-                if (d && typeof d === "object" && d.nivelServicio) rentaData = d;
+                if (d && typeof d === "object" && (d.nivelServicio || d.modalidadServicio || d.fechaEntrega)) rentaData = d;
               }
             } catch { /* vacío */ }
 
@@ -2276,16 +3197,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-gray-600 text-sm italic">Sin datos de logística. Completa el descubrimiento en el trato asociado para ver esta información.</p>
                 ) : (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm">
-                    {rentaData.nivelServicio && (
+                    {(rentaData.nivelServicio || rentaData.modalidadServicio) && (
                       <div>
                         <p className="text-gray-500 text-xs mb-1">Nivel de servicio</p>
-                        <p className="text-white">{NIVEL_LABELS[rentaData.nivelServicio] ?? rentaData.nivelServicio}</p>
+                        <p className="text-white">{NIVEL_LABELS[rentaData.nivelServicio ?? rentaData.modalidadServicio] ?? (rentaData.nivelServicio ?? rentaData.modalidadServicio)}</p>
                       </div>
                     )}
-                    {rentaData.entrega && (
+                    {(rentaData.entrega || rentaData.modalidadEntrega) && (
                       <div>
                         <p className="text-gray-500 text-xs mb-1">Modalidad de entrega</p>
-                        <p className="text-white">{ENTREGA_LABELS[rentaData.entrega] ?? rentaData.entrega}</p>
+                        <p className="text-white">{ENTREGA_LABELS[rentaData.entrega ?? rentaData.modalidadEntrega] ?? (rentaData.entrega ?? rentaData.modalidadEntrega)}</p>
                       </div>
                     )}
                     {rentaData.fechaEntrega && (
@@ -2325,7 +3246,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Recolección de equipo (solo RENTA) ── */}
-          {operTab === "logistica" && proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
+          {proyecto.recoleccionStatus !== "NO_APLICA" && (() => {
             let rentaData: Record<string, string> = {};
             try {
               const src = proyecto.logisticaRenta || proyecto.trato?.ideasReferencias;
@@ -2365,7 +3286,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <div>
                       <p className="text-gray-500 text-xs mb-0.5">Recolectado el</p>
                       <p className="text-green-400 text-sm font-medium">
-                        {new Date(proyecto.recoleccionFechaReal).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+                        {(() => { const iso = typeof proyecto.recoleccionFechaReal === "string" ? proyecto.recoleccionFechaReal : (proyecto.recoleccionFechaReal as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }); })()}
                       </p>
                     </div>
                   )}
@@ -2405,11 +3326,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Personal del evento (gestión completa) ── */}
-          <div className={`space-y-3${operTab !== "personal" ? " hidden" : ""}`}>
+          <div className="space-y-3">
             {/* Formulario agregar */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                </div>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
                     <button
@@ -2425,7 +3348,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
                   </button>
                 </div>
-              </div>
+              </div>{/* /header personal */}
               {showBroadcast && (() => {
                 const fecha = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
                 const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
@@ -2461,7 +3384,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Combobox
                       value={selParticipacion}
                       onChange={v => setSelParticipacion(v)}
-                      options={[{ value: "OPERACION", label: "Operación del evento" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                      options={[{ value: "OPERACION", label: "Operación (incluye montaje)" }, { value: "MONTAJE", label: "Montaje (día previo)" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
                       className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
                     />
                   </div>
@@ -2530,24 +3453,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Nivel</label>
-                    <Combobox
-                      value={selNivel}
-                      onChange={v => setSelNivel(v)}
-                      options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Jornada</label>
-                    <Combobox
-                      value={selJornada}
-                      onChange={v => setSelJornada(v)}
-                      options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                    />
-                  </div>
+                  {(!selRol || roles.find(r => r.id === selRol)?.tipoPago === "POR_JORNADA") && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Jornada</label>
+                      <Combobox
+                        value={selJornada}
+                        onChange={v => setSelJornada(v)}
+                        options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                      />
+                    </div>
+                  )}
+                  {selRol && roles.find(r => r.id === selRol)?.tipoPago !== "POR_JORNADA" && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Nivel</label>
+                      <Combobox
+                        value={selNivel}
+                        onChange={v => setSelNivel(v)}
+                        options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
                     <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
@@ -2570,6 +3497,63 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               )}
             </div>
 
+            {/* ── Sugerencias de cotización ── */}
+            {proyecto.cotizacion && proyecto.cotizacion.lineas.some(l => l.tipo === "OPERACION_TECNICA") && (() => {
+              const lineas = proyecto.cotizacion!.lineas.filter(l => l.tipo === "OPERACION_TECNICA");
+              const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
+              const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              const restante = presupuestoCotizado - presupuestoAsignado;
+              return (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setShowSugerencias(v => !v)}
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#161616] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Sugerencias de cotización</span>
+                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded">{lineas.length} rol{lineas.length !== 1 ? "es" : ""}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right hidden sm:block">
+                        <div className="text-[10px] text-gray-600">Presupuesto personal cotizado</div>
+                        <div className="text-xs font-semibold text-white">{fmt(presupuestoCotizado)}</div>
+                      </div>
+                      <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
+                      </div>
+                      <span className="text-gray-600 text-xs">{showSugerencias ? "▲" : "▼"}</span>
+                    </div>
+                  </button>
+                  {showSugerencias && (
+                    <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                      {lineas.map(linea => (
+                        <div key={linea.id} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
+                              {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
+                              {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
+                          </div>
+                          <button
+                            onClick={() => agregarDesdeLinea(linea)}
+                            disabled={agregandoLinea === linea.id}
+                            className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Lista personal agrupada */}
             {proyecto.personal.length === 0 ? (
               <div className="bg-[#111] border border-[#222] rounded-xl p-6 text-center text-gray-600 text-sm">
@@ -2589,70 +3573,265 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const sinAsignar = grupo.filter(p => !p.tecnico).length;
                 return (
                   <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                    <div className="px-4 py-3 bg-[#1a1a1a] flex items-center justify-between">
-                      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{labels[tipo]} ({grupo.length})</p>
+                    <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-green-500">{grupo.filter(p => p.confirmado).length} conf.</span>
-                        {sinAsignar > 0 && <span className="text-xs text-yellow-500">{sinAsignar} sin asignar</span>}
+                        <p className="text-xs text-white font-semibold uppercase tracking-wider">{labels[tipo]}</p>
+                        <span className="text-xs text-gray-600">{grupo.length}</span>
+                        {sinAsignar > 0 && <span className="text-xs text-gray-500">{sinAsignar} pendiente{sinAsignar !== 1 ? "s" : ""}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
                         {grupo.some(p => !p.confirmado && p.tecnico) && (
                           <button onClick={() => confirmarGrupo(grupo)}
-                            className="text-xs text-gray-500 hover:text-green-400 border border-[#333] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
+                            className="text-xs text-gray-500 hover:text-green-400 border border-[#2a2a2a] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
                             Confirmar todos
                           </button>
                         )}
+                        <button
+                          onClick={() => agregarSlotVacio(tipo, grupo[0]?.fechaJornada ?? null)}
+                          className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">
+                          + Agregar
+                        </button>
                       </div>
                     </div>
                     {grupo.map(p => (
-                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700" : "border-l-yellow-800/60"}`}>
+                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#2a2a2a]"}`}>
                         {/* Name / info row */}
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="flex-1 min-w-0">
                             {!p.tecnico ? (
                               asignandoId === p.id ? (
-                                <div className="flex items-center gap-2">
-                                  <Combobox
-                                    value=""
-                                    onChange={v => { if (v) asignarTecnico(p.id, v); }}
-                                    options={[{ value: "", label: "— Seleccionar técnico —" }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` }))]}
-                                    className="flex-1 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
-                                  />
-                                  <button onClick={() => { setAsignandoId(null); setSelAsignar(""); }}
-                                    className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Combobox
+                                      value=""
+                                      placeholder="Buscar técnico..."
+                                      onChange={v => {
+                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                        else if (v) { asignarTecnico(p.id, v); }
+                                      }}
+                                      options={[
+                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                      ]}
+                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                    />
+                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                  </div>
+                                  {crearParaSlotId === p.id && (
+                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
+                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                                        placeholder="Nombre completo *" autoFocus
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                                        placeholder="Celular (WhatsApp)"
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <div className="flex gap-2">
+                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
+                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
+                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                      </div>
+                                      <div className="flex gap-2 pt-1">
+                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
+                                        </button>
+                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">
+                                          Cancelar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-yellow-500 text-sm italic">Sin asignar</span>
-                                  {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); }}
-                                    className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors">
-                                    Asignar técnico
+                                  <span className="text-gray-500 text-sm">Pendiente de asignar</span>
+                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }}
+                                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">
+                                    Asignar
                                   </button>
                                 </div>
                               )
                             ) : (
-                              <div className="flex items-center gap-2">
-                                <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
-                                {p.nivel && <span className={`text-xs font-bold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                              </div>
+                              asignandoId === p.id ? (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Combobox
+                                      value={p.tecnico.id}
+                                      placeholder="Cambiar técnico..."
+                                      onChange={v => {
+                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                        else if (v) { asignarTecnico(p.id, v); setAsignandoId(null); }
+                                      }}
+                                      options={[
+                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                      ]}
+                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                    />
+                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); }}
+                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                                  </div>
+                                  {crearParaSlotId === p.id && (
+                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
+                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                                        placeholder="Nombre completo *" autoFocus
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                                        placeholder="Celular (WhatsApp)"
+                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                      <div className="flex gap-2">
+                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
+                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
+                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                      </div>
+                                      <div className="flex gap-2 pt-1">
+                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
+                                        </button>
+                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
+                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                                </div>
+                              )
                             )}
-                            <p className="text-gray-500 text-xs mt-0.5">
+                            <p className="text-gray-600 text-xs mt-0.5">
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
                               {p.jornada ? ` · ${p.jornada}` : ""}
+                              {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
                           </div>
-                          <button onClick={() => eliminarPersonal(p.id)}
-                            className="text-gray-600 hover:text-red-400 text-lg leading-none transition-colors shrink-0">×</button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {asignandoId !== p.id && (
+                              <button
+                                onClick={() => { abrirEditPersonal(p); setAsignandoId(null); }}
+                                className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${editandoPersonalId === p.id ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333]"}`}>
+                                {editandoPersonalId === p.id ? "Editando" : "Editar"}
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                const ok = await confirm({ message: "¿Eliminar este técnico del proyecto? Se borrarán también las cuentas por pagar pendientes vinculadas.", confirmText: "Eliminar", danger: true });
+                                if (ok) eliminarPersonal(p.id);
+                              }}
+                              title="Eliminar slot"
+                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
+                          </div>
                         </div>
-                        {/* Actions row — wraps cleanly on mobile */}
+
+                        {/* ── Formulario edición completa ── */}
+                        {editandoPersonalId === p.id && (
+                          <div className="mt-3 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
+                                <Combobox
+                                  value={editPersonalForm.tecnicoId}
+                                  onChange={v => {
+                                    if (v === "__nuevo__") { setShowNuevoTecnico(true); }
+                                    else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v }));
+                                  }}
+                                  options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
+                                <Combobox
+                                  value={editPersonalForm.rolTecnicoId}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))}
+                                  options={[{ value: "", label: "— Sin rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
+                                <Combobox
+                                  value={editPersonalForm.participacion}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))}
+                                  options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
+                                <Combobox
+                                  value={editPersonalForm.jornada}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, jornada: v }))}
+                                  options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Nivel</label>
+                                <Combobox
+                                  value={editPersonalForm.nivel}
+                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, nivel: v }))}
+                                  options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
+                                <input
+                                  type="number"
+                                  value={editPersonalForm.tarifa}
+                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))}
+                                  placeholder="0"
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Responsabilidad / descripción</label>
+                              <input
+                                value={editPersonalForm.responsabilidad}
+                                onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))}
+                                placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                              />
+                            </div>
+                            <div className="flex gap-2 pt-1">
+                              <button onClick={() => guardarEditPersonal(p.id)} disabled={savingPersonal}
+                                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                {savingPersonal ? "Guardando..." : "Guardar cambios"}
+                              </button>
+                              <button onClick={() => setEditandoPersonalId(null)}
+                                className="px-4 text-gray-500 hover:text-white text-xs transition-colors">
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Actions row */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          {p.tarifaAcordada != null && (
-                            <span className="text-gray-300 text-sm font-medium">{fmt(p.tarifaAcordada)}</span>
-                          )}
+                          <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>
+                            {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}
+                          </span>
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            p.estadoPago === "PAGADO" ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"
+                            p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"
                           }`}>
-                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pend."}
+                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}
                           </span>
                           {p.confirmRespuesta && (
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
@@ -2710,77 +3889,74 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
-          {/* ── Logística (solo producción técnica / dirección técnica) ── */}
-          {operTab === "logistica" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Logística</p>
+          {!esRenta && (() => {
+            const DIRECTORIO = [
+              { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
+              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
+              { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
+              { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
+              { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
+              { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
+              { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
+            ];
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                  <p className="text-xs text-white font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
+                  <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+                {directorioOpen && (
+                  <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                    {DIRECTORIO.map(p => (
+                      <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
+                        <div>
+                          <p className="text-white text-sm font-medium">{p.nombre}</p>
+                          <p className="text-gray-400 text-xs">{p.cargo}</p>
+                          <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
+                        </div>
+                        <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                          {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
-            {/* Transportes del evento */}
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Transportes del evento</p>
-            <div className="space-y-3 mb-5">
-              {transporteSlots.map((slot, i) => (
-                <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-gray-600 font-semibold">Vehículo {i + 1}</p>
-                    {transporteSlots.length > 1 && (
-                      <button onClick={() => { const n = transporteSlots.filter((_, idx) => idx !== i); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">Quitar</button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
-                      <Combobox
-                        value={slot.vehiculoId}
-                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Chofer</label>
-                      <Combobox
-                        value={slot.choferId}
-                        onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, choferId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar chofer —" }, ...tecnicos.map(t => ({ value: t.id, label: t.nombre }))]}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Hora de salida</label>
-                      <input type="time" value={slot.horaSalida} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, horaSalida: e.target.value } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                      <input value={slot.comentarios} onChange={e => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, comentarios: e.target.value } : s); setTransporteSlots(n); }} onBlur={() => guardarTransportes(transporteSlots)}
-                        placeholder="Instrucciones, destino, etc."
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              <button onClick={() => { const n = [...transporteSlots, { vehiculoId: "", choferId: "", horaSalida: "", comentarios: "" }]; setTransporteSlots(n); }}
-                className="text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                + Agregar vehículo
+          {/* ── Logística (solo producción técnica / dirección técnica) ── */}
+          {!esRenta && (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Catering de producción</p>
+              <button
+                onClick={() => {
+                  const next = !proyecto.aplicaCatering;
+                  setProyecto(prev => prev ? { ...prev, aplicaCatering: next } : prev);
+                  fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aplicaCatering: next }) });
+                }}
+                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-colors ${proyecto.aplicaCatering ? "border-[#B3985B]/40 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#222] text-[#555] hover:border-[#333] hover:text-[#777]"}`}
+              >
+                <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${proyecto.aplicaCatering ? "bg-[#B3985B] border-[#B3985B]" : "border-[#555]"}`}>
+                  {proyecto.aplicaCatering && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
+                </span>
+                {proyecto.aplicaCatering ? "Aplica" : "No aplica"}
               </button>
-              {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
             </div>
 
-            {/* Catering de producción */}
-            <div className="border-t border-[#1a1a1a] pt-4 mt-2">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Catering de producción</p>
-                <div className="flex items-center gap-2">
-                  {savingCatering && <span className="text-xs text-gray-600">Guardando...</span>}
-                  {catering.contactoTelefono && (
-                    <button onClick={abrirWhatsAppCatering}
-                      className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                      📲 Solicitar a proveedor
-                    </button>
-                  )}
+            {proyecto.aplicaCatering && <div>
+              {savingCatering && <p className="text-xs text-gray-600 mb-2">Guardando...</p>}
+              {catering.contactoTelefono && (
+                <div className="flex justify-end mb-3">
+                  <button onClick={abrirWhatsAppCatering}
+                    className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
+                    📲 Solicitar a proveedor
+                  </button>
                 </div>
-              </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 {/* Proveedor de catering */}
                 <div className="col-span-2">
@@ -2809,16 +3985,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 {/* Personas */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-gray-500">Elementos a alimentar</label>
-                    {proyecto.personal.length > 0 && (
-                      <button type="button"
-                        onClick={() => setCatering(p => ({ ...p, personasCrew: String(proyecto.personal.length) }))}
-                        className="text-[10px] text-[#B3985B] hover:text-white transition-colors">
-                        ↺ {proyecto.personal.length} técnicos
-                      </button>
-                    )}
-                  </div>
+                  <label className="text-xs text-gray-500 block mb-1">Elementos a alimentar</label>
                   <input type="number" min="1" value={catering.personasCrew}
                     onChange={e => setCatering(p => ({ ...p, personasCrew: e.target.value }))}
                     placeholder="Ej: 8"
@@ -2826,14 +3993,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
                 {/* Servicios por día */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-gray-500">Servicios por día</label>
-                    {proyecto.cotizacion && proyecto.cotizacion.diasComidas > 0 && (
-                      <span className="text-[10px] text-gray-600">
-                        {proyecto.cotizacion.diasComidas} día{proyecto.cotizacion.diasComidas !== 1 ? "s" : ""} cotizados
-                      </span>
-                    )}
-                  </div>
+                  <label className="text-xs text-gray-500 block mb-1">Servicios por día</label>
                   <input type="number" min="1" value={catering.comidasPorDia}
                     onChange={e => setCatering(p => ({ ...p, comidasPorDia: e.target.value }))}
                     placeholder="Ej: 2 (comida + cena)"
@@ -2857,12 +4017,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </button>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
           )}
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
-          {operTab === "cronograma" && !(proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA") && (
+          {!esRenta && (
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
@@ -2942,85 +4102,49 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Documentos operativos ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "logistica" ? " hidden" : ""}`}>
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Documentos operativos</p>
-            {(() => {
-              const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-              const tiposDoc = esRenta
-                ? (["RIDER", "OTRO"] as const)
-                : (["RENDER", "PLOT_PATCH", "INPUT_LIST", "RIDER", "FICHA_TECNICA", "ITINERARIO", "OTRO"] as const);
-              return tiposDoc;
-            })().map(tipo => {
-              const labels: Record<string, string> = {
-                RENDER: "Render real",
-                PLOT_PATCH: "Render plot / patch",
-                INPUT_LIST: "Input list",
-                RIDER: "Rider técnico",
-                FICHA_TECNICA: "Ficha técnica",
-                ITINERARIO: "Itinerario",
-                OTRO: "Otros documentos",
-              };
-              const archivosDelTipo = proyecto.archivos.filter(a => a.tipo === tipo);
-              return (
-                <div key={tipo} className="mb-4 last:mb-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-400 font-medium">{labels[tipo]}</p>
-                    <label className={`cursor-pointer text-xs border px-3 py-1 rounded-lg transition-colors ${
-                      uploadingTipo === tipo
-                        ? "border-gray-700 text-gray-600"
-                        : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
-                    }`}>
-                      {uploadingTipo === tipo ? "Subiendo..." : "+ Subir archivo"}
-                      <input type="file" className="hidden" disabled={uploadingTipo !== null}
-                        onChange={e => subirArchivo(e, tipo)} />
-                    </label>
-                  </div>
-                  {archivosDelTipo.length === 0 ? (
-                    <p className="text-gray-700 text-xs italic pl-1">Sin archivos</p>
-                  ) : (
-                    <div className="space-y-1">
-                      {archivosDelTipo.map(a => (
-                        <div key={a.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
-                          <a href={a.url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-blue-400 hover:text-blue-300 hover:underline truncate flex-1 mr-3">
-                            {a.nombre}
-                          </a>
-                          <button onClick={() => eliminarArchivo(a.id)}
-                            className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors shrink-0">×</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── Siguiente: Logística → Cronograma ── */}
-          <div className={`flex justify-end pt-2${operTab !== "logistica" ? " hidden" : ""}`}>
-            <button
-              onClick={() => setOperTab("cronograma")}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
-              Cronograma →
-            </button>
-          </div>
-
-          {/* ── Contactos ── */}
-          <div className={`bg-[#111] border border-[#222] rounded-xl p-5${operTab !== "cronograma" ? " hidden" : ""}`}>
-            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Contactos</p>
-            <div className="grid grid-cols-1 gap-y-4 text-sm">
-              <Campo label="Contactos de dirección y coordinación" value={proyecto.contactosDireccion} field="contactosDireccion" onSave={guardarCampo} multiline />
-              <Campo label="Contactos de emergencia" value={proyecto.contactosEmergencia} field="contactosEmergencia" onSave={guardarCampo} multiline />
+          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Documentos operativos</p>
+              <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
+                uploadingTipo ? "border-gray-700 text-gray-600" : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
+              }`}>
+                {uploadingTipo ? "Subiendo..." : "+ Subir archivo"}
+                <input type="file" className="hidden" disabled={!!uploadingTipo}
+                  onChange={e => subirArchivo(e, "OTRO")} />
+              </label>
             </div>
-          </div>
+            <p className="text-[11px] text-gray-600 mb-4">
+              {esRenta
+                ? "Contrato de renta · Fotos de entrega · Rider técnico · Otros"
+                : "Render · Plot / patch · Input list · Rider · Ficha técnica · Itinerario · Otros"}
+            </p>
+            {proyecto.archivos.length === 0 ? (
+              <p className="text-gray-700 text-xs italic">Sin archivos cargados</p>
+            ) : (
+              <div className="space-y-1">
+                {proyecto.archivos.map(a => (
+                  <div key={a.id} className="flex items-center justify-between bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                    <a href={a.url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 hover:underline truncate flex-1 mr-3">
+                      {a.nombre}
+                    </a>
+                    <button onClick={() => eliminarArchivo(a.id)}
+                      className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors shrink-0">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>}
+
+
 
 
         </div>
         );
       })()}
 
-      {/* ────── TAB: EQUIPOS (dentro de OPERACIÓN) ────── */}
-      {tab === "operacion" && operTab === "personal" && (() => {
+      {/* ── Equipos (dentro de Operación) ── */}
+      {(() => {
         const equiposPropios  = proyecto.equipos.filter(e => e.tipo === "PROPIO");
         const equiposExternos = proyecto.equipos.filter(e => e.tipo === "EXTERNO");
         const camposFaltantesEq: string[] = [];
@@ -3029,99 +4153,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         if (!proyecto.lugarEvento) camposFaltantesEq.push("lugar del evento");
         const fichaCompletaEq = camposFaltantesEq.length === 0;
         const fichaTooltipEq = fichaCompletaEq ? "" : `Completa la ficha técnica antes de invitar: falta ${camposFaltantesEq.join(", ")}.`;
-        const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
-
-        function EquipoRow({ eq }: { eq: ProyectoEquipoItem }) {
-          const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
-          return (
-            <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
-              <div className="flex-1 min-w-0">
-                <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
-                <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
-                {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.nombre}</p>}
-              </div>
-              <div className="text-center shrink-0">
-                <p className="text-white text-sm font-semibold">{eq.cantidad}</p>
-                <p className="text-gray-600 text-[10px]">cant.</p>
-              </div>
-              <div className="text-center shrink-0">
-                <p className="text-white text-sm">{eq.dias}</p>
-                <p className="text-gray-600 text-[10px]">días</p>
-              </div>
-              {costo !== null && (
-                <div className="text-right shrink-0">
-                  <p className="text-yellow-400 text-sm font-semibold">{fmt(costo)}</p>
-                  <p className="text-gray-600 text-[10px]">costo</p>
-                </div>
-              )}
-              <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                {/* Respuesta del proveedor */}
-                {eq.confirmDisponible !== null && eq.confirmDisponible !== undefined && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                    eq.confirmDisponible ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-                  }`}>
-                    {eq.confirmDisponible ? "✓ Disponible" : "✗ No disp."}
-                  </span>
-                )}
-                <button onClick={() => toggleConfirmadoEquipo(eq.id, eq.confirmado)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold transition-colors ${eq.confirmado ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-[#222] text-gray-500 hover:bg-[#2a2a2a] hover:text-white"}`}>
-                  {eq.confirmado ? "Confirmado" : "Confirmar"}
-                </button>
-                {/* Botón invitar proveedor (solo equipo externo con proveedor) */}
-                {eq.tipo === "EXTERNO" && eq.proveedor && (
-                  <button
-                    disabled={!fichaCompletaEq}
-                    title={fichaCompletaEq ? "Consultar disponibilidad al proveedor" : fichaTooltipEq}
-                    onClick={async () => {
-                      const res = await fetch(`/api/proyectos/${id}/equipos/${eq.id}/invitar-proveedor`, { method: "POST" });
-                      const d = await res.json();
-                      if (d.whatsappUrl) {
-                        window.open(d.whatsappUrl, "_blank");
-                        await load();
-                      } else if (d.token) {
-                        const url = `${window.location.origin}/confirmar/proveedor/${d.token}`;
-                        await navigator.clipboard.writeText(url).catch(() => {});
-                        toast.info("Sin número registrado. Link copiado al portapapeles.");
-                        await load();
-                      }
-                    }}
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompletaEq ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-                    📲 Proveedor
-                  </button>
-                )}
-                <button onClick={() => eliminarEquipo(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
-              </div>
-            </div>
-          );
-        }
 
         return (
           <div className="space-y-4">
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-white text-xl font-bold">{proyecto.equipos.length}</p>
-                <p className="text-gray-500 text-xs">items totales</p>
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-white text-xl font-bold">{proyecto.equipos.filter(e => e.confirmado).length}</p>
-                <p className="text-gray-500 text-xs">confirmados</p>
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                <p className="text-yellow-400 text-xl font-bold">
-                  {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
-                </p>
-                <p className="text-gray-500 text-xs">costo externo</p>
-              </div>
-            </div>
-
-            {/* Botón agregar */}
-            {!showAddEquipo ? (
-              <button onClick={() => setShowAddEquipo(true)}
-                className="w-full border border-dashed border-[#333] hover:border-[#B3985B] text-gray-500 hover:text-[#B3985B] py-3 rounded-xl text-sm transition-colors">
-                + Agregar equipo
-              </button>
-            ) : (
+            {showAddEquipo && (
               <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 space-y-3">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Agregar equipo</p>
                 <div className="grid grid-cols-2 gap-3">
@@ -3192,7 +4227,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </label>
                 )}
                 {selEquipoTipo === "EXTERNO" && selEquipoCosto && selEquipoProveedor && (
-                  <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
+                  <p className="text-xs text-yellow-400">Se creará CxP: {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(parseFloat(selEquipoCosto) * (parseInt(selEquipoCantidad) || 1) * (parseInt(selEquipoDias) || 1))} al agregar</p>
                 )}
                 <div className="flex gap-3">
                   <button onClick={agregarEquipo} disabled={addingEquipo || !selEquipoId}
@@ -3204,15 +4239,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {/* Propios */}
-            {equiposPropios.length > 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-[#1a1a1a]">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo propio ({equiposPropios.length})</p>
-                </div>
-                {equiposPropios.map(eq => <EquipoRow key={eq.id} eq={eq} />)}
-              </div>
-            )}
 
             {/* Externos */}
             {equiposExternos.length > 0 && (
@@ -3223,7 +4249,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     Total: {fmt(equiposExternos.reduce((s, e) => s + (e.costoExterno ?? 0) * e.cantidad * e.dias, 0))}
                   </p>
                 </div>
-                {equiposExternos.map(eq => <EquipoRow key={eq.id} eq={eq} />)}
+                {equiposExternos.map(eq => (
+                  <EquipoRow key={eq.id} eq={eq}
+                    proyectoId={id}
+                    fichaCompleta={fichaCompletaEq}
+                    fichaTooltip={fichaTooltipEq}
+                    onToggleConfirmado={toggleConfirmadoEquipo}
+                    onEliminar={eliminarEquipo}
+                    onRefresh={load}
+                    onToastInfo={msg => toast.info(msg)}
+                  />
+                ))}
               </div>
             )}
 
@@ -3234,47 +4270,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setOperTab("logistica")}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 hover:border-[#B3985B] text-sm font-medium transition-all">
-                Logística →
-              </button>
-            </div>
           </div>
         );
       })()}
+      </div>{/* /section-operacion */}
 
-      {/* ────── TAB: OPERATIVO (scroll único — Rider · Checklist · Bitácora · Docs · Cierre) ────── */}
-      {tab === "extras" && (() => {
+      {/* ────── SECCIÓN: DOCS / OPERATIVO ────── */}
+      <div id="section-extras" className="scroll-mt-14">
+      {(() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
         const esEmpresarial = tipoEvento.includes("EMPRESARIAL") || tipoEvento.includes("CORPORATIVO") || tipoEvento.includes("CONGRESO") || tipoEvento.includes("CONFERENCIA");
         const esSocial = !esMusical && !esEmpresarial;
-        const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-
         type DocsData = {
-          inputList: { canal: string; instrumento: string; artista: string; microfono: string; notas: string }[];
           soundcheck: { hora: string; artista: string; duracion: string; notas: string }[];
-          runningOrder: { hora: string; acto: string; duracion: string; notas: string }[];
           programaEvento: { hora: string; actividad: string; responsable: string; notas: string }[];
-          indicacionesMusicales: string;
           coordinacionProveedores: { proveedor: string; contacto: string; horario: string; notas: string }[];
-          avRundown: { hora: string; actividad: string; presentador: string; av: string; notas: string }[];
-          requerimientosAV: { ponente: string; micro: string; presentacion: string; notas: string }[];
-          setupTecnico: string;
         };
 
         const defaultDocs: DocsData = {
-          inputList: [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }],
           soundcheck: [{ hora: "", artista: "", duracion: "", notas: "" }],
-          runningOrder: [{ hora: "", acto: "", duracion: "", notas: "" }],
           programaEvento: [{ hora: "", actividad: "", responsable: "", notas: "" }],
-          indicacionesMusicales: "",
           coordinacionProveedores: [{ proveedor: "", contacto: "", horario: "", notas: "" }],
-          avRundown: [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }],
-          requerimientosAV: [{ ponente: "", micro: "", presentacion: "", notas: "" }],
-          setupTecnico: "",
         };
 
         let docs: DocsData;
@@ -3294,34 +4311,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           }
         };
 
-        const TableHeader = ({ cols }: { cols: string[] }) => (
-          <div className={`grid gap-1 mb-1`} style={{ gridTemplateColumns: `repeat(${cols.length + 1}, minmax(0, 1fr))` }}>
-            {cols.map(c => <div key={c} className="text-[10px] text-gray-600 uppercase tracking-widest px-2">{c}</div>)}
-            <div />
-          </div>
-        );
-
-        // ── Protocolo helpers ──────────────────────────────────────────
-        type ProtocoloData = { estado: string; responsable: string; hora: string; observaciones: string; fotos: string[] };
-        const defaultProtocolo: ProtocoloData = { estado: "PENDIENTE", responsable: "", hora: "", observaciones: "", fotos: [] };
-        async function comprimirFoto(file: File): Promise<string> {
-          return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => {
-              const img = new Image();
-              img.onload = () => {
-                const scale = Math.min(1, 1200 / img.width);
-                const canvas = document.createElement("canvas");
-                canvas.width = Math.round(img.width * scale);
-                canvas.height = Math.round(img.height * scale);
-                canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL("image/jpeg", 0.75));
-              };
-              img.src = e.target!.result as string;
-            };
-            reader.readAsDataURL(file);
-          });
-        }
+        // ── Protocolo helpers ──────────────────────────���───────────────
         let salida: ProtocoloData;
         let entrada: ProtocoloData;
         try { salida = proyecto.protocoloSalida ? { ...defaultProtocolo, ...JSON.parse(proyecto.protocoloSalida) } : defaultProtocolo; } catch { salida = defaultProtocolo; }
@@ -3331,65 +4321,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           const res = await fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: JSON.stringify(data) }) });
           if (res.ok) { const d = await res.json(); setProyecto(prev => prev ? { ...prev, [field]: d.proyecto?.[field] ?? JSON.stringify(data) } : prev); }
         };
-        const ESTADO_OPTS = [
-          { id: "PENDIENTE", label: "Pendiente", color: "border-gray-700 text-gray-400" },
-          { id: "EN_REVISION", label: "En revisión", color: "border-yellow-700 text-yellow-400" },
-          { id: "OK", label: "OK ✓", color: "border-green-700 text-green-400" },
-        ];
-        const ProtocoloPanel = ({ tipo, data }: { tipo: "salida" | "entrada"; data: ProtocoloData }) => {
-          const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
-          const icon = tipo === "salida" ? "🚚" : "🏠";
-          const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
-          const [local, setLocal] = useState<ProtocoloData>(data);
-          const [saving2, setSaving2] = useState(false);
-          const addFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const file = e.target.files?.[0]; if (!file) return;
-            const b64 = await comprimirFoto(file);
-            const next = { ...local, fotos: [...local.fotos, b64] }; setLocal(next); await saveProtocolo(tipo, next); e.target.value = "";
-          };
-          const removeFoto = async (idx: number) => { const next = { ...local, fotos: local.fotos.filter((_, i) => i !== idx) }; setLocal(next); await saveProtocolo(tipo, next); };
-          const save = async () => { setSaving2(true); await saveProtocolo(tipo, local); setSaving2(false); };
-          return (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
-                <div className="flex items-center gap-3"><span className="text-2xl">{icon}</span><div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div></div>
-                <div className="flex gap-2">{ESTADO_OPTS.map(opt => (<button key={opt.id} onClick={() => { const next = { ...local, estado: opt.id }; setLocal(next); saveProtocolo(tipo, next); }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${local.estado === opt.id ? `${opt.color} bg-white/5` : "border-[#2a2a2a] text-gray-600 hover:border-[#444]"}`}>{opt.label}</button>))}</div>
-              </div>
-              <div className="p-5 space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs text-gray-400 block mb-1">Responsable del protocolo</label><input value={local.responsable} onChange={e => setLocal(p => ({ ...p, responsable: e.target.value }))} placeholder="Nombre del técnico" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Hora de verificación</label><input value={local.hora} onChange={e => setLocal(p => ({ ...p, hora: e.target.value }))} placeholder="ej. 09:30" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                </div>
-                <div><label className="text-xs text-gray-400 block mb-1">Observaciones</label><textarea value={local.observaciones} onChange={e => setLocal(p => ({ ...p, observaciones: e.target.value }))} rows={3} placeholder="Estado del equipo, daños, faltantes, notas..." className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-                <div>
-                  <div className="flex items-center justify-between mb-2"><label className="text-xs text-gray-400">Evidencia fotográfica ({local.fotos.length} fotos)</label><label className="cursor-pointer text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">+ Agregar foto<input type="file" accept="image/*" capture="environment" className="hidden" onChange={addFoto} /></label></div>
-                  {local.fotos.length > 0 && (<div className="flex flex-wrap gap-2">{local.fotos.map((foto, i) => (<div key={i} className="relative group"><a href={foto} target="_blank" rel="noopener noreferrer"><img src={foto} alt={`Evidencia ${i + 1}`} className="w-20 h-20 object-cover rounded-lg border border-[#2a2a2a] hover:border-[#B3985B] transition-colors" /></a><button onClick={() => removeFoto(i)} className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button></div>))}</div>)}
-                </div>
-                <button onClick={save} disabled={saving2} className="w-full py-2.5 rounded-lg bg-[#1a1a1a] border border-[#333] hover:border-[#B3985B] text-white text-sm font-medium transition-colors disabled:opacity-60">{saving2 ? "Guardando..." : "Guardar protocolo"}</button>
-              </div>
-            </div>
-          );
-        };
-
         // ── Evaluación helpers ──────────────────────────────────────────
         const CRITERIOS: { key: keyof EvalData; label: string; desc: string }[] = esRenta ? [
-          { key: "planeacionPrevia", label: "Preparación de la renta", desc: "Lista de equipos completa, revisión de inventario y empaque antes de salida" },
-          { key: "puntualidad", label: "Puntualidad en entrega", desc: "Entrega del equipo en el horario y fecha acordados con el cliente" },
-          { key: "usoEquipo", label: "Estado del equipo", desc: "Equipo entregado en buen estado, regresado completo y sin daños" },
+          { key: "puntualidad", label: "Puntualidad en entrega", desc: "Equipo entregado en el horario y fecha acordados con el cliente" },
+          { key: "usoEquipo", label: "Estado del equipo", desc: "Equipo regresado completo, sin daños y en buen estado" },
           { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Claridad en la coordinación, firma de responsiva y trato durante el proceso" },
-          { key: "resolucionOperativa", label: "Resolución de imprevistos", desc: "Manejo de situaciones no previstas: faltantes, cambios de última hora, daños" },
-          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos de logística, combustible y tiempo invertido" },
+          { key: "resolucionOperativa", label: "Resolución de imprevistos", desc: "Manejo de faltantes, cambios de última hora y situaciones no previstas" },
           { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global de la renta: ¿la repetiríamos en las mismas condiciones?" },
         ] : [
           { key: "planeacionPrevia", label: "Planeación previa", desc: "Preparación técnica, logística y coordinación antes del evento" },
           { key: "cumplimientoTecnico", label: "Cumplimiento técnico", desc: "Calidad del sonido, iluminación, video y operación en sitio" },
           { key: "puntualidad", label: "Puntualidad", desc: "Llegada, montaje y apertura en los tiempos acordados" },
           { key: "resolucionOperativa", label: "Resolución operativa", desc: "Manejo de imprevistos, problemas técnicos y decisiones en tiempo real" },
-          { key: "desempenoPersonal", label: "Desempeño del personal", desc: "Actitud, profesionalismo y efectividad del equipo técnico" },
-          { key: "comunicacionInterna", label: "Comunicación interna", desc: "Coordinación entre los miembros del equipo durante el evento" },
-          { key: "comunicacionCliente", label: "Comunicación con cliente", desc: "Trato, respuesta y satisfacción comunicada por el cliente" },
-          { key: "usoEquipo", label: "Uso del equipo", desc: "Cuidado, aprovechamiento y regreso en buen estado del material" },
-          { key: "rentabilidadReal", label: "Rentabilidad real", desc: "Resultó rentable considerando costos reales vs. lo cobrado" },
           { key: "resultadoGeneral", label: "Resultado general", desc: "Impresión global del proyecto como equipo" },
         ];
         const evalPromedio = evalLoaded && evaluacion.promedioCalculado != null
@@ -3400,27 +4343,52 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         // ── Accordion helpers ──────────────────────────────────────────
         const toggleDoc = (key: string) => setOpenDocs(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
-        const DocAccordion = ({ docKey, title, desc, tag, children }: { docKey: string; title: string; desc?: string; tag?: string; children: React.ReactNode }) => {
-          const isOpen = openDocs.has(docKey);
-          return (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <button onClick={() => toggleDoc(docKey)} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
-                <div className="flex items-center gap-2 min-w-0"><div className="min-w-0"><p className="text-white text-sm font-semibold">{title}</p>{desc && <p className="text-gray-500 text-xs mt-0.5">{desc}</p>}</div>{tag && <span className="shrink-0 text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">{tag}</span>}</div>
-                <svg className={`w-4 h-4 text-gray-500 transition-transform shrink-0 ml-2 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-              </button>
-              {isOpen && <div className="border-t border-[#222]">{children}</div>}
-            </div>
-          );
-        };
-        const SectionDivider = ({ label }: { label: string }) => (
-          <div className="flex items-center gap-3 pt-2"><p className="text-xs text-gray-600 font-semibold uppercase tracking-widest shrink-0">{label}</p><div className="flex-1 border-t border-[#1a1a1a]" /></div>
-        );
+
+        // ── Notas de cotización por sección ──
+        let cotNotasSecciones: Record<string, string> = {};
+        try { cotNotasSecciones = proyecto.cotizacion?.notasSecciones ? JSON.parse(proyecto.cotizacion.notasSecciones) : {}; } catch { /* ignore */ }
+        const cotObservaciones = proyecto.cotizacion?.observaciones ?? null;
 
         return (
           <div className="space-y-6">
 
+            {/* ═══════ ZONA 0: NOTAS DE COTIZACIÓN (solo renta — en producción van inline en rider) ═══════ */}
+            {esRenta && proyecto.cotizacion && (cotObservaciones || Object.keys(cotNotasSecciones).some(k => cotNotasSecciones[k]?.trim())) && (() => {
+              const secciones = Object.entries(cotNotasSecciones).filter(([, v]) => v?.trim());
+              return (
+                <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl overflow-hidden">
+                  <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas de la cotización</p>
+                    <span className="text-[10px] text-[#B3985B]/40 ml-auto">{proyecto.cotizacion!.numeroCotizacion}</span>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    {cotObservaciones && (
+                      <div>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Observaciones generales</p>
+                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{cotObservaciones}</p>
+                      </div>
+                    )}
+                    {secciones.length > 0 && (
+                      <div className={cotObservaciones ? "border-t border-[#1a1a1a] pt-3" : ""}>
+                        {cotObservaciones && <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Notas por sección</p>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {secciones.map(([cat, nota]) => (
+                            <div key={cat} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2.5">
+                              <p className="text-[10px] text-[#B3985B]/70 font-semibold uppercase tracking-wider mb-1">{cat}</p>
+                              <p className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed">{nota}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
-            <SectionDivider label="Rider & Checklist" />
+            {!esRenta && <><SectionDivider label="Rider & Checklist" />
 
             {/* ══ RIDER DE CARGA ══ */}
             <div className="space-y-4">
@@ -3437,6 +4405,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
 
+              {cotObservaciones && (
+                <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Observaciones (cotización)</p>
+                  <p className="text-gray-300 text-xs whitespace-pre-wrap leading-relaxed">{cotObservaciones}</p>
+                </div>
+              )}
+
               {riderEquipos.length === 0 ? (
                 <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
                   <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
@@ -3452,6 +4427,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
                           <span className="text-[10px] text-[#B3985B]/60 font-bold uppercase tracking-widest">{cat}</span>
                         </div>
+                        {cotNotasSecciones[cat] && (
+                          <div className="px-4 py-2 bg-[#0a0a0a] border-b border-[#111]">
+                            <p className="text-xs text-[#6b7280] italic">{cotNotasSecciones[cat]}</p>
+                          </div>
+                        )}
                         {items.map(e => {
                           const isExpanded = !!riderExpandido[e.id];
                           const riderNames = new Set(e.riderAccesorios.map(a => a.nombre.toLowerCase()));
@@ -3463,17 +4443,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           const totalGuardados = e.riderAccesorios.length;
                           const isAddOpen = riderAddOpen === e.id;
 
+                          const isEditingCant = riderEquipoEditId === e.id;
                           return (
                             <div key={e.id} className="border-b border-[#0d0d0d] last:border-0">
                               {/* Equipo header row */}
-                              <div
-                                className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors cursor-pointer select-none"
-                                onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
-                              >
-                                <svg className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 ${isExpanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-white">{e.equipo.descripcion}</span>
-                                  {e.equipo.marca && <span className="text-gray-500 text-xs font-normal"> · {e.equipo.marca}</span>}
+                              <div className="flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors group">
+                                <svg
+                                  className={`w-3.5 h-3.5 text-[#444] transition-transform shrink-0 cursor-pointer ${isExpanded ? "rotate-90" : ""}`}
+                                  fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                                  onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                                ><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                                <div
+                                  className="flex-1 min-w-0 cursor-pointer select-none"
+                                  onClick={() => setRiderExpandido(prev => ({ ...prev, [e.id]: !isExpanded }))}
+                                >
+                                  <p className="text-sm font-medium text-white">
+                                    {e.equipo.marca ?? "Sin marca"}
+                                    {e.equipo.modelo && <span className="font-normal text-gray-300"> {e.equipo.modelo}</span>}
+                                  </p>
+                                  <p className="text-gray-500 text-xs mt-0.5 leading-snug">{e.equipo.descripcion}</p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   {totalGuardados > 0 && (
@@ -3481,7 +4469,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                       {completados}/{totalGuardados} acc
                                     </span>
                                   )}
-                                  <span className="text-[#B3985B] text-xs font-bold">×{e.cantidad}</span>
+                                  {isEditingCant ? (
+                                    <div className="flex items-center gap-1" onClick={ev => ev.stopPropagation()}>
+                                      <button onClick={() => setRiderEquipoEditCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">−</button>
+                                      <span className="text-white text-sm w-6 text-center">{riderEquipoEditCant}</span>
+                                      <button onClick={() => setRiderEquipoEditCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">+</button>
+                                      <button onClick={() => actualizarCantidadEquipo(e.id, riderEquipoEditCant)} className="ml-1 px-2 py-0.5 bg-[#B3985B] text-black text-xs font-semibold rounded">✓</button>
+                                      <button onClick={() => setRiderEquipoEditId(null)} className="text-gray-600 hover:text-white text-xs">×</button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[#B3985B] text-xs font-bold">×{e.cantidad}</span>
+                                  )}
+                                  {!isEditingCant && (
+                                    <>
+                                      <button
+                                        onClick={ev => { ev.stopPropagation(); setRiderEquipoEditId(e.id); setRiderEquipoEditCant(e.cantidad); }}
+                                        className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors opacity-0 group-hover:opacity-100"
+                                      >Editar</button>
+                                      <button
+                                        onClick={async ev => { ev.stopPropagation(); await eliminarEquipo(e.id); }}
+                                        className="text-xs text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                      >Eliminar</button>
+                                    </>
+                                  )}
                                 </div>
                               </div>
 
@@ -3499,6 +4509,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                             <input type="checkbox" checked={a.completado} onChange={() => riderToggleAccesorio(e.id, a.id, a.completado)} className="w-3.5 h-3.5 rounded accent-[#B3985B] shrink-0 cursor-pointer" />
                                             <span className={`flex-1 text-xs ${a.completado ? "line-through text-gray-600" : "text-gray-200"}`}>{a.nombre}</span>
                                             {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
+                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">−</button>
+                                              <span className="text-[10px] text-[#B3985B] font-semibold w-5 text-center">×{a.cantidad ?? 1}</span>
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">+</button>
+                                            </div>
                                             <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
                                           </div>
                                         ))}
@@ -3542,14 +4557,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {isAddOpen ? (
                                     <div className="bg-[#111] border border-[#222] rounded-lg p-3 space-y-2">
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Agregar accesorio</p>
-                                      <input
-                                        autoFocus
-                                        value={riderAddNombre}
-                                        onChange={e => setRiderAddNombre(e.target.value)}
-                                        onKeyDown={ev => { if (ev.key === "Enter") riderAgregarAccesorio(e.id); if (ev.key === "Escape") setRiderAddOpen(null); }}
-                                        placeholder="Nombre del accesorio o herramienta..."
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
-                                      />
+                                      <div className="flex gap-2">
+                                        <input
+                                          autoFocus
+                                          value={riderAddNombre}
+                                          onChange={e => setRiderAddNombre(e.target.value)}
+                                          onKeyDown={ev => { if (ev.key === "Enter") riderAgregarAccesorio(e.id); if (ev.key === "Escape") setRiderAddOpen(null); }}
+                                          placeholder="Nombre del accesorio o herramienta..."
+                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/60"
+                                        />
+                                        <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2">
+                                          <button onClick={() => setRiderAddCantidad(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                                          <span className="text-white text-sm font-semibold w-6 text-center">{riderAddCantidad}</span>
+                                          <button onClick={() => setRiderAddCantidad(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                                        </div>
+                                      </div>
                                       <div className="flex gap-2">
                                         <Combobox
                                           value={riderAddCategoria}
@@ -3566,7 +4588,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         <button onClick={() => riderAgregarAccesorio(e.id)} disabled={riderAddSaving || !riderAddNombre.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
                                           {riderAddSaving ? "Guardando..." : "Agregar"}
                                         </button>
-                                        <button onClick={() => { setRiderAddOpen(null); setRiderAddNombre(""); }} className="text-gray-500 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#333] transition-colors">
+                                        <button onClick={() => { setRiderAddOpen(null); setRiderAddNombre(""); setRiderAddCantidad(1); }} className="text-gray-500 hover:text-white text-xs px-3 py-1.5 rounded-lg border border-[#333] transition-colors">
                                           Cancelar
                                         </button>
                                       </div>
@@ -3592,104 +4614,248 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               })()}
             </div>
 
-            {/* Checklist operativo */}
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                <div><span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Checklist de operación</span><span className="text-gray-600 text-xs ml-2">({checkDone}/{checkTotal})</span></div>
-                <div className="w-24 h-1.5 bg-[#222] rounded-full overflow-hidden"><div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} /></div>
-              </div>
-              {checkOp.length === 0 && (<div className="px-4 py-4 border-b border-[#1a1a1a] space-y-2"><p className="text-gray-500 text-xs font-medium mb-2">Aplicar plantilla:</p><div className="flex flex-wrap gap-2">{[{ key: "GENERAL", label: "General" }, { key: "MUSICAL", label: "Musical" }, { key: "CORPORATIVO", label: "Corporativo" }, { key: "SOCIAL", label: "Social" }].map(({ key, label }) => (<button key={key} onClick={() => aplicarPlantilla(key)} disabled={aplicandoPlantilla} className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B] disabled:opacity-40 transition-colors">{aplicandoPlantilla ? "Aplicando..." : `+ ${label}`}</button>))}</div></div>)}
-              {checkOp.length === 0 ? (<p className="text-gray-600 text-sm text-center py-4 italic">Sin items de operación</p>) : (checkOp.map(c => (<div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d] last:border-0 group hover:bg-[#1a1a1a] transition-colors"><input type="checkbox" checked={c.completado} onChange={() => toggleCheck(c.id, c.completado)} className="w-4 h-4 rounded accent-[#B3985B] shrink-0" /><span className={`flex-1 text-sm ${c.completado ? "line-through text-gray-600" : "text-white"}`}>{c.item}</span><button onClick={() => eliminarItem(c.id)} className="text-gray-700 hover:text-red-400 text-lg leading-none opacity-0 group-hover:opacity-100 transition-all">×</button></div>)))}
-              <div className="px-4 py-3 border-t border-[#1a1a1a] flex gap-2">
-                <input value={nuevoItem} onChange={e => setNuevoItem(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarItem()} placeholder="Agregar item de operación..." className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                <button onClick={agregarItem} disabled={addingItem || !nuevoItem.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">+ Agregar</button>
-              </div>
-            </div>
 
-            {/* Bitácora */}
+
+            {/* ═══════ ZONA 1.25: EQUIPOS EXTRA AL RIDER ═══════ */}
+            <SectionDivider label="Equipos adicionales al rider" />
             <div className="space-y-3">
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Bitácora del proyecto</p>
-                <textarea value={notaBitacora} onChange={e => setNotaBitacora(e.target.value)} rows={3} placeholder="¿Qué pasó hoy? ¿Qué aprendimos? Cada detalle que documentes hoy le ahorra horas al equipo mañana..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-2" />
-                <div className="flex justify-end"><button onClick={agregarNota} disabled={addingNota || !notaBitacora.trim()} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">{addingNota ? "Guardando..." : "Agregar nota"}</button></div>
-              </div>
-              {proyecto.bitacora.length === 0 ? (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">Sin entradas en la bitácora</div>
-              ) : (
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                  {proyecto.bitacora.map(b => (
-                    <div key={b.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${b.tipo === "ACCION" ? "bg-blue-900/40 text-blue-300" : b.tipo === "CAMBIO" ? "bg-yellow-900/40 text-yellow-300" : b.tipo === "ALERTA" ? "bg-red-900/40 text-red-300" : "bg-[#222] text-gray-400"}`}>{b.tipo}</span>
-                        <span className="text-gray-600 text-xs">{fmtDateTime(b.createdAt)} · {b.usuario?.name ?? "Sistema"}</span>
-                      </div>
-                      <p className="text-gray-300 text-sm leading-relaxed">{b.contenido}</p>
+              <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. La disponibilidad no se verifica aquí.</p>
+
+              {equiposRiderExtra.length > 0 && (
+                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
+                  {equiposRiderExtra.map(eq => (
+                    <div key={eq.id} className="px-4 py-3">
+                      {extraEditId === eq.id ? (
+                        /* ── Modo edición inline ── */
+                        <div className="space-y-2">
+                          <input
+                            value={extraEditDesc}
+                            onChange={e => setExtraEditDesc(e.target.value)}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                            placeholder="Descripción del equipo"
+                          />
+                          <div className="flex gap-2">
+                            <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 shrink-0">
+                              <button onClick={() => setExtraEditCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">−</button>
+                              <span className="text-white text-sm w-6 text-center">{extraEditCant}</span>
+                              <button onClick={() => setExtraEditCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center text-lg leading-none">+</button>
+                            </div>
+                            <input
+                              value={extraEditNotas}
+                              onChange={e => setExtraEditNotas(e.target.value)}
+                              placeholder="Notas opcionales"
+                              className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                if (!extraEditDesc.trim()) return;
+                                saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, descripcion: extraEditDesc.trim(), cantidad: extraEditCant, notas: extraEditNotas.trim() } : e));
+                                setExtraEditId(null);
+                              }}
+                              className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded transition-colors"
+                            >Guardar</button>
+                            <button onClick={() => setExtraEditId(null)} className="px-3 py-1.5 bg-[#1a1a1a] text-gray-400 text-xs rounded transition-colors">Cancelar</button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ── Vista normal ── */
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={eq.completado}
+                              onChange={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, completado: !e.completado } : e))}
+                              className="w-4 h-4 rounded accent-[#B3985B] shrink-0 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm truncate ${eq.completado ? "line-through text-gray-600" : "text-white"}`}>{eq.descripcion}</p>
+                              {eq.notas && <p className="text-gray-600 text-xs truncate mt-0.5">{eq.notas}</p>}
+                            </div>
+                            <span className="text-gray-500 text-xs shrink-0">×{eq.cantidad}</span>
+                            <button
+                              onClick={() => { setExtraEditId(eq.id); setExtraEditDesc(eq.descripcion); setExtraEditCant(eq.cantidad); setExtraEditNotas(eq.notas); }}
+                              className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors shrink-0"
+                            >Editar</button>
+                            <button
+                              onClick={() => saveEquiposRiderExtra(equiposRiderExtra.filter(e => e.id !== eq.id))}
+                              className="text-xs text-gray-600 hover:text-red-500 transition-colors shrink-0"
+                            >Eliminar</button>
+                          </div>
+
+                          {/* Accesorios del item extra */}
+                          {(eq.accesorios ?? []).length > 0 && (
+                            <div className="mt-2 ml-7 space-y-1">
+                              {(eq.accesorios ?? []).map(a => (
+                                <div key={a.id} className="flex items-center gap-2 text-xs text-gray-400">
+                                  <span className="w-3 h-3 border border-[#333] rounded-sm shrink-0" />
+                                  <span className="flex-1">{a.nombre}</span>
+                                  {a.cantidad > 1 && <span className="text-[#B3985B]">×{a.cantidad}</span>}
+                                  <button
+                                    onClick={() => saveEquiposRiderExtra(equiposRiderExtra.map(e => e.id === eq.id ? { ...e, accesorios: (e.accesorios ?? []).filter(x => x.id !== a.id) } : e))}
+                                    className="text-[#333] hover:text-red-500 leading-none"
+                                  >×</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Agregar accesorio a este item */}
+                          {extraAccOpen === eq.id ? (
+                            <div className="mt-2 ml-7 flex items-center gap-2">
+                              <input
+                                value={extraAccNombre}
+                                onChange={e => setExtraAccNombre(e.target.value)}
+                                placeholder="Nombre del accesorio"
+                                className="flex-1 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]"
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && extraAccNombre.trim()) {
+                                    const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
+                                    saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                    setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
+                                  }
+                                }}
+                              />
+                              <div className="flex items-center gap-1 bg-[#1a1a1a] border border-[#333] rounded px-1.5 py-1 shrink-0">
+                                <button onClick={() => setExtraAccCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-4 text-center text-base leading-none">−</button>
+                                <span className="text-white text-xs w-4 text-center">{extraAccCant}</span>
+                                <button onClick={() => setExtraAccCant(v => v + 1)} className="text-gray-500 hover:text-white w-4 text-center text-base leading-none">+</button>
+                              </div>
+                              <button
+                                disabled={!extraAccNombre.trim()}
+                                onClick={() => {
+                                  const acc = { id: crypto.randomUUID(), nombre: extraAccNombre.trim(), cantidad: extraAccCant };
+                                  saveEquiposRiderExtra(equiposRiderExtra.map(ex => ex.id === eq.id ? { ...ex, accesorios: [...(ex.accesorios ?? []), acc] } : ex));
+                                  setExtraAccNombre(""); setExtraAccCant(1); setExtraAccOpen(null);
+                                }}
+                                className="px-2 py-1 bg-[#B3985B] text-black text-xs font-semibold rounded disabled:opacity-40"
+                              >+</button>
+                              <button onClick={() => { setExtraAccOpen(null); setExtraAccNombre(""); setExtraAccCant(1); }} className="text-gray-600 hover:text-white text-xs">×</button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => { setExtraAccOpen(eq.id); setExtraAccNombre(""); setExtraAccCant(1); }}
+                              className="mt-1.5 ml-7 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors"
+                            >+ accesorio</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+
+              {addingEquipoExtra ? (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 space-y-3">
+                  {/* Toggle inventario / manual */}
+                  <div className="flex gap-1 bg-[#111] rounded-lg p-0.5 w-fit">
+                    {(["inventario", "manual"] as const).map(mode => (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setExtraAddMode(mode)}
+                        className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${extraAddMode === mode ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}
+                      >
+                        {mode === "inventario" ? "Del inventario" : "Manual"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {extraAddMode === "inventario" ? (
+                    <div className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <Combobox
+                          value={newExtraEquipoId}
+                          onChange={v => setNewExtraEquipoId(v)}
+                          options={[{ value: "", label: "Buscar en inventario…" }, ...equipoCatalogo.map(eq => ({ value: eq.id, label: `${eq.categoria.nombre} — ${eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion}` }))]}
+                          className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
+                        <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                        <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                        <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        value={newExtraManualDesc}
+                        onChange={e => setNewExtraManualDesc(e.target.value)}
+                        placeholder="Nombre del equipo (ej. Cable XLR, DI Box, etc.)"
+                        className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                      <div className="flex items-center gap-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-2 shrink-0">
+                        <button onClick={() => setNewExtraCant(v => Math.max(1, v - 1))} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">−</button>
+                        <span className="text-white text-sm w-5 text-center">{newExtraCant}</span>
+                        <button onClick={() => setNewExtraCant(v => v + 1)} className="text-gray-500 hover:text-white w-5 text-center leading-none text-lg transition-colors">+</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <input
+                    value={newExtraNotas}
+                    onChange={e => setNewExtraNotas(e.target.value)}
+                    placeholder="Notas opcionales (proveedor, condición, etc.)"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      disabled={extraAddMode === "inventario" ? !newExtraEquipoId : !newExtraManualDesc.trim()}
+                      onClick={() => {
+                        let descripcion = "";
+                        if (extraAddMode === "inventario") {
+                          const eq = equipoCatalogo.find(e => e.id === newExtraEquipoId);
+                          if (!eq) return;
+                          descripcion = eq.marca ? `${eq.marca} — ${eq.descripcion}` : eq.descripcion;
+                        } else {
+                          if (!newExtraManualDesc.trim()) return;
+                          descripcion = newExtraManualDesc.trim();
+                        }
+                        const nuevo: EquipoRiderExtra = { id: crypto.randomUUID(), descripcion, cantidad: newExtraCant, notas: newExtraNotas.trim(), completado: false, accesorios: [] };
+                        saveEquiposRiderExtra([...equiposRiderExtra, nuevo]);
+                        setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc("");
+                        setAddingEquipoExtra(false);
+                      }}
+                      className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9ac6a] text-black text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
+                    >Agregar</button>
+                    <button onClick={() => { setAddingEquipoExtra(false); setNewExtraEquipoId(""); setNewExtraCant(1); setNewExtraNotas(""); setNewExtraManualDesc(""); setExtraAddMode("inventario"); }} className="px-4 py-2 bg-[#1a1a1a] hover:bg-[#222] text-gray-400 text-xs rounded-lg transition-colors">Cancelar</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setAddingEquipoExtra(true)} className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9ac6a] transition-colors">
+                  <span className="text-base leading-none">+</span> Agregar equipo extra
+                </button>
+              )}
+            </div></>}
 
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
-            <SectionDivider label="Documentos del show" />
+            {!esRenta && <><SectionDivider label="Documentos del show" />
             <div className="space-y-3">
-              <DocAccordion docKey="inputList" title="Input List" desc="Canal por canal · micrófono, instrumento, artista" tag={esMusical ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Ch", "Instrumento", "Artista", "Micrófono", "Notas"]} />
-                  {docs.inputList.map((row, i) => { const update = (field: string, val: string) => { const next = docs.inputList.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, inputList: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "50px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.canal} onBlur={e => update("canal", e.target.value)} placeholder="#" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white text-center placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.instrumento} onBlur={e => update("instrumento", e.target.value)} placeholder="Instrumento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.microfono} onBlur={e => update("microfono", e.target.value)} placeholder="Micrófono / DI" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.inputList.filter((_, j) => j !== i); saveDocs({ ...docs, inputList: next.length ? next : [{ canal: "1", instrumento: "", artista: "", microfono: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, inputList: [...docs.inputList, { canal: String(docs.inputList.length + 1), instrumento: "", artista: "", microfono: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar canal</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" tag={esMusical ? "Sugerido" : undefined}>
+              <DocAccordion docKey="soundcheck" title="Orden de Soundcheck" desc="Secuencia y horario de pruebas de sonido" isOpen={openDocs.has("soundcheck")} onToggle={() => toggleDoc("soundcheck")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Artista / Acto", "Duración", "Notas"]} />
                   {docs.soundcheck.map((row, i) => { const update = (field: string, val: string) => { const next = docs.soundcheck.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, soundcheck: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.artista} onBlur={e => update("artista", e.target.value)} placeholder="Artista" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="30 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.soundcheck.filter((_, j) => j !== i); saveDocs({ ...docs, soundcheck: next.length ? next : [{ hora: "", artista: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, soundcheck: [...docs.soundcheck, { hora: "", artista: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar artista</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="runningOrder" title="Show Schedule / Running Order" desc="Secuencia y tiempos del show" tag={esMusical ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Acto / Momento", "Duración", "Notas técnicas"]} />
-                  {docs.runningOrder.map((row, i) => { const update = (field: string, val: string) => { const next = docs.runningOrder.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, runningOrder: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 100px 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.acto} onBlur={e => update("acto", e.target.value)} placeholder="Acto / Momento" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.duracion} onBlur={e => update("duracion", e.target.value)} placeholder="45 min" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Cambio de set, iluminación..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.runningOrder.filter((_, j) => j !== i); saveDocs({ ...docs, runningOrder: next.length ? next : [{ hora: "", acto: "", duracion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, runningOrder: [...docs.runningOrder, { hora: "", acto: "", duracion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar momento</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="programaEvento" title="Programa del evento" desc="Secuencia completa de actividades" tag={esSocial ? "Sugerido" : undefined}>
+              <DocAccordion docKey="programaEvento" title="Programa general del evento" desc="Secuencia completa de actividades" isOpen={openDocs.has("programaEvento")} onToggle={() => toggleDoc("programaEvento")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Hora", "Actividad", "Responsable", "Notas"]} />
                   {docs.programaEvento.map((row, i) => { const update = (field: string, val: string) => { const next = docs.programaEvento.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, programaEvento: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.responsable} onBlur={e => update("responsable", e.target.value)} placeholder="Responsable" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.programaEvento.filter((_, j) => j !== i); saveDocs({ ...docs, programaEvento: next.length ? next : [{ hora: "", actividad: "", responsable: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, programaEvento: [...docs.programaEvento, { hora: "", actividad: "", responsable: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar actividad</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="indicacionesMusicales" title="Indicaciones musicales" desc="Géneros, canciones específicas, restricciones" tag={esSocial ? "Sugerido" : undefined}>
-                <div className="p-4"><textarea defaultValue={docs.indicacionesMusicales} onBlur={e => saveDocs({ ...docs, indicacionesMusicales: e.target.value })} rows={4} placeholder="Ej: primer vals: 'A Thousand Years' · No reggaeton · Playlist de coctel: jazz suave..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
-              </DocAccordion>
-              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." tag={esSocial ? "Sugerido" : undefined}>
+              <DocAccordion docKey="coordinacionProveedores" title="Coordinación de proveedores" desc="Catering, decoración, fotografía, etc." isOpen={openDocs.has("coordinacionProveedores")} onToggle={() => toggleDoc("coordinacionProveedores")}>
                 <div className="p-4 space-y-2 overflow-x-auto">
                   <TableHeader cols={["Proveedor", "Contacto", "Horario llegada", "Notas"]} />
                   {docs.coordinacionProveedores.map((row, i) => { const update = (field: string, val: string) => { const next = docs.coordinacionProveedores.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, coordinacionProveedores: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 120px 1fr 32px" }}><input defaultValue={row.proveedor} onBlur={e => update("proveedor", e.target.value)} placeholder="Nombre proveedor" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.contacto} onBlur={e => update("contacto", e.target.value)} placeholder="Tel / nombre" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.horario} onBlur={e => update("horario", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.coordinacionProveedores.filter((_, j) => j !== i); saveDocs({ ...docs, coordinacionProveedores: next.length ? next : [{ proveedor: "", contacto: "", horario: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
                   <button onClick={() => saveDocs({ ...docs, coordinacionProveedores: [...docs.coordinacionProveedores, { proveedor: "", contacto: "", horario: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar proveedor</button>
                 </div>
               </DocAccordion>
-              <DocAccordion docKey="avRundown" title="AV Rundown" desc="Agenda técnica audiovisual por sesión" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Hora", "Actividad / Sesión", "Presentador", "Req. AV", "Notas"]} />
-                  {docs.avRundown.map((row, i) => { const update = (field: string, val: string) => { const next = docs.avRundown.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, avRundown: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "100px 1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.hora} onBlur={e => update("hora", e.target.value)} placeholder="00:00" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.actividad} onBlur={e => update("actividad", e.target.value)} placeholder="Sesión / actividad" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentador} onBlur={e => update("presentador", e.target.value)} placeholder="Ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.av} onBlur={e => update("av", e.target.value)} placeholder="Pantalla, micro, video..." className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.avRundown.filter((_, j) => j !== i); saveDocs({ ...docs, avRundown: next.length ? next : [{ hora: "", actividad: "", presentador: "", av: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, avRundown: [...docs.avRundown, { hora: "", actividad: "", presentador: "", av: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar sesión</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="requerimientosAV" title="Requerimientos AV por ponente" desc="Necesidades técnicas individuales" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4 space-y-2 overflow-x-auto">
-                  <TableHeader cols={["Ponente", "Micrófono", "Presentación/laptop", "Notas"]} />
-                  {docs.requerimientosAV.map((row, i) => { const update = (field: string, val: string) => { const next = docs.requerimientosAV.map((r, j) => j === i ? { ...r, [field]: val } : r); saveDocs({ ...docs, requerimientosAV: next }); }; return (<div key={i} className="grid gap-1" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr 32px" }}><input defaultValue={row.ponente} onBlur={e => update("ponente", e.target.value)} placeholder="Nombre ponente" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.micro} onBlur={e => update("micro", e.target.value)} placeholder="Solapa / diadema / mano" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.presentacion} onBlur={e => update("presentacion", e.target.value)} placeholder="Laptop / HDMI / USB" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><input defaultValue={row.notas} onBlur={e => update("notas", e.target.value)} placeholder="Notas" className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" /><button onClick={() => { const next = docs.requerimientosAV.filter((_, j) => j !== i); saveDocs({ ...docs, requerimientosAV: next.length ? next : [{ ponente: "", micro: "", presentacion: "", notas: "" }] }); }} className="text-red-600 hover:text-red-400 text-xs flex items-center justify-center">✕</button></div>); })}
-                  <button onClick={() => saveDocs({ ...docs, requerimientosAV: [...docs.requerimientosAV, { ponente: "", micro: "", presentacion: "", notas: "" }] })} className="text-xs text-[#B3985B] hover:text-[#d4b068] flex items-center gap-1 mt-1">+ Agregar ponente</button>
-                </div>
-              </DocAccordion>
-              <DocAccordion docKey="setupTecnico" title="Setup técnico" desc="Descripción del montaje de audio y video" tag={esEmpresarial ? "Sugerido" : undefined}>
-                <div className="p-4"><textarea defaultValue={docs.setupTecnico} onBlur={e => saveDocs({ ...docs, setupTecnico: e.target.value })} rows={5} placeholder="Describe el setup: ubicación del mixer, pantallas, proyectores, cámaras, sistema de audio line array / puntual, etc." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-xs text-white placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50 resize-none" /></div>
-              </DocAccordion>
               <p className="text-center text-gray-700 text-[10px] pb-2">Los cambios se guardan automáticamente al salir de cada campo</p>
-            </div>
+            </div></>}
 
             {/* ═══════ ZONA 3: CIERRE — Protocolo · Evaluación ═══════ */}
             <SectionDivider label="Cierre & Evaluación" />
@@ -3697,8 +4863,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {esRenta && (
               <div className="space-y-5">
                 <div><p className="text-white font-semibold">Protocolo de entrada / salida</p><p className="text-gray-500 text-xs mt-0.5">Verificación del estado de los equipos al salir y al regresar del evento</p></div>
-                <ProtocoloPanel tipo="salida" data={salida} />
-                <ProtocoloPanel tipo="entrada" data={entrada} />
+                <ProtocoloPanel tipo="salida" data={salida} onSave={saveProtocolo} />
+                <ProtocoloPanel tipo="entrada" data={entrada} onSave={saveProtocolo} />
               </div>
             )}
 
@@ -3711,7 +4877,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
               <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#1a1a1a]"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
+                <div className="px-5 py-4 border-b border-[#1a1a1a]"><div className="flex items-center justify-between flex-wrap gap-2"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">Para uso del Coordinador de Producción</span></div><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
                 <div className="divide-y divide-[#1a1a1a]">
                   {CRITERIOS.map(({ key, label, desc }) => {
                     const val = evaluacion[key] as number;
@@ -3730,13 +4896,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
               <div className="bg-[#111] border border-[#222] rounded-xl p-5"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas y observaciones</p><textarea value={evaluacion.notas} onChange={e => setEvaluacion(prev => ({ ...prev, notas: e.target.value }))} rows={4} placeholder="¿Qué funcionó bien? ¿Qué mejoraría para el siguiente evento similar? ¿Algún incidente relevante?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
               <div className="flex justify-end"><button onClick={guardarEval} disabled={savingEval} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">{savingEval ? "Guardando..." : "Guardar evaluación"}</button></div>
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
                 <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte de mejora post-evento</p><p className="text-gray-500 text-xs mt-0.5">Documenta problemas y sus soluciones por área para mejorar futuros eventos</p></div><button onClick={() => setReportePostEvento(prev => [...prev, { area: "", problema: "", causa: "", solucion: "" }])} className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:border-[#B3985B] hover:text-white px-3 py-1.5 rounded-lg transition-colors">+ Agregar área</button></div>
                 {reportePostEvento.length === 0 ? (<div className="py-8 text-center"><p className="text-gray-600 text-sm">Sin registros aún</p><p className="text-gray-700 text-xs mt-1">Agrega cada área con el problema encontrado, causa y solución aplicada</p></div>) : (
                   <div className="divide-y divide-[#1a1a1a]">{reportePostEvento.map((item, i) => (<div key={i} className="px-5 py-4 space-y-3"><div className="flex items-center justify-between"><input value={item.area} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, area: e.target.value } : x))} placeholder="Área (ej: Audio, Iluminación, Logística...)" className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-[#B3985B] font-semibold text-sm focus:outline-none focus:border-[#B3985B]/60" /><button onClick={() => setReportePostEvento(prev => prev.filter((_, j) => j !== i))} className="ml-3 text-gray-600 hover:text-red-400 transition-colors text-lg shrink-0">×</button></div><div className="grid grid-cols-1 md:grid-cols-3 gap-2"><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Problema</label><textarea value={item.problema} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, problema: e.target.value } : x))} rows={3} placeholder="¿Qué falló o salió diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-red-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Causa raíz</label><textarea value={item.causa} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, causa: e.target.value } : x))} rows={3} placeholder="¿Por qué ocurrió?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-yellow-900/60 resize-none" /></div><div><label className="text-[10px] text-gray-600 uppercase tracking-wider mb-1 block">Solución aplicada / propuesta</label><textarea value={item.solucion} onChange={e => setReportePostEvento(prev => prev.map((x, j) => j === i ? { ...x, solucion: e.target.value } : x))} rows={3} placeholder="¿Qué se hizo o se hará diferente?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-green-900/60 resize-none" /></div></div></div>))}</div>
                 )}
                 {reportePostEvento.length > 0 && (<div className="px-5 py-3 border-t border-[#1a1a1a] flex items-center gap-2 flex-wrap"><a href={`/api/proyectos/${id}/reporte-post-evento/pdf`} download className="flex items-center gap-1.5 text-xs text-gray-300 border border-[#333] hover:bg-[#222] hover:border-[#555] px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Descargar PDF</a>{proyecto.cliente?.telefono && (<button onClick={async () => { try { const res = await fetch(`/api/proyectos/${id}/reporte-post-evento/pdf`, { cache: "no-store" }); const blob = await res.blob(); const file = new File([blob], `ReportePostEvento-${proyecto!.numeroProyecto}.pdf`, { type: "application/pdf" }); if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: `Reporte post-evento: ${proyecto!.nombre}` }); } else { const tel = proyecto!.cliente!.telefono!.replace(/\D/g, ""); window.open(`https://wa.me/${tel}?text=${encodeURIComponent(`Hola ${proyecto!.cliente!.nombre}, adjunto el reporte de mejora del evento *${proyecto!.nombre}*.`)}`, "_blank"); } } catch (e) { console.error(e); } }} className="flex items-center gap-1.5 text-xs text-green-500 border border-green-800/50 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>Enviar a cliente</button>)}<button onClick={guardarReporte} disabled={savingReporte} className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-xs px-5 py-2 rounded-lg transition-colors">{savingReporte ? "Guardando..." : "Guardar reporte"}</button></div>)}
-              </div>
+              </div>}
               {(() => {
                 const linkBase = typeof window !== "undefined" ? `${window.location.origin}/encuesta/` : "/encuesta/";
                 return (
@@ -3756,39 +4922,33 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 );
               })()}
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
-                <div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Score foto / video</p><p className="text-gray-500 text-xs mt-0.5">Calidad del contenido fotográfico y/o audiovisual generado durante el evento</p></div>
-                <div className="flex items-center gap-4"><span className={`text-3xl font-bold w-10 ${scoreFotoVideo === 0 ? "text-gray-600" : scoreFotoVideo >= 9 ? "text-green-400" : scoreFotoVideo >= 7 ? "text-[#B3985B]" : scoreFotoVideo >= 5 ? "text-yellow-400" : "text-red-400"}`}>{scoreFotoVideo === 0 ? "—" : scoreFotoVideo}</span><div className="flex gap-1 flex-wrap">{[0,1,2,3,4,5,6,7,8,9,10].map(n => (<button key={n} onClick={() => setScoreFotoVideo(n)} className={`w-7 h-7 rounded text-xs font-bold transition-all ${scoreFotoVideo === n ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white" : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"}`}>{n === 0 ? "—" : n}</button>))}</div></div>
-                <div><label className="text-xs text-gray-500 mb-1 block">Recomendación para próximos eventos</label><textarea value={recomendacionFotoVideo} onChange={e => setRecomendacionFotoVideo(e.target.value)} rows={3} placeholder="Fotógrafo recomendado, estilo, indicaciones técnicas..." className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-                <div className="flex justify-end"><button onClick={guardarScore} disabled={savingScore} className="bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-sm px-5 py-2 rounded-lg transition-colors">{savingScore ? "Guardando..." : "Guardar score"}</button></div>
-              </div>
             </div>
 
           </div>
         );
       })()}
+      </div>{/* /section-extras */}
 
-
-      {/* ────── TAB: TAREAS ────── */}
-      {tab === "tareas" && (
-        <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
-      )}
-
-      {/* ────── TAB: FINANZAS ────── */}
-      {tab === "finanzas" && (() => {
+      {/* ────── SECCIÓN: FINANZAS ────── */}
+      <div id="section-finanzas" className="scroll-mt-14">
+      {(() => {
         // ── P&L en tiempo real ──────────────────────────────────────────────
         const ingresoContratado = proyecto.cotizacion?.granTotal ?? 0;
         const ingresoCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
-        // Costos personal: suma directamente las tarifas acordadas del personal (fuente de verdad)
-        const costosPersonal = proyecto.personal
+        // Costos personal: usar CxP de técnicos si existen (fuente de verdad); fallback a tarifas acordadas
+        const tarifaTotal = proyecto.personal
           .filter(p => p.tarifaAcordada && p.tarifaAcordada > 0)
           .reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
-        const costosProveedor = proyecto.cuentasPagar
-          .filter(c => c.tipoAcreedor === "PROVEEDOR")
+        const tecnicoCxPTotal = proyecto.cuentasPagar
+          .filter(c => c.tipoAcreedor === "TECNICO")
           .reduce((s, c) => s + c.monto, 0);
-        const otrosGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
-        const gastosOpTotal = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
-        const costosTotales = costosPersonal + costosProveedor + otrosGastos + gastosOpTotal;
+        const costosPersonal = Math.max(tarifaTotal, tecnicoCxPTotal);
+        const gastosProyPendientes = proyecto.cuentasPagar
+          .filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO")
+          .reduce((s, c) => s + c.monto, 0);
+        const gastosProyPagados = proyecto.movimientos.reduce((s, m) => s + m.monto, 0);
+        const gastosProyTotal = gastosProyPendientes + gastosProyPagados;
+        const costosTotales = costosPersonal + gastosProyTotal;
         const utilidadBruta = ingresoContratado - costosTotales;
         const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
 
@@ -3834,22 +4994,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <span className="text-red-300">{fmt(costosPersonal)}</span>
                   </div>
                 )}
-                {costosProveedor > 0 && (
+                {gastosProyPendientes > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Proveedores</span>
-                    <span className="text-red-300">{fmt(costosProveedor)}</span>
+                    <span className="text-gray-400">Por pagar</span>
+                    <span className="text-yellow-400">{fmt(gastosProyPendientes)}</span>
                   </div>
                 )}
-                {gastosOpTotal > 0 && (
+                {gastosProyPagados > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Gastos operativos</span>
-                    <span className="text-red-300">{fmt(gastosOpTotal)}</span>
+                    <span className="text-gray-400">Pagado</span>
+                    <span className="text-red-300">{fmt(gastosProyPagados)}</span>
                   </div>
                 )}
-                {otrosGastos > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Otros gastos</span>
-                    <span className="text-red-300">{fmt(otrosGastos)}</span>
+                {gastosProyTotal > 0 && (
+                  <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-1">
+                    <span className="text-gray-500">Total real</span>
+                    <span className="text-red-400 font-medium">{fmt(gastosProyTotal)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-2">
@@ -3899,10 +5059,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
                   {!editandoEsquema && (
-                    <button onClick={() => setEditandoEsquema(true)}
-                      className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                      {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {proyecto.cotizacion && proyecto.cuentasCobrar.some(c => c.estado !== "LIQUIDADO") && (
+                        <button onClick={sincronizarCxC} disabled={syncingCxC}
+                          className="text-xs text-gray-500 border border-[#333] hover:text-yellow-400 hover:border-yellow-400/40 px-3 py-1 rounded-lg transition-colors disabled:opacity-50">
+                          {syncingCxC ? "Actualizando..." : "↺ Sincronizar"}
+                        </button>
+                      )}
+                      <button onClick={() => setEditandoEsquema(true)}
+                        className="text-xs text-[#B3985B] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                        {(cxcAnticipo || cxcLiq) ? "Editar esquema" : "Configurar pagos"}
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -4041,10 +5209,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           {c.estado !== "LIQUIDADO" && (
                             <>
                               <button
-                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
-                                title="Ajustar monto"
+                                onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setAjusteFecha(c.fechaCompromiso.slice(0, 10)); setPagando(null); }}
+                                title="Editar"
                                 className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                                ✏ Ajustar
+                                ✏ Editar
                               </button>
                               {esEsquema && (
                                 <button onClick={() => eliminarCxC(c.id)}
@@ -4054,7 +5222,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               )}
                             </>
                           )}
-                          <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                          {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" ? (
+                            <div className="text-right">
+                              <span className="text-yellow-400 font-semibold">{fmt(c.monto - c.montoCobrado)}</span>
+                              <span className="text-gray-500 text-[10px] block">restante de {fmt(c.monto)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-white font-semibold">{fmt(c.monto)}</span>
+                          )}
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                             c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
                             c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
@@ -4066,35 +5241,75 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                       {/* Cobrado parcial */}
                       {c.montoCobrado > 0 && c.estado !== "LIQUIDADO" && (
-                        <p className="text-green-600 text-xs mb-2">Cobrado: {fmt(c.montoCobrado)} / Pendiente: {fmt(c.monto - c.montoCobrado)}</p>
+                        <p className="text-green-600 text-xs mb-2">✓ Cobrado: {fmt(c.montoCobrado)}</p>
                       )}
 
-                      {/* Inline: ajustar monto */}
+                      {/* Inline: editar */}
                       {ajustando === c.id && (
                         <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                          <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
+                          <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Editar cobro</p>
                           <div className="flex gap-2 flex-wrap items-start">
                             <div>
-                              <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
-                              <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
+                              <label className="text-[10px] text-gray-500 block mb-1">Monto</label>
+                              <input type="number" value={ajusteMonto} onChange={e => { setAjusteMonto(e.target.value); setAjusteRegistrarExtra(false); }}
                                 placeholder="0.00" min="0" step="0.01"
                                 className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
                             </div>
-                            <div className="flex-1 min-w-[200px]">
-                              <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                              <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                                placeholder="Explica brevemente por qué se ajusta este monto..."
-                                rows={2}
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                            <div>
+                              <label className="text-[10px] text-gray-500 block mb-1">Fecha compromiso</label>
+                              <input type="date" value={ajusteFecha} onChange={e => setAjusteFecha(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
                             </div>
+                            {parseFloat(ajusteMonto) !== c.monto && (
+                              <div className="flex-1 min-w-[200px]">
+                                <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
+                                <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
+                                  placeholder="Explica brevemente por qué se ajusta este monto..."
+                                  rows={2}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
+                              </div>
+                            )}
                           </div>
+
+                          {/* Extra como gasto operativo — solo si el monto sube */}
+                          {parseFloat(ajusteMonto) > c.monto && (
+                            <div className="border border-[#2a2a2a] rounded-lg p-2.5 space-y-2 bg-[#111]">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={ajusteRegistrarExtra} onChange={e => setAjusteRegistrarExtra(e.target.checked)}
+                                  className="w-3.5 h-3.5 accent-orange-500" />
+                                <span className="text-xs text-gray-300">
+                                  Registrar excedente de <span className="text-orange-400 font-semibold">{fmt(parseFloat(ajusteMonto) - c.monto)}</span> como gasto operativo
+                                </span>
+                              </label>
+                              {ajusteRegistrarExtra && (
+                                <div className="flex gap-2 flex-wrap ml-5">
+                                  <div>
+                                    <label className="text-[10px] text-gray-500 block mb-1">Tipo</label>
+                                    <select value={ajusteExtraTipo} onChange={e => setAjusteExtraTipo(e.target.value)}
+                                      className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600">
+                                      <option value="OTRO">Otro / Extra</option>
+                                      <option value="TRANSPORTE">Transporte</option>
+                                      <option value="COMIDA">Comida</option>
+                                      <option value="HOSPEDAJE">Hospedaje</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex-1 min-w-[180px]">
+                                    <label className="text-[10px] text-gray-500 block mb-1">Concepto del gasto <span className="text-red-500">*</span></label>
+                                    <input type="text" value={ajusteExtraConcepto} onChange={e => setAjusteExtraConcepto(e.target.value)}
+                                      placeholder="Ej: Honorarios extra técnico / Material imprevistos..."
+                                      className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600" />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
                           <div className="flex gap-2">
-                            <button onClick={() => ajustarMontoCxC(c.id)}
-                              disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
-                              className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                              Confirmar ajuste
+                            <button onClick={() => ajustarMontoCxC(c.id, c.monto)}
+                              className="bg-orange-700 hover:bg-orange-600 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
+                              Guardar
                             </button>
-                            <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            <button onClick={() => { setAjustando(null); setAjusteFecha(""); setAjusteRegistrarExtra(false); setAjusteExtraConcepto(""); }} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         </div>
                       )}
@@ -4106,7 +5321,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="space-y-1.5">
                             {ajustesEntradas.map((a, i) => (
                               <div key={i} className="flex items-start gap-2 text-xs">
-                                <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
+                                <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{(() => { const iso = typeof a.fecha === "string" ? a.fecha : (a.fecha as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" }); })()}</span>
                                 <div className="flex-1">
                                   <span className="text-red-400 line-through">{fmt(a.de)}</span>
                                   <span className="text-gray-600 mx-1">→</span>
@@ -4125,7 +5340,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         pagando === c.id ? (
                           <div className="flex gap-2 mt-2 flex-wrap">
                             <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                              placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              placeholder={String(c.monto - c.montoCobrado)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                             <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
                               className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
                             <Combobox
@@ -4145,7 +5360,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
                           </div>
                         ) : (
-                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
+                          <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto - c.montoCobrado)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
                             className="text-xs text-green-400 hover:text-green-300 border border-green-800 hover:border-green-600 px-3 py-1 rounded-lg transition-colors">
                             + Registrar cobro
                           </button>
@@ -4164,10 +5379,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* CxP */}
+          {/* Pagos a personal */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por pagar</h3>
+              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a personal</h3>
               {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
                 <button
                   onClick={async () => {
@@ -4175,7 +5390,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     const d = await res.json();
                     if (res.ok) {
                       toast.success(`${d.actualizados} tarifa(s) sincronizada(s) desde la cotización.`);
-                      // Recargar proyecto
                       const r2 = await fetch(`/api/proyectos/${id}`, { cache: "no-store" });
                       const d2 = await r2.json();
                       if (d2.proyecto) setProyecto(d2.proyecto);
@@ -4183,506 +5397,619 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       toast.error(d.error ?? "Error al sincronizar");
                     }
                   }}
-                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors"
+                  className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors"
                 >
-                  Sincronizar tarifas desde cotización
+                  Sincronizar tarifas
                 </button>
               )}
             </div>
 
-            {/* Personal técnico (siempre visible si hay personal) */}
-            {proyecto.personal.length > 0 && (
-              <div className="border-b border-[#1a1a1a]">
-                <div className="px-5 py-2 bg-[#0d0d0d]">
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Personal técnico</p>
-                </div>
-                {proyecto.personal.map(p => {
-                  const nombre = p.tecnico?.nombre ?? "Por asignar";
-                  const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Técnico";
-                  const pagado = p.estadoPago === "PAGADO";
-                  return (
-                    <div key={p.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
-                      <div>
-                        <p className="text-white text-sm">{nombre}</p>
-                        <p className="text-gray-500 text-xs">{rol}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {p.tarifaAcordada != null && p.tarifaAcordada > 0 ? (
-                          <span className="text-white font-semibold text-sm">{fmt(p.tarifaAcordada)}</span>
-                        ) : (
-                          <span className="text-gray-600 text-xs italic">Sin tarifa</span>
-                        )}
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${pagado ? "bg-green-900/50 text-green-300" : "bg-yellow-900/30 text-yellow-400"}`}>
-                          {pagado ? "Pagado" : "Pendiente"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+            {/* Tabla de personal — estilo pagos a personal */}
+            {(() => {
+              const TIPO_COLOR: Record<string, string> = {
+                MONTAJE: "text-blue-400", OPERACION: "text-[#B3985B]",
+                DESMONTAJE: "text-purple-400", TRANSPORTE: "text-cyan-400", OTRO: "text-gray-400",
+              };
+              const TIPO_LABEL: Record<string, string> = {
+                MONTAJE: "Montaje", OPERACION: "Operación", DESMONTAJE: "Desmontaje",
+                TRANSPORTE: "Transporte", OTRO: "Otro",
+              };
+              const JORNADA_LABEL: Record<string, string> = {
+                COMPLETA: "Completa", MEDIA: "Media", CUARTO: "Cuarto",
+              };
+              const personal = proyecto.personal;
+              const totalPersonal = personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
+              const hayPendientes = personal.some(p => p.tecnico && p.estadoPago !== "PAGADO");
 
-            {/* CXP de proveedores */}
-            {proyecto.cuentasPagar.length === 0 && proyecto.personal.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin cuentas por pagar</p>
-            ) : proyecto.cuentasPagar.length > 0 ? (
-              <>
-              {proyecto.cuentasPagar.map(c => {
-                const ajustesEntradas: AjusteEntry[] = c.ajustesLog ? JSON.parse(c.ajustesLog) : [];
-                const tieneAjustes = ajustesEntradas.length > 0;
-                return (
-                  <div key={c.id} className="px-5 py-4 border-b border-[#0d0d0d] last:border-0">
-                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-white text-sm font-medium">{c.concepto}</p>
-                          {tieneAjustes && (
-                            <button onClick={() => setAjusteHistorial(prev => prev === c.id ? null : c.id)}
-                              className="text-[10px] text-blue-400/70 hover:text-blue-400 border border-blue-900/30 hover:border-blue-700 px-1.5 py-0.5 rounded transition-colors">
-                              {ajustesEntradas.length} ajuste{ajustesEntradas.length > 1 ? "s" : ""}
+              // Agrupar por participacion
+              const grupos = new Map<string, NonNullable<typeof proyecto>["personal"]>();
+              const ORDER = ["MONTAJE", "OPERACION", "DESMONTAJE", "TRANSPORTE", "OTRO"];
+              for (const p of personal) {
+                const key = p.participacion ?? "OTRO";
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key)!.push(p);
+              }
+              const gruposOrdenados = ORDER
+                .filter(k => grupos.has(k))
+                .map(k => [k, grupos.get(k)!] as [string, typeof personal]);
+
+              if (personal.length === 0) return (
+                <p className="text-gray-600 text-sm text-center py-6 italic">Sin personal registrado</p>
+              );
+
+              return (
+                <>
+                  {/* Headers */}
+                  <div className="grid grid-cols-[1fr_1fr_72px_80px_72px] gap-2 px-5 py-1.5 border-b border-[#0d0d0d]">
+                    {["Técnico", "Rol", "Jornada", "Tarifa", "Estado"].map(h => (
+                      <p key={h} className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">{h}</p>
+                    ))}
+                  </div>
+
+                  {gruposOrdenados.map(([tipo, slots]) => (
+                    <div key={tipo}>
+                      <div className="px-5 py-1.5 bg-[#0d0d0d] flex items-center gap-2">
+                        <span className={`text-[10px] font-semibold uppercase tracking-wider ${TIPO_COLOR[tipo] ?? "text-gray-400"}`}>
+                          {TIPO_LABEL[tipo] ?? tipo}
+                        </span>
+                        <span className="text-[10px] text-gray-700 ml-auto">{slots.length} técnico{slots.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      {slots.map(p => {
+                        const nombre = p.tecnico?.nombre ?? "Sin asignar";
+                        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "—";
+                        const pagado = p.estadoPago === "PAGADO";
+                        const marcando = marcandoPago.has(p.id);
+                        return (
+                          <div key={p.id} className="grid grid-cols-[1fr_1fr_72px_80px_72px] gap-2 px-5 py-2.5 border-b border-[#0d0d0d] last:border-0 items-center">
+                            <p className={`text-sm truncate ${p.tecnico ? "text-white" : "text-yellow-500 italic"}`}>{nombre}</p>
+                            <p className="text-xs text-gray-400 truncate">{rol}</p>
+                            <p className="text-xs text-gray-500">{JORNADA_LABEL[p.jornada ?? ""] ?? p.jornada ?? "—"}</p>
+                            <p className={`text-sm font-medium text-right ${p.tarifaAcordada != null ? "text-white" : "text-gray-600"}`}>
+                              {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "—"}
+                            </p>
+                            <div className="flex justify-end">
+                              <button
+                                onClick={() => p.tecnico && togglePagoPersonal(p.id, p.estadoPago)}
+                                disabled={marcando || !p.tecnico}
+                                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium transition-colors ${
+                                  !p.tecnico ? "text-gray-700" :
+                                  pagado ? "bg-green-900/40 text-green-400 hover:bg-red-900/30 hover:text-red-400" :
+                                  "bg-yellow-900/30 text-yellow-400 hover:bg-green-900/30 hover:text-green-400"
+                                } ${marcando ? "opacity-40" : ""}`}>
+                                {!p.tecnico ? "—" : pagado ? "Pagado" : "Pend."}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+
+                  {/* Footer con presupuesto/real/diferencia */}
+                  {(() => {
+                    const presupuesto = proyecto.cotizacion?.subtotalOperacion ?? 0;
+                    const real = totalPersonal;
+                    const diff = presupuesto - real;
+                    return (
+                      <div className="px-5 py-3 bg-[#0d0d0d] border-t border-[#111] flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-5 flex-wrap">
+                          {presupuesto > 0 && (
+                            <>
+                              <span className="text-xs text-gray-500">Presupuesto: <span className="text-gray-300">{fmt(presupuesto)}</span></span>
+                              <span className="text-xs text-gray-500">Real: <span className="text-white font-semibold">{fmt(real)}</span></span>
+                              <span className={`text-xs font-semibold ${diff >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {diff >= 0 ? `+${fmt(diff)}` : fmt(diff)}
+                              </span>
+                            </>
+                          )}
+                          {presupuesto === 0 && (
+                            <span className="text-xs text-gray-500">Total personal: <span className="text-white font-semibold">{fmt(real)}</span></span>
+                          )}
+                        </div>
+                        {hayPendientes && (
+                          <button onClick={marcarTodosPagado}
+                            className="text-xs bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            Marcar todos pagado
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </>
+              );
+            })()}
+          </div>
+
+          {/* ── Gastos del proyecto ── */}
+          {(() => {
+            const cot = proyecto.cotizacion;
+            // Bloque 1: Referencia cotización
+            const TIPO_LABEL: Record<string, string> = {
+              EQUIPO_EXTERNO: "Proveedores externos",
+              OPERACION_TECNICA: "Operación técnica",
+              COMIDA: "Comidas",
+              TRANSPORTE: "Transporte",
+              HOSPEDAJE: "Hospedaje",
+              OTRO: "Otros",
+            };
+            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; precioUnitario: number };
+            const lineasConCosto: LinCot[] = (cot?.lineas ?? []).filter(l =>
+              l.precioUnitario > 0 && !["EQUIPO_PROPIO","DESCUENTO_BENEFICIO","PAQUETE"].includes(l.tipo)
+            );
+            const grouped: Record<string, LinCot[]> = {};
+            for (const l of lineasConCosto) {
+              const key = ["EQUIPO_EXTERNO","OPERACION_TECNICA","COMIDA","TRANSPORTE","HOSPEDAJE"].includes(l.tipo) ? l.tipo : "OTRO";
+              if (!grouped[key]) grouped[key] = [];
+              grouped[key].push(l);
+            }
+            const estimadoTotal = cot
+              ? cot.subtotalComidas + cot.subtotalOperacion + cot.subtotalTransporte + cot.subtotalHospedaje + cot.subtotalTerceros
+              : 0;
+
+            // Bloque 2: Gastos registrados
+            const cxpGastos = proyecto.cuentasPagar.filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO");
+            const pagados = proyecto.movimientos;
+            const totalPendiente = cxpGastos.reduce((s, c) => s + c.monto, 0);
+            const totalPagado = pagados.reduce((s, m) => s + m.monto, 0);
+            const totalGastosProy = totalPendiente + totalPagado;
+
+            // Bloque 3: Desviacion
+            const desviacion = totalGastosProy - estimadoTotal;
+            const pctDesviacion = estimadoTotal > 0 ? (desviacion / estimadoTotal) * 100 : 0;
+
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+
+                {/* Header */}
+                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos del proyecto</h3>
+                    {totalGastosProy > 0 && <span className="text-xs text-gray-500">{fmt(totalGastosProy)}</span>}
+                  </div>
+                  <button onClick={() => {
+                    setGastoEstado("PENDIENTE"); setGastoConcepto(""); setGastoMonto("");
+                    setGastoFecha(new Date().toISOString().split("T")[0]); setGastoNotas("");
+                    setGastoProveedor(""); setGastoMetodo("TRANSFERENCIA"); setGastoCuenta("");
+                    setGastoReferencia(""); setGastoCategoria(""); setShowGastoModal(true);
+                  }} className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors shrink-0">
+                    + Agregar gasto
+                  </button>
+                </div>
+
+                {/* Bloque 1: Referencia cotizacion */}
+                {cot && (
+                  <div className="border-b border-[#1a1a1a]">
+                    <button onClick={() => setRefCotOpen(v => !v)}
+                      className="w-full px-5 py-2.5 bg-[#0a0a0a] flex items-center justify-between hover:bg-[#0d0d0d] transition-colors">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] text-gray-600 uppercase tracking-[0.12em] font-semibold shrink-0">Referencia — {cot.numeroCotizacion}</span>
+                        <span className="text-gray-700 text-[10px]">·</span>
+                        <span className="text-[10px] text-gray-700">Estimado costos: {fmt(estimadoTotal)}</span>
+                      </div>
+                      <span className="text-gray-600 text-[10px] shrink-0 ml-2">{refCotOpen ? "▲ Colapsar" : "▼ Ver"}</span>
+                    </button>
+                    {refCotOpen && (
+                      <div className="px-5 pt-3 pb-4 bg-[#0a0a0a] space-y-3">
+                        {lineasConCosto.length === 0 ? (
+                          <p className="text-xs text-gray-700 italic">Sin líneas de costo en la cotización</p>
+                        ) : (
+                          Object.entries(grouped).map(([tipo, lineas]) => {
+                            const grupoTotal = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
+                            return (
+                              <div key={tipo}>
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">{TIPO_LABEL[tipo] ?? "Otros"}</p>
+                                  <span className="text-[10px] text-gray-400 font-semibold">{fmt(grupoTotal)}</span>
+                                </div>
+                                {lineas.map(l => (
+                                  <div key={l.id} className="flex items-center justify-between py-0.5 pl-3">
+                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}</span>
+                                    <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Bloque 2: POR PAGAR */}
+                {cxpGastos.length > 0 && (
+                  <div>
+                    <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
+                      <p className="text-[10px] text-yellow-600/90 uppercase tracking-[0.12em] font-semibold">Por pagar</p>
+                      <span className="text-xs text-yellow-400 font-semibold">{fmt(totalPendiente)}</span>
+                    </div>
+                    {cxpGastos.map(c => (
+                      <div key={c.id} className="px-5 py-3 border-b border-[#1a1a1a]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm text-white">{c.concepto}</span>
+                              {c.tipoAcreedor !== "OTRO" && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-600 shrink-0">{c.tipoAcreedor}</span>
+                              )}
+                            </div>
+                            {c.fechaCompromiso && (
+                              <p className="text-xs text-gray-600 mt-0.5">Fecha estimada: {fmtDate(c.fechaCompromiso)}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm text-yellow-400 font-semibold">{fmt(c.monto)}</span>
+                            <button onClick={() => abrirEditarCxP(c)} className="text-gray-600 hover:text-[#B3985B] text-xs transition-colors">✎</button>
+                            <button onClick={() => eliminarCxP(c.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors">✕</button>
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          {marcarPagadoId === c.id ? (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-gray-500">Fecha en que se pagó:</span>
+                              <input type="date" value={marcarPagadoFecha} onChange={e => setMarcarPagadoFecha(e.target.value)}
+                                className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <button onClick={() => marcarPagadoGasto(c.id)} disabled={savingMarcarPagado}
+                                className="bg-green-800 hover:bg-green-700 disabled:opacity-40 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">
+                                {savingMarcarPagado ? "..." : "Confirmar pago"}
+                              </button>
+                              <button onClick={() => setMarcarPagadoId(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setMarcarPagadoId(c.id); setMarcarPagadoFecha(new Date().toISOString().split("T")[0]); }}
+                              className="text-xs text-green-600 hover:text-green-400 border border-green-900/40 hover:border-green-700 px-3 py-1 rounded-lg transition-colors">
+                              ✓ Marcar pagado
                             </button>
                           )}
                         </div>
-                        <p className="text-gray-500 text-xs">{c.tipoAcreedor} · Vence: {fmtDate(c.fechaCompromiso)}</p>
-                        {c.montoOriginal && c.montoOriginal !== c.monto && (
-                          <p className="text-gray-600 text-[10px] mt-0.5">
-                            Original: <span className="line-through">{fmt(c.montoOriginal)}</span>
-                          </p>
-                        )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {c.estado !== "LIQUIDADO" && (
-                          <button
-                            onClick={() => { setAjustando(prev => prev === c.id ? null : c.id); setAjusteMonto(String(c.monto)); setAjusteMotivo(""); setPagando(null); }}
-                            className={`text-[10px] border px-2 py-1 rounded-lg transition-colors ${ajustando === c.id ? "bg-orange-900/30 border-orange-700 text-orange-300" : "text-gray-400 hover:text-white border-[#333] hover:border-[#555]"}`}>
-                            ✏ Ajustar
-                          </button>
-                        )}
-                        <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          c.estado === "LIQUIDADO" ? "bg-green-900/50 text-green-300" :
-                          c.estado === "VENCIDO" ? "bg-red-900/50 text-red-300" :
-                          "bg-yellow-900/30 text-yellow-400"
-                        }`}>{c.estado}</span>
-                      </div>
-                    </div>
-
-                    {/* Inline: ajustar monto */}
-                    {ajustando === c.id && (
-                      <div className="mt-2 bg-[#0a0a0a] border border-orange-900/30 rounded-lg p-3 space-y-2">
-                        <p className="text-[10px] text-orange-400 font-semibold uppercase tracking-wider">Ajustar monto</p>
-                        <div className="flex gap-2 flex-wrap items-start">
-                          <div>
-                            <label className="text-[10px] text-gray-500 block mb-1">Nuevo monto</label>
-                            <input type="number" value={ajusteMonto} onChange={e => setAjusteMonto(e.target.value)}
-                              placeholder="0.00" min="0" step="0.01"
-                              className="w-36 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-sm font-semibold focus:outline-none focus:border-orange-600" />
-                          </div>
-                          <div className="flex-1 min-w-[200px]">
-                            <label className="text-[10px] text-gray-500 block mb-1">Motivo del ajuste <span className="text-red-500">*</span></label>
-                            <textarea value={ajusteMotivo} onChange={e => setAjusteMotivo(e.target.value)}
-                              placeholder="Explica brevemente por qué se ajusta este monto..."
-                              rows={2}
-                              className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-orange-600 resize-none" />
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => ajustarMontoCxP(c.id)}
-                            disabled={!ajusteMonto || !ajusteMotivo.trim() || ajusteMotivo.trim().length < 5}
-                            className="bg-orange-700 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors">
-                            Confirmar ajuste
-                          </button>
-                          <button onClick={() => setAjustando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Historial de ajustes */}
-                    {ajusteHistorial === c.id && tieneAjustes && (
-                      <div className="mt-2 bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg p-3">
-                        <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-2">Historial de ajustes</p>
-                        <div className="space-y-1.5">
-                          {ajustesEntradas.map((a, i) => (
-                            <div key={i} className="flex items-start gap-2 text-xs">
-                              <span className="text-gray-600 text-[10px] shrink-0 mt-0.5">{new Date(a.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</span>
-                              <div className="flex-1">
-                                <span className="text-red-400 line-through">{fmt(a.de)}</span>
-                                <span className="text-gray-600 mx-1">→</span>
-                                <span className="text-white font-semibold">{fmt(a.a)}</span>
-                                <p className="text-gray-500 text-[10px] mt-0.5">{a.motivo}</p>
-                                <p className="text-gray-700 text-[10px]">por {a.usuario}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {c.estado !== "LIQUIDADO" && ajustando !== c.id && (
-                      pagando === c.id ? (
-                        <div className="flex gap-2 mt-2 flex-wrap">
-                          <input type="number" value={montoPago} onChange={e => setMontoPago(e.target.value)}
-                            placeholder={String(c.monto)} className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                          <input type="date" value={fechaPago} onChange={e => setFechaPago(e.target.value)}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none" />
-                          <Combobox
-                            value={cuentaPagoId}
-                            onChange={v => setCuentaPagoId(v)}
-                            options={[{ value: "", label: "— Cuenta —" }, ...cuentasBancarias.map(cu => ({ value: cu.id, label: cu.nombre + (cu.banco ? ` · ${cu.banco}` : "") }))]}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                          />
-                          <Combobox
-                            value={metodoPagoFinanzas}
-                            onChange={v => setMetodoPagoFinanzas(v)}
-                            options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                            className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                          />
-                          <button onClick={() => registrarPagoCxP(c.id)}
-                            className="bg-red-800 hover:bg-red-700 text-white text-xs font-semibold px-3 py-1 rounded transition-colors">Confirmar pago</button>
-                          <button onClick={() => setPagando(null)} className="text-gray-500 text-xs hover:text-white">Cancelar</button>
-                        </div>
-                      ) : (
-                        <button onClick={() => { setPagando(c.id); setMontoPago(String(c.monto)); setAjustando(null); setCuentaPagoId(""); setMetodoPagoFinanzas("TRANSFERENCIA"); }}
-                          className="text-xs text-red-400 hover:text-red-300 border border-red-900 hover:border-red-700 px-3 py-1 rounded-lg transition-colors">
-                          + Registrar pago
-                        </button>
-                      )
-                    )}
-                    {c.estado === "LIQUIDADO" && (
-                      <button onClick={() => anularMovimiento(c.id, "pago")} disabled={anulando === c.id}
-                        className="text-[11px] text-red-400/60 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-2 py-0.5 rounded transition-colors disabled:opacity-40 mt-1">
-                        {anulando === c.id ? "Anulando..." : "Anular pago"}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              </>
-            ) : null}
-          </div>
-
-          {/* ── Gastos Operativos ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Gastos Operativos</h3>
-                <p className="text-xs text-gray-600 mt-0.5">Comida, transporte y hospedaje — generados desde cotización o agregados manualmente</p>
-              </div>
-              <button onClick={() => setShowGastoOpForm(v => !v)}
-                className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors shrink-0">
-                {showGastoOpForm ? "Cancelar" : "+ Agregar"}
-              </button>
-            </div>
-
-            {showGastoOpForm && (
-              <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Tipo</label>
-                  <Combobox
-                    value={gastoOpForm.tipo}
-                    onChange={v => setGastoOpForm(f => ({ ...f, tipo: v }))}
-                    options={[{ value: "COMIDA", label: "Comida" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "HOSPEDAJE", label: "Hospedaje" }, { value: "OTRO", label: "Otro" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Cantidad</label>
-                  <input type="number" min="1" value={gastoOpForm.cantidad} onChange={e => setGastoOpForm(f => ({ ...f, cantidad: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
-                  <input value={gastoOpForm.concepto} onChange={e => setGastoOpForm(f => ({ ...f, concepto: e.target.value }))}
-                    placeholder="Ej: Comida crew día 1, Gasolina van, Habitación hotel..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
-                  <input type="number" value={gastoOpForm.monto} onChange={e => setGastoOpForm(f => ({ ...f, monto: e.target.value }))}
-                    placeholder="0"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                  <input value={gastoOpForm.notas} onChange={e => setGastoOpForm(f => ({ ...f, notas: e.target.value }))}
-                    placeholder="Opcional"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <button onClick={agregarGastoOp} disabled={!gastoOpForm.concepto || !gastoOpForm.monto}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                    Guardar
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {gastosOp.length === 0 && !showGastoOpForm ? (
-              <p className="text-gray-600 text-sm text-center py-6 italic">Sin gastos operativos registrados</p>
-            ) : (
-              gastosOp.map(g => {
-                const TIPO_COLORS: Record<string, string> = {
-                  COMIDA: "bg-orange-900/30 text-orange-300",
-                  TRANSPORTE: "bg-blue-900/30 text-blue-300",
-                  HOSPEDAJE: "bg-purple-900/30 text-purple-300",
-                  OTRO: "bg-gray-800 text-gray-400",
-                };
-                const TIPO_LABELS: Record<string, string> = { COMIDA: "Comida", TRANSPORTE: "Transporte", HOSPEDAJE: "Hospedaje", OTRO: "Otro" };
-                return (
-                  <div key={g.id} className={`flex items-center gap-3 px-5 py-3 border-t border-[#1a1a1a] hover:bg-[#0d0d0d] transition-colors ${g.entregado ? "opacity-50" : ""}`}>
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0 ${TIPO_COLORS[g.tipo] ?? TIPO_COLORS.OTRO}`}>
-                      {TIPO_LABELS[g.tipo] ?? g.tipo}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white/80 text-sm truncate">{g.concepto}</p>
-                      {g.notas && <p className="text-gray-600 text-xs">{g.notas}</p>}
-                    </div>
-                    {g.cantidad > 1 && <span className="text-gray-600 text-xs shrink-0">×{g.cantidad}</span>}
-                    <p className="text-white text-sm font-medium w-24 text-right shrink-0">{fmt(g.monto * g.cantidad)}</p>
-                    <button onClick={() => toggleEntregadoOp(g)} disabled={togglingGasto === g.id}
-                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all disabled:opacity-50 ${
-                        g.entregado
-                          ? "border-green-800 text-green-400 hover:border-red-800 hover:text-red-400"
-                          : "border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B] hover:text-black"
-                      }`}>
-                      {togglingGasto === g.id ? "..." : g.entregado ? "✓ Entregado" : "Entregar"}
-                    </button>
-                    <button onClick={() => eliminarGastoOp(g.id)} className="text-gray-700 hover:text-red-400 text-xs transition-colors shrink-0">✕</button>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Otros gastos */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Otros gastos del proyecto</h3>
-              <button onClick={() => setShowGastoForm(v => !v)}
-                className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                {showGastoForm ? "Cancelar" : "+ Registrar gasto"}
-              </button>
-            </div>
-
-            {showGastoForm && (
-              <div className="px-5 py-4 border-b border-[#1a1a1a] grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
-                  <input value={gastoConcepto} onChange={e => setGastoConcepto(e.target.value)}
-                    placeholder="Ej: Gasolina, comida crew, material, renta..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
-                  <input type="number" value={gastoMonto} onChange={e => setGastoMonto(e.target.value)}
-                    placeholder="0"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Fecha</label>
-                  <input type="date" value={gastoFecha} onChange={e => setGastoFecha(e.target.value)}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
-                  <Combobox
-                    value={gastoCategoria}
-                    onChange={v => setGastoCategoria(v)}
-                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
-                  <Combobox
-                    value={gastoProveedor}
-                    onChange={v => setGastoProveedor(v)}
-                    options={[{ value: "", label: "— No aplica / Genérico —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
-                  <Combobox
-                    value={gastoMetodo}
-                    onChange={v => setGastoMetodo(v)}
-                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "TARJETA", label: "Tarjeta" }, { value: "CHEQUE", label: "Cheque" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Referencia / comprobante</label>
-                  <input value={gastoReferencia} onChange={e => setGastoReferencia(e.target.value)}
-                    placeholder="Folio, número de transacción..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Notas</label>
-                  <input value={gastoNotas} onChange={e => setGastoNotas(e.target.value)}
-                    placeholder="Opcional"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <button onClick={agregarGasto} disabled={addingGasto || !gastoConcepto || !gastoMonto}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
-                    {addingGasto ? "Guardando..." : "Guardar gasto"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {proyecto.movimientos.length === 0 && !showGastoForm ? (
-              <p className="text-gray-500 text-sm text-center py-6">Sin gastos adicionales registrados</p>
-            ) : (
-              proyecto.movimientos.map(g => (
-                <div key={g.id} className="px-5 py-3 border-b border-[#0d0d0d] last:border-0 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-white text-sm">{g.concepto}</p>
-                      {g.categoria && (
-                        <span className="text-xs px-1.5 py-0.5 bg-[#222] text-gray-400 rounded">{g.categoria.nombre}</span>
-                      )}
-                      {g.proveedor && (
-                        <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>
-                      )}
-                    </div>
-                    <p className="text-gray-500 text-xs">
-                      {fmtDate(g.fecha)} · {g.metodoPago}
-                      {g.referencia ? ` · Ref: ${g.referencia}` : ""}
-                      {g.notas ? ` · ${g.notas}` : ""}
-                    </p>
-                  </div>
-                  <span className="text-red-400 font-semibold text-sm shrink-0">−{fmt(g.monto)}</span>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Resumen financiero */}
-          {(() => {
-            const totalGastos = proyecto.movimientos.reduce((s, g) => s + g.monto, 0);
-            const totalGastosOp = gastosOp.reduce((s, g) => s + g.monto * g.cantidad, 0);
-            return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-                {proyecto.cotizacion && (
-                  <div>
-                    <p className="text-gray-500 text-xs mb-1">Total cotizado</p>
-                    <p className="text-white font-bold">{fmt(proyecto.cotizacion.granTotal)}</p>
+                    ))}
                   </div>
                 )}
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Cobrado</p>
-                  <p className="text-green-400 font-bold">{fmt(cobrado)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Por cobrar</p>
-                  <p className="text-yellow-400 font-bold">{fmt(totalCxC - cobrado)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Gastos operativos</p>
-                  <p className="text-orange-400 font-bold">{fmt(totalGastosOp)}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500 text-xs mb-1">Otros gastos</p>
-                  <p className="text-red-400 font-bold">{fmt(totalGastos)}</p>
+
+                {/* Bloque 2: PAGADOS */}
+                {pagados.length > 0 && (
+                  <div>
+                    <div className="px-5 pt-3 pb-1 flex items-center justify-between border-b border-[#1a1a1a]">
+                      <p className="text-[10px] text-green-700/90 uppercase tracking-[0.12em] font-semibold">Pagados</p>
+                      <span className="text-xs text-green-400 font-semibold">{fmt(totalPagado)}</span>
+                    </div>
+                    {pagados.map(g => (
+                      <div key={g.id} className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-white text-sm">{g.concepto}</p>
+                            {g.categoria && <span className="text-xs px-1.5 py-0.5 bg-[#222] text-gray-400 rounded">{g.categoria.nombre}</span>}
+                            {g.proveedor && <span className="text-xs px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded">{g.proveedor.nombre}</span>}
+                          </div>
+                          <p className="text-gray-600 text-xs">Pagó {fmtDate(g.fecha)} · {g.metodoPago}{g.cuentaOrigen ? ` · ${g.cuentaOrigen.nombre}` : ""}{g.referencia ? ` · Ref: ${g.referencia}` : ""}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button onClick={() => abrirEditarGasto(g)}
+                            className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] hover:border-[#555] px-2 py-1 rounded transition-colors">Editar</button>
+                          <button onClick={() => eliminarMovimiento(g.id)}
+                            className="text-gray-700 hover:text-red-400 text-xs transition-colors">✕</button>
+                          <span className="text-green-400 font-semibold text-sm">{fmt(g.monto)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty state */}
+                {cxpGastos.length === 0 && pagados.length === 0 && (
+                  <div className="px-5 py-10 text-center">
+                    <p className="text-gray-600 text-sm">Sin gastos registrados</p>
+                    <p className="text-gray-700 text-xs mt-1">Usa "+ Agregar gasto" para registrar un pago pendiente o ya realizado</p>
+                  </div>
+                )}
+
+                {/* Bloque 3: Resumen de desviacion */}
+                <div className={`px-5 py-3 border-t border-[#1a1a1a] bg-[#0a0a0a] grid gap-4 ${cot && estimadoTotal > 0 ? "grid-cols-3" : "grid-cols-1"}`}>
+                  {cot && estimadoTotal > 0 && (
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Estimado (cotización)</p>
+                      <p className="text-sm text-gray-300 font-semibold">{fmt(estimadoTotal)}</p>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Real registrado</p>
+                    <p className="text-sm text-white font-semibold">{fmt(totalGastosProy)}</p>
+                    <p className="text-[10px] text-gray-700 mt-0.5">{fmt(totalPendiente)} pendiente + {fmt(totalPagado)} pagado</p>
+                  </div>
+                  {cot && estimadoTotal > 0 && (
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Desviación</p>
+                      <p className={`text-sm font-bold ${desviacion > 0 ? "text-red-400" : desviacion < 0 ? "text-green-400" : "text-gray-400"}`}>
+                        {desviacion === 0 ? "Sin desviación" : `${desviacion > 0 ? "+" : ""}${fmt(desviacion)}`}
+                        {desviacion !== 0 && (
+                          <span className="text-xs ml-1 font-normal">({desviacion > 0 ? "+" : ""}{pctDesviacion.toFixed(0)}%)</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             );
           })()}
 
           {/* ── Cierre financiero ── */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
-                <p className="text-gray-600 text-xs mt-0.5">Comparativa real vs estimado al cerrar el proyecto</p>
-              </div>
-              <button
-                onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
-                disabled={loadingCierre}
-                className="px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-              >
-                {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
-              </button>
-            </div>
-            {proyecto.cierreFinanciero && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center gap-3">
-                <span className="text-green-400 text-sm">✓</span>
-                <p className="text-green-400 text-xs font-medium">
-                  Cierre registrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Portal de clientes */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-white font-semibold text-sm">Portal de cliente</h3>
-                <p className="text-gray-600 text-xs mt-0.5">Enlace público con estado del proyecto, pagos y equipo</p>
-              </div>
-              {!proyecto.portalToken ? (
-                <button
-                  onClick={generarPortalToken}
-                  disabled={generandoToken}
-                  className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors disabled:opacity-50"
-                >
-                  {generandoToken ? "Generando..." : "Generar enlace"}
-                </button>
-              ) : (
-                <button
-                  onClick={revocarPortalToken}
-                  disabled={revocandoToken}
-                  className="px-3 py-1.5 text-red-500 border border-red-900/40 text-xs font-medium rounded-lg hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                >
-                  {revocandoToken ? "Revocando..." : "Revocar"}
-                </button>
-              )}
-            </div>
-            {/* Notas para el cliente (siempre visible si tiene token) */}
-            {proyecto.portalToken && (
-              <div className="mt-4 pt-4 border-t border-[#1e1e1e] space-y-2">
-                <label className="text-gray-500 text-xs block">Mensaje al cliente (visible en su portal)</label>
-                <textarea
-                  value={notasPortal}
-                  onChange={e => setNotasPortal(e.target.value)}
-                  placeholder="Ej: Todo confirmado para tu evento. Estaremos en contacto 48 hrs antes para coordinar acceso al venue..."
-                  rows={3}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none"
-                />
-                <button
-                  onClick={guardarNotasPortal}
-                  disabled={savingNotasPortal}
-                  className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
-                >
-                  {savingNotasPortal ? "Guardando..." : "Guardar mensaje"}
-                </button>
-              </div>
-            )}
-
-            {proyecto.portalToken && (() => {
-              const portalUrl = `https://mainstagepro.vercel.app/portal/${proyecto.portalToken}`;
-              return (
-                <div className="space-y-2 mt-4">
-                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-                    <span className="text-[#B3985B] text-sm">🔗</span>
-                    <p className="flex-1 text-[10px] text-gray-400 truncate font-mono">{portalUrl}</p>
-                    <CopyButton value={portalUrl} />
+          {(() => {
+            const cierreReqs = [
+              { ok: !!proyecto.cotizacion, label: "Cotización generada" },
+              { ok: proyecto.personal.some(p => p.confirmado), label: "Personal confirmado" },
+              { ok: proyecto.cuentasCobrar.length > 0, label: "CxC configurada" },
+            ];
+            const cierreReady = cierreReqs.every(r => r.ok) || !!proyecto.cierreFinanciero;
+            return (
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
+                    <p className="text-gray-600 text-xs mt-0.5">Comparativa real vs estimado al cerrar el proyecto</p>
                   </div>
-                  <a href={portalUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-[#1a1a1a] border border-[#333] text-gray-300 text-xs font-medium rounded-lg hover:bg-[#222] hover:text-white transition-colors">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-                    Abrir portal del cliente
-                  </a>
+                  <button
+                    onClick={async () => {
+                      if (!cierreReady) {
+                        const faltantes = cierreReqs.filter(r => !r.ok).map(r => r.label).join(", ");
+                        toast.error(`Completa antes de cerrar: ${faltantes}`);
+                        return;
+                      }
+                      await loadCierre(); setShowCierreModal(true);
+                    }}
+                    disabled={loadingCierre}
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${cierreReady ? "bg-[#B3985B] text-black hover:bg-[#c9a96a]" : "bg-[#1a1a1a] text-gray-500 border border-[#333] cursor-not-allowed"}`}
+                  >
+                    {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
+                  </button>
                 </div>
-              );
-            })()}
-          </div>
+                {!proyecto.cierreFinanciero && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {cierreReqs.map(r => (
+                      <span key={r.label} className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${r.ok ? "bg-green-900/30 text-green-400" : "bg-[#1a1a1a] text-gray-600"}`}>
+                        {r.ok ? "✓" : "○"} {r.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {proyecto.cierreFinanciero && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3 text-center">
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobrado real</p>
+                        <p className="text-white font-bold text-sm">{fmt(proyecto.cierreFinanciero.totalCobrado)}</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">Est. {fmt(proyecto.cierreFinanciero.granTotalEstimado)}</p>
+                      </div>
+                      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-3 text-center">
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Gastado real</p>
+                        <p className="text-red-400 font-bold text-sm">{fmt(proyecto.cierreFinanciero.totalGastado)}</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">Est. {fmt(proyecto.cierreFinanciero.costoEstimado)}</p>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center border ${proyecto.cierreFinanciero.utilidadReal >= 0 ? "bg-green-950/20 border-green-900/30" : "bg-red-950/20 border-red-900/30"}`}>
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Utilidad real</p>
+                        <p className={`font-bold text-sm ${proyecto.cierreFinanciero.utilidadReal >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(proyecto.cierreFinanciero.utilidadReal)}</p>
+                        <p className={`text-[10px] mt-0.5 font-semibold ${proyecto.cierreFinanciero.margenReal >= 20 ? "text-green-500" : proyecto.cierreFinanciero.margenReal >= 0 ? "text-yellow-500" : "text-red-500"}`}>{proyecto.cierreFinanciero.margenReal.toFixed(1)}% margen</p>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-700 text-right">
+                      Cerrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
 
         </div>
         );
       })()}
+      </div>{/* /section-finanzas */}
+
+      {/* ── Modal agregar gasto ── */}
+      {showGastoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.80)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setShowGastoModal(false); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-white font-semibold">Agregar gasto</h3>
+              <button onClick={() => setShowGastoModal(false)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            <div className="flex gap-1 p-1 bg-[#0a0a0a] border border-[#222] rounded-xl mb-4">
+              <button onClick={() => setGastoEstado("PENDIENTE")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${gastoEstado === "PENDIENTE" ? "bg-yellow-800/60 text-yellow-200" : "text-gray-500 hover:text-gray-300"}`}>
+                Por pagar
+              </button>
+              <button onClick={() => setGastoEstado("PAGADO")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${gastoEstado === "PAGADO" ? "bg-green-900/50 text-green-200" : "text-gray-500 hover:text-gray-300"}`}>
+                Ya pagado
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                <input value={gastoConcepto} onChange={e => setGastoConcepto(e.target.value)}
+                  placeholder="Ej: Renta equipo externo, gasolina, comida crew..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto ($) *</label>
+                  <input type="number" step="0.01" min="0" value={gastoMonto} onChange={e => setGastoMonto(e.target.value)} placeholder="0"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">{gastoEstado === "PENDIENTE" ? "Fecha estimada de pago" : "Fecha en que se pagó"}</label>
+                  <input type="date" value={gastoFecha} onChange={e => setGastoFecha(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                  <select value={gastoCategoria} onChange={e => setGastoCategoria(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Sin categoría —</option>
+                    <option value="PROVEEDOR_EXTERNO">Proveedor externo</option>
+                    <option value="OPERACION_TECNICA">Operación técnica</option>
+                    <option value="COMIDAS">Comidas</option>
+                    <option value="TRANSPORTE">Transporte</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
+                  <Combobox value={gastoProveedor} onChange={v => setGastoProveedor(v)}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              {gastoEstado === "PAGADO" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                    <Combobox value={gastoMetodo} onChange={v => setGastoMetodo(v)}
+                      options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "CHEQUE", label: "Cheque" }, { value: "TARJETA", label: "Tarjeta" }]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                    <Combobox value={gastoCuenta} onChange={v => setGastoCuenta(v)}
+                      options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                    <input value={gastoReferencia} onChange={e => setGastoReferencia(e.target.value)}
+                      placeholder="Núm. transferencia, folio..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                <input value={gastoNotas} onChange={e => setGastoNotas(e.target.value)} placeholder="Opcional"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowGastoModal(false)} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={async () => { const ok = await agregarGastoProy(); if (ok) setShowGastoModal(false); }}
+                disabled={addingGasto || !gastoConcepto.trim() || !gastoMonto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {addingGasto ? "Guardando..." : gastoEstado === "PENDIENTE" ? "Registrar gasto pendiente" : "Registrar pago"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal editar gasto ── */}
+      {editGasto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={e => { if (e.target === e.currentTarget) setEditGasto(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-lg p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-white font-semibold">Editar gasto</h3>
+              <button onClick={() => setEditGasto(null)} className="text-gray-600 hover:text-white text-lg leading-none">✕</button>
+            </div>
+            {/* Toggle estado */}
+            <p className="text-xs text-gray-500 mb-1.5">Estado del gasto</p>
+            <div className="flex gap-1 p-1 bg-[#0a0a0a] border border-[#2a2a2a] rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setEditGastoEstado("PENDIENTE")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${editGastoEstado === "PENDIENTE" ? "bg-yellow-700/30 text-yellow-300 border border-yellow-700/40" : "text-gray-400 hover:text-white hover:bg-[#1a1a1a] border border-transparent"}`}>
+                Por pagar
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditGastoEstado("PAGADO")}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${editGastoEstado === "PAGADO" ? "bg-green-800/30 text-green-300 border border-green-800/40" : "text-gray-400 hover:text-white hover:bg-[#1a1a1a] border border-transparent"}`}>
+                Ya pagado
+              </button>
+            </div>
+            {editGastoEstado === "PENDIENTE" && !editingCxPId && (
+              <p className="text-xs text-yellow-600/80 bg-yellow-900/10 border border-yellow-900/20 rounded-lg px-3 py-2 mb-3">
+                Al guardar, este gasto se convertirá en una cuenta por pagar y aparecerá en Cobros y Pagos.
+              </p>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Concepto *</label>
+                <input value={editGastoForm.concepto} onChange={e => setEditGastoForm(p => ({ ...p, concepto: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Monto *</label>
+                  <input type="number" step="0.01" min="0" value={editGastoForm.monto}
+                    onChange={e => setEditGastoForm(p => ({ ...p, monto: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">{editGastoEstado === "PENDIENTE" ? "Fecha estimada de pago" : "Fecha de pago"}</label>
+                  <input type="date" value={editGastoForm.fecha}
+                    onChange={e => setEditGastoForm(p => ({ ...p, fecha: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                {editGastoEstado === "PAGADO" && (<>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Método de pago</label>
+                  <Combobox value={editGastoForm.metodoPago} onChange={v => setEditGastoForm(p => ({ ...p, metodoPago: v }))}
+                    options={[{ value: "TRANSFERENCIA", label: "Transferencia" }, { value: "EFECTIVO", label: "Efectivo" }, { value: "CHEQUE", label: "Cheque" }, { value: "TARJETA", label: "Tarjeta" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Cuenta (cargo)</label>
+                  <Combobox value={editGastoForm.cuentaOrigenId} onChange={v => setEditGastoForm(p => ({ ...p, cuentaOrigenId: v }))}
+                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentasBancarias.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                </>)}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Categoría</label>
+                  <Combobox value={editGastoForm.categoriaId} onChange={v => setEditGastoForm(p => ({ ...p, categoriaId: v }))}
+                    options={[{ value: "", label: "— Sin categoría —" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Proveedor</label>
+                  <Combobox value={editGastoForm.proveedorId} onChange={v => setEditGastoForm(p => ({ ...p, proveedorId: v }))}
+                    options={[{ value: "", label: "— Sin proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              {editGastoEstado === "PAGADO" && (
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
+                <input value={editGastoForm.referencia} onChange={e => setEditGastoForm(p => ({ ...p, referencia: e.target.value }))}
+                  placeholder="Núm. transferencia, folio..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              )}
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Notas</label>
+                <input value={editGastoForm.notas} onChange={e => setEditGastoForm(p => ({ ...p, notas: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setEditGasto(null)} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button onClick={guardarEdicionGasto} disabled={savingGasto || !editGastoForm.concepto || !editGastoForm.monto}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {savingGasto ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Modal cierre financiero ── */}
       {showCierreModal && cierreData && (
@@ -4803,6 +6130,33 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
     </div>
 
+    {/* ── FAB: Tareas ── */}
+    <button
+      onClick={() => setTareasOpen(true)}
+      className="fixed bottom-6 left-6 z-40 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-sm px-4 py-3 rounded-full shadow-2xl transition-colors"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Tareas
+    </button>
+
+    {/* ── Drawer lateral: Tareas ── */}
+    {tareasOpen && (
+      <>
+        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setTareasOpen(false)} />
+        <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-[#0d0d0d] border-l border-[#1a1a1a] overflow-y-auto shadow-2xl flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-[#1a1a1a] sticky top-0 bg-[#0d0d0d] z-10 shrink-0">
+            <h2 className="text-white font-semibold text-sm">Tareas del proyecto</h2>
+            <button onClick={() => setTareasOpen(false)} className="text-gray-500 hover:text-white transition-colors p-1">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="p-4 flex-1 overflow-y-auto">
+            <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
+          </div>
+        </div>
+      </>
+    )}
+
     {/* ── Panel flotante de notificación de cambios ── */}
     {pendingNotif && (
 
@@ -4847,6 +6201,65 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         )}
       </div>
     )}
+
+    {/* ── Modal Brief del evento ── */}
+    {showAnuncioCierre && (() => {
+      const TIPO_SERVICIO_LABEL: Record<string, string> = {
+        PRODUCCION_TECNICA: "Producción técnica",
+        RENTA: "Renta de equipo",
+        DIRECCION_TECNICA: "Dirección técnica",
+      };
+      const tipoServicioLabel = proyecto.tipoServicio ? (TIPO_SERVICIO_LABEL[proyecto.tipoServicio] ?? proyecto.tipoServicio) : null;
+
+      const equiposLineas = proyecto.equipos.map(e =>
+        `• ${e.cantidad}x ${e.equipo.descripcion}${e.equipo.marca ? ` ${e.equipo.marca}` : ""}${e.equipo.modelo ? ` ${e.equipo.modelo}` : ""}`
+      ).join("\n");
+
+      const personalConfirmado = proyecto.personal.filter(p => p.confirmado);
+      const personalLineas = personalConfirmado.map(p => {
+        const rol = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null;
+        return `• ${p.tecnico?.nombre ?? "—"}${rol ? ` (${rol})` : ""}`;
+      }).join("\n");
+
+      const accesoLink = `https://mainstagepro.vercel.app/proyectos/${proyecto.id}`;
+
+      const briefText = [
+        "🎉 ¡Servicio confirmado!",
+        "",
+        `👤 Cliente: ${proyecto.cliente.nombre}${proyecto.cliente.empresa ? ` / ${proyecto.cliente.empresa}` : ""}`,
+        `📋 Proyecto: ${proyecto.nombre} (${proyecto.numeroProyecto})`,
+        tipoServicioLabel ? `🎛️ Servicio: ${tipoServicioLabel}${proyecto.tipoEvento ? ` · ${proyecto.tipoEvento}` : ""}` : (proyecto.tipoEvento ? `🎭 Evento: ${proyecto.tipoEvento}` : null),
+        `📅 Fecha: ${fmtDate(proyecto.fechaEvento)}`,
+        proyecto.lugarEvento ? `📍 Lugar: ${proyecto.lugarEvento}` : null,
+        (proyecto.horaInicioEvento || proyecto.horaFinEvento) ? `⏰ Horario: ${proyecto.horaInicioEvento ?? ""}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}` : null,
+        proyecto.fechaMontaje ? `🔧 Montaje: ${fmtDate(proyecto.fechaMontaje)}${proyecto.horaInicioMontaje ? ` desde ${proyecto.horaInicioMontaje}` : ""}` : null,
+        proyecto.equipos.length > 0 ? `\nEquipos:\n${equiposLineas}` : null,
+        personalConfirmado.length > 0 ? `\nPersonal confirmado:\n${personalLineas}` : null,
+        `\n🔗 Acceso: ${accesoLink}`,
+      ].filter(Boolean).join("\n");
+
+      return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
+              <h2 className="text-white font-semibold text-sm">Brief del evento</h2>
+              <button onClick={() => setShowAnuncioCierre(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
+                {briefText}
+              </pre>
+              <button
+                onClick={() => { navigator.clipboard.writeText(briefText); }}
+                className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+              >
+                Copiar texto
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </>
   );
 }

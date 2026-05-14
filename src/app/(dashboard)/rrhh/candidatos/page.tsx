@@ -2,8 +2,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/components/Toast";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
+import { Modal } from "@/components/Modal";
 
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
@@ -44,6 +46,7 @@ function fmt(n: number) {
 
 export default function CandidatosPage() {
   const router = useRouter();
+  const toast = useToast();
   const [candidatos, setCandidatos] = useState<Candidato[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban"|"lista">("kanban");
@@ -76,6 +79,7 @@ export default function CandidatosPage() {
     });
     const d = await r.json();
     setSaving(false);
+    if (!r.ok) { toast.error(d.error ?? "Error al crear candidato"); return; }
     setShowNew(false);
     if (d.candidato?.id) router.push(`/rrhh/candidatos/${d.candidato.id}`);
   }
@@ -216,64 +220,56 @@ export default function CandidatosPage() {
       )}
 
       {/* Modal nuevo candidato */}
-      {showNew && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-[#111] border border-[#222] rounded-xl w-full max-w-lg">
-            <div className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
-              <h2 className="text-white font-semibold">Registrar candidato</h2>
-              <button onClick={() => setShowNew(false)} className="text-gray-500 hover:text-white text-xl">×</button>
+      <Modal open={showNew} onClose={() => setShowNew(false)} title="Nuevo candidato" maxWidth="max-w-lg">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Nombre completo *</label>
+            <input value={form.nombre} onChange={e=>setForm(p=>({...p,nombre:e.target.value}))} className={inputCls} placeholder="Juan García" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Teléfono</label>
+              <input value={form.telefono} onChange={e=>setForm(p=>({...p,telefono:e.target.value}))} className={inputCls} placeholder="55 1234 5678" />
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Nombre completo *</label>
-                <input value={form.nombre} onChange={e=>setForm(p=>({...p,nombre:e.target.value}))} className={inputCls} placeholder="Juan García" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Teléfono</label>
-                  <input value={form.telefono} onChange={e=>setForm(p=>({...p,telefono:e.target.value}))} className={inputCls} placeholder="55 1234 5678" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-500 mb-1">Ciudad</label>
-                  <input value={form.ciudad} onChange={e=>setForm(p=>({...p,ciudad:e.target.value}))} className={inputCls} placeholder="Querétaro" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Correo</label>
-                <input value={form.correo} onChange={e=>setForm(p=>({...p,correo:e.target.value}))} className={inputCls} placeholder="correo@ejemplo.com" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Puesto al que aplica</label>
-                <Combobox
-                  value={form.puestoId}
-                  onChange={v => setForm(p => ({ ...p, puestoId: v }))}
-                  options={[{ value: "", label: "— Seleccionar puesto ideal —" }, ...puestos.map(p => ({ value: p.id, label: `${p.titulo} · ${p.area}` }))]}
-                  className={inputCls}
-                />
-              </div>
-              {!form.puestoId && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Puesto (manual)</label>
-                    <input value={form.puestoManual} onChange={e=>setForm(p=>({...p,puestoManual:e.target.value}))} className={inputCls} placeholder="Ej: Coordinador" />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">Área</label>
-                    <input value={form.areaManual} onChange={e=>setForm(p=>({...p,areaManual:e.target.value}))} className={inputCls} placeholder="Ej: PRODUCCION" />
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="px-6 py-4 border-t border-[#222] flex justify-end gap-3">
-              <button onClick={() => setShowNew(false)} className="text-gray-500 hover:text-white text-sm px-4 py-2 transition-colors">Cancelar</button>
-              <button onClick={crear} disabled={saving || !form.nombre}
-                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
-                {saving ? "Creando..." : "Crear y abrir →"}
-              </button>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Ciudad</label>
+              <input value={form.ciudad} onChange={e=>setForm(p=>({...p,ciudad:e.target.value}))} className={inputCls} placeholder="Querétaro" />
             </div>
           </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Correo</label>
+            <input value={form.correo} onChange={e=>setForm(p=>({...p,correo:e.target.value}))} className={inputCls} placeholder="correo@ejemplo.com" />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Puesto al que aplica</label>
+            <Combobox
+              value={form.puestoId}
+              onChange={v => setForm(p => ({ ...p, puestoId: v }))}
+              options={[{ value: "", label: "— Seleccionar puesto ideal —" }, ...puestos.map(p => ({ value: p.id, label: `${p.titulo} · ${p.area}` }))]}
+              className={inputCls}
+            />
+          </div>
+          {!form.puestoId && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Puesto (manual)</label>
+                <input value={form.puestoManual} onChange={e=>setForm(p=>({...p,puestoManual:e.target.value}))} className={inputCls} placeholder="Ej: Coordinador" />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Área</label>
+                <input value={form.areaManual} onChange={e=>setForm(p=>({...p,areaManual:e.target.value}))} className={inputCls} placeholder="Ej: PRODUCCION" />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <button onClick={() => setShowNew(false)} className="text-gray-500 hover:text-white text-sm px-4 py-2 transition-colors">Cancelar</button>
+            <button onClick={crear} disabled={saving || !form.nombre}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
+              {saving ? "Creando..." : "Crear y abrir →"}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

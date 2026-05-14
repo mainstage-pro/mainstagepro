@@ -12,6 +12,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   if ("estado" in body) data.estado = body.estado;
   if ("notas" in body) data.notas = body.notas || null;
+  if ("cantidadContada" in body) {
+    const val = body.cantidadContada;
+    data.cantidadContada = val === null || val === "" ? null : Number(val);
+  }
+
+  // Auto-estado cuando la cantidad contada cubre lo esperado
+  if ("cantidadContada" in body && !("estado" in body)) {
+    const current = await prisma.checklistBodegaItem.findUnique({ where: { id: itemId } });
+    if (current) {
+      const contada = data.cantidadContada as number | null;
+      const esperada = current.cantidadEsperada ?? 1;
+      if (contada !== null && contada >= esperada && current.estado === "PENDIENTE") {
+        data.estado = "EN_BODEGA";
+      }
+    }
+  }
 
   const item = await prisma.checklistBodegaItem.update({ where: { id: itemId }, data });
 

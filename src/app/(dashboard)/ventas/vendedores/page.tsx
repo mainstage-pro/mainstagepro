@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SkeletonCards } from "@/components/Skeleton";
+import { Modal } from "@/components/Modal";
 
 interface Vendedor {
   id: string;
@@ -67,17 +68,15 @@ export default function VendedoresPage() {
           <p className="text-gray-400 text-sm mt-1">{vendedores.length} vendedor{vendedores.length !== 1 ? "es" : ""} registrado{vendedores.length !== 1 ? "s" : ""}</p>
         </div>
         <button
-          onClick={() => setShowForm(s => !s)}
+          onClick={() => setShowForm(true)}
           className="px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors"
         >
-          {showForm ? "Cancelar" : "+ Agregar vendedor"}
+          + Agregar vendedor
         </button>
       </div>
 
       {/* Formulario nuevo vendedor */}
-      {showForm && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5 mb-6">
-          <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Nuevo vendedor</h2>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setError(""); }} title="Nuevo vendedor">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -114,7 +113,7 @@ export default function VendedoresPage() {
               </div>
             </div>
             {error && <p className="text-red-400 text-xs">{error}</p>}
-            <div className="flex justify-end">
+            <div className="flex justify-end mt-4">
               <button
                 type="submit" disabled={saving}
                 className="px-5 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
@@ -123,8 +122,7 @@ export default function VendedoresPage() {
               </button>
             </div>
           </form>
-        </div>
-      )}
+      </Modal>
 
       {/* Lista */}
       {loading ? (

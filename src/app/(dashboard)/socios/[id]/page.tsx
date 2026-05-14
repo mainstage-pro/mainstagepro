@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
+import { BackButton } from "@/components/BackButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Requisito = { id: string; requisito: string; completado: boolean; notas: string | null; orden: number };
@@ -117,6 +120,7 @@ const FieldLabel = ({ children }: { children: React.ReactNode }) => (
 
 // ─── Tab: Perfil ──────────────────────────────────────────────────────────────
 function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
+  const toast = useToast();
   const [edit, setEdit] = useState(false);
   const [form, setForm] = useState({ ...socio });
   const [saving, setSaving] = useState(false);
@@ -125,7 +129,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
   const save = async () => {
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}`, {
+    const res = await fetch(`/api/socios/${socio.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre: form.nombre, tipo: form.tipo, rfc: form.rfc, curp: form.curp,
@@ -135,6 +139,12 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
         pctMainstage: form.pctMainstage, contratoInicio: form.contratoInicio, contratoFin: form.contratoFin,
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     setEdit(false);
     reload();
@@ -225,7 +235,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           {edit ? (
             <DarkInput type="date" value={form.contratoInicio ? form.contratoInicio.split("T")[0] : ""}
               onChange={(v) => f("contratoInicio", v)} />
-          ) : <p className="text-sm text-white">{socio.contratoInicio ? new Date(socio.contratoInicio).toLocaleDateString("es-MX") : "—"}</p>}
+          ) : <p className="text-sm text-white">{socio.contratoInicio ? (() => { const iso = typeof socio.contratoInicio === "string" ? socio.contratoInicio : (socio.contratoInicio as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}</p>}
         </div>
         <div>
           <FieldLabel>Vencimiento de contrato</FieldLabel>
@@ -237,7 +247,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
               socio.contratoFin && (new Date(socio.contratoFin).getTime() - Date.now()) / 86400000 < 30
                 ? "text-red-400" : "text-white"
             }`}>
-              {socio.contratoFin ? new Date(socio.contratoFin).toLocaleDateString("es-MX") : "—"}
+              {socio.contratoFin ? (() => { const iso = typeof socio.contratoFin === "string" ? socio.contratoFin : (socio.contratoFin as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
             </p>
           )}
         </div>
@@ -259,10 +269,15 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
             <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
               <input type="checkbox" checked={r.completado}
                 onChange={async (e) => {
-                  await fetch(`/api/socios/${socio.id}/requisitos`, {
+                  const res = await fetch(`/api/socios/${socio.id}/requisitos`, {
                     method: "PATCH", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id: r.id, completado: e.target.checked }),
                   });
+                  if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    toast.error(d.error ?? "Error al guardar");
+                    return;
+                  }
                   reload();
                 }}
                 className="w-4 h-4 accent-[#B3985B]" />
@@ -290,6 +305,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
 
 // ─── Tab: Activos ─────────────────────────────────────────────────────────────
 function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const toast = useToast();
   const confirm = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -302,13 +318,24 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
     e.preventDefault();
     setSaving(true);
     const url = editId ? `/api/socios/${socio.id}/activos/${editId}` : `/api/socios/${socio.id}/activos`;
-    await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setForm(EMPTY_A); setShowForm(false); setEditId(null); setSaving(false); reload();
   };
 
   const eliminar = async (id: string) => {
     if (!await confirm({ message: "¿Dar de baja este activo?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/socios/${socio.id}/activos/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/socios/${socio.id}/activos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     reload();
   };
 
@@ -331,19 +358,14 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
           Equipos — {activos.length} registrados
         </p>
-        {!showForm && (
           <button onClick={() => { setForm(EMPTY_A); setEditId(null); setShowForm(true); }}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Agregar equipo
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <form onSubmit={guardar} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-            {editId ? "Editar equipo" : "Nuevo equipo"}
-          </p>
+      <Modal open={showForm} onClose={() => { setShowForm(false); setEditId(null); }} title={editId ? "Editar equipo" : "Nuevo equipo"}>
+        <form onSubmit={guardar} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
             { label: "Nombre *", key: "nombre", span: 2 },
             { label: "Categoría", key: "categoria", sel: ["AUDIO","ILUMINACION","VIDEO","ESTRUCTURAS","ACCESORIOS","OTRO"] },
@@ -372,16 +394,14 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
             <FieldLabel>Notas</FieldLabel>
             <DarkInput value={form.notas} onChange={(v) => f("notas", v)} />
           </div>
-          <div className="col-span-3 flex items-center gap-3">
+          <div className="col-span-3 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving || !form.nombre.trim()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : editId ? "Actualizar" : "Agregar"}
             </button>
-            <button type="button" onClick={() => { setShowForm(false); setEditId(null); }}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {activos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
@@ -448,6 +468,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
 
 // ─── Tab: Rentas ──────────────────────────────────────────────────────────────
 function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]; reload: () => void }) {
+  const toast = useToast();
   const confirm = useConfirm();
   const [rentas, setRentas] = useState<Renta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -480,13 +501,24 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/rentas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(`/api/socios/${socio.id}/rentas`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setShowForm(false); setSaving(false); cargar();
   };
 
   const eliminar = async (id: string) => {
     if (!await confirm({ message: "¿Eliminar este registro?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/socios/${socio.id}/rentas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     cargar();
   };
 
@@ -513,7 +545,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
             className="bg-[#0d0d0d] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
           />
         </div>
-        {!showForm && activos.length > 0 && (
+        {activos.length > 0 && (
           <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Registrar renta
@@ -527,9 +559,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
         </div>
       )}
 
-      {showForm && activos.length > 0 && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <p className="col-span-3 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nueva renta</p>
+      <Modal open={showForm && activos.length > 0} onClose={() => setShowForm(false)} title="Nueva renta">
+        <form onSubmit={crear} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="col-span-2">
             <FieldLabel>Evento / descripción *</FieldLabel>
             <DarkInput value={form.descripcion} required onChange={(v) => setForm((p) => ({ ...p, descripcion: v }))}
@@ -562,16 +593,14 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
               <div><span className="text-[#555]">Mainstage ({pctM}%): </span><span className="text-[#B3985B] font-semibold">{fmt(preview.mainstage)}</span></div>
             </div>
           )}
-          <div className="col-span-3 flex items-center gap-3">
+          <div className="col-span-3 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>
@@ -624,24 +653,36 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
 
 // ─── Tab: Reportes ────────────────────────────────────────────────────────────
 function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
+  const toast = useToast();
   const [genMes, setGenMes] = useState(now.getMonth() + 1);
   const [genAnio, setGenAnio] = useState(now.getFullYear());
   const [generating, setGenerating] = useState(false);
 
   const generar = async () => {
     setGenerating(true);
-    await fetch(`/api/socios/${socio.id}/reportes`, {
+    const res = await fetch(`/api/socios/${socio.id}/reportes`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mes: genMes, anio: genAnio }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setGenerating(false);
+      return;
+    }
     setGenerating(false);
     reload();
   };
 
   const cambiarEstado = async (id: string, estado: string) => {
-    await fetch(`/api/socios/${socio.id}/reportes/${id}`, {
+    const res = await fetch(`/api/socios/${socio.id}/reportes/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     reload();
   };
 
@@ -728,6 +769,7 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
 
 // ─── Tab: Mantenimiento ───────────────────────────────────────────────────────
 function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] }) {
+  const toast = useToast();
   const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -749,7 +791,13 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
   const crear = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    await fetch(`/api/socios/${socio.id}/mantenimientos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const res = await fetch(`/api/socios/${socio.id}/mantenimientos`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
     setForm(EMPTY_M); setShowForm(false); setSaving(false); cargar();
   };
 
@@ -763,17 +811,14 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Mantenimiento</p>
-        {!showForm && (
           <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Registrar
           </button>
-        )}
       </div>
 
-      {showForm && (
-        <form onSubmit={crear} className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-5 mb-5 grid grid-cols-2 gap-4">
-          <p className="col-span-2 text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Nuevo registro</p>
+      <Modal open={showForm} onClose={() => setShowForm(false)} title="Nuevo registro de mantenimiento">
+        <form onSubmit={crear} className="grid grid-cols-2 gap-4">
           <div>
             <FieldLabel>Equipo *</FieldLabel>
             <DarkSelect value={form.activoId} onChange={(v) => f("activoId", v)}
@@ -812,16 +857,14 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
               <DarkInput type="number" value={form.costoSocio} onChange={(v) => f("costoSocio", v)} />
             </div>
           </div>
-          <div className="col-span-2 flex items-center gap-3">
+          <div className="col-span-2 flex items-center gap-3 mt-4">
             <button type="submit" disabled={saving}
               className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
               {saving ? "Guardando..." : "Registrar"}
             </button>
-            <button type="button" onClick={() => setShowForm(false)}
-              className="text-gray-500 hover:text-white text-sm transition-colors px-3">Cancelar</button>
           </div>
         </form>
-      )}
+      </Modal>
 
       {loading ? (
         <div className="text-center py-8 text-gray-600 text-sm">Cargando...</div>
@@ -839,7 +882,7 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
                 <p className="text-[#555] text-xs mt-0.5">
                   {m.activo.codigoInventario} — {m.activo.nombre}
                   {m.realizadoPor && ` · ${m.realizadoPor}`}
-                  {m.fechaEjecucion && ` · ${new Date(m.fechaEjecucion).toLocaleDateString("es-MX")}`}
+                  {m.fechaEjecucion && ` · ${(() => { const iso = typeof m.fechaEjecucion === "string" ? m.fechaEjecucion : (m.fechaEjecucion as Date).toISOString(); const [y, mo, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, mo - 1, d).toLocaleDateString("es-MX"); })()}`}
                 </p>
               </div>
               {m.costoTotal > 0 && (
@@ -957,7 +1000,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
             {config.creditoFechaInicio && (
               <div className="flex justify-between">
                 <span className="text-[#555]">Inicio</span>
-                <span className="text-white font-semibold">{new Date(config.creditoFechaInicio).toLocaleDateString("es-MX")}</span>
+                <span className="text-white font-semibold">{(() => { const iso = typeof config.creditoFechaInicio === "string" ? config.creditoFechaInicio : (config.creditoFechaInicio as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })()}</span>
               </div>
             )}
           </div>
@@ -1034,7 +1077,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
                   <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorAdquisicion)}</td>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
                   <td className="px-4 py-3 text-[#555] text-xs">
-                    {a.fechaAdquisicion ? new Date(a.fechaAdquisicion).toLocaleDateString("es-MX") : "—"}
+                    {a.fechaAdquisicion ? (() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <span className={`text-[10px] ${a.activo ? "text-green-400" : "text-gray-600"}`}>
@@ -1181,6 +1224,7 @@ export default function SocioDetallePage() {
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto">
+      <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${

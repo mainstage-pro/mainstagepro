@@ -16,8 +16,8 @@ interface AgendaData {
 }
 
 function diasHasta(fecha: string) {
-  const d = Math.ceil((new Date(fecha.substring(0, 10) + "T12:00:00Z").getTime() - Date.now()) / 86400000);
-  return d;
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  return Math.round((new Date(fecha.substring(0, 10)).getTime() - new Date(hoy).getTime()) / 86400000);
 }
 
 function fmtFecha(f: string) {

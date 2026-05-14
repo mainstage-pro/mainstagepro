@@ -6,7 +6,8 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const ahora = new Date();
+  const ahora      = new Date();
+  const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const en7  = new Date(ahora.getTime() + 7  * 86400000);
   const en14 = new Date(ahora.getTime() + 14 * 86400000);
   const en30 = new Date(ahora.getTime() + 30 * 86400000);
@@ -74,7 +75,7 @@ export async function GET() {
     prisma.cuentaCobrar.findMany({
       where: {
         estado: { in: ["PENDIENTE", "PARCIAL"] },
-        fechaCompromiso: { gte: ahora, lte: new Date(ahora.getTime() + 5 * 86400000) },
+        fechaCompromiso: { gte: inicioDeHoy, lte: new Date(ahora.getTime() + 5 * 86400000) },
       },
       select: { id: true, monto: true, montoCobrado: true, fechaCompromiso: true, concepto: true, cliente: { select: { nombre: true, telefono: true } }, proyecto: { select: { id: true, nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },
@@ -85,7 +86,7 @@ export async function GET() {
     prisma.cuentaPagar.findMany({
       where: {
         estado: { in: ["PENDIENTE", "PARCIAL"] },
-        fechaCompromiso: { gte: ahora, lte: new Date(ahora.getTime() + 3 * 86400000) },
+        fechaCompromiso: { gte: inicioDeHoy, lte: new Date(ahora.getTime() + 3 * 86400000) },
       },
       select: { id: true, monto: true, concepto: true, fechaCompromiso: true, tecnico: { select: { nombre: true } }, proveedor: { select: { nombre: true } } },
       orderBy: { fechaCompromiso: "asc" },

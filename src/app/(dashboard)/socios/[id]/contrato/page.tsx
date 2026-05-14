@@ -1,12 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
+import { BackButton } from "@/components/BackButton";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 
 const fmtDate = (d: Date | null | string | undefined) => {
   if (!d) return "_______________";
-  return new Date(d).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  const iso = typeof d === "string" ? d : (d as Date).toISOString();
+  const [y, m, day] = iso.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, day).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 };
 
 const CAT_LABEL: Record<string, string> = {
@@ -67,6 +70,9 @@ export default async function ContratoPage({ params }: { params: Promise<{ id: s
       </head>
       <body>
         {/* Botón imprimir (oculto al imprimir) */}
+        <div className="no-print" style={{ position: "fixed", top: 16, left: 16, zIndex: 99 }}>
+          <div className="mb-2"><BackButton /></div>
+        </div>
         <div className="no-print" style={{ position: "fixed", top: 16, right: 16, zIndex: 99 }}>
           <button
             onClick={() => { if (typeof window !== "undefined") window.print(); }}

@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
+import { Modal } from "@/components/Modal";
 
 const GOLD = "#B3985B";
 const PLANES: Record<string, { label: string; color: string }> = {
@@ -29,6 +31,7 @@ interface Levantamiento {
   colaboradoresCamara: boolean | null; colaboradoresNombres: string | null;
   objetivosContenido: string | null; temasSugeridos: string | null;
   redesSocialesCliente: string | null; notasAdicionales: string | null;
+  scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
   trato: {
     id: string; etapa: string; tipoEvento: string; tipoServicio: string | null;
     cliente: { nombre: string; empresa: string | null; telefono: string | null };
@@ -39,7 +42,8 @@ interface Levantamiento {
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
-  return new Date(s).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 }
 function fmtMes(s: string) {
   const [y, m] = s.split("-");
@@ -56,6 +60,7 @@ function diasRestantes(fecha: string | null) {
 }
 
 export default function LevantamientosPage() {
+  const toast = useToast();
   const [mes, setMes] = useState(mesActual());
   const [levantamientos, setLevantamientos] = useState<Levantamiento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +72,11 @@ export default function LevantamientosPage() {
   const [showForm, setShowForm] = useState(false);
   const [formActivo, setFormActivo] = useState({ tipo: "FOTO", nombre: "", url: "", descripcion: "", estado: "ENTREGADO" });
   const [savingActivo, setSavingActivo] = useState(false);
+
+  // Score foto/video
+  const [score, setScore] = useState<number>(0);
+  const [recomendacion, setRecomendacion] = useState<string>("");
+  const [savingScore, setSavingScore] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,11 +90,30 @@ export default function LevantamientosPage() {
 
   async function loadActivos(lev: Levantamiento) {
     setSelected(lev);
+    setScore(lev.scoreFotoVideo ?? 0);
+    setRecomendacion(lev.recomendacionFotoVideo ?? "");
     setLoadingActivos(true);
     const r = await fetch(`/api/activos-evento?levantamientoId=${lev.id}`);
     const d = await r.json();
     setActivos(d.activos ?? []);
     setLoadingActivos(false);
+  }
+
+  async function guardarScore() {
+    if (!selected) return;
+    setSavingScore(true);
+    const res = await fetch(`/api/levantamiento-contenido/${selected.tratoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scoreFotoVideo: score || null, recomendacionFotoVideo: recomendacion || null }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setSelected(prev => prev ? { ...prev, scoreFotoVideo: d.levantamiento.scoreFotoVideo, recomendacionFotoVideo: d.levantamiento.recomendacionFotoVideo } : prev);
+      setLevantamientos(prev => prev.map(l => l.id === selected.id ? { ...l, scoreFotoVideo: d.levantamiento.scoreFotoVideo, recomendacionFotoVideo: d.levantamiento.recomendacionFotoVideo } : l));
+      toast.success("Score guardado");
+    }
+    setSavingScore(false);
   }
 
   async function saveActivo() {
@@ -105,16 +134,26 @@ export default function LevantamientosPage() {
   }
 
   async function patchActivo(id: string, estado: string) {
-    await fetch(`/api/activos-evento/${id}`, {
+    const res = await fetch(`/api/activos-evento/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     setActivos(prev => prev.map(a => a.id === id ? { ...a, estado } : a));
   }
 
   async function deleteActivo(id: string) {
-    await fetch(`/api/activos-evento/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/activos-evento/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     setActivos(prev => prev.filter(a => a.id !== id));
   }
 
@@ -209,6 +248,11 @@ export default function LevantamientosPage() {
                         {dias !== null && dias < 0 && (
                           <span className="text-[10px] text-white/25 px-2 py-0.5 rounded-full bg-white/5">Realizado</span>
                         )}
+                        {lev.scoreFotoVideo != null && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${lev.scoreFotoVideo >= 9 ? "bg-emerald-900/40 text-emerald-400" : lev.scoreFotoVideo >= 7 ? "bg-[#B3985B]/15 text-[#B3985B]" : lev.scoreFotoVideo >= 5 ? "bg-amber-900/30 text-amber-400" : "bg-red-900/30 text-red-400"}`}>
+                            ★ {lev.scoreFotoVideo}/10
+                          </span>
+                        )}
                       </div>
                       <p className="text-white font-semibold text-base leading-tight">{lev.nombreEvento || "Sin nombre"}</p>
                       <p className="text-white/40 text-xs mt-1">{lev.trato.cliente.nombre}{lev.trato.cliente.empresa ? ` · ${lev.trato.cliente.empresa}` : ""}</p>
@@ -256,17 +300,17 @@ export default function LevantamientosPage() {
               </p>
             )}
             <button
-              onClick={() => setShowForm(f => !f)}
+              onClick={() => setShowForm(true)}
               className="mt-3 w-full py-2 rounded-xl text-xs font-semibold transition-colors"
-              style={{ background: showForm ? "rgba(255,255,255,0.05)" : GOLD, color: showForm ? "rgba(255,255,255,0.6)" : "#000" }}
+              style={{ background: GOLD, color: "#000" }}
             >
-              {showForm ? "Cancelar" : "+ Agregar activo"}
+              + Agregar activo
             </button>
           </div>
 
           {/* Form nuevo activo */}
-          {showForm && (
-            <div className="px-5 py-4 border-b border-white/8 space-y-3 bg-white/[0.02]">
+          <Modal open={showForm} onClose={() => setShowForm(false)} title="Agregar activo">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-white/30 block mb-1">Tipo</label>
@@ -308,7 +352,7 @@ export default function LevantamientosPage() {
                 {savingActivo ? "Guardando..." : "Guardar activo"}
               </button>
             </div>
-          )}
+          </Modal>
 
           {/* Lista activos */}
           <div className="flex-1 px-5 py-4 space-y-3">
@@ -354,6 +398,43 @@ export default function LevantamientosPage() {
                 );
               })
             )}
+          </div>
+
+          {/* Score foto/video */}
+          <div className="px-5 py-4 border-t border-white/8 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-white/40 uppercase tracking-widest font-semibold">Score foto / video</p>
+              {selected.scoreFotoVideo != null && (
+                <span className={`text-sm font-bold ${selected.scoreFotoVideo >= 9 ? "text-emerald-400" : selected.scoreFotoVideo >= 7 ? "text-[#B3985B]" : selected.scoreFotoVideo >= 5 ? "text-amber-400" : "text-red-400"}`}>
+                  {selected.scoreFotoVideo}/10
+                </span>
+              )}
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {[0,1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button key={n} onClick={() => setScore(n)}
+                  className={`w-7 h-7 rounded text-xs font-bold transition-all ${score === n
+                    ? n === 0 ? "bg-white/10 text-white/40" : n >= 9 ? "bg-emerald-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-amber-600 text-black" : "bg-red-700 text-white"
+                    : "bg-white/5 text-white/30 hover:bg-white/10 hover:text-white/60"}`}>
+                  {n === 0 ? "—" : n}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={recomendacion}
+              onChange={e => setRecomendacion(e.target.value)}
+              rows={2}
+              placeholder="Recomendación para próximos eventos (fotógrafo, estilo, indicaciones…)"
+              className="w-full bg-black/40 border border-white/10 text-white text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/60 placeholder-white/20 resize-none"
+            />
+            <button
+              onClick={guardarScore}
+              disabled={savingScore}
+              className="w-full py-2 rounded-xl text-xs font-semibold disabled:opacity-40 transition-colors"
+              style={{ background: "rgba(179,152,91,0.15)", color: GOLD, border: "1px solid rgba(179,152,91,0.3)" }}
+            >
+              {savingScore ? "Guardando..." : "Guardar score"}
+            </button>
           </div>
         </div>
       )}

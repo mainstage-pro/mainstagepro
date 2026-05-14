@@ -59,9 +59,21 @@ export default function CuentasPage() {
     if (!form.nombre.trim()) return;
     setSaving(true);
     if (editId) {
-      await fetch(`/api/cuentas/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch(`/api/cuentas/${editId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     } else {
-      await fetch("/api/cuentas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      const res = await fetch("/api/cuentas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        setSaving(false);
+        return;
+      }
     }
     await load();
     cancelForm();
@@ -69,14 +81,19 @@ export default function CuentasPage() {
   }
 
   async function toggleActiva(c: CuentaBancaria) {
-    await fetch(`/api/cuentas/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activa: !c.activa }) });
+    const res = await fetch(`/api/cuentas/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activa: !c.activa }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      return;
+    }
     await load();
   }
 
   async function guardarSaldoInicial() {
     if (!saldoModal || !saldoMonto) return;
     setGuardandoSaldo(true);
-    await fetch("/api/movimientos", {
+    const res = await fetch("/api/movimientos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -89,6 +106,12 @@ export default function CuentasPage() {
         notas: "Registro de saldo inicial",
       }),
     });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al registrar");
+      setGuardandoSaldo(false);
+      return;
+    }
     setSaldoModal(null);
     setSaldoMonto("");
     setGuardandoSaldo(false);
@@ -97,7 +120,12 @@ export default function CuentasPage() {
 
   async function deleteCuenta(id: string) {
     if (!await confirm({ message: "¿Eliminar esta cuenta bancaria?", danger: true, confirmText: "Eliminar" })) return;
-    await fetch(`/api/cuentas/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/cuentas/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
     toast.success("Cuenta eliminada");
     await load();
   }
