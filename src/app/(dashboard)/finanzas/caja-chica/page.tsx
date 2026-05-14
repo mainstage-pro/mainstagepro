@@ -25,14 +25,143 @@ interface Movimiento {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(s).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 }
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
 
-// ── Componente ────────────────────────────────────────────────────────────────
+// ── Modal editar ──────────────────────────────────────────────────────────────
+
+function ModalEditar({
+  mov,
+  categorias,
+  onClose,
+  onSaved,
+}: {
+  mov: Movimiento;
+  categorias: Categoria[];
+  onClose: () => void;
+  onSaved: (updated: Movimiento) => void;
+}) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    concepto:   mov.concepto,
+    monto:      String(mov.monto),
+    fecha:      mov.fecha.substring(0, 10),
+    categoriaId: mov.categoria?.id ?? "",
+    notas:      mov.notas ?? "",
+  });
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.concepto || !form.monto || !form.fecha) {
+      toast.error("Concepto, monto y fecha son requeridos");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r = await fetch(`/api/movimientos/${mov.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await r.json();
+      if (!r.ok) { toast.error(data.error ?? "Error al guardar"); return; }
+      toast.success("Movimiento actualizado");
+      onSaved({ ...mov, ...data.movimiento, categoria: categorias.find(c => c.id === form.categoriaId) ?? null });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div className="w-full max-w-md bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1e1e1e]">
+          <h3 className="text-white font-semibold text-sm">Editar movimiento</h3>
+          <button onClick={onClose} className="text-gray-600 hover:text-white transition-colors text-lg leading-none">✕</button>
+        </div>
+
+        <form onSubmit={guardar} className="p-5 space-y-4">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Concepto</label>
+            <input
+              className={inputCls}
+              value={form.concepto}
+              onChange={e => setForm(f => ({ ...f, concepto: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Monto</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input
+                  className={inputCls + " pl-7"}
+                  type="number" step="0.01" min="0.01"
+                  value={form.monto}
+                  onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
+              <input
+                className={inputCls}
+                type="date"
+                value={form.fecha}
+                onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Categoría</label>
+            <Combobox
+              value={form.categoriaId}
+              onChange={v => setForm(f => ({ ...f, categoriaId: v }))}
+              options={[{ value: "", label: "Sin categoría" }, ...categorias.map(c => ({ value: c.id, label: c.nombre }))]}
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Notas</label>
+            <input
+              className={inputCls}
+              placeholder="Opcional"
+              value={form.notas}
+              onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button
+              type="submit"
+              disabled={guardando}
+              className="flex-1 bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-lg transition-colors"
+            >
+              {guardando ? "Guardando…" : "Guardar cambios"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Componente principal ──────────────────────────────────────────────────────
 
 export default function CajaChicaPage() {
   const toast = useToast();
@@ -42,6 +171,7 @@ export default function CajaChicaPage() {
   const [loading, setLoading]       = useState(true);
   const [mostrarForm, setMostrarForm] = useState(false);
   const [guardando, setGuardando]   = useState(false);
+  const [editando, setEditando]     = useState<Movimiento | null>(null);
 
   const [form, setForm] = useState({
     concepto: "", monto: "", fecha: hoy(), categoriaId: "", notas: "",
@@ -92,6 +222,18 @@ export default function CajaChicaPage() {
     } finally {
       setGuardando(false);
     }
+  }
+
+  // ── Eliminar ──────────────────────────────────────────────────────────────
+
+  async function eliminar(mov: Movimiento) {
+    if (!confirm(`¿Eliminar "${mov.concepto}"? Esta acción no se puede deshacer.`)) return;
+    const r = await fetch(`/api/movimientos/${mov.id}`, { method: "DELETE" });
+    const data = await r.json();
+    if (!r.ok) { toast.error(data.error ?? "Error al eliminar"); return; }
+    toast.success("Movimiento eliminado");
+    setMovs(prev => prev.filter(m => m.id !== mov.id));
+    setSaldo(prev => prev !== null ? prev + mov.monto : prev);
   }
 
   // ── Saldo UI ──────────────────────────────────────────────────────────────
@@ -191,9 +333,7 @@ export default function CajaChicaPage() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
                 <input
                   className={inputCls + " pl-7"}
-                  type="number"
-                  step="0.01"
-                  min="0.01"
+                  type="number" step="0.01" min="0.01"
                   placeholder="0.00"
                   value={form.monto}
                   onChange={e => setForm(f => ({ ...f, monto: e.target.value }))}
@@ -266,32 +406,19 @@ export default function CajaChicaPage() {
         ) : (
           <div className="divide-y divide-[#1a1a1a]">
             {movs.map(m => {
-              const esSalida = m.cuentaOrigen?.id === "caja-chica-mainstage";
               const esTrans  = m.tipo === "TRANSFERENCIA";
-
-              // Determine sign: transfer IN = positive, gasto OUT = negative
-              let signo: "+" | "-" = "-";
-              let colorMonto = "text-red-400";
-              if (esTrans) {
-                // If destino is caja chica, it's a deposit
-                if (m.cuentaDestino?.id === "caja-chica-mainstage") {
-                  signo = "+"; colorMonto = "text-green-400";
-                } else {
-                  signo = "-"; colorMonto = "text-orange-400";
-                }
-              }
+              const esDeposito = esTrans && m.cuentaDestino?.id === "caja-chica-mainstage";
+              const signo: "+" | "-" = esDeposito ? "+" : "-";
+              const colorMonto = esDeposito ? "text-green-400" : esTrans ? "text-orange-400" : "text-red-400";
+              const esEditable = !esTrans;
 
               return (
-                <div key={m.id} className="flex items-center gap-4 px-5 py-3 hover:bg-[#151515] transition-colors">
+                <div key={m.id} className="group flex items-center gap-4 px-5 py-3 hover:bg-[#151515] transition-colors">
                   {/* Tipo badge */}
                   <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                    esTrans && m.cuentaDestino?.id === "caja-chica-mainstage"
-                      ? "bg-green-900/40 text-green-300"
-                      : esTrans
-                      ? "bg-orange-900/40 text-orange-300"
-                      : "bg-red-900/40 text-red-300"
+                    esDeposito ? "bg-green-900/40 text-green-300" : esTrans ? "bg-orange-900/40 text-orange-300" : "bg-red-900/40 text-red-300"
                   }`}>
-                    {esTrans && m.cuentaDestino?.id === "caja-chica-mainstage" ? "↓" : esTrans ? "↑" : "G"}
+                    {esDeposito ? "↓" : esTrans ? "↑" : "G"}
                   </div>
 
                   {/* Info */}
@@ -308,14 +435,32 @@ export default function CajaChicaPage() {
                       {m.creadoPor && (
                         <span className="text-[10px] text-gray-700">{m.creadoPor}</span>
                       )}
+                      {m.notas && <span className="text-[10px] text-gray-600 truncate max-w-[160px]">{m.notas}</span>}
                     </div>
-                    {m.notas && <p className="text-gray-600 text-xs mt-0.5 truncate">{m.notas}</p>}
                   </div>
 
-                  {/* Monto */}
-                  <p className={`shrink-0 text-sm font-bold ${colorMonto}`}>
-                    {signo}{formatCurrency(m.monto)}
-                  </p>
+                  {/* Monto + acciones */}
+                  <div className="shrink-0 flex items-center gap-2">
+                    {esEditable && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setEditando(m)}
+                          className="text-[11px] text-gray-500 hover:text-[#B3985B] px-2 py-1 rounded transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => eliminar(m)}
+                          className="text-[11px] text-gray-500 hover:text-red-400 px-2 py-1 rounded transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    )}
+                    <p className={`text-sm font-bold ${colorMonto}`}>
+                      {signo}{formatCurrency(m.monto)}
+                    </p>
+                  </div>
                 </div>
               );
             })}
@@ -332,6 +477,21 @@ export default function CajaChicaPage() {
           <strong className="text-[#B3985B]">Caja Chica</strong>. El saldo se actualizará automáticamente.
         </p>
       </div>
+
+      {/* ── Modal editar ────────────────────────────────────────────────────── */}
+      {editando && (
+        <ModalEditar
+          mov={editando}
+          categorias={categorias}
+          onClose={() => setEditando(null)}
+          onSaved={updated => {
+            setMovs(prev => prev.map(m => m.id === updated.id ? updated : m));
+            setEditando(null);
+            toast.success("Movimiento actualizado");
+            load();
+          }}
+        />
+      )}
     </div>
   );
 }
