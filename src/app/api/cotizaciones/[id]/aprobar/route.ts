@@ -81,10 +81,15 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   // Generar número de proyecto: PRY-YYYY-NNN
   const year = new Date().getFullYear();
-  const count = await prisma.proyecto.count({
+  const lastProyecto = await prisma.proyecto.findFirst({
     where: { numeroProyecto: { startsWith: `PRY-${year}-` } },
+    orderBy: { numeroProyecto: "desc" },
+    select: { numeroProyecto: true },
   });
-  const numeroProyecto = `PRY-${year}-${String(count + 1).padStart(3, "0")}`;
+  const nextNum = lastProyecto
+    ? parseInt(lastProyecto.numeroProyecto.split("-")[2]) + 1
+    : 1;
+  const numeroProyecto = `PRY-${year}-${String(nextNum).padStart(3, "0")}`;
 
   // Fechas para CxC
   const hoy = new Date();
