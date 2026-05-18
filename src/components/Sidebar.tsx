@@ -218,6 +218,7 @@ interface User {
   name: string;
   email: string;
   role: string;
+  area?: string | null;
 }
 
 interface SidebarProps {
@@ -329,8 +330,20 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     router.refresh();
   }
 
+  const AREA_DASHBOARD: Record<string, string> = {
+    DIRECCION:      "/dashboard/direccion",
+    ADMINISTRACION: "/dashboard/administracion",
+    MARKETING:      "/dashboard/marketing",
+    VENTAS:         "/dashboard/ventas",
+    PRODUCCION:     "/dashboard/produccion",
+    RRHH:           "/dashboard/rrhh",
+  };
+  const dashboardHref = (!isAdmin && user.area && AREA_DASHBOARD[user.area])
+    ? AREA_DASHBOARD[user.area]
+    : "/dashboard";
+
   function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
     return pathname.startsWith(href);
   }
 
@@ -419,10 +432,11 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                       </div>
                     );
                   }
+                  const href = item.href === "/dashboard" ? dashboardHref : item.href!;
                   return (
                     <Link
                       key={item.href}
-                      href={item.href!}
+                      href={href}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
                         isActive(item.href!)
                           ? "bg-[#1a1a1a] text-white font-semibold"
@@ -470,7 +484,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
       {/* DESKTOP */}
       <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
-          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
+          <Link href={dashboardHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
@@ -519,7 +533,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
         </button>
         <NotificacionesBell />
         {/* RIGHT: logo + new task */}
-        <Link href="/dashboard" className="flex-1 flex min-w-0 justify-end">
+        <Link href={dashboardHref} className="flex-1 flex min-w-0 justify-end">
           <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
         </Link>
         <button
@@ -549,7 +563,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
         }`}
       >
         <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-          <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link href={dashboardHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
