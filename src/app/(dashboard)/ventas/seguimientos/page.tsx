@@ -20,6 +20,38 @@ type Seguimiento = {
   trato: Trato;
 };
 
+type TratoEnRevision = {
+  id: string;
+  etapa: string;
+  nombreEvento: string | null;
+  createdAt: string;
+  clienteNombre: string;
+  clienteEmpresa: string | null;
+};
+
+type TratoSinMovimiento = {
+  id: string;
+  etapa: string;
+  nombreEvento: string | null;
+  createdAt: string;
+  etapaCambiadaEn: string | null;
+  cliente: { nombre: string; empresa: string | null };
+  seguimientos: { fechaCompletado: string | null }[];
+};
+
+function nextTuesdayOrThursday() {
+  const d = new Date();
+  const day = d.getDay();
+  const daysUntilTue = (2 - day + 7) % 7 || 7;
+  const daysUntilThu = (4 - day + 7) % 7 || 7;
+  d.setDate(d.getDate() + Math.min(daysUntilTue, daysUntilThu));
+  return d.toISOString().substring(0, 10);
+}
+
+function fmtDias(isoDate: string) {
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
+}
+
 const CANAL_ICON: Record<string, string> = {
   whatsapp: "📱",
   llamada: "📞",
@@ -31,6 +63,10 @@ const CANAL_LABEL: Record<string, string> = {
   llamada: "Llamada",
   reunion: "Reunión",
 };
+
+function fmtFechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
 
 function fmtFecha(iso: string) {
   const d = new Date(iso);
@@ -49,6 +85,192 @@ function BadgeTipo({ tipo, numero }: { tipo: string; numero: number | null }) {
     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#666] border border-[#2a2a2a] font-semibold">
       Manual
     </span>
+  );
+}
+
+function TratoRevisionCard({ t, onResuelto }: { t: TratoEnRevision; onResuelto: () => void }) {
+  const [loading, setLoading] = useState(false);
+
+  async function resolver(accion: "continuar" | "nurturing" | "perder") {
+    setLoading(true);
+    await fetch("/api/tratos/en-revision", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tratoId: t.id, accion }),
+    });
+    setLoading(false);
+    onResuelto();
+  }
+
+  return (
+    <div className="bg-[#111] border border-orange-900/30 rounded-xl p-4">
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-900/20 text-orange-400 border border-orange-900/30 font-semibold">
+              En revisión
+            </span>
+            <span className="text-[10px] text-[#555] uppercase tracking-wider">
+              {t.etapa === "DESCUBRIMIENTO" ? "Descubrimiento" : "Oportunidad"}
+            </span>
+          </div>
+          <p className="text-white text-sm font-medium">{t.clienteNombre}</p>
+          {t.nombreEvento && <p className="text-[#666] text-xs">{t.nombreEvento}</p>}
+        </div>
+        <Link href={`/crm/tratos/${t.id}`} className="text-[#B3985B] text-xs hover:underline shrink-0">Ver →</Link>
+      </div>
+      <p className="text-[#666] text-xs mb-3">Los 3 seguimientos automáticos se completaron sin cierre. ¿Qué hacemos con este trato?</p>
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => resolver("continuar")}
+          disabled={loading}
+          className="flex-1 min-w-[80px] py-1.5 rounded-lg text-xs font-semibold bg-[#1a1a1a] border border-[#2a2a2a] text-white hover:border-[#B3985B] transition-colors disabled:opacity-40"
+        >
+          Continuar prospecto
+        </button>
+        <button
+          onClick={() => resolver("nurturing")}
+          disabled={loading}
+          className="flex-1 min-w-[80px] py-1.5 rounded-lg text-xs font-semibold bg-[#1a1a1a] border border-[#2a2a2a] text-blue-400 hover:border-blue-700 transition-colors disabled:opacity-40"
+        >
+          Pasar a nurturing
+        </button>
+        <button
+          onClick={() => resolver("perder")}
+          disabled={loading}
+          className="flex-1 min-w-[80px] py-1.5 rounded-lg text-xs font-semibold bg-[#1a1a1a] border border-[#2a2a2a] text-red-400 hover:border-red-700 transition-colors disabled:opacity-40"
+        >
+          Marcar perdido
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SinMovimientoCard({ t }: { t: TratoSinMovimiento }) {
+  const refDate = t.seguimientos[0]?.fechaCompletado ?? t.etapaCambiadaEn ?? t.createdAt;
+  const dias = fmtDias(refDate);
+  return (
+    <Link
+      href={`/crm/tratos/${t.id}`}
+      className="flex items-center gap-4 bg-[#111] border border-red-900/30 rounded-xl p-4 hover:border-red-700/50 transition-colors"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/20 text-red-400 border border-red-900/30 font-semibold">
+            Sin seguimiento
+          </span>
+          <span className="text-[10px] text-[#555] uppercase tracking-wider">
+            {t.etapa === "DESCUBRIMIENTO" ? "Descubrimiento" : "Oportunidad"}
+          </span>
+        </div>
+        <p className="text-white text-sm font-medium truncate">{t.cliente.nombre}</p>
+        {t.nombreEvento && <p className="text-[#666] text-xs truncate">{t.nombreEvento}</p>}
+        {t.seguimientos[0]?.fechaCompletado && (
+          <p className="text-[#444] text-[11px] mt-1">Último contacto: {fmtFechaCorta(t.seguimientos[0].fechaCompletado)}</p>
+        )}
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-red-400 text-xl font-bold">{dias}d</p>
+        <p className="text-[#555] text-[10px]">sin contacto</p>
+      </div>
+    </Link>
+  );
+}
+
+function ModalPropuesta({
+  tratoId,
+  fecha,
+  setFecha,
+  canal,
+  setCanal,
+  onSave,
+  onSkip,
+}: {
+  tratoId: string;
+  fecha: string;
+  setFecha: (f: string) => void;
+  canal: string;
+  setCanal: (c: string) => void;
+  onSave: () => void;
+  onSkip: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!fecha) return;
+    setSaving(true);
+    await fetch("/api/seguimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tratoId,
+        titulo: "Seguimiento",
+        canal,
+        fechaProgramada: new Date(`${fecha}T10:00:00`).toISOString(),
+      }),
+    });
+    setSaving(false);
+    onSave();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={e => e.target === e.currentTarget && onSkip()}
+    >
+      <div className="bg-[#111] border border-[#222] rounded-2xl p-6 w-full max-w-sm">
+        <p className="text-white font-semibold mb-1">¿Agendar siguiente contacto?</p>
+        <p className="text-[#666] text-xs mb-5">Se sugiere el próximo martes o jueves.</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-[#666] text-xs uppercase tracking-wider block mb-1">Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={e => setFecha(e.target.value)}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+
+          <div>
+            <label className="text-[#666] text-xs uppercase tracking-wider block mb-1">Canal</label>
+            <div className="flex gap-2">
+              {["whatsapp", "llamada", "reunion"].map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCanal(c)}
+                  className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                    canal === c
+                      ? "bg-[#B3985B] border-[#B3985B] text-black"
+                      : "bg-[#0d0d0d] border-[#2a2a2a] text-[#666] hover:text-white"
+                  }`}
+                >
+                  {CANAL_ICON[c]} {CANAL_LABEL[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onSkip}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold border border-[#2a2a2a] text-[#555] hover:text-white transition-colors"
+            >
+              Omitir
+            </button>
+            <button
+              onClick={save}
+              disabled={saving || !fecha}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black transition-colors"
+            >
+              {saving ? "…" : "Agendar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -314,9 +536,14 @@ function ModalNuevo({ onClose, onSave }: { onClose: () => void; onSave: () => vo
 
 export default function SeguimientosPage() {
   const [todos, setTodos] = useState<Seguimiento[]>([]);
+  const [sinMovimiento, setSinMovimiento] = useState<TratoSinMovimiento[]>([]);
+  const [enRevision, setEnRevision] = useState<TratoEnRevision[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("todos");
   const [showModal, setShowModal] = useState(false);
+  const [propuestaSig, setPropuestaSig] = useState<{ segId: string; tratoId: string } | null>(null);
+  const [propuestaFecha, setPropuestaFecha] = useState("");
+  const [propuestaCanal, setPropuestaCanal] = useState("whatsapp");
 
   const load = useCallback(async () => {
     const urls = [
@@ -325,7 +552,11 @@ export default function SeguimientosPage() {
       "/api/seguimientos?filtro=semana",
       "/api/seguimientos?filtro=completados-hoy",
     ];
-    const results = await Promise.all(urls.map(u => fetch(u).then(r => r.json())));
+    const [results, sinMov, revision] = await Promise.all([
+      Promise.all(urls.map(u => fetch(u).then(r => r.json()))),
+      fetch("/api/tratos/sin-seguimiento").then(r => r.json()).catch(() => ({ tratos: [] })),
+      fetch("/api/tratos/en-revision").then(r => r.json()).catch(() => ({ tratos: [] })),
+    ]);
     const combined: Seguimiento[] = [
       ...results[0].seguimientos,
       ...results[1].seguimientos,
@@ -335,6 +566,8 @@ export default function SeguimientosPage() {
     // Dedup
     const seen = new Set<string>();
     setTodos(combined.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; }));
+    setSinMovimiento(sinMov.tratos ?? []);
+    setEnRevision(revision.tratos ?? []);
     setLoading(false);
   }, []);
 
@@ -346,6 +579,12 @@ export default function SeguimientosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completado: true, notaResultado: notaResultado || null }),
     });
+    const seg = todos.find(s => s.id === id);
+    if (seg) {
+      setPropuestaSig({ segId: id, tratoId: seg.tratoId });
+      setPropuestaFecha(nextTuesdayOrThursday());
+      setPropuestaCanal("whatsapp");
+    }
     load();
   }
 
@@ -402,13 +641,19 @@ export default function SeguimientosPage() {
       <div className="mb-6">
         <h1 className="text-xl font-bold text-white mb-1">Seguimientos</h1>
         {!loading && (
-          <p className="text-[#555] text-sm">
+          <p className="text-[#555] text-sm flex flex-wrap gap-x-1">
             {vencidos.length > 0 && <span className="text-red-400 font-medium">{vencidos.length} vencidos</span>}
-            {vencidos.length > 0 && hoySegs.length > 0 && <span className="text-[#333]"> · </span>}
+            {vencidos.length > 0 && hoySegs.length > 0 && <span className="text-[#333]">·</span>}
             {hoySegs.length > 0 && <span className="text-[#B3985B] font-medium">{hoySegs.length} hoy</span>}
-            {(vencidos.length > 0 || hoySegs.length > 0) && semanaSegs.length > 0 && <span className="text-[#333]"> · </span>}
+            {(vencidos.length > 0 || hoySegs.length > 0) && semanaSegs.length > 0 && <span className="text-[#333]">·</span>}
             {semanaSegs.length > 0 && <span className="text-[#6b7280]">{semanaSegs.length} esta semana</span>}
-            {total === 0 && <span className="text-green-400">Todo al día ✓</span>}
+            {sinMovimiento.length > 0 && (
+              <>
+                {(vencidos.length > 0 || hoySegs.length > 0 || semanaSegs.length > 0) && <span className="text-[#333]">·</span>}
+                <span className="text-red-400 font-medium">{sinMovimiento.length} sin movimiento</span>
+              </>
+            )}
+            {total === 0 && sinMovimiento.length === 0 && <span className="text-green-400">Todo al día ✓</span>}
           </p>
         )}
       </div>
@@ -456,7 +701,43 @@ export default function SeguimientosPage() {
           <GroupSection title="Esta semana" color="text-blue-400" segs={sSec} onComplete={handleComplete} onDelete={handleDelete} />
           <GroupSection title="Completados hoy" color="text-green-400" segs={cSec} onComplete={handleComplete} onDelete={handleDelete} />
 
-          {vSec.length === 0 && hSec.length === 0 && sSec.length === 0 && cSec.length === 0 && (
+          {/* Bloque 7 — tratos en revisión (3 seguimientos auto sin cierre) */}
+          {enRevision.length > 0 && filtro === "todos" && (
+            <div className="mt-2">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-orange-400">Requieren decisión</h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-orange-400 bg-orange-900/20 border border-orange-900/30">
+                  {enRevision.length}
+                </span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
+              </div>
+              <div className="space-y-2 mb-6">
+                {enRevision.map(t => (
+                  <TratoRevisionCard key={t.id} t={t} onResuelto={load} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Bloque 5 — tratos sin actividad en 7+ días */}
+          {sinMovimiento.length > 0 && filtro === "todos" && (
+            <div className="mt-2">
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-red-400">Sin seguimiento</h2>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold text-red-400 bg-red-900/20 border border-red-900/30">
+                  {sinMovimiento.length}
+                </span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
+              </div>
+              <div className="space-y-2 mb-6">
+                {sinMovimiento.map(t => (
+                  <SinMovimientoCard key={t.id} t={t} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {vSec.length === 0 && hSec.length === 0 && sSec.length === 0 && cSec.length === 0 && sinMovimiento.length === 0 && enRevision.length === 0 && (
             <div className="text-center py-16 text-[#333]">
               <p className="text-4xl mb-3">✓</p>
               <p className="text-[#555]">Sin seguimientos en esta vista</p>
@@ -476,6 +757,19 @@ export default function SeguimientosPage() {
       </div>
 
       {showModal && <ModalNuevo onClose={() => setShowModal(false)} onSave={load} />}
+
+      {/* Bloque 6 — propuesta de siguiente seguimiento */}
+      {propuestaSig && (
+        <ModalPropuesta
+          tratoId={propuestaSig.tratoId}
+          fecha={propuestaFecha}
+          setFecha={setPropuestaFecha}
+          canal={propuestaCanal}
+          setCanal={setPropuestaCanal}
+          onSave={() => { setPropuestaSig(null); load(); }}
+          onSkip={() => setPropuestaSig(null)}
+        />
+      )}
     </div>
   );
 }

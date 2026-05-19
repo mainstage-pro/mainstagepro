@@ -63,6 +63,14 @@ const ORIGEN_VENTA_OPTIONS = [
   { value: "ASIGNADO",       label: "Cliente asignado (5%+5%)" },
 ];
 
+function nextTuesday() {
+  const d = new Date();
+  const day = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const daysUntilTuesday = (2 - day + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysUntilTuesday);
+  return d.toISOString().substring(0, 10);
+}
+
 export default function NuevoTratoPage() {
   const router = useRouter();
   // step 0 = gate, 1 = datos cliente + ruta, 2 = detalles servicio
@@ -76,6 +84,7 @@ export default function NuevoTratoPage() {
   const clienteInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [primerSeg, setPrimerSeg] = useState({ fecha: nextTuesday(), canal: "whatsapp", nota: "" });
 
   const [s1, setS1] = useState({
     clienteId: "", clasificacionOriginal: "PROSPECTO",
@@ -98,15 +107,22 @@ export default function NuevoTratoPage() {
     setError(""); return true;
   }
 
+  function validarPrimerSeg() {
+    if (!primerSeg.fecha) { setError("Define la fecha del primer seguimiento"); return false; }
+    return true;
+  }
+
   async function crearNurturing() {
     if (!validarCliente()) return;
     if (!s1.origenLead) { setError("Selecciona cómo encontraste al prospecto"); return; }
+    if (!validarPrimerSeg()) return;
     setLoading(true); setError("");
     const payload: Record<string,unknown> = {
       ...s1,
-      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
+      vendedorId: s1.vendedorId || undefined,
       tipoProspecto: "NURTURING",
       canalAtencion: null,
+      primerSeguimiento: { fecha: primerSeg.fecha, canal: primerSeg.canal, nota: primerSeg.nota || null },
     };
     if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
     try {
@@ -119,13 +135,15 @@ export default function NuevoTratoPage() {
 
   async function crearActivo(sinDetalles = false) {
     if (!sinDetalles && !s2.tipoServicio) { setError("Selecciona el tipo de servicio"); return; }
+    if (!validarPrimerSeg()) return;
     setError(""); setLoading(true);
     const payload: Record<string,unknown> = {
       ...s1,
       ...(sinDetalles ? {} : s2),
-      vendedorId: s1.vendedorId || undefined,  // undefined = API uses session.id
+      vendedorId: s1.vendedorId || undefined,
       tipoProspecto: "ACTIVO",
       asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
+      primerSeguimiento: { fecha: primerSeg.fecha, canal: primerSeg.canal, nota: primerSeg.nota || null },
     };
     if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
     try {
@@ -377,6 +395,40 @@ export default function NuevoTratoPage() {
             </div>
           </div>
 
+          {/* PRIMER SEGUIMIENTO — obligatorio */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Primer seguimiento *</h2>
+            <p className="text-[11px] text-gray-500 mb-4">Obligatorio — define cuándo es el primer contacto con este prospecto</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 sm:col-span-1">
+                <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+                <input
+                  type="date"
+                  value={primerSeg.fecha}
+                  onChange={e => setPrimerSeg(p => ({ ...p, fecha: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <label className="text-xs text-gray-500 mb-1 block">Tipo de contacto</label>
+                <div className="flex gap-2">
+                  {[{ v: "whatsapp", l: "WhatsApp", i: "💬" }, { v: "llamada", l: "Llamada", i: "📞" }, { v: "reunion", l: "Reunión", i: "🤝" }].map(c => (
+                    <button key={c.v} type="button" onClick={() => setPrimerSeg(p => ({ ...p, canal: c.v }))}
+                      className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${primerSeg.canal === c.v ? "bg-[#B3985B] border-[#B3985B] text-black" : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-500 hover:text-white"}`}>
+                      {c.i} {c.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs text-gray-500 mb-1 block">Nota (opcional)</label>
+                <input value={primerSeg.nota} onChange={e => setPrimerSeg(p => ({ ...p, nota: e.target.value }))}
+                  placeholder="Ej: Llamar para conocer detalles del evento"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-3 justify-between pb-4">
             <button onClick={()=>{setStep(0);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
             {tipoProspecto === "NURTURING" ? (
@@ -385,11 +437,11 @@ export default function NuevoTratoPage() {
               </button>
             ) : (
               <div className="flex items-center gap-2">
-                <button onClick={()=>{if(validarCliente()) crearActivo(true);}} disabled={loading}
+                <button onClick={()=>{if(validarCliente() && validarPrimerSeg()) crearActivo(true);}} disabled={loading}
                   className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
                   {loading ? "Guardando..." : "Guardar sin detalles"}
                 </button>
-                <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
+                <button onClick={()=>{if(validarCliente() && validarPrimerSeg())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
                   Siguiente → ¿Qué busca?
                 </button>
               </div>

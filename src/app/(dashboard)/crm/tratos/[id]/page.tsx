@@ -134,8 +134,7 @@ const PASOS_DISCOVERY_FULL = [
   { id: 1, icon: "📋", label: "Básico" },
   { id: 2, icon: "✨", label: "Servicios" },
   { id: 3, icon: "📊", label: "Detalles" },
-  { id: 4, icon: "🗺️", label: "Scouting" },
-  { id: 5, icon: "📸", label: "Contenido" },
+  { id: 4, icon: "📸", label: "Contenido" },
 ];
 const PASOS_DISCOVERY_RENTA = [
   { id: 1, icon: "📋", label: "Básico" },
@@ -2074,96 +2073,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
 
-              {/* Horarios del evento */}
-              <div className="col-span-2 space-y-3">
-                {(() => {
-                  const camposCliente: string[] = trato?.camposCliente ? JSON.parse(trato.camposCliente) : [];
-                  const badge = (campo: string) =>
-                    camposCliente.includes(campo)
-                      ? <span className="ml-1.5 text-[9px] bg-blue-900/30 text-blue-400 border border-blue-800/40 px-1.5 py-0.5 rounded font-semibold">cliente</span>
-                      : null;
-                  return (
-                    <>
-                      {discForm.tipoServicio !== "RENTA" && (
-                      <div>
-                        <label className="text-xs text-gray-400 block mb-2">
-                          Horarios del evento
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1">
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Inicio del evento {badge("horaInicioEvento")}
-                            </label>
-                            <TimePicker value={discForm.horaInicioEvento} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Hora inicio" />
-                          </div>
-                          <span className="text-gray-600 text-sm pt-4">→</span>
-                          <div className="flex-1">
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Fin del evento {badge("horaFinEvento")}
-                            </label>
-                            <TimePicker value={discForm.horaFinEvento} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Hora fin" />
-                          </div>
-                        </div>
-                      </div>
-                      )}
-
-                      <div>
-                        {/* Ventana montaje/desmontaje — solo en Oportunidad+ (cuando cotización está siendo preparada) */}
-                        {trato.etapa === "OPORTUNIDAD" && (
-                          <>
-                            <label className="text-xs text-gray-400 block mb-2">Ventana de montaje</label>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1">
-                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Primer acceso {badge("ventanaMontajeInicio")}
-                                </label>
-                                <TimePicker value={discForm.ventanaMontajeInicio} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeInicio: v }))} placeholder="Hora más temprana" />
-                              </div>
-                              <span className="text-gray-600 text-sm pt-4">→</span>
-                              <div className="flex-1">
-                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Límite montaje {badge("ventanaMontajeFin")}
-                                </label>
-                                <TimePicker value={discForm.ventanaMontajeFin} onChange={v => setDiscForm(p => ({ ...p, ventanaMontajeFin: v }))} placeholder="Hora máxima" />
-                              </div>
-                              <div className="flex-1">
-                                <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                                  Salida desmontaje {badge("horaTerminoMontaje")}
-                                </label>
-                                <TimePicker value={discForm.horaTerminoMontaje} onChange={v => setDiscForm(p => ({ ...p, horaTerminoMontaje: v }))} placeholder="Hora de salida" />
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Coordinador del venue — solo en Oportunidad+ */}
-                      {trato.etapa === "OPORTUNIDAD" && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Coordinador del venue {badge("contactoVenueNombre")}
-                            </label>
-                            <input value={discForm.contactoVenueNombre}
-                              onChange={e => setDiscForm(p => ({ ...p, contactoVenueNombre: e.target.value }))}
-                              placeholder="Nombre del contacto"
-                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          </div>
-                          <div>
-                            <label className="text-[10px] text-gray-500 mb-1 flex items-center">
-                              Teléfono coordinador {badge("contactoVenueTelefono")}
-                            </label>
-                            <input value={discForm.contactoVenueTelefono}
-                              onChange={e => setDiscForm(p => ({ ...p, contactoVenueTelefono: e.target.value }))}
-                              placeholder="55 1234 5678"
-                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
             </div>
 
             </div>)} {/* /paso1 */}
@@ -2446,77 +2355,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>)} {/* /paso3 */}
 
 
-            {/* PASO 4: Scouting del venue (solo producción técnica / no-renta) */}
-            {discForm.tipoServicio !== "RENTA" && pasoActivo === 4 && (<div className="space-y-4">
-              <>
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-gray-300">¿Aplica scouting?</p>
-                  <button onClick={() => setScoutingAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
-                  <button onClick={() => setScoutingAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${scoutingAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
-                </div>
-                {scoutingAplica === false && <p className="text-gray-600 text-xs italic">No se requiere scouting presencial para este proyecto.</p>}
-                {(scoutingAplica === true || trato.scoutingData) && (<div className="space-y-5">
-                  <div className="flex gap-1">
-                    {(["form", "resumen"] as const).map(t => (
-                      <button key={t} onClick={() => setScoutingTab(t)} className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scoutingTab === t ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
-                        {t === "form" ? "Editar ficha" : "Ver resumen"}
-                      </button>
-                    ))}
-                  </div>
-                  {scoutingTab === "resumen" && trato.scoutingData && (() => {
-                    const s = scoutingForm;
-                    const row = (label: string, val: string) => val ? <div key={label} className="flex gap-2 text-sm"><span className="text-gray-500 min-w-[150px]">{label}</span><span className="text-white">{val}</span></div> : null;
-                    return <div className="space-y-4">
-                      {s.nombreVenue && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Venue</p><div className="space-y-1 pl-2">{row("Nombre", s.nombreVenue)}{row("Dirección", s.direccion)}{row("Contacto", s.contactoVenue)}</div></div>}
-                      {(s.largo || s.ancho) && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Espacio</p><div className="space-y-1 pl-2">{row("Dimensiones", `${s.largo || "?"}m × ${s.ancho || "?"}m`)}{row("Altura", s.alturaMaxima ? `${s.alturaMaxima}m` : "")}{row("Capacidad", s.capacidadPersonas ? `${s.capacidadPersonas} personas` : "")}</div></div>}
-                      {s.notasScouting && <div><p className="text-[#B3985B] text-xs font-semibold uppercase mb-2">Notas</p><p className="text-sm text-gray-300 pl-2">{s.notasScouting}</p></div>}
-                    </div>;
-                  })()}
-                  {scoutingTab === "form" && <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input value={scoutingForm.nombreVenue} onChange={e => setScoutingForm(p => ({ ...p, nombreVenue: e.target.value }))} placeholder="Nombre del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.direccion} onChange={e => setScoutingForm(p => ({ ...p, direccion: e.target.value }))} placeholder="Dirección" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.contactoVenue} onChange={e => setScoutingForm(p => ({ ...p, contactoVenue: e.target.value }))} placeholder="Encargado del venue" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                      <input value={scoutingForm.telefonoVenue} onChange={e => setScoutingForm(p => ({ ...p, telefonoVenue: e.target.value }))} placeholder="Teléfono del encargado" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    </div>
-                    <textarea value={scoutingForm.notasScouting} onChange={e => setScoutingForm(p => ({ ...p, notasScouting: e.target.value }))} rows={3} placeholder="Notas del scouting: accesos, restricciones, condiciones especiales..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                  </div>}
-                </div>)}
-              </>
-
-              {/* Fotos del venue — siempre visible */}
-              <div className="border-t border-[#1a1a1a] pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">Fotos del venue / scouting</p>
-                    <p className="text-[11px] text-gray-600 mt-0.5">Fotos del lugar, accesos, instalaciones eléctricas, etc.</p>
-                  </div>
-                  <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "SCOUTING" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                    {uploadingTipo === "SCOUTING" ? "Subiendo..." : "+ Agregar fotos"}
-                    <input type="file" className="hidden" accept="image/*" multiple onChange={e => subirArchivo(e, "SCOUTING")} />
-                  </label>
-                </div>
-                {archivos.filter(a => a.tipo === "SCOUTING").length === 0 ? (
-                  <p className="text-gray-700 text-[11px] italic">Sin fotos aún</p>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {archivos.filter(a => a.tipo === "SCOUTING").map((a) => (
-                      <div key={a.id} className="group relative bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
-                        <a href={a.url} target="_blank" rel="noreferrer">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover hover:opacity-90 transition-opacity" />
-                        </a>
-                        <button onClick={() => eliminarArchivo(a.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-red-400 text-xs items-center justify-center hidden group-hover:flex hover:bg-red-900/60 transition-colors">×</button>
-                        <p className="px-2 py-1 text-gray-600 text-[10px] truncate border-t border-[#1a1a1a]">{a.nombre}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>)} {/* /paso4 */}
-
-            {/* PASO 5 (no-renta) / PASO 3 (renta): Brief de contenido */}
-            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 5) && (<div className="space-y-4">
+            {/* PASO 4 (no-renta) / PASO 3 (renta): Brief de contenido */}
+            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
               <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
                 <button onClick={() => setBriefAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>

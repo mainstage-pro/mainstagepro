@@ -124,6 +124,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Crear primer seguimiento obligatorio
+    if (body.primerSeguimiento?.fecha) {
+      const ps = body.primerSeguimiento;
+      await prisma.seguimiento.create({
+        data: {
+          tratoId: trato.id,
+          tipo: "manual",
+          numero: 0,
+          canal: ps.canal || "whatsapp",
+          titulo: "Primer contacto",
+          nota: ps.nota || null,
+          fechaProgramada: new Date(`${ps.fecha}T10:00:00`),
+        },
+      });
+    }
+
     return NextResponse.json({ trato });
   } catch (error) {
     console.error(error);
