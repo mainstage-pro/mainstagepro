@@ -88,6 +88,7 @@ const NAV: NavSection[] = [
           { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
           { key: "finanzas-reporte", label: "Reporte y rentabilidad", href: "/finanzas/reporte" },
           { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
+          { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
         ],
       },
       {
@@ -196,7 +197,6 @@ const NAV: NavSection[] = [
           { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
           { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
           { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
-          { key: "inv-analisis", label: "Análisis de uso", href: "/inventario/analisis" },
         ],
       },
       {
@@ -411,7 +411,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.filter(c => !c.adminOnly || isAdmin).map((child) => {
+                            {item.children.filter(c => (!c.adminOnly || isAdmin) && canAccess(c.key, isAdmin, userModuleKeys)).map((child) => {
                               const childLabel = resolveLabel(child.key, child.label, labels);
                               return (
                                 <Link
