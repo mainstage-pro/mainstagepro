@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/mauriciohernandez/mainstage-pro && DIRTY=$(git status --porcelain 2>/dev/null); AHEAD=$(git log origin/main..HEAD --oneline 2>/dev/null | wc -l | tr -d ' '); MSG=''; if [ -n \"$DIRTY\" ]; then MSG=\"⚠️  HAY CAMBIOS SIN COMMITEAR:\\n$(git status --short)\\n\\nHaz commit o stash antes de que Claude edite archivos, o esos cambios se perderán al hacer push.\"; fi; if [ \"$AHEAD\" -gt 0 ]; then [ -n \"$MSG\" ] && MSG=\"$MSG\\n\\n\"; MSG=\"${MSG}📤 Hay $AHEAD commit(s) sin hacer push a origin/main.\"; fi; if [ -n \"$MSG\" ]; then echo \"{\\\"systemMessage\\\": \\\"$MSG\\\"}\"; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

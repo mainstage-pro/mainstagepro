@@ -37,8 +37,6 @@ const NAV: NavSection[] = [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "operaciones",        label: "Módulo de tareas", href: "/operaciones" },
       { key: "plan-de-trabajo",    label: "Plan de trabajo",   href: "/plan-de-trabajo" },
-      { key: "proyectos-internos", label: "Proyectos",         href: "/proyectos-internos" },
-      { key: "backlog",            label: "Backlog",           href: "/backlog" },
     ],
   },
 
