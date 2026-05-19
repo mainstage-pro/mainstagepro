@@ -53,6 +53,14 @@ export const CONFIG_SEED = [
   { key: "precios.descuentosVolumen", section: "precios", label: "Descuentos por volumen",   type: "json",    orden: 9,  value: JSON.stringify([{min:0,max:24999,pct:0},{min:25000,max:49999,pct:5},{min:50000,max:74999,pct:7},{min:75000,max:99999,pct:9},{min:100000,max:null,pct:11}]), description: "Array de rangos: [{min, max, pct}]. max null = sin límite" },
   { key: "precios.descuentosMultidia",section: "precios", label: "Descuentos multidía",      type: "json",    orden: 10, value: JSON.stringify([{dias:1,pct:0},{dias:2,pct:10},{dias:3,pct:15},{dias:4,pct:20},{dias:5,pct:25}]), description: "Array de días: [{dias, pct}]" },
 
+  // ── DESCUENTOS ────────────────────────────────────────────────────────────────
+  { key: "descuentos.umbralVolumen",       section: "descuentos", label: "Umbral descuento por volumen ($)", type: "number",   orden: 1, value: "30000", description: "Si equipos Mainstage superan este monto, se activa el descuento automáticamente" },
+  { key: "descuentos.pctVolumen",          section: "descuentos", label: "Porcentaje descuento volumen",     type: "number",   orden: 2, value: "10",    description: "% aplicado cuando se activa descuento por volumen" },
+  { key: "descuentos.pctB2b",             section: "descuentos", label: "Porcentaje descuento B2B",         type: "number",   orden: 3, value: "10",    description: "% aplicado a clientes tipo B2B (sobre equipos neto-volumen)" },
+  { key: "descuentos.pctPagoAnticipado",  section: "descuentos", label: "Porcentaje pago anticipado",       type: "number",   orden: 4, value: "5",     description: "% de descuento sobre equipos neto cuando cliente paga anticipado" },
+  { key: "descuentos.maxManual",          section: "descuentos", label: "Máximo descuento manual (%)",      type: "number",   orden: 5, value: "30",    description: "Porcentaje máximo permitido en descuento manual" },
+  { key: "descuentos.textoPagoAnticipado",section: "descuentos", label: "Texto sección pago anticipado",    type: "textarea", orden: 6, value: "Si realizas el pago total del servicio antes de la fecha límite, aplicamos un descuento adicional del {pct}% sobre equipos Mainstage.", description: "Aparece en PDF cuando la opción de pago anticipado está activa" },
+
   // ── MAINSTAGE TRADE ───────────────────────────────────────────────────────
   { key: "trade.niveles", section: "trade", label: "Niveles Trade", type: "json", orden: 1, value: JSON.stringify([
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial", pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento", "1 mención en redes sociales", "2 a 4 accesos al evento", "Acceso a métricas de alcance post-evento"] },

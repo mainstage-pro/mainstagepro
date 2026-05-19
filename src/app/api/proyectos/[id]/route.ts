@@ -268,6 +268,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  // ── Auto-crear levantamiento de contenido al marcar COMPLETADO ──
+  if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
+    const levExistente = await prisma.levantamientoContenido.findUnique({ where: { tratoId: proyecto.tratoId } });
+    if (!levExistente) {
+      const clienteNombre = await prisma.cliente.findUnique({ where: { id: proyecto.clienteId }, select: { nombre: true } });
+      await prisma.levantamientoContenido.create({
+        data: {
+          tratoId: proyecto.tratoId,
+          nombreEvento: proyecto.nombre,
+          nombreCliente: clienteNombre?.nombre ?? null,
+          fecha: proyecto.fechaEvento,
+          planCobertura: "BASICO",
+          notasAdicionales: "Pendiente de material",
+        },
+      });
+    }
+  }
+
   // ── Auto-crear CxP para técnicos con pago pendiente al marcar COMPLETADO ──
   if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
     const personalPendiente = await prisma.proyectoPersonal.findMany({

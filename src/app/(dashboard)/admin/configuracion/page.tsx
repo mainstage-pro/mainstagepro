@@ -46,16 +46,17 @@ const ETIQUETAS = [
 ];
 
 const SECCION_LABELS: Record<string, string> = {
-  empresa:    "Empresa",
-  banco:      "Datos bancarios",
-  precios:    "Precios y descuentos",
-  trade:      "Mainstage Trade",
-  proyectos:  "Proyectos",
-  alertas:    "Alertas y notificaciones",
-  inventario: "Inventario",
-  plantillas: "Plantillas de mensajes",
-  contratos:  "Contratos",
-  general:    "General",
+  empresa:      "Empresa",
+  banco:        "Datos bancarios",
+  precios:      "Precios y descuentos",
+  descuentos:   "Descuentos",
+  trade:        "Mainstage Trade",
+  proyectos:    "Proyectos",
+  alertas:      "Alertas y notificaciones",
+  inventario:   "Inventario",
+  plantillas:   "Plantillas de mensajes",
+  contratos:    "Contratos",
+  general:      "General",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
