@@ -45,6 +45,8 @@ interface Trato {
   formToken: string | null;
   formEstado: string;
   formRespuestas: string | null;
+  briefToken: string | null;
+  briefRecibidoEn: string | null;
   rutaEntrada: string | null;
   // Descubrimiento
   canalAtencion: string | null;
@@ -1298,6 +1300,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setCambiarCliente(false);
   }
 
+  async function generarBriefToken() {
+    const res = await fetch(`/api/tratos/${id}/brief`, { method: "POST" });
+    if (!res.ok) return;
+    const data = await res.json();
+    setTrato(prev => prev ? { ...prev, briefToken: data.token, briefRecibidoEn: null } : prev);
+  }
+
   async function generarFormToken() {
     setGenerandoToken(true);
     const res = await fetch(`/api/tratos/${id}/form-token`, { method: "POST" });
@@ -1381,6 +1390,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const canalInfo = getCanal(trato.canalAtencion ?? "");
 
   const formUrl = trato.formToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/f/${trato.formToken}` : "";
+  const briefUrl = trato.briefToken ? `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/brief/${trato.briefToken}` : "";
   const _telefono = trato.cliente.telefono?.replace(/\D/g, "");
   const waUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${trato.cliente.nombre.split(" ")[0]}, para prepararte una propuesta personalizada necesito que completes este breve formulario: ${formUrl}`)}` : null;
 
@@ -1585,6 +1595,94 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-white text-sm font-semibold">{accion.titulo}</p>
               <p className="text-gray-400 text-xs mt-0.5">{accion.desc}</p>
             </div>
+          </div>
+        );
+      })()}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          BRIEF DEL CLIENTE
+      ══════════════════════════════════════════════════════════════════════ */}
+      {trato.tipoProspecto === "ACTIVO" && (() => {
+        // Estado B — brief recibido
+        if (trato.briefRecibidoEn) {
+          const fecha = new Date(trato.briefRecibidoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+          return (
+            <div className="bg-[#0d0d0d] border border-green-800/40 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-lg">✅</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold">Brief recibido</p>
+                  <p className="text-green-400/70 text-xs">El cliente completó el formulario el {fecha}</p>
+                </div>
+                <button
+                  onClick={generarBriefToken}
+                  className="text-[10px] text-[#555] hover:text-white transition-colors shrink-0"
+                >
+                  Regenerar
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // Estado A — sin brief o pendiente
+        const nombre1 = trato.cliente.nombre.split(" ")[0];
+        const waBrief = _telefono && briefUrl
+          ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${nombre1} 👋, para prepararte la mejor propuesta para tu evento necesito que llenes este breve formulario (toma menos de 2 minutos): ${briefUrl}`)}`
+          : null;
+
+        return (
+          <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full bg-[#B3985B]/10 flex items-center justify-center text-base">📋</div>
+                <div>
+                  <p className="text-white text-sm font-semibold">Brief del cliente</p>
+                  <p className="text-[#555] text-xs">Pide al cliente que comparta los detalles de su evento</p>
+                </div>
+              </div>
+            </div>
+
+            {briefUrl ? (
+              <div className="space-y-2">
+                {/* Link copiable */}
+                <div className="flex items-center gap-2 bg-[#111] border border-[#222] rounded-lg px-3 py-2">
+                  <span className="text-[#666] text-xs truncate flex-1 font-mono">{briefUrl}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(briefUrl); }}
+                    className="text-[#B3985B] text-xs hover:underline shrink-0"
+                  >
+                    Copiar
+                  </button>
+                </div>
+                {/* Botones de acción */}
+                <div className="flex gap-2">
+                  {waBrief && (
+                    <a
+                      href={waBrief}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
+                    >
+                      <span>📱</span> Enviar por WhatsApp
+                    </a>
+                  )}
+                  <button
+                    onClick={generarBriefToken}
+                    className="text-xs text-[#555] hover:text-white transition-colors px-2"
+                  >
+                    Regenerar link
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={generarBriefToken}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 transition-colors"
+              >
+                + Generar link de brief
+              </button>
+            )}
           </div>
         );
       })()}

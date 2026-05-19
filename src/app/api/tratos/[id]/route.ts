@@ -13,11 +13,23 @@ async function ensureVendedorId() {
   _vendedorColReady = true;
 }
 
+let _briefColsReady = false;
+async function ensureBriefCols() {
+  if (_briefColsReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefToken" TEXT UNIQUE`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefRecibidoEn" TIMESTAMP`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "requiereRevision" BOOLEAN NOT NULL DEFAULT false`);
+  } catch { /* already exists */ }
+  _briefColsReady = true;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   await ensureVendedorId();
+  await ensureBriefCols();
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({
