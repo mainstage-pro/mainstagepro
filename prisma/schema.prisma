@@ -48,6 +48,7 @@ model User {
   planTrabajoActividades PlanTrabajoActividad[] @relation("PlanTrabajoResponsable")
   proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
   backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
+  equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
 
   @@map("users")
 }
@@ -592,8 +593,21 @@ model Equipo {
   checklistBodegaItems ChecklistBodegaItem[]
   unidades             EquipoUnidad[]
   accesorios           EquipoAccesorio[]
+  notasEquipo          EquipoNota[]
 
   @@map("equipos")
+}
+
+model EquipoNota {
+  id          String   @id @default(cuid())
+  equipoId    String
+  equipo      Equipo   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  contenido   String
+  creadoPorId String
+  creadoPor   User     @relation("EquipoNotasCreadas", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@map("equipo_notas")
 }
 
 // Biblioteca permanente de accesorios por equipo (persiste entre proyectos)

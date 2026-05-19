@@ -31,6 +31,13 @@ type Accesorio = {
   categoria: string | null;
 };
 
+type EquipoNota = {
+  id: string;
+  contenido: string;
+  createdAt: string;
+  creadoPor: { id: string; name: string };
+};
+
 type Equipo = {
   id: string;
   descripcion: string;
@@ -49,6 +56,7 @@ type Equipo = {
   categoria: { id: string; nombre: string };
   proveedorDefault: { id: string; nombre: string; correo: string | null; telefono: string | null } | null;
   accesorios: Accesorio[];
+  notasEquipo: EquipoNota[];
   mantenimientos: Array<{
     id: string; fecha: string; tipo: string;
     accionRealizada: string; estadoEquipo: string;
@@ -296,6 +304,104 @@ function AccesorioRow({ a, editing, editNombre, editCat, onStartEdit, onEditNomb
   );
 }
 
+function NotasSection({ equipoId, initial }: { equipoId: string; initial: EquipoNota[] }) {
+  const toast = useToast();
+  const [notas, setNotas] = useState<EquipoNota[]>(initial);
+  const [texto, setTexto] = useState("");
+  const [saving, setSaving] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  async function addNota() {
+    if (!texto.trim()) return;
+    setSaving(true);
+    const r = await fetch(`/api/equipos/${equipoId}/notas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contenido: texto.trim() }),
+    });
+    if (!r.ok) { toast.error("Error al guardar nota"); setSaving(false); return; }
+    const d = await r.json();
+    if (d.nota) setNotas(prev => [d.nota, ...prev]);
+    setTexto("");
+    setSaving(false);
+  }
+
+  async function deleteNota(id: string) {
+    setNotas(prev => prev.filter(n => n.id !== id));
+    const r = await fetch(`/api/equipos/${equipoId}/notas/${id}`, { method: "DELETE" });
+    if (!r.ok) {
+      toast.error("Error al eliminar");
+      const reload = await fetch(`/api/equipos/${equipoId}/notas`, { cache: "no-store" }).catch(() => null);
+      if (reload?.ok) { const d = await reload.json(); if (d.notas) setNotas(d.notas); }
+    }
+  }
+
+  function fmtFecha(iso: string) {
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
+          Notas {notas.length > 0 && <span className="text-[#555] font-normal">({notas.length})</span>}
+        </h2>
+      </div>
+
+      {/* Agregar nota */}
+      <div className="mb-4">
+        <textarea
+          ref={textareaRef}
+          value={texto}
+          onChange={e => setTexto(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNota(); }}
+          placeholder="Escribe una nota sobre este equipo…"
+          rows={3}
+          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors"
+        />
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[10px] text-[#3a3a3a]">⌘ + Enter para guardar</span>
+          <button
+            onClick={addNota}
+            disabled={saving || !texto.trim()}
+            className="px-3 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold rounded-lg transition-colors"
+          >
+            {saving ? "Guardando…" : "Agregar nota"}
+          </button>
+        </div>
+      </div>
+
+      {/* Lista de notas */}
+      {notas.length === 0 ? (
+        <p className="text-[#333] text-xs text-center py-4">Aún no hay notas para este equipo</p>
+      ) : (
+        <div className="space-y-3">
+          {notas.map(n => (
+            <div key={n.id} className="group flex items-start gap-3 p-3 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]">
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm leading-relaxed whitespace-pre-wrap">{n.contenido}</p>
+                <p className="text-[#444] text-[10px] mt-1.5">
+                  {n.creadoPor.name} · {fmtFecha(n.createdAt)}
+                </p>
+              </div>
+              <button
+                onClick={() => deleteNota(n.id)}
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-[#444] hover:text-red-400 p-0.5 mt-0.5 shrink-0"
+                title="Eliminar nota"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -398,6 +504,9 @@ export default function EquipoFichaPage() {
 
       {/* Accesorios */}
       <AccesoriosSection equipoId={equipo.id} initial={equipo.accesorios} />
+
+      {/* Notas */}
+      <NotasSection equipoId={equipo.id} initial={equipo.notasEquipo} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Proyectos */}
