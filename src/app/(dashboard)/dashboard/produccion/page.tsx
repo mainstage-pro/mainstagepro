@@ -195,7 +195,7 @@ export default async function DashboardProduccionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/proyectos/${p.id}/plan`} onClick={e => e.stopPropagation()}
+                        <Link href={`/proyectos/${p.id}/plan`}
                           className={`text-[10px] font-bold ${p.planProduccionAprobado ? "text-green-400" : dias <= 3 ? "text-red-400 underline" : "text-[#555] hover:text-[#B3985B]"}`}>
                           {p.planProduccionAprobado ? "Aprobado" : "Ver plan"}
                         </Link>
