@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma db push && next build",
+  "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && next build",
   "crons": [
     {
       "path": "/api/cron/reporte-semanal",
