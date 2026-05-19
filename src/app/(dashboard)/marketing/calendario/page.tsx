@@ -76,8 +76,14 @@ function parseDate(fecha: string): Date {
 const FORM_EMPTY = {
   fecha: "", tipoId: "", descripcion: "", copy: "",
   enFacebook: false, enInstagram: false, enTiktok: false, enYoutube: false,
-  materialLink: "", portadaUrl: "", portadaUrlB: "", colaboradores: "", estado: "PENDIENTE", comentarios: "",
+  materialLink: "", colaboradores: "", estado: "PENDIENTE", comentarios: "",
 };
+
+function parseImagenes(portadaUrl: string | null): string[] {
+  if (!portadaUrl) return [];
+  try { const arr = JSON.parse(portadaUrl); return Array.isArray(arr) ? arr : [portadaUrl]; }
+  catch { return [portadaUrl]; }
+}
 
 export default function MarketingCalendarioPage() {
   const confirm = useConfirm();
@@ -97,18 +103,22 @@ export default function MarketingCalendarioPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [cancelandoId, setCancelandoId] = useState<string | null>(null);
   const [cancelRazon, setCancelRazon] = useState("");
-  const [uploadingPortada, setUploadingPortada] = useState<"A" | "B" | null>(null);
+  const [formImagenes, setFormImagenes] = useState<string[]>([]);
+  const [uploadingNew, setUploadingNew] = useState(false);
+  const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
 
-  async function uploadPortada(file: File, slot: "A" | "B") {
-    setUploadingPortada(slot);
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (res.ok) {
-      const { url } = await res.json();
-      setForm(prev => slot === "A" ? { ...prev, portadaUrl: url } : { ...prev, portadaUrlB: url });
+  async function uploadImagenes(files: FileList | File[]) {
+    setUploadingNew(true);
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const { url } = await res.json();
+        setFormImagenes(prev => [...prev, url]);
+      }
     }
-    setUploadingPortada(null);
+    setUploadingNew(false);
   }
 
   async function load() {
@@ -133,17 +143,16 @@ export default function MarketingCalendarioPage() {
       enFacebook: p.enFacebook, enInstagram: p.enInstagram,
       enTiktok: p.enTiktok, enYoutube: p.enYoutube,
       materialLink: p.materialLink ?? "",
-      portadaUrl: p.portadaUrl ?? "",
-      portadaUrlB: p.portadaUrlB ?? "",
       colaboradores: p.colaboradores ?? "",
       estado: p.estado,
       comentarios: p.comentarios ?? "",
     });
+    setFormImagenes(parseImagenes(p.portadaUrl));
     setEditId(p.id);
     setExpandedId(null);
   }
 
-  function cancelEdit() { setForm(FORM_EMPTY); setEditId(null); }
+  function cancelEdit() { setForm(FORM_EMPTY); setFormImagenes([]); setEditId(null); }
 
   function onTipoChange(tipoId: string) {
     const tipo = tipos.find(t => t.id === tipoId);
@@ -159,6 +168,9 @@ export default function MarketingCalendarioPage() {
   async function saveEdit() {
     if (!editId) return;
     setSaving(true);
+    const portadaUrl = formImagenes.length === 0 ? null
+      : formImagenes.length === 1 ? formImagenes[0]
+      : JSON.stringify(formImagenes);
     const res = await fetch(`/api/marketing/publicaciones/${editId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -168,8 +180,8 @@ export default function MarketingCalendarioPage() {
         enFacebook: form.enFacebook, enInstagram: form.enInstagram,
         enTiktok: form.enTiktok, enYoutube: form.enYoutube,
         materialLink: form.materialLink || null,
-        portadaUrl: form.portadaUrl || null,
-        portadaUrlB: form.portadaUrlB || null,
+        portadaUrl,
+        portadaUrlB: null,
         colaboradores: form.colaboradores || null,
         estado: form.estado, comentarios: form.comentarios || null,
       }),
@@ -476,44 +488,68 @@ export default function MarketingCalendarioPage() {
                     placeholder="Texto que irá en la publicación..." />
                 </div>
                 <div className="md:col-span-3">
-                  <label className="text-xs text-gray-500 mb-2 block">Portadas (A/B)</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(["A", "B"] as const).map(slot => {
-                      const url = slot === "A" ? form.portadaUrl : form.portadaUrlB;
-                      const uploading = uploadingPortada === slot;
-                      return (
-                        <div key={slot} className="space-y-1">
-                          <p className="text-[10px] text-gray-600 uppercase tracking-wider">Opción {slot}</p>
-                          <label className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed cursor-pointer transition-colors h-24 overflow-hidden ${
-                            uploading ? "border-[#B3985B]/50" : "border-[#2a2a2a] hover:border-[#B3985B]/40"
-                          }`}>
-                            {url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={url} alt={`Portada ${slot}`} className="w-full h-full object-cover absolute inset-0" />
-                            ) : null}
-                            <div className={`relative z-10 flex flex-col items-center gap-1 ${url ? "bg-black/50 w-full h-full justify-center" : ""}`}>
-                              {uploading ? (
-                                <span className="text-[10px] text-[#B3985B]">Subiendo...</span>
-                              ) : (
-                                <>
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={url ? "white" : "#555"} strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                                  <span className={`text-[10px] ${url ? "text-white" : "text-gray-600"}`}>{url ? "Cambiar" : "Subir imagen"}</span>
-                                </>
-                              )}
-                            </div>
-                            <input type="file" accept="image/*,video/*" className="hidden"
-                              onChange={e => { const f = e.target.files?.[0]; if (f) uploadPortada(f, slot); }} />
-                          </label>
-                          {url && (
-                            <button onClick={() => setForm(p => slot === "A" ? { ...p, portadaUrl: "" } : { ...p, portadaUrlB: "" })}
-                              className="text-[10px] text-red-500/60 hover:text-red-400 transition-colors">
-                              Quitar
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs text-gray-500">Fotos del carrusel</label>
+                    {formImagenes.length > 0 && (
+                      <span className="text-[10px] text-gray-600">{formImagenes.length} foto{formImagenes.length !== 1 ? "s" : ""} · la primera es la portada</span>
+                    )}
                   </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formImagenes.map((url, idx) => (
+                      <div
+                        key={`${url}-${idx}`}
+                        draggable
+                        onDragStart={() => setDragFromIdx(idx)}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={() => {
+                          if (dragFromIdx === null || dragFromIdx === idx) return;
+                          const next = [...formImagenes];
+                          const [moved] = next.splice(dragFromIdx, 1);
+                          next.splice(idx, 0, moved);
+                          setFormImagenes(next);
+                          setDragFromIdx(null);
+                        }}
+                        onDragEnd={() => setDragFromIdx(null)}
+                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${
+                          dragFromIdx === idx ? "opacity-40 border-[#B3985B]" : "border-[#333] hover:border-[#555]"
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                        {idx === 0 && (
+                          <div className="absolute bottom-0 inset-x-0 bg-[#B3985B] text-black text-[8px] font-bold text-center py-0.5 leading-none">
+                            PORTADA
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setFormImagenes(prev => prev.filter((_, i) => i !== idx))}
+                          className="absolute top-1 right-1 w-4 h-4 bg-black/70 rounded-full flex items-center justify-center hover:bg-red-900/80 transition-colors"
+                        >
+                          <svg width="6" height="6" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                        <div className="absolute top-1 left-1 bg-black/60 rounded px-1 text-[7px] text-gray-300 font-bold leading-none py-0.5">
+                          {idx + 1}
+                        </div>
+                      </div>
+                    ))}
+                    <label className={`w-20 h-20 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                      uploadingNew ? "border-[#B3985B]/50" : "border-[#2a2a2a] hover:border-[#B3985B]/40"
+                    }`}>
+                      {uploadingNew ? (
+                        <span className="text-[9px] text-[#B3985B]">Subiendo...</span>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          <span className="text-[9px] text-gray-600">Agregar</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*,video/*" multiple className="hidden"
+                        onChange={e => { if (e.target.files?.length) uploadImagenes(e.target.files); }} />
+                    </label>
+                  </div>
+                  {formImagenes.length > 1 && (
+                    <p className="text-[10px] text-gray-700 mt-1.5">Arrastra las fotos para cambiar el orden</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Link de material</label>
@@ -1108,12 +1144,12 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                 {expandedId === p.id && editId !== p.id && (
                   <div className="px-4 pb-3 bg-[#0d0d0d] border-t border-[#1a1a1a]">
                     <div className="pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                      {p.portadaUrl && (
+                      {parseImagenes(p.portadaUrl).length > 0 && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.portadaUrl} alt="Portada" className="w-full max-w-[200px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
+                        <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[200px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
                       )}
                       {p.copy && (
-                        <div className={`${p.portadaUrl ? "md:col-span-2" : "md:col-span-3"} bg-[#111] rounded-lg p-3 border border-[#1e1e1e]`}>
+                        <div className={`${parseImagenes(p.portadaUrl).length > 0 ? "md:col-span-2" : "md:col-span-3"} bg-[#111] rounded-lg p-3 border border-[#1e1e1e]`}>
                           <p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p>
                           <p className="text-white whitespace-pre-wrap">{p.copy}</p>
                         </div>
@@ -1184,9 +1220,9 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                           {p.descripcion && <span className="text-gray-400 text-xs truncate max-w-xs">{p.descripcion}</span>}
                         </div>
                       </div>
-                      {p.portadaUrl && (
+                      {parseImagenes(p.portadaUrl)[0] && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.portadaUrl} alt="" className="w-8 h-8 object-cover rounded border border-[#2a2a2a] shrink-0" onClick={e => e.stopPropagation()} />
+                        <img src={parseImagenes(p.portadaUrl)[0]} alt="" className="w-8 h-8 object-cover rounded border border-[#2a2a2a] shrink-0" onClick={e => e.stopPropagation()} />
                       )}
                       <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                         {p.estado === "PENDIENTE" && <button onClick={() => quickEstado(p.id, "EN_PROCESO")} className="text-[10px] px-2 py-1 rounded bg-[#1a1a1a] text-gray-500 hover:text-blue-300 transition-colors">Iniciar</button>}
@@ -1197,9 +1233,9 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                     {expandedId === p.id && editId !== p.id && (
                       <div className="px-5 pb-4 bg-[#0d0d0d] border-t border-[#1a1a1a] space-y-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 text-xs">
-                          {p.portadaUrl && (
+                          {parseImagenes(p.portadaUrl)[0] && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.portadaUrl} alt="Portada" className="w-full max-w-[160px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
+                            <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[160px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
                           )}
                           {p.copy && <div className="md:col-span-2 bg-[#111] rounded-lg p-3 border border-[#1e1e1e]"><p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p><p className="text-white whitespace-pre-wrap">{p.copy}</p></div>}
                           {p.materialLink && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Material</p><a href={p.materialLink} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] hover:underline break-all">{p.materialLink}</a></div>}
@@ -1247,38 +1283,42 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
 }
 
 // ─── Vista Feed IG ───────────────────────────────────────────────────────────
-function FeedCell({ p, slot, label, openEdit }: {
-  p: Publicacion; slot: "A" | "B"; label?: string; openEdit: (p: Publicacion) => void;
-}) {
+function FeedCell({ p, openEdit }: { p: Publicacion; openEdit: (p: Publicacion) => void }) {
   const d = parseDate(p.fecha);
-  const url = slot === "A" ? p.portadaUrl : p.portadaUrlB;
+  const imagenes = parseImagenes(p.portadaUrl);
+  const coverUrl = imagenes[0] ?? null;
+  const isCarrusel = imagenes.length > 1;
+  const formato = p.formato ?? p.tipo?.formato;
   return (
     <div className="relative aspect-square group cursor-pointer overflow-hidden bg-[#111]" onClick={() => openEdit(p)}>
-      {url ? (
+      {coverUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={p.tipo?.nombre ?? ""} className="w-full h-full object-cover" />
+        <img src={coverUrl} alt={p.tipo?.nombre ?? ""} className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center gap-0.5 bg-[#141414]">
           <span className="text-[9px] text-gray-700 font-bold uppercase">{p.tipo?.nombre ?? "Post"}</span>
           <span className="text-[8px] text-gray-800">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</span>
         </div>
       )}
-      {label && (
-        <div className="absolute top-1 left-1 bg-black/80 rounded px-1 py-0.5">
-          <span className="text-[7px] text-[#B3985B] font-bold">{label}</span>
+      {/* Indicadores formato (top-left) */}
+      {formato === "REEL" && (
+        <div className="absolute top-1.5 left-1.5 bg-black/70 rounded px-1.5 py-0.5">
+          <span className="text-[8px] text-purple-400 font-bold">▶</span>
         </div>
       )}
-      {(p.formato ?? p.tipo?.formato) === "REEL" && !label && (
-        <div className="absolute top-1 left-1 bg-black/70 rounded px-1.5 py-0.5">
-          <span className="text-[7px] text-purple-400 font-bold">▶</span>
+      {/* Indicador carrusel (top-right) */}
+      {isCarrusel && (
+        <div className="absolute top-1.5 right-1.5 bg-black/70 rounded p-0.5">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="2" y="2" width="14" height="14" rx="2"/><rect x="8" y="8" width="14" height="14" rx="2"/></svg>
         </div>
       )}
-      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-1">
+      <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 p-2">
         <p className="text-white text-[9px] font-semibold text-center leading-snug">{p.tipo?.nombre ?? "Post"}</p>
         <p className="text-gray-400 text-[8px]">{d.getDate()} {MESES[d.getMonth()].slice(0,3)}</p>
-        <span className={`text-[7px] px-1 py-0.5 rounded-full mt-0.5 ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
+        {isCarrusel && <p className="text-[#B3985B] text-[7px]">{imagenes.length} fotos</p>}
+        <span className={`text-[7px] px-1.5 py-0.5 rounded-full mt-0.5 ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
       </div>
-      <div className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${
+      <div className={`absolute bottom-1.5 left-1.5 w-1.5 h-1.5 rounded-full ${
         p.estado === "PUBLICADO" ? "bg-green-400" : p.estado === "LISTO" ? "bg-yellow-400" :
         p.estado === "EN_PROCESO" ? "bg-blue-400" : "bg-gray-700"}`} />
     </div>
@@ -1286,14 +1326,7 @@ function FeedCell({ p, slot, label, openEdit }: {
 }
 
 function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEdit: (p: Publicacion) => void }) {
-  // Expandir posts con portadaUrlB a dos celdas (A y B)
-  const cells: Array<{ p: Publicacion; slot: "A" | "B"; label?: string }> = [];
-  for (const p of feedPosts) {
-    cells.push({ p, slot: "A", label: p.portadaUrlB ? "A" : undefined });
-    if (p.portadaUrlB) cells.push({ p, slot: "B", label: "B" });
-  }
-
-  if (cells.length === 0) {
+  if (feedPosts.length === 0) {
     return (
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
         <p className="text-gray-500 text-sm">No hay publicaciones Feed IG este mes</p>
@@ -1302,7 +1335,7 @@ function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEd
     );
   }
 
-  const fillerCount = (6 - (cells.length % 6)) % 6;
+  const fillerCount = (3 - (feedPosts.length % 3)) % 3;
 
   return (
     <div className="space-y-4">
@@ -1312,12 +1345,12 @@ function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEd
         </div>
         <div>
           <p className="text-white text-sm font-semibold leading-none">mainstage_pro</p>
-          <p className="text-gray-600 text-[10px]">Preview feed · {feedPosts.length} posts · {cells.filter(c => c.slot === "B").length} con opción B</p>
+          <p className="text-gray-600 text-[10px]">Preview feed · {feedPosts.length} posts este mes</p>
         </div>
       </div>
-      <div className="grid grid-cols-6 gap-0.5 rounded-xl overflow-hidden border border-[#1e1e1e]">
-        {cells.map((c, i) => (
-          <FeedCell key={`${c.p.id}-${c.slot}-${i}`} p={c.p} slot={c.slot} label={c.label} openEdit={openEdit} />
+      <div className="grid grid-cols-3 gap-0.5 rounded-xl overflow-hidden border border-[#1e1e1e] max-w-sm mx-auto">
+        {feedPosts.map((p) => (
+          <FeedCell key={p.id} p={p} openEdit={openEdit} />
         ))}
         {Array.from({ length: fillerCount }).map((_, i) => (
           <div key={`empty-${i}`} className="aspect-square bg-[#0d0d0d]" />
