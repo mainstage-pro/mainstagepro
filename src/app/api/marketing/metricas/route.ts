@@ -9,7 +9,6 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const meses = parseInt(searchParams.get("meses") ?? "12");
 
-  // Calcular rango de meses
   const fechas: string[] = [];
   const now = new Date();
   for (let i = meses - 1; i >= 0; i--) {
@@ -30,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { mes, plataforma, seguidores, alcance, impresiones, interacciones, publicaciones, notas } = body;
+  const { mes, plataforma, seguidores, alcance, impresiones, interacciones, guardados, publicaciones, notas } = body;
 
   if (!mes || !plataforma) {
     return NextResponse.json({ error: "mes y plataforma son requeridos" }, { status: 400 });
@@ -43,6 +42,7 @@ export async function POST(req: NextRequest) {
       alcance:       alcance       != null ? parseInt(alcance)       : undefined,
       impresiones:   impresiones   != null ? parseInt(impresiones)   : undefined,
       interacciones: interacciones != null ? parseInt(interacciones) : undefined,
+      guardados:     guardados     != null ? parseInt(guardados)     : undefined,
       publicaciones: publicaciones != null ? parseInt(publicaciones) : undefined,
       notas,
     },
@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
       alcance:       alcance       != null ? parseInt(alcance)       : null,
       impresiones:   impresiones   != null ? parseInt(impresiones)   : null,
       interacciones: interacciones != null ? parseInt(interacciones) : null,
+      guardados:     guardados     != null ? parseInt(guardados)     : null,
       publicaciones: publicaciones != null ? parseInt(publicaciones) : null,
       notas: notas ?? null,
     },

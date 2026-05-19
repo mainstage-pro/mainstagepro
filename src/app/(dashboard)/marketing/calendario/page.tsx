@@ -85,14 +85,22 @@ function parseImagenes(portadaUrl: string | null): string[] {
   catch { return [portadaUrl]; }
 }
 
-export default function MarketingCalendarioPage() {
+export default function MarketingCalendarioPage({
+  embedded,
+  vistaForzada,
+}: {
+  embedded?: boolean;
+  vistaForzada?: Vista;
+  params?: unknown;
+  searchParams?: unknown;
+} = {}) {
   const confirm = useConfirm();
   const toast = useToast();
   const [mes, setMes] = useState(toMes(new Date()));
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [tipos, setTipos] = useState<Tipo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [vista, setVista] = useState<Vista>("parrilla");
+  const [vista, setVista] = useState<Vista>(vistaForzada ?? "parrilla");
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
   const [showNueva, setShowNueva] = useState(false);
@@ -106,6 +114,8 @@ export default function MarketingCalendarioPage() {
   const [formImagenes, setFormImagenes] = useState<string[]>([]);
   const [uploadingNew, setUploadingNew] = useState(false);
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
+
+  useEffect(() => { if (vistaForzada) setVista(vistaForzada); }, [vistaForzada]);
 
   async function uploadImagenes(files: FileList | File[]) {
     setUploadingNew(true);
@@ -416,14 +426,16 @@ export default function MarketingCalendarioPage() {
         <button onClick={() => setMes(toMes(new Date()))}
           className="text-xs text-gray-600 hover:text-white transition-colors">Hoy</button>
 
-        <div className="ml-auto flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
-          {([["calendario","Calendario"],["proximas","Próximas"],["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
-            <button key={v} onClick={() => setVista(v)}
-              className={`text-xs px-3 py-1 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {!embedded && (
+          <div className="ml-auto flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+            {([["calendario","Calendario"],["proximas","Próximas"],["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
+              <button key={v} onClick={() => setVista(v)}
+                className={`text-xs px-3 py-1 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}

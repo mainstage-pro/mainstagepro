@@ -36,8 +36,15 @@ const NAV: NavSection[] = [
     section: "",
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
-      { key: "operaciones",        label: "Módulo de tareas", href: "/operaciones" },
-      { key: "plan-de-trabajo",    label: "Plan de trabajo",   href: "/plan-de-trabajo" },
+      { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
+      {
+        key: "calendario",
+        label: "Calendario de eventos",
+        children: [
+          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
+          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
+        ],
+      },
     ],
   },
 
@@ -46,7 +53,6 @@ const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
-      { key: "semaforo", label: "Semáforo del negocio", href: "/dashboard/semaforo" },
       { key: "juntas", label: "Juntas", href: "/juntas" },
       {
         key: "reportes",
@@ -57,14 +63,6 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
-      {
-        key: "calendario",
-        label: "Calendario de eventos",
-        children: [
-          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
-          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
-        ],
-      },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
@@ -130,27 +128,9 @@ const NAV: NavSection[] = [
     key: "seccion-marketing",
     section: "Marketing",
     items: [
-      {
-        key: "contenido-organico",
-        label: "Contenido orgánico",
-        children: [
-          { key: "mkt-calendario", label: "Calendario", href: "/marketing/calendario" },
-          { key: "mkt-kanban", label: "Pipeline / Kanban", href: "/marketing/kanban" },
-          { key: "mkt-levantamientos", label: "Levantamientos", href: "/marketing/levantamientos" },
-          { key: "mkt-metricas", label: "Métricas orgánicas", href: "/marketing/metricas" },
-          { key: "mkt-contenidos", label: "Tipos de contenido", href: "/marketing/contenidos" },
-          { key: "mkt-reporte", label: "Reporte", href: "/marketing/reporte" },
-        ],
-      },
-      {
-        key: "publicidad",
-        label: "Publicidad",
-        children: [
-          { key: "mkt-campanas-cal", label: "Calendario", href: "/marketing/campanas/calendario" },
-          { key: "mkt-campanas", label: "Tipos de campaña", href: "/marketing/campanas" },
-          { key: "mkt-meta-ads", label: "Meta Ads", href: "/marketing/meta-ads" },
-        ],
-      },
+      { key: "mkt-contenido",   label: "Contenido",   href: "/marketing/contenido" },
+      { key: "mkt-publicidad",  label: "Publicidad",  href: "/marketing/publicidad" },
+      { key: "mkt-resultados",  label: "Resultados",  href: "/marketing/resultados" },
     ],
   },
 
@@ -162,6 +142,7 @@ const NAV: NavSection[] = [
       { key: "ventas-seguimientos", label: "Seguimientos",      href: "/ventas/seguimientos", badge: "seguimientos" },
       { key: "crm-tratos",          label: "Tratos",             href: "/crm/tratos" },
       { key: "crm-clientes",        label: "Clientes",           href: "/crm/clientes" },
+      { key: "ventas-empresas",     label: "Empresas",           href: "/catalogo/empresas?tipo=cliente" },
       { key: "ventas-reporte",      label: "Reporte de ventas",  href: "/ventas/reporte" },
     ],
   },
@@ -190,7 +171,7 @@ const NAV: NavSection[] = [
         key: "catalogo",
         label: "Catálogo",
         children: [
-          { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas" },
+          { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
           { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
@@ -236,13 +217,12 @@ function getInitialOpen(pathname: string): Set<string> {
   if (pathname.startsWith("/calendario")) open.add("calendario");
   if (pathname.startsWith("/inventario")) open.add("inventario");
   if (pathname.startsWith("/catalogo")) open.add("catalogo");
-  if (pathname.startsWith("/marketing/campanas") || pathname.startsWith("/marketing/meta-ads")) open.add("publicidad");
-  if (pathname.startsWith("/marketing")) open.add("contenido-organico");
+  // marketing section has no collapsible groups anymore
   return open;
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/calendario") || pathname.startsWith("/admin")) return "seccion-direccion";
+  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/admin")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
@@ -344,8 +324,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     : "/dashboard";
 
   function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-    return pathname.startsWith(href);
+    const path = href.split("?")[0];
+    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    return pathname.startsWith(path);
   }
 
   const navContent = (
