@@ -1335,7 +1335,9 @@ function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEd
     );
   }
 
-  const fillerCount = (3 - (feedPosts.length % 3)) % 3;
+  // Instagram muestra el post más reciente arriba-izquierda → orden descendente por fecha
+  const posts = [...feedPosts].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const fillerCount = (3 - (posts.length % 3)) % 3;
 
   return (
     <div className="space-y-4">
@@ -1345,15 +1347,15 @@ function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEd
         </div>
         <div>
           <p className="text-white text-sm font-semibold leading-none">mainstage_pro</p>
-          <p className="text-gray-600 text-[10px]">Preview feed · {feedPosts.length} posts este mes</p>
+          <p className="text-gray-600 text-[10px]">Preview feed · {posts.length} posts · más reciente arriba</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-0.5 rounded-xl overflow-hidden border border-[#1e1e1e] max-w-sm mx-auto">
-        {feedPosts.map((p) => (
+        {posts.map((p) => (
           <FeedCell key={p.id} p={p} openEdit={openEdit} />
         ))}
         {Array.from({ length: fillerCount }).map((_, i) => (
-          <div key={`empty-${i}`} className="aspect-square bg-[#0d0d0d]" />
+          <div key={`filler-${i}`} className="aspect-square bg-[#0d0d0d]" />
         ))}
       </div>
     </div>
