@@ -49,6 +49,7 @@ model User {
   proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
   backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
+  proyectoAccesos        ProyectoAcceso[]
 
   @@map("users")
 }
@@ -311,6 +312,11 @@ model Cotizacion {
   descuentoEspecialNota       String?
   descuentoFamilyFriendsPct   Float @default(0)
   descuentoFijoMonto          Float @default(0)
+  descuentoManualRazon    String?           // razón interna del descuento manual
+  descuentoManualEsMonto  Boolean @default(false)  // true = usa $ (descuentoFijoMonto), false = usa %
+  pagoAnticipadoActivo    Boolean @default(false)
+  pagoAnticipadoFecha     String?           // fecha límite como YYYY-MM-DD
+  pagoAnticipadoTexto     String?           // texto editable de la sección
   descuentoTotalPct           Float @default(0)
   montoDescuento         Float @default(0)
   subtotalEquiposNeto    Float @default(0)
@@ -1628,6 +1634,7 @@ model TareaProyecto {
   creadoPor   User?          @relation("ProyectosTareaCreados", fields: [creadoPorId], references: [id])
   secciones   TareaSeccion[]
   tareas      Tarea[]
+  accesos     ProyectoAcceso[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
@@ -2391,6 +2398,7 @@ model MetricaOrganica {
   alcance       Int?
   impresiones   Int?
   interacciones Int?
+  guardados     Int?
   publicaciones Int?
   notas         String?
   createdAt     DateTime @default(now())
@@ -2608,4 +2616,16 @@ model BacklogItem {
   @@index([estado])
   @@index([area, estado])
   @@map("backlog_items")
+}
+
+model ProyectoAcceso {
+  id          String        @id @default(cuid())
+  proyecto    TareaProyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId  String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  creadoEn    DateTime      @default(now())
+
+  @@unique([proyectoId, userId])
+  @@map("proyecto_acceso")
 }

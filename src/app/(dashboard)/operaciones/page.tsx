@@ -8,6 +8,7 @@ import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import QuickAdd from "./components/QuickAdd";
 import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
+import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -154,6 +155,7 @@ export default function OperacionesPage() {
 
   const [showNuevaCarpeta, setShowNuevaCarpeta]     = useState(false);
   const [showNuevoProyecto, setShowNuevoProyecto]   = useState(false);
+  const [showAccesoPanel, setShowAccesoPanel]       = useState(false);
   const [showNuevaSeccion, setShowNuevaSeccion]     = useState(false);
   const [nuevoCarpetaNombre, setNuevoCarpetaNombre] = useState("");
   const [nuevoProyectoNombre, setNuevoProyectoNombre] = useState("");
@@ -1025,26 +1027,6 @@ export default function OperacionesPage() {
           )}
         </nav>
 
-        {/* ── Áreas section ─────────────────────────────────────────────── */}
-        {allowedTaskAreas.length > 0 && (
-          <div className="mt-3 shrink-0">
-            <div className="px-3 py-1.5">
-              <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Áreas</span>
-            </div>
-            <nav className="px-2 space-y-0.5">
-              {allowedTaskAreas.map(area => (
-                <SideItem
-                  key={area}
-                  icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>}
-                  label={AREA_LABELS[area] ?? area}
-                  isActive={vistaKey === `area-${area}`}
-                  onClick={() => setVista({ tipo: "area", nombre: area })}
-                />
-              ))}
-            </nav>
-          </div>
-        )}
-
         {/* ── Proyectos section ──────────────────────────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
@@ -1109,7 +1091,21 @@ export default function OperacionesPage() {
           </div>
         </div>
 
+        {sessionRole === "ADMIN" && (
+          <div className="px-2 py-2 shrink-0 border-t border-[#111] mt-auto">
+            <button
+              onClick={() => setShowAccesoPanel(true)}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#3a3a3a] hover:text-[#777] hover:bg-[#0f0f0f] transition-all"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Acceso a proyectos
+            </button>
+          </div>
+        )}
+
       </aside>
+
+      {showAccesoPanel && <ProyectoAccesoPanel onClose={() => setShowAccesoPanel(false)} />}
 
       {/* ══════════════════════════════════════════════════════════════════════
           MAIN CONTENT

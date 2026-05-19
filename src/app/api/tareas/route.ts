@@ -50,6 +50,16 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  // Proyectos accesibles para no-admin
+  let proyectosPermitidos: string[] | null = null;
+  if (session.role !== "ADMIN") {
+    const accesos = await prisma.proyectoAcceso.findMany({
+      where: { userId: session.id },
+      select: { proyectoId: true },
+    });
+    proyectosPermitidos = accesos.map((a: { proyectoId: string }) => a.proyectoId);
+  }
+
   const { searchParams } = new URL(req.url);
   const vista             = searchParams.get("vista");
   const proyectoId        = searchParams.get("proyectoId");
@@ -87,6 +97,13 @@ export async function GET(req: NextRequest) {
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
     where.OR       = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+    if (proyectosPermitidos !== null) {
+      where.AND = [
+        { OR: where.OR },
+        { OR: [{ proyectoTareaId: null }, { proyectoTareaId: { in: proyectosPermitidos } }] }
+      ];
+      delete where.OR;
+    }
   } else if (vista === "proximas") {
     const hoyCST = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
     const manana = new Date(hoyCST);
@@ -97,6 +114,13 @@ export async function GET(req: NextRequest) {
     where.estado = { not: "COMPLETADA" };
     where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
     delete where.parentId;
+    if (proyectosPermitidos !== null) {
+      where.AND = [
+        { OR: where.OR },
+        { OR: [{ proyectoTareaId: null }, { proyectoTareaId: { in: proyectosPermitidos } }] }
+      ];
+      delete where.OR;
+    }
   } else if (vista === "bandeja") {
     where.proyectoTareaId = null;
     where.iniciativaId    = null;
