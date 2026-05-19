@@ -25,7 +25,6 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: BLACK,
   },
-  // Header negro con oro
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 40,
@@ -67,20 +66,14 @@ const s = StyleSheet.create({
     fontSize: 8,
     color: "#888888",
   },
-
-  // Banda dorada separadora
   goldBand: {
     height: 3,
     backgroundColor: GOLD,
   },
-
-  // Contenido principal
   body: {
     paddingHorizontal: 40,
     paddingTop: 24,
   },
-
-  // Sección
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -101,8 +94,6 @@ const s = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
-
-  // Grid de campos info
   infoGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -113,6 +104,11 @@ const s = StyleSheet.create({
     width: "50%",
     marginBottom: 10,
     paddingRight: 16,
+  },
+  infoBox33: {
+    width: "33.33%",
+    marginBottom: 10,
+    paddingRight: 12,
   },
   infoBoxFull: {
     width: "100%",
@@ -134,8 +130,6 @@ const s = StyleSheet.create({
     fontSize: 9,
     color: GRAY,
   },
-
-  // Tabla personal
   table: {
     marginBottom: 4,
   },
@@ -160,6 +154,14 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#EEEEEE",
   },
+  tableEmpty: {
+    flexDirection: "row",
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: BG_SECTION,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEEEEE",
+  },
   thText: {
     fontSize: 8,
     color: WHITE,
@@ -174,6 +176,10 @@ const s = StyleSheet.create({
     color: BLACK,
     fontFamily: "Helvetica-Bold",
   },
+  tdSmall: {
+    fontSize: 7.5,
+    color: LIGHT_GRAY,
+  },
   confirmed: {
     fontSize: 7.5,
     color: "#2ECC71",
@@ -183,8 +189,6 @@ const s = StyleSheet.create({
     fontSize: 7.5,
     color: LIGHT_GRAY,
   },
-
-  // Checklist
   checkRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -224,8 +228,6 @@ const s = StyleSheet.create({
     color: BLACK,
     fontFamily: "Helvetica-Bold",
   },
-
-  // Texto libre (cronograma, notas)
   freeText: {
     fontSize: 8.5,
     color: GRAY,
@@ -234,8 +236,14 @@ const s = StyleSheet.create({
     padding: 10,
     borderRadius: 3,
   },
-
-  // Footer
+  emptyText: {
+    fontSize: 8.5,
+    color: LIGHT_GRAY,
+    fontStyle: "italic",
+    backgroundColor: BG_SECTION,
+    padding: 10,
+    borderRadius: 3,
+  },
   footer: {
     position: "absolute",
     bottom: 20,
@@ -257,8 +265,6 @@ const s = StyleSheet.create({
     color: GOLD,
     fontFamily: "Helvetica-Bold",
   },
-
-  // Badge estado
   estadoBadge: {
     backgroundColor: GOLD,
     paddingHorizontal: 6,
@@ -269,6 +275,14 @@ const s = StyleSheet.create({
     fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
+  },
+  subLabel: {
+    fontSize: 7.5,
+    color: LIGHT_GRAY,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 4,
+    marginTop: 8,
   },
 });
 
@@ -283,7 +297,7 @@ interface PersonalItem {
   tarifaAcordada: number | null;
   estadoPago: string;
   notas: string | null;
-  tecnico: { nombre: string; rol: { nombre: string } | null } | null;
+  tecnico: { nombre: string; celular?: string | null; rol: { nombre: string } | null } | null;
   rolTecnico: { nombre: string } | null;
 }
 
@@ -315,6 +329,7 @@ export interface FichaTecnicaData {
   estado: string;
   tipoEvento: string;
   tipoServicio: string | null;
+  zona: string | null;
   fechaEvento: string;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
@@ -325,14 +340,20 @@ export interface FichaTecnicaData {
   encargadoLugar: string | null;
   encargadoLugarContacto: string | null;
   encargadoCliente: string | null;
+  encargadoClienteContacto: string | null;
   descripcionGeneral: string | null;
   detallesEspecificos: string | null;
   transportes: string | null;
   proveedorCatering: string | null;
+  aplicaCatering: boolean;
+  choferNombre: string | null;
+  logisticaRenta: string | null;
   cronograma: string | null;
   contactosDireccion: string | null;
   contactosEmergencia: string | null;
   comentariosFinales: string | null;
+  responsables: string | null;
+  proveedoresRenta: string | null;
   cliente: {
     nombre: string;
     empresa: string | null;
@@ -368,6 +389,12 @@ function labelEstado(e: string): string {
   return m[e] ?? e;
 }
 
+function labelZona(z: string | null | undefined): string {
+  if (!z) return "—";
+  const m: Record<string, string> = { LOCAL: "Local", BAJIO: "Bajío", NACIONAL: "Nacional" };
+  return m[z] ?? z;
+}
+
 // ─── Sección heading ─────────────────────────────────────────────────────────
 function SectionTitle({ title }: { title: string }) {
   return (
@@ -379,11 +406,11 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 // ─── Campo info ──────────────────────────────────────────────────────────────
-function InfoField({ label, value, full = false, bold = true }: {
-  label: string; value: string | null | undefined; full?: boolean; bold?: boolean;
+function InfoField({ label, value, full = false, third = false, bold = true }: {
+  label: string; value: string | null | undefined; full?: boolean; third?: boolean; bold?: boolean;
 }) {
   return (
-    <View style={full ? s.infoBoxFull : s.infoBox}>
+    <View style={full ? s.infoBoxFull : third ? s.infoBox33 : s.infoBox}>
       <Text style={s.infoLabel}>{label}</Text>
       <Text style={bold ? s.infoValue : s.infoValueNormal}>{value || "—"}</Text>
     </View>
@@ -392,7 +419,6 @@ function InfoField({ label, value, full = false, bold = true }: {
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
-  // Agrupar personal por participación
   const PARTICIPACION_LABELS: Record<string, string> = {
     OPERACION: "Operadores del evento",
     MONTAJE: "Técnicos de montaje",
@@ -400,6 +426,7 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
     TRANSPORTE: "Transportes",
     OTRO: "Otros",
   };
+
   const personalAgrupado = proyecto.personal.reduce((acc, p) => {
     const grupo = PARTICIPACION_LABELS[p.participacion ?? "OPERACION"] ?? "Operadores del evento";
     if (!acc[grupo]) acc[grupo] = [];
@@ -407,7 +434,6 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
     return acc;
   }, {} as Record<string, PersonalItem[]>);
 
-  // Agrupar equipos por categoría
   const equiposAgrupados = proyecto.equipos.reduce((acc, e) => {
     const cat = e.tipo === "EXTERNO" ? `${e.equipo.categoria.nombre} (Externo)` : e.equipo.categoria.nombre;
     if (!acc[cat]) acc[cat] = [];
@@ -417,6 +443,50 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
 
   const checkDone = proyecto.checklist.filter(c => c.completado).length;
   const checkTotal = proyecto.checklist.length;
+
+  // Parse responsables JSON
+  type Responsable = { userId?: string; nombre?: string };
+  type ResponsablesMap = Record<string, Responsable>;
+  let responsablesMap: ResponsablesMap = {};
+  try {
+    if (proyecto.responsables) responsablesMap = JSON.parse(proyecto.responsables) as ResponsablesMap;
+  } catch { /* ignore */ }
+  const responsablesEntries = Object.entries(responsablesMap).filter(([, v]) => v?.nombre);
+  const RESP_LABELS: Record<string, string> = {
+    produccion: "Producción",
+    logistica: "Logística",
+    finanzas: "Finanzas",
+    marketing: "Marketing",
+  };
+
+  // Parse proveedoresRenta JSON
+  type ProveedorRenta = { id?: string; nombre?: string; contacto?: string; equipos?: string[] };
+  let proveedoresRenta: ProveedorRenta[] = [];
+  try {
+    if (proyecto.proveedoresRenta) {
+      const parsed = JSON.parse(proyecto.proveedoresRenta);
+      if (Array.isArray(parsed)) proveedoresRenta = parsed;
+    }
+  } catch { /* ignore */ }
+  const proveedoresConNombre = proveedoresRenta.filter(p => p.nombre);
+
+  // Parse transportes JSON
+  type TransporteSlot = { proveedor: string; marcaModelo: string; comentarios: string };
+  let transporteSlots: TransporteSlot[] = [];
+  try {
+    const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
+    if (Array.isArray(parsed)) transporteSlots = parsed;
+  } catch { /* raw string fallback */ }
+  const tieneTransportes = transporteSlots.some(t => t.proveedor || t.marcaModelo);
+
+  // Parse cronograma JSON
+  type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string };
+  let cronoRows: CronoRow[] = [];
+  let cronoIsJson = false;
+  try {
+    const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) { cronoRows = parsed; cronoIsJson = true; }
+  } catch { /* raw text */ }
 
   const generadoEl = new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
@@ -454,6 +524,7 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
             <InfoField label="Tipo de evento" value={proyecto.tipoEvento} />
             <InfoField label="Tipo de servicio" value={proyecto.tipoServicio} />
             <InfoField label="Estado" value={labelEstado(proyecto.estado)} />
+            <InfoField label="Zona" value={labelZona(proyecto.zona)} />
             <InfoField label="Cotización ref." value={proyecto.cotizacion?.numeroCotizacion} />
           </View>
 
@@ -477,7 +548,7 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
               value={fmtDate(proyecto.fechaMontaje)}
             />
             <InfoField
-              label="Hora de inicio montaje"
+              label="Inicio montaje"
               value={
                 proyecto.horaInicioMontaje
                   ? `${proyecto.horaInicioMontaje}${proyecto.duracionMontajeHrs ? ` (${proyecto.duracionMontajeHrs} hrs)` : ""}`
@@ -496,104 +567,125 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
             <InfoField label="Empresa" value={proyecto.cliente.empresa} />
             <InfoField label="Teléfono" value={proyecto.cliente.telefono} />
             <InfoField label="Correo" value={proyecto.cliente.correo} />
-            {proyecto.encargadoCliente && (
-              <InfoField label="Encargado de parte del cliente" value={proyecto.encargadoCliente} full />
-            )}
+            <InfoField label="Encargado del cliente" value={proyecto.encargadoCliente} />
+            <InfoField label="Contacto del encargado" value={proyecto.encargadoClienteContacto} />
           </View>
 
-          {/* ── Encargado interno ── */}
-          {proyecto.encargado && (
-            <>
-              <SectionTitle title="Coordinación interna" />
-              <View style={s.infoGrid}>
-                <InfoField label="Encargado del proyecto (Mainstage)" value={proyecto.encargado.name} />
-              </View>
-            </>
-          )}
+          {/* ── Coordinación interna ── */}
+          <SectionTitle title="Coordinación interna" />
+          <View style={s.infoGrid}>
+            <InfoField label="Encargado del proyecto (Mainstage)" value={proyecto.encargado?.name} />
+            {responsablesEntries.length > 0 && responsablesEntries.map(([area, resp]) => (
+              <InfoField key={area} label={RESP_LABELS[area] ?? area} value={resp?.nombre} />
+            ))}
+          </View>
 
-          {/* ── Personal ── */}
-          {proyecto.personal.length > 0 && (
-            <>
-              <SectionTitle title={`Personal técnico (${proyecto.personal.length})`} />
+          {/* ── Personal técnico ── */}
+          <SectionTitle title={`Personal técnico${proyecto.personal.length > 0 ? ` (${proyecto.personal.length})` : ""}`} />
 
-              {Object.entries(personalAgrupado).map(([rol, personas]) => (
-                <View key={rol} style={{ marginBottom: 10 }}>
-                  <View style={{ backgroundColor: "#E8E4DC", paddingHorizontal: 8, paddingVertical: 4, marginBottom: 0 }}>
-                    <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, textTransform: "uppercase", letterSpacing: 0.8 }}>
-                      {rol} ({personas.length})
-                    </Text>
-                  </View>
-                  <View style={s.table}>
-                    <View style={s.tableHeader}>
-                      <Text style={[s.thText, { width: "35%" }]}>Nombre</Text>
-                      <Text style={[s.thText, { width: "15%" }]}>Nivel</Text>
-                      <Text style={[s.thText, { width: "20%" }]}>Jornada</Text>
-                      <Text style={[s.thText, { width: "20%" }]}>Responsabilidad</Text>
-                      <Text style={[s.thText, { width: "10%", textAlign: "right" }]}>Status</Text>
-                    </View>
-                    {personas.map((p, i) => (
-                      <View key={p.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                        <Text style={[s.tdBold, { width: "35%" }]}>{p.tecnico?.nombre ?? "—"}</Text>
-                        <Text style={[s.tdText, { width: "15%" }]}>{p.nivel ?? "—"}</Text>
-                        <Text style={[s.tdText, { width: "20%" }]}>{p.jornada ? (JORNADA_LABELS[p.jornada] ?? p.jornada) : "—"}</Text>
-                        <Text style={[s.tdText, { width: "20%" }]}>{p.responsabilidad ?? "—"}</Text>
-                        <View style={{ width: "10%", alignItems: "flex-end" }}>
-                          <Text style={p.confirmado ? s.confirmed : s.notConfirmed}>
-                            {p.confirmado ? "✓ OK" : "Pendiente"}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
+          {proyecto.personal.length === 0 ? (
+            <Text style={s.emptyText}>Sin personal técnico asignado</Text>
+          ) : (
+            Object.entries(personalAgrupado).map(([rol, personas]) => (
+              <View key={rol} style={{ marginBottom: 10 }} wrap={false}>
+                <View style={{ backgroundColor: "#E8E4DC", paddingHorizontal: 8, paddingVertical: 4, marginBottom: 0 }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                    {rol} ({personas.length})
+                  </Text>
                 </View>
-              ))}
-            </>
+                <View style={s.table}>
+                  <View style={s.tableHeader}>
+                    <Text style={[s.thText, { width: "28%" }]}>Nombre</Text>
+                    <Text style={[s.thText, { width: "18%" }]}>Teléfono</Text>
+                    <Text style={[s.thText, { width: "12%" }]}>Nivel</Text>
+                    <Text style={[s.thText, { width: "18%" }]}>Jornada</Text>
+                    <Text style={[s.thText, { width: "16%" }]}>Responsabilidad</Text>
+                    <Text style={[s.thText, { width: "8%", textAlign: "right" }]}>Status</Text>
+                  </View>
+                  {personas.map((p, i) => (
+                    <View key={p.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                      <Text style={[s.tdBold, { width: "28%" }]}>{p.tecnico?.nombre ?? "—"}</Text>
+                      <Text style={[s.tdText, { width: "18%" }]}>{p.tecnico?.celular ?? "—"}</Text>
+                      <Text style={[s.tdText, { width: "12%" }]}>{p.nivel ?? "—"}</Text>
+                      <Text style={[s.tdText, { width: "18%" }]}>{p.jornada ? (JORNADA_LABELS[p.jornada] ?? p.jornada) : "—"}</Text>
+                      <Text style={[s.tdText, { width: "16%" }]}>{p.responsabilidad ?? "—"}</Text>
+                      <View style={{ width: "8%", alignItems: "flex-end" }}>
+                        <Text style={p.confirmado ? s.confirmed : s.notConfirmed}>
+                          {p.confirmado ? "✓ OK" : "Pend."}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))
           )}
 
           {/* ── Equipos ── */}
-          {proyecto.equipos.length > 0 && (
-            <>
-              <SectionTitle title={`Equipos (${proyecto.equipos.length} líneas)`} />
+          <SectionTitle title={`Equipos${proyecto.equipos.length > 0 ? ` (${proyecto.equipos.length} líneas)` : ""}`} />
 
-              {Object.entries(equiposAgrupados).map(([cat, items]) => (
-                <View key={cat} style={{ marginBottom: 10 }}>
-                  <View style={{ backgroundColor: "#E8E4DC", paddingHorizontal: 8, paddingVertical: 4 }}>
-                    <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, textTransform: "uppercase", letterSpacing: 0.8 }}>
-                      {cat}
-                    </Text>
-                  </View>
-                  <View style={s.table}>
-                    <View style={s.tableHeader}>
-                      <Text style={[s.thText, { width: "50%" }]}>Equipo</Text>
-                      <Text style={[s.thText, { width: "15%", textAlign: "center" }]}>Cant.</Text>
-                      <Text style={[s.thText, { width: "15%", textAlign: "center" }]}>Días</Text>
-                      <Text style={[s.thText, { width: "20%", textAlign: "right" }]}>Confirmado</Text>
-                    </View>
-                    {items.map((e, i) => (
-                      <View key={e.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                        <View style={{ width: "50%" }}>
-                          <Text style={s.tdBold}>{e.equipo.descripcion}</Text>
-                          {e.equipo.marca && <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.marca}</Text>}
-                        </View>
-                        <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.cantidad}</Text>
-                        <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.dias}</Text>
-                        <View style={{ width: "20%", alignItems: "flex-end" }}>
-                          <Text style={e.confirmado ? s.confirmed : s.notConfirmed}>
-                            {e.confirmado ? "✓ OK" : "Pendiente"}
-                          </Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
+          {proyecto.equipos.length === 0 ? (
+            <Text style={s.emptyText}>Sin equipos asignados al proyecto</Text>
+          ) : (
+            Object.entries(equiposAgrupados).map(([cat, items]) => (
+              <View key={cat} style={{ marginBottom: 10 }} wrap={false}>
+                <View style={{ backgroundColor: "#E8E4DC", paddingHorizontal: 8, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                    {cat}
+                  </Text>
                 </View>
-              ))}
+                <View style={s.table}>
+                  <View style={s.tableHeader}>
+                    <Text style={[s.thText, { width: "55%" }]}>Equipo</Text>
+                    <Text style={[s.thText, { width: "15%", textAlign: "center" }]}>Cant.</Text>
+                    <Text style={[s.thText, { width: "15%", textAlign: "center" }]}>Días</Text>
+                    <Text style={[s.thText, { width: "15%", textAlign: "right" }]}>Confirmado</Text>
+                  </View>
+                  {items.map((e, i) => (
+                    <View key={e.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                      <View style={{ width: "55%" }}>
+                        <Text style={s.tdBold}>{e.equipo.descripcion}</Text>
+                        {e.equipo.marca && <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.marca}</Text>}
+                      </View>
+                      <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.cantidad}</Text>
+                      <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.dias}</Text>
+                      <View style={{ width: "15%", alignItems: "flex-end" }}>
+                        <Text style={e.confirmado ? s.confirmed : s.notConfirmed}>
+                          {e.confirmado ? "✓ OK" : "Pend."}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))
+          )}
+
+          {/* ── Proveedores de renta ── */}
+          {proveedoresConNombre.length > 0 && (
+            <>
+              <SectionTitle title="Proveedores de subarrendamiento" />
+              <View style={s.table}>
+                <View style={s.tableHeader}>
+                  <Text style={[s.thText, { width: "35%" }]}>Proveedor</Text>
+                  <Text style={[s.thText, { width: "30%" }]}>Contacto</Text>
+                  <Text style={[s.thText, { width: "35%" }]}>Equipos</Text>
+                </View>
+                {proveedoresConNombre.map((p, i) => (
+                  <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                    <Text style={[s.tdBold, { width: "35%" }]}>{p.nombre ?? "—"}</Text>
+                    <Text style={[s.tdText, { width: "30%" }]}>{p.contacto || "—"}</Text>
+                    <Text style={[s.tdText, { width: "35%" }]}>{p.equipos?.join(", ") || "—"}</Text>
+                  </View>
+                ))}
+              </View>
             </>
           )}
 
           {/* ── Checklist ── */}
           {proyecto.checklist.length > 0 && (
             <>
-              <SectionTitle title={`Checklist (${checkDone}/${checkTotal})`} />
+              <SectionTitle title={`Checklist de producción (${checkDone}/${checkTotal})`} />
               <View>
                 {proyecto.checklist.map((c) => (
                   <View key={c.id} style={s.checkRow}>
@@ -624,101 +716,88 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
           )}
 
           {/* ── Logística ── */}
-          {(() => {
-            type TransporteSlot = { proveedor: string; marcaModelo: string; comentarios: string };
-            let transporteSlots: TransporteSlot[] = [];
-            try {
-              const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
-              if (Array.isArray(parsed)) transporteSlots = parsed;
-            } catch { /* raw string fallback */ }
-
-            const tieneTransportes = transporteSlots.some(t => t.proveedor || t.marcaModelo);
-            if (!tieneTransportes && !proyecto.proveedorCatering) return null;
-
-            return (
-              <>
-                <SectionTitle title="Logística" />
-                {tieneTransportes && (
-                  <View style={{ marginBottom: 10 }}>
-                    <Text style={{ fontSize: 7.5, color: LIGHT_GRAY, letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 4 }}>Transportes del evento</Text>
-                    <View style={s.table}>
-                      <View style={s.tableHeader}>
-                        <Text style={[s.thText, { width: "35%" }]}>Proveedor</Text>
-                        <Text style={[s.thText, { width: "30%" }]}>Vehículo / Modelo</Text>
-                        <Text style={[s.thText, { width: "35%" }]}>Comentarios</Text>
-                      </View>
-                      {transporteSlots.filter(t => t.proveedor || t.marcaModelo).map((t, i) => (
-                        <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                          <Text style={[s.tdBold, { width: "35%" }]}>{t.proveedor || "—"}</Text>
-                          <Text style={[s.tdText, { width: "30%" }]}>{t.marcaModelo || "—"}</Text>
-                          <Text style={[s.tdText, { width: "35%" }]}>{t.comentarios || "—"}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                {proyecto.proveedorCatering && (
-                  <InfoField label="Proveedor catering / alimentación" value={proyecto.proveedorCatering} full bold={false} />
-                )}
-              </>
-            );
-          })()}
-
-          {/* ── Cronograma ── */}
-          {(() => {
-            type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string };
-            let rows: CronoRow[] = [];
-            let isJson = false;
-            try {
-              const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : null;
-              if (Array.isArray(parsed) && parsed.length > 0) { rows = parsed; isJson = true; }
-            } catch { /* raw text */ }
-
-            if (!proyecto.cronograma) return null;
-
-            return (
-              <>
-                <SectionTitle title="Cronograma general del proyecto" />
-                {isJson && rows.some(r => r.actividad) ? (
+          <SectionTitle title="Logística y transporte" />
+          {!tieneTransportes && !proyecto.proveedorCatering && !proyecto.choferNombre ? (
+            <Text style={s.emptyText}>Sin información de logística registrada</Text>
+          ) : (
+            <>
+              {tieneTransportes && (
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={s.subLabel}>Transportes del evento</Text>
                   <View style={s.table}>
                     <View style={s.tableHeader}>
-                      <Text style={[s.thText, { width: "12%" }]}>Inicio</Text>
-                      <Text style={[s.thText, { width: "12%" }]}>Fin</Text>
-                      <Text style={[s.thText, { width: "36%" }]}>Actividad</Text>
-                      <Text style={[s.thText, { width: "20%" }]}>Responsable</Text>
-                      <Text style={[s.thText, { width: "20%" }]}>Involucrados</Text>
+                      <Text style={[s.thText, { width: "35%" }]}>Proveedor</Text>
+                      <Text style={[s.thText, { width: "30%" }]}>Vehículo / Modelo</Text>
+                      <Text style={[s.thText, { width: "35%" }]}>Comentarios</Text>
                     </View>
-                    {rows.filter(r => r.actividad || r.horaInicio).map((r, i) => (
+                    {transporteSlots.filter(t => t.proveedor || t.marcaModelo).map((t, i) => (
                       <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                        <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
-                        <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
-                        <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
-                        <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
-                        <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
+                        <Text style={[s.tdBold, { width: "35%" }]}>{t.proveedor || "—"}</Text>
+                        <Text style={[s.tdText, { width: "30%" }]}>{t.marcaModelo || "—"}</Text>
+                        <Text style={[s.tdText, { width: "35%" }]}>{t.comentarios || "—"}</Text>
                       </View>
                     ))}
                   </View>
-                ) : (
-                  <Text style={s.freeText}>{proyecto.cronograma}</Text>
-                )}
-              </>
-            );
-          })()}
-
-          {/* ── Contactos dirección ── */}
-          {proyecto.contactosDireccion && (
-            <>
-              <SectionTitle title="Contactos de dirección y coordinación" />
-              <Text style={s.freeText}>{proyecto.contactosDireccion}</Text>
+                </View>
+              )}
+              {!tieneTransportes && (
+                <View style={{ marginBottom: 6 }}>
+                  <Text style={s.subLabel}>Transportes del evento</Text>
+                  <Text style={s.emptyText}>Sin transportes registrados</Text>
+                </View>
+              )}
+              {proyecto.choferNombre && (
+                <View style={s.infoGrid}>
+                  <InfoField label="Chofer asignado" value={proyecto.choferNombre} />
+                </View>
+              )}
+              {proyecto.proveedorCatering && (
+                <InfoField label="Proveedor catering / alimentación" value={proyecto.proveedorCatering} full bold={false} />
+              )}
             </>
           )}
 
+          {/* ── Cronograma ── */}
+          <SectionTitle title="Cronograma general del proyecto" />
+          {!proyecto.cronograma ? (
+            <Text style={s.emptyText}>Sin cronograma registrado</Text>
+          ) : cronoIsJson && cronoRows.some(r => r.actividad) ? (
+            <View style={s.table}>
+              <View style={s.tableHeader}>
+                <Text style={[s.thText, { width: "12%" }]}>Inicio</Text>
+                <Text style={[s.thText, { width: "12%" }]}>Fin</Text>
+                <Text style={[s.thText, { width: "36%" }]}>Actividad</Text>
+                <Text style={[s.thText, { width: "20%" }]}>Responsable</Text>
+                <Text style={[s.thText, { width: "20%" }]}>Involucrados</Text>
+              </View>
+              {cronoRows.filter(r => r.actividad || r.horaInicio).map((r, i) => (
+                <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                  <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
+                  <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
+                  <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
+                  <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
+                  <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={s.freeText}>{proyecto.cronograma}</Text>
+          )}
+
+          {/* ── Contactos de dirección ── */}
+          <SectionTitle title="Contactos de dirección y coordinación" />
+          {proyecto.contactosDireccion ? (
+            <Text style={s.freeText}>{proyecto.contactosDireccion}</Text>
+          ) : (
+            <Text style={s.emptyText}>Sin contactos de dirección registrados</Text>
+          )}
+
           {/* ── Contactos de emergencia ── */}
-          {proyecto.contactosEmergencia && (
-            <>
-              <SectionTitle title="Contactos de emergencia" />
-              <Text style={s.freeText}>{proyecto.contactosEmergencia}</Text>
-            </>
+          <SectionTitle title="Contactos de emergencia" />
+          {proyecto.contactosEmergencia ? (
+            <Text style={s.freeText}>{proyecto.contactosEmergencia}</Text>
+          ) : (
+            <Text style={s.emptyText}>Sin contactos de emergencia registrados</Text>
           )}
 
           {/* ── Comentarios finales ── */}

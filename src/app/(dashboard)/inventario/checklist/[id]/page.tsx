@@ -7,7 +7,7 @@ import { useToast } from "@/components/Toast";
 import { BackButton } from "@/components/BackButton";
 
 interface EquipoInfo {
-  id: string; descripcion: string; cantidadTotal: number; estado: string;
+  id: string; descripcion: string; cantidadTotal: number; estado: string; imagenUrl: string | null;
 }
 interface Item {
   id: string; descripcion: string; categoria: string; estado: string; notas: string | null; orden: number;
@@ -223,6 +223,21 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
                     <div className="flex items-start gap-3">
                       {/* Dot semáforo */}
                       <div className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${SEMAFORO_DOT[semaforo]}`} />
+
+                      {/* Miniatura del equipo */}
+                      {item.equipo?.imagenUrl ? (
+                        <img
+                          src={item.equipo.imagenUrl}
+                          alt=""
+                          className="w-10 h-10 rounded-lg object-contain bg-[#0d0d0d] border border-[#222] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-[#0d0d0d] border border-[#1a1a1a] shrink-0 flex items-center justify-center text-[#2a2a2a]">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/>
+                          </svg>
+                        </div>
+                      )}
 
                       <div className="flex-1 min-w-0">
                         {/* Nombre + contador */}

@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cotizacion: { select: { numeroCotizacion: true, granTotal: true } },
       personal: {
         include: {
-          tecnico: { include: { rol: { select: { nombre: true } } } },
+          tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
           rolTecnico: { select: { nombre: true } },
         },
         orderBy: { id: "asc" },
