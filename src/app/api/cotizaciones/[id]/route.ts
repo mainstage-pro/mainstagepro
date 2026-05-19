@@ -5,6 +5,70 @@ import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { generarTokenPresentacion } from "@/lib/presentacion-token";
 
+// Calcula la fecha del próximo día de semana (0=dom,1=lun,...,6=sab)
+function proximoDiaSemana(targetDow: number): Date {
+  const hoy = new Date();
+  hoy.setHours(10, 0, 0, 0); // 10am por defecto
+  const dow = hoy.getDay();
+  let diff = targetDow - dow;
+  // Si hoy ES el día objetivo o ya pasó, ir a la siguiente semana
+  if (diff <= 0) diff += 7;
+  const fecha = new Date(hoy);
+  fecha.setDate(fecha.getDate() + diff);
+  return fecha;
+}
+
+async function generarSeguimientosAuto(tratoId: string, cotizacionId: string) {
+  // Verificar que no existan ya seguimientos auto para este trato
+  const existing = await prisma.seguimiento.count({
+    where: { tratoId, tipo: "auto" },
+  });
+  if (existing > 0) return; // Ya generados, no duplicar
+
+  // Seg 1: próximo martes (DOW=2)
+  const seg1 = proximoDiaSemana(2);
+
+  // Seg 2: jueves de la misma semana que Seg 1
+  const seg2 = new Date(seg1);
+  seg2.setDate(seg1.getDate() + 2); // martes + 2 = jueves
+
+  // Seg 3: martes de la semana siguiente a Seg 1
+  const seg3 = new Date(seg1);
+  seg3.setDate(seg1.getDate() + 7);
+
+  await prisma.seguimiento.createMany({
+    data: [
+      {
+        tratoId,
+        tipo: "auto",
+        numero: 1,
+        canal: "whatsapp",
+        titulo: "¿Recibiste la cotización? ¿Alguna duda?",
+        nota: `Seguimiento automático — cotización ${cotizacionId}`,
+        fechaProgramada: seg1,
+      },
+      {
+        tratoId,
+        tipo: "auto",
+        numero: 2,
+        canal: "whatsapp",
+        titulo: "¿Tuvieron oportunidad de revisarla?",
+        nota: `Seguimiento automático — cotización ${cotizacionId}`,
+        fechaProgramada: seg2,
+      },
+      {
+        tratoId,
+        tipo: "auto",
+        numero: 3,
+        canal: "whatsapp",
+        titulo: "Cierre o siguiente paso — ¿Cómo seguimos?",
+        nota: `Seguimiento automático — cotización ${cotizacionId}`,
+        fechaProgramada: seg3,
+      },
+    ],
+  });
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -238,6 +302,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
     if (body.estado) {
       await logActividad(session.id, "ESTADO", "cotizacion", id, `Estado cambiado a ${body.estado}`);
+
+      // Generar seguimientos automáticos cuando la cotización se marca como ENVIADA
+      if (body.estado === "ENVIADA" && cotizacion.tratoId) {
+        await generarSeguimientosAuto(cotizacion.tratoId, id);
+      }
     }
     return NextResponse.json({ cotizacion });
   } catch (err: unknown) {

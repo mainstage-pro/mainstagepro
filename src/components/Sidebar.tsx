@@ -20,6 +20,7 @@ interface NavItem {
   href?: string;
   adminOnly?: boolean;
   children?: NavChild[];
+  badge?: string; // key used to look up badge counts
 }
 
 interface NavSection {
@@ -158,21 +159,10 @@ const NAV: NavSection[] = [
     key: "seccion-ventas",
     section: "Ventas",
     items: [
-      { key: "crm-clientes",   label: "Clientes",            href: "/crm/clientes" },
-      { key: "prospectos",      label: "Prospectos en frío",  href: "/prospectos" },
-      { key: "crm-tratos",     label: "Tratos",              href: "/crm/tratos" },
-      { key: "cotizaciones-plantillas", label: "Plantillas", href: "/cotizaciones/plantillas" },
-      {
-        key: "comisiones",
-        label: "Comisiones",
-        children: [
-          { key: "comisiones-pipeline", label: "Pipeline", href: "/ventas" },
-          { key: "comisiones-metas", label: "Metas outbound", href: "/ventas/metas" },
-          { key: "comisiones-vendedores", label: "Vendedores", href: "/ventas/vendedores" },
-          { key: "comisiones-reporte", label: "Reporte", href: "/ventas/reporte" },
-          { key: "comisiones-config", label: "Configuración", href: "/ventas/config" },
-        ],
-      },
+      { key: "ventas-seguimientos", label: "Seguimientos",      href: "/ventas/seguimientos", badge: "seguimientos" },
+      { key: "crm-tratos",          label: "Tratos",             href: "/crm/tratos" },
+      { key: "crm-clientes",        label: "Clientes",           href: "/crm/clientes" },
+      { key: "ventas-reporte",      label: "Reporte de ventas",  href: "/ventas/reporte" },
     ],
   },
 
@@ -238,7 +228,7 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
 
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  if (pathname.startsWith("/ventas")) open.add("comisiones");
+  // ventas section has no collapsible groups anymore
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
   if (pathname.startsWith("/rrhh")) open.add("rrhh");
   if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos")) open.add("ats");
@@ -267,6 +257,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
   const storageKey = `sidebar-state-${user.id}`;
+  const [badges, setBadges] = useState<Record<string, number>>({});
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
@@ -296,6 +287,19 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
       }));
     } catch {}
   }, [openGroups, openSections, stateLoaded, storageKey]);
+
+  // Fetch badge counts
+  useEffect(() => {
+    fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
+      if (d) setBadges({ seguimientos: d.urgentes ?? 0 });
+    }).catch(() => {});
+    const iv = setInterval(() => {
+      fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setBadges({ seguimientos: d.urgentes ?? 0 });
+      }).catch(() => {});
+    }, 60_000);
+    return () => clearInterval(iv);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   useEffect(() => {
@@ -430,6 +434,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     );
                   }
                   const href = item.href === "/dashboard" ? dashboardHref : item.href!;
+                  const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
                   return (
                     <Link
                       key={item.href}
@@ -441,7 +446,12 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                       }`}
                     >
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
-                      {itemLabel}
+                      <span className="flex-1">{itemLabel}</span>
+                      {badgeCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                          {badgeCount > 99 ? "99+" : badgeCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

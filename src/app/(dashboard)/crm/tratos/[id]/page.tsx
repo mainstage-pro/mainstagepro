@@ -532,6 +532,215 @@ const NURTURING_PLAYBOOK: Record<string, NPlaybookEtapa> = {
   },
 };
 
+// ─── Panel de Seguimientos del trato ─────────────────────────────────────────
+
+type SeguimientoItem = {
+  id: string; tipo: string; numero: number | null; canal: string;
+  titulo: string; nota: string | null; notaResultado: string | null;
+  fechaProgramada: string; fechaCompletado: string | null; completado: boolean;
+};
+
+const CANAL_ICON_MAP: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
+
+function SeguimientosPanel({ tratoId }: { tratoId: string }) {
+  const [segs, setSegs] = useState<SeguimientoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [marcandoId, setMarcandoId] = useState<string | null>(null);
+  const [notaRes, setNotaRes] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [formTitulo, setFormTitulo] = useState("");
+  const [formNota, setFormNota] = useState("");
+  const [formCanal, setFormCanal] = useState("whatsapp");
+  const [formFecha, setFormFecha] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().substring(0, 10); });
+  const [formHora, setFormHora] = useState("10:00");
+  const [saving, setSaving] = useState(false);
+
+  const loadSegs = useCallback(async () => {
+    const r = await fetch(`/api/seguimientos?tratoId=${tratoId}`);
+    const d = await r.json();
+    setSegs((d.seguimientos ?? []).sort((a: SeguimientoItem, b: SeguimientoItem) =>
+      new Date(a.fechaProgramada).getTime() - new Date(b.fechaProgramada).getTime()
+    ));
+    setLoading(false);
+  }, [tratoId]);
+
+  useEffect(() => { loadSegs(); }, [loadSegs]);
+
+  async function marcarHecho(id: string) {
+    await fetch(`/api/seguimientos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completado: true, notaResultado: notaRes || null }),
+    });
+    setMarcandoId(null);
+    setNotaRes("");
+    loadSegs();
+  }
+
+  async function crearSeguimiento() {
+    if (!formTitulo) return;
+    setSaving(true);
+    const fechaProgramada = new Date(`${formFecha}T${formHora}:00`);
+    await fetch("/api/seguimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tratoId, tipo: "manual", canal: formCanal, titulo: formTitulo, nota: formNota || null, fechaProgramada: fechaProgramada.toISOString() }),
+    });
+    setSaving(false);
+    setShowForm(false);
+    setFormTitulo(""); setFormNota("");
+    loadSegs();
+  }
+
+  async function eliminarSeg(id: string) {
+    await fetch(`/api/seguimientos/${id}`, { method: "DELETE" });
+    loadSegs();
+  }
+
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const manana = new Date(hoy); manana.setDate(hoy.getDate() + 1);
+
+  function estadoBadge(seg: SeguimientoItem) {
+    if (seg.completado) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/30 text-green-400 border border-green-800/40">Hecho</span>;
+    const fp = new Date(seg.fechaProgramada);
+    if (fp < hoy) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/30 text-red-400 border border-red-800/40">Vencido</span>;
+    if (fp >= hoy && fp < manana) return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/30">Hoy</span>;
+    return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#555] border border-[#222]">Programado</span>;
+  }
+
+  function fmtFechaSeg(iso: string) {
+    return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
+          Seguimientos {segs.length > 0 && <span className="text-[#555] font-normal">({segs.length})</span>}
+        </h2>
+        <Link href="/ventas/seguimientos" className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
+          Ver todos →
+        </Link>
+      </div>
+
+      {loading ? (
+        <p className="text-[#555] text-sm">Cargando…</p>
+      ) : segs.length === 0 ? (
+        <p className="text-[#444] text-sm mb-4">Sin seguimientos registrados</p>
+      ) : (
+        <div className="relative mb-4">
+          {/* Línea vertical */}
+          <div className="absolute left-[9px] top-0 bottom-0 w-px bg-[#1e1e1e]" />
+
+          <div className="space-y-3">
+            {segs.map((seg) => (
+              <div key={seg.id} className="flex gap-3">
+                {/* Círculo indicador */}
+                <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center z-10 ${
+                  seg.completado ? "bg-green-500 border-green-500" : "bg-[#111] border-[#333]"
+                }`}>
+                  {seg.completado && <span className="text-black text-[9px] font-bold">✓</span>}
+                </div>
+
+                {/* Contenido */}
+                <div className={`flex-1 pb-3 ${seg.completado ? "opacity-60" : ""}`}>
+                  <div className="flex items-start gap-2 flex-wrap mb-1">
+                    <p className="text-white text-sm font-medium flex-1">{seg.titulo}</p>
+                    <span className="text-sm">{CANAL_ICON_MAP[seg.canal] ?? "📋"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    {estadoBadge(seg)}
+                    {seg.tipo === "auto" && seg.numero && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/40">Auto · Seg {seg.numero}</span>
+                    )}
+                    <span className="text-[#444] text-[11px]">{fmtFechaSeg(seg.fechaProgramada)}</span>
+                  </div>
+                  {seg.nota && !seg.nota.startsWith("Seguimiento automático") && (
+                    <p className="text-[#555] text-xs italic mb-1">{seg.nota}</p>
+                  )}
+                  {seg.completado && seg.notaResultado && (
+                    <p className="text-green-400/70 text-xs italic mb-1">✓ {seg.notaResultado}</p>
+                  )}
+
+                  {/* Acciones inline */}
+                  {!seg.completado && (
+                    marcandoId === seg.id ? (
+                      <div className="flex gap-2 mt-1">
+                        <input
+                          autoFocus
+                          value={notaRes}
+                          onChange={e => setNotaRes(e.target.value)}
+                          placeholder="¿Qué pasó? (opcional)"
+                          onKeyDown={e => { if (e.key === "Enter") marcarHecho(seg.id); if (e.key === "Escape") setMarcandoId(null); }}
+                          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                        />
+                        <button onClick={() => marcarHecho(seg.id)} className="text-xs text-green-400 hover:text-green-300 font-semibold transition-colors">✓</button>
+                        <button onClick={() => setMarcandoId(null)} className="text-xs text-[#555] hover:text-white transition-colors">✕</button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 mt-1">
+                        <button onClick={() => { setMarcandoId(seg.id); setNotaRes(""); }} className="text-[11px] text-[#555] hover:text-white transition-colors">
+                          ✓ Marcar hecho
+                        </button>
+                        <button onClick={() => eliminarSeg(seg.id)} className="text-[11px] text-[#333] hover:text-red-400 transition-colors">
+                          Eliminar
+                        </button>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Formulario inline */}
+      {showForm ? (
+        <div className="border border-[#2a2a2a] rounded-xl p-4 bg-[#0d0d0d] space-y-3">
+          <input
+            autoFocus
+            value={formTitulo}
+            onChange={e => setFormTitulo(e.target.value)}
+            placeholder="Título del seguimiento…"
+            className="w-full bg-transparent border-b border-[#2a2a2a] py-1 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+          <div className="flex gap-2">
+            {["whatsapp", "llamada", "reunion"].map(c => (
+              <button key={c} onClick={() => setFormCanal(c)}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${formCanal === c ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#2a2a2a] text-[#555] hover:text-white"}`}>
+                {CANAL_ICON_MAP[c]} {c === "whatsapp" ? "WA" : c === "llamada" ? "Llamada" : "Reunión"}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)}
+              className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            <input type="time" value={formHora} onChange={e => setFormHora(e.target.value)}
+              className="w-24 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <textarea value={formNota} onChange={e => setFormNota(e.target.value)} rows={2} placeholder="Nota (opcional)"
+            className="w-full bg-transparent border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
+          <div className="flex gap-2">
+            <button onClick={crearSeguimiento} disabled={saving || !formTitulo}
+              className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-2 rounded-lg transition-colors">
+              {saving ? "Guardando…" : "Agregar seguimiento"}
+            </button>
+            <button onClick={() => setShowForm(false)} className="text-xs text-[#555] hover:text-white transition-colors px-3">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setShowForm(true)}
+          className="text-xs text-[#555] hover:text-[#B3985B] transition-colors border border-dashed border-[#222] rounded-lg w-full py-2 hover:border-[#B3985B]/40">
+          + Agregar nota o seguimiento manual
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -2911,6 +3120,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       </div>
+
+      {/* Seguimientos */}
+      <SeguimientosPanel tratoId={trato.id} />
 
       {/* Cotizaciones */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">

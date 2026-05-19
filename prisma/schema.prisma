@@ -234,8 +234,28 @@ model Trato {
   proyecto               Proyecto?
   archivos               TratoArchivo[]
   levantamientoContenido LevantamientoContenido?
+  seguimientos           Seguimiento[]
 
   @@map("tratos")
+}
+
+model Seguimiento {
+  id              String    @id @default(cuid())
+  tratoId         String
+  trato           Trato     @relation(fields: [tratoId], references: [id], onDelete: Cascade)
+  tipo            String    // "auto" | "manual"
+  numero          Int?      // 1, 2, 3 para los automáticos
+  canal           String    @default("whatsapp") // "whatsapp" | "llamada" | "reunion"
+  titulo          String
+  nota            String?
+  notaResultado   String?
+  fechaProgramada DateTime
+  fechaCompletado DateTime?
+  completado      Boolean   @default(false)
+  creadoEn        DateTime  @default(now())
+  actualizadoEn   DateTime  @updatedAt
+
+  @@map("seguimientos")
 }
 
 model TratoArchivo {

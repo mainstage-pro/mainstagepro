@@ -28,6 +28,7 @@ type Trato = {
   id: string;
   etapa: string;
   tipoEvento: string;
+  tipoProspecto: string;
   nombreEvento: string | null;
   fechaEventoEstimada: string | null;
   presupuestoEstimado: number | null;
@@ -506,6 +507,7 @@ export default function TratosPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filtroEtapa, setFiltroEtapa] = useState<string | null>(null);
+  const [filtroFrio, setFiltroFrio] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [vista, setVista] = useState<"lista" | "kanban">(() => {
     if (typeof window !== "undefined") {
@@ -563,13 +565,14 @@ export default function TratosPage() {
 
   const tratosFiltrados = tratos.filter(t => {
     const matchEtapa = !filtroEtapa || t.etapa === filtroEtapa;
+    const matchFrio = !filtroFrio || t.tipoProspecto === "NURTURING";
     const q = busqueda.toLowerCase();
     const matchBusqueda = !q ||
       t.cliente.nombre.toLowerCase().includes(q) ||
       (t.cliente.empresa ?? "").toLowerCase().includes(q) ||
       (t.nombreEvento ?? "").toLowerCase().includes(q) ||
       (t.lugarEstimado ?? "").toLowerCase().includes(q);
-    return matchEtapa && matchBusqueda;
+    return matchEtapa && matchFrio && matchBusqueda;
   }).sort((a: Trato, b: Trato) => {
     if (orden === "evento_asc")   return new Date(a.fechaEventoEstimada ?? "9999").getTime() - new Date(b.fechaEventoEstimada ?? "9999").getTime();
     if (orden === "evento_desc")  return new Date(b.fechaEventoEstimada ?? "0").getTime() - new Date(a.fechaEventoEstimada ?? "0").getTime();
@@ -694,7 +697,7 @@ export default function TratosPage() {
                   : key === "VENTA_CERRADA"  ? "border-green-700/60 text-green-300 bg-green-950/30"
                   :                            "border-red-700/60 text-red-300 bg-red-950/30";
                 return (
-                  <button key={String(key)} onClick={() => setFiltroEtapa(key)}
+                  <button key={String(key)} onClick={() => { setFiltroEtapa(key); setFiltroFrio(false); }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${activo ? accentCls : "border-[#222] text-gray-500 hover:text-white hover:border-[#333]"}`}>
                     {label}
                     <span className={`text-[10px] font-bold ${activo ? "" : "text-gray-600"}`}>{n}</span>
@@ -703,6 +706,17 @@ export default function TratosPage() {
                 );
               })}
             </div>
+
+            {/* Filtro en frío */}
+            <button
+              onClick={() => { setFiltroFrio(prev => !prev); setFiltroEtapa(null); }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors shrink-0 ${filtroFrio ? "border-blue-700/60 text-blue-300 bg-blue-950/30" : "border-[#222] text-gray-500 hover:text-white hover:border-[#333]"}`}
+            >
+              ❄️ En frío
+              <span className={`text-[10px] font-bold ${filtroFrio ? "" : "text-gray-600"}`}>
+                {tratos.filter(t => t.tipoProspecto === "NURTURING").length}
+              </span>
+            </button>
 
             {/* Agrupación */}
             <div className="flex items-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5 shrink-0">
