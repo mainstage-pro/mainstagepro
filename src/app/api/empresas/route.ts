@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const tipo = new URL(req.url).searchParams.get("tipo");
+
+  const where: Record<string, unknown> = { activo: true };
+  if (tipo === "cliente") where.tipo = { in: ["CLIENTE", "AMBOS"] };
+  else if (tipo === "proveedor") where.tipo = { in: ["PROVEEDOR", "AMBOS"] };
+  else if (tipo === "CLIENTE" || tipo === "PROVEEDOR" || tipo === "AMBOS") where.tipo = tipo;
+
   const empresas = await prisma.empresa.findMany({
-    where: { activo: true },
+    where,
     include: {
       contactosCliente: { select: { id: true, nombre: true, telefono: true, correo: true } },
       contactosProveedor: { select: { id: true, nombre: true, telefono: true, correo: true } },

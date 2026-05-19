@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
@@ -31,12 +32,76 @@ const EMPTY_FORM = { nombre: "", giro: "", telefono: "", correo: "", sitioWeb: "
 
 const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
 
+const TIPO_LABELS: Record<string, string> = {
+  CLIENTE: "Cliente",
+  PROVEEDOR: "Proveedor",
+  AMBOS: "Cliente y Proveedor",
+};
+
+const TIPO_COLORS: Record<string, string> = {
+  CLIENTE: "bg-green-900/30 text-green-400 border border-green-900/40",
+  PROVEEDOR: "bg-blue-900/30 text-blue-400 border border-blue-900/40",
+  AMBOS: "bg-purple-900/30 text-purple-400 border border-purple-900/40",
+};
+
+const TIPO_OPTIONS = [
+  { value: "CLIENTE", label: "Solo Cliente" },
+  { value: "PROVEEDOR", label: "Solo Proveedor" },
+  { value: "AMBOS", label: "Cliente y Proveedor" },
+];
+
+const FILTER_PILLS = [
+  { key: "todos", label: "Todos" },
+  { key: "cliente", label: "Solo clientes" },
+  { key: "proveedor", label: "Solo proveedores" },
+  { key: "AMBOS", label: "Ambos" },
+];
+
+function TipoBadge({ empresa, onChange }: { empresa: Empresa; onChange: (tipo: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(p => !p); }}
+        className={`text-[10px] px-2 py-0.5 rounded-full cursor-pointer hover:opacity-80 transition-opacity ${TIPO_COLORS[empresa.tipo] ?? "bg-gray-900/30 text-gray-400"}`}
+      >
+        {TIPO_LABELS[empresa.tipo] ?? empresa.tipo}
+      </button>
+      {open && (
+        <div className="absolute z-30 top-6 left-0 bg-[#1a1a1a] border border-[#333] rounded-xl shadow-xl py-1 min-w-[160px]">
+          {TIPO_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={e => { e.stopPropagation(); onChange(opt.value); setOpen(false); }}
+              className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[#2a2a2a] transition-colors ${empresa.tipo === opt.value ? "text-[#B3985B]" : "text-gray-300"}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function EmpresasPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<Empresa | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -92,9 +157,29 @@ export default function EmpresasPage() {
     else { const d = await res.json(); toast.error(d.error ?? "No se pudo eliminar"); }
   }
 
-  const lista = empresas.filter(e =>
-    !query || e.nombre.toLowerCase().includes(query.toLowerCase()) || (e.giro ?? "").toLowerCase().includes(query.toLowerCase())
-  );
+  async function cambiarTipo(empresa: Empresa, nuevoTipo: string) {
+    const res = await fetch(`/api/empresas/${empresa.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tipo: nuevoTipo }),
+    });
+    if (res.ok) {
+      setEmpresas(prev => prev.map(e => e.id === empresa.id ? { ...e, tipo: nuevoTipo } : e));
+      toast.success("Tipo actualizado");
+    } else {
+      toast.error("No se pudo actualizar");
+    }
+  }
+
+  const lista = empresas.filter(e => {
+    const matchQuery = !query || e.nombre.toLowerCase().includes(query.toLowerCase()) || (e.giro ?? "").toLowerCase().includes(query.toLowerCase());
+    const matchTipo =
+      filtroTipo === "todos" ? true :
+      filtroTipo === "cliente" ? (e.tipo === "CLIENTE" || e.tipo === "AMBOS") :
+      filtroTipo === "proveedor" ? (e.tipo === "PROVEEDOR" || e.tipo === "AMBOS") :
+      e.tipo === "AMBOS";
+    return matchQuery && matchTipo;
+  });
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto">
@@ -109,9 +194,25 @@ export default function EmpresasPage() {
         </button>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-3">
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o giro…"
           className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+      </div>
+
+      {/* Filtros de tipo */}
+      <div className="flex gap-2 flex-wrap mb-4">
+        {FILTER_PILLS.map(p => (
+          <button
+            key={p.key}
+            onClick={() => setFiltroTipo(p.key)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${filtroTipo === p.key ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 border border-[#2a2a2a] hover:border-[#444]"}`}
+          >
+            {p.label}
+          </button>
+        ))}
+        {filtroTipo !== "todos" && (
+          <span className="text-xs text-[#555] self-center">{lista.length} resultado{lista.length !== 1 ? "s" : ""}</span>
+        )}
       </div>
 
       {loading ? (
@@ -127,19 +228,57 @@ export default function EmpresasPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white font-medium text-sm">{e.nombre}</p>
                     {e.giro && <span className="text-[10px] text-gray-500 bg-[#1a1a1a] px-2 py-0.5 rounded-full">{e.giro}</span>}
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${e.tipo === "CLIENTE" ? "bg-green-900/30 text-green-400" : e.tipo === "PROVEEDOR" ? "bg-blue-900/30 text-blue-400" : "bg-purple-900/30 text-purple-400"}`}>
-                      {e.tipo === "AMBOS" ? "Cliente y Proveedor" : e.tipo === "CLIENTE" ? "Cliente" : "Proveedor"}
-                    </span>
+                    <TipoBadge empresa={e} onChange={tipo => cambiarTipo(e, tipo)} />
                   </div>
-                  <div className="flex gap-3 mt-0.5">
+                  <div className="flex gap-3 mt-0.5 flex-wrap items-center">
                     {e.telefono && <span className="text-xs text-[#555]">{e.telefono}</span>}
                     {e.correo && <span className="text-xs text-[#555]">{e.correo}</span>}
-                    <span className="text-xs text-[#444]">
-                      {e.contactosCliente.length + e.contactosProveedor.length} contactos
+                    {/* Vínculos */}
+                    <span className="flex items-center gap-1.5 text-xs text-[#444]">
+                      {e.contactosCliente.length > 0 && (
+                        <Link
+                          href={`/catalogo/empresas/${e.id}?tab=clientes`}
+                          onClick={ev => ev.stopPropagation()}
+                          className="flex items-center gap-0.5 text-green-600 hover:text-green-400 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          {e.contactosCliente.length} cliente{e.contactosCliente.length !== 1 ? "s" : ""}
+                        </Link>
+                      )}
+                      {e.contactosCliente.length > 0 && e.contactosProveedor.length > 0 && (
+                        <span className="text-[#333]">·</span>
+                      )}
+                      {e.contactosProveedor.length > 0 && (
+                        <Link
+                          href={`/catalogo/empresas/${e.id}?tab=proveedores`}
+                          onClick={ev => ev.stopPropagation()}
+                          className="flex items-center gap-0.5 text-blue-600 hover:text-blue-400 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                          {e.contactosProveedor.length} proveedor{e.contactosProveedor.length !== 1 ? "es" : ""}
+                        </Link>
+                      )}
+                      {e.contactosCliente.length === 0 && e.contactosProveedor.length === 0 && (
+                        <span>Sin vínculos</span>
+                      )}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                  <Link
+                    href={`/catalogo/empresas/${e.id}`}
+                    onClick={ev => ev.stopPropagation()}
+                    className="p-1.5 rounded text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
+                    title="Ver ficha"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </Link>
                   <button onClick={() => abrirEditar(e)}
                     className="p-1.5 rounded text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -204,6 +343,11 @@ export default function EmpresasPage() {
                       {e.noTarjeta && <p className="text-xs text-[#555]">Tarjeta: <span className="text-gray-400 font-mono">{e.noTarjeta}</span></p>}
                     </div>
                   )}
+                  <div className="mt-3">
+                    <Link href={`/catalogo/empresas/${e.id}`} className="text-xs text-[#B3985B] hover:underline">
+                      Ver ficha completa →
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
