@@ -19,12 +19,12 @@ export default async function DashboardLayout({
   let userModuleKeys: string[] | null = null;
 
   const AREA_MODULES: Record<string, string[]> = {
-    ADMINISTRACION: ["crm-clientes", "crm-tratos", "finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador"],
-    MARKETING: ["crm-clientes", "crm-tratos", "contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas"],
-    VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones"],
-    PRODUCCION: ["crm-clientes", "crm-tratos", "proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario"],
-    RRHH: ["rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario"],
-    DIRECCION: ["semaforo", "reportes", "presentaciones", "calendario", "juntas"],
+    ADMINISTRACION: ["crm-clientes", "crm-tratos", "finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador", "tareas-administracion"],
+    MARKETING: ["crm-clientes", "crm-tratos", "contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas", "tareas-marketing"],
+    VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones", "tareas-ventas"],
+    PRODUCCION: ["crm-clientes", "crm-tratos", "proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario", "tareas-produccion"],
+    RRHH: ["rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario", "tareas-rrhh"],
+    DIRECCION: ["semaforo", "reportes", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
     GENERAL: ["crm-clientes", "crm-tratos", "cotizaciones", "calendario", "operaciones"],
   };
 

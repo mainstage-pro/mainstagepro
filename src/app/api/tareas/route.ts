@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+const AREA_TO_MODULE_KEY: Record<string, string> = {
+  VENTAS: "tareas-ventas",
+  PRODUCCION: "tareas-produccion",
+  MARKETING: "tareas-marketing",
+  ADMINISTRACION: "tareas-administracion",
+  RRHH: "tareas-rrhh",
+  DIRECCION: "tareas-direccion",
+};
+
 // Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
 const SELECT = {
   id: true,
@@ -99,6 +108,22 @@ export async function GET(req: NextRequest) {
     where.iniciativaId    = null;
     where.parentId        = null;
     where.asignadoAId     = { not: null };
+  } else if (vista === "area") {
+    if (!area) return NextResponse.json({ error: "Área requerida" }, { status: 400 });
+    if (session.role !== "ADMIN") {
+      const moduleKey = AREA_TO_MODULE_KEY[area];
+      if (moduleKey) {
+        const acceso = await prisma.moduloAcceso.findFirst({ where: { userId: session.id, moduloKey: moduleKey } });
+        if (!acceso) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+      } else {
+        return NextResponse.json({ error: "Área no válida" }, { status: 400 });
+      }
+    }
+    where.area            = area;
+    where.proyectoTareaId = null;
+    where.iniciativaId    = null;
+    where.parentId        = null;
+    where.estado          = { notIn: ["COMPLETADA", "CANCELADA"] };
   } else if (vista === "abandonadas") {
     where.estado    = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId  = null;

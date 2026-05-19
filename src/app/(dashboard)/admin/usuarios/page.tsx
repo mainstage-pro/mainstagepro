@@ -51,7 +51,7 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     seccion: "GLOBAL",
     items: [
       { key: "dashboard",      label: "Dashboard CEO",               desc: "Panel principal y métricas" },
-      { key: "operaciones",    label: "Gestión operativa",           desc: "Visible globalmente para todos" },
+      { key: "operaciones",    label: "Módulo de tareas",            desc: "Visible globalmente para todos" },
       { key: "reportes",       label: "Reportes semanales",          desc: "Reportes y seguimiento semanal" },
       { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas" },
       { key: "calendario",     label: "Calendario de eventos",       desc: "Vista y reportes de eventos" },
@@ -98,15 +98,28 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
       { key: "publicidad",         label: "Publicidad / Campañas", desc: "Campañas de Meta Ads" },
     ],
   },
+  {
+    seccion: "ACCESOS MÓDULO DE TAREAS",
+    items: [
+      { key: "tareas-ventas",         label: "Tareas · Ventas",         desc: "Ver tareas del área de Ventas" },
+      { key: "tareas-produccion",     label: "Tareas · Producción",     desc: "Ver tareas del área de Producción" },
+      { key: "tareas-marketing",      label: "Tareas · Marketing",      desc: "Ver tareas del área de Marketing" },
+      { key: "tareas-administracion", label: "Tareas · Administración", desc: "Ver tareas del área de Administración" },
+      { key: "tareas-rrhh",           label: "Tareas · RRHH",           desc: "Ver tareas del área de RRHH" },
+      { key: "tareas-direccion",      label: "Tareas · Dirección",      desc: "Ver tareas del área de Dirección" },
+    ],
+  },
 ];
 
 const ALL_MODULE_KEYS = MODULOS_POR_SECCION.flatMap(s => s.items.map(i => i.key));
 
 const AREA_MODULE_PRESETS: Record<string, string[]> = {
-  ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario"],
-  MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones"],
-  VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario"],
-  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "tabulador", "calendario"],
+  ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "tareas-administracion"],
+  MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "tareas-marketing"],
+  VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones", "tareas-ventas"],
+  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "tabulador", "calendario", "tareas-produccion"],
+  RRHH: ["rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario", "tareas-rrhh"],
+  DIRECCION: ["semaforo", "reportes", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
 };
 
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };

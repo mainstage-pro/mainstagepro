@@ -34,7 +34,7 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo" | { tipo: "proyecto"; id: string };
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo" | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
   id: string;
@@ -86,6 +86,8 @@ export default function OperacionesPage() {
   const [usuarios, setUsuarios]                 = useState<Usuario[]>([]);
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
+  const [sessionArea, setSessionArea]           = useState<string>("");
+  const [sessionModuloKeys, setSessionModuloKeys] = useState<string[] | null>(null);
 
   const [vista, setVista]                             = useState<VistaKey>(() => {
     if (typeof window === "undefined") return "bandeja";
@@ -176,6 +178,8 @@ export default function OperacionesPage() {
       setUsuarios(usr.usuarios ?? []);
       if (me?.id) setSessionId(me.id);
       if (me?.role) setSessionRole(me.role);
+      if (me?.area) setSessionArea(me.area);
+      setSessionModuloKeys(me?.role === "ADMIN" ? null : (me?.moduloKeys ?? []));
     });
   }, []);
 
@@ -224,13 +228,22 @@ export default function OperacionesPage() {
     if (typeof vista === "string") return;
     setLoadingMain(true);
     setFilterUserProy(null);
-    fetch(`/api/operaciones/proyectos/${vista.id}`)
+    if (vista.tipo === "area") {
+      fetch(`/api/tareas?vista=area&area=${vista.nombre}`)
+        .then(r => r.json())
+        .then(d => { setTareas(d.tareas ?? []); })
+        .catch(() => {})
+        .finally(() => setLoadingMain(false));
+      return;
+    }
+    const proyId = (vista as { tipo: "proyecto"; id: string }).id;
+    fetch(`/api/operaciones/proyectos/${proyId}`)
       .then(r => r.json())
       .then(d => { setProyectoDetalle(d.proyecto ?? null); })
       .catch(() => {})
       .finally(() => setLoadingMain(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeof vista === "object" ? (vista as {id:string}).id : null, syncTrigger]);
+  }, [typeof vista === "object" ? (vista.tipo === "area" ? `area-${vista.nombre}` : (vista as { tipo: "proyecto"; id: string }).id) : null, syncTrigger]);
 
   // ── Load task detail ────────────────────────────────────────────────────
   useEffect(() => {
@@ -685,10 +698,10 @@ export default function OperacionesPage() {
   }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const addSeccion = useCallback(async () => {
-    if (!nuevaSeccionNombre.trim() || typeof vista === "string") return;
+    if (!nuevaSeccionNombre.trim() || typeof vista === "string" || vista.tipo === "area") return;
     const res = await fetch("/api/operaciones/secciones", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: nuevaSeccionNombre.trim(), proyectoId: vista.id }),
+      body: JSON.stringify({ nombre: nuevaSeccionNombre.trim(), proyectoId: (vista as { tipo: "proyecto"; id: string }).id }),
     });
     if (res.ok) {
       const { seccion } = await res.json();
@@ -819,14 +832,24 @@ export default function OperacionesPage() {
     proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
   [proyectosNav, carpetas]);
 
-  const vistaKey    = typeof vista === "string" ? vista : vista.id;
+  const AREA_LABELS: Record<string, string> = {
+    VENTAS: "Ventas", PRODUCCION: "Producción", MARKETING: "Marketing",
+    ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
+  };
+  const ALL_AREAS = ["VENTAS", "PRODUCCION", "MARKETING", "ADMINISTRACION", "RRHH", "DIRECCION"];
+  const allowedTaskAreas = sessionRole === "ADMIN"
+    ? ALL_AREAS
+    : ALL_AREAS.filter(a => sessionModuloKeys?.includes(`tareas-${a.toLowerCase()}`));
+
+  const vistaKey    = typeof vista === "string" ? vista : (vista.tipo === "area" ? `area-${vista.nombre}` : (vista as { tipo: "proyecto"; id: string }).id);
   const vistaLabel  =
     vista === "bandeja"          ? "Bandeja de entrada" :
     vista === "hoy"              ? "Hoy" :
     vista === "proximas"         ? "Próximas" :
     vista === "integrada"        ? "Alertas" :
     vista === "proyectos-evento" ? "Proyectos / Eventos" :
-    vista === "equipo"         ? "Vista equipo" :
+    vista === "equipo"           ? "Vista equipo" :
+    typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Proyecto";
 
   // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
@@ -853,7 +876,7 @@ export default function OperacionesPage() {
     }
     setProyectosNav(prev => prev.filter(p => p.id !== id));
     setCarpetas(prev => prev.map(c => ({ ...c, proyectos: c.proyectos.filter(p => p.id !== id) })));
-    if (typeof vista !== "string" && vista.id === id) setVista("bandeja");
+    if (typeof vista !== "string" && vista.tipo === "proyecto" && vista.id === id) setVista("bandeja");
   }
 
   async function renameCarpeta(id: string, nombre: string) {
@@ -994,7 +1017,33 @@ export default function OperacionesPage() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>}
             label="Proyectos" isActive={vistaKey === "proyectos-evento"} onClick={() => setVista("proyectos-evento")}
           />
+          {sessionRole === "ADMIN" && (
+            <SideItem
+              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+              label="Equipo" isActive={vistaKey === "equipo"} onClick={() => setVista("equipo")}
+            />
+          )}
         </nav>
+
+        {/* ── Áreas section ─────────────────────────────────────────────── */}
+        {allowedTaskAreas.length > 0 && (
+          <div className="mt-3 shrink-0">
+            <div className="px-3 py-1.5">
+              <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Áreas</span>
+            </div>
+            <nav className="px-2 space-y-0.5">
+              {allowedTaskAreas.map(area => (
+                <SideItem
+                  key={area}
+                  icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>}
+                  label={AREA_LABELS[area] ?? area}
+                  isActive={vistaKey === `area-${area}`}
+                  onClick={() => setVista({ tipo: "area", nombre: area })}
+                />
+              ))}
+            </nav>
+          </div>
+        )}
 
         {/* ── Proyectos section ──────────────────────────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -1428,6 +1477,24 @@ export default function OperacionesPage() {
               ))}
             </div>
 
+          ) : typeof vista === "object" && vista.tipo === "area" ? (
+            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+              {tareasOrdenadas.length === 0 ? (
+                <EmptyState icon="🏢" title={`Sin tareas en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`} sub="No hay tareas activas en esta área" />
+              ) : tareasOrdenadas.map(t => (
+                <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                  onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                  onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                  onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                  onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                  onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  projects={proyectosNav}
+                  users={usuarios}
+                  showProject
+                />
+              ))}
+            </div>
+
           ) : typeof vista === "string" ? (
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {/* Quick add at top for bandeja/proximas */}
@@ -1811,7 +1878,7 @@ export default function OperacionesPage() {
         onAdd={addTarea}
         proyectos={proyectosNav}
         usuarios={usuarios}
-        defaultProyectoId={typeof vista !== "string" ? vista.id : null}
+        defaultProyectoId={typeof vista !== "string" && vista.tipo === "proyecto" ? vista.id : null}
       />
 
       {/* Bottom Tab Bar */}
