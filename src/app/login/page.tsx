@@ -29,7 +29,20 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    const areaRoutes: Record<string, string> = {
+      DIRECCION:      "/dashboard/direccion",
+      ADMINISTRACION: "/dashboard/administracion",
+      MARKETING:      "/dashboard/marketing",
+      VENTAS:         "/dashboard/ventas",
+      PRODUCCION:     "/dashboard/produccion",
+      RRHH:           "/dashboard/rrhh",
+    };
+    const area = data.user?.area;
+    const isAdmin = data.user?.role === "ADMIN";
+    const target = (!isAdmin && area && area !== "GENERAL" && areaRoutes[area])
+      ? areaRoutes[area]
+      : "/dashboard";
+    router.push(target);
     router.refresh();
   }
 

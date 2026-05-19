@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, area: user.area },
     });
   } catch (error) {
     console.error("Auth error:", error);
