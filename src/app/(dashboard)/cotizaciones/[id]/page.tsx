@@ -139,6 +139,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [montoAnticipo, setMontoAnticipo] = useState<string>("");
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
+  const [sendingWA, setSendingWA] = useState(false);
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
@@ -379,6 +380,53 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  async function handleWhatsAppConCotizacion() {
+    if (!cot || !cot.cliente.telefono) return;
+    setSendingWA(true);
+    try {
+      // Paso 1: descargar el PDF silenciosamente
+      const pdfUrl = `/api/cotizaciones/${cot.id}/pdf`;
+      const filename = `${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
+      const res = await fetch(pdfUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      // Paso 2: si está en borrador, cambiar a ENVIADA (esto también genera los seguimientos)
+      if (cot.estado === "BORRADOR") {
+        const patchRes = await fetch(`/api/cotizaciones/${cot.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estado: "ENVIADA" }),
+        });
+        if (patchRes.ok) {
+          setCot(prev => prev ? { ...prev, estado: "ENVIADA" } : prev);
+        }
+      }
+
+      // Pausa para que el navegador registre la descarga
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Paso 3: abrir WhatsApp con mensaje limpio (sin link al PDF)
+      const tel = cot.cliente.telefono.replace(/\D/g, "");
+      const nombre = cot.cliente.nombre.split(" ")[0];
+      const texto = encodeURIComponent(
+        `Hola ${nombre}, te mando la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}. Ya te la adjunto aquí 📎`
+      );
+      window.open(`https://api.whatsapp.com/send/?phone=52${tel}&text=${texto}`, "_blank");
+    } catch {
+      toast.error("Error al preparar el envío");
+    } finally {
+      setSendingWA(false);
+    }
+  }
+
   if (loading) return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
@@ -569,22 +617,28 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             )}
             {sharingPdf ? "Descargando..." : "Descargar PDF"}
           </button>
-          {cot.cliente.telefono && (() => {
-            const tel = cot.cliente.telefono.replace(/\D/g, "");
-            const pdfLink = `${typeof window !== "undefined" ? window.location.origin : ""}/api/cotizaciones/${cot.id}/pdf`;
-            const msg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la cotización ${cot.numeroCotizacion}${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}: ${pdfLink}`;
-            return (
-              <a href={`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`}
-                target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                </svg>
-                WhatsApp
-              </a>
-            );
-          })()}
+          {cot.cliente.telefono && (
+            <div className="flex flex-col items-start gap-0.5">
+              <button
+                onClick={handleWhatsAppConCotizacion}
+                disabled={sendingWA}
+                className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-60 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
+              >
+                {sendingWA ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                  </svg>
+                )}
+                {sendingWA ? "Preparando..." : "WhatsApp"}
+              </button>
+              <span className="text-[10px] text-[#555] leading-tight px-0.5">
+                PDF se descarga · adjúntalo en WA
+              </span>
+            </div>
+          )}
           {cot.estado === "APROBADA" && !cot.proyecto && (
             <button onClick={aprobar} disabled={aprobando}
               className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">

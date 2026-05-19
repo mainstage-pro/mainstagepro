@@ -487,6 +487,11 @@ interface CotizacionData {
   descuentoEspecialNota?: string | null;
   descuentoFamilyFriendsPct: number;
   descuentoFijoMonto?: number;
+  descuentoManualRazon?: string | null;
+  descuentoManualEsMonto?: boolean;
+  pagoAnticipadoActivo?: boolean;
+  pagoAnticipadoFecha?: string | null;
+  pagoAnticipadoTexto?: string | null;
   montoDescuento: number;
   montoBeneficio: number;
   subtotalEquiposNeto: number;
@@ -715,20 +720,38 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
   type DiscRow = { label: string; monto: number; gold?: boolean };
   const discRows: DiscRow[] = [];
   const sb = c.subtotalEquiposBruto;
-  if ((c.descuentoB2bPct ?? 0) > 0)
-    discRows.push({ label: `Descuento B2B (${Math.round(c.descuentoB2bPct * 100)}%)`, monto: sb * c.descuentoB2bPct });
-  if ((c.descuentoVolumenPct ?? 0) > 0)
-    discRows.push({ label: `Descuento por volumen (${Math.round(c.descuentoVolumenPct * 100)}%)`, monto: sb * c.descuentoVolumenPct });
+  // Cascade: volumen primero, B2B sobre resultado, manual sobre resultado
+  const montoVolumenPdf = (c.descuentoVolumenPct ?? 0) > 0 ? sb * c.descuentoVolumenPct : 0;
+  const basePostV = sb - montoVolumenPdf;
+  const montoB2bPdf = (c.descuentoB2bPct ?? 0) > 0 ? basePostV * c.descuentoB2bPct : 0;
+  const basePostB = basePostV - montoB2bPdf;
+
+  if (montoVolumenPdf > 0)
+    discRows.push({ label: `Descuento por volumen (${Math.round(c.descuentoVolumenPct * 100)}%)`, monto: montoVolumenPdf });
+  if (montoB2bPdf > 0)
+    discRows.push({ label: `Descuento B2B (${Math.round(c.descuentoB2bPct * 100)}%)`, monto: montoB2bPdf });
+
+  // Manual (FamilyFriends = %, FijoMonto = $)
+  const esManualMonto = c.descuentoManualEsMonto ?? false;
+  const pctFF = c.descuentoFamilyFriendsPct ?? 0;
+  const montoFijo = c.descuentoFijoMonto ?? 0;
+  if (!esManualMonto && pctFF > 0) {
+    const montoM = basePostB * pctFF;
+    discRows.push({ label: `Descuento especial (${Math.round(pctFF * 100)}%)`, monto: montoM });
+  }
+  if (esManualMonto && montoFijo > 0) {
+    discRows.push({ label: "Descuento especial", monto: montoFijo });
+  }
+  // Legacy
   if ((c.descuentoMultidiaPct ?? 0) > 0)
     discRows.push({ label: `Descuento multi-día (${Math.round(c.descuentoMultidiaPct * 100)}%)`, monto: sb * c.descuentoMultidiaPct });
-  if ((c.descuentoFamilyFriendsPct ?? 0) > 0)
-    discRows.push({ label: `Descuento especial (${Math.round(c.descuentoFamilyFriendsPct * 100)}%)`, monto: sb * c.descuentoFamilyFriendsPct });
   if ((c.descuentoEspecialPct ?? 0) > 0)
     discRows.push({ label: `Descuento especial (${Math.round(c.descuentoEspecialPct * 100)}%)${c.descuentoEspecialNota ? ` · ${c.descuentoEspecialNota}` : ""}`, monto: sb * c.descuentoEspecialPct });
   if ((c.descuentoPatrocinioPct ?? 0) > 0)
     discRows.push({ label: `Patrocinio (${Math.round(c.descuentoPatrocinioPct * 100)}%)${c.descuentoPatrocinioNota ? ` · ${c.descuentoPatrocinioNota}` : ""}`, monto: sb * c.descuentoPatrocinioPct });
-  if ((c.descuentoFijoMonto ?? 0) > 0)
-    discRows.push({ label: "Descuento por monto fijo", monto: c.descuentoFijoMonto! });
+  // Desc fijo legacy (sin flag ManualEsMonto)
+  if (!esManualMonto && montoFijo > 0 && pctFF === 0)
+    discRows.push({ label: "Descuento fijo", monto: montoFijo });
   // Trade
   try {
     const td = c.mainstageTradeData ? JSON.parse(c.mainstageTradeData) : {};
@@ -914,6 +937,37 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
             <View style={s.pagoFila}><Text style={s.pagoLabel}>Correo</Text><Text style={s.pagoValor}>mainstageqro@gmail.com</Text></View>
           </View>
         </View>
+
+        {/* ── Sección Pago Anticipado (solo si está activo) ── */}
+        {c.pagoAnticipadoActivo && c.subtotalEquiposNeto > 0 && (() => {
+          const pctPA = 5; // Default — el texto ya incluye el % si se personalizó
+          const ahorroPA = Math.round(c.subtotalEquiposNeto * pctPA / 100 * 100) / 100;
+          const totalPA = c.granTotal - ahorroPA;
+          const fechaLimite = c.pagoAnticipadoFecha
+            ? new Date(c.pagoAnticipadoFecha + "T12:00:00").toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+            : null;
+          const textoPA = c.pagoAnticipadoTexto || `Si realizas el pago total del servicio${fechaLimite ? ` antes del ${fechaLimite}` : " antes de la fecha límite"}, aplicamos un descuento adicional del ${pctPA}% sobre equipos Mainstage.`;
+          return (
+            <View style={{ marginTop: 16, paddingTop: 12, borderTopWidth: 1.5, borderTopColor: "#B3985B", borderTopStyle: "solid" }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#B3985B", letterSpacing: 0.5, marginBottom: 6, textTransform: "uppercase" }}>
+                Opción de pago anticipado
+              </Text>
+              <Text style={{ fontSize: 8.5, color: "#444", lineHeight: 1.5, marginBottom: 8 }}>
+                {textoPA}
+              </Text>
+              <View style={{ backgroundColor: "#f9f5ee", borderRadius: 6, padding: 8, gap: 4 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontSize: 8.5, color: "#666" }}>Ahorro por pago anticipado ({pctPA}%)</Text>
+                  <Text style={{ fontSize: 8.5, color: "#B3985B", fontFamily: "Helvetica-Bold" }}>-{fmtMXN(ahorroPA)}</Text>
+                </View>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", borderTopWidth: 0.5, borderTopColor: "#ddd", borderTopStyle: "solid", paddingTop: 4 }}>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>Total con pago anticipado</Text>
+                  <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: "#222" }}>{fmtMXN(totalPA)}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* ── TÉRMINOS ── */}
         <View style={s.terminosBloque}>

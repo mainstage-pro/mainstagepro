@@ -253,31 +253,35 @@ function CotizadorForm() {
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
 
-  // Descuentos
-  // Descuentos — todos con toggle (off por defecto, se activan manualmente o desde trato)
-  const [b2bActivo, setB2bActivo] = useState(false);
-  const [b2bEdit, setB2bEdit] = useState(false);
-  const [dB2BManual, setDB2BManual] = useState<string>("");
-  const [volumenActivo, setVolumenActivo] = useState(false);
-  const [volumenEdit, setVolumenEdit] = useState(false);
-  const [dVolumenManual, setDVolumenManual] = useState<string>("");
-  const [multidiaActivo, setMultidiaActivo] = useState(false);
-  const [multidiaEdit, setMultidiaEdit] = useState(false);
-  const [dMultidiaManual, setDMultidiaManual] = useState<string>("");
-  const [especialActivo, setEspecialActivo] = useState(false); // renombrado de Family & Friends
-  const [especialEdit, setEspecialEdit] = useState(false);
-  const [dFamilyFriends, setDFamilyFriends] = useState("10"); // % fijo por defecto
-  const [descuentoFijoActivo, setDescuentoFijoActivo] = useState(false);
-  const [descuentoFijoMonto, setDescuentoFijoMonto] = useState("");
-  const [aplicaIva, setAplicaIva] = useState(false);
-  const [incluirChofer, setIncluirChofer] = useState(false);
-  const [descuentoAplicaAdicionales, setDescuentoAplicaAdicionales] = useState(false);
-  const [observaciones, setObservaciones] = useState("");
-  // Descuentos que no tienen control de UI — se preservan al editar (especial, patrocinio)
+  // ─── Descuentos ───────────────────────────────────────────────────────────────
+  const [volumenActivo, setVolumenActivo]         = useState(false);
+  const [volumenManualToggle, setVolumenManualToggle] = useState(false); // true = usuario lo tocó manualmente
+  const [b2bActivo, setB2bActivo]                 = useState(false);
+  const [b2bManualToggle, setB2bManualToggle]     = useState(false);
+  const [manualActivo, setManualActivo]           = useState(false);
+  const [manualEsMonto, setManualEsMonto]         = useState(false); // false=%, true=$
+  const [manualValor, setManualValor]             = useState("");
+  const [manualRazon, setManualRazon]             = useState("");
+  const [pagoAnticipadoActivo, setPagoAnticipadoActivo] = useState(false);
+  const [pagoAnticipadoFecha, setPagoAnticipadoFecha]   = useState("");
+  const [pagoAnticipadoTexto, setPagoAnticipadoTexto]   = useState("");
+  // Config de descuentos (cargados del servidor)
+  const [cfgUmbralVolumen, setCfgUmbralVolumen]   = useState(30000);
+  const [cfgPctVolumen, setCfgPctVolumen]         = useState(10);
+  const [cfgPctB2b, setCfgPctB2b]               = useState(10);
+  const [cfgPctAnticipado, setCfgPctAnticipado]   = useState(5);
+  const [cfgMaxManual, setCfgMaxManual]           = useState(30);
+  const [cfgTextoAnticipado, setCfgTextoAnticipado] = useState("Si realizas el pago total del servicio antes de la fecha límite, aplicamos un descuento adicional del {pct}% sobre equipos Mainstage.");
+  // Descuentos preservados de cotizaciones antiguas (sin control de UI)
+  const [dMultidiaPreservado, setDMultidiaPreservado] = useState(0);
   const [dEspecialPreservado, setDEspecialPreservado] = useState(0);
   const [dPatrocinioPreservado, setDPatrocinioPreservado] = useState(0);
   const [dEspecialNotaPreservada, setDEspecialNotaPreservada] = useState<string | null>(null);
   const [dPatrocinioNotaPreservada, setDPatrocinioNotaPreservada] = useState<string | null>(null);
+  const [dFijoPreservado, setDFijoPreservado]     = useState(0); // desc fijo $ legacy
+  const [aplicaIva, setAplicaIva] = useState(false);
+  const [incluirChofer, setIncluirChofer] = useState(false);
+  const [observaciones, setObservaciones] = useState("");
 
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
@@ -294,11 +298,27 @@ function CotizadorForm() {
       editId ? fetch(`/api/cotizaciones/${editId}`).then(r => r.json()) : Promise.resolve(null),
       clienteId ? fetch(`/api/clientes/${clienteId}/precios-equipos`).then(r => r.json()) : Promise.resolve(null),
       fetch("/api/proveedores").then(r => r.json()),
-    ]).then(([eq, rol, cl, tr, editData, preciosData, provData]) => {
+      fetch("/api/admin/config").then(r => r.json()),
+    ]).then(([eq, rol, cl, tr, editData, preciosData, provData, configData]) => {
       const eqs: Equipo[] = eq.equipos ?? [];
       setEquipos(eqs);
       setRoles(rol.roles ?? []);
       setProveedores(provData?.proveedores ?? []);
+      // Cargar configuración de descuentos
+      if (configData?.entries) {
+        const cfg = configData.entries as Array<{key: string; value: string}>;
+        const get = (k: string, def: number) => {
+          const found = cfg.find((c: {key: string; value: string}) => c.key === k);
+          return found ? parseFloat(found.value) || def : def;
+        };
+        const getStr = (k: string, def: string) => cfg.find((c: {key: string; value: string}) => c.key === k)?.value ?? def;
+        setCfgUmbralVolumen(get("descuentos.umbralVolumen", 30000));
+        setCfgPctVolumen(get("descuentos.pctVolumen", 10));
+        setCfgPctB2b(get("descuentos.pctB2b", 10));
+        setCfgPctAnticipado(get("descuentos.pctPagoAnticipado", 5));
+        setCfgMaxManual(get("descuentos.maxManual", 30));
+        setCfgTextoAnticipado(getStr("descuentos.textoPagoAnticipado", "Si realizas el pago total del servicio antes de la fecha límite, aplicamos un descuento adicional del {pct}% sobre equipos Mainstage."));
+      }
 
       // Cargar precios especiales del cliente
       if (preciosData?.precios) {
@@ -346,14 +366,33 @@ function CotizadorForm() {
         });
         setObservaciones(cot.observaciones ?? "");
         setIncluirChofer(cot.incluirChofer ?? false);
-        if ((cot.descuentoB2bPct ?? 0) > 0) { setB2bActivo(true); if (Math.round(cot.descuentoB2bPct * 100) !== 10) setDB2BManual(String(Math.round(cot.descuentoB2bPct * 100))); }
-        if ((cot.descuentoVolumenPct ?? 0) > 0) setVolumenActivo(true);
-        if ((cot.descuentoMultidiaPct ?? 0) > 0) { setMultidiaActivo(true); }
-        if ((cot.descuentoFamilyFriendsPct ?? 0) > 0) { setEspecialActivo(true); setDFamilyFriends(String(Math.round(cot.descuentoFamilyFriendsPct * 100))); }
-        if ((cot.descuentoFijoMonto ?? 0) > 0) { setDescuentoFijoActivo(true); setDescuentoFijoMonto(String(cot.descuentoFijoMonto)); }
-        // Preservar descuentos sin control de UI (especial, patrocinio)
+        setAplicaIva(cot.aplicaIva ?? false);
+        // Cargar descuentos guardados
+        if ((cot.descuentoB2bPct ?? 0) > 0) { setB2bActivo(true); setB2bManualToggle(true); }
+        if ((cot.descuentoVolumenPct ?? 0) > 0) { setVolumenActivo(true); setVolumenManualToggle(true); }
+        // Descuento manual (nuevo): viene de descuentoFamilyFriendsPct (%) o descuentoFijoMonto ($) con descuentoManualEsMonto
+        const esManualMonto = cot.descuentoManualEsMonto ?? false;
+        const montoFijo = cot.descuentoFijoMonto ?? 0;
+        const pctFF = cot.descuentoFamilyFriendsPct ?? 0;
+        if (esManualMonto && montoFijo > 0) {
+          setManualActivo(true); setManualEsMonto(true); setManualValor(String(montoFijo));
+          setManualRazon(cot.descuentoManualRazon ?? "");
+        } else if (!esManualMonto && pctFF > 0) {
+          setManualActivo(true); setManualEsMonto(false); setManualValor(String(Math.round(pctFF * 100)));
+          setManualRazon(cot.descuentoManualRazon ?? "");
+        }
+        // Pago anticipado
+        if (cot.pagoAnticipadoActivo) {
+          setPagoAnticipadoActivo(true);
+          setPagoAnticipadoFecha(cot.pagoAnticipadoFecha ?? "");
+          setPagoAnticipadoTexto(cot.pagoAnticipadoTexto ?? "");
+        }
+        // Retrocompat: preservar descuentos legacy sin control de UI
+        if ((cot.descuentoMultidiaPct ?? 0) > 0) setDMultidiaPreservado(cot.descuentoMultidiaPct);
         if ((cot.descuentoEspecialPct ?? 0) > 0) { setDEspecialPreservado(cot.descuentoEspecialPct); setDEspecialNotaPreservada(cot.descuentoEspecialNota ?? null); }
         if ((cot.descuentoPatrocinioPct ?? 0) > 0) { setDPatrocinioPreservado(cot.descuentoPatrocinioPct); setDPatrocinioNotaPreservada(cot.descuentoPatrocinioNota ?? null); }
+        // Si hay descuento fijo legacy (sin manualEsMonto flag) → preservar
+        if (!esManualMonto && montoFijo > 0 && pctFF === 0) setDFijoPreservado(montoFijo);
         if (cot.notasSecciones) {
           try { setNotasSecciones(JSON.parse(cot.notasSecciones)); } catch { /* ignore */ }
         }
@@ -420,10 +459,12 @@ function CotizadorForm() {
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
-        // Auto-activate "Descuento especial" if trato is Family & Friends
+        // Auto-activate descuento manual si trato es Family & Friends
         if (t.familyAndFriends) {
-          setEspecialActivo(true);
-          setDFamilyFriends("10");
+          setManualActivo(true);
+          setManualEsMonto(false);
+          setManualValor("10");
+          setManualRazon("Family & Friends");
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
@@ -431,6 +472,13 @@ function CotizadorForm() {
       }
     });
   }, [clienteId, tratoId]);
+
+  // Auto-activar B2B si el cliente es B2B y el usuario no lo ha tocado manualmente
+  useEffect(() => {
+    if (!b2bManualToggle && tipoCliente === "B2B") {
+      setB2bActivo(true);
+    }
+  }, [tipoCliente]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-calcular cantidad de comidas = total técnicos en cotización
   useEffect(() => {
@@ -755,35 +803,52 @@ function CotizadorForm() {
     const subtotalComidas = lineasLog.filter(l => l.tipo === "COMIDA").reduce((s, l) => s + l.subtotal, 0);
     const subtotalHospedaje = lineasLog.filter(l => l.tipo === "HOSPEDAJE").reduce((s, l) => s + l.subtotal, 0);
 
-    const dias = parseInt(evento.diasEquipo) || 1;
+    // Descuentos en cascada — solo sobre equipos Mainstage (propios)
+    const pctV   = cfgPctVolumen  / 100;
+    const pctB   = cfgPctB2b      / 100;
+    const pctA   = cfgPctAnticipado / 100;
 
-    // Descuentos: todos tienen toggle — solo aplican cuando están activos
-    const autoVolumen = calcularDescuentoVolumen(subtotalEquiposBruto);
-    const autoB2B = DESCUENTO_B2B; // 10% fijo para B2B
-    const autoMultidia = calcularDescuentoMultidia(dias);
+    // Auto-activar volumen si subtotal supera umbral (solo si no ha sido tocado manualmente)
+    const debeAutoVolumen = subtotalEquiposBruto > cfgUmbralVolumen;
+    const volumenEfectivo = volumenActivo;
 
-    const dB2B = b2bActivo ? (dB2BManual !== "" ? parseFloat(dB2BManual) / 100 : autoB2B) : 0;
-    const dVolumen = volumenActivo ? (dVolumenManual !== "" ? parseFloat(dVolumenManual) / 100 : autoVolumen) : 0;
-    const dMultidia = multidiaActivo ? (dMultidiaManual !== "" ? parseFloat(dMultidiaManual) / 100 : autoMultidia) : 0;
-    const dFF = especialActivo ? (dFamilyFriends !== "" ? parseFloat(dFamilyFriends) / 100 : 0.10) : 0;
+    // 1) Descuento por volumen
+    const montoVolumen = volumenEfectivo ? subtotalEquiposBruto * pctV : 0;
+    const basePostVolumen = subtotalEquiposBruto - montoVolumen;
 
-    const descuentoTotalPct = dB2B + dVolumen + dMultidia + dFF + dEspecialPreservado + dPatrocinioPreservado;
-    const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
-    const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
+    // 2) Descuento B2B (sobre base post-volumen)
+    const montoB2b = b2bActivo ? basePostVolumen * pctB : 0;
+    const basePostB2b = basePostVolumen - montoB2b;
+
+    // 3) Descuento manual (% sobre base post-B2B, o $ fijo)
+    const maxManualMonto = basePostB2b * (cfgMaxManual / 100);
+    const montoManual = manualActivo
+      ? (manualEsMonto
+          ? Math.min(parseFloat(manualValor) || 0, maxManualMonto)
+          : basePostB2b * Math.min(parseFloat(manualValor) || 0, cfgMaxManual) / 100)
+      : 0;
+    const pctManualEfectivo = manualActivo
+      ? (manualEsMonto
+          ? (basePostB2b > 0 ? montoManual / basePostB2b : 0)
+          : Math.min(parseFloat(manualValor) || 0, cfgMaxManual) / 100)
+      : 0;
+    const subtotalEquiposNeto = basePostB2b - montoManual;
+
+    // Preservados (legacy retrocompat)
+    const montoDescuentoLegacy = subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
+
+    const montoDescuento = montoVolumen + montoB2b + montoManual + montoDescuentoLegacy;
+    const descuentoTotalPct = subtotalEquiposBruto > 0 ? montoDescuento / subtotalEquiposBruto : 0;
+
+    // Pago anticipado (sobre equipos neto, NO modifica total principal)
+    const montoPagoAnticipadoFinal = pagoAnticipadoActivo ? subtotalEquiposNeto * pctA : 0;
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
-    // Cuando el checkbox está activo, aplica el mismo % de descuento a externos Y ocasionales
-    const descuentoMontaExternos    = descuentoAplicaAdicionales ? subtotalExternos  * descuentoTotalPct : 0;
-    const descuentoMontaAdicionales = descuentoAplicaAdicionales ? subtotalOcasionales * descuentoTotalPct : 0;
-    const subtotalExternosNeto    = subtotalExternos    - descuentoMontaExternos;
-    const subtotalOcasionalesNeto = subtotalOcasionales - descuentoMontaAdicionales;
-
-    // Total incluye equipos propios (con descuento) + externos (con/sin descuento) + ocasionales + operación + logística
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const montoDescuentoFijo = descuentoFijoActivo ? (parseFloat(descuentoFijoMonto) || 0) : 0;
-    const total = subtotalEquiposNeto + subtotalExternosNeto + subtotalOcasionalesNeto + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer - montoDescuentoFijo;
+    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
+    const totalConPagoAnticipado = granTotal - montoPagoAnticipadoFinal;
 
     // Costo real = operación + DJ + logística + costo de proveedor de equipos externos
     // Equipo propio = sin costo (ya capitalizado), su renta es margen puro.
@@ -800,25 +865,32 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalExternos, subtotalExternosNeto, subtotalOcasionales, subtotalOcasionalesNeto,
-      descuentoMontaExternos, descuentoMontaAdicionales, costoExternos,
+      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, costoExternos,
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
-      autoVolumen, autoB2B, autoMultidia,
-      dB2B, dVolumen, dMultidia, dFF,
+      montoVolumen, basePostVolumen, montoB2b, basePostB2b,
+      montoManual, pctManualEfectivo,
       descuentoTotalPct, montoDescuento,
-      montoDescuentoFijo,
       subtotalEquiposNeto, total, montoIva, granTotal,
+      montoPagoAnticipadoFinal, totalConPagoAnticipado,
+      debeAutoVolumen,
       costos, utilidad, pctUtilidad, semaforo,
       zonaBonus, bonusZonaTotal,
     };
-  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan, evento.diasEquipo,
-    b2bActivo, dB2BManual, volumenActivo, dVolumenManual, multidiaActivo, dMultidiaManual,
-    especialActivo, dFamilyFriends, aplicaIva, incluirChofer, descuentoAplicaAdicionales,
-    dEspecialPreservado, dPatrocinioPreservado, descuentoFijoActivo, descuentoFijoMonto,
-    zonaEvento, numTecnicosZona]);
+  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan,
+    volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, pagoAnticipadoActivo,
+    cfgUmbralVolumen, cfgPctVolumen, cfgPctB2b, cfgPctAnticipado, cfgMaxManual,
+    dMultidiaPreservado, dEspecialPreservado, dPatrocinioPreservado, dFijoPreservado,
+    aplicaIva, incluirChofer, zonaEvento, numTecnicosZona]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
+
+  // Auto-activar descuento por volumen si supera el umbral (y el usuario no lo ha desactivado manualmente)
+  useEffect(() => {
+    if (!volumenManualToggle) {
+      setVolumenActivo(resumen.debeAutoVolumen);
+    }
+  }, [resumen.debeAutoVolumen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Guardar ──
   async function guardar() {
@@ -896,24 +968,32 @@ function CotizadorForm() {
       numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
       jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
-      descuentoPatrocinioNota: dPatrocinioNotaPreservada,
-      descuentoEspecialNota: dEspecialNotaPreservada,
       observaciones,
       lineas: todasLineas,
+      // Descuentos
       subtotalEquiposBruto: resumen.subtotalEquiposBruto,
-      descuentoB2bPct: resumen.dB2B,
-      descuentoVolumenPct: resumen.dVolumen,
-      descuentoMultidiaPct: resumen.dMultidia,
-      descuentoPatrocinioPct: dPatrocinioPreservado,
-      descuentoEspecialPct: dEspecialPreservado,
-      descuentoFamilyFriendsPct: resumen.dFF,
-      descuentoFijoMonto: resumen.montoDescuentoFijo,
-      descuentoTotalPct: resumen.descuentoTotalPct,
-      montoDescuento: resumen.montoDescuento,
-      montoBeneficio: resumen.montoDescuento,
+      descuentoVolumenPct:      volumenActivo  ? cfgPctVolumen  / 100 : 0,
+      descuentoB2bPct:           b2bActivo      ? cfgPctB2b      / 100 : 0,
+      descuentoMultidiaPct:      dMultidiaPreservado,
+      descuentoEspecialPct:      dEspecialPreservado,
+      descuentoEspecialNota:     dEspecialNotaPreservada,
+      descuentoPatrocinioPct:    dPatrocinioPreservado,
+      descuentoPatrocinioNota:   dPatrocinioNotaPreservada,
+      // Manual: guarda en FamilyFriendsPct (%) o FijoMonto ($) según modo
+      descuentoFamilyFriendsPct: manualActivo && !manualEsMonto ? (parseFloat(manualValor) || 0) / 100 : 0,
+      descuentoFijoMonto:        manualActivo && manualEsMonto  ? (parseFloat(manualValor) || 0) : (dFijoPreservado || 0),
+      descuentoManualRazon:      manualActivo ? manualRazon : null,
+      descuentoManualEsMonto:    manualActivo && manualEsMonto,
+      descuentoTotalPct:  resumen.descuentoTotalPct,
+      montoDescuento:     resumen.montoDescuento,
+      montoBeneficio:     resumen.montoDescuento,
       subtotalEquiposNeto: resumen.subtotalEquiposNeto,
+      // Pago anticipado
+      pagoAnticipadoActivo:  pagoAnticipadoActivo,
+      pagoAnticipadoFecha:   pagoAnticipadoFecha || null,
+      pagoAnticipadoTexto:   pagoAnticipadoActivo ? (pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))) : null,
       subtotalPaquetes: 0,
-      subtotalTerceros: resumen.subtotalExternosNeto + resumen.subtotalOcasionalesNeto,
+      subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
       subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
       subtotalTransporte: resumen.subtotalTransporte,
       subtotalComidas: resumen.subtotalComidas,
@@ -1925,194 +2005,163 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Descuentos ── */}
-          <Seccion titulo="Descuentos" hint="sobre subtotal de equipos propios">
+          <Seccion titulo="Descuentos" hint="sobre subtotal de equipos Mainstage">
             <div className="space-y-3">
-              {/* Volumen — toggle manual */}
-              <div className="flex items-center gap-3">
+              {/* Aviso si hay descuentos legacy preservados */}
+              {(dMultidiaPreservado > 0 || dEspecialPreservado > 0 || dPatrocinioPreservado > 0 || dFijoPreservado > 0) && (
+                <div className="text-[10px] text-amber-600/70 bg-amber-900/10 border border-amber-900/20 rounded-lg px-3 py-2">
+                  Cotización anterior: descuentos históricos preservados (multidía {formatPct(dMultidiaPreservado)}{dEspecialPreservado > 0 ? `, especial ${formatPct(dEspecialPreservado)}` : ""}{dPatrocinioPreservado > 0 ? `, patrocinio ${formatPct(dPatrocinioPreservado)}` : ""}{dFijoPreservado > 0 ? `, fijo ${formatCurrency(dFijoPreservado)}` : ""})
+                </div>
+              )}
+
+              {/* 1. Descuento por volumen */}
+              <div className="flex items-start gap-3">
                 <button
-                  onClick={() => { setVolumenActivo(v => !v); setDVolumenManual(""); }}
-                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${volumenActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  onClick={() => { setVolumenManualToggle(true); setVolumenActivo(v => !v); }}
+                  className={`flex items-center gap-2 w-48 shrink-0 text-sm font-medium transition-colors ${volumenActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
                   <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${volumenActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
                     <span className={`w-3 h-3 rounded-full bg-white transition-transform ${volumenActivo ? "translate-x-4" : "translate-x-0"}`} />
                   </span>
                   Descuento por volumen
                 </button>
                 {volumenActivo ? (
-                  <>
-                    {volumenEdit ? (
-                      <>
-                        <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoVolumen)}</span>
-                        <input type="number" min="0" max="100" step="1" autoFocus
-                          value={dVolumenManual} onChange={e => setDVolumenManual(e.target.value)}
-                          placeholder={String(Math.round(resumen.autoVolumen * 100))}
-                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
-                        <span className="text-gray-400 text-sm">%</span>
-                        <button onClick={() => { setDVolumenManual(""); setVolumenEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-white text-sm font-semibold flex-1">{dVolumenManual !== "" ? dVolumenManual : String(Math.round(resumen.autoVolumen * 100))}%</span>
-                        <button onClick={() => setVolumenEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
-                      </>
-                    )}
-                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dVolumen)}</span>
-                  </>
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-white text-sm font-semibold">Auto · {cfgPctVolumen}%</span>
+                    <span className="text-red-400 text-sm">-{formatCurrency(resumen.montoVolumen)}</span>
+                  </div>
                 ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · actívalo si el cliente pide mejor precio</span>
+                  <span className="text-gray-700 text-xs flex-1 italic self-center">
+                    {resumen.debeAutoVolumen ? "Activa automáticamente — desactivado manualmente" : `Auto · ${cfgPctVolumen}% · activo si equipos > ${formatCurrency(cfgUmbralVolumen)}`}
+                  </span>
                 )}
               </div>
 
-              {/* B2B */}
-              <div className="flex items-center gap-3">
+              {/* 2. Descuento B2B */}
+              <div className="flex items-start gap-3">
                 <button
-                  onClick={() => { setB2bActivo(v => !v); setB2bEdit(false); setDB2BManual(""); }}
-                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${b2bActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  onClick={() => { setB2bManualToggle(true); setB2bActivo(v => !v); }}
+                  className={`flex items-center gap-2 w-48 shrink-0 text-sm font-medium transition-colors ${b2bActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
                   <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${b2bActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
                     <span className={`w-3 h-3 rounded-full bg-white transition-transform ${b2bActivo ? "translate-x-4" : "translate-x-0"}`} />
                   </span>
                   Descuento B2B
                 </button>
                 {b2bActivo ? (
-                  <>
-                    {b2bEdit ? (
-                      <>
-                        <span className="text-gray-500 text-xs flex-1">Fijo: 10%</span>
-                        <input type="number" min="0" max="100" step="1" autoFocus
-                          value={dB2BManual} onChange={e => setDB2BManual(e.target.value)}
-                          placeholder="10"
-                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
-                        <span className="text-gray-400 text-sm">%</span>
-                        <button onClick={() => { setDB2BManual(""); setB2bEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-white text-sm font-semibold flex-1">{dB2BManual !== "" ? dB2BManual : "10"}%</span>
-                        <button onClick={() => setB2bEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
-                      </>
-                    )}
-                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dB2B)}</span>
-                  </>
+                  <div className="flex-1 flex items-center justify-between">
+                    <span className="text-white text-sm font-semibold">Auto · {cfgPctB2b}%</span>
+                    <span className="text-red-400 text-sm">-{formatCurrency(resumen.montoB2b)}</span>
+                  </div>
                 ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · 10% para clientes B2B</span>
+                  <span className="text-gray-700 text-xs flex-1 italic self-center">Auto · {cfgPctB2b}% · activo si cliente es B2B</span>
                 )}
               </div>
 
-              {/* Multi-día */}
-              <div className="flex items-center gap-3">
+              {/* 3. Descuento manual */}
+              <div className="flex items-start gap-3">
                 <button
-                  onClick={() => { setMultidiaActivo(v => !v); setMultidiaEdit(false); setDMultidiaManual(""); }}
-                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${multidiaActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
-                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${multidiaActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${multidiaActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  onClick={() => setManualActivo(v => !v)}
+                  className={`flex items-center gap-2 w-48 shrink-0 text-sm font-medium transition-colors ${manualActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${manualActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${manualActivo ? "translate-x-4" : "translate-x-0"}`} />
                   </span>
-                  Multi-día
+                  Descuento manual
                 </button>
-                {multidiaActivo ? (
-                  <>
-                    {multidiaEdit ? (
-                      <>
-                        <span className="text-gray-500 text-xs flex-1">Auto: {formatPct(resumen.autoMultidia)} · {evento.diasEquipo} día(s)</span>
-                        <input type="number" min="0" max="100" step="1" autoFocus
-                          value={dMultidiaManual} onChange={e => setDMultidiaManual(e.target.value)}
-                          placeholder={String(Math.round(resumen.autoMultidia * 100))}
-                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
-                        <span className="text-gray-400 text-sm">%</span>
-                        <button onClick={() => { setDMultidiaManual(""); setMultidiaEdit(false); }} className="text-gray-600 hover:text-white text-xs">✕</button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-white text-sm font-semibold flex-1">{dMultidiaManual !== "" ? dMultidiaManual : String(Math.round(resumen.autoMultidia * 100))}% · {evento.diasEquipo} día(s)</span>
-                        <button onClick={() => setMultidiaEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
-                      </>
-                    )}
-                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dMultidia)}</span>
-                  </>
+                {manualActivo ? (
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      {/* Selector % o $ */}
+                      <div className="flex rounded-lg overflow-hidden border border-[#333]">
+                        <button onClick={() => setManualEsMonto(false)}
+                          className={`text-xs px-2.5 py-1 transition-colors ${!manualEsMonto ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>%</button>
+                        <button onClick={() => setManualEsMonto(true)}
+                          className={`text-xs px-2.5 py-1 transition-colors ${manualEsMonto ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>$</button>
+                      </div>
+                      <input type="number" min="0" max={manualEsMonto ? undefined : cfgMaxManual} step={manualEsMonto ? "1" : "0.5"}
+                        value={manualValor} onChange={e => setManualValor(e.target.value)}
+                        placeholder="0"
+                        className="w-24 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
+                      {!manualEsMonto && <span className="text-gray-400 text-sm">%</span>}
+                      {!manualEsMonto && parseFloat(manualValor) > cfgMaxManual && (
+                        <span className="text-amber-400 text-xs">Supera el máximo permitido ({cfgMaxManual}%)</span>
+                      )}
+                      <span className="text-red-400 text-sm ml-auto">-{formatCurrency(resumen.montoManual)}</span>
+                    </div>
+                    <input value={manualRazon} onChange={e => setManualRazon(e.target.value)}
+                      placeholder="Razón del descuento (interno, no aparece en PDF)…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                  </div>
                 ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · {formatPct(resumen.autoMultidia)} por {evento.diasEquipo} día(s)</span>
+                  <span className="text-gray-700 text-xs flex-1 italic self-center">% o $ · requiere razón interna · máx {cfgMaxManual}%</span>
                 )}
               </div>
 
-              {/* Descuento especial (ex Family & Friends) */}
-              <div className="flex items-center gap-3">
+              {/* 4. Pago anticipado */}
+              <div className="flex items-start gap-3">
                 <button
-                  onClick={() => { setEspecialActivo(v => !v); setEspecialEdit(false); }}
-                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${especialActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
-                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${especialActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${especialActivo ? "translate-x-4" : "translate-x-0"}`} />
+                  onClick={() => setPagoAnticipadoActivo(v => !v)}
+                  className={`flex items-center gap-2 w-48 shrink-0 text-sm font-medium transition-colors ${pagoAnticipadoActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
+                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${pagoAnticipadoActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
+                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${pagoAnticipadoActivo ? "translate-x-4" : "translate-x-0"}`} />
                   </span>
-                  Descuento especial
+                  Pago anticipado
                 </button>
-                {especialActivo ? (
-                  <>
-                    {especialEdit ? (
-                      <>
-                        <span className="text-gray-500 text-xs flex-1">Editable</span>
-                        <input type="number" min="0" max="100" step="1" autoFocus
-                          value={dFamilyFriends} onChange={e => setDFamilyFriends(e.target.value)}
-                          placeholder="10"
-                          className="w-20 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
-                        <span className="text-gray-400 text-sm">%</span>
-                        <button onClick={() => setEspecialEdit(false)} className="text-gray-600 hover:text-white text-xs">✕</button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-white text-sm font-semibold flex-1">{dFamilyFriends !== "" ? dFamilyFriends : "10"}%</span>
-                        <button onClick={() => setEspecialEdit(true)} className="text-xs text-gray-500 hover:text-[#B3985B] border border-[#333] px-2 py-0.5 rounded transition-colors">Editar</button>
-                      </>
-                    )}
-                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(resumen.subtotalEquiposBruto * resumen.dFF)}</span>
-                  </>
+                {pagoAnticipadoActivo ? (
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-white text-sm font-semibold">{cfgPctAnticipado}% sobre equipos neto</span>
+                      <span className="text-green-400 text-sm ml-auto">-{formatCurrency(resumen.montoPagoAnticipadoFinal)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-gray-500 shrink-0">Válido antes del:</label>
+                      <input type="date" value={pagoAnticipadoFecha} onChange={e => setPagoAnticipadoFecha(e.target.value)}
+                        className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <textarea value={pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))}
+                      onChange={e => setPagoAnticipadoTexto(e.target.value)}
+                      rows={2} placeholder="Texto que aparecerá en el PDF…"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
+                    <p className="text-[10px] text-gray-600">El total principal NO cambia — esta sección aparece separada al final del PDF</p>
+                  </div>
                 ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · se activa automáticamente en tratos Family & Friends</span>
-                )}
-              </div>
-              {/* Descuento fijo en MXN */}
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setDescuentoFijoActivo(v => !v)}
-                  className={`flex items-center gap-2 w-40 shrink-0 text-sm font-medium transition-colors ${descuentoFijoActivo ? "text-[#B3985B]" : "text-gray-600 hover:text-gray-400"}`}>
-                  <span className={`w-8 h-4 rounded-full flex items-center px-0.5 transition-colors ${descuentoFijoActivo ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                    <span className={`w-3 h-3 rounded-full bg-white transition-transform ${descuentoFijoActivo ? "translate-x-4" : "translate-x-0"}`} />
-                  </span>
-                  Desc. fijo $
-                </button>
-                {descuentoFijoActivo ? (
-                  <>
-                    <span className="text-gray-500 text-xs flex-1">Monto fijo en MXN</span>
-                    <input type="number" min="0" step="1"
-                      value={descuentoFijoMonto} onChange={e => setDescuentoFijoMonto(e.target.value)}
-                      placeholder="0"
-                      className="w-28 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
-                    <span className="text-red-400 text-sm w-24 text-right">-{formatCurrency(parseFloat(descuentoFijoMonto) || 0)}</span>
-                  </>
-                ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic">Inactivo · descuento por cantidad fija en MXN</span>
+                  <span className="text-gray-700 text-xs flex-1 italic self-center">{cfgPctAnticipado}% · genera sección separada en PDF</span>
                 )}
               </div>
 
-              {/* Total descuento */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#222]">
-                <span className="text-white text-sm font-medium">Descuento total</span>
-                <span className="text-red-400 font-bold">{formatPct(resumen.descuentoTotalPct)} — {formatCurrency(resumen.montoDescuento)}</span>
-              </div>
-              {/* Descuento a adicionales */}
-              <div className="flex items-center gap-3 pt-2 border-t border-[#222]">
-                <label className="flex items-center gap-2 cursor-pointer flex-1">
-                  <input type="checkbox" checked={descuentoAplicaAdicionales} onChange={e => setDescuentoAplicaAdicionales(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
-                  <span className="text-sm text-gray-300">Aplicar descuento a equipos externos y conceptos adicionales</span>
-                </label>
-                {descuentoAplicaAdicionales && (resumen.descuentoMontaExternos + resumen.descuentoMontaAdicionales) > 0 && (
-                  <span className="text-red-400 text-sm shrink-0">-{formatCurrency(resumen.descuentoMontaExternos + resumen.descuentoMontaAdicionales)}</span>
+              {/* Totales */}
+              <div className="pt-2 border-t border-[#222] space-y-1">
+                {resumen.montoVolumen > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Desc. volumen ({cfgPctVolumen}%)</span>
+                    <span className="text-red-400">-{formatCurrency(resumen.montoVolumen)}</span>
+                  </div>
+                )}
+                {resumen.montoB2b > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Desc. B2B ({cfgPctB2b}%) sobre {formatCurrency(resumen.basePostVolumen)}</span>
+                    <span className="text-red-400">-{formatCurrency(resumen.montoB2b)}</span>
+                  </div>
+                )}
+                {resumen.montoManual > 0 && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>Desc. manual {manualEsMonto ? "" : `(${parseFloat(manualValor) || 0}%)`}</span>
+                    <span className="text-red-400">-{formatCurrency(resumen.montoManual)}</span>
+                  </div>
+                )}
+                {resumen.montoDescuento > 0 && (
+                  <div className="flex justify-between text-sm font-medium border-t border-[#222] pt-1">
+                    <span className="text-white">Total descuento equipos</span>
+                    <span className="text-red-400 font-bold">-{formatCurrency(resumen.montoDescuento)}</span>
+                  </div>
                 )}
               </div>
-              {/* Chofer */}
+
+              {/* Chofer + IVA (mantener) */}
               <div className="flex items-center gap-3 pt-2 border-t border-[#222]">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={incluirChofer} onChange={e => setIncluirChofer(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
                   <span className="text-sm text-gray-300">Incluir chofer de producción <span className="text-[#B3985B] font-semibold">+$500</span></span>
                 </label>
               </div>
-              {/* IVA */}
               <div className="flex items-center gap-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={aplicaIva} onChange={e => setAplicaIva(e.target.checked)} className="w-4 h-4 rounded accent-[#B3985B]" />
@@ -2145,13 +2194,36 @@ function CotizadorForm() {
 
             {/* Resumen de precios */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-400"><span>Equipos bruto</span><span>{formatCurrency(resumen.subtotalEquiposBruto)}</span></div>
-              {resumen.montoDescuento > 0 && <div className="flex justify-between text-red-400"><span>Descuento ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.montoDescuento)}</span></div>}
-              <div className="flex justify-between text-white"><span>Equipos neto</span><span>{formatCurrency(resumen.subtotalEquiposNeto)}</span></div>
-              {resumen.montoDescuentoFijo > 0 && <div className="flex justify-between text-red-400"><span>Descuento fijo</span><span>-{formatCurrency(resumen.montoDescuentoFijo)}</span></div>}
+              <div className="flex justify-between text-gray-400">
+                <span>Equipos bruto</span>
+                <span>{formatCurrency(resumen.subtotalEquiposBruto)}</span>
+              </div>
+              {resumen.montoVolumen > 0 && (
+                <div className="flex justify-between text-red-400 text-xs">
+                  <span>Desc. volumen ({cfgPctVolumen}%)</span>
+                  <span>-{formatCurrency(resumen.montoVolumen)}</span>
+                </div>
+              )}
+              {resumen.montoB2b > 0 && (
+                <div className="flex justify-between text-red-400 text-xs">
+                  <span>Desc. B2B ({cfgPctB2b}%)</span>
+                  <span>-{formatCurrency(resumen.montoB2b)}</span>
+                </div>
+              )}
+              {resumen.montoManual > 0 && (
+                <div className="flex justify-between text-red-400 text-xs">
+                  <span>Desc. especial {!manualEsMonto ? `(${parseFloat(manualValor)||0}%)` : ""}</span>
+                  <span>-{formatCurrency(resumen.montoManual)}</span>
+                </div>
+              )}
+              {(resumen.montoDescuento > 0) && (
+                <div className="flex justify-between text-white font-medium">
+                  <span>Equipos neto</span>
+                  <span>{formatCurrency(resumen.subtotalEquiposNeto)}</span>
+                </div>
+              )}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
-              {resumen.descuentoMontaAdicionales > 0 && <div className="flex justify-between text-red-400"><span>Desc. adicionales ({formatPct(resumen.descuentoTotalPct)})</span><span>-{formatCurrency(resumen.descuentoMontaAdicionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}
               {resumen.subtotalDJ > 0 && <div className="flex justify-between text-gray-400"><span>Servicio DJ</span><span>{formatCurrency(resumen.subtotalDJ)}</span></div>}
               {resumen.subtotalTransporte > 0 && <div className="flex justify-between text-gray-400"><span>Transporte</span><span>{formatCurrency(resumen.subtotalTransporte)}</span></div>}
@@ -2161,6 +2233,13 @@ function CotizadorForm() {
               <div className="flex justify-between text-white font-semibold border-t border-[#333] pt-2"><span>Subtotal</span><span>{formatCurrency(resumen.total)}</span></div>
               {aplicaIva && <div className="flex justify-between text-gray-400"><span>IVA 16%</span><span>{formatCurrency(resumen.montoIva)}</span></div>}
               <div className="flex justify-between text-[#B3985B] font-bold text-base border-t border-[#333] pt-2"><span>Total</span><span>{formatCurrency(resumen.granTotal)}</span></div>
+              {pagoAnticipadoActivo && resumen.montoPagoAnticipadoFinal > 0 && (
+                <div className="mt-2 pt-2 border-t border-[#333] space-y-1 border border-green-900/30 rounded-lg p-2 bg-green-900/5">
+                  <p className="text-green-400 text-xs font-semibold">Opción pago anticipado</p>
+                  <div className="flex justify-between text-xs text-green-400"><span>Ahorro ({cfgPctAnticipado}%)</span><span>-{formatCurrency(resumen.montoPagoAnticipadoFinal)}</span></div>
+                  <div className="flex justify-between text-xs text-white font-semibold"><span>Total c/ anticipo</span><span>{formatCurrency(resumen.totalConPagoAnticipado)}</span></div>
+                </div>
+              )}
               <div className="border-t border-[#222] pt-3 space-y-1 text-xs text-gray-500">
                 <div className="flex justify-between"><span>Anticipo 50%</span><span className="text-white">{formatCurrency(resumen.granTotal * 0.5)}</span></div>
                 <div className="flex justify-between"><span>Liquidación 50%</span><span className="text-white">{formatCurrency(resumen.granTotal * 0.5)}</span></div>
