@@ -464,7 +464,7 @@ export default async function DashboardPage() {
                   <p className="text-gray-300 text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <p className="text-gray-600 text-[11px]">{new Date(c.fechaCompromiso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short" })}</p>
-                    <p className="text-green-400 text-xs font-semibold">{formatCurrency(c.monto)}</p>
+                    <p className="text-green-400 text-xs font-semibold">{formatCurrency(c.monto - (c.montoCobrado ?? 0))}</p>
                   </div>
                 </div>
               ))}

@@ -76,7 +76,7 @@ export default async function DashboardDireccionPage() {
 
     // CxC total pendiente
     prisma.cuentaCobrar.aggregate({
-      _sum: { monto: true },
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
 
@@ -98,7 +98,7 @@ export default async function DashboardDireccionPage() {
   const ingresos = movimientosMes.find(m => m.tipo === "INGRESO")?._sum.monto ?? 0;
   const egresos  = movimientosMes.find(m => m.tipo === "GASTO")?._sum.monto   ?? 0;
   const flujo    = ingresos - egresos;
-  const cxcTotal = cxcPendiente._sum.monto ?? 0;
+  const cxcTotal = (cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0);
 
   const estadosMap: Record<string, number> = {};
   proyectosEstados.forEach(p => { estadosMap[p.estado] = p._count._all; });

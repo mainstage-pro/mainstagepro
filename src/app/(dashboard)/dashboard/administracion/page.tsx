@@ -59,11 +59,11 @@ export default async function DashboardAdminPage() {
       },
     }),
     prisma.cuentaCobrar.aggregate({
-      _sum: { monto: true },
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] } },
     }),
     prisma.cuentaCobrar.aggregate({
-      _sum: { monto: true },
+      _sum: { monto: true, montoCobrado: true },
       where: { estado: { in: ["PENDIENTE", "PARCIAL"] }, fechaCompromiso: { lt: inicioDeHoy } },
     }),
     prisma.cuentaCobrar.findMany({
@@ -108,8 +108,8 @@ export default async function DashboardAdminPage() {
     return s + c.movimientosEntrada.reduce((x: number, mv: { monto: number }) => x + mv.monto, 0)
              - c.movimientosSalida.reduce((x: number, mv: { monto: number }) => x + mv.monto, 0);
   }, 0);
-  const cxcTotal     = cxcPendiente._sum.monto ?? 0;
-  const cxcVencMonto = cxcVencidaAgg._sum.monto ?? 0;
+  const cxcTotal     = (cxcPendiente._sum.monto ?? 0) - (cxcPendiente._sum.montoCobrado ?? 0);
+  const cxcVencMonto = (cxcVencidaAgg._sum.monto ?? 0) - (cxcVencidaAgg._sum.montoCobrado ?? 0);
   const cxcProxMonto = cxcTotal - cxcVencMonto;
   const cxpTotal     = cxpPendiente._sum.monto ?? 0;
   const cxpVencMonto = cxpVencidaAgg._sum.monto ?? 0;
@@ -189,7 +189,7 @@ export default async function DashboardAdminPage() {
                     <p className="text-gray-300 text-xs truncate">{c.empresa?.nombre ?? c.cliente?.nombre ?? "—"}</p>
                     <div className="flex items-center gap-2 shrink-0 ml-2">
                       <p className="text-gray-600 text-[11px]">{fmtDate(c.fechaCompromiso)}</p>
-                      <p className="text-green-400 text-xs font-semibold">{fmt(c.monto)}</p>
+                      <p className="text-green-400 text-xs font-semibold">{fmt(c.monto - (c.montoCobrado ?? 0))}</p>
                     </div>
                   </div>
                 ))}
