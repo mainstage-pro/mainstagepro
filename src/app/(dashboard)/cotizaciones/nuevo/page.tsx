@@ -821,16 +821,15 @@ function CotizadorForm() {
     const basePostB2b = basePostVolumen - montoB2b;
 
     // 3) Descuento manual (% sobre base post-B2B, o $ fijo)
-    const maxManualMonto = basePostB2b * (cfgMaxManual / 100);
     const montoManual = manualActivo
       ? (manualEsMonto
-          ? Math.min(parseFloat(manualValor) || 0, maxManualMonto)
-          : basePostB2b * Math.min(parseFloat(manualValor) || 0, cfgMaxManual) / 100)
+          ? (parseFloat(manualValor) || 0)
+          : basePostB2b * (parseFloat(manualValor) || 0) / 100)
       : 0;
     const pctManualEfectivo = manualActivo
       ? (manualEsMonto
           ? (basePostB2b > 0 ? montoManual / basePostB2b : 0)
-          : Math.min(parseFloat(manualValor) || 0, cfgMaxManual) / 100)
+          : (parseFloat(manualValor) || 0) / 100)
       : 0;
     const subtotalEquiposNeto = basePostB2b - montoManual;
 
@@ -2076,14 +2075,11 @@ function CotizadorForm() {
                         <button onClick={() => setManualEsMonto(true)}
                           className={`text-xs px-2.5 py-1 transition-colors ${manualEsMonto ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>$</button>
                       </div>
-                      <input type="number" min="0" max={manualEsMonto ? undefined : cfgMaxManual} step={manualEsMonto ? "1" : "0.5"}
+                      <input type="number" min="0" step={manualEsMonto ? "1" : "0.5"}
                         value={manualValor} onChange={e => setManualValor(e.target.value)}
                         placeholder="0"
                         className="w-24 bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none" />
                       {!manualEsMonto && <span className="text-gray-400 text-sm">%</span>}
-                      {!manualEsMonto && parseFloat(manualValor) > cfgMaxManual && (
-                        <span className="text-amber-400 text-xs">Supera el máximo permitido ({cfgMaxManual}%)</span>
-                      )}
                       <span className="text-red-400 text-sm ml-auto">-{formatCurrency(resumen.montoManual)}</span>
                     </div>
                     <input value={manualRazon} onChange={e => setManualRazon(e.target.value)}
@@ -2091,7 +2087,7 @@ function CotizadorForm() {
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
                   </div>
                 ) : (
-                  <span className="text-gray-700 text-xs flex-1 italic self-center">% o $ · requiere razón interna · máx {cfgMaxManual}%</span>
+                  <span className="text-gray-700 text-xs flex-1 italic self-center">% o $ · requiere razón interna</span>
                 )}
               </div>
 
