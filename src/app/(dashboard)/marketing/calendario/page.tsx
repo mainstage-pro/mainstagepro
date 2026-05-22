@@ -114,6 +114,7 @@ export default function MarketingCalendarioPage({
   const [formImagenes, setFormImagenes] = useState<string[]>([]);
   const [uploadingNew, setUploadingNew] = useState(false);
   const [dragFromIdx, setDragFromIdx] = useState<number | null>(null);
+  const [lightbox, setLightbox] = useState<{ imgs: string[]; idx: number } | null>(null);
 
   useEffect(() => { if (vistaForzada) setVista(vistaForzada); }, [vistaForzada]);
 
@@ -522,9 +523,10 @@ export default function MarketingCalendarioPage({
                           setDragFromIdx(null);
                         }}
                         onDragEnd={() => setDragFromIdx(null)}
-                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all bg-[#0d0d0d] ${
-                          dragFromIdx === idx ? "opacity-40 border-[#B3985B]" : "border-[#333] hover:border-[#555]"
+                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 cursor-pointer active:cursor-grabbing transition-all bg-[#0d0d0d] ${
+                          dragFromIdx === idx ? "opacity-40 border-[#B3985B]" : "border-[#333] hover:border-[#B3985B]/60"
                         }`}
+                        onClick={e => { e.stopPropagation(); setLightbox({ imgs: formImagenes, idx }); }}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-contain" />
@@ -648,6 +650,7 @@ export default function MarketingCalendarioPage({
           openEdit={openEdit}
           deletePub={deletePub}
           quickEstado={quickEstado}
+          openLightbox={(imgs, idx) => setLightbox({ imgs, idx })}
         />
       ) : vista === "tipo" ? (
         <VistaPorTipo
@@ -659,6 +662,7 @@ export default function MarketingCalendarioPage({
           openEdit={openEdit}
           deletePub={deletePub}
           quickEstado={quickEstado}
+          openLightbox={(imgs, idx) => setLightbox({ imgs, idx })}
         />
       ) : (
         <VistaFeedIG feedPosts={feedPosts} openEdit={openEdit} />
@@ -766,6 +770,80 @@ export default function MarketingCalendarioPage({
           </div>
         </div>
       )}
+
+      {/* ── Lightbox carrusel ── */}
+      {lightbox && (
+        <CarruselLightbox
+          imgs={lightbox.imgs}
+          idx={lightbox.idx}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Lightbox / Visualizador de carrusel ─────────────────────────────────────
+function CarruselLightbox({ imgs, idx: initialIdx, onClose }: { imgs: string[]; idx: number; onClose: () => void }) {
+  const [idx, setIdx] = useState(initialIdx);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIdx(i => (i + 1) % imgs.length);
+      if (e.key === "ArrowLeft")  setIdx(i => (i - 1 + imgs.length) % imgs.length);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [imgs.length, onClose]);
+
+  const prev = () => setIdx(i => (i - 1 + imgs.length) % imgs.length);
+  const next = () => setIdx(i => (i + 1) % imgs.length);
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/92 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex flex-col items-center max-w-5xl max-h-[90vh] w-full px-4"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Barra superior */}
+        <div className="flex items-center justify-between w-full mb-3">
+          <span className="text-gray-400 text-sm font-medium">{idx + 1} / {imgs.length}</span>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors text-xl leading-none">×</button>
+        </div>
+        {/* Imagen principal */}
+        <div className="relative w-full flex items-center justify-center">
+          {imgs.length > 1 && (
+            <button onClick={prev} className="absolute left-0 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 hover:bg-[#B3985B]/80 text-white transition-all text-2xl border border-white/10 hover:border-[#B3985B] -translate-x-2">‹</button>
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img key={idx} src={imgs[idx]} alt={`Imagen ${idx + 1}`} className="max-h-[72vh] max-w-full object-contain rounded-xl shadow-2xl select-none" draggable={false} />
+          {imgs.length > 1 && (
+            <button onClick={next} className="absolute right-0 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 hover:bg-[#B3985B]/80 text-white transition-all text-2xl border border-white/10 hover:border-[#B3985B] translate-x-2">›</button>
+          )}
+        </div>
+        {/* Puntos indicadores */}
+        {imgs.length > 1 && (
+          <div className="flex items-center gap-2 mt-4">
+            {imgs.map((_, i) => (
+              <button key={i} onClick={() => setIdx(i)} className={`rounded-full transition-all ${i === idx ? "w-5 h-2 bg-[#B3985B]" : "w-2 h-2 bg-white/25 hover:bg-white/50"}`} />
+            ))}
+          </div>
+        )}
+        {/* Miniaturas strip */}
+        {imgs.length > 1 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto max-w-full pb-1">
+            {imgs.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={url} alt={`Miniatura ${i + 1}`} onClick={() => setIdx(i)} draggable={false}
+                className={`w-14 h-14 object-contain rounded-lg cursor-pointer shrink-0 transition-all bg-[#0d0d0d] border-2 ${i === idx ? "border-[#B3985B] opacity-100" : "border-transparent opacity-50 hover:opacity-80"}`} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1083,11 +1161,12 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
 }
 
 // ─── Vista Parrilla (tabla) ──────────────────────────────────────────────────
-function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado }: {
+function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, openLightbox }: {
   publicaciones: Publicacion[]; expandedId: string | null; editId: string | null;
   setExpandedId: (id: string | null) => void;
   openEdit: (p: Publicacion) => void; deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
+  openLightbox: (imgs: string[], idx: number) => void;
 }) {
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const tiposUnicos = Array.from(new Map(publicaciones.filter(p => p.tipo).map(p => [p.tipo!.id, p.tipo!])).values());
@@ -1158,7 +1237,11 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                     <div className="pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       {parseImagenes(p.portadaUrl).length > 0 && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[200px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d]" />
+                        <img
+                          src={parseImagenes(p.portadaUrl)[0]} alt="Portada"
+                          className="w-full max-w-[200px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d] cursor-zoom-in hover:border-[#B3985B]/40 transition-colors"
+                          onClick={() => openLightbox(parseImagenes(p.portadaUrl), 0)}
+                        />
                       )}
                       {p.copy && (
                         <div className={`${parseImagenes(p.portadaUrl).length > 0 ? "md:col-span-2" : "md:col-span-3"} bg-[#111] rounded-lg p-3 border border-[#1e1e1e]`}>
@@ -1190,12 +1273,13 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
 }
 
 // ─── Vista Por Tipo ──────────────────────────────────────────────────────────
-function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado }: {
+function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, openEdit, deletePub, quickEstado, openLightbox }: {
   porTipo: Record<string, Publicacion[]>; sinTipo: Publicacion[];
   expandedId: string | null; editId: string | null;
   setExpandedId: (id: string | null) => void;
   openEdit: (p: Publicacion) => void; deletePub: (id: string) => void;
   quickEstado: (id: string, estado: string) => void;
+  openLightbox: (imgs: string[], idx: number) => void;
 }) {
   return (
     <div className="space-y-6">
@@ -1247,7 +1331,11 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 text-xs">
                           {parseImagenes(p.portadaUrl)[0] && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[160px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d]" />
+                            <img
+                              src={parseImagenes(p.portadaUrl)[0]} alt="Portada"
+                              className="w-full max-w-[160px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d] cursor-zoom-in hover:border-[#B3985B]/40 transition-colors"
+                              onClick={() => openLightbox(parseImagenes(p.portadaUrl), 0)}
+                            />
                           )}
                           {p.copy && <div className="md:col-span-2 bg-[#111] rounded-lg p-3 border border-[#1e1e1e]"><p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p><p className="text-white whitespace-pre-wrap">{p.copy}</p></div>}
                           {p.materialLink && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Material</p><a href={p.materialLink} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] hover:underline break-all">{p.materialLink}</a></div>}
