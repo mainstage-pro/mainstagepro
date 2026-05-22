@@ -353,6 +353,10 @@ function CotizadorForm() {
           });
         }
         setClienteNombre(cot.cliente?.nombre + (cot.cliente?.empresa ? ` · ${cot.cliente.empresa}` : ""));
+        // Bloquear los useEffects de auto-descuento ANTES de setear tipoCliente,
+        // para que no sobreescriban el estado guardado en la cotización.
+        setB2bManualToggle(true);
+        setVolumenManualToggle(true);
         setTipoCliente(cot.cliente?.tipoCliente ?? "POR_DESCUBRIR");
         setEvento({
           nombreEvento: cot.nombreEvento ?? "",
@@ -367,9 +371,9 @@ function CotizadorForm() {
         setObservaciones(cot.observaciones ?? "");
         setIncluirChofer(cot.incluirChofer ?? false);
         setAplicaIva(cot.aplicaIva ?? false);
-        // Cargar descuentos guardados
-        if ((cot.descuentoB2bPct ?? 0) > 0) { setB2bActivo(true); setB2bManualToggle(true); }
-        if ((cot.descuentoVolumenPct ?? 0) > 0) { setVolumenActivo(true); setVolumenManualToggle(true); }
+        // Cargar descuentos exactamente como estaban guardados
+        setB2bActivo((cot.descuentoB2bPct ?? 0) > 0);
+        setVolumenActivo((cot.descuentoVolumenPct ?? 0) > 0);
         // Descuento manual (nuevo): viene de descuentoFamilyFriendsPct (%) o descuentoFijoMonto ($) con descuentoManualEsMonto
         const esManualMonto = cot.descuentoManualEsMonto ?? false;
         const montoFijo = cot.descuentoFijoMonto ?? 0;
