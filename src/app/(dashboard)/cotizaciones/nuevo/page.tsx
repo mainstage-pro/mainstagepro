@@ -230,7 +230,7 @@ function CotizadorForm() {
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
-  const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA");
+  const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA"); const [selDJTarifa, setSelDJTarifa] = useState("");
   const [logConcepto, setLogConcepto] = useState({ COMIDA: CONCEPTOS_COMIDA[0].label, TRANSPORTE: CONCEPTOS_TRANSPORTE[0].label, HOSPEDAJE: CONCEPTOS_HOSPEDAJE[0].label });
   const [logPrecio, setLogPrecio] = useState({ COMIDA: String(CONCEPTOS_COMIDA[0].precio), TRANSPORTE: String(CONCEPTOS_TRANSPORTE[0].precio), HOSPEDAJE: String(CONCEPTOS_HOSPEDAJE[0].precio) });
   const [logCant, setLogCant] = useState({ COMIDA: "1", TRANSPORTE: "1", HOSPEDAJE: "1" });
@@ -785,7 +785,8 @@ function CotizadorForm() {
     const horas = parseFloat(selDJHoras) || 1;
     const djRol = roles.find(r => r.nombre === "DJ");
     const tarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
-    const tarifa = djRol ? ((djRol[tarifaKey] as number | null) ?? 0) : 0;
+    const tarifaDefault = djRol ? ((djRol[tarifaKey] as number | null) ?? 0) : 0;
+    const tarifa = parseFloat(selDJTarifa) || tarifaDefault;
     setLineasDJ(prev => [...prev, {
       id: uid(), nivel: selDJNivel, horas, tarifa, subtotal: tarifa * horas,
     }]);
@@ -1913,27 +1914,52 @@ function CotizadorForm() {
             {(() => {
               const djRol = roles.find(r => r.nombre === "DJ");
               const djTarifaKey = `tarifaHora${selDJNivel}` as keyof RolTecnico;
-              const djTarifa = djRol ? ((djRol[djTarifaKey] as number | null) ?? 0) : 0;
+              const djTarifaDefault = djRol ? ((djRol[djTarifaKey] as number | null) ?? 0) : 0;
+              const djTarifaDisplay = parseFloat(selDJTarifa) || djTarifaDefault;
               return (
-                <div className="flex gap-2 mb-3">
+                <div className="flex gap-2 mb-3 flex-wrap">
                   <Combobox
                     value={selDJNivel}
-                    onChange={v => setSelDJNivel(v)}
+                    onChange={v => { setSelDJNivel(v); setSelDJTarifa(""); }}
                     options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
                     className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none"
                   />
-                  <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
-                  <div className="flex-1 flex items-center text-gray-400 text-sm">
-                    {formatCurrency(djTarifa)}/hr · Total: {formatCurrency(djTarifa * (parseFloat(selDJHoras) || 0))}
+                  <div className="flex items-center gap-1">
+                    <input type="number" min="1" value={selDJHoras} onChange={e => setSelDJHoras(e.target.value)} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none" placeholder="Horas" />
+                    <span className="text-gray-600 text-xs">hrs</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600 text-xs">$</span>
+                    <input type="number" min="0" value={selDJTarifa !== "" ? selDJTarifa : djTarifaDefault || ""}
+                      onChange={e => setSelDJTarifa(e.target.value)}
+                      className="w-28 bg-[#1a1a1a] border border-[#B3985B]/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      placeholder={String(djTarifaDefault)} />
+                    <span className="text-gray-600 text-xs">/hr</span>
+                  </div>
+                  <div className="flex-1 flex items-center text-gray-500 text-sm">
+                    Total: {formatCurrency(djTarifaDisplay * (parseFloat(selDJHoras) || 0))}
                   </div>
                   <button onClick={agregarDJ} disabled={!djRol} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
                 </div>
               );
             })()}
             {lineasDJ.length === 0 ? <p className="text-gray-600 text-sm text-center py-2">Sin DJ agregado</p> : lineasDJ.map(l => (
-              <div key={l.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a]">
-                <p className="text-white text-sm">DJ {l.nivel} · {l.horas}h · {formatCurrency(l.tarifa)}/hr</p>
-                <div className="flex items-center gap-3">
+              <div key={l.id} className="flex items-center gap-2 py-2 border-b border-[#1a1a1a] flex-wrap">
+                <p className="text-white text-sm w-16">DJ {l.nivel}</p>
+                <div className="flex items-center gap-1">
+                  <input type="number" min="1" value={l.horas}
+                    onChange={e => setLineasDJ(prev => prev.map(x => x.id !== l.id ? x : { ...x, horas: parseFloat(e.target.value) || 1, subtotal: (parseFloat(e.target.value) || 1) * x.tarifa }))}
+                    className="w-16 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none text-center" />
+                  <span className="text-gray-600 text-xs">hrs</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-600 text-xs">$</span>
+                  <input type="number" min="0" value={l.tarifa}
+                    onChange={e => setLineasDJ(prev => prev.map(x => x.id !== l.id ? x : { ...x, tarifa: parseFloat(e.target.value) || 0, subtotal: (parseFloat(e.target.value) || 0) * x.horas }))}
+                    className="w-24 bg-[#1a1a1a] border border-[#B3985B]/50 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-[#B3985B] text-right" />
+                  <span className="text-gray-600 text-xs">/hr</span>
+                </div>
+                <div className="flex items-center gap-3 ml-auto">
                   <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
                   <button onClick={() => setLineasDJ(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
                 </div>
