@@ -931,9 +931,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje)}</Text>
               </View>
             )}
-            <View style={s.totalFila}>
-              <Text style={[s.totalFilaDes, { fontFamily: "Helvetica-Bold", color: BLACK }]}>Total</Text>
-              <Text style={s.totalFilaMonto}>{fmtMXN(c.total)}</Text>
+            {/* Total sin IVA — recuadro destacado */}
+            <View style={{ borderTop: "1.5 solid " + GOLD, borderBottom: "1 solid #e0ddd8", flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 8, backgroundColor: "#FFFDF7" }}>
+              <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK }}>TOTAL SIN IVA</Text>
+              <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK }}>{fmtMXN(c.total)}</Text>
             </View>
             {c.aplicaIva && (
               <View style={s.totalFila}>
@@ -941,9 +942,18 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.montoIva)}</Text>
               </View>
             )}
+            {/* Gran Total */}
             <View style={s.totalGranTotal}>
-              <Text style={s.totalGranLabel}>GRAN TOTAL</Text>
+              <Text style={s.totalGranLabel}>{c.aplicaIva ? "TOTAL CON IVA" : "GRAN TOTAL"}</Text>
               <Text style={s.totalGranMonto}>{fmtMXN(c.granTotal)}</Text>
+            </View>
+            {/* Nota IVA */}
+            <View style={{ paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 }}>
+              <Text style={{ fontSize: 7, color: LIGHT_GRAY, lineHeight: 1.5, fontFamily: "Helvetica-Oblique" }}>
+                {c.aplicaIva
+                  ? "* El IVA aplica únicamente en caso de requerir comprobante fiscal (factura). En pagos sin factura, el total a cubrir corresponde al subtotal sin IVA indicado arriba."
+                  : "* En caso de requerir comprobante fiscal (factura), se añadirá el IVA correspondiente (16%) al total indicado. Cotizar con su vendedor."}
+              </Text>
             </View>
           </View>
         </View>
