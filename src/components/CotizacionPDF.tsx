@@ -438,7 +438,7 @@ const TIPO_LINEA_SECTION: Record<string, string> = {
   EQUIPO_EXTERNO: "equipo",
   PAQUETE: "equipo",
   OPERACION_TECNICA: "operacion",
-  DJ: "operacion",
+  DJ: "dj",
   TRANSPORTE: "logistica",
   COMIDA: "logistica",
   HOSPEDAJE: "logistica",
@@ -640,7 +640,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
 
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
 function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluirChofer?: boolean }) {
-  const opLineas = lineas.filter(l => ["OPERACION_TECNICA", "DJ"].includes(l.tipo));
+  const opLineas = lineas.filter(l => l.tipo === "OPERACION_TECNICA");
   const subtotal = opLineas.reduce((s, l) => s + l.subtotal, 0) + (incluirChofer ? 500 : 0);
   if (subtotal === 0) return null;
 
@@ -649,6 +649,40 @@ function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluir
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderTop: "1 solid #e0ddd8", borderBottom: "1 solid #e0ddd8" }}>
         <Text style={{ fontSize: 9, color: GRAY, fontFamily: "Helvetica-Bold" }}>Operación técnica</Text>
         <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// Servicio de DJ: sección separada con detalle de horas y tarifa
+function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
+  const djLineas = lineas.filter(l => l.tipo === "DJ");
+  if (djLineas.length === 0) return null;
+  const subtotal = djLineas.reduce((s, l) => s + l.subtotal, 0);
+
+  return (
+    <View>
+      <View style={s.seccionTitulo}>
+        <View style={s.seccionLinea} />
+        <Text style={s.seccionNombre}>Servicio de DJ</Text>
+      </View>
+      <View style={s.tablaHeader}>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>HORAS</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>TARIFA/HR</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.5, textAlign: "right" }]}>SUBTOTAL</Text>
+      </View>
+      {djLineas.map((l, i) => (
+        <View key={l.id} style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
+          <Text style={[s.cellDesc, { flex: 3 }]}>{l.descripcion}</Text>
+          <Text style={[s.cellNum, { flex: 1, textAlign: "center" }]}>{l.cantidad}</Text>
+          <Text style={[s.cellPrecio, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.precioUnitario)}</Text>
+          <Text style={[s.cellSubtotal, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.subtotal)}</Text>
+        </View>
+      ))}
+      <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingHorizontal: 40, paddingVertical: 5, borderTop: "1 solid #e0ddd8" }}>
+        <Text style={{ fontSize: 8.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>Total DJ: </Text>
+        <Text style={{ fontSize: 8.5, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
   );
@@ -843,6 +877,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── OPERACIÓN TÉCNICA (subtotal global, sin desglose) ── */}
         <SubtotalOperacion lineas={c.lineas} incluirChofer={c.incluirChofer} />
 
+        {/* ── SERVICIO DE DJ (sección propia con detalle de horas) ── */}
+        <SubtotalDJ lineas={c.lineas} />
+
         {/* ── LOGÍSTICA (subtotal global, sin desglose) ── */}
         {c.tipoServicio !== "RENTA" && <SubtotalLogistica lineas={c.lineas} />}
 
@@ -867,12 +904,27 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "OTRO").reduce((s, l) => s + l.subtotal, 0))}</Text>
               </View>
             )}
-            {(c.subtotalOperacion + (c.incluirChofer ? 500 : 0)) > 0 && (
-              <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Operación técnica</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalOperacion + (c.incluirChofer ? 500 : 0))}</Text>
-              </View>
-            )}
+            {(c.subtotalOperacion + (c.incluirChofer ? 500 : 0)) > 0 && (() => {
+              // Separar DJ de operación técnica en los totales
+              const djSubtotal = c.lineas.filter(l => l.tipo === "DJ").reduce((sum, l) => sum + l.subtotal, 0);
+              const opSinDJ = c.subtotalOperacion - djSubtotal + (c.incluirChofer ? 500 : 0);
+              return (
+                <>
+                  {opSinDJ > 0 && (
+                    <View style={s.totalFila}>
+                      <Text style={s.totalFilaDes}>Operación técnica</Text>
+                      <Text style={s.totalFilaMonto}>{fmtMXN(opSinDJ)}</Text>
+                    </View>
+                  )}
+                  {djSubtotal > 0 && (
+                    <View style={s.totalFila}>
+                      <Text style={s.totalFilaDes}>Servicio de DJ</Text>
+                      <Text style={s.totalFilaMonto}>{fmtMXN(djSubtotal)}</Text>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
             {c.tipoServicio !== "RENTA" && (c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Transporte y viáticos</Text>
