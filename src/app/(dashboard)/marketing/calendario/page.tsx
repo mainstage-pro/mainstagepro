@@ -522,12 +522,12 @@ export default function MarketingCalendarioPage({
                           setDragFromIdx(null);
                         }}
                         onDragEnd={() => setDragFromIdx(null)}
-                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all ${
+                        className={`relative w-20 h-20 rounded-lg overflow-hidden border-2 cursor-grab active:cursor-grabbing transition-all bg-[#0d0d0d] ${
                           dragFromIdx === idx ? "opacity-40 border-[#B3985B]" : "border-[#333] hover:border-[#555]"
                         }`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                        <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-contain" />
                         {idx === 0 && (
                           <div className="absolute bottom-0 inset-x-0 bg-[#B3985B] text-black text-[8px] font-bold text-center py-0.5 leading-none">
                             PORTADA
@@ -1158,7 +1158,7 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                     <div className="pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       {parseImagenes(p.portadaUrl).length > 0 && (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[200px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
+                        <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[200px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d]" />
                       )}
                       {p.copy && (
                         <div className={`${parseImagenes(p.portadaUrl).length > 0 ? "md:col-span-2" : "md:col-span-3"} bg-[#111] rounded-lg p-3 border border-[#1e1e1e]`}>
@@ -1247,7 +1247,7 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 text-xs">
                           {parseImagenes(p.portadaUrl)[0] && (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[160px] aspect-square object-cover rounded-lg border border-[#2a2a2a]" />
+                            <img src={parseImagenes(p.portadaUrl)[0]} alt="Portada" className="w-full max-w-[160px] rounded-lg border border-[#2a2a2a] object-contain bg-[#0d0d0d]" />
                           )}
                           {p.copy && <div className="md:col-span-2 bg-[#111] rounded-lg p-3 border border-[#1e1e1e]"><p className="text-gray-600 mb-1 text-[10px] uppercase">Copy</p><p className="text-white whitespace-pre-wrap">{p.copy}</p></div>}
                           {p.materialLink && <div><p className="text-gray-600 mb-1 text-[10px] uppercase">Material</p><a href={p.materialLink} target="_blank" rel="noopener noreferrer" className="text-[#B3985B] hover:underline break-all">{p.materialLink}</a></div>}
