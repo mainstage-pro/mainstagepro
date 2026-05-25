@@ -51,6 +51,7 @@ model User {
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
   proyectoAccesos        ProyectoAcceso[]
   reportesFormulario     ReporteFormulario[]    @relation("ReportesFormularioUser")
+  incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
 
   @@map("users")
 }
@@ -2678,4 +2679,18 @@ model ReporteFormulario {
   estado      String   @default("enviado")
 
   @@map("reportes_formulario")
+}
+
+model IncidenciaSemanal {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation("IncidenciasSemanalesUser", fields: [userId], references: [id])
+  semana      Int      // Número de semana ISO (1–53)
+  anio        Int
+  incidencias Json     // { area, texto, urgencia, orden }[]
+  estado      String   @default("guardado")
+
+  @@map("incidencias_semanales")
 }

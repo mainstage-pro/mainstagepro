@@ -14,6 +14,16 @@ const FORMULARIOS = [
     hrefNuevo: "/formularios/reporte-semanal/nuevo",
     disponible: true,
   },
+  {
+    id: "incidencias-semanales",
+    titulo: "Incidencias Semanales",
+    descripcion:
+      "Documenta y clasifica por urgencia las incidencias operativas de cada área durante la semana. Con exportación a PDF.",
+    icono: "⚠️",
+    href: "/formularios/incidencias-semanales",
+    hrefNuevo: "/formularios/incidencias-semanales/nuevo",
+    disponible: true,
+  },
   // Próximamente
   {
     id: "satisfaccion-cliente",
@@ -34,6 +44,7 @@ const FORMULARIOS = [
     disponible: false,
   },
 ];
+
 
 function getSemanaActual(): number {
   const now = new Date();
