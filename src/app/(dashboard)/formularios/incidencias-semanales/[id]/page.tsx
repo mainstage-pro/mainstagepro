@@ -10,6 +10,8 @@ type Urgencia = "critico" | "importante" | "revisar" | "none";
 interface IncidenciaItem {
   area: string;
   texto: string;
+  causa?: string;
+  solucion?: string;
   urgencia: Urgencia;
   orden: number;
 }
@@ -186,16 +188,34 @@ export default function IncidenciaDetallePage() {
                   return (
                     <div
                       key={i}
-                      className={`flex items-start gap-3 bg-[#0d0d0d] border border-[#2a2a2a] border-l-4 ${ucfg.borderClass} rounded-lg px-3 py-2.5 ${ucfg.printClass}`}
+                      className={`bg-[#0d0d0d] border border-[#2a2a2a] border-l-4 ${ucfg.borderClass} rounded-lg px-3 py-2.5 ${ucfg.printClass}`}
                     >
-                      <span className="text-gray-700 text-xs w-4 shrink-0 mt-0.5">{i + 1}.</span>
-                      <p className="flex-1 text-gray-300 text-sm leading-relaxed print:text-black">{inc.texto}</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${ucfg.badgeClass} print:hidden`}>
-                        {ucfg.emoji} {ucfg.label}
-                      </span>
-                      <span className="hidden print:inline text-xs font-semibold text-gray-700">
-                        [{ucfg.label}]
-                      </span>
+                      <div className="flex items-start gap-3">
+                        <span className="text-gray-700 text-xs w-4 shrink-0 mt-0.5">{i + 1}.</span>
+                        <p className="flex-1 text-gray-300 text-sm leading-relaxed print:text-black font-medium">{inc.texto}</p>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${ucfg.badgeClass} print:hidden`}>
+                          {ucfg.emoji} {ucfg.label}
+                        </span>
+                        <span className="hidden print:inline text-xs font-semibold text-gray-700">
+                          [{ucfg.label}]
+                        </span>
+                      </div>
+                      {(inc.causa || inc.solucion) && (
+                        <div className="ml-7 mt-2 space-y-1.5">
+                          {inc.causa && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[9px] text-gray-700 uppercase tracking-wider font-semibold mt-0.5 w-12 shrink-0">Causa</span>
+                              <p className="flex-1 text-gray-500 text-xs leading-relaxed print:text-black">{inc.causa}</p>
+                            </div>
+                          )}
+                          {inc.solucion && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[9px] text-[#B3985B]/60 uppercase tracking-wider font-semibold mt-0.5 w-12 shrink-0">Solución</span>
+                              <p className="flex-1 text-gray-400 text-xs leading-relaxed print:text-black">{inc.solucion}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

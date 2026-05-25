@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 // Definición de formularios disponibles — agregar más aquí en el futuro
@@ -45,13 +46,63 @@ const FORMULARIOS = [
   },
 ];
 
-
 function getSemanaActual(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 1);
   const diff = now.getTime() - start.getTime();
   const oneWeek = 1000 * 60 * 60 * 24 * 7;
   return Math.ceil(diff / oneWeek);
+}
+
+function CopyLinkButton({ href, label }: { href: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    const url = `${window.location.origin}${href}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={`Copiar link de ${label}`}
+      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-all duration-200 ${
+        copied
+          ? "bg-green-900/30 border-green-700/50 text-green-400"
+          : "border-[#2a2a2a] text-gray-500 hover:border-[#B3985B]/40 hover:text-[#B3985B]"
+      }`}
+    >
+      {copied ? (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          ¡Copiado!
+        </>
+      ) : (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-1.657-1.343-3-3-3s-3 1.343-3 3 1.343 3 3 3c.482 0 .938-.114 1.342-.316m3.316-3.316C15.114 9.886 15.568 10 16 10c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3c0 .482.114.938.316 1.342m-3.316 3.316l3.316-3.316" />
+          </svg>
+          Copiar link
+        </>
+      )}
+    </button>
+  );
 }
 
 export default function FormulariosPage() {
@@ -106,7 +157,18 @@ export default function FormulariosPage() {
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-2 mt-4">
+                    {/* Botón para compartir el link */}
+                    <div className="mt-3 flex items-center gap-2 p-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl">
+                      <svg className="w-3.5 h-3.5 text-gray-700 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      <code className="flex-1 text-[10px] text-gray-600 truncate">
+                        mainstagepro.vercel.app{f.hrefNuevo}
+                      </code>
+                      <CopyLinkButton href={f.hrefNuevo} label={f.titulo} />
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-3">
                       <Link
                         href={f.hrefNuevo}
                         className="flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-3 py-1.5 rounded-lg transition-colors"
@@ -114,13 +176,13 @@ export default function FormulariosPage() {
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
-                        Llenar reporte
+                        Llenar formulario
                       </Link>
                       <Link
                         href={f.href}
                         className="text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors"
                       >
-                        Ver mis reportes
+                        Ver historial
                       </Link>
                     </div>
                   </>

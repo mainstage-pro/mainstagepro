@@ -14,6 +14,8 @@ interface Incidencia {
   id: string; // client-side only for DnD
   area: AreaKey;
   texto: string;
+  causa: string;
+  solucion: string;
   urgencia: Urgencia;
   orden: number;
 }
@@ -85,68 +87,103 @@ function IncidenciaCard({
       onDragStart={() => onDragStart(item.id)}
       onDragOver={(e) => { e.preventDefault(); onDragOver(e); }}
       onDrop={(e) => { e.preventDefault(); onDrop(item.id); }}
-      className={`group flex items-start gap-2 bg-[#0d0d0d] border border-[#2a2a2a] border-l-4 ${cfg.borderClass} rounded-lg px-3 py-2.5 transition-all ${
+      className={`group bg-[#0d0d0d] border border-[#2a2a2a] border-l-4 ${cfg.borderClass} rounded-lg transition-all ${
         isDragging ? "opacity-40 scale-95" : "opacity-100"
-      } ${item.urgencia === "none" ? "print:hidden" : ""} ${cfg.printClass}`}
+      } ${cfg.printClass}`}
     >
-      {/* Drag handle */}
-      <div className="cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-500 transition-colors mt-0.5 shrink-0 print:hidden">
-        <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-          <circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/>
-          <circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/>
-          <circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/>
-        </svg>
+      {/* Main row: drag + number + texto + urgencia + delete */}
+      <div className="flex items-start gap-2 px-3 pt-2.5 pb-1">
+        {/* Drag handle */}
+        <div className="cursor-grab active:cursor-grabbing text-gray-700 hover:text-gray-500 transition-colors mt-0.5 shrink-0 print:hidden">
+          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+            <circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/>
+            <circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/>
+            <circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/>
+          </svg>
+        </div>
+        {/* Number */}
+        <span className="text-gray-700 text-xs w-4 shrink-0 mt-0.5">{index + 1}.</span>
+        {/* Text */}
+        <textarea
+          value={item.texto}
+          onChange={(e) => onUpdate(item.id, "texto", e.target.value)}
+          rows={1}
+          placeholder="¿Qué sucedió?"
+          className="flex-1 bg-transparent text-gray-300 text-xs resize-none focus:outline-none leading-relaxed placeholder:text-gray-700 print:text-black print:text-sm"
+          style={{ minHeight: "1.5rem", height: "auto" }}
+          onInput={(e) => {
+            const t = e.target as HTMLTextAreaElement;
+            t.style.height = "auto";
+            t.style.height = t.scrollHeight + "px";
+          }}
+        />
+        {/* Urgencia buttons */}
+        <div className="flex gap-1 shrink-0 print:hidden">
+          {(["critico", "importante", "revisar"] as Urgencia[]).map((u) => (
+            <button
+              key={u}
+              type="button"
+              title={URGENCIA_CONFIG[u].label}
+              onClick={() => onUpdate(item.id, "urgencia", u === item.urgencia ? "none" : u)}
+              className={`w-5 h-5 rounded text-[9px] border transition-all ${
+                item.urgencia === u
+                  ? URGENCIA_CONFIG[u].btnClass
+                  : "bg-[#1a1a1a] border-[#333] text-gray-700 hover:border-[#444]"
+              }`}
+            >
+              {URGENCIA_CONFIG[u].emoji}
+            </button>
+          ))}
+        </div>
+        {/* Print urgency label */}
+        <span className="hidden print:inline text-xs font-semibold ml-2">
+          {item.urgencia !== "none" ? `[${URGENCIA_CONFIG[item.urgencia].label}]` : ""}
+        </span>
+        {/* Delete */}
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          className="text-gray-700 hover:text-red-400 transition-colors text-base leading-none shrink-0 print:hidden"
+        >
+          ×
+        </button>
       </div>
 
-      {/* Number */}
-      <span className="text-gray-700 text-xs w-4 shrink-0 mt-0.5">{index + 1}.</span>
-
-      {/* Text */}
-      <textarea
-        value={item.texto}
-        onChange={(e) => onUpdate(item.id, "texto", e.target.value)}
-        rows={1}
-        className="flex-1 bg-transparent text-gray-300 text-xs resize-none focus:outline-none leading-relaxed print:text-black print:text-sm"
-        style={{ minHeight: "1.5rem", height: "auto" }}
-        onInput={(e) => {
-          const t = e.target as HTMLTextAreaElement;
-          t.style.height = "auto";
-          t.style.height = t.scrollHeight + "px";
-        }}
-      />
-
-      {/* Urgencia buttons */}
-      <div className="flex gap-1 shrink-0 print:hidden">
-        {(["critico", "importante", "revisar"] as Urgencia[]).map((u) => (
-          <button
-            key={u}
-            type="button"
-            title={URGENCIA_CONFIG[u].label}
-            onClick={() => onUpdate(item.id, "urgencia", u === item.urgencia ? "none" : u)}
-            className={`w-5 h-5 rounded text-[9px] border transition-all ${
-              item.urgencia === u
-                ? URGENCIA_CONFIG[u].btnClass
-                : "bg-[#1a1a1a] border-[#333] text-gray-700 hover:border-[#444]"
-            }`}
-          >
-            {URGENCIA_CONFIG[u].emoji}
-          </button>
-        ))}
+      {/* Causa + Solución */}
+      <div className="ml-8 mr-3 pb-2.5 space-y-1.5">
+        <div className="flex items-start gap-2">
+          <span className="text-[9px] text-gray-700 uppercase tracking-wider font-semibold mt-1.5 w-12 shrink-0 print:text-gray-500">Causa</span>
+          <textarea
+            value={item.causa}
+            onChange={(e) => onUpdate(item.id, "causa", e.target.value)}
+            rows={1}
+            placeholder="¿Por qué ocurrió?"
+            className="flex-1 bg-[#111]/60 border border-[#1e1e1e] rounded-md px-2 py-1 text-gray-400 text-[11px] resize-none focus:outline-none focus:border-[#B3985B]/40 transition-colors placeholder:text-gray-800 leading-relaxed print:text-black print:text-xs print:border-gray-300"
+            style={{ minHeight: "1.5rem", height: "auto" }}
+            onInput={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              t.style.height = "auto";
+              t.style.height = t.scrollHeight + "px";
+            }}
+          />
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="text-[9px] text-[#B3985B]/60 uppercase tracking-wider font-semibold mt-1.5 w-12 shrink-0 print:text-gray-500">Solución</span>
+          <textarea
+            value={item.solucion}
+            onChange={(e) => onUpdate(item.id, "solucion", e.target.value)}
+            rows={1}
+            placeholder="¿Qué se propone para resolverlo?"
+            className="flex-1 bg-[#111]/60 border border-[#1e1e1e] rounded-md px-2 py-1 text-gray-400 text-[11px] resize-none focus:outline-none focus:border-[#B3985B]/40 transition-colors placeholder:text-gray-800 leading-relaxed print:text-black print:text-xs print:border-gray-300"
+            style={{ minHeight: "1.5rem", height: "auto" }}
+            onInput={(e) => {
+              const t = e.target as HTMLTextAreaElement;
+              t.style.height = "auto";
+              t.style.height = t.scrollHeight + "px";
+            }}
+          />
+        </div>
       </div>
-
-      {/* Print urgency label */}
-      <span className="hidden print:inline text-xs font-semibold ml-2">
-        {item.urgencia !== "none" ? `[${URGENCIA_CONFIG[item.urgencia].label}]` : ""}
-      </span>
-
-      {/* Delete */}
-      <button
-        type="button"
-        onClick={() => onRemove(item.id)}
-        className="text-gray-700 hover:text-red-400 transition-colors text-base leading-none shrink-0 print:hidden"
-      >
-        ×
-      </button>
     </div>
   );
 }
@@ -291,6 +328,8 @@ export default function NuevaIncidenciaPage() {
       id: genId(),
       area,
       texto,
+      causa: "",
+      solucion: "",
       urgencia: "none",
       orden: areaItems.length,
     }]);
@@ -353,7 +392,7 @@ export default function NuevaIncidenciaPage() {
     try {
       const payload = incidencias
         .filter(i => i.texto.trim())
-        .map(({ area, texto, urgencia, orden }) => ({ area, texto, urgencia, orden }));
+        .map(({ area, texto, causa, solucion, urgencia, orden }) => ({ area, texto, causa, solucion, urgencia, orden }));
 
       const res = await fetch("/api/formularios/incidencias-semanales", {
         method: "POST",
