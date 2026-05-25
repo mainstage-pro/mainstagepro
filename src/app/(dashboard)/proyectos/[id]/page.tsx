@@ -3041,13 +3041,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Campo label="Encargado del lugar" noLabel value={proyecto.encargadoLugar} field="encargadoLugar" onSave={guardarCampo} />
                   </div>
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
+                  <Campo label="Fecha del evento" value={proyecto.fechaEvento?.substring(0, 10) ?? null} field="fechaEvento" type="date" onSave={guardarCampo} />
+                  <div className="col-span-1" />
                   <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
                   <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
-                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
                   <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
                 </>)}
               </div>
+
             </div>
             {/* Notas */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">

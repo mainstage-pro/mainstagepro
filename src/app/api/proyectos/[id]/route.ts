@@ -171,10 +171,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
 
   const allowed = [
-    "estado", "nombre", "horaInicioEvento", "horaFinEvento", "fechaMontaje",
+    "estado", "nombre", "horaInicioEvento", "horaFinEvento", "fechaMontaje", "fechaEvento",
     "horaInicioMontaje", "duracionMontajeHrs", "lugarEvento", "encargadoLugar",
-    "encargadoLugarContacto", "descripcionGeneral", "detallesEspecificos",
-    "encargadoCliente", "transportes", "proveedorCatering", "contactosDireccion",
+    "encargadoLugarContacto", "encargadoCliente", "encargadoClienteContacto",
+    "descripcionGeneral", "detallesEspecificos",
+    "transportes", "proveedorCatering", "contactosDireccion",
     "cronograma", "contactosEmergencia", "comentariosFinales",
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
     "notasPortal", "responsables", "proveedoresRenta", "equiposRiderExtra", "zona",
@@ -191,6 +192,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) {
       if (key === "fechaMontaje" && body[key]) {
         data[key] = new Date(body[key]);
+      } else if (key === "fechaEvento" && body[key]) {
+        // Parse date-only string as UTC noon to avoid timezone shifting
+        data[key] = new Date(body[key].substring(0, 10) + "T12:00:00Z");
       } else {
         data[key] = body[key] || null;
       }
