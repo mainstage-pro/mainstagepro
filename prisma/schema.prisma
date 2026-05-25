@@ -50,6 +50,7 @@ model User {
   backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
   proyectoAccesos        ProyectoAcceso[]
+  reportesFormulario     ReporteFormulario[]    @relation("ReportesFormularioUser")
 
   @@map("users")
 }
@@ -2654,4 +2655,27 @@ model ProyectoAcceso {
 
   @@unique([proyectoId, userId])
   @@map("proyecto_acceso")
+}
+
+// ── Módulo Formularios ────────────────────────────────────────────────────────
+
+model ReporteFormulario {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation("ReportesFormularioUser", fields: [userId], references: [id])
+  semana      Int      // Número de semana ISO (1–53)
+  anio        Int
+  logros      String   @db.Text
+  pendientes  String   @db.Text
+  tareas      Json     // { titulo: string; fechaVencimiento: string | null }[]
+  incidencias Json     // { que: string; causa: string; propuesta: string }[]
+  mejoras     String   @db.Text
+  compromisos String   @db.Text
+  sugerencias String   @db.Text
+  bienestar   Int      // 1–10
+  estado      String   @default("enviado")
+
+  @@map("reportes_formulario")
 }

@@ -1,0 +1,124 @@
+"use client";
+
+import Link from "next/link";
+
+// Definición de formularios disponibles — agregar más aquí en el futuro
+const FORMULARIOS = [
+  {
+    id: "reporte-semanal",
+    titulo: "Reporte General Semanal",
+    descripcion:
+      "Formulario semanal para que el equipo reporte logros, pendientes, tareas próximas e incidencias de la semana.",
+    icono: "📋",
+    href: "/formularios/reporte-semanal",
+    hrefNuevo: "/formularios/reporte-semanal/nuevo",
+    disponible: true,
+  },
+  // Próximamente
+  {
+    id: "satisfaccion-cliente",
+    titulo: "Satisfacción del Cliente",
+    descripcion: "Reporte post-evento para evaluar la experiencia del cliente y áreas de mejora.",
+    icono: "⭐",
+    href: "/formularios/satisfaccion-cliente",
+    hrefNuevo: "/formularios/satisfaccion-cliente/nuevo",
+    disponible: false,
+  },
+  {
+    id: "reporte-post-evento",
+    titulo: "Reporte Post-Evento",
+    descripcion: "Evaluación técnica y operativa después de cada evento producido.",
+    icono: "🎛️",
+    href: "/formularios/reporte-post-evento",
+    hrefNuevo: "/formularios/reporte-post-evento/nuevo",
+    disponible: false,
+  },
+];
+
+function getSemanaActual(): number {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now.getTime() - start.getTime();
+  const oneWeek = 1000 * 60 * 60 * 24 * 7;
+  return Math.ceil(diff / oneWeek);
+}
+
+export default function FormulariosPage() {
+  const semanaActual = getSemanaActual();
+
+  return (
+    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="mb-8">
+        <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold mb-1">
+          Módulo
+        </p>
+        <h1 className="text-2xl font-bold text-white">Formularios</h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Centro de formularios operativos del equipo Mainstage Pro.
+        </p>
+      </div>
+
+      {/* Grid de formularios */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {FORMULARIOS.map((f) => (
+          <div
+            key={f.id}
+            className={`bg-[#111] border rounded-2xl p-6 transition-all ${
+              f.disponible
+                ? "border-[#1e1e1e] hover:border-[#2a2a2a]"
+                : "border-[#161616] opacity-50"
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xl shrink-0">
+                {f.icono}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-white font-semibold text-sm">{f.titulo}</h2>
+                  {!f.disponible && (
+                    <span className="text-[10px] text-gray-600 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full">
+                      Próximamente
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-500 text-xs leading-relaxed">{f.descripcion}</p>
+
+                {f.disponible && (
+                  <>
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
+                      <p className="text-[11px] text-gray-500">
+                        Semana actual:{" "}
+                        <span className="text-[#B3985B] font-semibold">{semanaActual}</span>
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-4">
+                      <Link
+                        href={f.hrefNuevo}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Llenar reporte
+                      </Link>
+                      <Link
+                        href={f.href}
+                        className="text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        Ver mis reportes
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

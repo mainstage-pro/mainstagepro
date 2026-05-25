@@ -63,6 +63,7 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
+      { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", adminOnly: true },
       { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
@@ -222,7 +223,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/admin")) return "seccion-direccion";
+  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
