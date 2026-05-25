@@ -56,6 +56,7 @@ export async function GET() {
       socio: { select: { id: true, nombre: true, email: true } },
       proyecto: { select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true } },
       cuentaOrigen: { select: { id: true, nombre: true, banco: true } },
+      abonos: { orderBy: { fecha: "asc" } },
     },
     orderBy: [
       { proyecto: { fechaEvento: "asc" } },

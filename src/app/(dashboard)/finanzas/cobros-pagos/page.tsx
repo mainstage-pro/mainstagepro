@@ -52,6 +52,7 @@ interface CxPItem {
   id: string;
   concepto: string;
   monto: number;
+  montoPagado: number;
   estado: string;
   fechaCompromiso: string;
   tipoAcreedor: string;
@@ -61,6 +62,7 @@ interface CxPItem {
   socio: { id: string; nombre: string; email: string | null } | null;
   proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null;
   cuentaOrigen: { id: string; nombre: string; banco: string | null } | null;
+  abonos: AbonoItem[];
 }
 
 interface MovDirecto {
@@ -466,9 +468,9 @@ export default function CobrosPagosPage() {
   const cxcCobr  = cxc.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxcVencN = cxc.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
   const cxcProxN = cxc.filter(c => c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
-  const cxpPend  = cxp.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
-  const cxpVenc  = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
-  const cxpProx  = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + c.monto, 0);
+  const cxpPend  = cxp.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoPagado), 0);
+  const cxpVenc  = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoPagado), 0);
+  const cxpProx  = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).reduce((s, c) => s + (c.monto - c.montoPagado), 0);
   const cxpPagd  = cxp.filter(c => c.estado === "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
   const cxpVencN = cxp.filter(c => isVencida(c.fechaCompromiso, c.estado)).length;
   const cxpProxN = cxp.filter(c => c.estado !== "LIQUIDADO" && !isVencida(c.fechaCompromiso, c.estado)).length;
@@ -479,7 +481,9 @@ export default function CobrosPagosPage() {
       ? (cxcItem.empresa?.nombre ?? cxcItem.cliente?.nombre ?? "Cliente")
       : ((item as CxPItem).socio?.nombre ?? (item as CxPItem).empresa?.nombre ?? (item as CxPItem).tecnico?.nombre ?? (item as CxPItem).proveedor?.nombre ?? "Beneficiario");
     setModal({ id: item.id, tipo, concepto: item.concepto, monto: item.monto, nombre });
-    const saldo = tipo === "cobro" ? item.monto - ((item as CxCItem).montoCobrado ?? 0) : item.monto;
+    const saldo = tipo === "cobro"
+      ? item.monto - ((item as CxCItem).montoCobrado ?? 0)
+      : item.monto - ((item as CxPItem).montoPagado ?? 0);
     setModalMonto(String(saldo));
     setModalNotas("");
     setModalFecha(new Date().toISOString().split("T")[0]);
@@ -598,6 +602,19 @@ export default function CobrosPagosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ abonoId }),
     });
+    if (res.ok) {
+      toast.success("Abono eliminado");
+      await load();
+    } else {
+      toast.error("Error al eliminar abono");
+    }
+    setAnulando(null);
+  }
+
+  async function anularAbonoPago(cxpId: string, abonoId: string) {
+    if (!await confirm({ message: "¿Eliminar este abono? El movimiento financiero asociado será eliminado y el saldo pendiente será recalculado.", danger: true, confirmText: "Eliminar abono" })) return;
+    setAnulando(abonoId);
+    const res = await fetch(`/api/cuentas-pagar/${cxpId}/abono/${abonoId}`, { method: "DELETE" });
     if (res.ok) {
       toast.success("Abono eliminado");
       await load();
@@ -1261,7 +1278,7 @@ export default function CobrosPagosPage() {
             const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
             let _pvLastMonth = "";
             return [..._pp, ..._pv].map((grupo, idx) => {
-            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + c.monto, 0);
+            const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoPagado), 0);
             const isPasadoP = idx >= _pp.length;
             let monthHeaderP = null;
             if (isPasadoP && grupo.fechaEvento) {
@@ -1334,9 +1351,58 @@ export default function CobrosPagosPage() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-white font-semibold text-base">{formatCurrency(c.monto)}</p>
+                    {c.montoPagado > 0 && c.estado !== "LIQUIDADO" ? (
+                      <>
+                        <p className="text-[#B3985B] font-semibold text-base">{formatCurrency(c.monto - c.montoPagado)}</p>
+                        <p className="text-[10px] text-gray-600 mt-0.5">saldo de {formatCurrency(c.monto)}</p>
+                      </>
+                    ) : (
+                      <p className={`font-semibold text-base ${c.estado === "LIQUIDADO" ? "text-green-400" : "text-white"}`}>{formatCurrency(c.monto)}</p>
+                    )}
                   </div>
                 </div>
+
+                {/* Historial de abonos (expandible) */}
+                {c.abonos && c.abonos.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[#1a1a1a]">
+                    <button
+                      onClick={() => setExpandedAbonos(prev => {
+                        const next = new Set(prev);
+                        if (next.has(c.id)) next.delete(c.id); else next.add(c.id);
+                        return next;
+                      })}
+                      className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                    >
+                      <svg className={`w-3 h-3 transition-transform ${expandedAbonos.has(c.id) ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                      {c.abonos.length} {c.abonos.length === 1 ? "abono registrado" : "abonos registrados"}
+                    </button>
+                    {expandedAbonos.has(c.id) && (
+                      <div className="mt-2 space-y-1.5 pl-3 border-l border-[#2a2a2a]">
+                        {c.abonos.map(abono => (
+                          <div key={abono.id} className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 text-[11px] text-gray-400 flex-wrap">
+                              <span className="text-[#B3985B] font-medium">{formatCurrency(abono.monto)}</span>
+                              <span>{fmtDate(abono.fecha)}</span>
+                              <span className="text-gray-600">
+                                {abono.metodoPago === "TRANSFERENCIA" ? "Transf." : abono.metodoPago === "EFECTIVO" ? "Efectivo" : abono.metodoPago}
+                              </span>
+                              {abono.notas && <span className="text-gray-700 truncate max-w-[120px]">{abono.notas}</span>}
+                            </div>
+                            <button
+                              onClick={() => anularAbonoPago(c.id, abono.id)}
+                              disabled={anulando === abono.id}
+                              className="text-[10px] text-red-500/50 hover:text-red-400 transition-colors disabled:opacity-30 shrink-0"
+                            >
+                              {anulando === abono.id ? "..." : "×"}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
                   {c.estado !== "LIQUIDADO" && (
@@ -1344,9 +1410,9 @@ export default function CobrosPagosPage() {
                       <button onClick={() => openModal(c, "pago")}
                         className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
-                        Marcar pagado
+                        Registrar abono
                       </button>
                       <button onClick={() => openEdit(c, "cxp")}
                         className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
@@ -1361,7 +1427,7 @@ export default function CobrosPagosPage() {
                     <a
                       href={`https://wa.me/${telefono.replace(/\D/g, "")}?text=${c.estado === "LIQUIDADO"
                         ? waMsgPago(beneficiario, c.monto, c.concepto)
-                        : encodeURIComponent(`Hola ${beneficiario}, te contactamos de Mainstage Pro respecto al pago de ${formatCurrency(c.monto)} por ${c.concepto}.`)}`}
+                        : encodeURIComponent(`Hola ${beneficiario}, te contactamos de Mainstage Pro respecto al pago de ${formatCurrency(c.monto - c.montoPagado)} por ${c.concepto}.`)}`}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
@@ -1468,16 +1534,16 @@ export default function CobrosPagosPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
           <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-white font-semibold mb-1">
-              {modal.tipo === "cobro" ? "Registrar abono" : "Confirmar pago"}
+              {modal.tipo === "cobro" ? "Registrar abono" : "Registrar abono"}
             </h3>
             <p className="text-gray-500 text-xs mb-4">{modal.concepto} · {modal.nombre}</p>
 
             <div className="space-y-3 mb-5">
               <div>
-                <label className="text-xs text-gray-500 mb-1 block">Monto recibido</label>
+                <label className="text-xs text-gray-500 mb-1 block">{modal.tipo === "cobro" ? "Monto recibido" : "Monto a pagar"}</label>
                 <input type="number" step="0.01" min="0" value={modalMonto} onChange={e => setModalMonto(e.target.value)}
                   className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]" />
-                <p className="text-[10px] text-gray-600 mt-1">Saldo: {formatCurrency(modal.monto)}</p>
+                <p className="text-[10px] text-gray-600 mt-1">Saldo pendiente: {formatCurrency(parseFloat(modalMonto) || 0)} de {formatCurrency(modal.monto)}</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha</label>
@@ -1515,7 +1581,7 @@ export default function CobrosPagosPage() {
             <div className="flex gap-3">
               <button onClick={confirmar} disabled={confirmando}
                 className="flex-1 bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
-                {confirmando ? "Guardando..." : modal.tipo === "cobro" ? "Confirmar cobro" : "Confirmar pago"}
+                {confirmando ? "Guardando..." : "Registrar abono"}
               </button>
               <button onClick={() => setModal(null)}
                 className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">

@@ -848,6 +848,7 @@ model CuentaBancaria {
   cuentasPagar       CuentaPagar[]
   pagosNomina        PagoNomina[]
   abonos             Abono[]
+  abonosPago         AbonoPago[]
 
   @@map("cuentas_bancarias")
 }
@@ -892,6 +893,7 @@ model MovimientoFinanciero {
   cuentaPagar  CuentaPagar?
   pagoNomina   PagoNomina?
   abono        Abono?
+  abonoPago    AbonoPago?
 
   @@map("movimientos_financieros")
 }
@@ -959,6 +961,7 @@ model CuentaPagar {
   proyecto        Proyecto? @relation(fields: [proyectoId], references: [id])
   concepto        String
   monto           Float
+  montoPagado     Float    @default(0)
   fechaCompromiso DateTime
   fechaPagoReal   DateTime?
   estado          String   @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
@@ -972,7 +975,27 @@ model CuentaPagar {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  abonos          AbonoPago[]
+
   @@map("cuentas_pagar")
+}
+
+model AbonoPago {
+  id              String      @id @default(cuid())
+  cuentaPagarId   String
+  cuentaPagar     CuentaPagar @relation(fields: [cuentaPagarId], references: [id], onDelete: Cascade)
+  monto           Float
+  fecha           DateTime
+  metodoPago      String      @default("TRANSFERENCIA") // TRANSFERENCIA | EFECTIVO | TARJETA | CHEQUE
+  notas           String?
+  cuentaOrigenId  String?
+  cuentaOrigen    CuentaBancaria? @relation(fields: [cuentaOrigenId], references: [id])
+  movimientoId    String?     @unique
+  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id], onDelete: SetNull)
+  creadoPor       String?
+  createdAt       DateTime    @default(now())
+
+  @@map("abonos_pago")
 }
 
 // ─── EVALUACIÓN ──────────────────────────────────────────────────────────────

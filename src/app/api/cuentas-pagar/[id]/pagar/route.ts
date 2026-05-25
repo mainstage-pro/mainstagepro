@@ -9,36 +9,63 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const { monto, fecha, notas, cuentaId, metodoPago, categoriaId } = await req.json();
 
-  const cxp = await prisma.cuentaPagar.findUnique({ where: { id } });
-  if (!cxp) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
-
-  const montoPagado = parseFloat(monto) || cxp.monto;
-  const liquidado = montoPagado >= cxp.monto;
-
-  const movimiento = await prisma.movimientoFinanciero.create({
-    data: {
-      tipo: "GASTO",
-      fecha: fecha ? new Date(fecha) : new Date(),
-      concepto: cxp.concepto,
-      monto: montoPagado,
-      proyectoId: cxp.proyectoId,
-      cuentaOrigenId: cuentaId || null,
-      metodoPago: metodoPago || "TRANSFERENCIA",
-      categoriaId: categoriaId || null,
-      notas: notas || null,
-      creadoPor: session.id,
-    },
-  });
-
-  const updated = await prisma.cuentaPagar.update({
+  const cxp = await prisma.cuentaPagar.findUnique({
     where: { id },
-    data: {
-      estado: liquidado ? "LIQUIDADO" : "PARCIAL",
-      fechaPagoReal: liquidado ? new Date() : undefined,
-      cuentaOrigenId: cuentaId || undefined,
-      movimientoId: liquidado ? movimiento.id : undefined,
-    },
+    include: { abonos: true },
+  });
+  if (!cxp) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+  if (cxp.estado === "LIQUIDADO") return NextResponse.json({ error: "Ya está liquidada" }, { status: 400 });
+
+  const montoAbono = parseFloat(monto);
+  if (!montoAbono || montoAbono <= 0) return NextResponse.json({ error: "Monto inválido" }, { status: 400 });
+
+  const nuevoMontoPagado = Math.round((cxp.montoPagado + montoAbono) * 100) / 100;
+  const liquidado = nuevoMontoPagado >= cxp.monto;
+
+  await prisma.$transaction(async (tx) => {
+    const movimiento = await tx.movimientoFinanciero.create({
+      data: {
+        tipo: "GASTO",
+        fecha: fecha ? new Date(fecha) : new Date(),
+        concepto: cxp.concepto,
+        monto: montoAbono,
+        proyectoId: cxp.proyectoId,
+        cuentaOrigenId: cuentaId || null,
+        metodoPago: metodoPago || "TRANSFERENCIA",
+        categoriaId: categoriaId || null,
+        notas: notas || null,
+        creadoPor: session.id,
+      },
+    });
+
+    await tx.abonoPago.create({
+      data: {
+        cuentaPagarId: id,
+        monto: montoAbono,
+        fecha: fecha ? new Date(fecha) : new Date(),
+        metodoPago: metodoPago || "TRANSFERENCIA",
+        notas: notas || null,
+        cuentaOrigenId: cuentaId || null,
+        movimientoId: movimiento.id,
+        creadoPor: session.id,
+      },
+    });
+
+    await tx.cuentaPagar.update({
+      where: { id },
+      data: {
+        montoPagado: nuevoMontoPagado,
+        estado: liquidado ? "LIQUIDADO" : "PARCIAL",
+        fechaPagoReal: liquidado ? new Date() : undefined,
+        cuentaOrigenId: cuentaId || undefined,
+      },
+    });
   });
 
-  return NextResponse.json({ cxp: updated, movimiento });
+  const updated = await prisma.cuentaPagar.findUnique({
+    where: { id },
+    include: { abonos: { orderBy: { fecha: "asc" } } },
+  });
+
+  return NextResponse.json({ cxp: updated });
 }
