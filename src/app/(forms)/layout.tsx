@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Formularios — Mainstage Pro",
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 
 export default function FormsLayout({ children }: { children: React.ReactNode }) {
   // Sin sidebar, sin header de plataforma — landing page privada para el equipo
-  return <>{children}</>;
+  return <Providers>{children}</Providers>;
 }
