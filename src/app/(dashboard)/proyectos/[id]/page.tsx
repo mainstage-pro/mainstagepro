@@ -2608,40 +2608,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Hoja de entrega — solo renta */}
-            {esRenta ? (
-              <a
-                href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                Hoja de Entrega
-              </a>
-            ) : (
-              <a
-                href={`/api/proyectos/${proyecto.id}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                Ficha Técnica PDF
-              </a>
-            )}
+            {/* Hoja de entrega — siempre visible */}
+            <a
+              href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              Hoja de Entrega
+            </a>
+            {/* Ficha técnica — siempre visible */}
+            <a
+              href={`/api/proyectos/${proyecto.id}/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+              Ficha Técnica
+            </a>
+
             <Link
               href={`/carta-responsiva/${proyecto.id}`}
               className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
@@ -2669,51 +2668,59 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── Progreso del proyecto ── */}
       {(() => {
-        const _transportesParsed: TransporteSlot[] = (() => { try { return proyecto.transportes ? JSON.parse(proyecto.transportes) : []; } catch { return []; } })();
-        const _cateringParsed: { proveedorId?: string } = (() => { try { return proyecto.reporteCatering ? JSON.parse(proyecto.reporteCatering) : {}; } catch { return {}; } })();
-        const _cronoParsed: CronoRow[] = (() => { try { return proyecto.cronograma ? JSON.parse(proyecto.cronograma) : []; } catch { return []; } })();
+        // ── Protocolo salida / entrada ──────────────────────────────────────
+        let _salidaData: { estado?: string } = {};
+        let _entradaData: { estado?: string } = {};
+        try { _salidaData = proyecto.protocoloSalida ? JSON.parse(proyecto.protocoloSalida) : {}; } catch { /* noop */ }
+        try { _entradaData = proyecto.protocoloEntrada ? JSON.parse(proyecto.protocoloEntrada) : {}; } catch { /* noop */ }
 
         const anticipoCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
         const liquidacionCxC = proyecto.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
+        const checkOp2 = proyecto.checklist.filter(c => c.tipo !== "RIDER");
+        const checkPct2 = checkOp2.length > 0 ? checkOp2.filter(c => c.completado).length / checkOp2.length : 0;
 
+        // ── Campos ponderados (suman 100) ───────────────────────────────────
+        type WCheck = { ok: boolean; label: string; peso: number };
+        const wChecks: WCheck[] = [
+          { ok: !!proyecto.lugarEvento,                                                                         label: "Lugar del evento",         peso: 8  },
+          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                             label: "Contacto del cliente",      peso: 8  },
+          { ok: !!proyecto.encargado,                                                                           label: "Responsable interno",       peso: 6  },
+          { ok: proyecto.equipos.length > 0,                                                                    label: "Equipo registrado",         peso: 10 },
+          { ok: proyecto.equipos.length > 0 && proyecto.equipos.every((e: { confirmado: boolean }) => e.confirmado), label: "Equipos confirmados",  peso: 8  },
+          { ok: checkPct2 >= 0.8,                                                                               label: "Checklist completado",      peso: 10 },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                                 label: "Anticipo cobrado",         peso: 10 },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                        label: "Liquidación cobrada",      peso: 10 },
+          { ok: !!proyecto.cotizacion,                                                                          label: "Cotización generada",       peso: 8  },
+          { ok: proyecto.personal.length > 0,                                                                   label: "Personal asignado",        peso: 6  },
+          { ok: _salidaData.estado === "OK",                                                                    label: "Protocolo de salida OK",   peso: 8  },
+          { ok: _entradaData.estado === "OK",                                                                   label: "Protocolo de entrada OK",  peso: 8  },
+        ];
+
+        const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
+        const barColor = pct >= 90 ? "#10b981" : pct >= 71 ? "#60a5fa" : pct >= 41 ? "#f59e0b" : "#ef4444";
+
+        // ── Sub-barras (mantener visualización por área) ────────────────────
         type CheckItem = { ok: boolean; label: string };
         const infoChecks: CheckItem[] = [
-          { ok: !!proyecto.lugarEvento,                                             label: "Lugar del evento" },
+          { ok: !!proyecto.lugarEvento,                                              label: "Lugar del evento" },
           { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto, label: "Contacto cliente" },
           { ok: !!proyecto.encargado,                                                label: "Responsable interno" },
-          ...(!esRenta ? [
-            { ok: !!proyecto.horaInicioEvento && !!proyecto.horaFinEvento,          label: "Horario" },
-            { ok: !!proyecto.fechaMontaje,                                           label: "Fecha montaje" },
-            { ok: !!proyecto.encargadoLugar && !!proyecto.encargadoLugarContacto,   label: "Enc. del lugar" },
-            { ok: !!proyecto.contactosDireccion,                                     label: "Contactos" },
-          ] : []),
         ];
         const prodChecks: CheckItem[] = [
           { ok: proyecto.equipos.length > 0,                                         label: "Equipo registrado" },
-          ...(!esRenta ? [
-            { ok: proyecto.personal.length > 0,                                      label: "Personal asignado" },
-            { ok: proyecto.personal.some(p => p.confirmRespuesta === "CONFIRMADO"),  label: "Personal confirmado" },
-            { ok: _transportesParsed.some(s => !!s.vehiculoId && !!s.choferId),     label: "Traslados" },
-            { ok: _cronoParsed.length > 0,                                           label: "Cronograma" },
-            ...(!proyecto.aplicaCatering ? [] : [
-              { ok: !!_cateringParsed.proveedorId,                                   label: "Catering" },
-            ]),
-          ] : []),
+          { ok: proyecto.equipos.length > 0 && proyecto.equipos.every((e: { confirmado: boolean }) => e.confirmado), label: "Equipos confirmados" },
+          { ok: checkPct2 >= 0.8,                                                    label: "Checklist (≥80%)" },
+          { ok: proyecto.personal.length > 0,                                        label: "Personal asignado" },
+          { ok: _salidaData.estado === "OK",                                         label: "Protocolo salida" },
+          { ok: _entradaData.estado === "OK",                                        label: "Protocolo entrada" },
         ];
         const finChecks: CheckItem[] = [
-          { ok: !!proyecto.cotizacion,                                               label: "Cotización" },
-          { ok: proyecto.cuentasCobrar.length > 0,                                   label: "CxC registradas" },
-          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,     label: "Anticipo cobrado" },
+          { ok: !!proyecto.cotizacion,                                                label: "Cotización" },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,      label: "Anticipo cobrado" },
           { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto, label: "Liquidación cobrada" },
-          ...(!esRenta && proyecto.personal.length > 0 ? [
-            { ok: proyecto.personal.filter(p => p.tecnico).every(p => p.estadoPago === "PAGADO"), label: "Personal pagado" },
-          ] : []),
         ];
 
         const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
-        const completados = allChecks.filter(c => c.ok).length;
-        const pct = Math.round((completados / allChecks.length) * 100);
-        const barColor = pct >= 85 ? "#10b981" : pct >= 55 ? "#B3985B" : "#ef4444";
 
         const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO"] as const;
         const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
@@ -2747,7 +2754,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           );
         }
 
-        const pendientes = allChecks.filter(c => !c.ok);
+
+        const pendientes = wChecks.filter(c => !c.ok);
 
         return (
           <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
@@ -6216,12 +6224,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
                 {briefText}
               </pre>
-              <button
-                onClick={() => { navigator.clipboard.writeText(briefText); }}
-                className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
-              >
-                Copiar texto
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { navigator.clipboard.writeText(briefText); }}
+                  className="flex-1 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                >
+                  📋 Copiar texto
+                </button>
+                <a
+                  href={`/api/proyectos/${proyecto.id}/brief-imagen`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
+                >
+                  🖼️ Descargar imagen
+                </a>
+              </div>
             </div>
           </div>
         </div>
