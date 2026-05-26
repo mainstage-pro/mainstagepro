@@ -2661,7 +2661,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {esRenta && (
               <a
                 href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
-                target="_blank"
+                download
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
               >
@@ -2695,23 +2695,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </button>
               {showFichasMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] flex flex-col z-50 shadow-xl shadow-black/40">
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/cliente`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/cliente`} download
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">👤</span> Ficha para cliente
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/coordinador`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/coordinador`} download
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">📋</span> Ficha para coordinador
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/tecnicos`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/tecnicos`} download
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">🔧</span> Brief para técnicos
                   </a>
                   <div className="border-t border-[#2a2a2a] mt-1 pt-1">
-                    <a href={`/api/proyectos/${proyecto.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                    <a href={`/api/proyectos/${proyecto.id}/pdf`} download
                       onClick={() => setShowFichasMenu(false)}
                       className="px-4 py-2 text-xs text-gray-600 hover:text-gray-400 hover:bg-[#222] transition-colors flex items-center gap-2">
                       <span>📄</span> Ficha técnica (legacy)
