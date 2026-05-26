@@ -2694,31 +2694,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </svg>
               </button>
               {showFichasMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] flex flex-col z-50 shadow-xl shadow-black/40">
+                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[200px] flex flex-col z-50 shadow-xl shadow-black/40">
                   <a href={`/api/proyectos/${proyecto.id}/fichas/cliente`} download
                     onClick={() => setShowFichasMenu(false)}
-                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                    <span className="text-[#B3985B]">👤</span> Ficha para cliente
+                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2.5">
+                    <span className="text-[#B3985B] text-sm">👤</span>
+                    <span>
+                      <span className="block font-medium text-white">Confirmación para cliente</span>
+                      <span className="block text-gray-500 text-[10px]">Evento, equipo y coordinador</span>
+                    </span>
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/coordinador`} download
+                  <div className="border-t border-[#2a2a2a] mx-2" />
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/operativa`} download
                     onClick={() => setShowFichasMenu(false)}
-                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                    <span className="text-[#B3985B]">📋</span> Ficha para coordinador
+                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2.5">
+                    <span className="text-[#B3985B] text-sm">📋</span>
+                    <span>
+                      <span className="block font-medium text-white">Ficha operativa</span>
+                      <span className="block text-gray-500 text-[10px]">Coordinador y técnicos</span>
+                    </span>
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/tecnicos`} download
-                    onClick={() => setShowFichasMenu(false)}
-                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                    <span className="text-[#B3985B]">🔧</span> Brief para técnicos
-                  </a>
-                  <div className="border-t border-[#2a2a2a] mt-1 pt-1">
-                    <a href={`/api/proyectos/${proyecto.id}/pdf`} download
-                      onClick={() => setShowFichasMenu(false)}
-                      className="px-4 py-2 text-xs text-gray-600 hover:text-gray-400 hover:bg-[#222] transition-colors flex items-center gap-2">
-                      <span>📄</span> Ficha técnica (legacy)
-                    </a>
-                  </div>
                 </div>
               )}
+
             </div>
 
             <Link

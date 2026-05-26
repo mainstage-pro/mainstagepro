@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
-import { FichaCliente } from "@/components/pdf/FichaCliente";
+import { FichaCliente, FichaClienteData } from "@/components/pdf/FichaCliente";
 import { logoBase64, EquipoFlat } from "@/components/pdf/PdfShared";
 import React from "react";
 import path from "path";
@@ -23,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         include: {
           equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
           proveedor: { select: { nombre: true } },
+          riderAccesorios: { orderBy: { orden: "asc" } },
         },
         orderBy: { id: "asc" },
       },
@@ -37,16 +38,21 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const equipos: EquipoFlat[] = (proyecto.equipos ?? []).map((e: any) => ({
     descripcion: e.equipo?.descripcion ?? "",
     marca: e.equipo?.marca ?? null,
-    categoria: e.equipo?.categoria?.nombre ?? "Sin categoría",
+    categoria: e.equipo?.categoria?.nombre ?? "General",
     cantidad: e.cantidad,
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
+      nombre: a.nombre, cantidad: a.cantidad, categoria: a.categoria ?? null,
+    })),
   }));
 
-  const data = {
+  const data: FichaClienteData = {
     nombre: proyecto.nombre,
     numeroProyecto: proyecto.numeroProyecto,
+    estado: proyecto.estado,
     tipoEvento: proyecto.tipoEvento,
     tipoServicio: proyecto.tipoServicio ?? null,
     zona: proyecto.zona ?? "LOCAL",
@@ -60,10 +66,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     linkMaps: proyecto.linkMaps ?? null,
     indicacionesCliente: proyecto.indicacionesCliente ?? null,
     encargadoNombre: proyecto.encargado?.name ?? null,
-    cliente: {
-      nombre: proyecto.cliente.nombre,
-      empresa: proyecto.cliente.empresa ?? null,
-    },
+    cliente: { nombre: proyecto.cliente.nombre, empresa: proyecto.cliente.empresa ?? null },
     equipos,
     logoSrc,
   };

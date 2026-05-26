@@ -5,7 +5,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
-  C, base, fmtFecha, fmtHora, duracionEntreHoras, nowStr,
+  C, base, fmtFecha, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat,
   CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
@@ -175,7 +175,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const fechaMontajeStr = fmtFecha(data.fechaMontaje);
   const horaIni = fmtHora(data.horaInicio || data.horaInicioEvento);
   const horaFin = fmtHora(data.horaDesmontaje || data.horaFinEvento);
-  const duracion = duracionEntreHoras(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
+  const duracionEvento = duracion(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
   const horaMontajeStr = fmtHora(data.horaMontaje || data.horaInicioMontaje);
   const horaSalidaStr = fmtHora(data.horaSalidaBodega);
 
@@ -281,7 +281,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
             {fechaStr && <KVRow label="Fecha del evento" value={fechaStr} bold />}
             {horaIni && <KVRow label="Hora de inicio" value={horaIni} bold />}
             {horaFin && <KVRow label="Hora fin / desmontaje" value={horaFin} />}
-            {duracion && <KVRow label="Duración evento" value={duracion} />}
+            {duracionEvento && <KVRow label="Duración evento" value={duracionEvento} />}
           </View>
         </View>
 
