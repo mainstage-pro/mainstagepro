@@ -546,6 +546,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [evalClienteLoaded, setEvalClienteLoaded] = useState(false);
   const [loadingEvalCliente, setLoadingEvalCliente] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
+  // Reporte post-evento
+  const [reporteEvento, setReporteEvento] = useState<{ token: string; estado: string; respondidoEn?: string | null } | null>(null);
+  const [reporteEventoLoaded, setReporteEventoLoaded] = useState(false);
+  const [generandoReporte, setGenerandoReporte] = useState(false);
 
   // Cierre financiero
   type CierreData = {
@@ -1173,6 +1177,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     return d.evaluacion?.tokenAcceso ?? null;
   }
 
+  async function loadReporteEvento() {
+    if (reporteEventoLoaded) return;
+    const res = await fetch(`/api/proyectos/${id}/reporte-evento/generar`, { method: "GET" }).catch(() => null);
+    if (res?.ok) {
+      const d = await res.json();
+      setReporteEvento(d.reporte ?? null);
+    }
+    setReporteEventoLoaded(true);
+  }
+
+  async function generarReporteEvento(): Promise<string | null> {
+    setGenerandoReporte(true);
+    const res = await fetch(`/api/proyectos/${id}/reporte-evento/generar`, {
+      method: "POST",
+    });
+    const d = await res.json();
+    setReporteEvento(d ?? null);
+    setGenerandoReporte(false);
+    return d?.token ?? null;
+  }
+
   useEffect(() => {
     load();
     loadEval();
@@ -1205,6 +1230,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Lazy-load evaluación cliente when proyecto loads
   useEffect(() => {
     if (proyecto) loadEvalCliente();
+  }, [proyecto?.id]); // eslint-disable-line
+
+  // Lazy-load reporte post-evento when proyecto loads
+  useEffect(() => {
+    if (proyecto) loadReporteEvento();
   }, [proyecto?.id]); // eslint-disable-line
 
   // Docs start closed — user opens them manually
@@ -4882,10 +4912,81 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {(() => {
-                const linkBase = typeof window !== "undefined" ? `${window.location.origin}/evaluacion/` : "/evaluacion/";
+                const linkBase = typeof window !== "undefined" ? `${window.location.origin}/reporte-evento/` : "/reporte-evento/";
+                const linkBaseEval = typeof window !== "undefined" ? `${window.location.origin}/evaluacion/` : "/evaluacion/";
+
                 return (
+                  <div className="space-y-4">
+
+                  {/* ── Reporte Post-Evento ── */}
                   <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
-                    <div className="flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div><button onClick={async () => { const token = evalCliente?.tokenAcceso ?? await generarLinkEvalCliente(); if (token) { try { await navigator.clipboard.writeText(`${linkBase}${token}`); } catch { /* noop */ } } }} disabled={generandoLink || loadingEvalCliente || evalCliente?.respondida} className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>{generandoLink ? "Copiando..." : evalCliente?.respondida ? "Respondida" : "Copiar link"}</button></div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte post-evento</p>
+                        <p className="text-gray-500 text-xs mt-0.5">Formulario de cierre para el coordinador del evento</p>
+                      </div>
+                      {!reporteEvento ? (
+                        <button
+                          onClick={generarReporteEvento}
+                          disabled={generandoReporte}
+                          className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                          {generandoReporte ? "Generando..." : "Generar link"}
+                        </button>
+                      ) : reporteEvento.estado === "completado" ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/50 text-green-300">Completado</span>
+                      ) : (
+                        <button
+                          onClick={() => navigator.clipboard.writeText(`${linkBase}${reporteEvento.token}`)}
+                          className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs px-4 py-2 rounded-lg transition-colors"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+                          Copiar link
+                        </button>
+                      )}
+                    </div>
+
+                    {reporteEvento && (
+                      <div className="space-y-3">
+                        {/* Link copiable */}
+                        {reporteEvento.estado === "pendiente" && (
+                          <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2">
+                            <span className="text-gray-500 text-xs flex-1 truncate font-mono">{linkBase}{reporteEvento.token}</span>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(`${linkBase}${reporteEvento.token}`)}
+                              className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors"
+                            >Copiar</button>
+                          </div>
+                        )}
+                        {/* Badge estado */}
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                            reporteEvento.estado === "completado"
+                              ? "bg-green-900/50 text-green-300"
+                              : "bg-yellow-900/40 text-yellow-300"
+                          }`}>
+                            {reporteEvento.estado === "completado" ? "Completado" : "Esperando respuesta"}
+                          </span>
+                          {reporteEvento.estado === "completado" && reporteEvento.respondidoEn && (
+                            <span className="text-xs text-gray-500">
+                              {new Date(reporteEvento.respondidoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                            </span>
+                          )}
+                          {reporteEvento.estado === "completado" && (
+                            <a
+                              href={`/reporte-evento/${reporteEvento.token}/ver`}
+                              className="text-xs text-[#B3985B] hover:underline"
+                            >Ver reporte completo →</a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Evaluación del cliente ── */}
+                  <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+                    <div className="flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div><button onClick={async () => { const token = evalCliente?.tokenAcceso ?? await generarLinkEvalCliente(); if (token) { try { await navigator.clipboard.writeText(`${linkBaseEval}${token}`); } catch { /* noop */ } } }} disabled={generandoLink || loadingEvalCliente || evalCliente?.respondida} className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>{generandoLink ? "Copiando..." : evalCliente?.respondida ? "Respondida" : "Copiar link"}</button></div>
                     {loadingEvalCliente && <p className="text-gray-600 text-sm">Cargando...</p>}
                     {evalCliente && (
                       <div className="space-y-3">
@@ -4897,6 +4998,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         {evalCliente.comentarioAdicional && (<div className="bg-[#0d0d0d] rounded-lg px-3 py-2"><p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentario adicional</p><p className="text-gray-300 text-sm">{evalCliente.comentarioAdicional}</p></div>)}
                       </div>
                     )}
+                  </div>
+
                   </div>
                 );
             })()}

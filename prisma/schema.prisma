@@ -480,6 +480,7 @@ model Proyecto {
   movimientos       MovimientoFinanciero[]
   evaluacionInterna EvaluacionInterna?
   evaluacionCliente EvaluacionCliente?
+  reportePostEvento ReportePostEvento?
   gastosOperativos  GastoOperativo[]
   ordenesCompra     OrdenCompra[]
   cierreFinanciero  CierreFinanciero?
@@ -2693,4 +2694,49 @@ model IncidenciaSemanal {
   estado      String   @default("guardado")
 
   @@map("incidencias_semanales")
+}
+
+// ── Módulo Reporte Post-Evento ───────────────────────────────────────────────────
+
+model ReportePostEvento {
+  id                    String    @id @default(cuid())
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  proyectoId            String    @unique
+  proyecto              Proyecto  @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  token                 String    @unique @default(cuid())
+  estado                String    @default("pendiente") // "pendiente" | "completado"
+  coordinadorNombre     String?
+  // Bloque ejecución
+  llegadaPlaneada       String?
+  llegadaReal           String?
+  montajePlaneado       String?
+  montajeReal           String?
+  inicioProgramado      String?
+  inicioReal            String?
+  salidaPlaneada        String?
+  salidaReal            String?
+  seEjecutoSegunPlan    String?   // "si" | "ajustes" | "no"
+  // Bloque equipos
+  fallasEquipo          Json?     // string[]
+  equipoMantenimiento   Json?     // string[]
+  herramientasFaltantes Json?     // string[]
+  // Bloque información
+  briefCompleto         String?   // "si" | "incompleto" | "no"
+  cambiosUltimoMomento  Boolean?
+  descripcionCambios    String?   @db.Text
+  // Bloque equipo técnico
+  calificacionEquipo    Int?
+  puntosPositivos       String?   @db.Text
+  areasMejora           String?   @db.Text
+  // Bloque incidencias
+  incidencias           Json?     // { descripcion, impacto, resolucion }[]
+  // Bloque cierre
+  equipoRegreso         String?   // "completo" | "faltantes"
+  faltantesDescripcion  String?   @db.Text
+  aprendizajeClave      String?   @db.Text
+  loRepetiriamos        String?   // "si" | "ajustes" | "no"
+  respondidoEn          DateTime?
+
+  @@map("reporte_post_evento")
 }
