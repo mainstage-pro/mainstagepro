@@ -1,8 +1,9 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet,
+  Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { JORNADA_LABELS } from "@/lib/constants";
+
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
 const GOLD = "#B3985B";
@@ -418,7 +419,7 @@ function InfoField({ label, value, full = false, third = false, bold = true }: {
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
+export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaData; logoSrc?: string | null }) {
   const PARTICIPACION_LABELS: Record<string, string> = {
     OPERACION: "Operadores del evento",
     MONTAJE: "Técnicos de montaje",
@@ -499,7 +500,11 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
         {/* ── Header ── */}
         <View style={s.header} fixed>
           <View>
-            <Text style={s.brand}>MAINSTAGE</Text>
+            {logoSrc ? (
+              <Image src={logoSrc} style={{ height: 22, objectFit: "contain" }} />
+            ) : (
+              <Text style={s.brand}>MAINSTAGE</Text>
+            )}
             <Text style={s.tagline}>PRODUCCIONES · FICHA TÉCNICA</Text>
           </View>
           <View style={s.headerRight}>
@@ -516,6 +521,17 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
 
         {/* ── Cuerpo ── */}
         <View style={s.body}>
+
+          {/* ── PRIMERO: Cliente ── */}
+          <SectionTitle title="Cliente" />
+          <View style={s.infoGrid}>
+            <InfoField label="Nombre" value={proyecto.cliente.nombre} />
+            {proyecto.cliente.empresa && <InfoField label="Empresa" value={proyecto.cliente.empresa} />}
+            {proyecto.cliente.telefono && <InfoField label="Teléfono" value={proyecto.cliente.telefono} />}
+            {proyecto.cliente.correo && <InfoField label="Correo" value={proyecto.cliente.correo} />}
+            {proyecto.encargadoCliente && <InfoField label="Encargado del cliente" value={proyecto.encargadoCliente} />}
+            {proyecto.encargadoClienteContacto && <InfoField label="Contacto del encargado" value={proyecto.encargadoClienteContacto} />}
+          </View>
 
           {/* ── Info del evento ── */}
           <SectionTitle title="Información del evento" />
@@ -560,16 +576,8 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
             <InfoField label="Contacto del lugar" value={proyecto.encargadoLugarContacto} />
           </View>
 
-          {/* ── Cliente ── */}
-          <SectionTitle title="Cliente" />
-          <View style={s.infoGrid}>
-            <InfoField label="Nombre" value={proyecto.cliente.nombre} />
-            <InfoField label="Empresa" value={proyecto.cliente.empresa} />
-            <InfoField label="Teléfono" value={proyecto.cliente.telefono} />
-            <InfoField label="Correo" value={proyecto.cliente.correo} />
-            <InfoField label="Encargado del cliente" value={proyecto.encargadoCliente} />
-            <InfoField label="Contacto del encargado" value={proyecto.encargadoClienteContacto} />
-          </View>
+          {/* ── Cliente ── (movido al inicio) */}
+          {/* (Ya renderizado arriba) */}
 
           {/* ── Coordinación interna ── */}
           <SectionTitle title="Coordinación interna" />
@@ -595,21 +603,17 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
                 </View>
                 <View style={s.table}>
                   <View style={s.tableHeader}>
-                    <Text style={[s.thText, { width: "28%" }]}>Nombre</Text>
-                    <Text style={[s.thText, { width: "18%" }]}>Teléfono</Text>
-                    <Text style={[s.thText, { width: "12%" }]}>Nivel</Text>
-                    <Text style={[s.thText, { width: "18%" }]}>Jornada</Text>
-                    <Text style={[s.thText, { width: "16%" }]}>Responsabilidad</Text>
-                    <Text style={[s.thText, { width: "8%", textAlign: "right" }]}>Status</Text>
+                    <Text style={[s.thText, { width: "32%" }]}>Nombre</Text>
+                    <Text style={[s.thText, { width: "20%" }]}>Teléfono</Text>
+                    <Text style={[s.thText, { width: "28%" }]}>Responsabilidad</Text>
+                    <Text style={[s.thText, { width: "20%", textAlign: "right" }]}>Status</Text>
                   </View>
                   {personas.map((p, i) => (
                     <View key={p.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                      <Text style={[s.tdBold, { width: "28%" }]}>{p.tecnico?.nombre ?? "—"}</Text>
-                      <Text style={[s.tdText, { width: "18%" }]}>{p.tecnico?.celular ?? "—"}</Text>
-                      <Text style={[s.tdText, { width: "12%" }]}>{p.nivel ?? "—"}</Text>
-                      <Text style={[s.tdText, { width: "18%" }]}>{p.jornada ? (JORNADA_LABELS[p.jornada] ?? p.jornada) : "—"}</Text>
-                      <Text style={[s.tdText, { width: "16%" }]}>{p.responsabilidad ?? "—"}</Text>
-                      <View style={{ width: "8%", alignItems: "flex-end" }}>
+                      <Text style={[s.tdBold, { width: "32%" }]}>{p.tecnico?.nombre ?? "—"}</Text>
+                      <Text style={[s.tdText, { width: "20%" }]}>{p.tecnico?.celular ?? "—"}</Text>
+                      <Text style={[s.tdText, { width: "28%" }]}>{p.responsabilidad ?? "—"}</Text>
+                      <View style={{ width: "20%", alignItems: "flex-end" }}>
                         <Text style={p.confirmado ? s.confirmed : s.notConfirmed}>
                           {p.confirmado ? "✓ OK" : "Pend."}
                         </Text>
@@ -644,8 +648,12 @@ export function FichaTecnicaPDF({ proyecto }: { proyecto: FichaTecnicaData }) {
                   {items.map((e, i) => (
                     <View key={e.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                       <View style={{ width: "55%" }}>
-                        <Text style={s.tdBold}>{e.equipo.descripcion}</Text>
-                        {e.equipo.marca && <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.marca}</Text>}
+                        {/* Modelo / marca primero (prominente) */}
+                        {e.equipo.marca && (
+                          <Text style={s.tdBold}>{e.equipo.marca}</Text>
+                        )}
+                        {/* Descripción abajo, más pequeña */}
+                        <Text style={[s.tdText, { fontSize: 7.5, color: LIGHT_GRAY }]}>{e.equipo.descripcion}</Text>
                       </View>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.cantidad}</Text>
                       <Text style={[s.tdText, { width: "15%", textAlign: "center" }]}>{e.dias}</Text>
