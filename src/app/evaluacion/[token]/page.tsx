@@ -2,462 +2,333 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Image from "next/image";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── 5 preguntas fijas ────────────────────────────────────────────────────────
 
-interface EvaluacionData {
-  respondida: boolean;
-  proyecto: {
-    nombre: string;
-    fechaEvento: string | null;
-    cliente: { nombre: string } | null;
-  };
-}
-
-type Campo =
-  | "satisfaccionGeneral"
-  | "calidadServicio"
-  | "puntualidad"
-  | "atencionEquipo"
-  | "claridadComunicacion"
-  | "relacionCalidadPrecio"
-  | "probabilidadRecontratacion";
-
-const CRITERIOS: { key: Campo; label: string; descripcion: string; emoji: string }[] = [
+const PREGUNTAS: { key: string; pregunta: string }[] = [
   {
     key: "satisfaccionGeneral",
-    label: "Satisfacción general",
-    descripcion: "¿Qué tan satisfecho quedaste con el resultado del evento?",
-    emoji: "⭐",
+    pregunta: "¿Qué tan satisfecho quedaste con el resultado del evento?",
   },
   {
     key: "calidadServicio",
-    label: "Calidad del servicio",
-    descripcion: "¿El servicio brindado estuvo a la altura de lo que esperabas?",
-    emoji: "🎯",
+    pregunta: "¿El servicio brindado estuvo a la altura de lo que esperabas?",
   },
   {
     key: "puntualidad",
-    label: "Puntualidad",
-    descripcion: "¿El equipo llegó y cumplió los tiempos acordados?",
-    emoji: "⏱️",
+    pregunta: "¿El equipo cumplió con los tiempos y horarios acordados?",
   },
   {
     key: "atencionEquipo",
-    label: "Atención del equipo",
-    descripcion: "¿El equipo de Mainstage Pro fue amable, profesional y servicial?",
-    emoji: "🤝",
+    pregunta: "¿El trato y la atención del equipo fue profesional y amable?",
   },
   {
-    key: "claridadComunicacion",
-    label: "Comunicación",
-    descripcion: "¿La comunicación antes y durante el evento fue clara y oportuna?",
-    emoji: "💬",
-  },
-  {
-    key: "relacionCalidadPrecio",
-    label: "Relación calidad-precio",
-    descripcion: "¿Sientes que recibiste un buen servicio en relación con lo que pagaste?",
-    emoji: "💎",
+    key: "probabilidadRecontratacion",
+    pregunta: "¿Volverías a contratar nuestros servicios?",
   },
 ];
 
-const NPS_KEY = "probabilidadRecontratacion";
+// Escala de emojis — 1 a 5 (se mapea a 1-10 al guardar × 2)
+const OPCIONES = [
+  { valor: 1, emoji: "😞", label: "Muy mal" },
+  { valor: 2, emoji: "😕", label: "Mal" },
+  { valor: 3, emoji: "😐", label: "Regular" },
+  { valor: 4, emoji: "😊", label: "Bien" },
+  { valor: 5, emoji: "😄", label: "Excelente" },
+];
 
-// ─── Star Rating Component ─────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-function StarRating({
-  value,
-  onChange,
-  max = 10,
-}: {
-  value: number | null;
-  onChange: (v: number) => void;
-  max?: number;
-}) {
-  const [hover, setHover] = useState<number | null>(null);
-
-  return (
-    <div className="flex items-center gap-1 flex-wrap">
-      {Array.from({ length: max }, (_, i) => i + 1).map((n) => {
-        const active = hover !== null ? n <= hover : value !== null ? n <= value : false;
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            onMouseEnter={() => setHover(n)}
-            onMouseLeave={() => setHover(null)}
-            className={`w-9 h-9 rounded-xl text-base font-semibold transition-all duration-100 border ${
-              active
-                ? n <= 4
-                  ? "bg-red-500 border-red-500 text-white scale-105"
-                  : n <= 6
-                  ? "bg-yellow-400 border-yellow-400 text-white scale-105"
-                  : n <= 8
-                  ? "bg-blue-500 border-blue-500 text-white scale-105"
-                  : "bg-green-500 border-green-500 text-white scale-105"
-                : "bg-gray-100 border-gray-200 text-gray-400 hover:border-gray-300 hover:bg-gray-200"
-            }`}
-            aria-label={`Calificación ${n}`}
-          >
-            {n}
-          </button>
-        );
-      })}
-    </div>
-  );
+interface ProyectoInfo {
+  nombre: string;
+  fechaEvento: string | null;
+  cliente: { nombre: string } | null;
 }
 
-function ScoreLabel({ value }: { value: number | null }) {
-  if (value === null) return null;
-  const label =
-    value <= 4 ? "Necesita mejorar" :
-    value <= 6 ? "Regular" :
-    value <= 8 ? "Bueno" :
-    "Excelente";
-  const color =
-    value <= 4 ? "text-red-500" :
-    value <= 6 ? "text-yellow-500" :
-    value <= 8 ? "text-blue-500" :
-    "text-green-500";
-  return <span className={`text-xs font-semibold ${color} ml-1`}>{label}</span>;
-}
+type Scores = Record<string, number | null>;
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
-
-export default function EvaluacionPublicaPage() {
-  const params = useParams();
-  const token = params.token as string;
+export default function EvaluacionPage() {
+  const { token } = useParams<{ token: string }>();
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [evaluacion, setEvaluacion] = useState<EvaluacionData | null>(null);
   const [yaRespondida, setYaRespondida] = useState(false);
-  const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [proyecto, setProyecto] = useState<ProyectoInfo | null>(null);
 
-  // Form state
-  const [nombreCliente, setNombreCliente] = useState("");
-  const [scores, setScores] = useState<Record<Campo, number | null>>({
-    satisfaccionGeneral: null,
-    calidadServicio: null,
-    puntualidad: null,
-    atencionEquipo: null,
-    claridadComunicacion: null,
-    relacionCalidadPrecio: null,
-    probabilidadRecontratacion: null,
-  });
-  const [loMejor, setLoMejor] = useState("");
-  const [loMejorable, setLoMejorable] = useState("");
-  const [comentarioAdicional, setComentarioAdicional] = useState("");
+  const [scores, setScores] = useState<Scores>(() =>
+    Object.fromEntries(PREGUNTAS.map((p) => [p.key, null]))
+  );
+  const [comentario, setComentario] = useState("");
 
-  // Load evaluation
   useEffect(() => {
     fetch(`/api/evaluacion-cliente/${token}`)
-      .then((r) => {
-        if (r.status === 404) { setError("Este link de evaluación no es válido o ya expiró."); return null; }
-        return r.json();
-      })
+      .then((r) => r.json())
       .then((d) => {
-        if (!d) return;
-        if (d.evaluacion?.respondida) setYaRespondida(true);
-        setEvaluacion(d.evaluacion);
+        if (d.respondida) { setYaRespondida(true); setProyecto(d.proyecto); }
+        else setProyecto(d.proyecto);
       })
-      .catch(() => setError("No pudimos cargar el formulario. Por favor intenta de nuevo."))
+      .catch(() => setError("No pudimos cargar el formulario. Verifica el enlace."))
       .finally(() => setLoading(false));
   }, [token]);
 
-  function setScore(key: Campo, val: number) {
-    setScores((prev) => ({ ...prev, [key]: val }));
-  }
-
-  const criteriosCompletos = CRITERIOS.every((c) => scores[c.key] !== null);
+  const completo = PREGUNTAS.every((p) => scores[p.key] !== null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!criteriosCompletos) return;
+    if (!completo) return;
     setEnviando(true);
     try {
-      const payload: Record<string, unknown> = {
-        ...scores,
-        probabilidadRecontratacion: scores.probabilidadRecontratacion,
-        loMejor: loMejor.trim() || null,
-        loMejorable: loMejorable.trim() || null,
-        comentarioAdicional: [
-          nombreCliente.trim() ? `Nombre: ${nombreCliente.trim()}` : "",
-          comentarioAdicional.trim(),
-        ].filter(Boolean).join("\n\n") || null,
+      // Mapeamos escala 1-5 → 2-10 para guardar en los campos existentes (1-10)
+      const toDb = (v: number | null) => v !== null ? v * 2 : null;
+
+      const body = {
+        satisfaccionGeneral:       toDb(scores.satisfaccionGeneral),
+        calidadServicio:           toDb(scores.calidadServicio),
+        puntualidad:               toDb(scores.puntualidad),
+        atencionEquipo:            toDb(scores.atencionEquipo),
+        claridadComunicacion:      null,
+        relacionCalidadPrecio:     null,
+        probabilidadRecontratacion: toDb(scores.probabilidadRecontratacion),
+        loMejor:                   null,
+        loMejorable:               null,
+        comentarioAdicional:       comentario.trim() || null,
       };
 
       const res = await fetch(`/api/evaluacion-cliente/${token}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
-      if (res.status === 409) { setYaRespondida(true); return; }
-      if (!res.ok) { setError("Hubo un error al enviar. Por favor intenta de nuevo."); return; }
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setError(d.error ?? "Ocurrió un error al enviar. Intenta de nuevo.");
+        return;
+      }
       setEnviado(true);
     } catch {
-      setError("Error de conexión. Por favor intenta de nuevo.");
+      setError("Error de conexión. Verifica tu internet e intenta de nuevo.");
     } finally {
       setEnviando(false);
     }
   }
 
-  // ─── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 rounded-full border-2 border-[#B3985B] border-t-transparent animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm">Cargando formulario...</p>
+          <div className="w-8 h-8 rounded-full border-2 border-[#B3985B] border-t-transparent animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Cargando...</p>
         </div>
       </div>
     );
   }
 
-  // ─── Error ──────────────────────────────────────────────────────────────────
-
-  if (error) {
+  if (error && !proyecto) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">⚠️</span>
           </div>
-          <h1 className="text-gray-900 font-semibold text-lg mb-2">Link inválido</h1>
-          <p className="text-gray-500 text-sm leading-relaxed">{error}</p>
+          <h1 className="text-white font-bold text-lg mb-2">Enlace no válido</h1>
+          <p className="text-gray-500 text-sm">{error}</p>
         </div>
       </div>
     );
   }
 
-  // ─── Ya respondida ──────────────────────────────────────────────────────────
+  // ── Ya respondida ────────────────────────────────────────────────────────────
 
   if (yaRespondida) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">✅</span>
+          <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <span className="text-4xl">✅</span>
           </div>
-          <h1 className="text-gray-900 font-semibold text-lg mb-2">Ya recibimos tu evaluación</h1>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            Esta evaluación ya fue respondida. ¡Gracias por tu tiempo!
+          <h1 className="text-white font-bold text-xl mb-2">¡Ya enviaste tu evaluación!</h1>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            Gracias por tomarte el tiempo de evaluarnos
+            {proyecto?.cliente?.nombre ? `, ${proyecto.cliente.nombre}` : ""}.
+            Tu opinión es muy importante para nosotros.
           </p>
-          <div className="mt-6">
-            <p className="text-[#B3985B] text-xs font-semibold">Mainstage Pro</p>
-          </div>
+          <Logo />
         </div>
       </div>
     );
   }
 
-  // ─── Enviado con éxito ──────────────────────────────────────────────────────
+  // ── Enviado con éxito ────────────────────────────────────────────────────────
 
   if (enviado) {
-    const nombre = nombreCliente.trim();
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center px-4">
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="w-20 h-20 bg-[#B3985B]/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <span className="text-4xl">🎉</span>
-          </div>
-          <h1 className="text-gray-900 font-bold text-xl mb-3">
-            {nombre ? `¡Gracias, ${nombre}!` : "¡Gracias!"}
-          </h1>
-          <p className="text-gray-500 text-sm leading-relaxed">
-            Tu evaluación fue recibida. Nos ayuda a seguir mejorando para darte un servicio excepcional en cada evento.
+          <div className="text-6xl mb-5">🎉</div>
+          <h1 className="text-white font-bold text-xl mb-3">¡Muchas gracias!</h1>
+          <p className="text-gray-400 text-sm leading-relaxed mb-2">
+            Recibimos tu evaluación
+            {proyecto?.cliente?.nombre ? `, ${proyecto.cliente.nombre}` : ""}.
           </p>
-          <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-[#0a0a0a] flex items-center justify-center">
-              <span className="text-[#B3985B] text-xs font-bold">M</span>
-            </div>
-            <span className="text-gray-700 text-sm font-semibold">Mainstage Pro</span>
-          </div>
+          <p className="text-gray-600 text-xs mb-8">
+            Tu opinión nos ayuda a seguir mejorando cada evento.
+          </p>
+          <Logo />
         </div>
       </div>
     );
   }
 
-  // ─── Formulario ─────────────────────────────────────────────────────────────
-
-  const proyecto = evaluacion?.proyecto;
-  const clienteNombre = proyecto?.cliente?.nombre ?? "";
+  // ── Formulario ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#0a0a0a]">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center justify-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#0a0a0a] flex items-center justify-center shrink-0">
+      <div className="bg-[#0d0d0d] border-b border-[#1a1a1a] px-4 py-4">
+        <div className="max-w-lg mx-auto flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-[#111] border border-[#2a2a2a] flex items-center justify-center shrink-0">
             <span className="text-[#B3985B] text-sm font-bold">M</span>
           </div>
           <div>
-            <p className="text-gray-900 text-sm font-bold leading-tight">Mainstage Pro</p>
-            <p className="text-gray-400 text-[10px]">Evaluación de servicio</p>
+            <p className="text-white text-sm font-bold leading-tight">Mainstage Pro</p>
+            <p className="text-gray-600 text-[10px]">Evaluación del servicio</p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
-        {/* Hero */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center shadow-sm">
-          <div className="w-14 h-14 bg-[#B3985B]/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl">🎤</span>
-          </div>
-          <h1 className="text-gray-900 font-bold text-lg mb-1">Tu opinión nos ayuda a seguir mejorando</h1>
-          <p className="text-gray-500 text-sm">Solo toma 2 minutos. Tu experiencia es muy valiosa para nosotros.</p>
+      <form onSubmit={handleSubmit}>
+        <div className="max-w-lg mx-auto px-4 py-7 space-y-5">
 
-          {proyecto && (
-            <div className="mt-4 pt-4 border-t border-gray-100 space-y-1">
-              <p className="text-gray-800 font-semibold text-sm">{proyecto.nombre}</p>
-              {clienteNombre && (
-                <p className="text-gray-500 text-xs">{clienteNombre}</p>
-              )}
-              {proyecto.fechaEvento && (
-                <p className="text-gray-400 text-xs">{fmtDate(proyecto.fechaEvento)}</p>
-              )}
+          {/* Intro card */}
+          <div className="bg-gradient-to-br from-[#B3985B]/10 to-[#0d0d0d] border border-[#B3985B]/20 rounded-2xl p-6">
+            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">
+              Evaluación del servicio
+            </p>
+            <h1 className="text-white text-lg font-bold mb-1">
+              {proyecto?.nombre ?? "Tu evento"}
+            </h1>
+            {proyecto?.cliente?.nombre && (
+              <p className="text-gray-400 text-sm">Hola, {proyecto.cliente.nombre}</p>
+            )}
+            <p className="text-gray-500 text-xs mt-3 leading-relaxed">
+              Tu opinión nos importa. Responde estas 5 preguntas — toma menos de un minuto.
+            </p>
+          </div>
+
+          {/* Preguntas */}
+          {PREGUNTAS.map((p, idx) => {
+            const val = scores[p.key];
+            return (
+              <div key={p.key} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+                <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <p className="text-white text-sm font-medium leading-snug">{p.pregunta}</p>
+                  </div>
+                </div>
+                <div className="px-5 py-5">
+                  <div className="flex items-center justify-between gap-2">
+                    {OPCIONES.map((op) => {
+                      const selected = val === op.valor;
+                      return (
+                        <button
+                          key={op.valor}
+                          type="button"
+                          onClick={() => setScores((prev) => ({ ...prev, [p.key]: op.valor }))}
+                          className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border transition-all ${
+                            selected
+                              ? "border-[#B3985B] bg-[#B3985B]/10 scale-105"
+                              : "border-[#2a2a2a] bg-[#0d0d0d] hover:border-[#3a3a3a] hover:bg-[#161616]"
+                          }`}
+                        >
+                          <span
+                            className={`text-2xl transition-all ${selected ? "scale-110" : "grayscale opacity-60"}`}
+                          >
+                            {op.emoji}
+                          </span>
+                          <span
+                            className={`text-[9px] font-medium hidden sm:block ${
+                              selected ? "text-[#B3985B]" : "text-gray-700"
+                            }`}
+                          >
+                            {op.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Comentarios */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+            <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+              <h2 className="text-white text-sm font-medium">¿Quieres agregar algo más?</h2>
+              <p className="text-gray-500 text-xs mt-0.5">Opcional — cualquier comentario, sugerencia o detalle que quieras compartir.</p>
+            </div>
+            <div className="px-5 py-5">
+              <textarea
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+                rows={4}
+                placeholder="Escribe aquí lo que quieras..."
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none transition-colors placeholder:text-gray-700 leading-relaxed"
+              />
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Nombre opcional */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-            <label className="block text-gray-700 font-semibold text-sm mb-2">
-              ¿Cuál es tu nombre? <span className="text-gray-400 font-normal">(opcional)</span>
-            </label>
-            <input
-              type="text"
-              value={nombreCliente}
-              onChange={(e) => setNombreCliente(e.target.value)}
-              placeholder="Escribe tu nombre aquí..."
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm focus:outline-none focus:border-[#B3985B] transition-colors placeholder:text-gray-300"
-            />
-          </div>
-
-          {/* Criterios de calificación */}
-          {CRITERIOS.map((c, i) => (
-            <div key={c.key} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-start gap-3 mb-4">
-                <span className="text-xl">{c.emoji}</span>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-gray-800 font-semibold text-sm">{c.label}</p>
-                    {scores[c.key] !== null && (
-                      <span className="text-sm font-bold text-gray-700">{scores[c.key]}/10</span>
-                    )}
-                    <ScoreLabel value={scores[c.key]} />
-                  </div>
-                  <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">{c.descripcion}</p>
-                </div>
-              </div>
-              <StarRating value={scores[c.key]} onChange={(v) => setScore(c.key, v)} />
-              <div className="flex justify-between mt-1.5">
-                <span className="text-[10px] text-gray-400">Muy malo</span>
-                <span className="text-[10px] text-gray-400">Excelente</span>
-              </div>
-            </div>
-          ))}
-
-          {/* NPS */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-            <div className="flex items-start gap-3 mb-4">
-              <span className="text-xl">🔄</span>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-gray-800 font-semibold text-sm">Probabilidad de recontratación</p>
-                  {scores[NPS_KEY] !== null && (
-                    <span className="text-sm font-bold text-gray-700">{scores[NPS_KEY]}/10</span>
-                  )}
-                  <ScoreLabel value={scores[NPS_KEY]} />
-                </div>
-                <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
-                  ¿Qué tan probable es que vuelvas a contratar a Mainstage Pro o nos recomiendes con alguien?
-                </p>
-              </div>
-            </div>
-            <StarRating value={scores[NPS_KEY]} onChange={(v) => setScore(NPS_KEY as Campo, v)} />
-            <div className="flex justify-between mt-1.5">
-              <span className="text-[10px] text-gray-400">Nada probable</span>
-              <span className="text-[10px] text-gray-400">Muy probable</span>
-            </div>
-          </div>
-
-          {/* Lo mejor / Lo mejorable */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
-            <div>
-              <label className="block text-gray-700 font-semibold text-sm mb-1.5">
-                ✨ ¿Qué fue lo que más te gustó? <span className="text-gray-400 font-normal">(opcional)</span>
-              </label>
-              <textarea
-                value={loMejor}
-                onChange={(e) => setLoMejor(e.target.value)}
-                rows={3}
-                placeholder="Cuéntanos qué estuvo genial..."
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm focus:outline-none focus:border-[#B3985B] transition-colors resize-none placeholder:text-gray-300"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold text-sm mb-1.5">
-                🔧 ¿Qué podríamos mejorar? <span className="text-gray-400 font-normal">(opcional)</span>
-              </label>
-              <textarea
-                value={loMejorable}
-                onChange={(e) => setLoMejorable(e.target.value)}
-                rows={3}
-                placeholder="Toda retroalimentación es bienvenida..."
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm focus:outline-none focus:border-[#B3985B] transition-colors resize-none placeholder:text-gray-300"
-              />
-            </div>
-            <div>
-              <label className="block text-gray-700 font-semibold text-sm mb-1.5">
-                💬 Comentarios adicionales <span className="text-gray-400 font-normal">(opcional)</span>
-              </label>
-              <textarea
-                value={comentarioAdicional}
-                onChange={(e) => setComentarioAdicional(e.target.value)}
-                rows={3}
-                placeholder="¿Hay algo más que quieras que sepamos?"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-gray-800 text-sm focus:outline-none focus:border-[#B3985B] transition-colors resize-none placeholder:text-gray-300"
-              />
-            </div>
-          </div>
 
           {/* Submit */}
-          <div className="pb-8">
-            {!criteriosCompletos && (
-              <p className="text-center text-gray-400 text-xs mb-3">
-                Por favor califica todos los criterios para poder enviar
+          <div className="pb-8 space-y-3">
+            {!completo && (
+              <p className="text-center text-gray-700 text-xs">
+                Responde las {PREGUNTAS.length} preguntas para poder enviar
               </p>
             )}
             <button
               type="submit"
-              disabled={!criteriosCompletos || enviando}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl transition-colors text-sm shadow-sm"
+              disabled={!completo || enviando}
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
             >
-              {enviando ? "Enviando evaluación..." : "Enviar evaluación ✓"}
+              {enviando ? "Enviando..." : "Enviar evaluación ✓"}
             </button>
-            <p className="text-center text-gray-400 text-[10px] mt-3">
-              Tus respuestas son confidenciales y solo las verá el equipo de Mainstage Pro.
+            <p className="text-center text-gray-700 text-[10px]">
+              Tu opinión es confidencial y nos ayuda a mejorar.
             </p>
           </div>
-        </form>
+
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ─── Logo footer ──────────────────────────────────────────────────────────────
+
+function Logo() {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      <div className="w-6 h-6 rounded-md bg-[#111] border border-[#2a2a2a] flex items-center justify-center">
+        <span className="text-[#B3985B] text-xs font-bold">M</span>
       </div>
+      <span className="text-gray-500 text-sm font-semibold">Mainstage Pro</span>
     </div>
   );
 }
