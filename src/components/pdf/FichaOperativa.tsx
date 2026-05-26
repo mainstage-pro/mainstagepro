@@ -124,6 +124,7 @@ export interface FichaOperativaData {
   docsTecnicos: DocsData | null;
   tratoNotas: string | null;
   logoSrc: string | null;
+  logoSrcDark: string | null;
 }
 
 const ARCHIVO_TIPO: Record<string, string> = {
@@ -597,7 +598,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
         {/* FOOTER */}
         <View style={base.footer} fixed>
-          {data.logoSrc && <Image src={data.logoSrc} style={base.footerLogo} />}
+          {(data.logoSrcDark ?? data.logoSrc) && <Image src={(data.logoSrcDark ?? data.logoSrc)!} style={base.footerLogo} />}
           <Text style={base.footerTxt}>Uso interno — Mainstage Pro</Text>
           <Text style={base.footerTxt}>{data.numeroProyecto} · {nowStr()}</Text>
         </View>

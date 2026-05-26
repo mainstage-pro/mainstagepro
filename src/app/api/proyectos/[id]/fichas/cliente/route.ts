@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaCliente, FichaClienteData } from "@/components/pdf/FichaCliente";
-import { logoBase64, EquipoFlat } from "@/components/pdf/PdfShared";
+import { logoBase64, logoBase64Dark, EquipoFlat } from "@/components/pdf/PdfShared";
 import React from "react";
 import path from "path";
 
@@ -33,6 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const logoSrc = logoBase64(path.join(process.cwd(), "public"));
+  const logoSrcDark = logoBase64Dark(path.join(process.cwd(), "public"));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const equipos: EquipoFlat[] = (proyecto.equipos ?? []).map((e: any) => ({
@@ -69,6 +70,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     cliente: { nombre: proyecto.cliente.nombre, empresa: proyecto.cliente.empresa ?? null },
     equipos,
     logoSrc,
+    logoSrcDark,
   };
 
   const pdfStream = await ReactPDF.renderToStream(

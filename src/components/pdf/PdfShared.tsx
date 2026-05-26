@@ -73,16 +73,18 @@ export const base = StyleSheet.create({
   // Sección
   section: { marginBottom: 16 },
   secTitle: {
-    fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.dorado,
+    fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.blanco,
     textTransform: "uppercase", letterSpacing: 1.3,
-    marginBottom: 8, paddingBottom: 4,
-    borderBottomWidth: 0.8, borderBottomColor: C.doradoBorde, borderBottomStyle: "solid",
+    backgroundColor: C.negro,
+    marginBottom: 8, paddingVertical: 5, paddingHorizontal: 8,
+    borderRadius: 3,
   },
   secTitleDark: {
-    fontSize: 6.5, fontFamily: "Helvetica-Bold", color: C.grisMedio,
+    fontSize: 7.5, fontFamily: "Helvetica-Bold", color: C.blanco,
     textTransform: "uppercase", letterSpacing: 1.3,
-    marginBottom: 8, paddingBottom: 4,
-    borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid",
+    backgroundColor: C.grisOscuro,
+    marginBottom: 8, paddingVertical: 5, paddingHorizontal: 8,
+    borderRadius: 3,
   },
   // Grid de pares clave-valor
   kvGrid: { flexDirection: "row", flexWrap: "wrap" },
@@ -203,6 +205,22 @@ export function nowStr(): string {
 }
 
 export function logoBase64(publicDir: string): string | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    // Prefer white logo (for dark hero header)
+    for (const name of ["logo-white.png", "logo.png"]) {
+      const p = path.join(publicDir, name);
+      if (fs.existsSync(p)) return `data:image/png;base64,${fs.readFileSync(p).toString("base64")}`;
+    }
+    return null;
+  } catch { return null; }
+}
+
+/** Logo negro (letras negras) — para usar en footer sobre fondo blanco */
+export function logoBase64Dark(publicDir: string): string | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const fs = require("fs") as typeof import("fs");

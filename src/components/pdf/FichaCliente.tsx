@@ -43,6 +43,7 @@ export interface FichaClienteData {
   cliente: { nombre: string; empresa: string | null };
   equipos: EquipoFlat[];
   logoSrc: string | null;
+  logoSrcDark: string | null;
 }
 
 export function FichaCliente({ data }: { data: FichaClienteData }) {
@@ -265,7 +266,7 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
 
         {/* FOOTER */}
         <View style={base.footer} fixed>
-          {data.logoSrc && <Image src={data.logoSrc} style={base.footerLogo} />}
+          {(data.logoSrcDark ?? data.logoSrc) && <Image src={(data.logoSrcDark ?? data.logoSrc)!} style={base.footerLogo} />}
           <Text style={base.footerTxt}>mainstagepro.mx</Text>
           <Text style={base.footerTxt}>{data.numeroProyecto} · {nowStr()}</Text>
         </View>

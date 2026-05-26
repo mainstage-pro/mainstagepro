@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { FichaOperativa, FichaOperativaData } from "@/components/pdf/FichaOperativa";
 import {
-  logoBase64, EquipoFlat, CronoRow, TransporteSlot,
+  logoBase64, logoBase64Dark, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "@/components/pdf/PdfShared";
 import React from "react";
@@ -47,6 +47,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   const logoSrc = logoBase64(path.join(process.cwd(), "public"));
+  const logoSrcDark = logoBase64Dark(path.join(process.cwd(), "public"));
 
   // ── Parse JSON fields ──────────────────────────────────────────────────────
   let cronograma: CronoRow[] = [];
@@ -166,6 +167,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     docsTecnicos,
     tratoNotas: proyecto.trato?.notas ?? null,
     logoSrc,
+    logoSrcDark,
   };
 
   const pdfStream = await ReactPDF.renderToStream(
