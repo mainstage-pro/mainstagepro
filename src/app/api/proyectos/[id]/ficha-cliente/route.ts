@@ -18,14 +18,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cliente: { select: { nombre: true, empresa: true, telefono: true } },
-      encargado: { select: { name: true, phone: true } },
+      encargado: { select: { id: true, name: true } }, // User model has no phone
       cotizacion: {
-        select: {
+        include: {
           lineas: {
+            where: { tipo: "PROPIO" },
             include: {
               equipo: { select: { descripcion: true, marca: true } },
             },
-            where: { tipo: "PROPIO" },
           },
         },
       },
@@ -39,7 +39,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  const equipos = (proyecto.cotizacion?.lineas ?? []).map((l: { cantidad: number; equipo: { descripcion: string; marca: string | null } | null }) => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const equipos = (proyecto.cotizacion?.lineas ?? []).map((l: any) => ({
     descripcion: l.equipo?.descripcion ?? "",
     marca: l.equipo?.marca ?? null,
     cantidad: l.cantidad,
@@ -48,7 +49,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const data = {
     nombre: proyecto.nombre,
     numeroProyecto: proyecto.numeroProyecto,
-    tipoServicio: proyecto.tipoServicio,
+    tipoServicio: proyecto.tipoServicio ?? null,
     tipoEvento: proyecto.tipoEvento,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     horaInicio: proyecto.horaInicio ?? null,
@@ -57,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     linkMaps: proyecto.linkMaps ?? null,
     indicacionesCliente: proyecto.indicacionesCliente ?? null,
     encargadoNombre: proyecto.encargado?.name ?? null,
-    encargadoCelular: proyecto.encargado?.phone ?? null,
+    encargadoCelular: null, // User model has no phone field
     cliente: {
       nombre: proyecto.cliente.nombre,
       empresa: proyecto.cliente.empresa ?? null,

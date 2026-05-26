@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       cliente: { select: { nombre: true, empresa: true, telefono: true } },
-      encargado: { select: { name: true, phone: true } },
+      encargado: { select: { id: true, name: true } }, // User model has no phone field
       personal: {
         include: {
           tecnico: { select: { nombre: true, celular: true, rol: { select: { nombre: true } } } },
@@ -47,7 +47,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = {
     nombre: proyecto.nombre,
     numeroProyecto: proyecto.numeroProyecto,
@@ -73,7 +72,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     encargadoCliente: proyecto.encargadoCliente ?? null,
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
     encargadoNombre: proyecto.encargado?.name ?? null,
-    encargadoCelular: proyecto.encargado?.phone ?? null,
+    encargadoCelular: null, // User model has no phone field
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     equipos: (proyecto.equipos ?? []).map((e: any) => ({
       descripcion: e.equipo?.descripcion ?? "",
