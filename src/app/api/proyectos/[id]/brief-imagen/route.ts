@@ -4,6 +4,8 @@ import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { BriefPDF } from "@/components/BriefPDF";
 import React from "react";
+import path from "path";
+import fs from "fs";
 
 export async function GET(
   _req: NextRequest,
@@ -31,6 +33,11 @@ export async function GET(
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+  const logoPath = path.join(process.cwd(), "public", "logo-white.png");
+  const logoSrc = fs.existsSync(logoPath)
+    ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
+    : null;
+
   const proyectoData = {
     ...proyecto,
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
@@ -38,7 +45,7 @@ export async function GET(
 
   const pdfStream = await ReactPDF.renderToStream(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    React.createElement(BriefPDF, { proyecto: proyectoData as any }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(BriefPDF, { proyecto: proyectoData as any, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const chunks: Uint8Array[] = [];
