@@ -325,10 +325,9 @@ export function BriefPDF({
                 {proyecto.equipos.map((e, i) => (
                   <View
                     key={i}
-                    style={[
-                      s.equipoRow,
-                      i === proyecto.equipos.length - 1 && { borderBottomWidth: 0 },
-                    ]}
+                    style={i === proyecto.equipos.length - 1
+                      ? [s.equipoRow, { borderBottomWidth: 0 }]
+                      : s.equipoRow}
                   >
                     <Text style={s.equipoCant}>x{e.cantidad}</Text>
                     <Text style={s.equipoName}>
