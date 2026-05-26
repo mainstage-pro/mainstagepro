@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TimePicker from "@/components/ui/TimePicker";
@@ -751,6 +752,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Proveedores y subrentas
   const [showAddProveedor, setShowAddProveedor] = useState(false);
   const [showFichasMenu, setShowFichasMenu] = useState(false);
+  const { downloading, downloadPdf } = usePdfDownload();
   const [provNombre, setProvNombre] = useState("");
   const [provServicio, setProvServicio] = useState("");
   const [provTelefono, setProvTelefono] = useState("");
@@ -2659,22 +2661,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           <div className="flex items-center gap-2 flex-wrap">
             {/* Hoja de entrega — solo para renta */}
             {esRenta && (
-              <a
-                href={`/api/proyectos/${proyecto.id}/hoja-entrega`}
-                download
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              <button
+                onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
+                disabled={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
+                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-                Hoja de Entrega
-              </a>
+                {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                ) : (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
+                )}
+                {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? "Generando..." : "Hoja de Entrega"}
+              </button>
             )}
+
             {/* Fichas — dropdown click-based */}
             <div className="relative">
               <button
@@ -2695,25 +2695,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </button>
               {showFichasMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[200px] flex flex-col z-50 shadow-xl shadow-black/40">
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/cliente`} download
-                    onClick={() => setShowFichasMenu(false)}
-                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2.5">
-                    <span className="text-[#B3985B] text-sm">👤</span>
+                  <button
+                    onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }}
+                    disabled={!!downloading}
+                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left">
+                    <span className="text-[#B3985B] text-sm">
+                      {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                      ) : "👤"}
+                    </span>
                     <span>
                       <span className="block font-medium text-white">Confirmación para cliente</span>
-                      <span className="block text-gray-500 text-[10px]">Evento, equipo y coordinador</span>
+                      <span className="block text-gray-500 text-[10px]">
+                        {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Evento, equipo y coordinador"}
+                      </span>
                     </span>
-                  </a>
+                  </button>
                   <div className="border-t border-[#2a2a2a] mx-2" />
-                  <a href={`/api/proyectos/${proyecto.id}/fichas/operativa`} download
-                    onClick={() => setShowFichasMenu(false)}
-                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2.5">
-                    <span className="text-[#B3985B] text-sm">📋</span>
+                  <button
+                    onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }}
+                    disabled={!!downloading}
+                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left">
+                    <span className="text-[#B3985B] text-sm">
+                      {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                      ) : "📋"}
+                    </span>
                     <span>
                       <span className="block font-medium text-white">Ficha operativa</span>
-                      <span className="block text-gray-500 text-[10px]">Coordinador y técnicos</span>
+                      <span className="block text-gray-500 text-[10px]">
+                        {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Coordinador y técnicos"}
+                      </span>
                     </span>
-                  </a>
+                  </button>
                 </div>
               )}
 
