@@ -750,6 +750,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
   // Proveedores y subrentas
   const [showAddProveedor, setShowAddProveedor] = useState(false);
+  const [showFichasMenu, setShowFichasMenu] = useState(false);
   const [provNombre, setProvNombre] = useState("");
   const [provServicio, setProvServicio] = useState("");
   const [provTelefono, setProvTelefono] = useState("");
@@ -2674,9 +2675,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Hoja de Entrega
               </a>
             )}
-            {/* Fichas — dropdown */}
-            <div className="relative group">
-              <button className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+            {/* Fichas — dropdown click-based */}
+            <div className="relative">
+              <button
+                onClick={() => setShowFichasMenu(v => !v)}
+                onBlur={e => { if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setShowFichasMenu(false); }}
+                className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
@@ -2684,28 +2688,37 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <line x1="16" y1="17" x2="8" y2="17" />
                 </svg>
                 Fichas
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  className={`transition-transform duration-150 ${showFichasMenu ? "rotate-180" : ""}`}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </button>
-              <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] hidden group-hover:flex flex-col z-50 shadow-xl shadow-black/40">
-                <a href={`/api/proyectos/${proyecto.id}/ficha-cliente`} target="_blank" rel="noopener noreferrer"
-                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                  <span className="text-[#B3985B]">👤</span> Ficha para cliente
-                </a>
-                <a href={`/api/proyectos/${proyecto.id}/ficha-coordinador`} target="_blank" rel="noopener noreferrer"
-                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                  <span className="text-[#B3985B]">📋</span> Ficha para coordinador
-                </a>
-                <a href={`/api/proyectos/${proyecto.id}/ficha-tecnicos`} target="_blank" rel="noopener noreferrer"
-                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
-                  <span className="text-[#B3985B]">🔧</span> Brief para técnicos
-                </a>
-                <div className="border-t border-[#2a2a2a] mt-1 pt-1">
-                  <a href={`/api/proyectos/${proyecto.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                    className="px-4 py-2 text-xs text-gray-600 hover:text-gray-400 hover:bg-[#222] transition-colors flex items-center gap-2">
-                    <span>📄</span> Ficha técnica (legacy)
+              {showFichasMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] flex flex-col z-50 shadow-xl shadow-black/40">
+                  <a href={`/api/proyectos/${proyecto.id}/ficha-cliente`} target="_blank" rel="noopener noreferrer"
+                    onClick={() => setShowFichasMenu(false)}
+                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                    <span className="text-[#B3985B]">👤</span> Ficha para cliente
                   </a>
+                  <a href={`/api/proyectos/${proyecto.id}/ficha-coordinador`} target="_blank" rel="noopener noreferrer"
+                    onClick={() => setShowFichasMenu(false)}
+                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                    <span className="text-[#B3985B]">📋</span> Ficha para coordinador
+                  </a>
+                  <a href={`/api/proyectos/${proyecto.id}/ficha-tecnicos`} target="_blank" rel="noopener noreferrer"
+                    onClick={() => setShowFichasMenu(false)}
+                    className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                    <span className="text-[#B3985B]">🔧</span> Brief para técnicos
+                  </a>
+                  <div className="border-t border-[#2a2a2a] mt-1 pt-1">
+                    <a href={`/api/proyectos/${proyecto.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                      onClick={() => setShowFichasMenu(false)}
+                      className="px-4 py-2 text-xs text-gray-600 hover:text-gray-400 hover:bg-[#222] transition-colors flex items-center gap-2">
+                      <span>📄</span> Ficha técnica (legacy)
+                    </a>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <Link
