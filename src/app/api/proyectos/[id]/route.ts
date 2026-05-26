@@ -88,6 +88,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
+        proveedoresEvento: { orderBy: { createdAt: "asc" } },
       },
     });
   } catch {
@@ -142,6 +143,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           },
         },
         cierreFinanciero: { select: { cerradoEn: true, notas: true, totalCobrado: true, totalGastado: true, utilidadReal: true, margenReal: true, granTotalEstimado: true, costoEstimado: true, utilidadEstimada: true } },
+        proveedoresEvento: { orderBy: { createdAt: "asc" } },
       },
     });
     // Normalize fallback: add empty arrays for new fields
@@ -154,6 +156,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           riderAccesorios: [],
           equipo: { ...(e.equipo as Record<string, unknown>), accesorios: [] },
         })),
+        proveedoresEvento: (proyecto as { proveedoresEvento?: unknown[] }).proveedoresEvento ?? [],
       } as unknown as typeof proyecto;
     }
   }
@@ -180,6 +183,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "scoreFotoVideo", "recomendacionFotoVideo", "logisticaRenta", "reporteCatering", "marketingData", "docsTecnicos",
     "notasPortal", "responsables", "proveedoresRenta", "equiposRiderExtra", "zona",
     "planProduccion",
+    // Nuevos campos de logística del día del evento
+    "horaMontaje", "horaInicio", "horaDesmontaje",
+    "direccionVenue", "linkMaps", "indicacionesAcceso",
+    "puntoSalidaBodega", "horaSalidaBodega", "indicacionesCliente",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`

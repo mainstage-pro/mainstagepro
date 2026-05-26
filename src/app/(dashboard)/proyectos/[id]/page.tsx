@@ -24,6 +24,7 @@ interface Personal {
   nivel: string | null; jornada: string | null; responsabilidad: string | null;
   tarifaAcordada: number | null; notas: string | null;
   confirmToken: string | null; confirmRespuesta: string | null;
+  rolEnEvento: string | null;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   rolTecnico: { nombre: string } | null;
 }
@@ -47,6 +48,10 @@ interface Proyecto {
   tipoEvento: string; tipoServicio: string | null;
   fechaEvento: string; horaInicioEvento: string | null; horaFinEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
+  horaMontaje: string | null; horaInicio: string | null; horaDesmontaje: string | null;
+  direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
+  puntoSalidaBodega: string | null; horaSalidaBodega: string | null;
+  indicacionesCliente: string | null;
   lugarEvento: string | null; encargadoLugar: string | null; encargadoLugarContacto: string | null;
   descripcionGeneral: string | null; detallesEspecificos: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null; transportes: string | null;
@@ -85,6 +90,7 @@ interface Proyecto {
   portalToken: string | null;
   notasPortal: string | null;
   responsables: string | null;
+  proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -736,11 +742,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
   const [selParticipacion, setSelParticipacion] = useState("OPERACION");
+  const [selRolEnEvento, setSelRolEnEvento] = useState("");
   const [addingPersonal, setAddingPersonal] = useState(false);
   const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showSugerencias, setShowSugerencias] = useState(false);
   const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
+  // Proveedores y subrentas
+  const [showAddProveedor, setShowAddProveedor] = useState(false);
+  const [provNombre, setProvNombre] = useState("");
+  const [provServicio, setProvServicio] = useState("");
+  const [provTelefono, setProvTelefono] = useState("");
+  const [addingProveedor, setAddingProveedor] = useState(false);
+  const [editandoProveedorId, setEditandoProveedorId] = useState<string | null>(null);
+  const [editProvForm, setEditProvForm] = useState({ nombre: "", servicio: "", telefono: "" });
 
   // Estados para nuevo técnico inline
   const [showNuevoTecnico, setShowNuevoTecnico] = useState(false);
@@ -845,7 +860,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
   // Estado para editar slot de personal completo
   const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
-  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "" });
+  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "", rolEnEvento: "" });
   const [savingPersonal, setSavingPersonal] = useState(false);
 
   // Estados para otros gastos
@@ -1863,6 +1878,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         jornada: selJornada,
         tarifaAcordada: selTarifa || null,
         responsabilidad: selResp || null,
+        rolEnEvento: selRolEnEvento || null,
       }),
     });
     if (!res.ok) {
@@ -1873,7 +1889,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
-    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp("");
+    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp(""); setSelRolEnEvento("");
     setShowAddPersonal(false);
     setAddingPersonal(false);
   }
@@ -1912,6 +1928,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       tarifa: p.tarifaAcordada != null ? String(p.tarifaAcordada) : "",
       participacion: p.participacion ?? "OPERACION",
       responsabilidad: p.responsabilidad ?? "",
+      rolEnEvento: p.rolEnEvento ?? "",
     });
     // Buscar rolTecnicoId desde la lista de roles por nombre
     const rolNombre = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre;
@@ -1933,6 +1950,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         tarifaAcordada: editPersonalForm.tarifa ? parseFloat(editPersonalForm.tarifa) : null,
         participacion: editPersonalForm.participacion || null,
         responsabilidad: editPersonalForm.responsabilidad || null,
+        rolEnEvento: editPersonalForm.rolEnEvento || null,
       }),
     });
     if (res.ok) {
@@ -2656,22 +2674,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Hoja de Entrega
               </a>
             )}
-            {/* Ficha técnica — siempre visible */}
-            <a
-              href={`/api/proyectos/${proyecto.id}/pdf`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-                <polyline points="10 9 9 9 8 9" />
-              </svg>
-              Ficha Técnica
-            </a>
+            {/* Fichas — dropdown */}
+            <div className="relative group">
+              <button className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                Fichas
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9" /></svg>
+              </button>
+              <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] hidden group-hover:flex flex-col z-50 shadow-xl shadow-black/40">
+                <a href={`/api/proyectos/${proyecto.id}/ficha-cliente`} target="_blank" rel="noopener noreferrer"
+                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                  <span className="text-[#B3985B]">👤</span> Ficha para cliente
+                </a>
+                <a href={`/api/proyectos/${proyecto.id}/ficha-coordinador`} target="_blank" rel="noopener noreferrer"
+                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                  <span className="text-[#B3985B]">📋</span> Ficha para coordinador
+                </a>
+                <a href={`/api/proyectos/${proyecto.id}/ficha-tecnicos`} target="_blank" rel="noopener noreferrer"
+                  className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
+                  <span className="text-[#B3985B]">🔧</span> Brief para técnicos
+                </a>
+                <div className="border-t border-[#2a2a2a] mt-1 pt-1">
+                  <a href={`/api/proyectos/${proyecto.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                    className="px-4 py-2 text-xs text-gray-600 hover:text-gray-400 hover:bg-[#222] transition-colors flex items-center gap-2">
+                    <span>📄</span> Ficha técnica (legacy)
+                  </a>
+                </div>
+              </div>
+            </div>
 
             <Link
               href={`/carta-responsiva/${proyecto.id}`}
@@ -2714,18 +2749,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Campos ponderados (suman 100) ───────────────────────────────────
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                                         label: "Lugar del evento",         peso: 8  },
-          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                             label: "Contacto del cliente",      peso: 8  },
-          { ok: !!proyecto.encargado,                                                                           label: "Responsable interno",       peso: 6  },
+          { ok: !!proyecto.lugarEvento,                                                                         label: "Lugar del evento",         peso: 7  },
+          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                             label: "Contacto del cliente",      peso: 7  },
+          { ok: !!proyecto.encargado,                                                                           label: "Responsable interno",       peso: 5  },
           { ok: proyecto.equipos.length > 0,                                                                    label: "Equipo registrado",         peso: 10 },
           { ok: proyecto.equipos.length > 0 && proyecto.equipos.every((e: { confirmado: boolean }) => e.confirmado), label: "Equipos confirmados",  peso: 8  },
           { ok: checkPct2 >= 0.8,                                                                               label: "Checklist completado",      peso: 10 },
           { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                                 label: "Anticipo cobrado",         peso: 10 },
           { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                        label: "Liquidación cobrada",      peso: 10 },
           { ok: !!proyecto.cotizacion,                                                                          label: "Cotización generada",       peso: 8  },
-          { ok: proyecto.personal.length > 0,                                                                   label: "Personal asignado",        peso: 6  },
+          { ok: proyecto.personal.length > 0,                                                                   label: "Personal asignado",        peso: 5  },
           { ok: _salidaData.estado === "OK",                                                                    label: "Protocolo de salida OK",   peso: 8  },
-          { ok: _entradaData.estado === "OK",                                                                   label: "Protocolo de entrada OK",  peso: 8  },
+          { ok: _entradaData.estado === "OK",                                                                   label: "Protocolo de entrada OK",  peso: 7  },
+          { ok: !!(proyecto.horaMontaje && proyecto.horaInicio),                                                 label: "Horarios del evento",       peso: 5  },
         ];
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
@@ -3036,6 +3072,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Campo label="Encargado del cliente" noLabel value={proyecto.encargadoCliente} field="encargadoCliente" onSave={guardarCampo} />
                   </div>
                   <Campo label="Contacto del cliente" value={proyecto.encargadoClienteContacto} field="encargadoClienteContacto" onSave={guardarCampo} />
+                  <div className="col-span-2">
+                    <Campo label="Indicaciones para el cliente" value={proyecto.indicacionesCliente} field="indicacionesCliente" type="textarea" onSave={guardarCampo} />
+                  </div>
                 </>)}
               </div>
             </div>
@@ -3089,6 +3128,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
                   <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                  {/* ─ Logística del día del evento ─ */}
+                  <div className="col-span-2 pt-2">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mb-3">Logística del día del evento</p>
+                  </div>
+                  <Campo label="Hora de llegada / montaje" value={proyecto.horaMontaje} field="horaMontaje" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora de inicio del evento" value={proyecto.horaInicio} field="horaInicio" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora estimada de desmontaje" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
+                  <div className="col-span-1" />
+                  <Campo label="Punto de salida desde bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" onSave={guardarCampo} />
+                  <Campo label="Hora de salida desde bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" type="time" onSave={guardarCampo} />
+                  <div className="col-span-2">
+                    <Campo label="Dirección del venue" value={proyecto.direccionVenue} field="direccionVenue" onSave={guardarCampo} />
+                  </div>
+                  <div className="col-span-2">
+                    <Campo label="Link de Google Maps" value={proyecto.linkMaps} field="linkMaps" onSave={guardarCampo} />
+                  </div>
+                  <div className="col-span-2">
+                    <Campo label="Indicaciones de acceso" value={proyecto.indicacionesAcceso} field="indicacionesAcceso" type="textarea" onSave={guardarCampo} />
+                  </div>
                 </>)}
               </div>
 
@@ -3526,6 +3584,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
                   <div className="col-span-2">
+                    <label className="text-xs text-gray-500 block mb-1">Rol en el evento</label>
+                    <input value={selRolEnEvento} onChange={e => setSelRolEnEvento(e.target.value)}
+                      placeholder="Ej: Operador de audio, Iluminación, Montaje..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-2">
                     <label className="text-xs text-gray-500 block mb-1">Responsabilidad / descripción</label>
                     <input value={selResp} onChange={e => setSelResp(e.target.value)}
                       placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
@@ -3759,6 +3823,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             )}
                             <p className="text-gray-600 text-xs mt-0.5">
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
+                              {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
                               {p.jornada ? ` · ${p.jornada}` : ""}
                               {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
                               {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
@@ -3846,6 +3911,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               </div>
                             </div>
                             <div>
+                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol en el evento</label>
+                              <input
+                                value={editPersonalForm.rolEnEvento}
+                                onChange={e => setEditPersonalForm(prev => ({ ...prev, rolEnEvento: e.target.value }))}
+                                placeholder="Ej: Operador de audio, Iluminación..."
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                              />
+                            </div>
+                            <div>
                               <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Responsabilidad / descripción</label>
                               <input
                                 value={editPersonalForm.responsabilidad}
@@ -3930,6 +4004,129 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                 );
               })
+            )}
+          </div>
+
+          {/* ── Proveedores y Subrentas ── */}
+          <div className="space-y-3">
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Proveedores y subrentas</p>
+                <button onClick={() => setShowAddProveedor(v => !v)}
+                  className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
+                  {showAddProveedor ? "− Cancelar" : "+ Agregar proveedor"}
+                </button>
+              </div>
+              {showAddProveedor && (
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="col-span-3 md:col-span-1">
+                    <label className="text-xs text-gray-500 block mb-1">Nombre del proveedor *</label>
+                    <input value={provNombre} onChange={e => setProvNombre(e.target.value)}
+                      placeholder="Proveedor o empresa..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-3 md:col-span-1">
+                    <label className="text-xs text-gray-500 block mb-1">Equipo / Servicio</label>
+                    <input value={provServicio} onChange={e => setProvServicio(e.target.value)}
+                      placeholder="Qué equipo o servicio provee..."
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-3 md:col-span-1">
+                    <label className="text-xs text-gray-500 block mb-1">Teléfono</label>
+                    <input value={provTelefono} onChange={e => setProvTelefono(e.target.value)}
+                      placeholder="Teléfono de contacto"
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div className="col-span-3 flex gap-2">
+                    <button
+                      disabled={addingProveedor || !provNombre.trim()}
+                      onClick={async () => {
+                        if (!provNombre.trim()) return;
+                        setAddingProveedor(true);
+                        const res = await fetch(`/api/proyectos/${id}/proveedores-evento`, {
+                          method: "POST", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ nombreProveedor: provNombre, servicioEquipo: provServicio || null, telefonoProveedor: provTelefono || null }),
+                        });
+                        if (res.ok) {
+                          const d = await res.json();
+                          setProyecto(prev => prev ? { ...prev, proveedoresEvento: [...(prev.proveedoresEvento ?? []), d.proveedor] } : prev);
+                          setProvNombre(""); setProvServicio(""); setProvTelefono(""); setShowAddProveedor(false);
+                        } else { toast.error("Error al agregar proveedor"); }
+                        setAddingProveedor(false);
+                      }}
+                      className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                      {addingProveedor ? "Guardando..." : "Agregar"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Lista de proveedores */}
+            {(proyecto.proveedoresEvento ?? []).length > 0 && (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="divide-y divide-[#1a1a1a]">
+                  {(proyecto.proveedoresEvento ?? []).map(prov => (
+                    <div key={prov.id} className="px-4 py-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          {editandoProveedorId === prov.id ? (
+                            <div className="grid grid-cols-3 gap-2">
+                              <input value={editProvForm.nombre} onChange={e => setEditProvForm(p => ({ ...p, nombre: e.target.value }))}
+                                placeholder="Nombre *"
+                                className="bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                              <input value={editProvForm.servicio} onChange={e => setEditProvForm(p => ({ ...p, servicio: e.target.value }))}
+                                placeholder="Equipo/Servicio"
+                                className="bg-[#0d0d0d] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                              <input value={editProvForm.telefono} onChange={e => setEditProvForm(p => ({ ...p, telefono: e.target.value }))}
+                                placeholder="Teléfono"
+                                className="bg-[#0d0d0d] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                              <div className="col-span-3 flex gap-2">
+                                <button onClick={async () => {
+                                  const res = await fetch(`/api/proyectos/${id}/proveedores-evento/${prov.id}`, {
+                                    method: "PATCH", headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ nombreProveedor: editProvForm.nombre, servicioEquipo: editProvForm.servicio || null, telefonoProveedor: editProvForm.telefono || null }),
+                                  });
+                                  if (res.ok) {
+                                    const d = await res.json();
+                                    setProyecto(prev => prev ? { ...prev, proveedoresEvento: (prev.proveedoresEvento ?? []).map(p => p.id === prov.id ? d.proveedor : p) } : prev);
+                                    setEditandoProveedorId(null);
+                                  }
+                                }}
+                                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">Guardar</button>
+                                <button onClick={() => setEditandoProveedorId(null)}
+                                  className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="text-white text-sm font-medium">{prov.nombreProveedor}</p>
+                              <p className="text-gray-500 text-xs mt-0.5">
+                                {[prov.servicioEquipo, prov.telefonoProveedor].filter(Boolean).join(" · ")}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                        {editandoProveedorId !== prov.id && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => { setEditandoProveedorId(prov.id); setEditProvForm({ nombre: prov.nombreProveedor, servicio: prov.servicioEquipo ?? "", telefono: prov.telefonoProveedor ?? "" }); }}
+                              className="text-xs px-1.5 py-0.5 rounded border border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333] transition-colors">Editar</button>
+                            <button
+                              onClick={async () => {
+                                const ok = await confirm({ message: "¿Eliminar este proveedor del proyecto?", confirmText: "Eliminar", danger: true });
+                                if (!ok) return;
+                                const res = await fetch(`/api/proyectos/${id}/proveedores-evento/${prov.id}`, { method: "DELETE" });
+                                if (res.ok) setProyecto(prev => prev ? { ...prev, proveedoresEvento: (prev.proveedoresEvento ?? []).filter(p => p.id !== prov.id) } : prev);
+                              }}
+                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

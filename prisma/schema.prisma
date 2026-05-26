@@ -424,6 +424,16 @@ model Proyecto {
   fechaMontaje           DateTime?
   horaInicioMontaje      String?
   duracionMontajeHrs     Float?
+  // ─ Logística del día del evento ─
+  horaMontaje            String?   // Hora de llegada/montaje al venue (día del evento)
+  horaInicio             String?   // Hora de inicio del evento
+  horaDesmontaje         String?   // Hora estimada de desmontaje y salida
+  direccionVenue         String?   // Dirección completa del venue
+  linkMaps               String?   // Link de Google Maps o referencia
+  indicacionesAcceso     String?   @db.Text // Código de entrada, estacionamiento, persona que recibe
+  puntoSalidaBodega      String?   // Punto de salida desde bodega
+  horaSalidaBodega       String?   // Hora de salida desde bodega
+  indicacionesCliente    String?   @db.Text // Lo que necesita tener listo el cliente
   lugarEvento            String?
   encargadoLugar         String?
   encargadoLugarContacto String?
@@ -485,6 +495,7 @@ model Proyecto {
   ordenesCompra     OrdenCompra[]
   cierreFinanciero  CierreFinanciero?
   tareas            Tarea[]            @relation("TareasDeProyecto")
+  proveedoresEvento ProveedorEvento[]
 
   @@map("proyectos")
 }
@@ -508,6 +519,7 @@ model ProyectoPersonal {
   tarifaAcordada  Float?
   estadoPago      String   @default("PENDIENTE") // PENDIENTE | PAGADO
   notas           String?
+  rolEnEvento     String?  // Rol específico en este evento (ej: Operador de audio, Iluminación)
 
   @@map("proyecto_personal")
 }
@@ -2739,4 +2751,18 @@ model ReportePostEvento {
   respondidoEn          DateTime?
 
   @@map("reporte_post_evento")
+}
+
+// ── Módulo Proveedores / Subrentas por evento ─────────────────────────────────
+
+model ProveedorEvento {
+  id                String   @id @default(cuid())
+  createdAt         DateTime @default(now())
+  proyectoId        String
+  proyecto          Proyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  nombreProveedor   String
+  servicioEquipo    String?
+  telefonoProveedor String?
+
+  @@map("proveedores_evento")
 }
