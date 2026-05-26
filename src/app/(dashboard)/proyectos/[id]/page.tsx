@@ -2695,17 +2695,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </button>
               {showFichasMenu && (
                 <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[190px] flex flex-col z-50 shadow-xl shadow-black/40">
-                  <a href={`/api/proyectos/${proyecto.id}/ficha-cliente`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/cliente`} target="_blank" rel="noopener noreferrer"
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">👤</span> Ficha para cliente
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/ficha-coordinador`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/coordinador`} target="_blank" rel="noopener noreferrer"
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">📋</span> Ficha para coordinador
                   </a>
-                  <a href={`/api/proyectos/${proyecto.id}/ficha-tecnicos`} target="_blank" rel="noopener noreferrer"
+                  <a href={`/api/proyectos/${proyecto.id}/fichas/tecnicos`} target="_blank" rel="noopener noreferrer"
                     onClick={() => setShowFichasMenu(false)}
                     className="px-4 py-2.5 text-xs text-gray-300 hover:text-white hover:bg-[#222] transition-colors flex items-center gap-2">
                     <span className="text-[#B3985B]">🔧</span> Brief para técnicos
