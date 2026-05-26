@@ -4509,14 +4509,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Accesorios confirmados</p>
                                       <div className="space-y-1">
                                         {e.riderAccesorios.map(a => (
-                                          <div key={a.id} className="flex items-center gap-2.5 group py-0.5">
-                                            <input type="checkbox" checked={a.completado} onChange={() => riderToggleAccesorio(e.id, a.id, a.completado)} className="w-3.5 h-3.5 rounded accent-[#B3985B] shrink-0 cursor-pointer" />
-                                            <span className={`flex-1 text-xs ${a.completado ? "line-through text-gray-600" : "text-gray-200"}`}>{a.nombre}</span>
+                                          <div key={a.id} className="flex items-center gap-2.5 group py-1">
+                                            <span className="text-[#B3985B] font-bold text-sm w-8 shrink-0">×{a.cantidad ?? 1}</span>
+                                            <span className="flex-1 text-sm text-gray-200">{a.nombre}</span>
                                             {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
                                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
-                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">−</button>
-                                              <span className="text-[10px] text-[#B3985B] font-semibold w-5 text-center">×{a.cantidad ?? 1}</span>
-                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-4 text-center text-xs leading-none transition-colors">+</button>
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-5 text-center text-sm leading-none transition-colors">−</button>
+                                              <button onClick={() => riderActualizarCantidad(e.id, a.id, (a.cantidad ?? 1) + 1)} className="text-gray-600 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
                                             </div>
                                             <button onClick={() => riderEliminarAccesorio(e.id, a.id)} className="text-[#333] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all text-xs leading-none">×</button>
                                           </div>
@@ -4872,36 +4871,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
 
-            {/* Evaluación interna */}
-            <div className="space-y-4">
-              {evalPromedio !== null && evalPromedio > 0 && (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-5 flex items-center justify-between">
-                  <div><p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Promedio general</p><p className={`text-4xl font-bold ${colorCalif(evalPromedio)}`}>{evalPromedio.toFixed(1)}<span className="text-gray-600 text-lg font-normal">/10</span></p></div>
-                  <div className="text-right"><p className="text-xs text-gray-500 mb-1">{CRITERIOS.filter(c => (evaluacion[c.key] as number) > 0).length} de {CRITERIOS.length} criterios evaluados</p>{evalPromedio >= 9 && <span className="text-xs text-green-400 bg-green-900/30 px-2 py-1 rounded-full">Excelente</span>}{evalPromedio >= 7 && evalPromedio < 9 && <span className="text-xs text-[#B3985B] bg-[#B3985B]/10 px-2 py-1 rounded-full">Muy bueno</span>}{evalPromedio >= 5 && evalPromedio < 7 && <span className="text-xs text-yellow-400 bg-yellow-900/30 px-2 py-1 rounded-full">Regular</span>}{evalPromedio < 5 && evalPromedio > 0 && <span className="text-xs text-red-400 bg-red-900/30 px-2 py-1 rounded-full">Necesita mejorar</span>}</div>
-                </div>
-              )}
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-4 border-b border-[#1a1a1a]"><div className="flex items-center justify-between flex-wrap gap-2"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Criterios de evaluación interna</p><span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">Para uso del Coordinador de Producción</span></div><p className="text-gray-500 text-xs mt-1">Califica del 1 al 10 cada criterio (0 = sin evaluar)</p></div>
-                <div className="divide-y divide-[#1a1a1a]">
-                  {CRITERIOS.map(({ key, label, desc }) => {
-                    const val = evaluacion[key] as number;
-                    const comentario = evaluacion.comentariosCriterios[key] ?? "";
-                    return (
-                      <div key={key} className={`px-5 py-4 border border-transparent ${colorBg(val)}`}>
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex-1 min-w-0"><p className="text-sm text-white font-medium">{label}</p><p className="text-xs text-gray-500 mt-0.5">{desc}</p></div>
-                          <div className="flex items-center gap-3 shrink-0"><span className={`text-2xl font-bold w-10 text-right ${colorCalif(val)}`}>{val === 0 ? "—" : val}</span><div className="flex gap-1">{[0,1,2,3,4,5,6,7,8,9,10].map(n => (<button key={n} onClick={() => setEvaluacion(prev => ({ ...prev, [key]: n }))} className={`w-6 h-6 rounded text-xs font-bold transition-all ${val === n ? n === 0 ? "bg-[#333] text-gray-400" : n >= 9 ? "bg-green-600 text-white" : n >= 7 ? "bg-[#B3985B] text-black" : n >= 5 ? "bg-yellow-600 text-black" : "bg-red-700 text-white" : "bg-[#1a1a1a] text-gray-500 hover:bg-[#222] hover:text-white"}`}>{n === 0 ? "—" : n}</button>))}</div></div>
-                        </div>
-                        <input value={comentario} onChange={e => setEvaluacion(prev => ({ ...prev, comentariosCriterios: { ...prev.comentariosCriterios, [key]: e.target.value } }))} placeholder="Comentario (opcional)..." className="mt-2 w-full bg-[#0d0d0d]/50 border border-[#1a1a1a] rounded-lg px-3 py-1.5 text-xs text-gray-300 placeholder-gray-700 focus:outline-none focus:border-[#B3985B]/50" />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5"><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Notas y observaciones</p><textarea value={evaluacion.notas} onChange={e => setEvaluacion(prev => ({ ...prev, notas: e.target.value }))} rows={4} placeholder="¿Qué funcionó bien? ¿Qué mejoraría para el siguiente evento similar? ¿Algún incidente relevante?" className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-              <div className="flex justify-end"><button onClick={guardarEval} disabled={savingEval} className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2.5 rounded-lg transition-colors">{savingEval ? "Guardando..." : "Guardar evaluación"}</button></div>
-
-              {(() => {
+            {(() => {
                 const linkBase = typeof window !== "undefined" ? `${window.location.origin}/evaluacion/` : "/evaluacion/";
                 return (
                   <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
@@ -4919,8 +4889,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     )}
                   </div>
                 );
-              })()}
-            </div>
+            })()}
 
           </div>
         );
