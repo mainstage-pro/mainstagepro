@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -121,12 +122,18 @@ export default function MarketingCalendarioPage({
   async function uploadImagenes(files: FileList | File[]) {
     setUploadingNew(true);
     for (const file of Array.from(files)) {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: fd });
-      if (res.ok) {
-        const { url } = await res.json();
-        setFormImagenes(prev => [...prev, url]);
+      try {
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const pathname = `marketing/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        // Client upload: va directo del browser a Vercel Blob Storage — sin límite de tamaño
+        const blob = await upload(pathname, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload/token",
+        });
+        setFormImagenes(prev => [...prev, blob.url]);
+      } catch (err) {
+        console.error("Error subiendo archivo:", err);
+        toast.error("Error al subir archivo — intenta de nuevo");
       }
     }
     setUploadingNew(false);

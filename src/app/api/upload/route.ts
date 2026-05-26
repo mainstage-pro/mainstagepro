@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { getSession } from "@/lib/auth";
 
+// Ruta de upload server-side (legacy, limitada a ~4.5 MB por Vercel Functions)
+// Para archivos grandes usa /api/upload/token + client upload de @vercel/blob
+export const maxDuration = 60; // segundos
+
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });

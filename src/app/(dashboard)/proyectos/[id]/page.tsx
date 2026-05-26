@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
+import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1605,14 +1606,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (!file) return;
     setUploadingTipo(tipo);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("tipo", tipo);
-      fd.append("nombre", file.name);
-      const res = await fetch(`/api/proyectos/${id}/archivos`, { method: "POST", body: fd });
+      // Client upload: directo browser → Vercel Blob, sin límite de tamaño
+      const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+      const pathname = `proyectos/${id}/${Date.now()}-${tipo.toLowerCase()}.${ext}`;
+      const blob = await upload(pathname, file, {
+        access: "public",
+        handleUploadUrl: "/api/upload/token",
+      });
+      // Registrar metadata en base de datos
+      const res = await fetch(`/api/proyectos/${id}/archivos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: blob.url, tipo, nombre: file.name }),
+      });
       const d = await res.json();
       if (!res.ok) {
-        toast.error(d.error ?? "Error al subir archivo");
+        toast.error(d.error ?? "Error al guardar archivo");
       } else if (d.archivo) {
         setProyecto(prev => prev ? { ...prev, archivos: [...prev.archivos, d.archivo] } : prev);
       }
