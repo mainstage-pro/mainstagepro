@@ -10,6 +10,7 @@ import { GraficaProyectos } from "@/components/GraficaProyectos";
 import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasHoyWidget from "@/components/TareasHoyWidget";
+import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -746,6 +747,13 @@ export default async function DashboardPage() {
       ══════════════════════════════════════════════════════════════════════ */}
       <Section label="GESTIÓN DE TAREAS" href="/operaciones">
         <TareasHoyWidget />
+      </Section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          PLAN DE TRABAJO
+      ══════════════════════════════════════════════════════════════════════ */}
+      <Section label="PLAN DE TRABAJO" href="/plan-trabajo">
+        <PlanTrabajoWidget />
       </Section>
 
     </div>
