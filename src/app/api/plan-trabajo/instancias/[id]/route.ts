@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 // PATCH /api/plan-trabajo/instancias/[id]
-// Body: { accion: "completar" | "reabrir" | "omitir" | "en_progreso", notas?: string }
+// Body: { accion: "completar" | "reabrir" | "omitir" | "en_progreso" | "reasignar", detalles?: string, responsableId?: string }
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -13,7 +13,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { accion, notas } = body;
+  const { accion, notas, detalles, responsableId } = body;
 
   const instancia = await prisma.pTTareaInstancia.findUnique({ where: { id } });
   if (!instancia) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
@@ -48,15 +48,36 @@ export async function PATCH(
       nuevoEstado = "EN_PROGRESO";
       accionHistorial = "COMENTADA"; // reutilizamos
       break;
+    case "reasignar": {
+      // Solo admin puede reasignar
+      if (!isAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+      if (!responsableId) return NextResponse.json({ error: "responsableId requerido" }, { status: 400 });
+      const updated = await prisma.pTTareaInstancia.update({
+        where: { id },
+        data: { responsableId },
+        include: {
+          template: { include: { area: true, subArea: true } },
+          responsable: { select: { id: true, name: true, email: true } },
+          subtareasInstancia: { include: { subtarea: true } },
+          historial: { include: { usuario: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 10 },
+          comentarios: { include: { autor: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 20 },
+        },
+      });
+      await prisma.pTHistorialEjecucion.create({
+        data: { instanciaId: id, usuarioId: session.id, accion: "REASIGNADA", detalles: JSON.stringify({ responsableId }) },
+      });
+      return NextResponse.json({ instancia: updated });
+    }
     default:
       return NextResponse.json({ error: "Acción inválida" }, { status: 400 });
   }
 
+  const nota = detalles ?? notas ?? null;
   const updated = await prisma.pTTareaInstancia.update({
     where: { id },
     data: {
       estado: nuevoEstado,
-      notas: notas ?? instancia.notas,
+      notas: nota ?? instancia.notas,
       ...(completadaAt ? { completadaAt } : { completadaAt: null }),
       ...(completadaPorId ? { completadaPorId } : {}),
     },
@@ -64,6 +85,8 @@ export async function PATCH(
       template: { include: { area: true, subArea: true } },
       responsable: { select: { id: true, name: true, email: true } },
       subtareasInstancia: { include: { subtarea: true } },
+      historial: { include: { usuario: { select: { id: true, name: true } } }, orderBy: { createdAt: "desc" }, take: 10 },
+      comentarios: { include: { autor: { select: { id: true, name: true } } }, orderBy: { createdAt: "asc" }, take: 20 },
     },
   });
 
@@ -73,7 +96,7 @@ export async function PATCH(
       instanciaId: id,
       usuarioId: session.id,
       accion: accionHistorial,
-      detalles: notas ? JSON.stringify({ notas }) : null,
+      detalles: nota ? JSON.stringify({ nota }) : null,
     },
   });
 

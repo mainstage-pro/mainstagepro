@@ -117,6 +117,9 @@ export default function PlanTrabajoPage() {
   const [entregableDialogId, setEntregableDialogId] = useState<string | null>(null);
   const [notaEntrega, setNotaEntrega] = useState("");
   const [historialOpen, setHistorialOpen] = useState(false);
+  // Reasignar
+  const [usuarios, setUsuarios] = useState<{id:string;name:string;area:string|null}[]>([]);
+  const [reasignandoId, setReasignandoId] = useState<string|null>(null);
   // Live countdown
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -125,7 +128,16 @@ export default function PlanTrabajoPage() {
 
   useEffect(() => {
     fetch("/api/me").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) { setMe(d); if (d.role === "ADMIN") setTab("equipo"); }
+      if (d) {
+        setMe(d);
+        if (d.role === "ADMIN") {
+          setTab("equipo");
+          // Cargar lista de usuarios para reasignación
+          fetch("/api/admin/usuarios")
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.users) setUsuarios(data.users.filter((u: {active:boolean}) => u.active)); });
+        }
+      }
     });
     // Countdown every 60s
     timerRef.current = setInterval(() => setTick(t => t + 1), 60000);
@@ -646,6 +658,42 @@ export default function PlanTrabajoPage() {
             {selected.estado === "COMPLETADA" && (
               <button onClick={() => accion(selected.id, "reabrir")}
                 className="w-full bg-[#111] hover:bg-[#1a1a1a] border border-[#333] text-gray-400 text-xs py-2 rounded-xl">↩ Reabrir</button>
+            )}
+
+            {/* Reasignar — solo admin */}
+            {isAdmin && selected.estado !== "COMPLETADA" && selected.estado !== "OMITIDA" && (
+              <div>
+                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-2">Reasignar</p>
+                <div className="relative">
+                  <select
+                    value=""
+                    disabled={reasignandoId === selected.id}
+                    onChange={async e => {
+                      const uid = e.target.value;
+                      if (!uid) return;
+                      setReasignandoId(selected.id);
+                      const res = await fetch(`/api/plan-trabajo/instancias/${selected.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ accion: "reasignar", responsableId: uid }),
+                      });
+                      if (res.ok) {
+                        const d = await res.json();
+                        setInstancias(prev => prev.map(i => i.id === selected.id ? { ...i, ...d.instancia } : i));
+                      }
+                      setReasignandoId(null);
+                    }}
+                    className="w-full bg-[#111] border border-[#333] hover:border-[#444] text-gray-300 text-xs rounded-xl px-3 py-2 cursor-pointer focus:outline-none focus:border-[#B3985B]/50 appearance-none pr-8">
+                    <option value="" disabled>{reasignandoId === selected.id ? "Reasignando..." : `👤 ${selected.responsable?.name ?? "Sin asignar"} — cambiar →`}</option>
+                    {usuarios.map(u => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}{u.area ? ` (${u.area})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 text-[10px]">▾</div>
+                </div>
+              </div>
             )}
 
             {/* WhatsApp */}
