@@ -127,7 +127,7 @@ export default function PlanTrabajoWidget() {
               <div key={e.id} className="flex items-center justify-between px-4 py-2.5">
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium truncate">{e.template.nombre}</p>
-                  <p className="text-gray-600 text-[10px]">{e.template.area.nombre} · {e.responsable.name}</p>
+                  <p className="text-gray-600 text-[10px]">{e.template.area.nombre} · {e.responsable?.name ?? "Sin asignar"}</p>
                 </div>
                 <p className="text-yellow-400 text-[10px] font-semibold ml-3 shrink-0">
                   {new Date(e.fechaVencimiento).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
