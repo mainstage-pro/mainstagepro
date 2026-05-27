@@ -72,6 +72,11 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "asc" },
         take: 20,
       },
+      historial: {
+        include: { usuario: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+      },
     },
     orderBy: { fechaVencimiento: "asc" },
   });

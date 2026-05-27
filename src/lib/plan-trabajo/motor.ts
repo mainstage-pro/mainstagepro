@@ -239,3 +239,25 @@ export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise
   console.log(`[motor] ${dateStr}: ${generadas} generadas, ${omitidas} ya existían, ${errores} errores`);
   return { generadas, omitidas, errores };
 }
+
+// ── Sweep de tareas vencidas ──────────────────────────────────────────────────
+/**
+ * Marca como VENCIDA todas las instancias PENDIENTE o EN_PROGRESO
+ * cuya fechaVencimiento es anterior al inicio del día actual (México).
+ * Debe ejecutarse ANTES de generarInstanciasDelDia en el cron.
+ */
+export async function marcarVencidasAnteriores(fecha: Date = new Date()): Promise<{ vencidas: number }> {
+  const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  const inicioDeHoy = new Date(`${dateStr}T00:00:00.000-06:00`);
+
+  const result = await prisma.pTTareaInstancia.updateMany({
+    where: {
+      estado: { in: ["PENDIENTE", "EN_PROGRESO"] },
+      fechaVencimiento: { lt: inicioDeHoy },
+    },
+    data: { estado: "VENCIDA" },
+  });
+
+  console.log(`[motor] sweep vencidas: ${result.count} instancias marcadas como VENCIDA`);
+  return { vencidas: result.count };
+}
