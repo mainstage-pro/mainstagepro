@@ -164,7 +164,7 @@ export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise
   let errores = 0;
 
   const templates = await prisma.pTTareaTemplate.findMany({
-    where: { activa: true, responsableId: { not: null } },
+    where: { activa: true }, // genera para TODOS — con o sin responsable asignado
     include: { area: true, subArea: true },
   });
 
@@ -197,7 +197,7 @@ export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise
       const instancia = await prisma.pTTareaInstancia.create({
         data: {
           templateId: template.id,
-          responsableId: template.responsableId!,
+          ...(template.responsableId ? { responsableId: template.responsableId } : {}),
           fechaVencimiento,
           estado: "PENDIENTE",
           esEntregable: template.tipo === "ENTREGABLE",
@@ -219,15 +219,17 @@ export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise
         });
       }
 
-      // Registrar en historial
-      await prisma.pTHistorialEjecucion.create({
-        data: {
-          instanciaId: instancia.id,
-          usuarioId: template.responsableId!,
-          accion: "CREADA",
-          detalles: JSON.stringify({ periodoLabel, fechaVencimiento }),
-        },
-      });
+      // Registrar en historial solo si hay responsable
+      if (template.responsableId) {
+        await prisma.pTHistorialEjecucion.create({
+          data: {
+            instanciaId: instancia.id,
+            usuarioId: template.responsableId,
+            accion: "CREADA",
+            detalles: JSON.stringify({ periodoLabel, fechaVencimiento }),
+          },
+        });
+      }
 
       generadas++;
     } catch (err) {
