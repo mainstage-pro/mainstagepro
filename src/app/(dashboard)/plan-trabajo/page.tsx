@@ -30,6 +30,12 @@ interface AreaConfig {
 }
 interface Me { id: string; name: string; role: string; area: string | null; }
 
+// ─── Sistema Operativo types ──────────────────────────────────────────────────
+interface SOKPI { id: string; nombre: string; meta: string; formula: string; fuente: string; orden: number; activo: boolean; esTransversal: boolean; areaId: string | null; }
+interface SOSubArea { id: string; nombre: string; entregables: string[]; orden: number; }
+interface SOArea { id: string; nombre: string; color: string; icono: string | null; objetivo: string | null; subareas: SOSubArea[]; kpis: SOKPI[]; }
+interface SOData { areas: SOArea[]; kpisTransversales: SOKPI[]; }
+
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   PENDIENTE:   { label: "Pendiente",   color: "text-gray-400",  bg: "bg-gray-800/40",  dot: "bg-gray-500" },
@@ -98,7 +104,7 @@ function tiempoRelativo(date: string) {
 export default function PlanTrabajoPage() {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
-  const [tab, setTab] = useState<"mi-plan" | "hoy" | "equipo" | "por-area" | "config">("mi-plan");
+  const [tab, setTab] = useState<"mi-plan" | "hoy" | "equipo" | "por-area" | "sistema-op" | "config">("mi-plan");
   const [instancias, setInstancias] = useState<Instancia[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -120,6 +126,10 @@ export default function PlanTrabajoPage() {
   // Reasignar
   const [usuarios, setUsuarios] = useState<{id:string;name:string;area:string|null}[]>([]);
   const [reasignandoId, setReasignandoId] = useState<string|null>(null);
+  // Sistema Operativo
+  const [soData, setSoData] = useState<SOData | null>(null);
+  const [soAreaOpen, setSoAreaOpen] = useState<string | null>(null);
+  const [contextoOpenIds, setContextoOpenIds] = useState<Set<string>>(new Set());
   // Live countdown
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -132,20 +142,23 @@ export default function PlanTrabajoPage() {
         setMe(d);
         if (d.role === "ADMIN") {
           setTab("equipo");
-          // Cargar lista de usuarios para reasignación
           fetch("/api/admin/usuarios")
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data?.users) setUsuarios(data.users.filter((u: {active:boolean}) => u.active)); });
         }
       }
     });
+    // Cargar Sistema Operativo una sola vez
+    fetch("/api/plan-trabajo/sistema-operativo")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSoData(d); });
     // Countdown every 60s
     timerRef.current = setInterval(() => setTick(t => t + 1), 60000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
   const loadInstancias = useCallback(async () => {
-    if (tab === "config" || !me) return;
+    if (tab === "config" || tab === "sistema-op" || !me) return;
     setLoading(true);
     try {
       const vista = tab === "por-area" ? "semana" : "dia";
@@ -244,6 +257,7 @@ export default function PlanTrabajoPage() {
     { key: "hoy" as const, label: "Hoy" },
     ...(isAdmin ? [{ key: "equipo" as const, label: "Equipo" }] : []),
     { key: "por-area" as const, label: "Por Área" },
+    { key: "sistema-op" as const, label: "Sistema Op." },
     { key: "config" as const, label: "⚙" },
   ];
 
@@ -421,12 +435,21 @@ export default function PlanTrabajoPage() {
                   const todas = Object.values(subareas).flatMap(s => s.instancias);
                   const completadas = todas.filter(i => i.estado === "COMPLETADA").length;
                   const pct = todas.length > 0 ? Math.round(completadas / todas.length * 100) : 0;
+                  const soArea = soData?.areas.find(a => a.nombre === area.nombre);
+                  const contextoOpen = contextoOpenIds.has(area.id);
                   return (
                     <div key={area.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-lg">{area.icono}</span>
                         <span className="text-white font-semibold">{area.nombre}</span>
                         <span className="ml-auto text-white/60 text-sm font-bold">{pct}%</span>
+                        {soArea && (
+                          <button onClick={() => setContextoOpenIds(prev => {
+                            const next = new Set(prev);
+                            if (next.has(area.id)) next.delete(area.id); else next.add(area.id);
+                            return next;
+                          })} title="Ver contexto" className="w-6 h-6 flex items-center justify-center rounded-full bg-[#1a1a1a] hover:bg-[#2a2a2a] text-gray-500 hover:text-[#B3985B] text-xs transition-colors">ⓘ</button>
+                        )}
                       </div>
                       <div className="h-1.5 bg-[#1e1e1e] rounded-full mb-4">
                         <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: area.color }} />
@@ -436,9 +459,155 @@ export default function PlanTrabajoPage() {
                         <div><p className="text-white font-bold">{todas.filter(i => i.estado === "PENDIENTE").length}</p><p className="text-gray-600">Pendientes</p></div>
                         <div><p className="text-red-400 font-bold">{todas.filter(i => i.estado === "VENCIDA").length}</p><p className="text-gray-600">Vencidas</p></div>
                       </div>
+                      {contextoOpen && soArea && (
+                        <div className="mt-4 pt-4 border-t border-[#1a1a1a] space-y-3">
+                          {soArea.objetivo && (
+                            <div className="pl-3 border-l-2 py-1" style={{ borderColor: area.color }}>
+                              <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Objetivo</p>
+                              <p className="text-gray-300 text-xs leading-relaxed">{soArea.objetivo}</p>
+                            </div>
+                          )}
+                          {soArea.subareas.filter(sa => {
+                            const saId = sa.id;
+                            return Object.values(subareas).some(s => s.subarea.id === saId && s.instancias.length > 0);
+                          }).map(sa => sa.entregables.length > 0 && (
+                            <div key={sa.id} className="bg-green-950/20 border border-green-900/20 rounded-lg px-3 py-2">
+                              <p className="text-green-600 text-[9px] font-bold uppercase tracking-widest mb-1.5">{sa.nombre}</p>
+                              <ul className="space-y-0.5">
+                                {sa.entregables.map((e, i) => <li key={i} className="text-gray-400 text-xs"><span className="text-green-600 font-bold">→</span> {e}</li>)}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
+              </div>
+            ) : tab === "sistema-op" ? (
+              <div className="max-w-3xl space-y-3">
+                {!soData ? (
+                  <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-2xl h-16 animate-pulse" />)}</div>
+                ) : (
+                  <>
+                    {soData.areas.map(area => (
+                      <div key={area.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+                        {/* Acordeón header */}
+                        <button
+                          onClick={() => setSoAreaOpen(soAreaOpen === area.id ? null : area.id)}
+                          className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[#161616] transition-colors text-left"
+                        >
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: area.color }} />
+                          <span className="text-lg">{area.icono}</span>
+                          <span className="text-white font-semibold flex-1">{area.nombre}</span>
+                          <span className="text-gray-600 text-[10px]">{area.kpis.length} KPIs</span>
+                          <span className="text-gray-600 text-xs ml-2">{soAreaOpen === area.id ? "▾" : "▸"}</span>
+                        </button>
+                        {/* Acordeón body */}
+                        {soAreaOpen === area.id && (
+                          <div className="px-5 pb-5 space-y-5 border-t border-[#1a1a1a]">
+                            {/* A — Objetivo */}
+                            {area.objetivo && (
+                              <div className="mt-4 pl-4 border-l-4 py-2" style={{ borderColor: area.color }}>
+                                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1.5">Objetivo del área</p>
+                                <p className="text-gray-200 text-sm leading-relaxed">{area.objetivo}</p>
+                              </div>
+                            )}
+                            {/* B — Entregables por subárea */}
+                            {area.subareas.some(s => s.entregables.length > 0) && (
+                              <div>
+                                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-3">Entregables por subárea</p>
+                                <div className="space-y-2">
+                                  {area.subareas.filter(s => s.entregables.length > 0).map(sa => (
+                                    <div key={sa.id} className="bg-green-950/20 border border-green-900/20 rounded-xl px-4 py-3">
+                                      <p className="text-green-600 text-[9px] font-bold uppercase tracking-widest mb-2">{sa.nombre}</p>
+                                      <ul className="space-y-1">
+                                        {sa.entregables.map((e, i) => (
+                                          <li key={i} className="flex items-start gap-2 text-xs text-gray-400">
+                                            <span className="text-green-500 font-bold shrink-0">→</span>{e}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {/* C — KPIs */}
+                            {area.kpis.length > 0 && (
+                              <div>
+                                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-3">KPIs del área</p>
+                                <div className="overflow-x-auto rounded-xl border border-[#1e1e1e]">
+                                  <table className="w-full text-xs">
+                                    <thead>
+                                      <tr className="bg-black">
+                                        {["Indicador","Meta","Cómo se calcula","Fuente en plataforma"].map(h => (
+                                          <th key={h} className="text-left px-3 py-2.5 text-[#B3985B] font-semibold whitespace-nowrap">{h}</th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {area.kpis.map((kpi, i) => (
+                                        <tr key={kpi.id} className={i % 2 === 0 ? "bg-[#0d0d0d]" : "bg-[#111]"}>
+                                          <td className="px-3 py-2.5 text-white font-medium">{kpi.nombre}</td>
+                                          <td className="px-3 py-2.5 text-[#B3985B] font-bold whitespace-nowrap">{kpi.meta}</td>
+                                          <td className="px-3 py-2.5 text-gray-400">{kpi.formula}</td>
+                                          <td className="px-3 py-2.5 text-gray-500">{kpi.fuente}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {/* KPIs Transversales */}
+                    {soData.kpisTransversales.length > 0 && (
+                      <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+                        <button
+                          onClick={() => setSoAreaOpen(soAreaOpen === "transversal" ? null : "transversal")}
+                          className="w-full flex items-center gap-3 px-5 py-4 hover:bg-[#161616] transition-colors text-left"
+                        >
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#B3985B] shrink-0" />
+                          <span className="text-white font-semibold flex-1">KPIs Transversales / Gastos</span>
+                          <span className="text-gray-600 text-[10px]">{soData.kpisTransversales.length} KPIs</span>
+                          <span className="text-gray-600 text-xs ml-2">{soAreaOpen === "transversal" ? "▾" : "▸"}</span>
+                        </button>
+                        {soAreaOpen === "transversal" && (
+                          <div className="px-5 pb-5 border-t border-[#1a1a1a] mt-0 pt-4">
+                            <p className="text-gray-500 text-[10px] leading-relaxed mb-4">
+                              Estos KPIs aplican a toda la empresa y relacionan cada rubro de gasto contra los ingresos totales del mes.
+                            </p>
+                            <div className="overflow-x-auto rounded-xl border border-[#1e1e1e]">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-black">
+                                    {["Indicador","Meta","Cómo se calcula","Fuente en plataforma"].map(h => (
+                                      <th key={h} className="text-left px-3 py-2.5 text-[#B3985B] font-semibold whitespace-nowrap">{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {soData.kpisTransversales.map((kpi, i) => (
+                                    <tr key={kpi.id} className={i % 2 === 0 ? "bg-[#0d0d0d]" : "bg-[#111]"}>
+                                      <td className="px-3 py-2.5 text-white font-medium">{kpi.nombre}</td>
+                                      <td className="px-3 py-2.5 text-[#B3985B] font-bold whitespace-nowrap">{kpi.meta}</td>
+                                      <td className="px-3 py-2.5 text-gray-400">{kpi.formula}</td>
+                                      <td className="px-3 py-2.5 text-gray-500">{kpi.fuente}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             ) : tab === "equipo" && isAdmin ? (
               <div className="space-y-6">

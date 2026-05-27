@@ -2789,6 +2789,7 @@ model PTArea {
 
   subareas  PTSubArea[]
   templates PTTareaTemplate[]
+  kpis      PTKPI[]     @relation("PTKPIArea")
 
   @@map("pt_areas")
 }
@@ -2921,4 +2922,24 @@ model PTHistorialEjecucion {
   @@index([instanciaId])
   @@index([usuarioId, createdAt])
   @@map("pt_historial_ejecucion")
+}
+
+// ── KPIs del Sistema Operativo ────────────────────────────────────────────────
+model PTKPI {
+  id            String   @id @default(cuid())
+  areaId        String?
+  area          PTArea?  @relation("PTKPIArea", fields: [areaId], references: [id], onDelete: SetNull)
+  nombre        String
+  meta          String
+  formula       String   @db.Text
+  fuente        String
+  orden         Int      @default(0)
+  esTransversal Boolean  @default(false)
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([areaId])
+  @@index([esTransversal])
+  @@map("pt_kpis")
 }
