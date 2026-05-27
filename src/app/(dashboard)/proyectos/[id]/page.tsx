@@ -65,7 +65,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
@@ -3188,24 +3188,37 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {/* Notas */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
-              {(() => {
-                let notasDesc: string | null = null;
-                try {
-                  if (esRenta) {
-                    const d = JSON.parse(proyecto.trato?.ideasReferencias ?? "{}");
-                    notasDesc = d?.notas ?? null;
-                  } else {
-                    notasDesc = (proyecto.trato as { notas?: string | null } | null)?.notas ?? null;
-                  }
-                } catch { /* ignore */ }
-                return notasDesc ? (
-                  <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Del descubrimiento</p>
-                    <p className="text-gray-400 text-xs whitespace-pre-wrap">{notasDesc}</p>
-                  </div>
-                ) : null;
-              })()}
+            {/* Notas del descubrimiento */}
+            {(() => {
+              let notasDesc: string | null = null;
+              try {
+                if (esRenta) {
+                  const d = JSON.parse(proyecto.trato?.ideasReferencias ?? "{}");
+                  notasDesc = d?.notas ?? null;
+                } else {
+                  notasDesc = (proyecto.trato as { notas?: string | null } | null)?.notas ?? null;
+                }
+              } catch { /* ignore */ }
+              return notasDesc ? (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Del descubrimiento</p>
+                  <p className="text-gray-400 text-xs whitespace-pre-wrap">{notasDesc}</p>
+                </div>
+              ) : null;
+            })()}
+            {/* Notas internas editables */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">Notas internas del proyecto</p>
+              <Campo
+                label="Notas internas"
+                noLabel
+                value={proyecto.comentariosFinales}
+                field="comentariosFinales"
+                type="textarea"
+                onSave={guardarCampo}
+              />
             </div>
+          </div>
 
 
           </div>
@@ -3296,6 +3309,60 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </button>
             </div>
           </div>}
+
+          {/* ── Equipo cotizado (solo RENTA) ── */}
+          {esRenta && proyecto.cotizacion && (() => {
+            const equipoLineas = proyecto.cotizacion.lineas.filter(l =>
+              ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"].includes(l.tipo)
+            );
+            const TIPO_LABELS: Record<string, string> = {
+              EQUIPO_PROPIO:  "Propio",
+              EQUIPO_EXTERNO: "Externo",
+              PAQUETE:        "Paquete",
+              OTRO:           "Otro",
+            };
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo cotizado</p>
+                  <a
+                    href={`/cotizaciones/${proyecto.cotizacion.id}`}
+                    className="text-[10px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
+                    target="_blank" rel="noreferrer"
+                  >
+                    {proyecto.cotizacion.numeroCotizacion} → ver cotización
+                  </a>
+                </div>
+                {equipoLineas.length === 0 ? (
+                  <p className="text-gray-600 text-xs italic">Sin equipos en la cotización.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {equipoLineas.map(l => (
+                      <div key={l.id} className="flex items-start gap-3 py-1.5 border-b border-[#1a1a1a] last:border-0">
+                        <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded shrink-0 mt-0.5">
+                          {TIPO_LABELS[l.tipo] ?? l.tipo}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-xs">
+                            {l.marca ? <span className="text-gray-400">{l.marca} </span> : null}
+                            {l.descripcion}
+                          </p>
+                          {l.notas && <p className="text-gray-600 text-[10px] italic mt-0.5">{l.notas}</p>}
+                        </div>
+                        <span className="text-gray-400 text-xs font-mono shrink-0">x{l.cantidad}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {proyecto.cotizacion.observaciones && (
+                  <div className="mt-3 pt-3 border-t border-[#1a1a1a]">
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Observaciones de cotización</p>
+                    <p className="text-gray-400 text-xs whitespace-pre-wrap">{proyecto.cotizacion.observaciones}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ── Logística de renta (solo si tipoServicio === RENTA) ── */}
           {esRenta && (() => {

@@ -410,6 +410,20 @@ interface ProyectoEquipo {
   equipo: EquipoItem | null;
   descripcionManual?: string | null;
 }
+interface CotizacionLinea {
+  id: string;
+  tipo: string;
+  descripcion: string;
+  marca: string | null;
+  cantidad: number;
+  notas: string | null;
+}
+interface CotizacionData {
+  numeroCotizacion: string;
+  observaciones: string | null;
+  notasSecciones: string | null;
+  lineas: CotizacionLinea[];
+}
 interface ProyectoData {
   numeroProyecto: string;
   nombre: string;
@@ -420,6 +434,7 @@ interface ProyectoData {
   tratoIdeasReferencias?: string | null;
   cliente: { nombre: string; empresa: string | null; telefono?: string | null } | null;
   equipos: ProyectoEquipo[];
+  cotizacion?: CotizacionData | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -475,14 +490,36 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
   const folioDate = `${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,"0")}${String(hoy.getDate()).padStart(2,"0")}`;
   const folio = `FOLIO: ${proyecto.numeroProyecto}-${folioDate}`;
 
-  // Group equipos by category
-  const grouped: Record<string, ProyectoEquipo[]> = {};
-  for (const eq of proyecto.equipos) {
-    const cat = eq.equipo?.categoria?.nombre ?? "Otros";
-    if (!grouped[cat]) grouped[cat] = [];
-    grouped[cat].push(eq);
+  // ─── Build equipment list: prefer cotizacion lineas, fall back to inventory ─
+  const TIPO_LABELS: Record<string, string> = {
+    EQUIPO_PROPIO:   "Equipo propio",
+    EQUIPO_EXTERNO:  "Equipo externo / proveedor",
+    PAQUETE:         "Paquetes",
+    OTRO:            "Otros conceptos",
+  };
+
+  const useCot = (proyecto.cotizacion?.lineas?.length ?? 0) > 0;
+
+  // Group cotizacion lineas by tipo
+  const groupedCot: Record<string, CotizacionLinea[]> = {};
+  if (useCot) {
+    for (const l of proyecto.cotizacion!.lineas) {
+      const key = TIPO_LABELS[l.tipo] ?? "Otros";
+      if (!groupedCot[key]) groupedCot[key] = [];
+      groupedCot[key].push(l);
+    }
   }
-  const categories = Object.keys(grouped);
+
+  // Fallback: group inventory equipos by category
+  const grouped: Record<string, ProyectoEquipo[]> = {};
+  if (!useCot) {
+    for (const eq of proyecto.equipos) {
+      const cat = eq.equipo?.categoria?.nombre ?? "Otros";
+      if (!grouped[cat]) grouped[cat] = [];
+      grouped[cat].push(eq);
+    }
+  }
+  const categories = useCot ? Object.keys(groupedCot) : Object.keys(grouped);
 
   const clienteNombre = proyecto.cliente?.empresa
     ? `${proyecto.cliente.nombre} · ${proyecto.cliente.empresa}`
@@ -582,8 +619,20 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                     <View style={s.colQty}><Text style={[s.colHeaderText, { textAlign: "center" }]}>QTY</Text></View>
                     <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.colHeaderText}>NÚMERO DE SERIE / ID INVENTARIO</Text></View>
                   </View>
-                  {/* Equipment rows */}
-                  {grouped[cat].map((eq, i) => {
+                  {/* Equipment rows from cotización */}
+                  {useCot ? groupedCot[cat].map((l, i) => {
+                    const nombre = `${l.marca ? l.marca + " " : ""}${l.descripcion}`;
+                    return (
+                      <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                        <View style={s.colModelo}>
+                          <Text style={s.cellText}>{nombre}</Text>
+                          {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
+                        </View>
+                        <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{l.cantidad}</Text></View>
+                        <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.cellText}> </Text></View>
+                      </View>
+                    );
+                  }) : grouped[cat].map((eq, i) => {
                     const nombre = eq.equipo
                       ? `${eq.equipo.marca ? eq.equipo.marca + " " : ""}${eq.equipo.descripcion}`
                       : (eq.descripcionManual ?? "");
@@ -596,7 +645,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                     );
                   })}
                   {/* Extra blank rows */}
-                  <EmptyRows count={Math.max(1, 4 - grouped[cat].length)} />
+                  <EmptyRows count={Math.max(1, 4 - (useCot ? groupedCot[cat].length : grouped[cat].length))} />
                 </View>
               </View>
             ))
@@ -615,6 +664,19 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               </View>
             </View>
           )}
+
+          {/* ── Observaciones de cotización ── */}
+          {proyecto.cotizacion?.observaciones ? (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionHeaderText}>NOTAS Y OBSERVACIONES</Text>
+              </View>
+              <View style={{ borderWidth: 1, borderTopWidth: 0, borderColor: BORDER, marginBottom: 10, padding: 9 }}>
+                <Text style={{ fontSize: 7, color: GRAY, lineHeight: 1.6 }}>{proyecto.cotizacion.observaciones}</Text>
+              </View>
+            </>
+          ) : null}
+
 
           {/* ── Checklist interno ── */}
           <View style={s.sectionHeader}>

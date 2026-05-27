@@ -18,6 +18,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       cliente: { select: { nombre: true, empresa: true, telefono: true } },
       trato: { select: { ideasReferencias: true } },
+      cotizacion: {
+        select: {
+          numeroCotizacion: true,
+          observaciones: true,
+          notasSecciones: true,
+          lineas: {
+            where: { tipo: { in: ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"] } },
+            select: { id: true, tipo: true, descripcion: true, marca: true, cantidad: true, notas: true },
+            orderBy: { orden: "asc" },
+          },
+        },
+      },
       equipos: {
         include: {
           equipo: {
@@ -32,6 +44,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     },
   });
+
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 

@@ -50,7 +50,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
               orderBy: { id: "asc" },
             },
           },
@@ -106,7 +106,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
               orderBy: { id: "asc" },
             },
           },
