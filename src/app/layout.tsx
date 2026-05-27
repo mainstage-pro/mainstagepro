@@ -32,27 +32,16 @@ export default function RootLayout({
   return (
     <html lang="es" className="h-full">
       <body className="h-full antialiased">
-        {/* Force SW update — clears old JS chunks cache on new deploy */}
+        {/* SW Kill Switch — borra caché roto y recarga */}
         <script dangerouslySetInnerHTML={{ __html: `
           if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(regs) {
-              regs.forEach(function(reg) {
-                // Send skipWaiting to activate the new SW immediately
-                if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                if (reg.installing) reg.installing.postMessage({ type: 'SKIP_WAITING' });
-                // If SW cache version is old, unregister completely so fresh SW installs
-                var swUrl = reg.active && reg.active.scriptURL;
-                if (swUrl && swUrl.includes('/sw.js')) {
-                  reg.update();
-                }
-              });
-            });
-            navigator.serviceWorker.addEventListener('controllerchange', function() {
-              // New SW took control — reload once to get fresh chunks
-              if (!sessionStorage.getItem('sw-reloaded')) {
-                sessionStorage.setItem('sw-reloaded', '1');
-                window.location.reload();
+            navigator.serviceWorker.addEventListener('message', function(e) {
+              if (e.data && e.data.type === 'SW_KILLED') {
+                window.location.reload(true);
               }
+            });
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(reg) { reg.update(); });
             });
           }
         ` }} />
