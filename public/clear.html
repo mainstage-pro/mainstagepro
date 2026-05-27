@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Limpiando caché — Mainstage Pro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 360px;
+      width: 100%;
+    }
+    .logo {
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #B3985B;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 14px;
+      color: #888;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .bar-wrap {
+      background: #1a1a1a;
+      border-radius: 8px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .bar {
+      background: #B3985B;
+      height: 100%;
+      width: 0%;
+      border-radius: 8px;
+      transition: width 0.4s ease;
+    }
+    .status {
+      font-size: 12px;
+      color: #555;
+    }
+    .ok {
+      color: #4ade80;
+      font-size: 15px;
+      font-weight: 600;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⚡</div>
+    <h1>Limpiando caché...</h1>
+    <p>Esto toma unos segundos.<br>No cierres esta ventana.</p>
+    <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+    <div class="status" id="status">Iniciando...</div>
+    <div class="ok" id="ok">✅ Listo — redirigiendo...</div>
+  </div>
+
+  <script>
+    var bar = document.getElementById('bar');
+    var status = document.getElementById('status');
+    var ok = document.getElementById('ok');
+
+    function setProgress(pct, msg) {
+      bar.style.width = pct + '%';
+      status.textContent = msg;
+    }
+
+    async function clearEverything() {
+      setProgress(10, 'Buscando service workers...');
+
+      // 1. Unregister all service workers
+      if ('serviceWorker' in navigator) {
+        try {
+          var regs = await navigator.serviceWorker.getRegistrations();
+          for (var reg of regs) {
+            await reg.unregister();
+          }
+          setProgress(40, 'Service workers eliminados (' + regs.length + ')');
+        } catch(e) {
+          setProgress(40, 'Sin service workers activos');
+        }
+      } else {
+        setProgress(40, 'Service Workers no soportados');
+      }
+
+      await sleep(400);
+
+      // 2. Clear ALL caches
+      setProgress(60, 'Limpiando caché del navegador...');
+      if ('caches' in window) {
+        try {
+          var keys = await caches.keys();
+          await Promise.all(keys.map(function(k) { return caches.delete(k); }));
+          setProgress(80, 'Caché limpiado (' + keys.length + ' entradas)');
+        } catch(e) {
+          setProgress(80, 'Caché limpiado');
+        }
+      } else {
+        setProgress(80, 'Cache API no disponible');
+      }
+
+      await sleep(400);
+
+      // 3. Clear localStorage sessionStorage
+      try { sessionStorage.clear(); } catch(e) {}
+
+      setProgress(100, '');
+      status.style.display = 'none';
+      ok.style.display = 'block';
+
+      await sleep(1500);
+
+      // 4. Hard redirect to app
+      window.location.replace('/?cleared=1');
+    }
+
+    function sleep(ms) {
+      return new Promise(function(resolve) { setTimeout(resolve, ms); });
+    }
+
+    clearEverything().catch(function(e) {
+      status.textContent = 'Error: ' + e.message + ' — intentando redirigir...';
+      setTimeout(function() { window.location.replace('/'); }, 2000);
+    });
+  </script>
+</body>
+</html>
