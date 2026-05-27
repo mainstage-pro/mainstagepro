@@ -151,7 +151,8 @@ export default function PlanTrabajoPage() {
     // Cargar Sistema Operativo una sola vez
     fetch("/api/plan-trabajo/sistema-operativo")
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setSoData(d); });
+      .then(d => { if (d) setSoData(d); })
+      .catch(() => { /* silencioso — no rompe la app */ });
     // Countdown every 60s
     timerRef.current = setInterval(() => setTick(t => t + 1), 60000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
