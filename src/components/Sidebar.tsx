@@ -37,6 +37,7 @@ const NAV: NavSection[] = [
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
+      { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
       {
         key: "calendario",
         label: "Calendario de eventos",

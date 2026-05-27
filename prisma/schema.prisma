@@ -52,6 +52,13 @@ model User {
   proyectoAccesos        ProyectoAcceso[]
   reportesFormulario     ReporteFormulario[]    @relation("ReportesFormularioUser")
   incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
+  // Plan de Trabajo
+  ptTemplatesResponsable PTTareaTemplate[]      @relation("PTTemplateResponsable")
+  ptInstanciasAsignadas  PTTareaInstancia[]     @relation("PTInstanciaResponsable")
+  ptInstanciasCompletadas PTTareaInstancia[]    @relation("PTInstanciaCompletadaPor")
+  ptComentarios          PTComentario[]         @relation("PTComentarioAutor")
+  ptHistorial            PTHistorialEjecucion[] @relation("PTHistorialUsuario")
+
 
   @@map("users")
 }
@@ -2765,4 +2772,153 @@ model ProveedorEvento {
   telefonoProveedor String?
 
   @@map("proveedores_evento")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MÓDULO PLAN DE TRABAJO — Sistema Operativo Vivo
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model PTArea {
+  id        String   @id @default(cuid())
+  nombre    String   @unique
+  color     String
+  icono     String?
+  objetivo  String?  @db.Text
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  subareas  PTSubArea[]
+  templates PTTareaTemplate[]
+
+  @@map("pt_areas")
+}
+
+model PTSubArea {
+  id          String   @id @default(cuid())
+  areaId      String
+  area        PTArea   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  nombre      String
+  orden       Int      @default(0)
+  descripcion String?  @db.Text
+  entregables String[] // Lista de nombres de entregables
+
+  templates   PTTareaTemplate[]
+
+  @@index([areaId])
+  @@map("pt_subareas")
+}
+
+model PTTareaTemplate {
+  id             String   @id @default(cuid())
+  areaId         String
+  area           PTArea   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  subAreaId      String
+  subArea        PTSubArea @relation(fields: [subAreaId], references: [id], onDelete: Cascade)
+  responsableId  String?
+  responsable    User?    @relation("PTTemplateResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
+  nombre         String
+  descripcion    String?  @db.Text
+  tipo           String   // CHECK | ENTREGABLE
+  frecuencia     String   // DIARIO | SEMANAL | QUINCENAL | MENSUAL | TRIMESTRAL | POR_EVENTO
+  diasSemana     Int[]    // [1,2,3,4,5] — 0=dom,1=lun,...6=sab
+  diaDelMes      Int?     // Para MENSUAL: día fijo (1-31)
+  semanaDeMes    Int?     // Para MENSUAL: 1=primera, 2=segunda, -1=última
+  horaLimite     String?  // "10:30" — hora límite de entrega
+  moduloDestino  String?  // URL del módulo: "/ventas/pipeline"
+  moduloTexto    String?  // "Ir al Pipeline"
+  activa         Boolean  @default(true)
+  orden          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  instancias  PTTareaInstancia[]
+  subtareas   PTSubTarea[]
+
+  @@index([areaId, activa])
+  @@index([responsableId])
+  @@map("pt_tarea_templates")
+}
+
+model PTTareaInstancia {
+  id             String   @id @default(cuid())
+  templateId     String
+  template       PTTareaTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  responsableId  String
+  responsable    User     @relation("PTInstanciaResponsable", fields: [responsableId], references: [id], onDelete: Cascade)
+  fechaVencimiento DateTime
+  estado         String   @default("PENDIENTE") // PENDIENTE | EN_PROGRESO | COMPLETADA | VENCIDA | OMITIDA
+  esEntregable   Boolean  @default(false)
+  periodoLabel   String?  // "Semana 22", "Mayo 2026", "Lunes 26 mayo"
+  notas          String?  @db.Text
+  completadaAt   DateTime?
+  completadaPorId String?
+  completadaPor  User?    @relation("PTInstanciaCompletadaPor", fields: [completadaPorId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subtareasInstancia PTSubTareaInstancia[]
+  comentarios        PTComentario[]
+  historial          PTHistorialEjecucion[]
+
+  @@index([responsableId, fechaVencimiento])
+  @@index([templateId, fechaVencimiento])
+  @@index([estado])
+  @@map("pt_tarea_instancias")
+}
+
+model PTSubTarea {
+  id         String   @id @default(cuid())
+  templateId String
+  template   PTTareaTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  nombre     String
+  orden      Int      @default(0)
+  activa     Boolean  @default(true)
+
+  instancias PTSubTareaInstancia[]
+
+  @@index([templateId])
+  @@map("pt_subtareas")
+}
+
+model PTSubTareaInstancia {
+  id          String   @id @default(cuid())
+  subtareaId  String
+  subtarea    PTSubTarea @relation(fields: [subtareaId], references: [id], onDelete: Cascade)
+  instanciaId String
+  instancia   PTTareaInstancia @relation(fields: [instanciaId], references: [id], onDelete: Cascade)
+  completada  Boolean  @default(false)
+  completadaAt DateTime?
+
+  @@unique([subtareaId, instanciaId])
+  @@index([instanciaId])
+  @@map("pt_subtarea_instancias")
+}
+
+model PTComentario {
+  id          String   @id @default(cuid())
+  instanciaId String
+  instancia   PTTareaInstancia @relation(fields: [instanciaId], references: [id], onDelete: Cascade)
+  autorId     String
+  autor       User     @relation("PTComentarioAutor", fields: [autorId], references: [id], onDelete: Cascade)
+  contenido   String   @db.Text
+  editadoAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([instanciaId])
+  @@map("pt_comentarios")
+}
+
+model PTHistorialEjecucion {
+  id          String   @id @default(cuid())
+  instanciaId String
+  instancia   PTTareaInstancia @relation(fields: [instanciaId], references: [id], onDelete: Cascade)
+  usuarioId   String
+  usuario     User     @relation("PTHistorialUsuario", fields: [usuarioId], references: [id], onDelete: Cascade)
+  accion      String   // COMPLETADA | REABIERTA | REASIGNADA | COMENTADA | OMITIDA | CREADA
+  detalles    String?
+  createdAt   DateTime @default(now())
+
+  @@index([instanciaId])
+  @@index([usuarioId, createdAt])
+  @@map("pt_historial_ejecucion")
 }

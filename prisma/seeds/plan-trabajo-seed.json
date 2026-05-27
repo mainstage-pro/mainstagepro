@@ -1,0 +1,2638 @@
+[
+  {
+    "area": {
+      "nombre": "Administración",
+      "color": "#16213E",
+      "icono": "💼",
+      "objetivo": "Garantizar el control financiero total de Mainstage Pro: ingresos registrados, gastos documentados, cuentas cobradas, pagos ejecutados en tiempo y rentabilidad real calculada por evento."
+    },
+    "subareas": [
+      {
+        "nombre": "Control Financiero y Contable",
+        "orden": 1,
+        "entregables": [
+          "Flujo de caja proyectado",
+          "Presupuesto operativo por evento",
+          "Cierre financiero por evento",
+          "Reporte de gastos por categoría",
+          "Estado de resultados mensual",
+          "CFDI emitido",
+          "Carpeta contable mensual"
+        ],
+        "tareas": [
+          {
+            "nombre": "Registro de movimientos financieros",
+            "descripcion": "Ingresos y egresos del día. Ningún movimiento queda sin registrar al cierre del día.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 1
+          },
+          {
+            "nombre": "Conciliación bancaria",
+            "descripcion": "Validar que los movimientos del banco coincidan con plataforma.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 2
+          },
+          {
+            "nombre": "Flujo de caja proyectado actualizado",
+            "descripcion": "Proyección de ingresos y egresos con todos los compromisos conocidos de la semana.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 3
+          },
+          {
+            "nombre": "Planeación presupuestal por evento",
+            "descripcion": "Definir y validar presupuesto operativo antes de la ejecución de cada evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 4
+          },
+          {
+            "nombre": "Cierre financiero por evento",
+            "descripcion": "Ingresos - costos - freelancers - producción = rentabilidad real. Máximo 72 hrs post-evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 5
+          },
+          {
+            "nombre": "Comparativa gasto real vs presupuesto",
+            "descripcion": "Desviaciones mayores al 5% se documentan con causa.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 6
+          },
+          {
+            "nombre": "Reporte de gastos por categoría",
+            "descripcion": "Desglose de todos los gastos del mes agrupados por categoría: nómina, producción, marketing, operativos, etc.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 7
+          },
+          {
+            "nombre": "Estado de resultados mensual",
+            "descripcion": "Ingresos totales, gastos por categoría, utilidad bruta y neta del mes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 8
+          },
+          {
+            "nombre": "Facturación y emisión de CFDI",
+            "descripcion": "Emitir CFDIs según solicitud del cliente.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 9
+          },
+          {
+            "nombre": "Entrega documental a contabilidad externa",
+            "descripcion": "Facturas, comprobantes y documentos del mes organizados.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion",
+            "moduloTexto": "Ir a Administración",
+            "orden": 10
+          }
+        ]
+      },
+      {
+        "nombre": "Cuentas por Cobrar y por Pagar",
+        "orden": 2,
+        "entregables": [
+          "Reporte de pagos a freelancers",
+          "Reporte de pagos a proveedores",
+          "Cartera actualizada (CxC y CxP)",
+          "Nómina ejecutada y registrada",
+          "Comprobantes de gastos fijos",
+          "Comprobante de renta"
+        ],
+        "tareas": [
+          {
+            "nombre": "Gestión y seguimiento de cuentas por cobrar",
+            "descripcion": "Cero cuentas vencidas sin gestión activa. Contactar en cada revisión.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              3,
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/cobros",
+            "moduloTexto": "Ir a CxC",
+            "orden": 1
+          },
+          {
+            "nombre": "Seguimiento de anticipos de eventos próximos",
+            "descripcion": "Validar anticipos confirmados. Contactar si falta alguno.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              2
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/cobros",
+            "moduloTexto": "Ir a CxC",
+            "orden": 2
+          },
+          {
+            "nombre": "Cartera actualizada (CxC y CxP)",
+            "descripcion": "Lista viva de lo que se debe cobrar y pagar, con fechas.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              3,
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/cobros",
+            "moduloTexto": "Ir a CxC/CxP",
+            "orden": 3
+          },
+          {
+            "nombre": "Pago de nómina semanal",
+            "descripcion": "Transferencias del equipo fijo. Registrar comprobantes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Ir a Pagos",
+            "orden": 4
+          },
+          {
+            "nombre": "Pago a técnicos y freelancers post-evento",
+            "descripcion": "Máximo 72 hrs después del evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Ir a Pagos",
+            "orden": 5
+          },
+          {
+            "nombre": "Pago a proveedores y subrentas",
+            "descripcion": "Según vencimientos programados el lunes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Ir a Pagos",
+            "orden": 6
+          },
+          {
+            "nombre": "Pago de servicios y gastos fijos",
+            "descripcion": "Servicios recurrentes mensuales.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "diaDelMes": 1,
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Ir a Pagos",
+            "orden": 7
+          },
+          {
+            "nombre": "Pago de renta mensual operativa",
+            "descripcion": "Ejecutar transferencia de renta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Ir a Pagos",
+            "orden": 8
+          },
+          {
+            "nombre": "Reabastecimiento de caja chica",
+            "descripcion": "Si el saldo es bajo, reponer y registrar.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 9
+          }
+        ]
+      },
+      {
+        "nombre": "Presupuesto y Gastos Operativos por Evento",
+        "orden": 3,
+        "entregables": [
+          "Presupuesto operativo por evento",
+          "Reporte de equipos subarrendados y costos"
+        ],
+        "tareas": [
+          {
+            "nombre": "Entrega de presupuesto y recursos operativos a Producción",
+            "descripcion": "Viáticos, transporte y gastos aprobados para los eventos del fin de semana. Antes de que salgan los equipos.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 1
+          },
+          {
+            "nombre": "Aprobación y registro de gastos operativos del evento",
+            "descripcion": "Todo gasto reportado por Producción pasa por Administración para registro y aprobación.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte de equipos subarrendados y costos",
+            "descripcion": "Lista de equipos subarrendados por evento con cotización adjunta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Ir a Finanzas",
+            "orden": 3
+          }
+        ]
+      },
+      {
+        "nombre": "Soporte Operativo y Recursos Humanos",
+        "orden": 4,
+        "entregables": [
+          "Reporte de asistencias mensual",
+          "Reporte mensual de incidencias",
+          "Revisión de formularios de satisfacción (empleado y freelancers)"
+        ],
+        "tareas": [
+          {
+            "nombre": "Control de asistencia del equipo",
+            "descripcion": "Registro diario. Incidencias se documentan al detectarlas.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/rrhh",
+            "moduloTexto": "Ir a RRHH",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de asistencias mensual",
+            "descripcion": "Consolidado mensual de asistencias e incidencias del equipo.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/rrhh",
+            "moduloTexto": "Ir a RRHH",
+            "orden": 2
+          },
+          {
+            "nombre": "Registro de incidencias de personal",
+            "descripcion": "Documentar cualquier incidencia al detectarla.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/rrhh",
+            "moduloTexto": "Ir a RRHH",
+            "orden": 3
+          },
+          {
+            "nombre": "Reporte mensual de incidencias",
+            "descripcion": "Consolidado de todas las incidencias del mes con estatus y resolución.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/administracion/rrhh",
+            "moduloTexto": "Ir a RRHH",
+            "orden": 4
+          },
+          {
+            "nombre": "Envío de formulario de satisfacción al equipo interno",
+            "descripcion": "Mensualmente a todo el equipo.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/formularios",
+            "moduloTexto": "Ir a Formularios",
+            "orden": 5
+          },
+          {
+            "nombre": "Envío de formulario de satisfacción al freelancer",
+            "descripcion": "Después de cada evento.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/formularios",
+            "moduloTexto": "Ir a Formularios",
+            "orden": 6
+          },
+          {
+            "nombre": "Revisión y consolidación de formularios de satisfacción",
+            "descripcion": "Revisar respuestas de empleados y freelancers. Consolidar resultados y detectar patrones.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/formularios",
+            "moduloTexto": "Ir a Formularios",
+            "orden": 7
+          },
+          {
+            "nombre": "Coordinación del servicio de limpieza de oficina",
+            "descripcion": "Confirmar asistencia y lista de catering si aplica.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 8
+          },
+          {
+            "nombre": "Control de insumos de oficina",
+            "descripcion": "Revisar faltantes y gestionar pedido.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 9
+          }
+        ]
+      },
+      {
+        "nombre": "Reportes y Visibilidad Operativa",
+        "orden": 5,
+        "entregables": [
+          "Reporte General Semanal",
+          "Reporte de uso de equipos",
+          "Dashboard de KPIs consolidado",
+          "Reporte de KPIs del área con propuestas de mejora",
+          "Reporte de salud operativa de Mainstage"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte General Semanal",
+            "descripcion": "8 campos en plataforma: logros · pendientes · tareas próximas · incidencias · mejoras en otras áreas · compromisos · sugerencias a Dirección · nivel de energía (1–10).",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "horaLimite": "10:30",
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/formularios/reporte-semanal",
+            "moduloTexto": "Llenar Reporte",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de uso de equipos",
+            "descripcion": "Consolidado desde plataforma: qué equipos salieron, en qué eventos y con qué frecuencia.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 2
+          },
+          {
+            "nombre": "Dashboard de KPIs consolidado de todas las áreas",
+            "descripcion": "Generado automáticamente por plataforma. Administración valida y presenta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 3
+          },
+          {
+            "nombre": "Reporte de KPIs del área con propuestas de mejora",
+            "descripcion": "KPIs automáticos de Administración + qué falló · qué funcionó · qué se implementa el próximo mes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 4
+          },
+          {
+            "nombre": "Reporte de salud operativa de Mainstage",
+            "descripcion": "7 indicadores en verde / amarillo / rojo. Si 3+ en amarillo o cualquiera en rojo: alertar de inmediato a Dirección.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "emiliano@mainstagepro.mx",
+              "nombre": "Emiliano Pérez"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 5
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "area": {
+      "nombre": "Marketing",
+      "color": "#0F3460",
+      "icono": "📱",
+      "objetivo": "Fortalecer el posicionamiento digital de Mainstage Pro y generar un flujo constante de leads calificados."
+    },
+    "subareas": [
+      {
+        "nombre": "Contenido Orgánico y Redes Sociales",
+        "orden": 1,
+        "entregables": [
+          "Reporte General Semanal",
+          "Reporte de ejecución de contenido orgánico",
+          "Reporte de resultados de contenido orgánico (métricas Meta)"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte General Semanal",
+            "descripcion": "8 campos en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "horaLimite": "10:30",
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/formularios/reporte-semanal",
+            "moduloTexto": "Llenar Reporte",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de ejecución de contenido orgánico",
+            "descripcion": "Registro de todo lo publicado en la semana: formato, plataforma, alcance e impresiones.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 2
+          },
+          {
+            "nombre": "Story: inicio de semana / disponibilidad",
+            "descripcion": "Story en Instagram mostrando disponibilidad o energía de inicio de semana.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 3
+          },
+          {
+            "nombre": "Publicar contenido orgánico — feed (martes)",
+            "descripcion": "Publicación en feed según parrilla mensual aprobada.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 4
+          },
+          {
+            "nombre": "Story: equipo o proceso (martes)",
+            "descripcion": "3–4 stories: equipo trabajando, bodega, detrás de cámaras.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 5
+          },
+          {
+            "nombre": "Atención a mensajes en redes",
+            "descripcion": "DMs en Instagram y Facebook. Lo comercial se canaliza al número de ventas.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              4
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 6
+          },
+          {
+            "nombre": "Reel semanal",
+            "descripcion": "Evento, montaje, before/after o highlights. Uno por semana mínimo.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 7
+          },
+          {
+            "nombre": "Story: proceso o montaje técnico (miércoles)",
+            "descripcion": "Stories de proceso técnico, montaje o contenido educativo.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 8
+          },
+          {
+            "nombre": "Revisión y respuesta a comentarios",
+            "descripcion": "Responder todos los comentarios activos en publicaciones.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 9
+          },
+          {
+            "nombre": "Publicar contenido orgánico — feed (jueves)",
+            "descripcion": "Segunda publicación de feed de la semana.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 10
+          },
+          {
+            "nombre": "Story: disponibilidad o servicios (jueves)",
+            "descripcion": "Story comercial: disponibilidad, próximas fechas o tipo de evento.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 11
+          },
+          {
+            "nombre": "Publicar contenido orgánico — feed (viernes)",
+            "descripcion": "Tercera publicación de feed de la semana.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 12
+          },
+          {
+            "nombre": "Story: cierre de semana / behind the scenes",
+            "descripcion": "Resumen de la semana, equipo o momento especial.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 13
+          },
+          {
+            "nombre": "Reporte de resultados de contenido orgánico",
+            "descripcion": "Métricas de la semana: alcance, impresiones, engagement y crecimiento de seguidores.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/reportes",
+            "moduloTexto": "Ir a Reportes",
+            "orden": 14
+          }
+        ]
+      },
+      {
+        "nombre": "Campañas Pagadas y Generación de Leads",
+        "orden": 2,
+        "entregables": [
+          "Propuesta de calendario de campañas de publicidad mensuales",
+          "Reporte de ejecución de campañas",
+          "Reporte de resultados de campañas (métricas Meta)"
+        ],
+        "tareas": [
+          {
+            "nombre": "Propuesta de calendario de campañas del mes",
+            "descripcion": "Qué campañas se activan, para qué segmento y con qué presupuesto. Para aprobación de Dirección.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/campanas",
+            "moduloTexto": "Ir a Campañas",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de ejecución de campañas",
+            "descripcion": "Estado semanal de las campañas activas: gasto ejecutado, alcance y leads generados.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/campanas",
+            "moduloTexto": "Ir a Campañas",
+            "orden": 2
+          },
+          {
+            "nombre": "Revisión y optimización de campañas activas en Meta Ads",
+            "descripcion": "Revisar gasto, CPL y rendimiento. Ajustar si CPL supera $120 MXN.",
+            "tipo": "CHECK",
+            "frecuencia": "QUINCENAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/campanas",
+            "moduloTexto": "Ir a Campañas",
+            "orden": 3
+          },
+          {
+            "nombre": "Desarrollo de nuevos creativos para campañas",
+            "descripcion": "Al menos un creativo nuevo para prueba A/B.",
+            "tipo": "CHECK",
+            "frecuencia": "QUINCENAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/campanas",
+            "moduloTexto": "Ir a Campañas",
+            "orden": 4
+          },
+          {
+            "nombre": "Reporte de resultados de campañas",
+            "descripcion": "Métricas mensuales de Meta Ads: leads totales, CPL, CAC, ROI y conversión.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/reportes",
+            "moduloTexto": "Ir a Reportes",
+            "orden": 5
+          },
+          {
+            "nombre": "Gestión del presupuesto mensual de pauta",
+            "descripcion": "Distribución del presupuesto entre campañas activas.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/campanas",
+            "moduloTexto": "Ir a Campañas",
+            "orden": 6
+          }
+        ]
+      },
+      {
+        "nombre": "Producción de Material y Archivo",
+        "orden": 3,
+        "entregables": [
+          "Entrega de levantamientos en eventos todos miércoles"
+        ],
+        "tareas": [
+          {
+            "nombre": "Cobertura audiovisual en eventos",
+            "descripcion": "Foto y video durante el evento.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 1
+          },
+          {
+            "nombre": "Organización y respaldo de material post-evento",
+            "descripcion": "Fotos y videos organizados por carpeta en disco duro y Google Drive.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 2
+          },
+          {
+            "nombre": "Selección de mejores piezas — carpeta SELECCIÓN DE FOTOS",
+            "descripcion": "Copiar las mejores piezas a la carpeta de selección del evento.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 3
+          },
+          {
+            "nombre": "Entrega de levantamientos en eventos",
+            "descripcion": "Fotos y/o video editado del evento entregado en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 4
+          },
+          {
+            "nombre": "Producción de material gráfico",
+            "descripcion": "Diseños para redes, campañas y ventas según necesidad.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 5
+          },
+          {
+            "nombre": "Actualización del banco de imágenes y archivo en Drive",
+            "descripcion": "Drive ordenado, carpetas actualizadas, selección activa disponible.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 6
+          }
+        ]
+      },
+      {
+        "nombre": "Estrategia, Posicionamiento y Reportes",
+        "orden": 4,
+        "entregables": [
+          "Propuesta de calendario mensual de publicaciones orgánicas",
+          "Reporte de KPIs del área con propuestas de mejora"
+        ],
+        "tareas": [
+          {
+            "nombre": "Propuesta de parrilla mensual de contenido orgánico",
+            "descripcion": "Calendario del mes siguiente: formato, tema y referencia visual por día. Para aprobación de Dirección.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing/calendario",
+            "moduloTexto": "Ir a Calendario",
+            "orden": 1
+          },
+          {
+            "nombre": "Caso de éxito documentado de evento del mes",
+            "descripcion": "Un evento documentado con fotos, descripción y datos. Para ventas y campañas.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte de KPIs del área con propuestas de mejora",
+            "descripcion": "KPIs automáticos de Marketing + qué falló · qué funcionó · qué se implementa el próximo mes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 3
+          },
+          {
+            "nombre": "Identificación de tendencias del sector para adaptar contenido",
+            "descripcion": "¿Qué está funcionando? Propuesta de adaptación.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "sebastian@mainstagepro.mx",
+              "nombre": "Sebastián Pérez"
+            },
+            "moduloDestino": "/marketing",
+            "moduloTexto": "Ir a Marketing",
+            "orden": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "area": {
+      "nombre": "Ventas",
+      "color": "#533483",
+      "icono": "💰",
+      "objetivo": "Generar y cerrar oportunidades comerciales que alcancen $500,000 MXN de ingreso mensual, con ticket promedio creciente y 75% de clientes recurrentes."
+    },
+    "subareas": [
+      {
+        "nombre": "Gestión del Pipeline y Seguimiento Comercial",
+        "orden": 1,
+        "entregables": [
+          "Reporte General Semanal",
+          "Reporte de pipeline activo",
+          "Reporte de atención post-evento",
+          "Reporte de seguimiento y fortalecimiento de relación con clientes",
+          "Proyecto creado en plataforma"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte General Semanal",
+            "descripcion": "8 campos en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "horaLimite": "10:30",
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/formularios/reporte-semanal",
+            "moduloTexto": "Llenar Reporte",
+            "orden": 1
+          },
+          {
+            "nombre": "Revisión y priorización del pipeline activo",
+            "descripcion": "Estatus de cada oportunidad, último contacto y cuál cierra esta semana.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              4
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte de pipeline activo",
+            "descripcion": "Estado actualizado de cada oportunidad: etapa, monto, próxima acción y fecha.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              4
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 3
+          },
+          {
+            "nombre": "Seguimiento post-evento a clientes",
+            "descripcion": "Contactar a clientes de eventos del fin de semana: ¿cómo resultó?, ¿próximo evento?",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 4
+          },
+          {
+            "nombre": "Reporte de atención post-evento",
+            "descripcion": "Resultado del seguimiento post-evento: satisfacción, comentarios del cliente y próxima acción comercial.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 5
+          },
+          {
+            "nombre": "Seguimiento a oportunidades sin respuesta +3 días",
+            "descripcion": "Contactar a todos los prospectos sin respuesta. Registrar resultado.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              3
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 6
+          },
+          {
+            "nombre": "Seguimiento y atención a clientes activos",
+            "descripcion": "Comunicación registrada. El cliente siempre tiene a alguien a quien hablarle.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 7
+          },
+          {
+            "nombre": "Reporte de seguimiento y fortalecimiento de relación con clientes",
+            "descripcion": "Resumen semanal de interacciones con clientes activos y priority: qué se habló, próxima acción y estatus de relación.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 8
+          },
+          {
+            "nombre": "Seguimiento a propuestas enviadas pendientes",
+            "descripcion": "Llamar o escribir a quien recibió cotización y no ha confirmado.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              4
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 9
+          },
+          {
+            "nombre": "Confirmación de eventos y anticipos",
+            "descripcion": "Validar que los eventos próximos tengan anticipo confirmado.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 10
+          },
+          {
+            "nombre": "Transferencia de venta cerrada a Producción",
+            "descripcion": "Crear proyecto en plataforma con toda la información técnica y comercial del evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Producción",
+            "orden": 11
+          },
+          {
+            "nombre": "Envío de formulario de satisfacción al cliente post-evento",
+            "descripcion": "Enviar el lunes post-evento. Registrar respuesta.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/formularios",
+            "moduloTexto": "Ir a Formularios",
+            "orden": 12
+          }
+        ]
+      },
+      {
+        "nombre": "Prospección y Desarrollo de Mercado",
+        "orden": 2,
+        "entregables": [
+          "Reporte de prospectos outbound"
+        ],
+        "tareas": [
+          {
+            "nombre": "Prospección outbound — contactar prospectos estratégicos",
+            "descripcion": "Venues, agencias, empresas, promotoras. Mínimo 1 prospecto nuevo por día.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              3
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de prospectos outbound",
+            "descripcion": "Lista semanal de prospectos contactados con estatus de respuesta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 2
+          },
+          {
+            "nombre": "Contacto con clientes inactivos",
+            "descripcion": "Sin contrato en los últimos 2 meses. 2–3 por semana.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              3
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 3
+          },
+          {
+            "nombre": "Desarrollo de relación con clientes priority",
+            "descripcion": "Cualquier interacción con cliente priority se registra ese mismo día.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              4
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 4
+          },
+          {
+            "nombre": "Identificación y desarrollo de alianzas comerciales",
+            "descripcion": "Venues, agencias, promotoras.",
+            "tipo": "CHECK",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 5
+          }
+        ]
+      },
+      {
+        "nombre": "Cotización y Cierre Comercial",
+        "orden": 3,
+        "entregables": [
+          "Cotización enviada al cliente"
+        ],
+        "tareas": [
+          {
+            "nombre": "Descubrimiento completo con leads calificados",
+            "descripcion": "Documentar en plataforma antes de cotizar. Sin descubrimiento no hay cotización.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/pipeline",
+            "moduloTexto": "Ir a Pipeline",
+            "orden": 1
+          },
+          {
+            "nombre": "Elaboración y envío de cotizaciones",
+            "descripcion": "Toda cotización se envía en menos de 24 hrs del descubrimiento. Sin excepción.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/cotizaciones",
+            "moduloTexto": "Ir a Cotizaciones",
+            "orden": 2
+          }
+        ]
+      },
+      {
+        "nombre": "Atención y Experiencia del Cliente",
+        "orden": 4,
+        "entregables": [
+          "Reporte de atención post-evento"
+        ],
+        "tareas": [
+          {
+            "nombre": "Envío de formulario de satisfacción al cliente post-evento",
+            "descripcion": "Enviar el lunes post-evento. Registrar respuesta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/formularios",
+            "moduloTexto": "Ir a Formularios",
+            "orden": 1
+          },
+          {
+            "nombre": "Atención y resolución de incidencias comerciales",
+            "descripcion": "Cualquier situación con el cliente se resuelve y documenta.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas/clientes",
+            "moduloTexto": "Ir a Clientes",
+            "orden": 2
+          }
+        ]
+      },
+      {
+        "nombre": "Ofertas y Estrategia Comercial",
+        "orden": 5,
+        "entregables": [
+          "Propuesta de campañas comerciales por temporalidad"
+        ],
+        "tareas": [
+          {
+            "nombre": "Propuesta de campaña comercial por temporalidad",
+            "descripcion": "Paquete o promoción alineada al calendario. Para aprobación de Dirección.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas",
+            "moduloTexto": "Ir a Ventas",
+            "orden": 1
+          },
+          {
+            "nombre": "Definición de paquetes de servicio por tipo de evento",
+            "descripcion": "Renta, producción completa, corporativo, etc.",
+            "tipo": "CHECK",
+            "frecuencia": "TRIMESTRAL",
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas",
+            "moduloTexto": "Ir a Ventas",
+            "orden": 2
+          }
+        ]
+      },
+      {
+        "nombre": "Reportes y Visibilidad Comercial",
+        "orden": 6,
+        "entregables": [
+          "Reporte de ventas",
+          "Reporte de comisión a vendedores",
+          "Reporte de KPIs del área con propuestas de mejora"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte de ventas semanal",
+            "descripcion": "Oportunidades cerradas, monto total, pipeline activo y prospectos contactados.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas",
+            "moduloTexto": "Ir a Ventas",
+            "orden": 1
+          },
+          {
+            "nombre": "Consolidado de ventas del mes",
+            "descripcion": "Todos los eventos cerrados ese mes, sin importar estado de pago o ejecución.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas",
+            "moduloTexto": "Ir a Ventas",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte de KPIs del área con propuestas de mejora",
+            "descripcion": "KPIs automáticos de Ventas + qué falló · qué funcionó · qué se implementa.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 3
+          },
+          {
+            "nombre": "Reporte de comisión a vendedores",
+            "descripcion": "Cálculo validado de comisiones del mes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "mauricio@mainstagepro.mx",
+              "nombre": "Mauricio Hernández"
+            },
+            "moduloDestino": "/ventas",
+            "moduloTexto": "Ir a Ventas",
+            "orden": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "area": {
+      "nombre": "Producción",
+      "color": "#1B4332",
+      "icono": "🎛️",
+      "objetivo": "Ejecutar cada evento con el más alto nivel técnico, garantizando que lo prometido se cumpla en campo sin improvisación."
+    },
+    "subareas": [
+      {
+        "nombre": "Planeación Operativa de Eventos",
+        "orden": 1,
+        "entregables": [
+          "Ficha técnica de eventos próximos",
+          "Reporte de checklist semanal de equipos",
+          "Reporte de gastos operativos próximos semanal",
+          "Reporte de cálculo de pagos a personal y pagos a proveedores semanal"
+        ],
+        "tareas": [
+          {
+            "nombre": "Lectura y revisión del proyecto en plataforma",
+            "descripcion": "Al asignar el proyecto revisar toda la información del evento.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 1
+          },
+          {
+            "nombre": "Ficha técnica de eventos próximos",
+            "descripcion": "Generar y distribuir la ficha técnica con toda la información del evento: cliente, venue, horarios, requerimientos y equipo asignado.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 2
+          },
+          {
+            "nombre": "Plan de producción completo del evento",
+            "descripcion": "Quién va · qué lleva · a qué hora sale · qué monta. Con mínimo 72 hrs de anticipación.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 3
+          },
+          {
+            "nombre": "Información de montaje: encargados, horarios y logística",
+            "descripcion": "Todos los detalles operativos del evento registrados en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 4
+          },
+          {
+            "nombre": "Checklist / rider de salida de equipos",
+            "descripcion": "Lista completa de todo lo que sale por evento. Máximo miércoles para que bodega prepare el jueves.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 5
+          },
+          {
+            "nombre": "Reporte de gastos operativos próximos",
+            "descripcion": "Estimado de gastos operativos del o los eventos de la semana: transporte, freelancers, subrentas y misceláneos.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/administracion/finanzas",
+            "moduloTexto": "Enviar a Admin",
+            "orden": 6
+          },
+          {
+            "nombre": "Cálculo de pagos a freelancers y proveedores",
+            "descripcion": "Honorarios de cada técnico + equipos subarrendados con cotización adjunta.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2,
+              3
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/administracion/pagos",
+            "moduloTexto": "Enviar a Admin",
+            "orden": 7
+          },
+          {
+            "nombre": "Creación del grupo de WhatsApp del evento",
+            "descripcion": "Puede crearse desde semanas antes. Compartir: hora de salida, dirección, contacto del cliente y rider.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 8
+          }
+        ]
+      },
+      {
+        "nombre": "Contratación y Logística",
+        "orden": 2,
+        "entregables": [
+          "Archivo de cartas responsivas freelancers semanal"
+        ],
+        "tareas": [
+          {
+            "nombre": "Contratación y confirmación de personal técnico",
+            "descripcion": "Todo el personal del fin de semana confirmado el jueves como máximo.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 1
+          },
+          {
+            "nombre": "Contratación de equipos a subarrendar",
+            "descripcion": "Si el proyecto necesita equipos que no tenemos, confirmar y registrar.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 2
+          },
+          {
+            "nombre": "Contratación y confirmación de transporte externo",
+            "descripcion": "Confirmar ruta, hora y costo.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 3
+          },
+          {
+            "nombre": "Archivo de cartas responsivas freelancers",
+            "descripcion": "Imprimir, entregar, recopilar firmas y registrar archivo en plataforma antes del evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 4
+          }
+        ]
+      },
+      {
+        "nombre": "Ejecución en Campo y Reportes Post-Evento",
+        "orden": 3,
+        "entregables": [
+          "Reporte general de ejecución de eventos semanal"
+        ],
+        "tareas": [
+          {
+            "nombre": "Coordinación de tiempos, llegadas y montaje en campo",
+            "descripcion": "Supervisar que el personal llegue a tiempo y el montaje siga el plan.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 1
+          },
+          {
+            "nombre": "Coordinación técnica durante el evento",
+            "descripcion": "Supervisión total durante el evento. Resolver incidencias con criterio en tiempo real.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte general de ejecución de eventos",
+            "descripcion": "Integra: bitácora de operación · incidencias (qué pasó · causa · solución) · retroalimentación técnica · qué mejorar. Máx. 48 hrs post-evento.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 3
+          },
+          {
+            "nombre": "Cierre del proyecto en plataforma",
+            "descripcion": "Marcar evento como cerrado con evidencias y datos reales.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 4
+          }
+        ]
+      },
+      {
+        "nombre": "Reportes de Coordinación",
+        "orden": 4,
+        "entregables": [
+          "Reporte General Semanal",
+          "Reporte general de ejecución de eventos semanal",
+          "Reporte de KPIs del área con propuestas de mejora"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte General Semanal",
+            "descripcion": "8 campos en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "horaLimite": "10:30",
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/formularios/reporte-semanal",
+            "moduloTexto": "Llenar Reporte",
+            "orden": 1
+          },
+          {
+            "nombre": "Consolidación operativa semanal",
+            "descripcion": "Eventos ejecutados, estado general, pendientes y próximos eventos.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/produccion/proyectos",
+            "moduloTexto": "Ir a Proyectos",
+            "orden": 2
+          },
+          {
+            "nombre": "Reporte de KPIs del área con propuestas de mejora",
+            "descripcion": "KPIs automáticos de Producción + qué falló · qué funcionó · qué se implementa.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "carlos@mainstagepro.mx",
+              "nombre": "Carlos Luna"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 3
+          }
+        ]
+      },
+      {
+        "nombre": "Bodega — Control de Inventario y Entradas / Salidas",
+        "orden": 5,
+        "entregables": [
+          "Reporte de checklist semanal de equipos",
+          "Reporte estado vehículos semanal"
+        ],
+        "tareas": [
+          {
+            "nombre": "Recepción y validación de equipos post-evento",
+            "descripcion": "Todo lo que salió el fin de semana contado y en su lugar. Reportar faltantes de inmediato.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 1
+          },
+          {
+            "nombre": "Devolución de equipos subarrendados",
+            "descripcion": "Devolver con hoja de entrega. Confirmar recepción conforme.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 2
+          },
+          {
+            "nombre": "Entrega de hojas de entrega de la semana anterior",
+            "descripcion": "Consolidar y registrar en plataforma las hojas de todos los movimientos de equipo.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 3
+          },
+          {
+            "nombre": "Reporte de checklist semanal de equipos",
+            "descripcion": "Revisión general del estado físico de todos los equipos en bodega.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 4
+          },
+          {
+            "nombre": "Registro de entradas y salidas de equipo",
+            "descripcion": "Cada movimiento de equipo registrado en el momento en que ocurre.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 5
+          },
+          {
+            "nombre": "Reporte de estado de vehículos",
+            "descripcion": "Gasolina, llantas, aceite. Reportar cualquier anomalía.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 6
+          },
+          {
+            "nombre": "Auditoría completa de inventario",
+            "descripcion": "Contar todo, verificar estado y actualizar base en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": 1,
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 7
+          }
+        ]
+      },
+      {
+        "nombre": "Bodega — Revisión Técnica y Mantenimiento de Equipos",
+        "orden": 6,
+        "entregables": [
+          "Reporte de revisión de equipos semanal",
+          "Reporte de reparación y equipos en mantenimiento semanal"
+        ],
+        "tareas": [
+          {
+            "nombre": "Revisión funcional de equipos según plan de revisión",
+            "descripcion": "Probar encendido y funcionamiento según plan rotativo. No solo los del evento próximo.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 1
+          },
+          {
+            "nombre": "Limpieza de equipos e identificación de golpes",
+            "descripcion": "Limpiar todos los revisados. Identificar golpes o daños. Limpiar estuches. Re-etiquetar si aplica.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 2
+          },
+          {
+            "nombre": "Verificación de cables, adaptadores y conectores",
+            "descripcion": "Lo dañado se reporta para reposición.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 3
+          },
+          {
+            "nombre": "Revisión de disponibilidad de misceláneos",
+            "descripcion": "Gaffer, líquido de humo, extensiones, herramienta, consumibles. Lista de faltantes.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 4
+          },
+          {
+            "nombre": "Envío de equipos a mantenimiento o reparación",
+            "descripcion": "Los equipos con falla detectada el martes salen el miércoles a servicio.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 5
+          },
+          {
+            "nombre": "Recolección de equipos reparados",
+            "descripcion": "Recoger del taller. Verificar funcionamiento antes de guardar.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 6
+          },
+          {
+            "nombre": "Reporte de reparación y equipos en mantenimiento",
+            "descripcion": "Estatus actualizado de todos los equipos fuera de bodega: cuándo salieron, dónde están, cuándo regresan.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 7
+          },
+          {
+            "nombre": "Registro del historial de mantenimiento por equipo",
+            "descripcion": "Actualizar en plataforma el historial de cada equipo que recibió servicio.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 8
+          }
+        ]
+      },
+      {
+        "nombre": "Bodega — Compras Operativas y Logística Externa",
+        "orden": 7,
+        "entregables": [],
+        "tareas": [
+          {
+            "nombre": "Compras operativas y reposición de misceláneos",
+            "descripcion": "Comprar lo identificado el martes según instrucción de Coordinación.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 1
+          }
+        ]
+      },
+      {
+        "nombre": "Bodega — Preparación de Eventos",
+        "orden": 8,
+        "entregables": [
+          "Reporte de checklist semanal de equipos"
+        ],
+        "tareas": [
+          {
+            "nombre": "Separación y preparación de equipos por evento",
+            "descripcion": "Sacar y preparar todo lo que sale según el rider entregado el miércoles.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 1
+          },
+          {
+            "nombre": "Validación final de carga — checklist de salida firmado",
+            "descripcion": "Todo lo preparado coincide exactamente con el rider. Sin esta validación el equipo no sale.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 2
+          },
+          {
+            "nombre": "Últimos detalles y verificación final",
+            "descripcion": "Revisión de todo lo que sale el fin de semana. Confirmar que nada falta.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 3
+          }
+        ]
+      },
+      {
+        "nombre": "Operaciones Generales — Orden y Limpieza de Bodega",
+        "orden": 9,
+        "entregables": [
+          "Reporte de faltantes en bodega"
+        ],
+        "tareas": [
+          {
+            "nombre": "Recorrido de bodega — verificar orden y acomodo",
+            "descripcion": "Al inicio de cada día revisar que todo esté en su lugar. Si hay algo fuera, acomodarlo de inmediato.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 1
+          },
+          {
+            "nombre": "Mantenimiento del orden físico durante el día",
+            "descripcion": "Si algo se mueve, se regresa a su lugar. Cero equipos fuera de su espacio.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 2
+          },
+          {
+            "nombre": "Limpieza de bodega: piso, pasillos y áreas de trabajo",
+            "descripcion": "Barrer, trapear y mantener limpio el piso y pasillos de bodega.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 3
+          },
+          {
+            "nombre": "Recolección de basura en bodega y patio",
+            "descripcion": "Recoger basura, cajas vacías y residuos. Sacar a contenedor.",
+            "tipo": "CHECK",
+            "frecuencia": "DIARIO",
+            "diasSemana": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 4
+          },
+          {
+            "nombre": "Apoyo en recepción y acomodo de equipos post-evento",
+            "descripcion": "Ayudar a recibir, verificar y acomodar equipos regresados.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 5
+          },
+          {
+            "nombre": "Apoyo en revisión de equipos",
+            "descripcion": "Apoyar en revisiones del martes según indicación.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              2
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 6
+          },
+          {
+            "nombre": "Apoyo en preparación y separación de equipos",
+            "descripcion": "Sacar, acomodar y limpiar lo que indique Bodega para la salida.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              4
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 7
+          },
+          {
+            "nombre": "Apoyo en carga de equipos al vehículo",
+            "descripcion": "Cargar equipos bajo supervisión directa.",
+            "tipo": "CHECK",
+            "frecuencia": "POR_EVENTO",
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 8
+          },
+          {
+            "nombre": "Limpieza profunda — cierre de semana",
+            "descripcion": "Limpieza completa de bodega, estantes, pasillos y patio. La bodega cierra impecable.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 9
+          },
+          {
+            "nombre": "Reporte de faltantes en bodega y oficina",
+            "descripcion": "Comunicar todo lo que falta: materiales, herramienta, consumibles, insumos.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1,
+              3
+            ],
+            "responsable": {
+              "email": "zaid@mainstagepro.mx",
+              "nombre": "Zaid Bautista"
+            },
+            "moduloDestino": "/produccion/inventario",
+            "moduloTexto": "Ir a Inventario",
+            "orden": 10
+          },
+          {
+            "nombre": "Apoyo en trámites y gestiones externas básicas",
+            "descripcion": "Según instrucción directa.",
+            "tipo": "CHECK",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              3
+            ],
+            "responsable": {
+              "email": "daniel@mainstagepro.mx",
+              "nombre": "Daniel Guarneros"
+            },
+            "moduloDestino": null,
+            "moduloTexto": null,
+            "orden": 11
+          }
+        ]
+      },
+      {
+        "nombre": "Reportes de Producción",
+        "orden": 10,
+        "entregables": [
+          "Reporte General Semanal — Bodega",
+          "Reporte de KPIs de Bodega con propuestas de mejora"
+        ],
+        "tareas": [
+          {
+            "nombre": "Reporte General Semanal — Bodega",
+            "descripcion": "8 campos en plataforma.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "SEMANAL",
+            "diasSemana": [
+              1
+            ],
+            "horaLimite": "10:30",
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/formularios/reporte-semanal",
+            "moduloTexto": "Llenar Reporte",
+            "orden": 1
+          },
+          {
+            "nombre": "Reporte de KPIs de Bodega con propuestas de mejora",
+            "descripcion": "KPIs automáticos de Bodega + qué falló · qué funcionó · qué se implementa.",
+            "tipo": "ENTREGABLE",
+            "frecuencia": "MENSUAL",
+            "semanaDeMes": -1,
+            "diasSemana": [
+              5
+            ],
+            "responsable": {
+              "email": "rodrigo@mainstagepro.mx",
+              "nombre": "Rodrigo Vera"
+            },
+            "moduloDestino": "/kpis",
+            "moduloTexto": "Ir a KPIs",
+            "orden": 2
+          }
+        ]
+      }
+    ]
+  }
+]

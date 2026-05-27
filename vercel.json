@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/generar-tareas-plan",
       "schedule": "0 6 * * 1-6"
+    },
+    {
+      "path": "/api/cron/plan-trabajo-diario",
+      "schedule": "0 7 * * 1-5"
     }
   ]
 }
