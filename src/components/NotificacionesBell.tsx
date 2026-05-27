@@ -153,7 +153,7 @@ export default function NotificacionesBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-[360px] max-w-[calc(100vw-1rem)] bg-[#111] border border-white/10 rounded-2xl shadow-2xl z-[9999] overflow-hidden">
+        <div className="absolute left-0 top-10 w-[360px] max-w-[calc(100vw-1rem)] bg-[#111] border border-white/10 rounded-2xl shadow-2xl z-[9999] overflow-hidden">
           {/* Tabs */}
           <div className="flex border-b border-white/[0.06]">
             <button
