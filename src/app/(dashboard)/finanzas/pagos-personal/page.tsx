@@ -142,6 +142,8 @@ export default function PagosPersonalPage() {
   const [pagoFecha, setPagoFecha] = useState(new Date().toISOString().split("T")[0]);
   const [pagoNotas, setPagoNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [generandoCxP, setGenerandoCxP] = useState<string | null>(null); // tecnicoId en proceso
+  const [cxpCreadas, setCxpCreadas] = useState<Record<string, number>>({}); // tecnicoId → cantidad creada
 
   // Multi-entry state (single technician)
   const [pagoEntradas, setPagoEntradas] = useState<PagoEntrada[]>([{ ...DEFAULT_ENTRADA }]);
@@ -230,6 +232,33 @@ export default function PagosPersonalPage() {
       await load();
     } finally {
       setGuardando(false);
+    }
+  }
+
+  async function generarCxP(row: NominaRow) {
+    if (!confirm(`¿Generar nota por pagar para ${row.tecnicoNombre}?\nSe creará una CxP en Finanzas por cada proyecto pendiente.`)) return;
+    setGenerandoCxP(row.tecnicoId);
+    let creadas = 0;
+    try {
+      const pendientes = row.pagos.filter(p => p.estadoPago !== "PAGADO");
+      for (const pago of pendientes) {
+        const res = await fetch("/api/cuentas-pagar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipoAcreedor: "TECNICO",
+            tecnicoId: row.tecnicoId,
+            proyectoId: pago.proyectoId,
+            concepto: `Honorarios — ${row.tecnicoNombre} · ${pago.proyectoNombre}`,
+            monto: pago.monto,
+            fechaCompromiso: ciclo, // miércoles del ciclo
+          }),
+        });
+        if (res.ok) creadas++;
+      }
+      setCxpCreadas(prev => ({ ...prev, [row.tecnicoId]: creadas }));
+    } finally {
+      setGenerandoCxP(null);
     }
   }
 
@@ -466,12 +495,28 @@ export default function PagosPersonalPage() {
                       </div>
 
                       {!row.todosPagados ? (
-                        <button
-                          onClick={() => abrirModalPago([row])}
-                          className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
-                        >
-                          Registrar pago · {fmt(row.total)}
-                        </button>
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => abrirModalPago([row])}
+                            className="w-full py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold transition-colors"
+                          >
+                            Registrar pago · {fmt(row.total)}
+                          </button>
+                          {cxpCreadas[row.tecnicoId] != null ? (
+                            <div className="flex items-center justify-center gap-1.5 py-1 text-xs text-green-400">
+                              <span>✓</span>
+                              <span>{cxpCreadas[row.tecnicoId]} CxP generada{cxpCreadas[row.tecnicoId] !== 1 ? "s" : ""} en Finanzas</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => generarCxP(row)}
+                              disabled={generandoCxP === row.tecnicoId}
+                              className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40"
+                            >
+                              {generandoCxP === row.tecnicoId ? "Generando..." : "📄 Generar nota por pagar (CxP)"}
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         <div className="flex items-center justify-center gap-1.5 py-1.5 text-xs text-green-500">
                           <span>✓</span>
