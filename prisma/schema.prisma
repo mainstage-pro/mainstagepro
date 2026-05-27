@@ -2843,8 +2843,8 @@ model PTTareaInstancia {
   id             String   @id @default(cuid())
   templateId     String
   template       PTTareaTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  responsableId  String
-  responsable    User     @relation("PTInstanciaResponsable", fields: [responsableId], references: [id], onDelete: Cascade)
+  responsableId  String?
+  responsable    User?    @relation("PTInstanciaResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
   fechaVencimiento DateTime
   estado         String   @default("PENDIENTE") // PENDIENTE | EN_PROGRESO | COMPLETADA | VENCIDA | OMITIDA
   esEntregable   Boolean  @default(false)

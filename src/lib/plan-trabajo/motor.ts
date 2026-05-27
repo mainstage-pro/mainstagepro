@@ -197,7 +197,7 @@ export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise
       const instancia = await prisma.pTTareaInstancia.create({
         data: {
           templateId: template.id,
-          ...(template.responsableId ? { responsableId: template.responsableId } : {}),
+          responsableId: template.responsableId ?? undefined,
           fechaVencimiento,
           estado: "PENDIENTE",
           esEntregable: template.tipo === "ENTREGABLE",
