@@ -1196,7 +1196,8 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
         </div>
       )}
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[72px_60px_1fr_1fr_80px_100px] gap-2 px-4 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
+        <div className="grid grid-cols-[40px_72px_60px_1fr_1fr_80px_100px] gap-2 px-3 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
+          <span></span>
           <span>Fecha</span><span>Fmt</span><span>Tipo / Descripción</span><span>Copy</span>
           <span className="text-center">Plataformas</span><span className="text-center">Estado</span>
         </div>
@@ -1204,32 +1205,62 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
           {filtered.map(p => {
             const d = parseDate(p.fecha);
             const formato = p.formato ?? p.tipo?.formato ?? null;
+            const imagenes = parseImagenes(p.portadaUrl);
+            const coverUrl = imagenes[0] ?? null;
             return (
               <div key={p.id}>
-                <div className={`grid grid-cols-[72px_60px_1fr_1fr_80px_100px] gap-2 px-4 py-2.5 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
+                <div className={`grid grid-cols-[40px_72px_60px_1fr_1fr_80px_100px] gap-2 px-3 py-2 items-center hover:bg-[#141414] cursor-pointer transition-colors ${expandedId === p.id ? "bg-[#141414]" : ""} ${editId === p.id ? "opacity-50" : ""}`}
                   onClick={() => { if (editId !== p.id) setExpandedId(expandedId === p.id ? null : p.id); }}>
+                  {/* Miniatura */}
+                  <div className="flex items-center justify-center" onClick={e => { if (coverUrl) { e.stopPropagation(); openLightbox(imagenes, 0); } }}>
+                    {coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={coverUrl}
+                        alt=""
+                        className="w-9 h-9 object-cover rounded-md border border-[#2a2a2a] hover:border-[#B3985B]/60 transition-colors shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-md bg-[#1a1a1a] border border-[#222] flex items-center justify-center shrink-0">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="1.5">
+                          <rect x="3" y="3" width="18" height="18" rx="2"/>
+                          <circle cx="8.5" cy="8.5" r="1.5"/>
+                          <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  {/* Fecha */}
                   <div>
                     <p className="text-white text-sm font-bold leading-none">{d.getDate()}</p>
                     <p className="text-gray-600 text-[9px] uppercase">{DIAS_ES[d.getDay()]}</p>
                     <p className="text-[#444] text-[9px]">{MESES[d.getMonth()].slice(0,3)}</p>
                   </div>
+                  {/* Formato */}
                   <div>
                     {formato
                       ? <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{FORMATO_LABEL[formato] ?? formato}</span>
                       : <span className="text-gray-700 text-[9px]">—</span>}
                   </div>
+                  {/* Tipo / descripción */}
                   <div className="min-w-0">
                     <p className="text-white text-xs font-medium truncate">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</p>
                     {p.descripcion && <p className="text-gray-500 text-[10px] truncate">{p.descripcion}</p>}
+                    {imagenes.length > 1 && (
+                      <span className="text-[9px] text-[#B3985B]/70">{imagenes.length} fotos</span>
+                    )}
                   </div>
+                  {/* Copy */}
                   <div className="min-w-0">
                     {p.copy ? <p className="text-gray-400 text-[10px] truncate">{p.copy}</p> : <span className="text-gray-700 text-[9px] italic">—</span>}
                   </div>
+                  {/* Plataformas */}
                   <div className="flex gap-1 justify-center flex-wrap" onClick={e => e.stopPropagation()}>
                     {PLATAFORMAS.filter(plt => p[plt.key]).map(plt => (
                       <span key={plt.key} className="text-[9px] text-gray-500 bg-[#1a1a1a] px-1 rounded">{plt.short}</span>
                     ))}
                   </div>
+                  {/* Estado */}
                   <div className="flex justify-center" onClick={e => e.stopPropagation()}>
                     <Combobox
                       value={p.estado}
@@ -1239,6 +1270,7 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
                     />
                   </div>
                 </div>
+
                 {expandedId === p.id && editId !== p.id && (
                   <div className="px-4 pb-3 bg-[#0d0d0d] border-t border-[#1a1a1a]">
                     <div className="pt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
