@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import OfflineProvider from "@/components/OfflineProvider";
+// import OfflineProvider from "@/components/OfflineProvider"; // temporarily disabled
 
 export const metadata: Metadata = {
   title: "Mainstage Pro",
@@ -33,7 +33,7 @@ export default function RootLayout({
     <html lang="es" className="h-full">
       <body className="h-full antialiased">
         {children}
-        <OfflineProvider />
+        {/* <OfflineProvider /> */}
       </body>
     </html>
   );
