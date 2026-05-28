@@ -858,12 +858,14 @@ function CotizadorForm() {
     const granTotal = total + montoIva;
     const totalConPagoAnticipado = granTotal - montoPagoAnticipadoFinal;
 
-    // Costo real = operación + DJ + logística + costo de proveedor de equipos externos
+    // Costo real = lo que pagamos a técnicos (tabulador) + logística + proveedor de equipos externos.
     // Equipo propio = sin costo (ya capitalizado), su renta es margen puro.
-    const costos = lineasOp.reduce((s, l) => s + l.subtotal, 0)
-      + lineasDJ.reduce((s, l) => s + l.subtotal, 0)
-      + subtotalTransporte + subtotalComidas + subtotalHospedaje
-      + costoExternos;
+    // lineasOp = lo que le cobramos al cliente por operación → NO es un costo, es ingreso.
+    const costos = subtotalJornadas                                  // pago real a técnicos (tabulador)
+      + bonusZonaTotal                                               // bonus de zona que pagamos
+      + lineasDJ.reduce((s, l) => s + l.subtotal, 0)               // DJ externo (pass-through)
+      + subtotalTransporte + subtotalComidas + subtotalHospedaje     // logística / viáticos / hospedaje
+      + costoExternos;                                               // lo que pagamos al proveedor de equipo externo
 
     const utilidad = total - costos;
     const pctUtilidad = total > 0 ? utilidad / total : 0;

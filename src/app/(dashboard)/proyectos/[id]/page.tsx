@@ -211,6 +211,18 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
 
   const inputCls = "w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-colors";
 
+  if (type === "time") {
+    return (
+      <div>
+        {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
+        <TimePicker
+          value={val}
+          onChange={v => { setVal(v); onSave(field, v); }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div>
       {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
@@ -3160,18 +3172,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
                   <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <Campo label="Hora inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
-                  {/* ─ Logística del día del evento ─ */}
-                  <div className="col-span-2 pt-2">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold mb-3">Logística del día del evento</p>
-                  </div>
-                  <Campo label="Hora de llegada / montaje" value={proyecto.horaMontaje} field="horaMontaje" type="time" onSave={guardarCampo} />
-                  <Campo label="Hora de inicio del evento" value={proyecto.horaInicio} field="horaInicio" type="time" onSave={guardarCampo} />
-                  <Campo label="Hora estimada de desmontaje" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
-                  <div className="col-span-1" />
-                  <Campo label="Punto de salida desde bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" onSave={guardarCampo} />
-                  <Campo label="Hora de salida desde bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" type="time" onSave={guardarCampo} />
                   <div className="col-span-2">
                     <Campo label="Dirección del venue" value={proyecto.direccionVenue} field="direccionVenue" onSave={guardarCampo} />
                   </div>
@@ -3528,10 +3530,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Personal del evento (gestión completa) ── */}
-          <div className="space-y-3">
-            {/* Formulario agregar */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          {/* ── Personal del evento (sección unificada) ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            {/* Cabecera + botones */}
+            <div className="p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
@@ -3716,8 +3718,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
               const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
               const restante = presupuestoCotizado - presupuestoAsignado;
-              return (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                return (
+                  <div className="border-t border-[#1a1a1a]">
                   <button
                     onClick={() => setShowSugerencias(v => !v)}
                     className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#161616] transition-colors"
@@ -3769,7 +3771,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Lista personal agrupada */}
             {proyecto.personal.length === 0 ? (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-6 text-center text-gray-600 text-sm">
+              <div className="border-t border-[#1a1a1a] py-6 text-center text-gray-600 text-sm">
                 Sin personal asignado aún
               </div>
             ) : (
@@ -3785,7 +3787,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 };
                 const sinAsignar = grupo.filter(p => !p.tecnico).length;
                 return (
-                  <div key={tipo} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div key={tipo} className="border-t border-[#1a1a1a]">
                     <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-white font-semibold uppercase tracking-wider">{labels[tipo]}</p>

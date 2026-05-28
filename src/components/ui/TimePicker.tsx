@@ -2,10 +2,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 
-// Genera slots de 30 min: ["12:00 AM","12:30 AM","1:00 AM",...,"11:30 PM"]
+// Genera slots de 15 min: ["12:00 AM","12:15 AM","12:30 AM","12:45 AM","1:00 AM",...,"11:45 PM"]
 const SLOTS: string[] = [];
 for (let h = 0; h < 24; h++) {
-  for (const m of [0, 30]) {
+  for (const m of [0, 15, 30, 45]) {
     const period = h < 12 ? "AM" : "PM";
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     SLOTS.push(`${h12}:${String(m).padStart(2, "0")} ${period}`);
