@@ -405,10 +405,16 @@ interface EquipoItem {
   marca: string | null;
   categoria: { nombre: string } | null;
 }
+interface RiderAccesorioItem {
+  nombre: string;
+  cantidad: number;
+  categoria: string | null;
+}
 interface ProyectoEquipo {
   cantidad: number;
   equipo: EquipoItem | null;
   descripcionManual?: string | null;
+  riderAccesorios?: RiderAccesorioItem[];
 }
 interface CotizacionLinea {
   id: string;
@@ -677,6 +683,65 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
             </>
           ) : null}
 
+
+          {/* ── Rider de accesorios (si hay accesorios registrados) ── */}
+          {proyecto.equipos.some(e => (e.riderAccesorios?.length ?? 0) > 0) && (() => {
+            const equiposConAcc = proyecto.equipos.filter(e => (e.riderAccesorios?.length ?? 0) > 0);
+            return (
+              <>
+                <View style={s.sectionHeader}>
+                  <Text style={s.sectionHeaderText}>RIDER DE ACCESORIOS Y HERRAMIENTAS</Text>
+                </View>
+                <View style={[s.tableWrapper, { marginBottom: 12 }]}>
+                  {/* Header */}
+                  <View style={[s.tableHeader, { borderBottomWidth: 1, borderBottomColor: BORDER }]}>
+                    <View style={{ flex: 4, paddingVertical: 4, paddingHorizontal: 7, borderRightWidth: 1, borderRightColor: BORDER }}>
+                      <Text style={s.colHeaderText}>EQUIPO / ACCESORIO</Text>
+                    </View>
+                    <View style={{ width: 32, paddingVertical: 4, paddingHorizontal: 5, borderRightWidth: 1, borderRightColor: BORDER, textAlign: "center" }}>
+                      <Text style={[s.colHeaderText, { textAlign: "center" }]}>QTY</Text>
+                    </View>
+                    <View style={{ width: 34, alignItems: "center", justifyContent: "center", paddingVertical: 4 }}>
+                      <Text style={s.checkHeaderLabel}>CHECK</Text>
+                    </View>
+                  </View>
+                  {/* Rows per equipment */}
+                  {equiposConAcc.map((eq, ei) => {
+                    const nombre = eq.equipo
+                      ? `${eq.equipo.marca ? eq.equipo.marca + " " : ""}${eq.equipo.descripcion}`
+                      : (eq.descripcionManual ?? "");
+                    return (
+                      <View key={ei}>
+                        {/* Equipment header row */}
+                        <View style={{ flexDirection: "row", backgroundColor: "#F0EDE6", borderBottomWidth: 1, borderBottomColor: BORDER, minHeight: 18 }}>
+                          <View style={{ flex: 4, paddingVertical: 4, paddingHorizontal: 7, borderRightWidth: 1, borderRightColor: BORDER }}>
+                            <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: BLACK }}>{nombre}</Text>
+                          </View>
+                          <View style={{ width: 32, paddingVertical: 4, paddingHorizontal: 5, borderRightWidth: 1, borderRightColor: BORDER, textAlign: "center" }}>
+                            <Text style={{ fontSize: 7.5, textAlign: "center", color: BLACK }}>{eq.cantidad}</Text>
+                          </View>
+                          <View style={{ width: 34 }} />
+                        </View>
+                        {/* Accessory rows */}
+                        {(eq.riderAccesorios ?? []).map((acc, ai) => (
+                          <View key={ai} style={[s.checklistRow, { borderBottomColor: "#E8E8E8" }]}>
+                            <View style={{ flex: 4, paddingVertical: 3, paddingHorizontal: 7, paddingLeft: 18, borderRightWidth: 1, borderRightColor: BORDER, flexDirection: "row", gap: 4 }}>
+                              <Text style={{ fontSize: 6.5, color: LIGHT }}>↳</Text>
+                              <Text style={{ fontSize: 7, color: GRAY, flex: 1 }}>{acc.nombre}{acc.categoria ? ` (${acc.categoria})` : ""}</Text>
+                            </View>
+                            <View style={{ width: 32, paddingVertical: 3, paddingHorizontal: 5, borderRightWidth: 1, borderRightColor: BORDER, textAlign: "center" }}>
+                              <Text style={{ fontSize: 7, textAlign: "center", color: BLACK }}>x{acc.cantidad}</Text>
+                            </View>
+                            <View style={s.checkBox}><View style={s.checkBoxInner} /></View>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              </>
+            );
+          })()}
 
           {/* ── Checklist interno ── */}
           <View style={s.sectionHeader}>

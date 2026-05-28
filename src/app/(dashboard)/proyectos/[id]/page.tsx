@@ -4737,7 +4737,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             })()}
 
             {/* ═══════ ZONA 1: BASE — Rider · Checklist · Bitácora ═══════ */}
-            {!esRenta && <><SectionDivider label="Rider & Checklist" />
+            <><SectionDivider label={esRenta ? "Rider de entrega" : "Rider & Checklist"} />
 
             {/* ══ RIDER DE CARGA ══ */}
             <div className="space-y-4">
@@ -5176,7 +5176,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <span className="text-base leading-none">+</span> Agregar equipo extra
                 </button>
               )}
-            </div></>}
+            </div></>
 
             {/* ═══════ ZONA 2: DOCUMENTOS DEL SHOW (accordion) ═══════ */}
             {!esRenta && <><SectionDivider label="Documentos del show" />

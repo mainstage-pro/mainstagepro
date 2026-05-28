@@ -39,6 +39,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
               categoria: { select: { nombre: true } },
             },
           },
+          riderAccesorios: {
+            select: { nombre: true, cantidad: true, categoria: true },
+            orderBy: { orden: "asc" },
+          },
         },
         orderBy: [{ equipo: { categoriaId: "asc" } }, { id: "asc" }],
       },
