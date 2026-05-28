@@ -4836,7 +4836,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white font-semibold">Rider de carga</p>
                   <p className="text-gray-500 text-xs mt-0.5">Listado de equipos con accesorios y herramientas necesarias para montaje</p>
                 </div>
-                {riderEquipos.length > 0 && (
+                {(riderEquipos.length > 0 || (proyecto.cotizacion?.lineas ?? []).some((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO" || l.tipo === "OTRO")) && (
                   <a href={`/proyectos/${id}/rider-print`} target="_blank" className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                     Imprimir rider
@@ -4851,12 +4851,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               )}
 
-              {riderEquipos.length === 0 ? (
-                <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
-                  <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
-                  <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos</p>
-                </div>
-              ) : (() => {
+              {(() => {
+                // Compute cotización additional lines FIRST so empty state is aware of them
+                const cotLineas = (proyecto.cotizacion?.lineas ?? []).filter(
+                  (l: { tipo: string; descripcion: string }) =>
+                    (l.tipo === "EQUIPO_EXTERNO" || l.tipo === "OTRO") && !!l.descripcion
+                ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[];
+
+                if (riderEquipos.length === 0 && cotLineas.length === 0) {
+                  return (
+                    <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
+                      <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
+                      <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos o cotización</p>
+                    </div>
+                  );
+                }
+
                 const grupos: Record<string, typeof riderEquipos> = {};
                 for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
                 return (
@@ -5081,42 +5091,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                     ))}
                     {/* ── Equipos adicionales / terceros desde cotización ── */}
-                    {(() => {
-                      const extLineas = (proyecto.cotizacion?.lineas ?? []).filter(
-                        (l: { tipo: string; descripcion: string }) =>
-                          (l.tipo === "EQUIPO_EXTERNO" || l.tipo === "OTRO") && !!l.descripcion
-                      ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[];
-                      if (extLineas.length === 0) return null;
-                      return (
-                        <div>
-                          <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-t border-[#1a1a1a] flex items-center gap-2">
-                            <span className="text-[10px] text-orange-400/70 font-bold uppercase tracking-widest">Equipos adicionales / Terceros</span>
-                            <span className="text-[10px] text-gray-600">desde cotización · sin verificación de inventario</span>
-                          </div>
-                          {extLineas.map(l => (
-                            <div key={l.id} className="border-b border-[#0d0d0d] last:border-0 px-4 py-3">
-                              <div className="flex items-center gap-3">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm text-white">
-                                    {l.descripcion}
-                                    {l.marca && <span className="text-gray-500"> · {l.marca}</span>}
-                                  </p>
-                                  {l.notas && <p className="text-gray-500 text-xs mt-0.5">{l.notas}</p>}
-                                </div>
-                                <span className="text-gray-400 text-xs shrink-0">×{l.cantidad}</span>
-                                <span className={`text-[10px] border px-1.5 py-0.5 rounded shrink-0 ${
-                                  l.tipo === "EQUIPO_EXTERNO"
-                                    ? "text-orange-400/70 border-orange-400/20"
-                                    : "text-blue-400/70 border-blue-400/20"
-                                }`}>
-                                  {l.tipo === "EQUIPO_EXTERNO" ? "Tercero" : "Adicional"}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                    {cotLineas.length > 0 && (
+                      <div>
+                        <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-t border-[#1a1a1a] flex items-center gap-2">
+                          <span className="text-[10px] text-orange-400/70 font-bold uppercase tracking-widest">Equipos adicionales / Terceros</span>
+                          <span className="text-[10px] text-gray-600">desde cotización · sin verificación de inventario</span>
                         </div>
-                      );
-                    })()}
+                        {cotLineas.map(l => (
+                          <div key={l.id} className="border-b border-[#0d0d0d] last:border-0 px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-white">
+                                  {l.descripcion}
+                                  {l.marca && <span className="text-gray-500"> · {l.marca}</span>}
+                                </p>
+                                {l.notas && <p className="text-gray-500 text-xs mt-0.5">{l.notas}</p>}
+                              </div>
+                              <span className="text-gray-400 text-xs shrink-0">×{l.cantidad}</span>
+                              <span className={`text-[10px] border px-1.5 py-0.5 rounded shrink-0 ${
+                                l.tipo === "EQUIPO_EXTERNO"
+                                  ? "text-orange-400/70 border-orange-400/20"
+                                  : "text-blue-400/70 border-blue-400/20"
+                              }`}>
+                                {l.tipo === "EQUIPO_EXTERNO" ? "Tercero" : "Adicional"}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
