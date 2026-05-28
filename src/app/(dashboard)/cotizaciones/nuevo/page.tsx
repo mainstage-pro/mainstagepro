@@ -255,9 +255,11 @@ function CotizadorForm() {
 
   // ─── Descuentos ───────────────────────────────────────────────────────────────
   const [volumenActivo, setVolumenActivo]         = useState(false);
-  const [volumenManualToggle, setVolumenManualToggle] = useState(false); // true = usuario lo tocó manualmente
+  // Guard: inicializar en true si ya estamos en modo edición, para bloquear
+  // los auto-efectos desde el primer render (antes de que cargue la Promise).
+  const [volumenManualToggle, setVolumenManualToggle] = useState(() => Boolean(editId));
   const [b2bActivo, setB2bActivo]                 = useState(false);
-  const [b2bManualToggle, setB2bManualToggle]     = useState(false);
+  const [b2bManualToggle, setB2bManualToggle]     = useState(() => Boolean(editId));
   const [manualActivo, setManualActivo]           = useState(false);
   const [manualEsMonto, setManualEsMonto]         = useState(false); // false=%, true=$
   const [manualValor, setManualValor]             = useState("");
@@ -482,7 +484,7 @@ function CotizadorForm() {
     if (!b2bManualToggle && tipoCliente === "B2B") {
       setB2bActivo(true);
     }
-  }, [tipoCliente]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tipoCliente, b2bManualToggle]);
 
   // Auto-calcular cantidad de comidas = total técnicos en cotización
   useEffect(() => {
@@ -894,7 +896,7 @@ function CotizadorForm() {
     if (!volumenManualToggle) {
       setVolumenActivo(resumen.debeAutoVolumen);
     }
-  }, [resumen.debeAutoVolumen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resumen.debeAutoVolumen, volumenManualToggle]);
 
   // ── Guardar ──
   async function guardar() {
