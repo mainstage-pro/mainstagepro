@@ -3690,11 +3690,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       placeholder="Ej: Operador de audio, Iluminación, Montaje..."
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                   </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Responsabilidad / descripción</label>
-                    <input value={selResp} onChange={e => setSelResp(e.target.value)}
-                      placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  <div className="col-span-2 md:col-span-3">
+                    <label className="text-xs text-gray-500 block mb-1">Descripción · ¿qué hará en el evento?</label>
+                    <textarea
+                      value={selResp}
+                      onChange={e => setSelResp(e.target.value)}
+                      placeholder="Describe las actividades y responsabilidades. Ej: Operador FOH, manejo de consola DiGiCo SD7, coordinación con backline..."
+                      rows={2}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                    />
                   </div>
                   <div className="flex items-end">
                     <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
@@ -3922,13 +3926,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 </div>
                               )
                             )}
-                            <p className="text-gray-600 text-xs mt-0.5">
+                            <p className="text-gray-500 text-xs mt-0.5">
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
                               {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
                               {p.jornada ? ` · ${p.jornada}` : ""}
                               {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
-                              {p.responsabilidad ? ` · ${p.responsabilidad}` : ""}
                             </p>
+                            {p.responsabilidad && (
+                              <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>
+                            )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
                             {asignandoId !== p.id && (
@@ -4021,12 +4027,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Responsabilidad / descripción</label>
-                              <input
+                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Descripción · ¿qué hará en el evento?</label>
+                              <textarea
                                 value={editPersonalForm.responsabilidad}
                                 onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))}
-                                placeholder="Ej: Operador FOH, manejo de consola DiGiCo..."
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                placeholder="Describe las actividades y responsabilidades. Ej: Operador FOH, manejo de consola DiGiCo SD7..."
+                                rows={2}
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555] resize-none"
                               />
                             </div>
                             <div className="flex gap-2 pt-1">
