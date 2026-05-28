@@ -42,7 +42,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -833,6 +833,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Edición de cantidad en rider de carga
   const [riderEquipoEditId, setRiderEquipoEditId] = useState<string | null>(null);
   const [riderEquipoEditCant, setRiderEquipoEditCant] = useState(1);
+  const [riderNotasEditId, setRiderNotasEditId] = useState<string | null>(null);
+  const [riderNotasText, setRiderNotasText] = useState("");
   const [newExtraManualDesc, setNewExtraManualDesc] = useState("");
   const [extraAccOpen, setExtraAccOpen] = useState<string | null>(null);
   const [extraAccNombre, setExtraAccNombre] = useState("");
@@ -1182,6 +1184,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
     setRiderEquipos(prev => prev.map(e => e.id === eqId ? { ...e, cantidad } : e));
     setRiderEquipoEditId(null);
+  }
+
+  async function saveRiderNotas(eqId: string, notas: string) {
+    await fetch(`/api/proyectos/${id}/equipos/${eqId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notas: notas.trim() || null }),
+    });
+    setRiderEquipos(prev => prev.map(e => e.id === eqId ? { ...e, notas: notas.trim() || null } : e));
+    setRiderNotasEditId(null);
   }
 
   async function loadEvalCliente() {
@@ -4838,6 +4849,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors opacity-0 group-hover:opacity-100"
                                       >Editar</button>
                                       <button
+                                        onClick={ev => { ev.stopPropagation(); setRiderNotasEditId(e.id); setRiderNotasText(e.notas ?? ""); }}
+                                        className={`text-xs transition-colors opacity-0 group-hover:opacity-100 ${e.notas ? "text-[#B3985B]" : "text-gray-600 hover:text-[#B3985B]"}`}
+                                        title={e.notas ? "Editar nota" : "Agregar nota"}
+                                      >📝</button>
+                                      <button
                                         onClick={async ev => { ev.stopPropagation(); await eliminarEquipo(e.id); }}
                                         className="text-xs text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                                       >Eliminar</button>
@@ -4845,6 +4861,34 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   )}
                                 </div>
                               </div>
+
+                              {/* Notes row */}
+                              {riderNotasEditId === e.id ? (
+                                <div className="px-4 pb-2 flex gap-2">
+                                  <textarea
+                                    autoFocus
+                                    value={riderNotasText}
+                                    onChange={ev => setRiderNotasText(ev.target.value)}
+                                    onKeyDown={ev => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) saveRiderNotas(e.id, riderNotasText); }}
+                                    placeholder="Comentarios de carga, instrucciones especiales..."
+                                    rows={2}
+                                    className="flex-1 bg-[#0d0d0d] border border-[#333] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-xs focus:outline-none resize-none placeholder-gray-700"
+                                  />
+                                  <div className="flex flex-col gap-1">
+                                    <button onClick={() => saveRiderNotas(e.id, riderNotasText)} className="px-2 py-1 bg-[#B3985B] text-black text-xs font-semibold rounded transition-colors">✓</button>
+                                    <button onClick={() => { setRiderNotasEditId(null); }} className="px-2 py-1 bg-[#1a1a1a] text-gray-500 text-xs rounded transition-colors">×</button>
+                                  </div>
+                                </div>
+                              ) : e.notas ? (
+                                <div
+                                  className="px-4 pb-2 flex items-start gap-2 group/notas cursor-pointer"
+                                  onClick={() => { setRiderNotasEditId(e.id); setRiderNotasText(e.notas ?? ""); }}
+                                >
+                                  <span className="text-[10px] text-gray-600 mt-0.5">📝</span>
+                                  <p className="text-xs text-gray-500 flex-1 leading-relaxed">{e.notas}</p>
+                                  <span className="text-[10px] text-gray-700 opacity-0 group-hover/notas:opacity-100 transition-opacity shrink-0">Editar</span>
+                                </div>
+                              ) : null}
 
                               {/* Expanded panel */}
                               {isExpanded && (

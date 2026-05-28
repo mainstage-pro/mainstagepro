@@ -546,6 +546,7 @@ model ProyectoEquipo {
   confirmado       Boolean   @default(false)
   confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
   confirmToken     String?   @unique // Token para link de confirmación al proveedor
+  notas            String?   // Comentarios / instrucciones de carga para este equipo
   riderAccesorios  RiderAccesorio[]
 
   @@map("proyecto_equipos")
