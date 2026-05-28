@@ -246,6 +246,8 @@ function CotizadorForm() {
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
   const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
+  // Selector pendiente por jornada (antes de hacer clic en Agregar)
+  const [pendingSlots, setPendingSlots] = useState<Record<string, { rolId: string; nivel: string; jornada: string; cantidad: string }>>({});
   const [zonaEvento, setZonaEvento] = useState<"LOCAL"|"BAJIO"|"NACIONAL">("LOCAL");
   const [numTecnicosZona, setNumTecnicosZona] = useState(0);
   const [selOcDesc, setSelOcDesc] = useState("");
@@ -1782,116 +1784,160 @@ function CotizadorForm() {
               )}
             </div>
             <p className="text-xs text-gray-500 mb-3">Define cada día de trabajo por fecha y tipo de operación (montaje, operación del evento, desmontaje). Puedes registrar desde un solo día hasta múltiples jornadas agregando días.</p>
-            {jornadasPlan.map((jornada, ji) => (
-              <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
-                {/* Header de la jornada */}
-                <div className="flex items-center gap-2 mb-3 flex-wrap">
-                  <input
-                    type="date"
-                    value={jornada.fecha}
-                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, fecha: e.target.value } : j))}
-                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <select
-                    value={jornada.tipo}
-                    onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, tipo: e.target.value } : j))}
-                    className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="MONTAJE">Montaje</option>
-                    <option value="OPERACION">Operación del evento</option>
-                    <option value="DESMONTAJE">Desmontaje</option>
-                    <option value="OTRO">Otro</option>
-                  </select>
-                  <button
-                    onClick={() => setJornadasPlan(p => p.filter((_, i) => i !== ji))}
-                    className="ml-auto text-gray-600 hover:text-red-400 text-sm transition-colors"
-                  >
-                    × Quitar día
-                  </button>
-                </div>
+            {jornadasPlan.map((jornada, ji) => {
+              const pending = pendingSlots[jornada.id] ?? { rolId: "", nivel: "AA", jornada: "CORTA", cantidad: "1" };
+              const pendingRol = roles.find(r => r.id === pending.rolId);
+              const pendingTarifa = pendingRol ? getRolTarifa(pendingRol, pending.nivel, pending.jornada) : 0;
+              return (
+                <div key={jornada.id} className="mb-4 bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
+                  {/* Header de la jornada */}
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <input
+                      type="date"
+                      value={jornada.fecha}
+                      onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, fecha: e.target.value } : j))}
+                      className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <select
+                      value={jornada.tipo}
+                      onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? { ...j, tipo: e.target.value } : j))}
+                      className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    >
+                      <option value="MONTAJE">Montaje</option>
+                      <option value="OPERACION">Operación del evento</option>
+                      <option value="DESMONTAJE">Desmontaje</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                    <button
+                      onClick={() => setJornadasPlan(p => p.filter((_, i) => i !== ji))}
+                      className="ml-auto text-gray-600 hover:text-red-400 text-sm transition-colors"
+                    >
+                      × Quitar día
+                    </button>
+                  </div>
 
-                {/* Slots de técnicos */}
-                {jornada.slots.length > 0 && (
-                  <div className="mb-2 space-y-1.5">
-                    {jornada.slots.map((slot, si) => (
-                      <div key={slot.id} className="flex items-center gap-2 flex-wrap py-1.5 border-b border-[#1a1a1a] last:border-0">
-                        <div className="flex-1 min-w-[140px]">
-                          <select
-                            value={slot.rolId}
-                            onChange={e => {
-                              const rol = roles.find(r => r.id === e.target.value);
-                              setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                                ...j,
-                                slots: j.slots.map((s, k) => k === si ? { ...s, rolId: e.target.value, rolNombre: rol?.nombre ?? "" } : s)
-                              } : j));
-                            }}
-                            className="w-full bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                          >
-                            <option value="">— Rol —</option>
-                            {roles.filter(r => r.nombre !== "DJ").map(r => (
-                              <option key={r.id} value={r.id}>{r.nombre}</option>
-                            ))}
-                          </select>
+                  {/* Lista de técnicos ya agregados */}
+                  {jornada.slots.length > 0 && (
+                    <div className="mb-3 border border-[#1a1a1a] rounded-lg overflow-hidden">
+                      {jornada.slots.map((slot, si) => (
+                        <div key={slot.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm truncate">{slot.rolNombre || "(sin rol)"}</p>
+                          </div>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 shrink-0">{slot.nivel}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#222] text-gray-400 shrink-0">
+                            {slot.jornada === "CORTA" ? "0–8h" : slot.jornada === "MEDIA" ? "8–12h" : "12+h"}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] text-gray-500">×</span>
+                            <input
+                              type="number" min="1" max="20"
+                              value={slot.cantidad === 0 ? "" : slot.cantidad}
+                              onChange={e => setJornadasPlan(p => p.map((j, i) => i !== ji ? j : {
+                                ...j, slots: j.slots.map((s, k) => k !== si ? s : { ...s, cantidad: parseInt(e.target.value) || 1 })
+                              }))}
+                              className="w-10 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs text-center focus:outline-none focus:border-[#B3985B]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] text-gray-500">$</span>
+                            <input
+                              type="number" min="0"
+                              value={slot.tarifa === 0 ? "" : slot.tarifa}
+                              onChange={e => setJornadasPlan(p => p.map((j, i) => i !== ji ? j : {
+                                ...j, slots: j.slots.map((s, k) => k !== si ? s : { ...s, tarifa: parseFloat(e.target.value) || 0 })
+                              }))}
+                              placeholder="0"
+                              className="w-20 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:border-[#B3985B]"
+                            />
+                          </div>
+                          <span className="text-white text-xs font-semibold w-20 text-right shrink-0">
+                            {formatCurrency(slot.tarifa * slot.cantidad)}
+                          </span>
+                          <button
+                            onClick={() => setJornadasPlan(p => p.map((j, i) => i !== ji ? j : {
+                              ...j, slots: j.slots.filter((_, k) => k !== si)
+                            }))}
+                            className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0"
+                          >×</button>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-[10px] text-gray-500 whitespace-nowrap">Cant.</label>
-                          <input
-                            type="number" min="1" max="20" value={slot.cantidad}
-                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, cantidad: parseInt(e.target.value) || 1 } : s)
-                            } : j))}
-                            className="w-12 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs text-center focus:outline-none"
-                          />
-                        </div>
-                        <select
-                          value={slot.jornada}
-                          onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                            ...j, slots: j.slots.map((s, k) => k === si ? { ...s, jornada: e.target.value } : s)
-                          } : j))}
-                          className="w-28 bg-[#1a1a1a] border border-[#333] rounded px-1 py-1 text-white text-xs focus:outline-none"
-                        >
-                          <option value="CORTA">0–8 hrs</option>
-                          <option value="MEDIA">8–12 hrs</option>
-                          <option value="LARGA">12+ hrs</option>
-                        </select>
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-gray-500">$</span>
-                          <input
-                            type="number" min="0" value={slot.tarifa}
-                            onChange={e => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                              ...j, slots: j.slots.map((s, k) => k === si ? { ...s, tarifa: parseFloat(e.target.value) || 0 } : s)
-                            } : j))}
-                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none"
-                            placeholder="Tarifa"
-                          />
-                        </div>
-                        <button
-                          onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                            ...j, slots: j.slots.filter((_, k) => k !== si)
-                          } : j))}
-                          className="text-gray-600 hover:text-red-400 text-base leading-none"
-                        >×</button>
+                      ))}
+                      <div className="flex justify-between px-3 py-2 bg-[#0a0a0a] border-t border-[#222]">
+                        <span className="text-[10px] text-gray-500">Subtotal día</span>
+                        <span className="text-xs font-semibold text-white">{formatCurrency(jornada.slots.reduce((s, sl) => s + sl.tarifa * sl.cantidad, 0))}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  )}
 
-                {jornada.slots.length > 0 && (
-                  <div className="flex justify-between px-1 py-1.5 mt-1 mb-2 border-t border-[#1a1a1a]">
-                    <span className="text-[10px] text-gray-500">Subtotal día</span>
-                    <span className="text-xs font-semibold text-white">{formatCurrency(jornada.slots.reduce((s, slot) => s + slot.tarifa * slot.cantidad, 0))}</span>
+                  {/* Selector para agregar técnico — igual que sección de equipos */}
+                  <div className="flex gap-2 items-end flex-wrap border-t border-[#1a1a1a] pt-3">
+                    <div className="flex-1 min-w-[160px]">
+                      <p className="text-[10px] text-[#555] mb-1 px-1">Rol técnico</p>
+                      <select
+                        value={pending.rolId}
+                        onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, rolId: e.target.value } }))}
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      >
+                        <option value="">— Seleccionar rol —</option>
+                        {roles.filter(r => r.nombre !== "DJ").map(r => (
+                          <option key={r.id} value={r.id}>{r.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] mb-1 text-center">Nivel</p>
+                      <select
+                        value={pending.nivel}
+                        onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, nivel: e.target.value } }))}
+                        className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      >
+                        <option value="AAA">AAA</option>
+                        <option value="AA">AA</option>
+                        <option value="A">A</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] mb-1 text-center">Jornada</p>
+                      <select
+                        value={pending.jornada}
+                        onChange={e => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, jornada: e.target.value } }))}
+                        className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      >
+                        <option value="CORTA">0–8 hrs</option>
+                        <option value="MEDIA">8–12 hrs</option>
+                        <option value="LARGA">12+ hrs</option>
+                      </select>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555] mb-1 text-center">Cant.</p>
+                      <NumSelect value={pending.cantidad} onChange={v => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, cantidad: v } }))} max={20} className="w-16 py-2" />
+                    </div>
+                    {pendingTarifa > 0 && (
+                      <div className="self-end pb-2">
+                        <span className="text-xs text-[#B3985B] whitespace-nowrap">{formatCurrency(pendingTarifa)}/técnico</span>
+                      </div>
+                    )}
+                    <button
+                      disabled={!pending.rolId}
+                      onClick={() => {
+                        if (!pendingRol) return;
+                        const tarifa = getRolTarifa(pendingRol, pending.nivel, pending.jornada);
+                        setJornadasPlan(prev => prev.map(j => j.id !== jornada.id ? j : {
+                          ...j,
+                          slots: [...j.slots, {
+                            id: uid(), rolId: pendingRol.id, rolNombre: pendingRol.nombre,
+                            cantidad: parseInt(pending.cantidad) || 1,
+                            nivel: pending.nivel, jornada: pending.jornada, tarifa,
+                          }],
+                        }));
+                        setPendingSlots(prev => ({ ...prev, [jornada.id]: { rolId: "", nivel: "AA", jornada: "CORTA", cantidad: "1" } }));
+                      }}
+                      className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444] self-end"
+                    >+ Agregar</button>
                   </div>
-                )}
-                <button
-                  onClick={() => setJornadasPlan(p => p.map((j, i) => i === ji ? {
-                    ...j, slots: [...j.slots, { id: uid(), rolId: "", rolNombre: "", cantidad: 1, nivel: "AA", jornada: "MEDIA", tarifa: 0 }]
-                  } : j))}
-                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-2 py-1 rounded-lg transition-colors"
-                >
-                  + Agregar técnico
-                </button>
-              </div>
-            ))}
+                </div>
+              );
+            })}
 
             <button
               onClick={() => setJornadasPlan(p => [...p, { id: uid(), fecha: evento.fechaEvento || "", tipo: "OPERACION", slots: [] }])}
