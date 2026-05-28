@@ -4852,10 +4852,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               )}
 
               {(() => {
-                // Compute cotización additional lines FIRST so empty state is aware of them
+                // Compute cotización lines FIRST so empty state is aware of them.
+                // When no inventory is linked (riderEquipos empty) → show ALL cot equipment (PROPIO+EXTERNO+OTRO).
+                // When inventory IS linked → only show EXTERNO+OTRO to avoid duplicating inventory rows.
+                const tiposAMostrar = riderEquipos.length === 0
+                  ? ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "OTRO"]
+                  : ["EQUIPO_EXTERNO", "OTRO"];
                 const cotLineas = (proyecto.cotizacion?.lineas ?? []).filter(
                   (l: { tipo: string; descripcion: string }) =>
-                    (l.tipo === "EQUIPO_EXTERNO" || l.tipo === "OTRO") && !!l.descripcion
+                    tiposAMostrar.includes(l.tipo) && !!l.descripcion
                 ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[];
 
                 if (riderEquipos.length === 0 && cotLineas.length === 0) {
@@ -5094,8 +5099,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     {cotLineas.length > 0 && (
                       <div>
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-t border-[#1a1a1a] flex items-center gap-2">
-                          <span className="text-[10px] text-orange-400/70 font-bold uppercase tracking-widest">Equipos adicionales / Terceros</span>
-                          <span className="text-[10px] text-gray-600">desde cotización · sin verificación de inventario</span>
+                          <span className="text-[10px] text-orange-400/70 font-bold uppercase tracking-widest">
+                            {riderEquipos.length === 0 ? "Equipos de cotización" : "Equipos adicionales / Terceros"}
+                          </span>
+                          <span className="text-[10px] text-gray-600">desde cotización · {cotLineas.length} ítem{cotLineas.length !== 1 ? "s" : ""}</span>
                         </div>
                         {cotLineas.map(l => (
                           <div key={l.id} className="border-b border-[#0d0d0d] last:border-0 px-4 py-3">
@@ -5109,11 +5116,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               </div>
                               <span className="text-gray-400 text-xs shrink-0">×{l.cantidad}</span>
                               <span className={`text-[10px] border px-1.5 py-0.5 rounded shrink-0 ${
-                                l.tipo === "EQUIPO_EXTERNO"
-                                  ? "text-orange-400/70 border-orange-400/20"
-                                  : "text-blue-400/70 border-blue-400/20"
+                                l.tipo === "EQUIPO_PROPIO"
+                                  ? "text-[#B3985B]/80 border-[#B3985B]/30"
+                                  : l.tipo === "EQUIPO_EXTERNO"
+                                    ? "text-orange-400/70 border-orange-400/20"
+                                    : "text-blue-400/70 border-blue-400/20"
                               }`}>
-                                {l.tipo === "EQUIPO_EXTERNO" ? "Tercero" : "Adicional"}
+                                {l.tipo === "EQUIPO_PROPIO" ? "Inventario" : l.tipo === "EQUIPO_EXTERNO" ? "Tercero" : "Adicional"}
                               </span>
                             </div>
                           </div>
