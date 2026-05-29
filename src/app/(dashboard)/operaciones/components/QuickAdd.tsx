@@ -165,6 +165,14 @@ export default function QuickAdd({
     setTimeout(() => titleRef.current?.focus(), 30);
   }, [triggerOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-resize textarea height after every titulo change
+  useEffect(() => {
+    const el = titleRef.current;
+    if (!el) return;
+    el.style.height = "0px";           // collapse first so scrollHeight is accurate
+    el.style.height = el.scrollHeight + "px";
+  }, [titulo]);
+
   // Natural language date detection — only active when no date manually set
   const deteccion = useMemo(() => {
     if (detIgnorada || !titulo || fecha || recurrencia) return null;
@@ -283,12 +291,7 @@ export default function QuickAdd({
           autoFocus
           value={titulo}
           rows={1}
-          onChange={e => {
-            setTitulo(e.target.value);
-            // auto-resize
-            e.target.style.height = "auto";
-            e.target.style.height = e.target.scrollHeight + "px";
-          }}
+          onChange={e => setTitulo(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             if (e.key === "Escape") reset();
@@ -313,7 +316,7 @@ export default function QuickAdd({
             }
           }}
           placeholder={placeholder}
-          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none overflow-hidden"
+          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none"
         />
       </div>
 
