@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
@@ -38,6 +38,9 @@ const PRIO_OPTIONS = [
   { key: "BAJA",    label: "Baja",     color: "#4b5563" },
 ];
 
+// ── Umbral de indentación para detectar "hacer subtarea" (px desde el borde izq del row) ──
+const SUBTASK_INDENT_THRESHOLD = 56;
+
 function formatFecha(iso: string): { label: string; cls: string } {
   const d   = new Date(iso.substring(0, 10) + "T00:00:00");
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
@@ -69,6 +72,7 @@ interface Props {
   onDragStart?:      (id: string) => void;
   onDragEnd?:        () => void;
   onDrop?:           (targetId: string) => void;
+  onReorder?:        (draggedId: string, targetId: string, position: "above" | "below") => void;
   isDragOver?:       boolean;
   isBeingDragged?:   boolean;
   multiSelected?:    boolean;
@@ -76,9 +80,9 @@ interface Props {
   onExtract?:        () => void;
   onExtractChild?:   (tarea: TareaItem) => void;
   onMoveToNoSection?: (id: string) => void;
+  draggingId?:       string | null;
 }
 
-// ── Pequeño botón de acción ─────────────────────────────────────────────────
 function ActionBtn({ title, onClick, children, active }: {
   title: string; onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode; active?: boolean;
@@ -98,18 +102,22 @@ function ActionBtn({ title, onClick, children, active }: {
   );
 }
 
+type DropZone = "above" | "subtask" | "below" | null;
+
 export default function TaskItem({
   tarea, onComplete, onSelect, onDelete, onDateChange,
   onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
-  onDragStart, onDragEnd, onDrop, isDragOver = false, isBeingDragged = false,
+  onDragStart, onDragEnd, onDrop, onReorder,
+  isDragOver = false, isBeingDragged = false,
   multiSelected = false, onMultiSelect,
   onExtract, onExtractChild, onMoveToNoSection,
+  draggingId,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
-  const [dragOver,      setDragOver]      = useState(false);
+  const [dropZone,      setDropZone]      = useState<DropZone>(null);
   const [editingDate,   setEditingDate]   = useState<"fecha" | "fechaVencimiento" | null>(null);
   const [localFecha,    setLocalFecha]    = useState(tarea.fecha            ? tarea.fecha.substring(0, 10)            : "");
   const [localFechaVen, setLocalFechaVen] = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
@@ -121,15 +129,27 @@ export default function TaskItem({
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
 
-  const moreRef          = useRef<HTMLDivElement>(null);
-  const assignRef        = useRef<HTMLDivElement>(null);
-  const mobileAssignRef  = useRef<HTMLDivElement>(null);
-  const proyectoRef      = useRef<HTMLDivElement>(null);
+  const rowRef          = useRef<HTMLDivElement>(null);
+  const moreRef         = useRef<HTMLDivElement>(null);
+  const assignRef       = useRef<HTMLDivElement>(null);
+  const mobileAssignRef = useRef<HTMLDivElement>(null);
+  const proyectoRef     = useRef<HTMLDivElement>(null);
 
   const isCompleted = tarea.estado === "COMPLETADA";
   const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
 
-  // Cerrar dropdowns al hacer click fuera
+  const getDropZone = useCallback((e: React.DragEvent): DropZone => {
+    if (!rowRef.current) return "subtask";
+    const rect  = rowRef.current.getBoundingClientRect();
+    const relY  = e.clientY - rect.top;
+    const relX  = e.clientX - rect.left;
+    const third = rect.height / 3;
+    if (relY < third) return "above";
+    if (relY > rect.height - third) return "below";
+    if (relX > SUBTASK_INDENT_THRESHOLD) return "subtask";
+    return "above";
+  }, []);
+
   useEffect(() => {
     if (!showMore && !showAssign && !showProyecto) return;
     function handle(e: MouseEvent) {
@@ -163,29 +183,43 @@ export default function TaskItem({
     await onComplete(tarea.id);
   }
 
-  const prio    = PRIO[tarea.prioridad] ?? PRIO.BAJA;
-  const fecha   = tarea.fecha            ? formatFecha(tarea.fecha) : null;
-  const fechaVen = tarea.fechaVencimiento ? formatFecha(tarea.fechaVencimiento) : null;
-  const showDrop = dragOver || isDragOver;
+  const prio     = PRIO[tarea.prioridad] ?? PRIO.BAJA;
+  const fecha    = tarea.fecha             ? formatFecha(tarea.fecha)             : null;
+  const fechaVen = tarea.fechaVencimiento  ? formatFecha(tarea.fechaVencimiento)  : null;
+  const showDrop = isDragOver;
 
   const recurrenciaDisplay = (() => {
     if (!tarea.recurrencia) return null;
     try { return formatearRecurrencia(JSON.parse(tarea.recurrencia)); } catch { return null; }
   })();
 
+  const dropIndicatorAbove   = dropZone === "above"   && !isBeingDragged;
+  const dropIndicatorBelow   = dropZone === "below"   && !isBeingDragged;
+  const dropIndicatorSubtask = dropZone === "subtask" && !isBeingDragged;
+
   return (
   <>
+    {dropIndicatorAbove && (
+      <div className="relative h-[2px] mx-3 my-0 pointer-events-none z-10">
+        <div className="absolute inset-0 bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)]" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B3985B] -ml-1 shadow-[0_0_6px_rgba(179,152,91,0.8)]" />
+      </div>
+    )}
+
     <div
+      ref={rowRef}
       role="button" tabIndex={0} aria-selected={isSelected}
       draggable={isDraggable}
       className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
         isBeingDragged ? "opacity-30 scale-[0.98]" : ""
       } ${
-        showDrop
+        dropIndicatorSubtask
+          ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
+          : showDrop
           ? "bg-[#B3985B]/[0.07] ring-2 ring-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5 border-l-2 border-[#B3985B]/70"
           : multiSelected ? "bg-[#B3985B]/[0.07] ring-1 ring-[#B3985B]/30 border-l-2 border-[#B3985B]/50"
-          : isSelected ? "bg-[#111] ring-1 ring-[#B3985B]/20"
-          : hovered  ? "bg-[#0d0d0d]" : ""
+          : isSelected   ? "bg-[#111] ring-1 ring-[#B3985B]/20"
+          : hovered      ? "bg-[#0d0d0d]" : ""
       }`}
       style={{ paddingLeft: depth > 0 ? `${12 + depth * 22}px` : undefined }}
       onMouseEnter={() => setHovered(true)}
@@ -196,12 +230,26 @@ export default function TaskItem({
       }}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
       onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(tarea.id); } : undefined}
-      onDragEnd={isDraggable ? () => { onDragEnd?.(); setDragOver(false); } : undefined}
-      onDragOver={e => { if (!onDrop) return; e.preventDefault(); e.stopPropagation(); if (!isBeingDragged) setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={e => { e.preventDefault(); e.stopPropagation(); setDragOver(false); onDrop?.(tarea.id); }}
+      onDragEnd={isDraggable ? () => { onDragEnd?.(); setDropZone(null); } : undefined}
+      onDragOver={e => {
+        if (!onDrop && !onReorder) return;
+        e.preventDefault(); e.stopPropagation();
+        if (isBeingDragged) return;
+        setDropZone(getDropZone(e));
+      }}
+      onDragLeave={() => setDropZone(null)}
+      onDrop={e => {
+        e.preventDefault(); e.stopPropagation();
+        const zone = dropZone ?? "subtask";
+        setDropZone(null);
+        if (!draggingId || draggingId === tarea.id) return;
+        if (zone === "subtask") {
+          onDrop?.(tarea.id);
+        } else {
+          onReorder?.(draggingId, tarea.id, zone);
+        }
+      }}
     >
-      {/* ── Drag handle (visual indicator only) ───────────────────────── */}
       {isDraggable && (
         <div
           className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 transition-opacity cursor-grab -ml-1"
@@ -216,14 +264,12 @@ export default function TaskItem({
         </div>
       )}
 
-      {/* ── Subtarea drop indicator ────────────────────────────────────── */}
-      {showDrop && !isCompleted && (
+      {dropIndicatorSubtask && !isCompleted && (
         <span className="absolute top-1.5 right-2 flex items-center gap-1 text-[10px] font-semibold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-full px-2 py-0.5 pointer-events-none z-10 select-none">
           ↳ subtarea
         </span>
       )}
 
-      {/* ── Circle checkbox ───────────────────────────────────────────── */}
       {multiSelected ? (
         <div
           onClick={e => { e.stopPropagation(); onMultiSelect?.(tarea.id); }}
@@ -254,7 +300,6 @@ export default function TaskItem({
         </button>
       )}
 
-      {/* ── Content ───────────────────────────────────────────────────── */}
       <div className="flex-1 min-w-0">
         <p className={`text-[15px] leading-snug transition-colors ${isCompleted ? "line-through text-[#333]" : "text-[#d0d0d0]"}`}>
           {tarea.titulo}
@@ -266,7 +311,6 @@ export default function TaskItem({
           </p>
         )}
 
-        {/* Meta row */}
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {showProject && tarea.proyectoTarea && (
@@ -278,12 +322,8 @@ export default function TaskItem({
             )}
 
             {tarea.juntaOrigen && (
-              <a
-                href={`/juntas/${tarea.juntaOrigen.id}/reporte`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 text-[12px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
-                title="Ver reporte de la junta"
-              >
+              <a href={`/juntas/${tarea.juntaOrigen.id}/reporte`} onClick={e => e.stopPropagation()}
+                className="flex items-center gap-1 text-[12px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors">
                 <span>📋</span>
                 <span>
                   {tarea.juntaOrigen.area === "GLOBAL" ? "Global" : tarea.juntaOrigen.area.charAt(0) + tarea.juntaOrigen.area.slice(1).toLowerCase()}
@@ -301,14 +341,11 @@ export default function TaskItem({
                     onClose={() => setEditingDate(null)}
                     autoOpen hideTrigger showClear className="absolute" />
                 )}
-                <button
-                  onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
-                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
-                >
+                <button onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="4" width="18" height="18" rx="2"/>
-                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-                    <line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
                   {formatFecha(localFecha || tarea.fecha!).label}
                 </button>
@@ -323,10 +360,8 @@ export default function TaskItem({
                     onClose={() => setEditingDate(null)}
                     autoOpen hideTrigger showClear className="absolute" />
                 )}
-                <button
-                  onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
-                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}
-                >
+                <button onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
+                  className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fechaVen.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                   </svg>
@@ -344,7 +379,6 @@ export default function TaskItem({
                 {recurrenciaDisplay}
               </span>
             )}
-
 
             {tarea._count.comentarios > 0 && (
               <span className="inline-flex items-center gap-0.5 text-[13px] text-[#444]">
@@ -375,24 +409,16 @@ export default function TaskItem({
               </span>
             )}
 
-            <BadgeDias
-              inicio={tarea.createdAt}
-              fin={tarea.fechaCompletada}
-              tipo="tarea"
-              cerrado={isCompleted}
-              labelCerrado={isCompleted ? "completada" : undefined}
-            />
+            <BadgeDias inicio={tarea.createdAt} fin={tarea.fechaCompletada} tipo="tarea"
+              cerrado={isCompleted} labelCerrado={isCompleted ? "completada" : undefined} />
           </div>
         )}
 
-        {/* ── Expandir subtareas ────────────────────────────────────────── */}
         {subtaskCount > 0 && (
-          <button
-            onClick={toggleSubtareas}
+          <button onClick={toggleSubtareas}
             className={`flex items-center gap-1.5 mt-1.5 text-[12px] font-medium transition-colors ${
               expanded ? "text-[#B3985B]" : "text-[#3a3a3a] hover:text-[#B3985B]"
-            }`}
-          >
+            }`}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
               style={{ transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
               <polyline points="9 18 15 12 9 6"/>
@@ -402,16 +428,11 @@ export default function TaskItem({
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          MÓVIL: solo avatar del asignado
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* MÓVIL */}
       <div className="flex md:hidden items-center shrink-0" ref={mobileAssignRef} onClick={e => e.stopPropagation()}>
         <div className="relative">
-          <button
-            onClick={() => setShowAssign(v => !v)}
-            className="w-7 h-7 rounded-full flex items-center justify-center"
-            title={tarea.asignadoA ? tarea.asignadoA.name : "Asignar"}
-          >
+          <button onClick={() => setShowAssign(v => !v)} className="w-7 h-7 rounded-full flex items-center justify-center"
+            title={tarea.asignadoA ? tarea.asignadoA.name : "Asignar"}>
             {tarea.asignadoA ? (
               <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold">
                 {tarea.asignadoA.name.charAt(0).toUpperCase()}
@@ -436,9 +457,7 @@ export default function TaskItem({
                   Sin asignar
                 </button>
               )}
-              {users.length === 0 && !tarea.asignadoA && (
-                <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>
-              )}
+              {users.length === 0 && !tarea.asignadoA && <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>}
               {users.map(u => (
                 <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
                   className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
@@ -447,9 +466,7 @@ export default function TaskItem({
                   </span>
                   {u.name}
                   {tarea.asignadoA?.id === u.id && (
-                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                   )}
                 </button>
               ))}
@@ -458,85 +475,60 @@ export default function TaskItem({
         </div>
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ESCRITORIO: barra de acciones completa (estilo Todoist)
-      ══════════════════════════════════════════════════════════════════ */}
+      {/* ESCRITORIO */}
       <div className={`hidden md:flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
         onClick={e => e.stopPropagation()}>
 
-        {/* ── Calendario ─────────────────────────────────────── */}
         <span className="relative">
           {editingDate === "fechaVencimiento" && onDateChange && (
-            <DatePicker
-              value={localFechaVen}
+            <DatePicker value={localFechaVen}
               onChange={val => { setLocalFechaVen(val); onDateChange(tarea.id, "fechaVencimiento", val); }}
-              onClose={() => setEditingDate(null)}
-              autoOpen hideTrigger showClear
-              className="absolute right-0 top-8 z-50"
-            />
+              onClose={() => setEditingDate(null)} autoOpen hideTrigger showClear className="absolute right-0 top-8 z-50" />
           )}
-          <ActionBtn
-            title={tarea.fechaVencimiento ? `Vence: ${formatFecha(tarea.fechaVencimiento).label}` : "Agendar fecha"}
-            active={!!tarea.fechaVencimiento}
-            onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}
-          >
+          <ActionBtn title={tarea.fechaVencimiento ? `Vence: ${formatFecha(tarea.fechaVencimiento).label}` : "Agendar fecha"}
+            active={!!tarea.fechaVencimiento} onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
             </svg>
           </ActionBtn>
         </span>
 
-        {/* ── Asignar ────────────────────────────────────────── */}
         <span className="relative" ref={assignRef}>
-          <ActionBtn
-            title={tarea.asignadoA ? `Asignado: ${tarea.asignadoA.name}` : "Asignar"}
-            active={!!tarea.asignadoA}
-            onClick={e => { e.stopPropagation(); setShowAssign(v => !v); setShowMore(false); }}
-          >
+          <ActionBtn title={tarea.asignadoA ? `Asignado: ${tarea.asignadoA.name}` : "Asignar"} active={!!tarea.asignadoA}
+            onClick={e => { e.stopPropagation(); setShowAssign(v => !v); setShowMore(false); }}>
             {tarea.asignadoA ? (
               <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 text-[11px] text-[#B3985B] flex items-center justify-center font-semibold leading-none">
                 {tarea.asignadoA.name.charAt(0).toUpperCase()}
               </span>
             ) : (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
               </svg>
             )}
           </ActionBtn>
-
           {showAssign && (
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
               {tarea.asignadoA && (
-                <button
-                  onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
-                  className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors"
-                >
+                <button onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                  className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                   </svg>
                   Sin asignar
                 </button>
               )}
-              {users.length === 0 && !tarea.asignadoA && (
-                <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>
-              )}
+              {users.length === 0 && !tarea.asignadoA && <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>}
               {users.map(u => (
-                <button key={u.id}
-                  onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
-                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}
-                >
+                <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
                   <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
                     {u.name.charAt(0).toUpperCase()}
                   </span>
                   {u.name}
                   {tarea.asignadoA?.id === u.id && (
-                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
+                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
                   )}
                 </button>
               ))}
@@ -544,75 +536,50 @@ export default function TaskItem({
           )}
         </span>
 
-        {/* ── Proyecto ───────────────────────────────────────── */}
         <span className="relative" ref={proyectoRef}>
-          <ActionBtn
-            title={tarea.proyectoTarea ? tarea.proyectoTarea.nombre : "Asignar proyecto"}
-            active={!!tarea.proyectoTarea}
-            onClick={e => { e.stopPropagation(); setShowProyecto(v => !v); setShowMore(false); setShowAssign(false); }}
-          >
+          <ActionBtn title={tarea.proyectoTarea ? tarea.proyectoTarea.nombre : "Asignar proyecto"} active={!!tarea.proyectoTarea}
+            onClick={e => { e.stopPropagation(); setShowProyecto(v => !v); setShowMore(false); setShowAssign(false); }}>
             {tarea.proyectoTarea ? (
-              <span className="w-4 h-4 rounded-sm shrink-0"
-                style={{ backgroundColor: tarea.proyectoTarea.color ?? "#555" }} />
+              <span className="w-4 h-4 rounded-sm shrink-0" style={{ backgroundColor: tarea.proyectoTarea.color ?? "#555" }} />
             ) : (
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
               </svg>
             )}
           </ActionBtn>
-
           {showProyecto && (
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Proyecto</p>
-              <button
-                onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
-                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${!tarea.proyectoTarea ? "text-[#B3985B]" : "text-[#555] hover:text-[#bbb]"}`}
-              >
+              <button onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
+                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${!tarea.proyectoTarea ? "text-[#B3985B]" : "text-[#555] hover:text-[#bbb]"}`}>
                 <span className="w-3 h-3 rounded-sm bg-[#2a2a2a] shrink-0" />
                 Bandeja de entrada
-                {!tarea.proyectoTarea && (
-                  <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M20 6L9 17l-5-5"/>
-                  </svg>
-                )}
+                {!tarea.proyectoTarea && <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
               </button>
               {projects.map(p => (
-                <button key={p.id}
-                  onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
-                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.proyectoTarea?.id === p.id ? "text-[#B3985B]" : "text-[#ccc] hover:text-white"}`}
-                >
+                <button key={p.id} onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.proyectoTarea?.id === p.id ? "text-[#B3985B]" : "text-[#ccc] hover:text-white"}`}>
                   <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
                   {p.nombre}
-                  {tarea.proyectoTarea?.id === p.id && (
-                    <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M20 6L9 17l-5-5"/>
-                    </svg>
-                  )}
+                  {tarea.proyectoTarea?.id === p.id && <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
                 </button>
               ))}
             </div>
           )}
         </span>
 
-        {/* ── Comentar ───────────────────────────────────────── */}
-        <ActionBtn
-          title={tarea._count.comentarios > 0 ? `${tarea._count.comentarios} comentario${tarea._count.comentarios !== 1 ? "s" : ""}` : "Comentar"}
-          active={tarea._count.comentarios > 0}
-          onClick={() => onSelect(tarea.id)}
-        >
+        <ActionBtn title={tarea._count.comentarios > 0 ? `${tarea._count.comentarios} comentario${tarea._count.comentarios !== 1 ? "s" : ""}` : "Comentar"}
+          active={tarea._count.comentarios > 0} onClick={() => onSelect(tarea.id)}>
           <span className="relative flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
             {tarea._count.comentarios > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 text-[9px] text-[#B3985B] font-bold leading-none">
-                {tarea._count.comentarios}
-              </span>
+              <span className="absolute -top-1.5 -right-1.5 text-[9px] text-[#B3985B] font-bold leading-none">{tarea._count.comentarios}</span>
             )}
           </span>
         </ActionBtn>
 
-        {/* ── Editar ─────────────────────────────────────────── */}
         <ActionBtn title="Editar tarea" onClick={() => onSelect(tarea.id)}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -620,24 +587,17 @@ export default function TaskItem({
           </svg>
         </ActionBtn>
 
-        {/* ── Más opciones (⋮) ───────────────────────────────── */}
         <span className="relative" ref={moreRef}>
-          <ActionBtn
-            title="Más opciones"
-            active={showMore}
-            onClick={e => { e.stopPropagation(); setShowMore(v => !v); setShowAssign(false); }}
-          >
+          <ActionBtn title="Más opciones" active={showMore}
+            onClick={e => { e.stopPropagation(); setShowMore(v => !v); setShowAssign(false); }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="12" cy="5"  r="1" fill="currentColor"/>
               <circle cx="12" cy="12" r="1" fill="currentColor"/>
               <circle cx="12" cy="19" r="1" fill="currentColor"/>
             </svg>
           </ActionBtn>
-
           {showMore && (
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1.5 min-w-[180px]">
-
-              {/* Prioridad */}
               {onPriorityChange && (
                 <>
                   <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-0.5 pb-1.5">Prioridad</p>
@@ -646,12 +606,8 @@ export default function TaskItem({
                       <button key={p.key} title={p.label}
                         onClick={() => { onPriorityChange(tarea.id, p.key); setShowMore(false); }}
                         className={`flex-1 flex items-center justify-center py-1.5 rounded-lg border transition-all ${
-                          tarea.prioridad === p.key
-                            ? "border-current bg-current/10"
-                            : "border-[#2a2a2a] hover:border-current/50 hover:bg-current/5"
-                        }`}
-                        style={{ color: p.color }}
-                      >
+                          tarea.prioridad === p.key ? "border-current bg-current/10" : "border-[#2a2a2a] hover:border-current/50 hover:bg-current/5"
+                        }`} style={{ color: p.color }}>
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
                           <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
                           <line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" strokeWidth="2" fill="none"/>
@@ -662,43 +618,31 @@ export default function TaskItem({
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
-
-              {/* Opciones generales */}
-              <button
-                onClick={() => { onSelect(tarea.id); setShowMore(false); }}
-                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
-              >
+              <button onClick={() => { onSelect(tarea.id); setShowMore(false); }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
                 Abrir detalle
               </button>
-
               <div className="border-t border-[#1f1f1f] my-1" />
-
               {onExtract && (
                 <>
-                  <button
-                    onClick={() => { onExtract(); setShowMore(false); }}
-                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
-                  >
+                  <button onClick={() => { onExtract(); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
-                      <path d="M5 20h14"/>
+                      <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/><path d="M5 20h14"/>
                     </svg>
                     Convertir en tarea independiente
                   </button>
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
-
               {onMoveToNoSection && tarea.seccion && (
                 <>
-                  <button
-                    onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
-                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
-                  >
+                  <button onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
+                    className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
                     </svg>
@@ -707,11 +651,8 @@ export default function TaskItem({
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
-
-              <button
-                onClick={() => { onDelete(tarea.id); setShowMore(false); }}
-                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors"
-              >
+              <button onClick={() => { onDelete(tarea.id); setShowMore(false); }}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6"/>
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
@@ -724,21 +665,23 @@ export default function TaskItem({
       </div>
     </div>
 
-    {/* ── Subtareas expandidas ──────────────────────────────────────── */}
+    {dropIndicatorBelow && (
+      <div className="relative h-[2px] mx-3 my-0 pointer-events-none z-10">
+        <div className="absolute inset-0 bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)]" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B3985B] -ml-1 shadow-[0_0_6px_rgba(179,152,91,0.8)]" />
+      </div>
+    )}
+
     {expanded && (
       <div className="ml-6 border-l border-[#1a1a1a] pl-2 mt-0.5">
         {loadingExp && <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>}
         {subtareasExp.map(sub => (
-          <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1}
-            isSelected={false}
+          <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1} isSelected={false}
             onComplete={onComplete} onSelect={onSelect}
             onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); setSubtaskCount(c => Math.max(0, c - 1)); }}
-            onDateChange={onDateChange}
-            onPriorityChange={onPriorityChange}
-            onAssign={onAssign}
-            onProjectChange={onProjectChange}
-            users={users}
-            projects={projects}
+            onDateChange={onDateChange} onPriorityChange={onPriorityChange}
+            onAssign={onAssign} onProjectChange={onProjectChange}
+            users={users} projects={projects}
             onExtract={async () => {
               const res = await fetch(`/api/tareas/${sub.id}`, {
                 method: "PATCH", headers: { "Content-Type": "application/json" },

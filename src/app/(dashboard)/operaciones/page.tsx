@@ -530,6 +530,27 @@ export default function OperacionesPage() {
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Reordenar tareas (above / below) sin hacer subtarea ─────────────────
+  const reorderTask = useCallback((draggedId: string, targetId: string, position: "above" | "below") => {
+    if (draggedId === targetId) return;
+    const reorder = (arr: TareaItem[]): TareaItem[] => {
+      const dragged = arr.find(t => t.id === draggedId);
+      if (!dragged) return arr;
+      const without = arr.filter(t => t.id !== draggedId);
+      const targetIdx = without.findIndex(t => t.id === targetId);
+      if (targetIdx === -1) return arr;
+      const insertAt = position === "above" ? targetIdx : targetIdx + 1;
+      return [...without.slice(0, insertAt), dragged, ...without.slice(insertAt)];
+    };
+    setTareas(reorder);
+    setProyectoDetalle(prev => prev ? {
+      ...prev,
+      tareas: reorder(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: reorder(s.tareas) })),
+    } : null);
+    setDraggingId(null);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const moveToSection = useCallback((taskId: string, seccionId: string) => {
     setProyectoDetalle(prev => {
       if (!prev) return null;
@@ -1532,6 +1553,8 @@ export default function OperacionesPage() {
                         isBeingDragged={draggingId === t.id}
                         onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                         onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                        draggingId={draggingId}
+                        onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                         multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                         onExtractChild={handleExtractChild}
                       />
@@ -1552,6 +1575,8 @@ export default function OperacionesPage() {
                     isBeingDragged={draggingId === t.id}
                     onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                     onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                     draggingId={draggingId}
+                     onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                     multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                   />
                 ))
@@ -1644,6 +1669,8 @@ export default function OperacionesPage() {
                           isBeingDragged={draggingId === t.id}
                           onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                           onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
+                          draggingId={draggingId}
+                          onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                           multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                           onExtractChild={handleExtractChild}
                         />
