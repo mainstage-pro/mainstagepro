@@ -522,10 +522,15 @@ export default function OperacionesPage() {
     });
     // Remove child from flat list — it now lives as subtask inside parent
     const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== childId);
-    setTareas(remove);
+    // Increment parent's subtask count so the expand button appears immediately
+    const bumpParent = (arr: TareaItem[]) => arr.map(t =>
+      t.id === parentId ? { ...t, _count: { ...t._count, subtareas: t._count.subtareas + 1 } } : t
+    );
+    setTareas(prev => bumpParent(remove(prev)));
     setProyectoDetalle(prev => prev ? {
-      ...prev, tareas: remove(prev.tareas),
-      secciones: prev.secciones.map(s => ({ ...s, tareas: remove(s.tareas) })),
+      ...prev,
+      tareas: bumpParent(remove(prev.tareas)),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: bumpParent(remove(s.tareas)) })),
     } : null);
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
