@@ -139,14 +139,10 @@ export default function TaskItem({
   const isCompleted = tarea.estado === "COMPLETADA";
   const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
 
-  const getDropZone = useCallback((e: React.DragEvent): DropZone => {
-    if (!rowRef.current) return "subtask";
-    const rect   = rowRef.current.getBoundingClientRect();
-    const relY   = e.clientY - rect.top;
-    const edgePx = Math.min(8, rect.height * 0.28); // thin top/bottom strip
-    if (relY < edgePx) return "above";
-    if (relY > rect.height - edgePx) return "below";
-    return "subtask"; // todo el centro = subtarea (sin umbral horizontal)
+  const getDropZone = useCallback((_e: React.DragEvent): DropZone => {
+    // The entire row is always a subtask drop target.
+    // Reorder (above/below) is handled by separate gap zones between rows.
+    return "subtask";
   }, []);
 
   useEffect(() => {
@@ -198,12 +194,6 @@ export default function TaskItem({
 
   return (
   <>
-    {dropIndicatorAbove && (
-      <div className="relative h-[2px] mx-3 my-0 pointer-events-none z-10">
-        <div className="absolute inset-0 bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)]" />
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B3985B] -ml-1 shadow-[0_0_6px_rgba(179,152,91,0.8)]" />
-      </div>
-    )}
 
     <div
       ref={rowRef}
@@ -243,14 +233,9 @@ export default function TaskItem({
       }}
       onDrop={e => {
         e.preventDefault(); e.stopPropagation();
-        const zone = dropZone ?? "subtask";
         setDropZone(null);
         if (!draggingId || draggingId === tarea.id) return;
-        if (zone === "subtask") {
-          onDrop?.(tarea.id);
-        } else {
-          onReorder?.(draggingId, tarea.id, zone);
-        }
+        onDrop?.(tarea.id); // whole row = always make subtask
       }}
     >
       {isDraggable && (
@@ -669,8 +654,17 @@ export default function TaskItem({
     </div>
 
     {dropIndicatorBelow && (
-      <div className="relative h-[2px] mx-3 my-0 pointer-events-none z-10">
-        <div className="absolute inset-0 bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)]" />
+      <div
+        className="relative h-3 mx-3 -mt-1 z-10 cursor-pointer"
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+        onDrop={e => {
+          e.preventDefault(); e.stopPropagation();
+          setDropZone(null);
+          if (!draggingId || draggingId === tarea.id) return;
+          onReorder?.(draggingId, tarea.id, "below");
+        }}
+      >
+        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)]" />
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B3985B] -ml-1 shadow-[0_0_6px_rgba(179,152,91,0.8)]" />
       </div>
     )}
