@@ -148,6 +148,8 @@ export default function QuickAdd({
   // ── Paste-as-tasks: derived from textarea value (no interception needed)
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const descRef  = useRef<HTMLTextAreaElement>(null);
+  // pastedLines: lines read directly from clipboard on paste event
+  const [pastedLines, setPastedLines] = useState<string[] | null>(null);
 
   // Strip common list prefixes: "1. ", "- ", "* ", "• ", "[ ] ", "[x] ", etc.
   function cleanLine(raw: string): string {
@@ -178,6 +180,9 @@ export default function QuickAdd({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [titulo]);
 
+  // Combined: clipboard-parsed (paste) OR textarea-typed multiline
+  const detectedLines = pastedLines ?? listLines;
+
   const prio     = PRIORIDADES.find(p => p.key === prioridad)!;
   const areaDef  = AREAS.find(a => a.key === area)!;
   const recLabel = recurrencia
@@ -190,7 +195,7 @@ export default function QuickAdd({
     setTitulo(""); setDescripcion(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
     setProyectoSel(proyectoTareaId); setAsignadoSel(null);
     setRecTexto(""); setRecurrencia(null); setRecError("");
-    setPanel(null); setDetIgnorada(false);
+    setPanel(null); setDetIgnorada(false); setPastedLines(null);
   }
 
   function reset() {
@@ -223,8 +228,8 @@ export default function QuickAdd({
   }
 
   function submitAll() {
-    if (!listLines) return;
-    listLines.forEach(line => {
+    if (!detectedLines) return;
+    detectedLines.forEach(line => {
       onAdd({
         titulo: line,
         descripcion: null,
@@ -292,6 +297,21 @@ export default function QuickAdd({
               descRef.current?.focus();
             }
           }}
+          onPaste={e => {
+            // Read raw clipboard text to detect lines (works even if textarea collapses newlines)
+            const text = e.clipboardData.getData("text");
+            const lines = text
+              .split(/\r?\n|\r|\u2028|\u2029/)
+              .map(cleanLine)
+              .filter(l => l.length > 0);
+            if (lines.length >= 2) {
+              // Don't prevent default — let text paste normally into textarea
+              // Just store the parsed lines for the banner
+              setPastedLines(lines);
+            } else {
+              setPastedLines(null);
+            }
+          }}
           placeholder={placeholder}
           className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none overflow-hidden"
         />
@@ -331,7 +351,7 @@ export default function QuickAdd({
       )}
 
       {/* ── List detected banner ─────────────────────────────────────────────── */}
-      {listLines && (
+      {detectedLines && (
         <div className="mx-4 mb-2 rounded-lg border border-[#B3985B]/20 bg-[#B3985B]/5 overflow-hidden">
           {/* Header row */}
           <div className="flex items-center justify-between px-3 py-2">
@@ -346,13 +366,13 @@ export default function QuickAdd({
                 </svg>
               </span>
               <p className="text-[12px] text-[#B3985B] font-medium">
-                Se detectaron {listLines.length} tareas
+                Se detectaron {detectedLines.length} tareas
               </p>
             </div>
           </div>
           {/* Preview (scrollable) */}
           <div className="border-t border-[#B3985B]/10 max-h-32 overflow-y-auto">
-            {listLines.map((line, i) => (
+            {detectedLines.map((line, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-1 border-b border-[#B3985B]/[0.07] last:border-0">
                 <span className="w-[10px] h-[10px] shrink-0 rounded-full border border-[#B3985B]/30" />
                 <span className="text-[12px] text-[#999] leading-snug truncate">{line}</span>
@@ -368,7 +388,7 @@ export default function QuickAdd({
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              Agregar {listLines.length} tareas
+              Agregar {detectedLines.length} tareas
             </button>
             <button
               onClick={submit}
