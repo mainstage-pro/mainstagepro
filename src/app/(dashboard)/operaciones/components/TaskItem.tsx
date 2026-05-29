@@ -129,6 +129,8 @@ export default function TaskItem({
   const [showMore,      setShowMore]      = useState(false);
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
+  const [subtaskDraggingId, setSubtaskDraggingId] = useState<string | null>(null);
+  const [extractDropOver,   setExtractDropOver]   = useState(false);
 
   const rowRef          = useRef<HTMLDivElement>(null);
   const moreRef         = useRef<HTMLDivElement>(null);
@@ -671,6 +673,38 @@ export default function TaskItem({
 
     {expanded && (
       <div className="ml-6 border-l border-[#1a1a1a] pl-2 mt-0.5">
+        {/* ── Drop zone: extraer subtarea ── */}
+        {subtaskDraggingId && (
+          <div
+            onDragOver={e => { e.preventDefault(); e.stopPropagation(); setExtractDropOver(true); }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setExtractDropOver(false); }}
+            onDrop={async e => {
+              e.preventDefault(); e.stopPropagation();
+              const id = subtaskDraggingId;
+              setSubtaskDraggingId(null); setExtractDropOver(false);
+              const res = await fetch(`/api/tareas/${id}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ parentId: null }),
+              });
+              if (!res.ok) return;
+              const sub = subtareasExp.find(s => s.id === id);
+              setSubtareasExp(prev => prev.filter(s => s.id !== id));
+              setSubtaskCount(c => Math.max(0, c - 1));
+              if (sub) onExtractChild?.({ ...sub, seccion: null });
+            }}
+            className={`flex items-center justify-center gap-1.5 h-8 rounded-lg border-2 border-dashed mb-2 text-[11px] font-medium transition-all select-none ${
+              extractDropOver
+                ? "border-[#B3985B]/60 bg-[#B3985B]/[0.07] text-[#B3985B]"
+                : "border-[#1e1e1e] text-[#2a2a2a]"
+            }`}
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
+            </svg>
+            {extractDropOver ? "Soltar para extraer como tarea independiente" : "↑ Arrastra aquí para sacar la subtarea"}
+          </div>
+        )}
+
         {loadingExp && <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>}
         {subtareasExp.map(sub => (
           <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1} isSelected={false}
@@ -679,6 +713,9 @@ export default function TaskItem({
             onDateChange={onDateChange} onPriorityChange={onPriorityChange}
             onAssign={onAssign} onProjectChange={onProjectChange}
             users={users} projects={projects}
+            draggable
+            onDragStart={id => setSubtaskDraggingId(id)}
+            onDragEnd={() => { setSubtaskDraggingId(null); setExtractDropOver(false); }}
             onExtract={async () => {
               const res = await fetch(`/api/tareas/${sub.id}`, {
                 method: "PATCH", headers: { "Content-Type": "application/json" },
