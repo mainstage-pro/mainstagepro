@@ -125,6 +125,7 @@ export default function TaskItem({
   const [subtareasExp,  setSubtareasExp]  = useState<TareaItem[]>([]);
   const [loadingExp,    setLoadingExp]    = useState(false);
   const [subtaskCount,  setSubtaskCount]  = useState(tarea._count.subtareas);
+  useEffect(() => { setSubtaskCount(tarea._count.subtareas); }, [tarea._count.subtareas]);
   const [showMore,      setShowMore]      = useState(false);
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
@@ -140,14 +141,12 @@ export default function TaskItem({
 
   const getDropZone = useCallback((e: React.DragEvent): DropZone => {
     if (!rowRef.current) return "subtask";
-    const rect  = rowRef.current.getBoundingClientRect();
-    const relY  = e.clientY - rect.top;
-    const relX  = e.clientX - rect.left;
-    const third = rect.height / 3;
-    if (relY < third) return "above";
-    if (relY > rect.height - third) return "below";
-    if (relX > SUBTASK_INDENT_THRESHOLD) return "subtask";
-    return "above";
+    const rect   = rowRef.current.getBoundingClientRect();
+    const relY   = e.clientY - rect.top;
+    const edgePx = Math.min(8, rect.height * 0.28); // thin top/bottom strip
+    if (relY < edgePx) return "above";
+    if (relY > rect.height - edgePx) return "below";
+    return "subtask"; // todo el centro = subtarea (sin umbral horizontal)
   }, []);
 
   useEffect(() => {
@@ -237,7 +236,11 @@ export default function TaskItem({
         if (isBeingDragged) return;
         setDropZone(getDropZone(e));
       }}
-      onDragLeave={() => setDropZone(null)}
+      onDragLeave={e => {
+        // Only reset if cursor truly left the row (not just entered a child element)
+        if (rowRef.current?.contains(e.relatedTarget as Node)) return;
+        setDropZone(null);
+      }}
       onDrop={e => {
         e.preventDefault(); e.stopPropagation();
         const zone = dropZone ?? "subtask";
