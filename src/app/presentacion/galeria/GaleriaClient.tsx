@@ -1,52 +1,63 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const GOLD = "#B3985B";
-const DARK = "#080808";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
 
-// ─── Gallery data ──────────────────────────────────────────────────────────────
-const MUSICALES = [
-  { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Producción completa en vivo" },
-  { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
-  { src: "/images/presentacion/musicales/Musicales-076.jpg",                    caption: "DJ Set · Equipo profesional" },
-  { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "Festival · Guanajuato" },
-  { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "Producción de luz · Efectos especiales" },
-  { src: "/images/presentacion/musicales/Afrodise-59.jpg",                      caption: "Stage completo · Noche" },
-  { src: "/images/presentacion/musicales/DSC07491.jpg",                         caption: "En vivo · Operación técnica" },
-  { src: "/images/presentacion/musicales/Musicales-126.jpg",                    caption: "Show · Producción audiovisual" },
-];
+// ─── Data ──────────────────────────────────────────────────────────────────────
+const CATEGORIAS = [
+  {
+    id: "musicales",
+    label: "Eventos Musicales",
+    sub: "Conciertos · Festivales · DJ Sets · Shows en vivo",
+    cover: "/images/presentacion/musicales/Musicales-076.jpg",
+    emoji: "🎵",
+    fotos: [
+      { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Producción completa en vivo" },
+      { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
+      { src: "/images/presentacion/musicales/Musicales-076.jpg",                    caption: "DJ Set · Equipo profesional" },
+      { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "Festival · Guanajuato" },
+      { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "Producción de luz · Efectos especiales" },
+      { src: "/images/presentacion/musicales/Afrodise-59.jpg",                      caption: "Stage completo · Noche" },
+      { src: "/images/presentacion/musicales/DSC07491.jpg",                         caption: "En vivo · Operación técnica" },
+      { src: "/images/presentacion/musicales/Musicales-126.jpg",                    caption: "Show · Producción audiovisual" },
+    ],
+  },
+  {
+    id: "sociales",
+    label: "Eventos Sociales",
+    sub: "Bodas · XV Años · Celebraciones privadas",
+    cover: "/images/presentacion/sociales/s-boda-elegante.jpg",
+    emoji: "🥂",
+    fotos: [
+      { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Boda · Producción exterior elegante" },
+      { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "DJ · Ambiente de salón" },
+      { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Hacienda · Iluminación dramática" },
+      { src: "/images/presentacion/sociales/s-boda-colonial.jpg",   caption: "Boda · Venue colonial" },
+      { src: "/images/presentacion/sociales/s-piano-pista.jpg",     caption: "Piano · Pista espejada" },
+      { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg",  caption: "Vista aérea · Iluminación completa" },
+    ],
+  },
+  {
+    id: "empresariales",
+    label: "Eventos Empresariales",
+    sub: "Conferencias · Lanzamientos · Corporativos",
+    cover: "/images/presentacion/empresariales/e-auditorio.jpg",
+    emoji: "🏢",
+    fotos: [
+      { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
+      { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Sala · Conferencia profesional" },
+      { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Carpa · Pantalla LED exterior" },
+      { src: "/images/presentacion/empresariales/e-networking.jpg",       caption: "Networking · Ambiente corporativo" },
+      { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",    caption: "Inauguración · Iluminación arquitectónica" },
+      { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección artística · Evento exclusivo" },
+    ],
+  },
+] as const;
 
-const SOCIALES = [
-  { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Boda · Producción exterior elegante" },
-  { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "DJ · Ambiente de salón" },
-  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Hacienda · Iluminación dramática" },
-  { src: "/images/presentacion/sociales/s-boda-colonial.jpg",   caption: "Boda · Venue colonial" },
-  { src: "/images/presentacion/sociales/s-piano-pista.jpg",     caption: "Piano · Pista espejada" },
-  { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg",  caption: "Vista aérea · Iluminación completa" },
-];
-
-const EMPRESARIALES = [
-  { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
-  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Sala de pantallas · Conferencia" },
-  { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Carpa · Pantalla LED exterior" },
-  { src: "/images/presentacion/empresariales/e-networking.jpg",       caption: "Networking · Ambiente corporativo" },
-  { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",    caption: "Inauguración · Iluminación arquitectónica" },
-  { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección artística · Evento exclusivo" },
-];
+type CatId = typeof CATEGORIAS[number]["id"];
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
-function useReveal(threshold = 0.12) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [vis, setVis] = useState(false);
-  useEffect(() => {
-    const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect(); } }, { threshold });
-    obs.observe(el); return () => obs.disconnect();
-  }, [threshold]);
-  return { ref, vis };
-}
-
 function useScrollHeader() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -57,134 +68,283 @@ function useScrollHeader() {
   return scrolled;
 }
 
+function useReveal(threshold = 0.1) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVis(true); obs.disconnect(); } }, { threshold });
+    obs.observe(el); return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, vis };
+}
+
 function R({ children, delay = 0, className = "" }: { children: React.ReactNode; delay?: number; className?: string }) {
   const { ref, vis } = useReveal();
   return (
-    <div ref={ref} className={className}
-         style={{
-           transitionDelay: `${delay}ms`,
-           opacity: vis ? 1 : 0,
-           transform: vis ? "translateY(0)" : "translateY(32px)",
-           transition: "opacity 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1)",
-         }}>
+    <div ref={ref} className={className} style={{
+      transitionDelay: `${delay}ms`,
+      opacity: vis ? 1 : 0,
+      transform: vis ? "translateY(0)" : "translateY(28px)",
+      transition: "opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1)",
+    }}>
       {children}
     </div>
   );
 }
 
-// ─── Cinematic Gallery ────────────────────────────────────────────────────────
-function CinematicGallery({ photos }: { photos: { src: string; caption: string }[] }) {
-  const [idx, setIdx]           = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [leaving, setLeaving]   = useState(false);
-  const DURATION = 5500;
+// ─── Lightbox ─────────────────────────────────────────────────────────────────
+function Lightbox({
+  fotos,
+  startIdx,
+  onClose,
+}: {
+  fotos: readonly { src: string; caption: string }[];
+  startIdx: number;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(startIdx);
+
+  const prev = useCallback(() => setIdx(i => (i - 1 + fotos.length) % fotos.length), [fotos.length]);
+  const next = useCallback(() => setIdx(i => (i + 1) % fotos.length), [fotos.length]);
 
   useEffect(() => {
-    setProgress(0); setLeaving(false);
-    const start = Date.now();
-    const iv = setInterval(() => {
-      const p = Math.min(1, (Date.now() - start) / DURATION);
-      setProgress(p);
-      if (p >= 1) {
-        clearInterval(iv);
-        setLeaving(true);
-        setTimeout(() => setIdx(i => (i + 1) % photos.length), 900);
-      }
-    }, 40);
-    return () => clearInterval(iv);
-  }, [idx, photos.length]);
-
-  // Suppress unused var warning
-  void leaving;
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft")  prev();
+      if (e.key === "ArrowRight") next();
+      if (e.key === "Escape")     onClose();
+    };
+    window.addEventListener("keydown", fn);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", fn); document.body.style.overflow = ""; };
+  }, [prev, next, onClose]);
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: "72vh", minHeight: "480px" }}>
-      {photos.map((p, i) => {
-        const isActive = i === idx;
-        return (
-          <div key={i} className="absolute inset-0"
-               style={{ opacity: isActive ? 1 : 0, transition: isActive ? "opacity 1.6s ease" : "opacity 1s ease", zIndex: isActive ? 2 : 0 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.src} alt={p.caption} draggable={false}
-                 className="w-full h-full object-cover"
-                 style={{ animation: isActive ? "kenBurns 10s ease forwards" : "none" }} />
-          </div>
-        );
-      })}
-      <div className="absolute inset-0 pointer-events-none"
-           style={{ background: "linear-gradient(to top, rgba(8,8,8,0.7) 0%, rgba(8,8,8,0.1) 40%, transparent 100%)", zIndex: 3 }} />
-      <div className="absolute bottom-0 left-0 right-0 px-8 sm:px-16 pb-7" style={{ zIndex: 4 }}>
-        <div className="flex items-end justify-between mb-4">
-          <p className="text-white/50 text-sm tracking-wide">{photos[idx].caption}</p>
-          <p className="text-white/20 text-xs font-mono">{String(idx + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}</p>
-        </div>
-        <div className="relative h-px w-full bg-white/10">
-          <div className="absolute inset-y-0 left-0 bg-[#B3985B]"
-               style={{ width: `${progress * 100}%`, transition: "width 0.08s linear" }} />
-        </div>
-      </div>
-      {/* Dots */}
-      <div className="absolute top-6 right-8 flex gap-2.5 items-center" style={{ zIndex: 4 }}>
-        {photos.map((_, i) => (
-          <button key={i} onClick={() => setIdx(i)}
-                  className="rounded-full transition-all duration-300"
-                  style={{ width: i === idx ? "22px" : "6px", height: "6px", background: i === idx ? GOLD : "rgba(255,255,255,0.2)" }} />
-        ))}
-      </div>
-      {/* Prev / Next */}
-      <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 pointer-events-none" style={{ zIndex: 4 }}>
-        <button className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
-                onClick={() => setIdx(i => (i - 1 + photos.length) % photos.length)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+    <div
+      className="fixed inset-0 z-[999] flex flex-col"
+      style={{ background: "rgba(4,4,4,0.97)", backdropFilter: "blur(12px)" }}
+    >
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-6 py-4 shrink-0">
+        <p className="text-white/30 text-xs font-mono tracking-widest">
+          {String(idx + 1).padStart(2, "0")} / {String(fotos.length).padStart(2, "0")}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 transition-all"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
         </button>
-        <button className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
-                onClick={() => setIdx(i => (i + 1) % photos.length)}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+
+      {/* Photo + arrows */}
+      <div className="flex-1 flex items-center justify-center relative min-h-0 px-4 pb-4">
+        <button
+          onClick={prev}
+          className="absolute left-4 z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
+
+        {/* Image */}
+        <div className="w-full h-full flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            key={fotos[idx].src}
+            src={fotos[idx].src}
+            alt={fotos[idx].caption}
+            draggable={false}
+            className="max-w-full max-h-full object-contain rounded-lg"
+            style={{
+              maxHeight: "calc(100vh - 160px)",
+              animation: "lightboxIn 0.3s cubic-bezier(0.16,1,0.3,1)",
+            }}
+          />
+        </div>
+
+        <button
+          onClick={next}
+          className="absolute right-4 z-10 w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-110"
+          style={{ background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.1)" }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+
+      {/* Caption + dots */}
+      <div className="shrink-0 pb-6 px-6 text-center space-y-3">
+        <p className="text-white/50 text-sm">{fotos[idx].caption}</p>
+        <div className="flex items-center justify-center gap-2">
+          {fotos.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIdx(i)}
+              className="rounded-full transition-all duration-300"
+              style={{ width: i === idx ? "22px" : "6px", height: "6px", background: i === idx ? GOLD : "rgba(255,255,255,0.2)" }}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Gallery Section ──────────────────────────────────────────────────────────
-function GallerySection({
-  id,
-  label,
-  title,
-  photos,
-  description,
+// ─── Category Card ─────────────────────────────────────────────────────────────
+function CatCard({
+  cat,
+  active,
+  onClick,
 }: {
-  id: string;
-  label: string;
-  title: string;
-  photos: { src: string; caption: string }[];
-  description: string;
+  cat: typeof CATEGORIAS[number];
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <section id={id} className="pt-28 pb-0">
-      <div className="max-w-6xl mx-auto px-6 pb-12">
-        <R>
-          <p className="text-[#B3985B] text-xs font-medium tracking-[0.32em] uppercase mb-3">{label}</p>
-          <h2 className="font-bold text-white leading-[1.05] mb-4"
-              style={{ fontSize: "clamp(1.9rem, 4vw, 3.2rem)", letterSpacing: "-0.025em" }}>
-            {title}
-          </h2>
-          <p className="text-white/35 text-sm max-w-lg leading-relaxed">{description}</p>
-        </R>
+    <button
+      onClick={onClick}
+      className="relative overflow-hidden group cursor-pointer text-left w-full"
+      style={{
+        height: "60vh",
+        minHeight: "360px",
+        borderRadius: "20px",
+        border: active ? `2px solid ${GOLD}` : "2px solid rgba(255,255,255,0.06)",
+        transition: "border-color 0.4s ease, transform 0.4s ease",
+        transform: active ? "scale(1.02)" : "scale(1)",
+      }}
+    >
+      {/* Background photo */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={cat.cover}
+        alt={cat.label}
+        draggable={false}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        style={{ transform: active ? "scale(1.05)" : undefined }}
+      />
+
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 transition-opacity duration-500"
+        style={{
+          background: active
+            ? "linear-gradient(to top, rgba(6,6,6,0.85) 0%, rgba(6,6,6,0.4) 50%, rgba(6,6,6,0.2) 100%)"
+            : "linear-gradient(to top, rgba(6,6,6,0.88) 0%, rgba(6,6,6,0.5) 55%, rgba(6,6,6,0.25) 100%)",
+        }}
+      />
+
+      {/* Gold top border line (active) */}
+      {active && (
+        <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: GOLD }} />
+      )}
+
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-8">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-3xl">{cat.emoji}</span>
+          {active && (
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
+              style={{ background: GOLD, color: "#000" }}
+            >
+              Viendo
+            </span>
+          )}
+        </div>
+        <h3
+          className="font-bold text-white leading-tight mb-2"
+          style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.8rem)", letterSpacing: "-0.02em" }}
+        >
+          {cat.label}
+        </h3>
+        <p className="text-white/40 text-xs tracking-wide mb-4">{cat.sub}</p>
+        <div
+          className="inline-flex items-center gap-2 text-xs font-semibold transition-all duration-300"
+          style={{ color: active ? GOLD : "rgba(255,255,255,0.4)" }}
+        >
+          {active ? "← Ver miniaturas abajo" : `Ver ${cat.fotos.length} fotos →`}
+        </div>
       </div>
-      <CinematicGallery photos={photos} />
-    </section>
+    </button>
+  );
+}
+
+// ─── Thumbnail Grid ────────────────────────────────────────────────────────────
+function ThumbnailGrid({
+  fotos,
+  onOpen,
+}: {
+  fotos: readonly { src: string; caption: string }[];
+  onOpen: (i: number) => void;
+}) {
+  return (
+    <div
+      className="grid gap-3"
+      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}
+    >
+      {fotos.map((f, i) => (
+        <button
+          key={f.src}
+          onClick={() => onOpen(i)}
+          className="relative overflow-hidden group rounded-xl cursor-pointer"
+          style={{
+            aspectRatio: "4/3",
+            border: "1px solid rgba(255,255,255,0.06)",
+            animation: `thumbIn 0.45s cubic-bezier(0.16,1,0.3,1) both`,
+            animationDelay: `${i * 55}ms`,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={f.src}
+            alt={f.caption}
+            draggable={false}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          {/* Hover overlay */}
+          <div className="absolute inset-0 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+               style={{ background: "linear-gradient(to top, rgba(6,6,6,0.85) 0%, transparent 60%)" }}>
+            <div className="p-4">
+              <p className="text-white text-xs font-medium leading-snug">{f.caption}</p>
+              <p className="text-white/40 text-[10px] mt-1">Click para abrir →</p>
+            </div>
+          </div>
+          {/* Always-visible number */}
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-mono text-white/60"
+               style={{ background: "rgba(0,0,0,0.5)" }}>
+            {String(i + 1).padStart(2, "0")}
+          </div>
+        </button>
+      ))}
+    </div>
   );
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function GaleriaClient() {
-  const scrolled = useScrollHeader();
+  const scrolled      = useScrollHeader();
+  const [active, setActive]   = useState<CatId | null>(null);
+  const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
+  const galleryRef    = useRef<HTMLDivElement>(null);
+
+  const activeCat = CATEGORIAS.find(c => c.id === active) ?? null;
+
+  function selectCat(id: CatId) {
+    if (active === id) {
+      setActive(null);
+    } else {
+      setActive(id);
+      // Scroll to gallery after short delay
+      setTimeout(() => {
+        galleryRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    }
+  }
 
   return (
-    <div className="text-white min-h-screen" style={{ backgroundColor: DARK, fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
+    <div className="text-white min-h-screen" style={{ backgroundColor: "#080808", fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       <style>{`
         @keyframes kenBurns {
           from { transform: scale(1) translate(0, 0); }
@@ -194,11 +354,28 @@ export default function GaleriaClient() {
           from { opacity: 0; transform: translateY(28px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes thumbIn {
+          from { opacity: 0; transform: scale(0.93) translateY(16px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes lightboxIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to   { opacity: 1; transform: scale(1); }
+        }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #080808; }
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
+
+      {/* ── Lightbox ── */}
+      {lightbox && activeCat && (
+        <Lightbox
+          fotos={activeCat.fotos}
+          startIdx={lightbox.idx}
+          onClose={() => setLightbox(null)}
+        />
+      )}
 
       {/* ── Nav ── */}
       <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
@@ -227,92 +404,104 @@ export default function GaleriaClient() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "55vh", minHeight: "320px" }}>
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/presentacion/musicales/Musicales-076.jpg"
-               alt="Galería de eventos Mainstage Pro" draggable={false}
+               alt="Galería Mainstage Pro" draggable={false}
                className="w-full h-full object-cover"
                style={{ animation: "kenBurns 18s ease forwards" }} />
           <div className="absolute inset-0"
-               style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.3) 0%, rgba(8,8,8,0.55) 40%, rgba(8,8,8,0.92) 75%, #080808 100%)" }} />
+               style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.6) 50%, #080808 100%)" }} />
         </div>
-
-        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-          <p className="text-[#B3985B] text-xs font-medium tracking-[0.4em] uppercase mb-8"
+        <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
+          <p className="text-[#B3985B] text-xs font-medium tracking-[0.4em] uppercase mb-6"
              style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
             GALERÍA DE EVENTOS
           </p>
-          <h1 className="font-bold text-white leading-[1.02]"
+          <h1 className="font-bold text-white leading-tight"
               style={{
-                fontSize: "clamp(2.6rem, 7.5vw, 6.5rem)",
+                fontSize: "clamp(2.4rem, 6vw, 5rem)",
                 letterSpacing: "-0.03em",
                 animation: "fadeUp 0.95s ease forwards 0.4s",
                 opacity: 0,
               }}>
             Nuestro trabajo,<br />
-            <span style={{ color: "rgba(255,255,255,0.45)" }}>en imágenes.</span>
+            <span style={{ color: "rgba(255,255,255,0.4)" }}>en imágenes.</span>
           </h1>
-          <p className="text-white/45 mt-8 leading-relaxed max-w-xl mx-auto"
-             style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)", animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
-            Musicales, sociales y empresariales. Cada evento con la producción técnica que merece.
+          <p className="text-white/40 mt-5 text-sm"
+             style={{ animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
+            Selecciona el tipo de evento que quieres explorar.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-5"
-               style={{ animation: "fadeUp 0.95s ease forwards 0.85s", opacity: 0 }}>
-            <a href="#musicales"
-               className="px-9 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
-               style={{ background: GOLD }}>
-              Ver galería
-            </a>
-            <a href="#contacto" className="text-white/35 text-sm hover:text-white/60 transition-colors">
-              Contactar →
-            </a>
-          </div>
-        </div>
-
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20">
-          <div className="w-px h-12 bg-gradient-to-b from-white/60 to-transparent mx-auto" />
         </div>
       </section>
 
-      {/* ── Musicales ── */}
-      <GallerySection
-        id="musicales"
-        label="Eventos musicales"
-        title="Conciertos, festivales y DJ sets."
-        description="Audio, iluminación y video para shows en vivo. Rider cubierto antes de que llegue el artista."
-        photos={MUSICALES}
-      />
-
-      {/* ── Sociales ── */}
-      <GallerySection
-        id="sociales"
-        label="Eventos sociales"
-        title="Bodas, XV años y celebraciones privadas."
-        description="La producción técnica que hace memorables los momentos que importan. Discreta, coordinada y perfecta."
-        photos={SOCIALES}
-      />
-
-      {/* ── Empresariales ── */}
-      <GallerySection
-        id="empresariales"
-        label="Eventos empresariales"
-        title="Conferencias, lanzamientos y corporativos."
-        description="La técnica invisible que hace ver bien a tu empresa. Audio claro, pantallas que no fallan."
-        photos={EMPRESARIALES}
-      />
-
-      {/* ── Contacto ── */}
-      <section id="contacto" className="py-32 px-6" style={{ backgroundColor: "#060606" }}>
-        <div className="max-w-2xl mx-auto text-center">
+      {/* ── Category selector ── */}
+      <section className="py-16 px-6">
+        <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Cuéntanos tu evento</p>
+            <p className="text-white/20 text-xs uppercase tracking-widest mb-8 text-center">
+              — Elige una categoría —
+            </p>
+          </R>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {CATEGORIAS.map((cat, i) => (
+              <R key={cat.id} delay={i * 80}>
+                <CatCard
+                  cat={cat}
+                  active={active === cat.id}
+                  onClick={() => selectCat(cat.id)}
+                />
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Gallery grid ── */}
+      <div ref={galleryRef} style={{ scrollMarginTop: "80px" }}>
+        {activeCat && (
+          <section className="pb-24 px-6">
+            <div className="max-w-6xl mx-auto">
+              {/* Section header */}
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-1">{activeCat.emoji} {activeCat.id}</p>
+                  <h2 className="font-bold text-white text-2xl" style={{ letterSpacing: "-0.02em" }}>
+                    {activeCat.label}
+                  </h2>
+                  <p className="text-white/30 text-xs mt-1">{activeCat.fotos.length} fotos · click para abrir</p>
+                </div>
+                <button
+                  onClick={() => setActive(null)}
+                  className="text-white/25 text-xs hover:text-white/60 transition-colors flex items-center gap-1.5"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Cerrar
+                </button>
+              </div>
+
+              {/* Thumbnails */}
+              <ThumbnailGrid
+                fotos={activeCat.fotos}
+                onOpen={(i) => setLightbox({ catId: activeCat.id, idx: i })}
+              />
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* ── CTA contacto ── */}
+      <section className="py-28 px-6" style={{ backgroundColor: "#060606" }}>
+        <div className="max-w-xl mx-auto text-center">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">¿Te gustó lo que viste?</p>
             <h2 className="font-bold text-white mb-4"
                 style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              ¿Qué producimos para ti?
+              Producimos el tuyo.
             </h2>
             <p className="text-white/35 text-sm leading-relaxed mb-10">
-              Dinos el tipo de evento, el venue y la fecha.<br />
+              Dinos el tipo de evento, el venue y la fecha.<br/>
               Propuesta técnica en menos de 24 horas.
             </p>
             <a href={WA} target="_blank" rel="noopener noreferrer"
@@ -323,22 +512,6 @@ export default function GaleriaClient() {
               </svg>
               Hablar por WhatsApp
             </a>
-          </R>
-
-          {/* Links de categorías */}
-          <R delay={200}>
-            <div className="mt-14 pt-10 border-t border-white/[0.05] flex flex-wrap justify-center gap-x-8 gap-y-3">
-              {[
-                { href: "/presentacion/evento/musical",     label: "Eventos musicales" },
-                { href: "/presentacion/evento/social",      label: "Eventos sociales" },
-                { href: "/presentacion/evento/empresarial", label: "Eventos empresariales" },
-              ].map(l => (
-                <a key={l.href} href={l.href}
-                   className="text-white/25 text-xs tracking-wide hover:text-white/55 transition-colors">
-                  {l.label} →
-                </a>
-              ))}
-            </div>
           </R>
         </div>
       </section>
