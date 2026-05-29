@@ -145,15 +145,14 @@ export default function QuickAdd({
   const [recError, setRecError]       = useState("");
   const [panel, setPanel]             = useState<ActivePanel>(null);
   const [detIgnorada, setDetIgnorada] = useState(false);
-  // ── Paste-as-tasks state ──
-  const [pasteLines, setPasteLines]   = useState<string[] | null>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  // ── Paste-as-tasks: derived from textarea value (no interception needed)
+  const titleRef = useRef<HTMLTextAreaElement>(null);
   const descRef  = useRef<HTMLTextAreaElement>(null);
 
   // Strip common list prefixes: "1. ", "- ", "* ", "• ", "[ ] ", "[x] ", etc.
   function cleanLine(raw: string): string {
     return raw.trim()
-      .replace(/^(\[[ x]\]\s*|\d+[.)\s]+|[-*•–—]\ +)/, "")
+      .replace(/^(\[[ x]\]\s*|\d+[.)\s]+|[-*•–—] +)/, "")
       .trim();
   }
 
@@ -167,9 +166,17 @@ export default function QuickAdd({
   // Natural language date detection — only active when no date manually set
   const deteccion = useMemo(() => {
     if (detIgnorada || !titulo || fecha || recurrencia) return null;
-    const d = detectarFechaEnTitulo(titulo);
+    const d = detectarFechaEnTitulo(titulo.split("\n")[0]); // use first line only
     return d.textoDetectado ? d : null;
   }, [titulo, fecha, recurrencia, detIgnorada]);
+
+  // List detection — when textarea has ≥2 non-empty lines
+  const listLines = useMemo(() => {
+    if (!titulo.includes("\n")) return null;
+    const lines = titulo.split("\n").map(cleanLine).filter(l => l.length > 0);
+    return lines.length >= 2 ? lines : null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [titulo]);
 
   const prio     = PRIORIDADES.find(p => p.key === prioridad)!;
   const areaDef  = AREAS.find(a => a.key === area)!;
@@ -192,8 +199,9 @@ export default function QuickAdd({
   }
 
   function submit() {
-    if (!titulo.trim()) { titleRef.current?.focus(); return; }
-    const tituloFinal = deteccion ? deteccion.tituloLimpio || titulo.trim() : titulo.trim();
+    const firstLine = listLines ? listLines[0] : titulo.trim();
+    if (!firstLine) { titleRef.current?.focus(); return; }
+    const tituloFinal = deteccion ? deteccion.tituloLimpio || firstLine : firstLine;
     // If recurrencia is set, fecha is cleared (mutually exclusive)
     const fechaFinal  = recurrencia ? null : (fecha || (deteccion?.fecha ?? null));
     const recFinal    = recurrencia ?? (fecha ? null : (deteccion?.recurrencia ?? null));
@@ -212,6 +220,27 @@ export default function QuickAdd({
     });
     resetFields();
     setTimeout(() => titleRef.current?.focus(), 10);
+  }
+
+  function submitAll() {
+    if (!listLines) return;
+    listLines.forEach(line => {
+      onAdd({
+        titulo: line,
+        descripcion: null,
+        fecha: null,
+        fechaVencimiento: null,
+        prioridad,
+        area,
+        recurrencia: null,
+        proyectoTareaId: proyectoSel,
+        seccionId,
+        parentId,
+        asignadoAId: asignadoSel,
+      });
+    });
+    resetFields();
+    setOpen(false);
   }
 
   function togglePanel(p: ActivePanel) { setPanel(prev => prev === p ? null : p); }
@@ -242,34 +271,29 @@ export default function QuickAdd({
   return (
     <div className="mx-1 my-2 rounded-xl border border-[#1e1e1e] bg-[#080808] shadow-2xl shadow-black/70 overflow-hidden ring-1 ring-[#B3985B]/8">
 
-      {/* ── Title input ──────────────────────────────────────────────────── */}
+      {/* ── Title textarea (auto-resize, Enter submits, Shift+Enter = newline) ── */}
       <div className="px-4 pt-3.5 pb-1">
-        <input
+        <textarea
           ref={titleRef}
           autoFocus
           value={titulo}
-          onChange={e => setTitulo(e.target.value)}
+          rows={1}
+          onChange={e => {
+            setTitulo(e.target.value);
+            // auto-resize
+            e.target.style.height = "auto";
+            e.target.style.height = e.target.scrollHeight + "px";
+          }}
           onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) submit();
-            if (e.key === "Escape") { if (pasteLines) { setPasteLines(null); return; } reset(); }
+            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+            if (e.key === "Escape") reset();
             if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
               e.preventDefault();
               descRef.current?.focus();
             }
           }}
-          onPaste={e => {
-            const text = e.clipboardData.getData("text");
-            const lines = text
-              .split(/\r?\n/)
-              .map(cleanLine)
-              .filter(l => l.length > 0);
-            if (lines.length >= 2) {
-              e.preventDefault();
-              setPasteLines(lines);
-            }
-          }}
           placeholder={placeholder}
-          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug"
+          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none overflow-hidden"
         />
       </div>
 
@@ -306,13 +330,13 @@ export default function QuickAdd({
         </div>
       )}
 
-      {/* ── PASTE-AS-TASKS DIALOG ──────────────────────────────────── */}
-      {pasteLines && (
-        <div className="border-t border-[#1a1a1a] bg-[#050505]">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 pt-3 pb-2">
+      {/* ── List detected banner ─────────────────────────────────────────────── */}
+      {listLines && (
+        <div className="mx-4 mb-2 rounded-lg border border-[#B3985B]/20 bg-[#B3985B]/5 overflow-hidden">
+          {/* Header row */}
+          <div className="flex items-center justify-between px-3 py-2">
             <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#B3985B]/15 text-[#B3985B]">
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#B3985B]/15 text-[#B3985B] shrink-0">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
                   <line x1="8" y1="18" x2="21" y2="18"/>
@@ -321,69 +345,43 @@ export default function QuickAdd({
                   <circle cx="3" cy="18" r="1" fill="currentColor"/>
                 </svg>
               </span>
-              <p className="text-[13px] font-semibold text-white">
-                Se detectaron <span className="text-[#B3985B]">{pasteLines.length} tareas</span>
+              <p className="text-[12px] text-[#B3985B] font-medium">
+                Se detectaron {listLines.length} tareas
               </p>
             </div>
-            <button
-              onClick={() => setPasteLines(null)}
-              className="text-[#333] hover:text-[#888] transition-colors text-lg leading-none"
-            >×</button>
           </div>
-
-          {/* Preview list */}
-          <div className="mx-4 mb-3 rounded-lg border border-[#1a1a1a] bg-[#080808] max-h-44 overflow-y-auto">
-            {pasteLines.map((line, i) => (
-              <div key={i} className="flex items-start gap-2.5 px-3 py-1.5 border-b border-[#111] last:border-0">
-                <span className="mt-[3px] w-[14px] h-[14px] shrink-0 rounded-full border-2 border-[#2a2a2a]" />
-                <span className="text-[13px] text-[#bbb] leading-snug">{line}</span>
+          {/* Preview (scrollable) */}
+          <div className="border-t border-[#B3985B]/10 max-h-32 overflow-y-auto">
+            {listLines.map((line, i) => (
+              <div key={i} className="flex items-center gap-2.5 px-3 py-1 border-b border-[#B3985B]/[0.07] last:border-0">
+                <span className="w-[10px] h-[10px] shrink-0 rounded-full border border-[#B3985B]/30" />
+                <span className="text-[12px] text-[#999] leading-snug truncate">{line}</span>
               </div>
             ))}
           </div>
-
           {/* Actions */}
-          <div className="flex flex-col gap-1.5 px-4 pb-3">
+          <div className="flex gap-1.5 px-3 py-2 border-t border-[#B3985B]/10">
             <button
-              onClick={() => {
-                pasteLines.forEach(line => {
-                  onAdd({
-                    titulo: line,
-                    descripcion: null,
-                    fecha: null,
-                    fechaVencimiento: null,
-                    prioridad,
-                    area,
-                    recurrencia: null,
-                    proyectoTareaId: proyectoSel,
-                    seccionId,
-                    parentId,
-                    asignadoAId: asignadoSel,
-                  });
-                });
-                setPasteLines(null);
-                reset();
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] text-[13px] font-semibold transition-all"
-              style={{ boxShadow: "0 0 18px #B3985B25" }}
+              onClick={submitAll}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] text-[12px] font-semibold transition-all"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              Agregar {pasteLines.length} tareas independientes
+              Agregar {listLines.length} tareas
             </button>
             <button
-              onClick={() => {
-                setTitulo(pasteLines.join(", "));
-                setPasteLines(null);
-                setTimeout(() => titleRef.current?.focus(), 10);
-              }}
-              className="w-full py-2 rounded-lg border border-[#1e1e1e] text-[#555] hover:text-[#bbb] hover:border-[#2a2a2a] text-[13px] transition-all"
+              onClick={submit}
+              className="flex-1 py-1.5 rounded-md border border-[#B3985B]/20 text-[#B3985B]/70 hover:text-[#B3985B] hover:border-[#B3985B]/40 text-[12px] transition-all"
             >
-              Agregar como una sola tarea
+              Agregar como 1 sola
             </button>
           </div>
         </div>
       )}
+
+
+
 
       {/* ── Divider ──────────────────────────────────────────────── */}
       <div className="h-px bg-[#111]" />
