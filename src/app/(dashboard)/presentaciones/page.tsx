@@ -61,6 +61,14 @@ const PRESENTACIONES = [
         icon: "🏢",
         audience: "Empresas · Agencias",
       },
+      {
+        key: "galeria",
+        label: "Galería de eventos",
+        desc: "Nuestro trabajo en imágenes: musicales, sociales y empresariales.",
+        href: "/presentacion/galeria",
+        icon: "📸",
+        audience: "Clientes potenciales · Redes sociales",
+      },
     ],
   },
   {
