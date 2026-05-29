@@ -131,6 +131,7 @@ export default function TaskItem({
   const [showProyecto,  setShowProyecto]  = useState(false);
   const [subtaskDraggingId, setSubtaskDraggingId] = useState<string | null>(null);
   const [extractDropOver,   setExtractDropOver]   = useState(false);
+  const [aboveLine,         setAboveLine]         = useState(false); // reorder strip above row
 
   const rowRef          = useRef<HTMLDivElement>(null);
   const moreRef         = useRef<HTMLDivElement>(null);
@@ -196,6 +197,27 @@ export default function TaskItem({
 
   return (
   <>
+    {/* ── Reorder strip: 12px invisible zone above the row ── */}
+    {isDraggable && onReorder && !isBeingDragged && (
+      <div
+        className="relative h-3 -mb-1 z-20"
+        onDragOver={e => { e.preventDefault(); e.stopPropagation(); setAboveLine(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setAboveLine(false); }}
+        onDrop={e => {
+          e.preventDefault(); e.stopPropagation();
+          setAboveLine(false);
+          if (!draggingId || draggingId === tarea.id) return;
+          onReorder(draggingId, tarea.id, "above");
+        }}
+      >
+        {aboveLine && (
+          <>
+            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-[2px] bg-[#B3985B] rounded-full shadow-[0_0_6px_rgba(179,152,91,0.6)] pointer-events-none" />
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#B3985B] -ml-1 shadow-[0_0_6px_rgba(179,152,91,0.8)] pointer-events-none" />
+          </>
+        )}
+      </div>
+    )}
 
     <div
       ref={rowRef}
