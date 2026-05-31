@@ -120,6 +120,8 @@ export default function OperacionesPage() {
   const [showVistaPanel, setShowVistaPanel]     = useState(false);
   const vistaPanelRef                           = useRef<HTMLDivElement>(null);
   const [busqueda, setBusqueda]                 = useState("");
+  const [searchResults, setSearchResults]       = useState<TareaItem[] | null>(null);
+  const [searchLoading, setSearchLoading]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
@@ -199,6 +201,23 @@ export default function OperacionesPage() {
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Búsqueda global — debounce 350ms + fetch ?q= ───────────────────────────
+  useEffect(() => {
+    const q = busqueda.trim();
+    if (q.length < 2) { setSearchResults(null); setSearchLoading(false); return; }
+    setSearchLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tareas?q=${encodeURIComponent(q)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data.tareas ?? []);
+        }
+      } catch { /* ignore */ } finally { setSearchLoading(false); }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [busqueda]);
 
   // ── SW sync listener — recargar vista cuando el SW termina de sincronizar ──
   useEffect(() => {
@@ -1458,7 +1477,34 @@ export default function OperacionesPage() {
 
         {/* ── TASK LIST ─────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto pb-44 lg:pb-4">
-          {loadingMain ? (
+          {searchLoading ? (
+            <div className="flex items-center justify-center h-40">
+              <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
+            </div>
+
+          ) : searchResults !== null ? (
+            // ── Resultados de búsqueda global ────────────────────────────────
+            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+              <p className="text-[11px] text-[#444] px-3 mb-3">
+                {searchResults.length === 0
+                  ? `Sin resultados para "${busqueda}"`
+                  : `${searchResults.length} resultado${searchResults.length !== 1 ? "s" : ""} para "${busqueda}"`}
+              </p>
+              {searchResults.map(t => (
+                <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                  onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                  onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                  onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                  onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                  onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  projects={proyectosNav}
+                  users={usuarios}
+                  showProject
+                />
+              ))}
+            </div>
+
+          ) : loadingMain ? (
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
             </div>
@@ -2061,11 +2107,13 @@ export default function OperacionesPage() {
 
             {/* Results: tasks when searching, projects when not */}
             <div className="pb-4">
-              {busqueda.trim() ? (() => {
-                const q = busqueda.toLowerCase().trim();
-                const resultados = tareas.filter(t =>
-                  t.titulo.toLowerCase().includes(q) && t.estado !== "COMPLETADA" && t.estado !== "CANCELADA"
+              {busqueda.trim().length >= 2 ? (() => {
+                if (searchLoading) return (
+                  <div className="flex justify-center py-6">
+                    <div className="w-4 h-4 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
+                  </div>
                 );
+                const resultados = searchResults ?? [];
                 if (resultados.length === 0) return (
                   <p className="text-center text-[#444] text-sm py-8">Sin resultados para &ldquo;{busqueda}&rdquo;</p>
                 );

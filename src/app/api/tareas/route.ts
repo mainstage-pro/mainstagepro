@@ -68,6 +68,42 @@ export async function GET(req: NextRequest) {
   const asignadoAId       = searchParams.get("asignadoAId");
   const iniciativaId      = searchParams.get("iniciativaId");
   const parentId          = searchParams.get("parentId");
+  const q                 = searchParams.get("q");
+
+  // ── Búsqueda global — ignora filtros de vista ──────────────────────────────
+  if (q?.trim()) {
+    const term = q.trim();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const searchWhere: Record<string, any> = {
+      estado:   { not: "CANCELADA" },
+      parentId: null,
+      OR: [
+        { titulo:      { contains: term, mode: "insensitive" } },
+        { descripcion: { contains: term, mode: "insensitive" } },
+        { notas:       { contains: term, mode: "insensitive" } },
+      ],
+    };
+    // Acceso: no-admin sólo ve sus tareas personales + proyectos permitidos
+    if (session.role !== "ADMIN") {
+      const accessOr = [
+        { asignadoAId: session.id },
+        { asignadoAId: null, creadoPorId: session.id },
+        ...(proyectosPermitidos && proyectosPermitidos.length > 0
+          ? [{ proyectoTareaId: { in: proyectosPermitidos } }]
+          : []),
+      ];
+      searchWhere.AND = [{ OR: searchWhere.OR }, { OR: accessOr }];
+      delete searchWhere.OR;
+    }
+    const tareas = await prisma.tarea.findMany({
+      where: searchWhere,
+      select: SELECT,
+      orderBy: [{ estado: "asc" }, { prioridad: "asc" }, { createdAt: "desc" }],
+      take: 50,
+    });
+    return NextResponse.json({ tareas });
+  }
+
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
