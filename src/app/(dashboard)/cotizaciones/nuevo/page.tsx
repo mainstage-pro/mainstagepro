@@ -378,6 +378,11 @@ function CotizadorForm() {
         // Cargar descuentos exactamente como estaban guardados
         setB2bActivo((cot.descuentoB2bPct ?? 0) > 0);
         setVolumenActivo((cot.descuentoVolumenPct ?? 0) > 0);
+        // Usar los porcentajes EXACTOS de la cotización guardada, no los del server config.
+        // El config del servidor es sólo para cotizaciones NUEVAS.
+        if ((cot.descuentoB2bPct ?? 0) > 0) setCfgPctB2b(Math.round((cot.descuentoB2bPct ?? 0) * 100));
+        if ((cot.descuentoVolumenPct ?? 0) > 0) setCfgPctVolumen(Math.round((cot.descuentoVolumenPct ?? 0) * 100));
+
         // Descuento manual (nuevo): viene de descuentoFamilyFriendsPct (%) o descuentoFijoMonto ($) con descuentoManualEsMonto
         const esManualMonto = cot.descuentoManualEsMonto ?? false;
         const montoFijo = cot.descuentoFijoMonto ?? 0;

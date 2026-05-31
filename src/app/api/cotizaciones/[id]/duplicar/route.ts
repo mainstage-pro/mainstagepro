@@ -55,6 +55,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       descuentoEspecialNota: original.descuentoEspecialNota,
       descuentoFamilyFriendsPct: original.descuentoFamilyFriendsPct,
       descuentoFijoMonto: original.descuentoFijoMonto,
+      descuentoManualRazon: original.descuentoManualRazon,
+      descuentoManualEsMonto: original.descuentoManualEsMonto,
       descuentoTotalPct: original.descuentoTotalPct,
       montoDescuento: original.montoDescuento,
       montoBeneficio: original.montoBeneficio,
