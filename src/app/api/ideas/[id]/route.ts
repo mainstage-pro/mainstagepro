@@ -2,41 +2,41 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// PATCH /api/iniciativas/[id]
+// PATCH /api/ideas/[id]
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
   const body = await req.json();
-  const { titulo, descripcion, area, responsable, estado, fechaLimite, notas } = body;
+  const { titulo, nota, area, tipo, estado, convertidaA } = body;
 
-  const updated = await prisma.iniciativa.update({
+  const updated = await prisma.idea.update({
     where: { id },
     data: {
       ...(titulo      !== undefined && { titulo }),
-      ...(descripcion !== undefined && { descripcion }),
+      ...(nota        !== undefined && { nota }),
       ...(area        !== undefined && { area }),
-      ...(responsable !== undefined && { responsable }),
+      ...(tipo        !== undefined && { tipo }),
       ...(estado      !== undefined && { estado }),
-      ...(fechaLimite !== undefined && { fechaLimite: fechaLimite ? new Date(fechaLimite) : null }),
-      ...(notas       !== undefined && { notas }),
+      ...(convertidaA !== undefined && { convertidaA }),
     },
-    include: {
-      subtareas: { orderBy: { orden: "asc" } },
-      usuario:   { select: { id: true, name: true } },
-    },
+    include: { usuario: { select: { id: true, name: true } } },
   });
 
   return NextResponse.json(updated);
 }
 
-// DELETE /api/iniciativas/[id]
+// DELETE /api/ideas/[id] — soft delete (marca como descartada)
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.iniciativa.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  const updated = await prisma.idea.update({
+    where: { id },
+    data: { estado: "descartada" },
+  });
+
+  return NextResponse.json(updated);
 }

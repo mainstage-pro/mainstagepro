@@ -59,6 +59,11 @@ model User {
   ptComentarios          PTComentario[]         @relation("PTComentarioAutor")
   ptHistorial            PTHistorialEjecucion[] @relation("PTHistorialUsuario")
 
+  // ── Captura / Ideas / Iniciativas ────────────────────────────────────────
+  capturasRapidas        CapturaRapida[]        @relation("CapturaRapidaUsuario")
+  ideasCreadas           Idea[]                 @relation("IdeaUsuario")
+  iniciativasCaptura     Iniciativa[]           @relation("IniciativaUsuario")
+
 
   @@map("users")
 }
@@ -2943,4 +2948,66 @@ model PTKPI {
   @@index([areaId])
   @@index([esTransversal])
   @@map("pt_kpis")
+}
+
+// ─── CAPTURA RÁPIDA / IDEAS / INICIATIVAS ────────────────────────────────────
+
+model CapturaRapida {
+  id          String   @id @default(cuid())
+  contenido   String
+  area        String?  // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  tipo        String?  // idea | iniciativa | tarea | backlog
+  clasificado Boolean  @default(false)
+  creadoEn    DateTime @default(now())
+  creadoPor   String?
+  usuario     User?    @relation("CapturaRapidaUsuario", fields: [creadoPor], references: [id], onDelete: SetNull)
+
+  @@index([clasificado, creadoEn])
+  @@map("captura_rapida")
+}
+
+model Idea {
+  id          String   @id @default(cuid())
+  titulo      String
+  nota        String?  @db.Text
+  area        String?
+  tipo        String?  // negocio | operacion | plataforma | estrategia
+  estado      String   @default("activa")   // activa | convertida | descartada
+  convertidaA String?
+  creadoEn    DateTime @default(now())
+  creadoPor   String?
+  usuario     User?    @relation("IdeaUsuario", fields: [creadoPor], references: [id], onDelete: SetNull)
+
+  @@index([estado, creadoEn])
+  @@map("ideas")
+}
+
+model Iniciativa {
+  id          String               @id @default(cuid())
+  titulo      String
+  descripcion String?              @db.Text
+  area        String?
+  responsable String?
+  estado      String   @default("planeando") // planeando | en_ejecucion | pausada | completada
+  fechaLimite DateTime?
+  notas       String?              @db.Text
+  subtareas   SubtareaIniciativa[]
+  creadoEn    DateTime @default(now())
+  creadoPor   String?
+  usuario     User?    @relation("IniciativaUsuario", fields: [creadoPor], references: [id], onDelete: SetNull)
+
+  @@index([estado, creadoEn])
+  @@map("iniciativas")
+}
+
+model SubtareaIniciativa {
+  id           String     @id @default(cuid())
+  iniciativaId String
+  iniciativa   Iniciativa @relation(fields: [iniciativaId], references: [id], onDelete: Cascade)
+  titulo       String
+  completada   Boolean    @default(false)
+  orden        Int        @default(0)
+
+  @@index([iniciativaId, orden])
+  @@map("subtareas_iniciativa")
 }

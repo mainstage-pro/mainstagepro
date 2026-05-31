@@ -9,6 +9,9 @@ import QuickAdd from "./components/QuickAdd";
 import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
+import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
+import { VistaIdeas }        from "./components/VistaIdeas";
+import { VistaIniciativas }  from "./components/VistaIniciativas";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -35,7 +38,9 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo" | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo"
+  | "captura" | "ideas" | "iniciativas"
+  | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
   id: string;
@@ -90,6 +95,7 @@ export default function OperacionesPage() {
   const [sessionArea, setSessionArea]           = useState<string>("");
   const [sessionModuloKeys, setSessionModuloKeys] = useState<string[] | null>(null);
 
+  const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
     if (typeof window === "undefined") return "bandeja";
     try { const s = localStorage.getItem("op_vista"); if (s) return JSON.parse(s) as VistaKey; } catch {}
@@ -183,6 +189,15 @@ export default function OperacionesPage() {
       if (me?.area) setSessionArea(me.area);
       setSessionModuloKeys(me?.role === "ADMIN" ? null : (me?.moduloKeys ?? []));
     });
+  }, []);
+
+  // fetch captura counts for badges
+  useEffect(() => {
+    fetch("/api/captura/counts")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCapturaCounts(d); })
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── SW sync listener — recargar vista cuando el SW termina de sincronizar ──
@@ -877,6 +892,9 @@ export default function OperacionesPage() {
     vista === "integrada"        ? "Alertas" :
     vista === "proyectos-evento" ? "Proyectos / Eventos" :
     vista === "equipo"           ? "Vista equipo" :
+    vista === "captura"          ? "Captura rápida" :
+    vista === "ideas"            ? "Ideas" :
+    vista === "iniciativas"      ? "Iniciativas" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Proyecto";
 
@@ -1114,6 +1132,35 @@ export default function OperacionesPage() {
                 Nueva carpeta
               </button>
             )}
+            {/* ─── Sección NUEVO ─────────────────────────────────────── */}
+            <div className="mt-3 mb-1">
+              <div className="h-px bg-white/[0.04] mx-1 mb-2" />
+              <span className="px-3 text-[10px] font-semibold tracking-widest uppercase select-none" style={{ color: "#e8a020" }}>Nuevo</span>
+            </div>
+            <SideItem
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>}
+              label="Captura rápida"
+              isActive={vistaKey === "captura"}
+              onClick={() => setVista("captura")}
+              count={capturaCounts.captura || undefined}
+              countColor="#e8a020"
+            />
+            <SideItem
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 6a6 6 0 0 1 0 12"/><path d="M12 18a6 6 0 0 1 0-12"/><line x1="12" y1="18" x2="12" y2="22"/></svg>}
+              label="Ideas"
+              isActive={vistaKey === "ideas"}
+              onClick={() => setVista("ideas")}
+              count={capturaCounts.ideas || undefined}
+              countColor="#a78bfa"
+            />
+            <SideItem
+              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>}
+              label="Iniciativas"
+              isActive={vistaKey === "iniciativas"}
+              onClick={() => setVista("iniciativas")}
+              count={capturaCounts.iniciativas || undefined}
+              countColor="#3b82f6"
+            />
           </div>
         </div>
 
@@ -1415,6 +1462,25 @@ export default function OperacionesPage() {
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
             </div>
+
+          ) : vista === "captura" ? (
+            <VistaCapturaRapida
+              onConvertirATarea={(texto) => {
+                setVista("bandeja");
+                setTimeout(() => setQuickAddTrigger(n => n + 1), 50);
+              }}
+            />
+
+          ) : vista === "ideas" ? (
+            <VistaIdeas
+              onConvertirATarea={(texto) => {
+                setVista("bandeja");
+                setTimeout(() => setQuickAddTrigger(n => n + 1), 50);
+              }}
+            />
+
+          ) : vista === "iniciativas" ? (
+            <VistaIniciativas />
 
           ) : vista === "proyectos-evento" ? (
             <ProyectosEventoView
@@ -2331,8 +2397,8 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
 
 // ── SideItem ─────────────────────────────────────────────────────────────────
 
-function SideItem({ icon, label, isActive, onClick, count }: {
-  icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void; count?: number;
+function SideItem({ icon, label, isActive, onClick, count, countColor }: {
+  icon: React.ReactNode; label: string; isActive: boolean; onClick: () => void; count?: number; countColor?: string;
 }) {
   return (
     <button
@@ -2346,9 +2412,10 @@ function SideItem({ icon, label, isActive, onClick, count }: {
       <span className={`shrink-0 ${isActive ? "text-[#B3985B]" : ""}`}>{icon}</span>
       <span className="flex-1 text-left truncate">{label}</span>
       {count !== undefined && (
-        <span className={`text-[11px] font-semibold min-w-[18px] text-center rounded-full px-1 ${
-          isActive ? "text-[#B3985B]" : "text-[#444]"
-        }`}>{count}</span>
+        <span
+          className="text-[11px] font-semibold min-w-[18px] text-center rounded-full px-1"
+          style={{ color: countColor ?? (isActive ? "#B3985B" : "#444") }}
+        >{count}</span>
       )}
     </button>
   );

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// GET /api/iniciativas
+// GET /api/ideas
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -10,50 +10,43 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const estado = searchParams.get("estado");
   const area   = searchParams.get("area");
+  const tipo   = searchParams.get("tipo");
 
-  const items = await prisma.iniciativa.findMany({
+  const ideas = await prisma.idea.findMany({
     where: {
       ...(estado && { estado }),
       ...(area   && { area }),
+      ...(tipo   && { tipo }),
     },
-    include: {
-      subtareas: { orderBy: { orden: "asc" } },
-      usuario:   { select: { id: true, name: true } },
-    },
+    include: { usuario: { select: { id: true, name: true } } },
     orderBy: { creadoEn: "desc" },
   });
 
-  return NextResponse.json(items);
+  return NextResponse.json(ideas);
 }
 
-// POST /api/iniciativas
+// POST /api/ideas
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { titulo, descripcion, area, responsable, estado, fechaLimite, notas } = body;
+  const { titulo, nota, area, tipo } = body;
 
   if (!titulo?.trim()) {
     return NextResponse.json({ error: "titulo requerido" }, { status: 400 });
   }
 
-  const item = await prisma.iniciativa.create({
+  const idea = await prisma.idea.create({
     data: {
-      titulo:      titulo.trim(),
-      descripcion: descripcion?.trim() ?? null,
-      area:        area        ?? null,
-      responsable: responsable ?? null,
-      estado:      estado      ?? "planeando",
-      fechaLimite: fechaLimite ? new Date(fechaLimite) : null,
-      notas:       notas?.trim() ?? null,
-      creadoPor:   session.id,
+      titulo: titulo.trim(),
+      nota:   nota?.trim() ?? null,
+      area:   area  ?? null,
+      tipo:   tipo  ?? null,
+      creadoPor: session.id,
     },
-    include: {
-      subtareas: true,
-      usuario:   { select: { id: true, name: true } },
-    },
+    include: { usuario: { select: { id: true, name: true } } },
   });
 
-  return NextResponse.json(item, { status: 201 });
+  return NextResponse.json(idea, { status: 201 });
 }
