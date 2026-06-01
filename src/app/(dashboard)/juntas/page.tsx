@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   JUNTA_TEMPLATES,
   AREA_LABELS,
@@ -409,12 +410,20 @@ export default function JuntasPage() {
             <h1 className="text-2xl font-bold tracking-tight">Juntas</h1>
             <p className="text-gray-500 text-sm mt-1">Semana: {semanaLabel}</p>
           </div>
-          <button
-            onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 bg-[#B3985B] text-black font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#c9a96a] transition-colors"
-          >
-            <span className="text-base leading-none">+</span> Nueva junta
-          </button>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/juntas/preparar"
+              className="flex items-center gap-2 border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              Preparar semana
+            </Link>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="flex items-center gap-2 bg-[#B3985B] text-black font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#c9a96a] transition-colors"
+            >
+              <span className="text-base leading-none">+</span> Nueva junta
+            </button>
+          </div>
         </div>
       </div>
 

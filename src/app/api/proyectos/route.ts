@@ -10,7 +10,18 @@ export async function GET(req: Request) {
   const lugarEvento = url.searchParams.get("lugarEvento");
 
   const where: Record<string, unknown> = {};
-  if (lugarEvento) where.lugarEvento = { contains: lugarEvento, mode: "insensitive" };
+  if (lugarEvento) where.lugarEvento = { contains: lugarEvento, mode: 'insensitive' };
+
+  const fechaDesde = url.searchParams.get('fechaDesde');
+  const fechaHasta = url.searchParams.get('fechaHasta');
+  const estado     = url.searchParams.get('estado');
+
+  if (fechaDesde || fechaHasta) {
+    where.fechaEvento = {};
+    if (fechaDesde) (where.fechaEvento as Record<string, unknown>).gte = new Date(fechaDesde + 'T00:00:00');
+    if (fechaHasta) (where.fechaEvento as Record<string, unknown>).lte = new Date(fechaHasta + 'T23:59:59');
+  }
+  if (estado) where.estado = estado;
 
   // Non-admins: filter by specific project accesses if any are set
   if (session.role !== "ADMIN") {

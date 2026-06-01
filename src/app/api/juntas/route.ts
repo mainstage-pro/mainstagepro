@@ -23,13 +23,33 @@ export async function GET(req: NextRequest) {
     if (to)   where.fecha.lte = new Date(to);
   }
 
+  const semana = searchParams.get('semana');
+  const anio   = searchParams.get('anio');
+  const tipo   = searchParams.get('tipo');
+
+  if (semana && anio) {
+    // Calculate ISO week date range
+    const jan4 = new Date(parseInt(anio), 0, 4);
+    const dow = jan4.getDay() || 7;
+    const lunes = new Date(jan4);
+    lunes.setDate(jan4.getDate() - dow + 1 + (parseInt(semana) - 1) * 7);
+    lunes.setHours(0, 0, 0, 0);
+    const domingo = new Date(lunes);
+    domingo.setDate(lunes.getDate() + 6);
+    domingo.setHours(23, 59, 59, 999);
+    where.fecha = { gte: lunes, lte: domingo };
+  }
+  if (tipo) where.tipo = tipo;
+
   const juntas = await prisma.junta.findMany({
     where,
     orderBy: { fecha: "desc" },
     include: {
-      facilitador:  { select: { id: true, name: true } },
-      participantes: { include: { user: { select: { id: true, name: true, area: true } } } },
-      _count:        { select: { tareas: true, agendaItems: true } },
+      facilitador:      { select: { id: true, name: true } },
+      participantes:    { include: { user: { select: { id: true, name: true, area: true } } } },
+      agendaItems:      { orderBy: { orden: 'asc' } },
+      temasAdicionales: { orderBy: { orden: 'asc' }, include: { autor: { select: { id: true, name: true } } } },
+      _count:           { select: { tareas: true, agendaItems: true } },
     },
   });
 

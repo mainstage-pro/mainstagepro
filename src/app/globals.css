@@ -190,3 +190,78 @@ input[type="number"]::-webkit-inner-spin-button {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* ─── Print CSS (for PDF export of juntas) ─────────────────────────────────── */
+
+.junta-pdf-header {
+  display: none;
+}
+
+@media print {
+  /* Hide nav and sidebar */
+  nav, aside, header, .sidebar,
+  [data-no-print],
+  [data-sidebar] {
+    display: none !important;
+  }
+
+  /* Full-width content */
+  .junta-conductor {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Show all sections in print */
+  .junta-seccion {
+    display: block !important;
+    page-break-inside: avoid;
+    margin-bottom: 24px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+  }
+
+  /* PDF header visible in print */
+  .junta-pdf-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #000;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+
+  /* Typography for print */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+
+  /* Fix colors for print */
+  .text-white, .text-gray-400, .text-gray-500 {
+    color: black !important;
+  }
+
+  textarea, input {
+    border: 1px solid #ccc !important;
+    color: black !important;
+    background: white !important;
+  }
+
+  /* Footer */
+  .junta-print-footer {
+    display: block !important;
+    text-align: center;
+    font-size: 9pt;
+    color: #666;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+    margin-top: 24px;
+  }
+}
+
+.junta-print-footer {
+  display: none;
+}

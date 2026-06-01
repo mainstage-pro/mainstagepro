@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
-    parentId, fecha, fechaVencimiento, recurrencia, orden,
+    parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
   } = body;
 
   if (!titulo?.trim()) return NextResponse.json({ error: "Título requerido" }, { status: 400 });
@@ -231,6 +231,7 @@ export async function POST(req: NextRequest) {
       notas:           notas            || null,
       etiquetas:       etiquetas        ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
       orden:           orden            ?? 0,
+      juntaOrigenId:   juntaOrigenId    || null,
     },
     select: SELECT,
   });
