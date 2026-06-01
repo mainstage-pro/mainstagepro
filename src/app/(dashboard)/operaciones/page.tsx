@@ -2733,6 +2733,7 @@ function SectionBlock({
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
   const [bottomOver, setBottomOver] = useState(false);
+  const [sectionOver, setSectionOver] = useState(false);
   // Inline rename state
   const [editando,   setEditando]   = useState(false);
   const [editNombre, setEditNombre] = useState(seccion.nombre);
@@ -2750,16 +2751,47 @@ function SectionBlock({
     await onRename(seccion.id, nuevo);
   }
 
+  // Is the dragged task FROM this section? (don't show overlay over its own section)
+  const isDraggingFromHere = !!draggingId && seccion.tareas.some(t => t.id === draggingId);
+  // Is there an active cross-section drag happening?
+  const isCrossDrag = !!draggingId && !isDraggingFromHere;
+
   return (
-    <div className="mt-5">
-      {/* Section header — also a drop target */}
+    <div className="mt-5 relative">
+      {/* Full-section drop overlay — only shows when dragging from another section */}
+      {isCrossDrag && (
+        <div
+          className={`absolute inset-0 z-20 rounded-xl border-2 border-dashed transition-all duration-150 cursor-copy ${
+            sectionOver
+              ? "border-[#B3985B] bg-[#B3985B]/10 shadow-[inset_0_0_20px_rgba(179,152,91,0.08)]"
+              : "border-[#2a2a2a] bg-[#0a0a0a]/40"
+          }`}
+          onDragOver={e => { e.preventDefault(); e.stopPropagation(); setSectionOver(true); }}
+          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSectionOver(false); }}
+          onDrop={e => { e.preventDefault(); e.stopPropagation(); setSectionOver(false); onDropSection?.(); }}
+        >
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              sectionOver
+                ? "bg-[#B3985B] text-black shadow-lg"
+                : "bg-[#1a1a1a] text-[#444] border border-[#2a2a2a]"
+            }`}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+              {sectionOver ? `Mover a "${seccion.nombre}"` : seccion.nombre}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Section header */}
       <div
         className={`flex items-center gap-1.5 group cursor-pointer mb-1 px-2 py-1 rounded-lg transition-all ${
-          headerOver ? "bg-[#B3985B]/10 ring-1 ring-[#B3985B]/40" : ""
+          headerOver && !isCrossDrag ? "bg-[#B3985B]/10 ring-1 ring-[#B3985B]/40" : ""
         }`}
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
         onClick={e => {
-          // Don’t collapse when clicking buttons or input
           if ((e.target as HTMLElement).closest("button,input")) return;
           if (!editando) onToggleCollapse(seccion.id, !seccion.colapsada);
         }}
@@ -2822,13 +2854,6 @@ function SectionBlock({
             headerOver ? "text-[#B3985B]" : "text-[#666] group-hover:text-white"
           }`}>
             {seccion.nombre}
-            {headerOver && (
-              <span className="ml-2 text-[10px] font-normal opacity-70">
-                {selectedIds?.has(draggingId!) && (selectedIds?.size ?? 0) > 1
-                  ? `← ${selectedIds!.size} tareas`
-                  : "← soltar aquí"}
-              </span>
-            )}
           </span>
         )}
 
@@ -2842,7 +2867,6 @@ function SectionBlock({
         {/* Action buttons: rename + delete */}
         {hov && !headerOver && !editando && (
           <div className="ml-auto flex items-center gap-1">
-            {/* Rename */}
             <button
               onClick={e => { e.stopPropagation(); setEditando(true); setEditNombre(seccion.nombre); }}
               className="text-[#333] hover:text-[#B3985B] p-0.5 transition-colors"
@@ -2853,7 +2877,6 @@ function SectionBlock({
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-            {/* Delete */}
             <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
               className="text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -2887,29 +2910,8 @@ function SectionBlock({
               onMoveToSection={onMoveToSection}
             />
           ))}
-          {/* Bottom drop zone — visible only when dragging */}
-          {draggingId && (
-            <div
-              className={`flex items-center justify-center h-9 rounded-xl border-2 border-dashed transition-all mb-1 ${
-                bottomOver
-                  ? "border-[#B3985B]/60 bg-[#B3985B]/[0.06] text-[#B3985B]"
-                  : "border-[#1e1e1e] text-[#2a2a2a]"
-              }`}
-              onDragOver={e => { e.preventDefault(); e.stopPropagation(); setBottomOver(true); }}
-              onDragLeave={() => setBottomOver(false)}
-              onDrop={e => { e.preventDefault(); e.stopPropagation(); setBottomOver(false); onDropSection?.(); }}
-            >
-              <span className="text-[11px] font-medium select-none">
-                {bottomOver
-                  ? selectedIds?.has(draggingId!) && (selectedIds?.size ?? 0) > 1
-                    ? `→ Mover ${selectedIds!.size} tareas a "${seccion.nombre}"`
-                    : `→ Mover a "${seccion.nombre}"`
-                  : `Soltar en ${seccion.nombre}`}
-              </span>
-            </div>
-          )}
           <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
-            placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea} />
+            placeholder={`Tarea en ${seccion.nombre}\u2026`} onAdd={onAddTarea} />
         </>
       )}
     </div>
