@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import soData from '@/lib/plan-trabajo/so-data.json'
 
 const SECRET = 'seedpt2026'
 
@@ -28,6 +29,15 @@ const AREA_CONFIGS = [
   { nombre: 'Ventas', color: '#4a1942', icono: '💰', orden: 4 },
   { nombre: 'Producción', color: '#7b2d00', icono: '🎪', orden: 5 },
 ]
+
+const AREA_MAP: Record<string, string> = {
+  'Operaciones Generales del Equipo': 'Operaciones Generales',
+  'Dirección General': 'Dirección',
+  'Administración': 'Administración',
+  'Marketing': 'Marketing',
+  'Ventas': 'Ventas',
+  'Producción': 'Producción',
+}
 
 function inferFrecuencia(cuando: string): string {
   const c = cuando.toLowerCase()
@@ -57,72 +67,23 @@ function getResponsableId(puesto: string): string | null {
   return null
 }
 
-type HtmlTarea = {
-  nombre: string
-  tipo: string
-  impacto: string
-  cuando: string
-  dias: string[]
-  puesto: string
-  moduloTexto: string
-  moduloDestino: string
-  kpi: string
-  descripcion: string
-  estandar: string
-  porque: string
-  relacionCon: string
-  siNoSeHace: string
-  dependeDe: null | Record<string, string>
-  bloqueaA: null | Record<string, string>
-  afectaA: string[]
-}
-
-type HtmlSubarea = {
-  nombre: string
-  entregables: string[]
-  tareas: HtmlTarea[]
-}
-
-type HtmlArea = {
-  nombre: string
-  icono: string
-  color: string
-  objetivo: string
-  subareas: HtmlSubarea[]
-}
-
 export async function GET(req: NextRequest) {
   const secret = new URL(req.url).searchParams.get('secret')
   if (secret !== SECRET) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  // In a Next.js serverless function, we can read from the project root
-  const fs = await import('fs')
-  const path = await import('path')
-
-  const htmlPath = path.join(process.cwd(), 'prisma', 'plan-trabajo-data.html')
-
-  let html: string
-  try {
-    html = fs.readFileSync(htmlPath, 'utf-8')
-  } catch {
-    return NextResponse.json({ error: 'HTML file not found at ' + htmlPath }, { status: 500 })
+  type HtmlTarea = {
+    nombre: string; tipo: string; impacto: string; cuando: string; dias: string[]
+    puesto: string; moduloTexto: string; moduloDestino: string; kpi: string
+    descripcion: string; estandar: string; porque: string; relacionCon: string
+    siNoSeHace: string; dependeDe: null | Record<string, string>
+    bloqueaA: null | Record<string, string>; afectaA: string[]
   }
+  type HtmlSubarea = { nombre: string; entregables: string[]; tareas: HtmlTarea[] }
+  type HtmlArea = { nombre: string; icono: string; color: string; objetivo: string; subareas: HtmlSubarea[] }
 
-  const dataMatch = html.match(/let DATA = (\[[\s\S]*?\]);/)
-  if (!dataMatch) return NextResponse.json({ error: 'DATA not found in HTML' }, { status: 500 })
+  const htmlAreas = soData as HtmlArea[]
 
-  const htmlAreas: HtmlArea[] = JSON.parse(dataMatch[1])
-
-  const AREA_MAP: Record<string, string> = {
-    'Operaciones Generales del Equipo': 'Operaciones Generales',
-    'Dirección General': 'Dirección',
-    'Administración': 'Administración',
-    'Marketing': 'Marketing',
-    'Ventas': 'Ventas',
-    'Producción': 'Producción',
-  }
-
-  // Clear templates and subareas
+  // Clear
   const deletedT = await prisma.pTTareaTemplate.deleteMany()
   const deletedS = await prisma.pTSubArea.deleteMany()
 
@@ -196,9 +157,7 @@ export async function GET(req: NextRequest) {
       try {
         await prisma.pTKPI.update({ where: { id: kpi.id }, data: { slug: slug + '-' + kpi.id.slice(-4) } })
         kpiUpdated++
-      } catch {
-        // skip
-      }
+      } catch { /* skip */ }
     }
   }
 
