@@ -119,14 +119,6 @@ export default function FormulariosPage() {
 
                 {f.disponible && (
                   <>
-                    <div className="mt-3 flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
-                      <p className="text-[11px] text-gray-500">
-                        Semana actual:{" "}
-                        <span className="text-[#B3985B] font-semibold">{semanaActual}</span>
-                      </p>
-                    </div>
-
                     {/* Botón para compartir el link */}
                     <div className="mt-3 flex items-center gap-2 p-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl">
                       <svg className="w-3.5 h-3.5 text-gray-700 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
