@@ -226,6 +226,7 @@ export default function TaskItem({
       ref={rowRef}
       role="button" tabIndex={0} aria-selected={isSelected}
       draggable={isDraggable}
+      data-task-id={isDraggable ? tarea.id : undefined}
       className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
         isBeingDragged ? "opacity-30 scale-[0.98]" : ""
       } ${

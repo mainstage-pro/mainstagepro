@@ -123,6 +123,21 @@ export default function OperacionesPage() {
   const [searchResults, setSearchResults]       = useState<TareaItem[] | null>(null);
   const [searchLoading, setSearchLoading]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
+  // Global native drag listener — more reliable than React synthetic events
+  useEffect(() => {
+    function onDragStart(e: DragEvent) {
+      const el = (e.target as HTMLElement)?.closest?.('[data-task-id]');
+      if (el) setDraggingId(el.getAttribute('data-task-id'));
+    }
+    function onDragEnd() { setDraggingId(null); }
+    document.addEventListener('dragstart', onDragStart);
+    document.addEventListener('dragend',   onDragEnd);
+    return () => {
+      document.removeEventListener('dragstart', onDragStart);
+      document.removeEventListener('dragend',   onDragEnd);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
   const [syncTrigger, setSyncTrigger]           = useState(0);
