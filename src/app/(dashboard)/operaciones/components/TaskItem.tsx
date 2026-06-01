@@ -668,39 +668,37 @@ export default function TaskItem({
               )}
               {onMoveToSection && availableSections && availableSections.length > 0 && (
                 <>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSecciones(v => !v)}
-                      className="w-full text-left flex items-center justify-between gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
-                    >
-                      <span className="flex items-center gap-2.5">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-                        </svg>
-                        Mover a sección
-                      </span>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <polyline points="9 18 15 12 9 6"/>
+                  <button
+                    onClick={() => setShowSecciones(v => !v)}
+                    className="w-full text-left flex items-center justify-between gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
                       </svg>
-                    </button>
-                    {showSecciones && (
-                      <div className="absolute left-full top-0 ml-1 z-[60] bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[170px]">
-                        <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Mover a</p>
-                        {availableSections.map(s => (
-                          <button key={s.id}
-                            onClick={() => { onMoveToSection(tarea.id, s.id); setShowMore(false); setShowSecciones(false); }}
-                            className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-[#ccc] hover:bg-[#1f1f1f] hover:text-white transition-colors"
-                          >
-                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5">
-                              <polyline points="9 18 15 12 9 6"/>
-                            </svg>
-                            {s.nombre}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                      Mover a sección
+                    </span>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      style={{ transform: showSecciones ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}>
+                      <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                  </button>
+                  {showSecciones && (
+                    <div className="mx-2 mb-1 bg-[#0d0d0d] rounded-lg overflow-hidden border border-[#1f1f1f]">
+                      {availableSections.map(s => (
+                        <button key={s.id}
+                          onClick={() => { onMoveToSection(tarea.id, s.id); setShowMore(false); setShowSecciones(false); }}
+                          className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-[#ccc] hover:bg-[#1a1a1a] hover:text-white transition-colors"
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5">
+                            <polyline points="9 18 15 12 9 6"/>
+                          </svg>
+                          {s.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
