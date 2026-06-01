@@ -123,20 +123,35 @@ export default function OperacionesPage() {
   const [searchResults, setSearchResults]       = useState<TareaItem[] | null>(null);
   const [searchLoading, setSearchLoading]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
-  // ── Pointer-based drag (bypasses HTML5 Drag API issues in Chrome) ──────────
-  const ptrDragId     = useRef<string | null>(null);
+  // ── Pointer-based drag (smooth ghost card, no HTML5 Drag API) ──────────────
+  const ptrDragInfo   = useRef<{ id: string; title: string } | null>(null);
   const moveToSecRef  = useRef<(taskId: string, secId: string) => void>(() => {});
-  const [ptrTargetSec, setPtrTargetSec] = useState<string | null>(null);
+  const [ptrTargetSec,  setPtrTargetSec]  = useState<string | null>(null);
+  const [ptrGhostPos,   setPtrGhostPos]   = useState<{ x: number; y: number } | null>(null);
 
-  function startPtrDrag(taskId: string) {
-    ptrDragId.current = taskId;
+  function startPtrDrag(taskId: string, title: string) {
+    ptrDragInfo.current = { id: taskId, title };
     setDraggingId(taskId);
     setPtrTargetSec(null);
   }
 
+  // Body cursor during drag
+  useEffect(() => {
+    if (ptrGhostPos) {
+      document.body.style.cursor      = 'grabbing';
+      document.body.style.userSelect  = 'none';
+    } else {
+      document.body.style.cursor      = '';
+      document.body.style.userSelect  = '';
+    }
+  }, [ptrGhostPos]);
+
   useEffect(() => {
     function onMove(e: MouseEvent) {
-      if (!ptrDragId.current) return;
+      if (!ptrDragInfo.current) return;
+      // Track ghost position
+      setPtrGhostPos({ x: e.clientX, y: e.clientY });
+      // Detect target section under cursor
       const els = document.elementsFromPoint(e.clientX, e.clientY);
       let secId: string | null = null;
       for (const el of els) {
@@ -146,17 +161,18 @@ export default function OperacionesPage() {
       setPtrTargetSec(secId);
     }
     function onUp(e: MouseEvent) {
-      if (!ptrDragId.current) return;
+      if (!ptrDragInfo.current) return;
       const els = document.elementsFromPoint(e.clientX, e.clientY);
       let secId: string | null = null;
       for (const el of els) {
         const found = (el as HTMLElement).closest?.('[data-section-id]');
         if (found) { secId = found.getAttribute('data-section-id'); break; }
       }
-      const taskId = ptrDragId.current;
-      ptrDragId.current = null;
+      const taskId = ptrDragInfo.current.id;
+      ptrDragInfo.current = null;
       setDraggingId(null);
       setPtrTargetSec(null);
+      setPtrGhostPos(null);
       if (secId && taskId) moveToSecRef.current(taskId, secId);
     }
     document.addEventListener('mousemove', onMove);
@@ -166,6 +182,7 @@ export default function OperacionesPage() {
       document.removeEventListener('mouseup',   onUp);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
 
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
@@ -1069,6 +1086,28 @@ export default function OperacionesPage() {
 
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
+
+      {/* ── Drag ghost card (follows cursor) ─────────────────────────────── */}
+      {ptrGhostPos && ptrDragInfo.current && (
+        <div
+          style={{
+            position: 'fixed',
+            left: 0, top: 0,
+            transform: `translate(${ptrGhostPos.x + 14}px, ${ptrGhostPos.y - 18}px) rotate(2deg)`,
+            zIndex: 9999,
+            pointerEvents: 'none',
+            willChange: 'transform',
+          }}
+        >
+          <div className="bg-[#181818] border border-[#B3985B]/60 rounded-xl px-3.5 py-2.5 shadow-2xl shadow-black/70 max-w-[260px] backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+              <p className="text-white text-sm font-medium truncate leading-snug">{ptrDragInfo.current.title}</p>
+            </div>
+            <p className="text-[#B3985B]/70 text-[10px] mt-1 ml-3.5">Arrastrando…</p>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — Todoist-style navigation
@@ -2779,7 +2818,7 @@ function SectionBlock({
   allSections?:       SeccionDetalle[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
   ptrTargetSec?:      string | null;
-  onPtrDragStart?:    (taskId: string) => void;
+  onPtrDragStart?:    (taskId: string, title: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2810,13 +2849,13 @@ function SectionBlock({
 
   return (
     <div
-      className={`mt-5 rounded-xl transition-all duration-100 ${isPtrTarget ? "ring-2 ring-[#B3985B] bg-[#B3985B]/5" : ""}`}
+      className={`mt-5 rounded-2xl transition-all duration-150 ${isPtrTarget ? "ring-2 ring-[#B3985B] ring-offset-1 ring-offset-[#0a0a0a] bg-[#B3985B]/5" : ""}`}
       data-section-id={seccion.id}
     >
-      {/* Pointer-drag drop indicator */}
+      {/* ── Pointer-drag drop banner ── */}
       {isPtrTarget && (
-        <div className="flex items-center justify-center gap-2 h-10 mb-1 rounded-lg bg-[#B3985B]/15 border-2 border-[#B3985B] text-[#B3985B] text-xs font-semibold select-none">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        <div className="flex items-center justify-center gap-2.5 h-14 mb-2 rounded-xl bg-[#B3985B] text-black text-sm font-bold select-none shadow-lg shadow-[#B3985B]/20">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           Soltar en &ldquo;{seccion.nombre}&rdquo;
         </div>
       )}

@@ -83,7 +83,7 @@ interface Props {
   draggingId?:        string | null;
   availableSections?: { id: string; nombre: string }[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
-  onPtrDragStart?:    (taskId: string) => void;
+  onPtrDragStart?:    (taskId: string, title: string) => void;
 }
 
 function ActionBtn({ title, onClick, children, active }: {
@@ -275,7 +275,7 @@ export default function TaskItem({
             if (e.button !== 0) return;
             e.preventDefault();
             e.stopPropagation();
-            onPtrDragStart?.(tarea.id);
+            onPtrDragStart?.(tarea.id, tarea.titulo);
           }}
         >
           {[0,1,2].map(i => (
