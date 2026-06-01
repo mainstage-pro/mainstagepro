@@ -10,11 +10,16 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
 
-  // Admins pueden ver reportes de cualquier usuario; el resto solo los propios
-  const filtroUserId = session.role === "ADMIN" && userId ? userId : session.id;
+  // ADMIN sin userId = todos los reportes | ADMIN con userId = filtrar por ese usuario | no-admin = solo propios
+  const where =
+    session.role === "ADMIN"
+      ? userId
+        ? { userId }
+        : {} // sin filtro → todos
+      : { userId: session.id }; // no-admin → solo propios
 
   const reportes = await prisma.reporteFormulario.findMany({
-    where: { userId: filtroUserId },
+    where,
     orderBy: [{ anio: "desc" }, { semana: "desc" }],
     include: {
       user: { select: { id: true, name: true, area: true } },

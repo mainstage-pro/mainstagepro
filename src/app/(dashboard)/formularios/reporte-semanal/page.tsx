@@ -123,18 +123,23 @@ export default function ReporteSemanalHistorialPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {/* Nombre como título principal */}
                       <span className="text-white font-semibold text-sm">
+                        Reporte de {r.user.name}
+                      </span>
+                      {r.user.area && (
+                        <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+                          {r.user.area}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-gray-500 text-xs">
                         Semana {r.semana} · {r.anio}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${bw.color}`}>
                         {bw.label} {r.bienestar}/10
                       </span>
-                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                        {r.user.name}
-                      </span>
-                      {r.user.area && (
-                        <span className="text-[10px] text-gray-600">{r.user.area}</span>
-                      )}
                     </div>
                     {preview && (
                       <p className="text-gray-500 text-xs truncate max-w-lg">{preview}{r.logros.length > 120 ? "…" : ""}</p>

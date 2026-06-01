@@ -146,17 +146,18 @@ export default function ReporteDetalleePage() {
             <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">
               Reporte General Semanal
             </p>
-            <h1 className="text-xl font-bold text-white">Semana {reporte.semana} · {reporte.anio}</h1>
-            <p className="text-gray-500 text-xs mt-1">{fmtDate(reporte.createdAt)}</p>
+            {/* Nombre como título principal */}
+            <h1 className="text-xl font-bold text-white">Reporte de {reporte.user.name}</h1>
+            <p className="text-gray-500 text-xs mt-1">
+              Semana {reporte.semana} · {reporte.anio}
+              {reporte.user.area && <span className="ml-2 text-gray-600">· {reporte.user.area}</span>}
+            </p>
+            <p className="text-gray-600 text-[10px] mt-0.5">{fmtDate(reporte.createdAt)}</p>
           </div>
-          <div className="text-right">
-            <div className="flex items-center gap-2 flex-wrap justify-end">
-              <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${bw.color}`}>
-                {bw.label}
-              </span>
-            </div>
-            <p className="text-gray-500 text-xs mt-2">{reporte.user.name}</p>
-            {reporte.user.area && <p className="text-gray-600 text-[10px]">{reporte.user.area}</p>}
+          <div>
+            <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${bw.color}`}>
+              {bw.label}
+            </span>
           </div>
         </div>
       </div>
