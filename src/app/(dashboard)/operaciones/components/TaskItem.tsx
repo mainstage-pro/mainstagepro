@@ -138,6 +138,7 @@ export default function TaskItem({
   const [aboveLine,         setAboveLine]         = useState(false); // reorder strip above row
 
   const rowRef          = useRef<HTMLDivElement>(null);
+  const justDraggedRef  = useRef(false);
   const moreRef         = useRef<HTMLDivElement>(null);
   const assignRef       = useRef<HTMLDivElement>(null);
   const mobileAssignRef = useRef<HTMLDivElement>(null);
@@ -243,6 +244,7 @@ export default function TaskItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onClick={e => {
+        if (justDraggedRef.current) { justDraggedRef.current = false; return; }
         if ((e.metaKey || e.ctrlKey) && onMultiSelect) { onMultiSelect(tarea.id); return; }
         onSelect(tarea.id);
       }}
@@ -275,6 +277,8 @@ export default function TaskItem({
             if (e.button !== 0) return;
             e.preventDefault();
             e.stopPropagation();
+            justDraggedRef.current = true;
+            setTimeout(() => { justDraggedRef.current = false; }, 600);
             onPtrDragStart?.(tarea.id, tarea.titulo);
           }}
         >
