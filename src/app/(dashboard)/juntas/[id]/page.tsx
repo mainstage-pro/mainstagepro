@@ -51,6 +51,15 @@ type EventoProximo = {
   etapaActual?: string; urgente: boolean; linkHref: string;
 };
 
+type ProyectoAgenda = {
+  id: string;
+  nombre: string;
+  estado: string;
+  fechaEvento: string | null;
+  lugarEvento: string | null;
+  cliente: { nombre: string; empresa: string | null } | null;
+};
+
 type Usuario = { id: string; name: string; area: string | null };
 type Proyecto = { id: string; nombre: string };
 
@@ -78,6 +87,18 @@ function fmtVenc(iso: string | null) {
 const PRIO_COLOR: Record<string, string> = {
   URGENTE: "text-red-400", ALTA: "text-orange-400", MEDIA: "text-[#B3985B]", BAJA: "text-gray-500",
 };
+
+// ─── parseRespuesta helper ────────────────────────────────────────────────────
+
+function parseRespuesta(tipo: string, respuesta: string | null) {
+  if (!respuesta) return null;
+  try {
+    if (tipo === "PRIORIDADES_SEMANA" || tipo === "RECONOCIMIENTO") {
+      return JSON.parse(respuesta);
+    }
+  } catch {}
+  return respuesta;
+}
 
 // ─── Modal Agregar Tarea ──────────────────────────────────────────────────────
 
@@ -184,8 +205,9 @@ function ModalAgregarTarea({ junta, usuarios, proyectos, onClose, onCreated }: {
 
 // ─── Agenda Item ──────────────────────────────────────────────────────────────
 
-function ItemAgenda({ item, onUpdate }: {
+function ItemAgenda({ item, juntaId, onUpdate }: {
   item: AgendaItem;
+  juntaId: string;
   onUpdate: (id: string, changes: Partial<AgendaItem>) => void;
 }) {
   const [expanded, setExpanded]     = useState(true);
@@ -194,6 +216,26 @@ function ItemAgenda({ item, onUpdate }: {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tipoColor = TIPO_AGENDA_COLORS[item.tipo as TipoAgenda] ?? "text-gray-500";
   const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
+
+  // For PRIORIDADES_SEMANA and RECONOCIMIENTO — structured state
+  const parsedInitial = parseRespuesta(item.tipo, item.respuesta);
+  const [structured, setStructured] = useState<Record<string, string>>(
+    typeof parsedInitial === "object" && parsedInitial !== null && !Array.isArray(parsedInitial)
+      ? (parsedInitial as Record<string, string>)
+      : {}
+  );
+
+  // Proyectos for EVENTOS_SEMANA and PRIORIDADES_SEMANA
+  const [proyectosAgenda, setProyectosAgenda] = useState<{ proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null>(null);
+
+  useEffect(() => {
+    if ((item.tipo === "EVENTOS_SEMANA" || item.tipo === "PRIORIDADES_SEMANA") && expanded && !proyectosAgenda) {
+      fetch("/api/proyectos/agenda")
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => { if (d) setProyectosAgenda(d); })
+        .catch(() => {});
+    }
+  }, [item.tipo, expanded, proyectosAgenda]);
 
   function handleRespuestaChange(val: string) {
     setRespuesta(val);
@@ -206,6 +248,187 @@ function ItemAgenda({ item, onUpdate }: {
     setCompletado(next);
     if (next) setExpanded(false);
     onUpdate(item.id, { completado: next });
+  }
+
+  function saveStructured(next: Record<string, string>) {
+    setStructured(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      await fetch(`/api/juntas/${juntaId}/agenda/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ respuesta: JSON.stringify(next) }),
+      });
+      onUpdate(item.id, { respuesta: JSON.stringify(next) });
+    }, 800);
+  }
+
+  function updateStructuredField(field: string, val: string) {
+    const next = { ...structured, [field]: val };
+    saveStructured(next);
+  }
+
+  const inputCls = "w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 transition-colors";
+  const textareaCls = `${inputCls} resize-none`;
+
+  function renderBody() {
+    switch (item.tipo) {
+      case "APERTURA":
+      case "CIERRE":
+        return (
+          <textarea
+            value={respuesta}
+            onChange={(e) => handleRespuestaChange(e.target.value)}
+            rows={2}
+            placeholder={item.placeholder ?? "Escribe aquí..."}
+            className={textareaCls}
+          />
+        );
+
+      case "AVISO":
+        return (
+          <textarea
+            value={respuesta}
+            onChange={(e) => handleRespuestaChange(e.target.value)}
+            rows={4}
+            placeholder={item.placeholder ?? "Escribe las notas de este punto..."}
+            className={textareaCls}
+          />
+        );
+
+      case "EVENTOS_SEMANA":
+        return (
+          <div className="space-y-3">
+            {/* Read-only recent events list */}
+            <div className="border border-[#1a1a1a] rounded-lg overflow-hidden">
+              {!proyectosAgenda ? (
+                <div className="p-3 space-y-2">
+                  {[1,2,3].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
+                </div>
+              ) : proyectosAgenda.recientes.length === 0 ? (
+                <p className="text-gray-600 text-[11px] text-center py-4">Sin eventos cerrados esta semana</p>
+              ) : (
+                proyectosAgenda.recientes.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 px-3 py-2 border-b border-[#1a1a1a] last:border-0">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-white font-medium truncate">{p.nombre}</p>
+                      {p.lugarEvento && <p className="text-[10px] text-gray-600 truncate">{p.lugarEvento}</p>}
+                    </div>
+                    <p className="text-[10px] text-gray-600 shrink-0">
+                      {p.fechaEvento ? new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : ""}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Notes textarea */}
+            <textarea
+              value={respuesta}
+              onChange={(e) => handleRespuestaChange(e.target.value)}
+              rows={3}
+              placeholder={item.placeholder ?? "Notas sobre eventos de la semana..."}
+              className={textareaCls}
+            />
+          </div>
+        );
+
+      case "PRIORIDADES_SEMANA":
+        return (
+          <div className="space-y-4">
+            {/* Sub-sección A: Próximos eventos */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">A · Próximos eventos</p>
+              <div className="border border-[#1a1a1a] rounded-lg overflow-hidden mb-2">
+                {!proyectosAgenda ? (
+                  <div className="p-3 space-y-2">
+                    {[1,2,3].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
+                  </div>
+                ) : proyectosAgenda.proximos.length === 0 ? (
+                  <p className="text-gray-600 text-[11px] text-center py-3">Sin proyectos activos</p>
+                ) : (
+                  proyectosAgenda.proximos.slice(0, 8).map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 px-3 py-2 border-b border-[#1a1a1a] last:border-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white font-medium truncate">{p.nombre}</p>
+                        {p.lugarEvento && <p className="text-[10px] text-gray-600 truncate">{p.lugarEvento}</p>}
+                      </div>
+                      <p className="text-[10px] text-[#B3985B] shrink-0">
+                        {p.fechaEvento ? new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : ""}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+              <textarea
+                value={structured.notasEventos ?? ""}
+                onChange={(e) => updateStructuredField("notasEventos", e.target.value)}
+                rows={2}
+                placeholder="Notas sobre próximos eventos..."
+                className={textareaCls}
+              />
+            </div>
+
+            {/* Sub-sección B: Proyectos con atención */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">B · Proyectos con atención esta semana</p>
+              <textarea
+                value={structured.notasProyectos ?? ""}
+                onChange={(e) => updateStructuredField("notasProyectos", e.target.value)}
+                rows={3}
+                placeholder="¿Qué proyectos requieren atención especial esta semana?"
+                className={textareaCls}
+              />
+            </div>
+
+            {/* Sub-sección C: Objetivos de la semana */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">C · Objetivos de la semana</p>
+              <div className="space-y-2">
+                {["objetivo1", "objetivo2", "objetivo3"].map((key, i) => (
+                  <input
+                    key={key}
+                    placeholder={`Objetivo ${i + 1}`}
+                    value={structured[key] ?? ""}
+                    onChange={(e) => updateStructuredField(key, e.target.value)}
+                    className={inputCls}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+
+      case "RECONOCIMIENTO":
+        return (
+          <div className="space-y-2">
+            <input
+              placeholder="Reconocimiento 1 — Nombre + logro"
+              value={structured.rec1 ?? ""}
+              onChange={(e) => updateStructuredField("rec1", e.target.value)}
+              className={inputCls}
+            />
+            <input
+              placeholder="Reconocimiento 2 — Nombre + logro"
+              value={structured.rec2 ?? ""}
+              onChange={(e) => updateStructuredField("rec2", e.target.value)}
+              className={inputCls}
+            />
+          </div>
+        );
+
+      default:
+        return (
+          <textarea
+            value={respuesta}
+            onChange={(e) => handleRespuestaChange(e.target.value)}
+            rows={4}
+            placeholder={item.placeholder ?? "Escribe las notas de este punto..."}
+            className={textareaCls}
+          />
+        );
+    }
   }
 
   return (
@@ -231,9 +454,7 @@ function ItemAgenda({ item, onUpdate }: {
       {expanded && (
         <div className="px-4 pb-4 border-t border-[#1a1a1a]">
           {item.descripcion && <p className="text-xs text-gray-500 pt-3 pb-2">{item.descripcion}</p>}
-          <textarea value={respuesta} onChange={(e) => handleRespuestaChange(e.target.value)} rows={4}
-            placeholder={item.placeholder ?? "Escribe las notas de este punto..."}
-            className="w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors" />
+          {renderBody()}
         </div>
       )}
     </div>
@@ -570,6 +791,139 @@ function PanelEventosGlobal() {
   );
 }
 
+// ─── Panel Global — Proyectos Activos ─────────────────────────────────────────
+
+function PanelProyectosGlobal({ proyectosAgenda }: { proyectosAgenda: { proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null }) {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="px-4 py-3 border-b border-[#1a1a1a]">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Proyectos</p>
+      </div>
+      {!proyectosAgenda ? (
+        <div className="p-4 space-y-2">
+          {[1,2,3].map((i) => <div key={i} className="h-10 bg-[#111] rounded animate-pulse" />)}
+        </div>
+      ) : proyectosAgenda.proximos.length === 0 ? (
+        <p className="text-gray-600 text-xs text-center p-6">Sin proyectos activos</p>
+      ) : (
+        <div className="divide-y divide-[#1a1a1a]">
+          {proyectosAgenda.proximos.map((p) => (
+            <div key={p.id} className="px-4 py-3 hover:bg-[#111] transition-colors">
+              <p className="text-xs font-medium text-white leading-snug">{p.nombre}</p>
+              <div className="flex items-center gap-2 mt-1">
+                {p.fechaEvento && (
+                  <span className="text-[10px] text-[#B3985B]">
+                    {new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                  </span>
+                )}
+                {p.lugarEvento && (
+                  <span className="text-[10px] text-gray-600 truncate">{p.lugarEvento}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Panel Global — Quick Task Form ──────────────────────────────────────────
+
+function PanelQuickTarea({ juntaId }: { juntaId: string }) {
+  const [quickTarea, setQuickTarea] = useState({ titulo: "", descripcion: "", prioridad: "MEDIA", fechaVencimiento: "" });
+  const [savingQuickTarea, setSavingQuickTarea] = useState(false);
+  const [tareasCreadas, setTareasCreadas] = useState<{ id: string; titulo: string }[]>([]);
+
+  const crearTareaRapida = async () => {
+    if (!quickTarea.titulo.trim()) return;
+    setSavingQuickTarea(true);
+    try {
+      const res = await fetch(`/api/juntas/${juntaId}/tareas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: quickTarea.titulo.trim(),
+          descripcion: quickTarea.descripcion || undefined,
+          prioridad: quickTarea.prioridad,
+          fechaVencimiento: quickTarea.fechaVencimiento || undefined,
+          asignadoAId: "cmnrpg62h0000zmizxpydetsm", // Mauricio
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTareasCreadas((prev) => [...prev, { id: data.tarea.id, titulo: data.tarea.titulo }]);
+        setQuickTarea({ titulo: "", descripcion: "", prioridad: "MEDIA", fechaVencimiento: "" });
+      }
+    } finally {
+      setSavingQuickTarea(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-[#1a1a1a] flex flex-col" style={{ minHeight: "280px" }}>
+      <div className="px-4 py-3 border-b border-[#1a1a1a]">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Nueva tarea</p>
+      </div>
+      <div className="p-3 space-y-2 flex-1 overflow-y-auto">
+        <input
+          value={quickTarea.titulo}
+          onChange={(e) => setQuickTarea((p) => ({ ...p, titulo: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === "Enter") crearTareaRapida(); }}
+          placeholder="Título de la tarea *"
+          className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-[#B3985B]/60 rounded-lg px-3 py-2 text-white text-xs focus:outline-none placeholder-gray-700"
+        />
+        <textarea
+          value={quickTarea.descripcion}
+          onChange={(e) => setQuickTarea((p) => ({ ...p, descripcion: e.target.value }))}
+          placeholder="Descripción (opcional)"
+          rows={2}
+          className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-[#B3985B]/60 rounded-lg px-3 py-2 text-white text-xs focus:outline-none resize-none placeholder-gray-700"
+        />
+        <div className="flex gap-2">
+          <input
+            type="date"
+            value={quickTarea.fechaVencimiento}
+            onChange={(e) => setQuickTarea((p) => ({ ...p, fechaVencimiento: e.target.value }))}
+            className="flex-1 bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/60 [color-scheme:dark]"
+          />
+          <select
+            value={quickTarea.prioridad}
+            onChange={(e) => setQuickTarea((p) => ({ ...p, prioridad: e.target.value }))}
+            className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+          >
+            <option value="BAJA">Baja</option>
+            <option value="MEDIA">Media</option>
+            <option value="ALTA">Alta</option>
+            <option value="URGENTE">Urgente</option>
+          </select>
+        </div>
+        <button
+          onClick={crearTareaRapida}
+          disabled={savingQuickTarea || !quickTarea.titulo.trim()}
+          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-2 rounded-lg transition-colors"
+        >
+          {savingQuickTarea ? "Guardando..." : "+ Agregar tarea"}
+        </button>
+
+        {tareasCreadas.length > 0 && (
+          <div className="mt-2">
+            <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Creadas en esta junta</p>
+            <div className="space-y-1">
+              {tareasCreadas.map((t) => (
+                <div key={t.id} className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="text-green-500 shrink-0">✓</span>
+                  <span className="truncate">{t.titulo}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function JuntaActivaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -582,6 +936,9 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
   const [modalTarea, setModalTarea] = useState(false);
   const [cerrando, setCerrando]     = useState(false);
   const notasTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Global-panel proyectos state
+  const [proyectosAgenda, setProyectosAgenda] = useState<{ proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null>(null);
 
   const cargar = useCallback(async () => {
     const [jRes, uRes, pRes] = await Promise.all([
@@ -596,6 +953,15 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
   }, [id]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Fetch proyectos agenda once for global junta
+  useEffect(() => {
+    if (!junta || junta.tipo !== "GLOBAL_SEMANAL") return;
+    fetch("/api/proyectos/agenda")
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d) setProyectosAgenda(d); })
+      .catch(() => {});
+  }, [junta?.tipo]);
 
   async function patchJunta(data: Record<string, unknown>) {
     const res = await fetch(`/api/juntas/${id}`, {
@@ -707,7 +1073,7 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
           <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Agenda estructurada</p>
 
           {junta.agendaItems.map((item) => (
-            <ItemAgenda key={item.id} item={item} onUpdate={handleAgendaUpdate} />
+            <ItemAgenda key={item.id} item={item} juntaId={id} onUpdate={handleAgendaUpdate} />
           ))}
 
           {/* Notas generales */}
@@ -734,10 +1100,10 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
         {/* ── Panel derecho — dividido en dos mitades ── */}
         <div className="w-full lg:w-80 xl:w-96 flex flex-col border-t lg:border-t-0 border-[#1a1a1a] shrink-0">
 
-          {/* ── Mitad superior: Eventos (Global) o Tareas de esta junta ── */}
+          {/* ── Mitad superior: Proyectos activos (Global) o Tareas de esta junta ── */}
           <div className="flex-1 flex flex-col border-b border-[#1a1a1a] overflow-hidden">
             {esGlobal ? (
-              <PanelEventosGlobal />
+              <PanelProyectosGlobal proyectosAgenda={proyectosAgenda} />
             ) : (
               <>
                 <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between shrink-0">
@@ -794,9 +1160,13 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
 
-          {/* ── Mitad inferior: Tareas pendientes del área ── */}
+          {/* ── Mitad inferior: Quick task form (Global) or Tareas pendientes del área ── */}
           <div className="flex-1 overflow-hidden">
-            <PanelTareasPendientes proyectos={proyectos} area={junta.area} />
+            {esGlobal ? (
+              <PanelQuickTarea juntaId={id} />
+            ) : (
+              <PanelTareasPendientes proyectos={proyectos} area={junta.area} />
+            )}
           </div>
         </div>
       </div>

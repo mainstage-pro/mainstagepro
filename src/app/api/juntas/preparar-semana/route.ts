@@ -31,14 +31,15 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  if (existing.length >= 4) {
+  if (existing.length >= 5) {
     return NextResponse.json({ juntas: existing, created: false });
   }
 
-  // Create the 4 juntas
+  // Create the 5 juntas
   const creadas = [];
 
-  for (const config of SEMANA_JUNTAS_CONFIG) {
+  for (const _config of SEMANA_JUNTAS_CONFIG) {
+    const config = _config as { area: string; tipo: string; titulo: string; hora: string; duracionMin: number };
     // Skip if this area already has a junta this week
     if (existing.some((j) => j.area === config.area)) continue;
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     // Get template key: GLOBAL uses 'GLOBAL_SEMANAL', areas use their area name
     const templateKey = config.area === 'GLOBAL' ? 'GLOBAL_SEMANAL' : config.area;
     const template = JUNTA_TEMPLATES[templateKey];
-    const titulo = template?.nombre ?? `Junta ${config.area}`;
+    const titulo = config.titulo ?? template?.nombre ?? `Junta ${config.area}`;
 
     const participantesIds = PARTICIPANTES_POR_AREA[config.area] ?? [];
 
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
         area:          config.area,
         tipo:          config.tipo,
         fecha,
-        duracionMin:   config.duracion,
+        duracionMin:   config.duracionMin,
         estado:        'PROGRAMADA',
         facilitadorId: session.id,
         agendaItems: {

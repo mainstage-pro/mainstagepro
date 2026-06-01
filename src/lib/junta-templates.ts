@@ -10,7 +10,11 @@ export type TipoAgenda =
   | "AVISO"
   | "RECONOCIMIENTO"
   | "KPI_REVIEW"
-  | "CUSTOM";
+  | "CUSTOM"
+  | "APERTURA"
+  | "EVENTOS_SEMANA"
+  | "PRIORIDADES_SEMANA"
+  | "CIERRE";
 
 export type AreaJunta =
   | "GLOBAL"
@@ -34,7 +38,7 @@ export interface AgendaItemTemplate {
   tipo: TipoAgenda;
   titulo: string;
   descripcion?: string;
-  placeholder?: string;
+  placeholder?: string | null;
 }
 
 export interface JuntaTemplate {
@@ -51,7 +55,7 @@ export interface JuntaTemplate {
 
 export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
   GLOBAL_SEMANAL: {
-    nombre: "Junta global — Lunes 10:30",
+    nombre: "Junta Global",
     area: "GLOBAL",
     tipo: "GLOBAL_SEMANAL",
     duracionMin: 30,
@@ -60,38 +64,45 @@ export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
     agendaItems: [
       {
         orden: 1,
-        tipo: "RECONOCIMIENTO",
-        titulo: "Apertura y energía",
-        descripcion: "Bienvenida rápida. Tono positivo para arrancar la semana.",
-        placeholder: "¿Hay algo que reconocer o celebrar de la semana pasada?",
+        tipo: "APERTURA",
+        titulo: "Apertura",
+        descripcion: "Una sola frase. El tono y la energía de la semana. Mauricio dirige, el equipo escucha.",
+        placeholder: "Frase de apertura:",
       },
       {
         orden: 2,
-        tipo: "KPI_REVIEW",
-        titulo: "Resultados globales de la semana",
-        descripcion: "Ingresos, eventos ejecutados, leads generados. Emiliano presenta números clave.",
-        placeholder: "Ingresos: $___  |  Eventos ejecutados: ___  |  Leads: ___  |  Notas:",
+        tipo: "EVENTOS_SEMANA",
+        titulo: "Eventos de la semana anterior",
+        descripcion: "Tú comunicas, no el equipo presenta. Nombre del evento, venue, quién estuvo. Si hubo algo relevante lo mencionas en una línea.",
+        placeholder: "Notas sobre eventos de la semana:",
       },
       {
         orden: 3,
-        tipo: "COMPROMISOS",
-        titulo: "Prioridades de la semana por área",
-        descripcion: "Cada responsable dice en una frase en qué está enfocado esta semana.",
-        placeholder: "Dirección: ___ | Admin: ___ | Marketing: ___ | Ventas: ___ | Producción: ___",
+        tipo: "PRIORIDADES_SEMANA",
+        titulo: "Objetivos y prioridades de la semana",
+        descripcion: "Mauricio marca el rumbo. Próximos eventos, proyectos con atención requerida, y los objetivos concretos que mueven el negocio esta semana.",
+        placeholder: null,
       },
       {
         orden: 4,
         tipo: "AVISO",
-        titulo: "Avisos y comunicados de dirección",
-        descripcion: "Actualizaciones importantes de Mauricio.",
-        placeholder: "Comunicados:",
+        titulo: "Anuncios generales",
+        descripcion: "Nuevos clientes, cambios de proceso, actualizaciones de plataforma, fechas importantes.",
+        placeholder: "Anuncios:",
       },
       {
         orden: 5,
         tipo: "RECONOCIMIENTO",
+        titulo: "Reconocimientos",
+        descripcion: "Máximo 2. Nombre + logro específico. Breve y genuino.",
+        placeholder: null,
+      },
+      {
+        orden: 6,
+        tipo: "CIERRE",
         titulo: "Cierre",
-        descripcion: "Reconocimiento si aplica. Arrancan las juntas de área.",
-        placeholder: "Reconocimientos:",
+        descripcion: "Una frase de arranque. Se van a las juntas de área.",
+        placeholder: "Frase de cierre:",
       },
     ],
   },
@@ -453,27 +464,35 @@ export const AREA_COLORS: Record<AreaJunta, { bg: string; text: string; border: 
 };
 
 export const TIPO_AGENDA_LABELS: Record<TipoAgenda, string> = {
-  RESULTADOS:     "Resultados",
-  COMPROMISOS:    "Compromisos",
-  BLOQUEO:        "Bloqueo",
-  DECISION:       "Decisión",
-  ACUERDO:        "Acuerdo",
-  AVISO:          "Aviso",
-  RECONOCIMIENTO: "Reconocimiento",
-  KPI_REVIEW:     "KPIs",
-  CUSTOM:         "Tema libre",
+  RESULTADOS:        "Resultados",
+  COMPROMISOS:       "Compromisos",
+  BLOQUEO:           "Bloqueo",
+  DECISION:          "Decisión",
+  ACUERDO:           "Acuerdo",
+  AVISO:             "Aviso",
+  RECONOCIMIENTO:    "Reconocimiento",
+  KPI_REVIEW:        "KPIs",
+  CUSTOM:            "Tema libre",
+  APERTURA:          "Apertura",
+  EVENTOS_SEMANA:    "Eventos semana",
+  PRIORIDADES_SEMANA:"Prioridades",
+  CIERRE:            "Cierre",
 };
 
 export const TIPO_AGENDA_COLORS: Record<TipoAgenda, string> = {
-  RESULTADOS:     "text-blue-400",
-  COMPROMISOS:    "text-[#B3985B]",
-  BLOQUEO:        "text-red-400",
-  DECISION:       "text-green-400",
-  ACUERDO:        "text-green-300",
-  AVISO:          "text-gray-400",
-  RECONOCIMIENTO: "text-yellow-400",
-  KPI_REVIEW:     "text-purple-400",
-  CUSTOM:         "text-gray-500",
+  RESULTADOS:         "text-blue-400",
+  COMPROMISOS:        "text-[#B3985B]",
+  BLOQUEO:            "text-red-400",
+  DECISION:           "text-green-400",
+  ACUERDO:            "text-green-300",
+  AVISO:              "text-gray-400",
+  RECONOCIMIENTO:     "text-yellow-400",
+  KPI_REVIEW:         "text-purple-400",
+  CUSTOM:             "text-gray-500",
+  APERTURA:           "text-[#B3985B]",
+  EVENTOS_SEMANA:     "text-blue-300",
+  PRIORIDADES_SEMANA: "text-emerald-400",
+  CIERRE:             "text-[#B3985B]",
 };
 
 // Lunes de la semana actual (útil para defaultear fecha de junta)

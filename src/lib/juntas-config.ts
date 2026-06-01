@@ -32,8 +32,9 @@ export const RESPONSABLE_POR_AREA: Record<string, string> = {
 }
 
 export const SEMANA_JUNTAS_CONFIG = [
-  { area: 'GLOBAL',         tipo: 'GLOBAL_SEMANAL', hora: '10:30', duracion: 30 },
-  { area: 'ADMINISTRACION', tipo: 'AREA_SEMANAL',   hora: '11:00', duracion: 30 },
-  { area: 'MARKETING',      tipo: 'AREA_SEMANAL',   hora: '11:30', duracion: 30 },
-  { area: 'PRODUCCION',     tipo: 'AREA_SEMANAL',   hora: '12:00', duracion: 30 },
+  { area: 'GLOBAL',         tipo: 'GLOBAL_SEMANAL', titulo: 'Junta Global',         hora: '10:30', duracionMin: 30 },
+  { area: 'ADMINISTRACION', tipo: 'AREA_SEMANAL',   titulo: 'Junta Administración', hora: '11:00', duracionMin: 45 },
+  { area: 'MARKETING',      tipo: 'AREA_SEMANAL',   titulo: 'Junta Marketing',      hora: '11:45', duracionMin: 45 },
+  { area: 'VENTAS',         tipo: 'AREA_SEMANAL',   titulo: 'Junta Ventas',         hora: '12:30', duracionMin: 45 },
+  { area: 'PRODUCCION',     tipo: 'AREA_SEMANAL',   titulo: 'Junta Producción',     hora: '13:15', duracionMin: 45 },
 ] as const

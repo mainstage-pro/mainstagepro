@@ -47,6 +47,15 @@ const ESTADO_BADGE: Record<string, { label: string; cls: string }> = {
   CANCELADA:  { label: "Cancelada",   cls: "bg-red-900/25 text-red-400 border-red-800/30" },
 };
 
+const AREA_ORDER: Record<string, number> = {
+  GLOBAL: 0,
+  ADMINISTRACION: 1,
+  MARKETING: 2,
+  VENTAS: 3,
+  PRODUCCION: 4,
+  DIRECCION: 5,
+};
+
 // ─── Template selector cards ───────────────────────────────────────────────────
 
 const TEMPLATE_CARDS = [
@@ -392,9 +401,18 @@ export default function JuntasPage() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const proximas   = juntas.filter((j) => j.estado === "PROGRAMADA" || j.estado === "EN_CURSO");
+  const proximas   = juntas
+    .filter((j) => j.estado === "PROGRAMADA" || j.estado === "EN_CURSO")
+    .sort((a, b) => (AREA_ORDER[a.area] ?? 99) - (AREA_ORDER[b.area] ?? 99));
   const historial  = juntas.filter((j) => j.estado === "COMPLETADA" || j.estado === "CANCELADA");
-  const histFiltro = filtroArea === "TODOS" ? historial : historial.filter((j) => j.area === filtroArea);
+  const histFiltro = (filtroArea === "TODOS" ? historial : historial.filter((j) => j.area === filtroArea))
+    .sort((a, b) => {
+      // Sort by date desc, then by area order within same date
+      const dateA = new Date(a.fecha).toDateString();
+      const dateB = new Date(b.fecha).toDateString();
+      if (dateA !== dateB) return new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+      return (AREA_ORDER[a.area] ?? 99) - (AREA_ORDER[b.area] ?? 99);
+    });
 
   // Semana actual en texto
   const lunes   = getLunesActual();
