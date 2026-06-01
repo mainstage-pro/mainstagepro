@@ -40,7 +40,7 @@ const AREA_MAP: Record<string, string> = {
 }
 
 function inferFrecuencia(cuando: string): string {
-  const c = cuando.toLowerCase()
+  const c = (cuando ?? '').toLowerCase()
   if (c.includes('ltimo viernes') || c.includes('primer lunes') || c.includes('primer martes') || c.includes('1er lunes')) return 'MENSUAL'
   if (c.includes('trimest')) return 'TRIMESTRAL'
   if (c.includes('2 semanas') || c.includes('quincenal')) return 'QUINCENAL'
@@ -51,7 +51,7 @@ function inferFrecuencia(cuando: string): string {
 }
 
 function inferContexto(cuando: string, nombre: string): string {
-  const c = (cuando + ' ' + nombre).toLowerCase()
+  const c = ((cuando ?? '') + ' ' + (nombre ?? '')).toLowerCase()
   if (c.includes('evento') || c.includes('montaje') || c.includes('desmontaje') || c.includes('post-evento') || c.includes('post evento')) return 'evento'
   return 'independiente'
 }
@@ -61,6 +61,7 @@ function slugify(text: string): string {
 }
 
 function getResponsableId(puesto: string): string | null {
+  if (!puesto) return null
   for (const [key, userId] of Object.entries(PUESTO_USER)) {
     if (puesto.includes(key)) return userId
   }
@@ -71,105 +72,149 @@ export async function GET(req: NextRequest) {
   const secret = new URL(req.url).searchParams.get('secret')
   if (secret !== SECRET) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  type HtmlTarea = {
-    nombre: string; tipo: string; impacto: string; cuando: string; dias: string[]
-    puesto: string; moduloTexto: string; moduloDestino: string; kpi: string
-    descripcion: string; estandar: string; porque: string; relacionCon: string
-    siNoSeHace: string; dependeDe: null | Record<string, string>
-    bloqueaA: null | Record<string, string>; afectaA: string[]
-  }
-  type HtmlSubarea = { nombre: string; entregables: string[]; tareas: HtmlTarea[] }
-  type HtmlArea = { nombre: string; icono: string; color: string; objetivo: string; subareas: HtmlSubarea[] }
+  const log: string[] = []
 
-  const htmlAreas = soData as HtmlArea[]
+  try {
+    // Step 0: Check DB connectivity + schema
+    log.push('Testing DB connection...')
+    const dbCheck = await prisma.$queryRaw<{ column_name: string }[]>`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'pt_tarea_templates'
+      ORDER BY column_name
+    `
+    const columns = dbCheck.map(r => r.column_name)
+    log.push(`pt_tarea_templates columns: ${columns.join(', ')}`)
+    const hasImpacto = columns.includes('impacto')
+    log.push(`Has 'impacto' column: ${hasImpacto}`)
 
-  // Clear
-  const deletedT = await prisma.pTTareaTemplate.deleteMany()
-  const deletedS = await prisma.pTSubArea.deleteMany()
+    if (!hasImpacto) {
+      log.push('ERROR: Schema migration not applied. Running db push is needed.')
+      return NextResponse.json({ error: 'Schema not migrated', log }, { status: 500 })
+    }
 
-  // Upsert areas
-  const areaIds: Record<string, string> = {}
-  for (const cfg of AREA_CONFIGS) {
-    const area = await prisma.pTArea.upsert({
-      where: { nombre: cfg.nombre },
-      create: cfg,
-      update: { color: cfg.color, icono: cfg.icono, orden: cfg.orden },
-    })
-    areaIds[cfg.nombre] = area.id
-  }
+    // Step 1: Count existing
+    const existingCount = await prisma.pTTareaTemplate.count()
+    log.push(`Existing templates: ${existingCount}`)
 
-  let totalCreated = 0
-  for (const htmlArea of htmlAreas) {
-    const areaNombre = AREA_MAP[htmlArea.nombre]
-    const areaId = areaIds[areaNombre]
-    if (!areaId) continue
+    type HtmlTarea = {
+      nombre: string; tipo: string; impacto: string; cuando: string; dias: string[]
+      puesto: string; moduloTexto: string; moduloDestino: string; kpi: string
+      descripcion: string; estandar: string; porque: string; relacionCon: string
+      siNoSeHace: string; dependeDe: null | Record<string, string>
+      bloqueaA: null | Record<string, string>; afectaA: string[]
+    }
+    type HtmlSubarea = { nombre: string; entregables: string[]; tareas: HtmlTarea[] }
+    type HtmlArea = { nombre: string; icono: string; color: string; objetivo: string; subareas: HtmlSubarea[] }
 
-    for (let si = 0; si < htmlArea.subareas.length; si++) {
-      const htmlSub = htmlArea.subareas[si]
-      const subarea = await prisma.pTSubArea.create({
-        data: { areaId, nombre: htmlSub.nombre, entregables: htmlSub.entregables ?? [], orden: si },
+    const htmlAreas = soData as HtmlArea[]
+    const totalTareas = htmlAreas.reduce((acc, a) => acc + a.subareas.reduce((s, sub) => s + sub.tareas.length, 0), 0)
+    log.push(`Tasks in JSON: ${totalTareas}`)
+
+    // Step 2: Clear
+    log.push('Deleting templates...')
+    const deletedT = await prisma.pTTareaTemplate.deleteMany()
+    log.push(`Deleted ${deletedT.count} templates`)
+
+    log.push('Deleting subareas...')
+    const deletedS = await prisma.pTSubArea.deleteMany()
+    log.push(`Deleted ${deletedS.count} subareas`)
+
+    // Step 3: Upsert areas
+    log.push('Upserting areas...')
+    const areaIds: Record<string, string> = {}
+    for (const cfg of AREA_CONFIGS) {
+      const area = await prisma.pTArea.upsert({
+        where: { nombre: cfg.nombre },
+        create: cfg,
+        update: { color: cfg.color, icono: cfg.icono, orden: cfg.orden },
       })
-      for (let ti = 0; ti < htmlSub.tareas.length; ti++) {
-        const t = htmlSub.tareas[ti]
-        const diasSemana = (t.dias ?? []).map((d: string) => DIA_MAP[d]).filter(Boolean)
-        await prisma.pTTareaTemplate.create({
-          data: {
-            areaId,
-            subAreaId: subarea.id,
-            responsableId: getResponsableId(t.puesto),
-            nombre: t.nombre,
-            descripcion: t.descripcion || null,
-            tipo: t.tipo,
-            frecuencia: inferFrecuencia(t.cuando),
-            diasSemana,
-            moduloDestino: t.moduloDestino || null,
-            moduloTexto: t.moduloTexto || null,
-            activa: true,
-            orden: ti,
-            impacto: t.impacto ?? 'estandar',
-            contexto: inferContexto(t.cuando, t.nombre),
-            cuando: t.cuando || null,
-            puestoDefault: t.puesto || null,
-            kpiNombre: t.kpi || null,
-            estandarMinimo: t.estandar || null,
-            porqueSeHace: t.porque || null,
-            relacionCon: t.relacionCon || null,
-            siNoSeHace: t.siNoSeHace || null,
-            afectaA: t.afectaA ?? [],
-            dependeDe: t.dependeDe != null ? (t.dependeDe as Prisma.InputJsonValue) : Prisma.JsonNull,
-            bloqueaA: t.bloqueaA != null ? (t.bloqueaA as Prisma.InputJsonValue) : Prisma.JsonNull,
-          },
+      areaIds[cfg.nombre] = area.id
+      log.push(`  Area: ${area.nombre} (${area.id})`)
+    }
+
+    // Step 4: Seed
+    log.push('Seeding templates...')
+    let totalCreated = 0
+    for (const htmlArea of htmlAreas) {
+      const areaNombre = AREA_MAP[htmlArea.nombre]
+      const areaId = areaIds[areaNombre]
+      if (!areaId) { log.push(`  SKIP area: ${htmlArea.nombre}`); continue }
+
+      for (let si = 0; si < htmlArea.subareas.length; si++) {
+        const htmlSub = htmlArea.subareas[si]
+        const subarea = await prisma.pTSubArea.create({
+          data: { areaId, nombre: htmlSub.nombre, entregables: htmlSub.entregables ?? [], orden: si },
         })
-        totalCreated++
+        for (let ti = 0; ti < htmlSub.tareas.length; ti++) {
+          const t = htmlSub.tareas[ti]
+          const diasSemana = (t.dias ?? []).map((d: string) => DIA_MAP[d]).filter(Boolean)
+          await prisma.pTTareaTemplate.create({
+            data: {
+              areaId,
+              subAreaId: subarea.id,
+              responsableId: getResponsableId(t.puesto),
+              nombre: t.nombre,
+              descripcion: t.descripcion || null,
+              tipo: t.tipo || 'CHECK',
+              frecuencia: inferFrecuencia(t.cuando ?? ''),
+              diasSemana,
+              moduloDestino: t.moduloDestino || null,
+              moduloTexto: t.moduloTexto || null,
+              activa: true,
+              orden: ti,
+              impacto: t.impacto ?? 'estandar',
+              contexto: inferContexto(t.cuando ?? '', t.nombre ?? ''),
+              cuando: t.cuando || null,
+              puestoDefault: t.puesto || null,
+              kpiNombre: t.kpi || null,
+              estandarMinimo: t.estandar || null,
+              porqueSeHace: t.porque || null,
+              relacionCon: t.relacionCon || null,
+              siNoSeHace: t.siNoSeHace || null,
+              afectaA: t.afectaA ?? [],
+              dependeDe: t.dependeDe != null ? (t.dependeDe as Prisma.InputJsonValue) : Prisma.JsonNull,
+              bloqueaA: t.bloqueaA != null ? (t.bloqueaA as Prisma.InputJsonValue) : Prisma.JsonNull,
+            },
+          })
+          totalCreated++
+        }
+      }
+      log.push(`  Area ${areaNombre}: done`)
+    }
+
+    // Step 5: Update KPI slugs
+    log.push('Updating KPI slugs...')
+    const kpis = await prisma.pTKPI.findMany()
+    let kpiUpdated = 0
+    for (const kpi of kpis) {
+      const slug = slugify(kpi.nombre)
+      try {
+        await prisma.pTKPI.update({ where: { id: kpi.id }, data: { slug } })
+        kpiUpdated++
+      } catch {
+        try {
+          await prisma.pTKPI.update({ where: { id: kpi.id }, data: { slug: slug + '-' + kpi.id.slice(-4) } })
+          kpiUpdated++
+        } catch { /* skip */ }
       }
     }
+
+    const finalCount = await prisma.pTTareaTemplate.count()
+    log.push(`Final count: ${finalCount}`)
+
+    return NextResponse.json({
+      message: '✅ Seed completado — ELIMINA este endpoint',
+      deletedTemplates: deletedT.count,
+      deletedSubareas: deletedS.count,
+      totalCreated,
+      finalCount,
+      kpiSlugsUpdated: kpiUpdated,
+      success: finalCount === totalTareas,
+      log,
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    const stack   = err instanceof Error ? err.stack?.slice(0, 800) : undefined
+    return NextResponse.json({ error: message, stack, log }, { status: 500 })
   }
-
-  // Update KPI slugs
-  const kpis = await prisma.pTKPI.findMany()
-  let kpiUpdated = 0
-  for (const kpi of kpis) {
-    const slug = slugify(kpi.nombre)
-    try {
-      await prisma.pTKPI.update({ where: { id: kpi.id }, data: { slug } })
-      kpiUpdated++
-    } catch {
-      try {
-        await prisma.pTKPI.update({ where: { id: kpi.id }, data: { slug: slug + '-' + kpi.id.slice(-4) } })
-        kpiUpdated++
-      } catch { /* skip */ }
-    }
-  }
-
-  const finalCount = await prisma.pTTareaTemplate.count()
-
-  return NextResponse.json({
-    message: 'Seed completado — ELIMINA este endpoint',
-    deletedTemplates: deletedT.count,
-    deletedSubareas: deletedS.count,
-    totalCreated,
-    finalCount,
-    kpiSlugsUpdated: kpiUpdated,
-    success: finalCount === 168,
-  })
 }
