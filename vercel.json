@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx prisma generate && npx prisma db push --accept-data-loss && next build",
+  "buildCommand": "npx prisma generate && next build",
   "headers": [
     {
       "source": "/sw.js",
@@ -17,10 +17,10 @@
     }
   ],
   "crons": [
-    { "path": "/api/cron/reporte-semanal", "schedule": "0 8 * * 1" },
     { "path": "/api/cron/hervam-mensual", "schedule": "0 14 1 * *" },
     { "path": "/api/cron/notificaciones-diarias", "schedule": "0 14 * * 1-5" },
     { "path": "/api/cron/generar-tareas-plan", "schedule": "0 6 * * 1-6" },
     { "path": "/api/cron/plan-trabajo-diario", "schedule": "0 7 * * 1-5" }
   ]
 }
+
