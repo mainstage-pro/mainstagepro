@@ -5,6 +5,26 @@ import Link from "next/link";
 
 // Definición de formularios disponibles — agregar más aquí en el futuro
 const FORMULARIOS = [
+  {
+    id: "reporte-semanal",
+    titulo: "Reporte General Semanal",
+    descripcion:
+      "Formulario semanal para que el equipo reporte logros, pendientes, tareas próximas e incidencias de la semana.",
+    icono: "📋",
+    href: "/formularios/reporte-semanal",
+    hrefNuevo: "/formularios/reporte-semanal/nuevo",
+    disponible: true,
+  },
+  {
+    id: "incidencias-semanales",
+    titulo: "Incidencias Semanales",
+    descripcion:
+      "Documenta y clasifica por urgencia las incidencias operativas de cada área durante la semana. Con exportación a PDF.",
+    icono: "⚠️",
+    href: "/formularios/incidencias-semanales",
+    hrefNuevo: "/formularios/incidencias-semanales/nuevo",
+    disponible: true,
+  },
   // Próximamente
   {
     id: "satisfaccion-cliente",

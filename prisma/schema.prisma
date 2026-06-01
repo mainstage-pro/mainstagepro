@@ -63,6 +63,8 @@ model User {
   capturasRapidas        CapturaRapida[]        @relation("CapturaRapidaUsuario")
   ideasCreadas           Idea[]                 @relation("IdeaUsuario")
   iniciativasCaptura     Iniciativa[]           @relation("IniciativaUsuario")
+  reportesArea           ReporteAreaSemanal[]   @relation("ReportesAreaAutor")
+  incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
 
 
   @@map("users")
@@ -2962,4 +2964,58 @@ model SubtareaIniciativa {
 
   @@index([iniciativaId, orden])
   @@map("subtareas_iniciativa")
+}
+
+// ─── REPORTE SEMANAL POR ÁREA ────────────────────────────────────────────────
+
+// Reporte semanal por área (lo llena cada responsable de área cada lunes)
+model ReporteAreaSemanal {
+  id          String   @id @default(cuid())
+  area        String   // VENTAS | PRODUCCION | MARKETING | ADMINISTRACION | RRHH | DIRECCION
+  semana      String   // Lunes de la semana: "2026-05-04"
+  autorId     String
+  autor       User     @relation("ReportesAreaAutor", fields: [autorId], references: [id])
+  resultados  String   @default("") // Texto libre: logros de la semana
+  kpis        String   @default("[]") // JSON: [{ nombre, valor, meta?, unidad? }]
+  compromisos String   @default("") // Texto libre: qué se compromete para la siguiente semana
+  bloqueo     String?  // Texto libre: qué está bloqueando (opcional)
+  revisado    Boolean  @default(false) // Dirección revisó el reporte
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([area, semana])
+  @@map("reportes_area_semanal")
+}
+
+// ─── INCIDENCIAS SEMANALES ───────────────────────────────────────────────────
+
+model IncidenciaSemanal {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation("IncidenciasSemanalesUser", fields: [userId], references: [id])
+  semana      Int      // Número de semana ISO (1–53)
+  anio        Int
+  incidencias Json     // { area, texto, urgencia, orden }[]
+  estado      String   @default("guardado")
+
+  @@map("incidencias_semanales")
+}
+
+// ─── REPORTE SEMANAL CONSOLIDADO (generado por cron) ─────────────────────────
+
+model ReporteSemanal {
+  id          String   @id @default(cuid())
+  semana      DateTime // Lunes de la semana (date only, UTC midnight)
+  fechaInicio DateTime
+  fechaFin    DateTime
+  datos       String   // JSON con todas las métricas
+  score       Int      @default(0) // 0-100
+  notas       String?  // Anotaciones del CEO
+  generadoEn  DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([semana])
+  @@map("reportes_semanales")
 }
