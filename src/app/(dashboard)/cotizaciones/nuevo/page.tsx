@@ -488,10 +488,11 @@ function CotizadorForm() {
 
   // Auto-activar B2B si el cliente es B2B y el usuario no lo ha tocado manualmente
   useEffect(() => {
-    if (!b2bManualToggle && tipoCliente === "B2B") {
+    // En modo edición, no auto-activar B2B: ya viene cargado desde la cotización
+    if (!b2bManualToggle && tipoCliente === "B2B" && !editId) {
       setB2bActivo(true);
     }
-  }, [tipoCliente, b2bManualToggle]);
+  }, [tipoCliente, b2bManualToggle, editId]);
 
   // Auto-calcular cantidad de comidas = total técnicos en cotización
   useEffect(() => {
@@ -902,10 +903,11 @@ function CotizadorForm() {
 
   // Auto-activar descuento por volumen si supera el umbral (y el usuario no lo ha desactivado manualmente)
   useEffect(() => {
-    if (!volumenManualToggle) {
+    // En modo edición, no auto-activar: el usuario controla esto manualmente
+    if (!volumenManualToggle && !editId) {
       setVolumenActivo(resumen.debeAutoVolumen);
     }
-  }, [resumen.debeAutoVolumen, volumenManualToggle]);
+  }, [resumen.debeAutoVolumen, volumenManualToggle, editId]);
 
   // ── Guardar ──
   async function guardar() {
