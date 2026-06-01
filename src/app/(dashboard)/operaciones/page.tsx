@@ -2885,8 +2885,8 @@ function SectionBlock({
               ? "h-14 border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
               : "h-10 border-[#252525] bg-[#111] text-[#333] hover:border-[#B3985B]/40 hover:text-[#B3985B]/60"
           }`}
-          onDragEnter={e => { e.preventDefault(); setSectionOver(true); }}
-          onDragOver={e => { e.preventDefault(); setSectionOver(true); }}
+          onDragEnter={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setSectionOver(true); }}
+          onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setSectionOver(true); }}
           onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSectionOver(false); }}
           onDrop={e => { e.preventDefault(); setSectionOver(false); onDropSection?.(); }}
         >

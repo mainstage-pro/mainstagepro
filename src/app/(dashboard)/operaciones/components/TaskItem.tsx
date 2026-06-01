@@ -246,7 +246,7 @@ export default function TaskItem({
         onSelect(tarea.id);
       }}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onSelect(tarea.id); }}
-      onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; onDragStart?.(tarea.id); } : undefined}
+      onDragStart={isDraggable ? e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", tarea.id); onDragStart?.(tarea.id); } : undefined}
       onDragEnd={isDraggable ? () => { onDragEnd?.(); setDropZone(null); } : undefined}
       onDragOver={e => {
         if (!onDrop && !onReorder) return;
