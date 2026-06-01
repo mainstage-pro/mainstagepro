@@ -4861,12 +4861,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white font-semibold">Rider de carga</p>
                   <p className="text-gray-500 text-xs mt-0.5">Listado de equipos con accesorios y herramientas necesarias para montaje</p>
                 </div>
-                {(riderEquipos.length > 0 || (proyecto.cotizacion?.lineas ?? []).some((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO" || l.tipo === "OTRO")) && (
-                  <a href={`/proyectos/${id}/rider-print`} target="_blank" className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    Imprimir rider
-                  </a>
-                )}
+                <a
+                  href={`/api/proyectos/${id}/rider-pdf`}
+                  download
+                  className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Descargar rider
+                </a>
               </div>
 
               {cotObservaciones && (
