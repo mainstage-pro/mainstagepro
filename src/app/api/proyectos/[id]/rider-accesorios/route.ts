@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
 // POST /api/proyectos/[id]/rider-accesorios
 // Body: { proyectoEquipoId, nombre, categoria?, cantidad? }
@@ -47,4 +48,47 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   return NextResponse.json({ accesorio });
+}
+
+// DELETE /api/proyectos/[id]/rider-accesorios?accesorioId=XXX
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id: proyectoId } = await params;
+  const { searchParams } = new URL(req.url);
+  const accesorioId = searchParams.get("accesorioId");
+  if (!accesorioId) return NextResponse.json({ error: "accesorioId requerido" }, { status: 400 });
+  const accesorio = await prisma.riderAccesorio.findFirst({
+    where: { id: accesorioId, proyectoEquipo: { proyectoId } },
+  });
+  if (!accesorio) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  await prisma.riderAccesorio.delete({ where: { id: accesorioId } });
+  return NextResponse.json({ ok: true });
+}
+
+// PATCH /api/proyectos/[id]/rider-accesorios
+// Body: { accesorioId, completado?, cantidad?, nombre? }
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id: proyectoId } = await params;
+  const body = await req.json();
+  const { accesorioId, completado, cantidad, nombre } = body;
+  if (!accesorioId) return NextResponse.json({ error: "accesorioId requerido" }, { status: 400 });
+  const accesorio = await prisma.riderAccesorio.findFirst({
+    where: { id: accesorioId, proyectoEquipo: { proyectoId } },
+  });
+  if (!accesorio) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  const data: Record<string, unknown> = {};
+  if (completado !== undefined) data.completado = completado;
+  if (cantidad !== undefined) data.cantidad = Math.max(1, parseInt(String(cantidad)) || 1);
+  if (nombre !== undefined) data.nombre = String(nombre).trim();
+  const updated = await prisma.riderAccesorio.update({ where: { id: accesorioId }, data });
+  return NextResponse.json({ accesorio: updated });
 }

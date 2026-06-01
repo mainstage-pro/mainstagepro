@@ -15,6 +15,7 @@ import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
+import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -921,6 +922,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [borrando, setBorrando] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("section-resumen");
 
+  // Viabilidad
+  const [viabilidad, setViabilidad] = useState<{
+    viabilidadActiva: ViabilidadActiva | null;
+    historico: ViabilidadHistoricoItem[];
+  } | null>(null);
+
   const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
   const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
   type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
@@ -1395,6 +1402,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (cateringTimer.current) clearTimeout(cateringTimer.current);
     cateringTimer.current = setTimeout(() => { guardarCatering(catering); }, 1500);
   }, [catering]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cargar viabilidad
+  useEffect(() => {
+    if (!id) return;
+    fetch(`/api/proyectos/${id}/viabilidad`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setViabilidad(d); })
+      .catch(() => {});
+  }, [id]);
 
   // ── Section nav — track active section via IntersectionObserver ──
   useEffect(() => {
@@ -3231,6 +3247,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 onSave={guardarCampo}
               />
             </div>
+          </div>
+
+          {/* Viabilidad */}
+          <div className="mt-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-600 mb-3">Viabilidad del proyecto</p>
+            <ViabilidadWidget
+              viabilidadActiva={viabilidad?.viabilidadActiva ?? null}
+              historico={viabilidad?.historico ?? []}
+            />
           </div>
 
 
