@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { generarInstanciasDelDia } from "@/lib/plan-trabajo/motor";
 
 // GET /api/plan-trabajo/instancias?fecha=2026-05-27&vista=dia|semana|todas
 export async function GET(req: NextRequest) {
@@ -81,5 +82,85 @@ export async function GET(req: NextRequest) {
     orderBy: { fechaVencimiento: "asc" },
   });
 
+  // Auto-generate if no instances for today (lazy generation)
+  if (instancias.length === 0 && vista === "dia") {
+    try {
+      await generarInstanciasDelDia(hoy);
+      // Re-fetch after generation
+      const instanciasNuevas = await prisma.pTTareaInstancia.findMany({
+        where: {
+          ...(responsableWhere ? { responsableId: responsableWhere } : {}),
+          fechaVencimiento: { gte: fechaInicio, lte: fechaFin },
+          ...(areaFiltro ? { template: { areaId: areaFiltro } } : {}),
+        },
+        include: {
+          template: { include: { area: true, subArea: true } },
+          responsable: { select: { id: true, name: true, email: true } },
+          subtareasInstancia: {
+            include: { subtarea: true },
+            orderBy: { subtarea: { orden: "asc" } },
+          },
+          comentarios: {
+            include: { autor: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "asc" },
+            take: 20,
+          },
+          historial: {
+            include: { usuario: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
+        },
+        orderBy: { fechaVencimiento: "asc" },
+      });
+      return NextResponse.json({ instancias: instanciasNuevas, fecha: dateStr, generadas: true });
+    } catch {
+      // Motor failed — return empty
+    }
+  }
+
   return NextResponse.json({ instancias, fecha: dateStr });
+}
+
+export async function POST(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const body = await req.json();
+  const { instanciaId, estado, nota } = body;
+
+  if (!instanciaId || !estado) {
+    return NextResponse.json({ error: "instanciaId y estado requeridos" }, { status: 400 });
+  }
+
+  const validEstados = ["PENDIENTE", "EN_PROGRESO", "COMPLETADA", "OMITIDA"];
+  if (!validEstados.includes(estado)) {
+    return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
+  }
+
+  const instancia = await prisma.pTTareaInstancia.update({
+    where: { id: instanciaId },
+    data: {
+      estado,
+      notas: nota ?? undefined,
+      completadaAt: estado === "COMPLETADA" ? new Date() : null,
+      completadaPorId: estado === "COMPLETADA" ? session.id : null,
+    },
+    include: {
+      template: { include: { area: true, subArea: true } },
+      responsable: { select: { id: true, name: true } },
+    },
+  });
+
+  // Log historial
+  await prisma.pTHistorialEjecucion.create({
+    data: {
+      instanciaId,
+      usuarioId: session.id,
+      accion: estado === "COMPLETADA" ? "COMPLETADA" : estado === "PENDIENTE" ? "REABIERTA" : "OMITIDA",
+      detalles: nota ?? null,
+    },
+  });
+
+  return NextResponse.json({ instancia });
 }

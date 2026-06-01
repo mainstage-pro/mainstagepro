@@ -2792,6 +2792,20 @@ model PTTareaTemplate {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  // Campos SO v2.0
+  impacto        String   @default("estandar")        // critico | alto | estandar
+  contexto       String   @default("independiente")   // evento | hibrida | independiente
+  cuando         String?                              // texto: "Cada lunes antes de las 10:30 am"
+  puestoDefault  String?                              // puesto responsable por defecto
+  kpiNombre      String?                              // KPI asociado en texto
+  estandarMinimo String?  @db.Text
+  porqueSeHace   String?  @db.Text
+  relacionCon    String?  @db.Text
+  siNoSeHace     String?  @db.Text
+  afectaA        String[]
+  dependeDe      Json?                                // { tarea: string, puesto: string } | null
+  bloqueaA       Json?                                // { tarea: string, puesto: string } | null
+
   instancias  PTTareaInstancia[]
   subtareas   PTSubTarea[]
 
@@ -2887,6 +2901,7 @@ model PTHistorialEjecucion {
 // ── KPIs del Sistema Operativo ────────────────────────────────────────────────
 model PTKPI {
   id            String   @id @default(cuid())
+  slug          String?  @unique
   areaId        String?
   area          PTArea?  @relation("PTKPIArea", fields: [areaId], references: [id], onDelete: SetNull)
   nombre        String
@@ -2899,9 +2914,44 @@ model PTKPI {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  registros     PTRegistroKPI[]
+
   @@index([areaId])
   @@index([esTransversal])
   @@map("pt_kpis")
+}
+
+model PTRegistroKPI {
+  id            String   @id @default(cuid())
+  kpiId         String?
+  kpi           PTKPI?   @relation(fields: [kpiId], references: [id])
+  kpiSlug       String
+  kpiNombre     String
+  kpiArea       String
+  valor         Float?
+  valorTexto    String?
+  meta          String
+  cumplida      Boolean  @default(false)
+  calculo       String   @default("manual")   // manual | automatico
+  fuente        String?
+  periodo       String                         // semanal|quincenal|mensual|trimestral|semestral|anual
+  fechaInicio   DateTime
+  fechaFin      DateTime
+  semana        Int?
+  quincena      Int?
+  mes           Int?
+  trimestre     Int?
+  semestre      Int?
+  anio          Int
+  nota          String?  @db.Text
+  registradoPor String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([kpiSlug, periodo, fechaInicio])
+  @@index([kpiSlug, periodo, anio])
+  @@index([kpiArea, periodo, anio])
+  @@map("pt_registro_kpis")
 }
 
 // ─── CAPTURA RÁPIDA / IDEAS / INICIATIVAS ────────────────────────────────────
