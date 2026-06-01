@@ -5,26 +5,6 @@ import Link from "next/link";
 
 // Definición de formularios disponibles — agregar más aquí en el futuro
 const FORMULARIOS = [
-  {
-    id: "reporte-semanal",
-    titulo: "Reporte General Semanal",
-    descripcion:
-      "Formulario semanal para que el equipo reporte logros, pendientes, tareas próximas e incidencias de la semana.",
-    icono: "📋",
-    href: "/formularios/reporte-semanal",
-    hrefNuevo: "/formularios/reporte-semanal/nuevo",
-    disponible: true,
-  },
-  {
-    id: "incidencias-semanales",
-    titulo: "Incidencias Semanales",
-    descripcion:
-      "Documenta y clasifica por urgencia las incidencias operativas de cada área durante la semana. Con exportación a PDF.",
-    icono: "⚠️",
-    href: "/formularios/incidencias-semanales",
-    hrefNuevo: "/formularios/incidencias-semanales/nuevo",
-    disponible: true,
-  },
   // Próximamente
   {
     id: "satisfaccion-cliente",
@@ -45,14 +25,6 @@ const FORMULARIOS = [
     disponible: false,
   },
 ];
-
-function getSemanaActual(): number {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), 0, 1);
-  const diff = now.getTime() - start.getTime();
-  const oneWeek = 1000 * 60 * 60 * 24 * 7;
-  return Math.ceil(diff / oneWeek);
-}
 
 function CopyLinkButton({ href, label }: { href: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -106,8 +78,6 @@ function CopyLinkButton({ href, label }: { href: string; label: string }) {
 }
 
 export default function FormulariosPage() {
-  const semanaActual = getSemanaActual();
-
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
       {/* Header */}

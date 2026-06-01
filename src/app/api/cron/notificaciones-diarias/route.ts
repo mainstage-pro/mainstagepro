@@ -14,11 +14,7 @@ export async function GET(req: NextRequest) {
   const hace7dias = new Date(ahora.getTime() - 7 * 86400000);
   const hoyStr = ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
 
-  // Lunes de la semana actual (for reporte check on Mondays)
-  const lunDelta = (ahora.getDay() + 6) % 7;
-  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
-  const lunesStr = lunesDate.toLocaleDateString("en-CA");
-  const esLunes = ahora.getDay() === 1;
+
 
   const notifBatch: Array<{ usuarioId: string; tipo: string; titulo: string; mensaje: string; url?: string }> = [];
 
@@ -164,34 +160,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // 7. Lunes: recordatorio de reporte semanal por área
-  if (esLunes) {
-    const areasConReporte = await prisma.reporteAreaSemanal.findMany({
-      where: { semana: lunesStr },
-      select: { area: true },
-    }).catch(() => []);
-    const areasYaReportaron = new Set(areasConReporte.map(r => r.area));
 
-    const areaMapping: Array<{ area: string; users: { id: string }[]; label: string }> = [
-      { area: "VENTAS",         users: ventasUsers,    label: "Ventas" },
-      { area: "PRODUCCION",     users: produccionUsers, label: "Producción" },
-      { area: "MARKETING",      users: marketingUsers,  label: "Marketing" },
-      { area: "ADMINISTRACION", users: adminAreaUsers,  label: "Administración" },
-      { area: "RRHH",           users: rrhhUsers,       label: "RR.HH." },
-    ];
-
-    for (const { area, users, label } of areaMapping) {
-      if (!areasYaReportaron.has(area) && users.length > 0) {
-        notifyGroup(users, "SISTEMA",
-          `📝 Reporte semanal pendiente — ${label}`,
-          `Es lunes. Recuerda completar el reporte semanal de ${label} para que Dirección tenga visibilidad.`,
-          "/reportes/areas"
-        );
-      }
-    }
-  }
-
-  // 8. Proyectos que ocurren hoy sin checklist completo
   const proyectosHoy = await prisma.proyecto.findMany({
     where: {
       estado: { in: ["CONFIRMADO", "EN_CURSO"] },

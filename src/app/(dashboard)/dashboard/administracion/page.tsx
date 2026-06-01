@@ -139,14 +139,6 @@ export default async function DashboardAdminPage() {
         </div>
       </div>
 
-      {/* Alerta reporte semanal */}
-      {!reporteAreaSemana && (
-        <Link href="/reportes/areas"
-          className="flex items-center gap-3 bg-yellow-900/10 border border-yellow-800/30 rounded-xl px-4 py-3 hover:border-yellow-700/40 transition-all">
-          <p className="text-yellow-400 text-sm font-semibold flex-1">Reporte semanal de Administración pendiente</p>
-          <p className="text-yellow-600 text-xs">Completar →</p>
-        </Link>
-      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
