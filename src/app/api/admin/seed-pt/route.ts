@@ -75,21 +75,80 @@ export async function GET(req: NextRequest) {
   const log: string[] = []
 
   try {
-    // Step 0: Check DB connectivity + schema
-    log.push('Testing DB connection...')
+    // Step 0: Apply schema via raw SQL if needed
+    log.push('Checking schema...')
     const dbCheck = await prisma.$queryRaw<{ column_name: string }[]>`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'pt_tarea_templates'
       ORDER BY column_name
     `
-    const columns = dbCheck.map(r => r.column_name)
-    log.push(`pt_tarea_templates columns: ${columns.join(', ')}`)
-    const hasImpacto = columns.includes('impacto')
-    log.push(`Has 'impacto' column: ${hasImpacto}`)
+    const columns = dbCheck.map((r: { column_name: string }) => r.column_name)
+    log.push(`Columns: ${columns.join(', ')}`)
 
-    if (!hasImpacto) {
-      log.push('ERROR: Schema migration not applied. Running db push is needed.')
-      return NextResponse.json({ error: 'Schema not migrated', log }, { status: 500 })
+    if (!columns.includes('impacto')) {
+      log.push('Applying migration...')
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "impacto" TEXT NOT NULL DEFAULT 'estandar'`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "contexto" TEXT NOT NULL DEFAULT 'independiente'`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "cuando" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "puestoDefault" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "kpiNombre" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "estandarMinimo" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "porqueSeHace" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "relacionCon" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "siNoSeHace" TEXT`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "afectaA" TEXT[] DEFAULT ARRAY[]::TEXT[]`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "dependeDe" JSONB`
+      await prisma.$executeRaw`ALTER TABLE "pt_tarea_templates" ADD COLUMN IF NOT EXISTS "bloqueaA" JSONB`
+      log.push('pt_tarea_templates migrated')
+    } else {
+      log.push('pt_tarea_templates already migrated')
+    }
+
+    // PTKPI slug
+    const kpiCols = await prisma.$queryRaw<{ column_name: string }[]>`
+      SELECT column_name FROM information_schema.columns WHERE table_name = 'pt_kpis'
+    `
+    if (!kpiCols.map((r: { column_name: string }) => r.column_name).includes('slug')) {
+      await prisma.$executeRaw`ALTER TABLE "pt_kpis" ADD COLUMN IF NOT EXISTS "slug" TEXT UNIQUE`
+      log.push('pt_kpis.slug added')
+    }
+
+    // PTRegistroKPI table
+    const regCheck = await prisma.$queryRaw<{ tablename: string }[]>`
+      SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'pt_registro_kpis'
+    `
+    if (regCheck.length === 0) {
+      await prisma.$executeRaw`
+        CREATE TABLE "pt_registro_kpis" (
+          "id"            TEXT NOT NULL DEFAULT gen_random_uuid()::text,
+          "kpiId"         TEXT,
+          "kpiSlug"       TEXT NOT NULL,
+          "kpiNombre"     TEXT NOT NULL,
+          "kpiArea"       TEXT NOT NULL,
+          "valor"         DOUBLE PRECISION,
+          "valorTexto"    TEXT,
+          "meta"          TEXT NOT NULL,
+          "cumplida"      BOOLEAN NOT NULL DEFAULT false,
+          "calculo"       TEXT NOT NULL DEFAULT 'manual',
+          "fuente"        TEXT,
+          "periodo"       TEXT NOT NULL,
+          "fechaInicio"   TIMESTAMP(3) NOT NULL,
+          "fechaFin"      TIMESTAMP(3) NOT NULL,
+          "semana"        INTEGER,
+          "quincena"      INTEGER,
+          "mes"           INTEGER,
+          "trimestre"     INTEGER,
+          "semestre"      INTEGER,
+          "anio"          INTEGER NOT NULL,
+          "nota"          TEXT,
+          "registradoPor" TEXT,
+          "createdAt"     TIMESTAMP(3) NOT NULL DEFAULT now(),
+          "updatedAt"     TIMESTAMP(3) NOT NULL DEFAULT now(),
+          CONSTRAINT "pt_registro_kpis_pkey" PRIMARY KEY ("id")
+        )
+      `
+      await prisma.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "pt_reg_unique" ON "pt_registro_kpis"("kpiSlug","periodo","fechaInicio")`
+      log.push('pt_registro_kpis created')
     }
 
     // Step 1: Count existing
