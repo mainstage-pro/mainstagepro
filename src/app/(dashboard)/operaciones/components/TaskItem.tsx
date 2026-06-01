@@ -83,6 +83,7 @@ interface Props {
   draggingId?:        string | null;
   availableSections?: { id: string; nombre: string }[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
+  onPtrDragStart?:    (taskId: string) => void;
 }
 
 function ActionBtn({ title, onClick, children, active }: {
@@ -115,7 +116,7 @@ export default function TaskItem({
   isDragOver = false, isBeingDragged = false,
   multiSelected = false, onMultiSelect,
   onExtract, onExtractChild, onMoveToNoSection,
-  draggingId, availableSections, onMoveToSection,
+  draggingId, availableSections, onMoveToSection, onPtrDragStart,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -268,8 +269,14 @@ export default function TaskItem({
     >
       {isDraggable && (
         <div
-          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 transition-opacity cursor-grab -ml-1"
+          className="mt-[5px] shrink-0 w-4 flex flex-col gap-[3px] opacity-[0.18] group-hover:opacity-70 transition-opacity cursor-grab active:cursor-grabbing -ml-1"
           onClick={e => e.stopPropagation()}
+          onMouseDown={e => {
+            if (e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onPtrDragStart?.(tarea.id);
+          }}
         >
           {[0,1,2].map(i => (
             <span key={i} className="flex gap-[3px]">

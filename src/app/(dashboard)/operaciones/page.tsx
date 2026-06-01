@@ -123,18 +123,47 @@ export default function OperacionesPage() {
   const [searchResults, setSearchResults]       = useState<TareaItem[] | null>(null);
   const [searchLoading, setSearchLoading]       = useState(false);
   const [draggingId, setDraggingId]             = useState<string | null>(null);
-  // Global native drag listener — more reliable than React synthetic events
+  // ── Pointer-based drag (bypasses HTML5 Drag API issues in Chrome) ──────────
+  const ptrDragId     = useRef<string | null>(null);
+  const moveToSecRef  = useRef<(taskId: string, secId: string) => void>(() => {});
+  const [ptrTargetSec, setPtrTargetSec] = useState<string | null>(null);
+
+  function startPtrDrag(taskId: string) {
+    ptrDragId.current = taskId;
+    setDraggingId(taskId);
+    setPtrTargetSec(null);
+  }
+
   useEffect(() => {
-    function onDragStart(e: DragEvent) {
-      const el = (e.target as HTMLElement)?.closest?.('[data-task-id]');
-      if (el) setDraggingId(el.getAttribute('data-task-id'));
+    function onMove(e: MouseEvent) {
+      if (!ptrDragId.current) return;
+      const els = document.elementsFromPoint(e.clientX, e.clientY);
+      let secId: string | null = null;
+      for (const el of els) {
+        const found = (el as HTMLElement).closest?.('[data-section-id]');
+        if (found) { secId = found.getAttribute('data-section-id'); break; }
+      }
+      setPtrTargetSec(secId);
     }
-    function onDragEnd() { setDraggingId(null); }
-    document.addEventListener('dragstart', onDragStart);
-    document.addEventListener('dragend',   onDragEnd);
+    function onUp(e: MouseEvent) {
+      if (!ptrDragId.current) return;
+      const els = document.elementsFromPoint(e.clientX, e.clientY);
+      let secId: string | null = null;
+      for (const el of els) {
+        const found = (el as HTMLElement).closest?.('[data-section-id]');
+        if (found) { secId = found.getAttribute('data-section-id'); break; }
+      }
+      const taskId = ptrDragId.current;
+      ptrDragId.current = null;
+      setDraggingId(null);
+      setPtrTargetSec(null);
+      if (secId && taskId) moveToSecRef.current(taskId, secId);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
     return () => {
-      document.removeEventListener('dragstart', onDragStart);
-      document.removeEventListener('dragend',   onDragEnd);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -631,6 +660,8 @@ export default function OperacionesPage() {
     });
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep ref in sync so the global mousemove/mouseup can call it without stale closure
+  useEffect(() => { moveToSecRef.current = moveToSection; }, [moveToSection]);
 
   const moveToNoSection = useCallback((taskId: string) => {
     setProyectoDetalle(prev => {
@@ -1817,6 +1848,8 @@ export default function OperacionesPage() {
                       selectedId={selectedId}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
+                      ptrTargetSec={ptrTargetSec}
+                      onPtrDragStart={startPtrDrag}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
                       onDrop={targetId => { if (draggingId && draggingId !== targetId) moveToSubtask(draggingId, targetId); }}
                       onDropSection={() => {
@@ -2708,6 +2741,7 @@ function SectionBlock({
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
   allSections, onMoveToSection,
+  ptrTargetSec, onPtrDragStart,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2744,6 +2778,8 @@ function SectionBlock({
   onMoveToNoSection?: (id: string) => void;
   allSections?:       SeccionDetalle[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
+  ptrTargetSec?:      string | null;
+  onPtrDragStart?:    (taskId: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2770,9 +2806,20 @@ function SectionBlock({
   const isDraggingFromHere = !!draggingId && seccion.tareas.some(t => t.id === draggingId);
   // Is there an active cross-section drag?
   const isCrossDrag = !!draggingId && !isDraggingFromHere;
+  const isPtrTarget = ptrTargetSec === seccion.id && !!draggingId && !isDraggingFromHere;
 
   return (
-    <div className="mt-5">
+    <div
+      className={`mt-5 rounded-xl transition-all duration-100 ${isPtrTarget ? "ring-2 ring-[#B3985B] bg-[#B3985B]/5" : ""}`}
+      data-section-id={seccion.id}
+    >
+      {/* Pointer-drag drop indicator */}
+      {isPtrTarget && (
+        <div className="flex items-center justify-center gap-2 h-10 mb-1 rounded-lg bg-[#B3985B]/15 border-2 border-[#B3985B] text-[#B3985B] text-xs font-semibold select-none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Soltar en &ldquo;{seccion.nombre}&rdquo;
+        </div>
+      )}
 
       {/* Section header */}
       <div
@@ -2919,6 +2966,7 @@ function SectionBlock({
               onMoveToNoSection={onMoveToNoSection}
               availableSections={allSections?.filter(s => s.id !== seccion.id)}
               onMoveToSection={onMoveToSection}
+              onPtrDragStart={onPtrDragStart}
             />
           ))}
           <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
