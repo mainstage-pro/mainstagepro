@@ -22,9 +22,6 @@ export default async function DashboardRRHHPage() {
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const mes       = ahora.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
 
-  const lunDelta = (ahora.getDay() + 6) % 7;
-  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
-  const lunesStr = lunesDate.toLocaleDateString("en-CA");
 
   const [
     personalCount,
@@ -34,7 +31,6 @@ export default async function DashboardRRHHPage() {
     onboardingActivo,
     evaluacionesMes,
     capacitacionesActivas,
-    reporteAreaSemana,
   ] = await Promise.all([
     prisma.personalInterno.count().catch(() => 0),
     prisma.personalInterno.count({ where: { activo: true } }).catch(() => 0),
@@ -43,7 +39,6 @@ export default async function DashboardRRHHPage() {
     prisma.onboardingPlan.count({ where: { estado: "EN_CURSO" } }).catch(() => 0),
     prisma.evaluacionEmpleado.count({ where: { fecha: { gte: inicioMes, lte: finMes } } }).catch(() => 0),
     prisma.capacitacion.count({ where: { estado: { in: ["PROGRAMADA", "EN_CURSO"] } } }).catch(() => 0),
-    prisma.reporteAreaSemanal.findFirst({ where: { area: "RRHH", semana: lunesStr } }).catch(() => null),
   ]);
 
   const nominaTotal = (nominaPendiente as { _sum: { monto: number | null } })._sum?.monto ?? 0;

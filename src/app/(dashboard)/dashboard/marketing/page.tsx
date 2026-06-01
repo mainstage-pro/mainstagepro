@@ -33,16 +33,12 @@ export default async function DashboardMarketingPage() {
   const mesStart = new Date(ahora.getFullYear(), ahora.getMonth(), 1);
   const mesEnd   = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 1);
 
-  const lunDelta = (ahora.getDay() + 6) % 7;
-  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
-  const lunesStr = lunesDate.toLocaleDateString("en-CA");
 
   const [
     pubsPorEstado,
     pubsProximas7,
     campanasActivas,
     proyectosContenido,
-    reporteAreaSemana,
   ] = await Promise.all([
     prisma.publicacion.groupBy({
       by: ["estado"],
@@ -65,7 +61,6 @@ export default async function DashboardMarketingPage() {
       orderBy: { fechaEvento: "asc" },
       take: 5,
     }),
-    prisma.reporteAreaSemanal.findFirst({ where: { area: "MARKETING", semana: lunesStr } }).catch(() => null),
   ]);
 
   const pubsMap = Object.fromEntries(pubsPorEstado.map((p) => [p.estado, p._count._all]));

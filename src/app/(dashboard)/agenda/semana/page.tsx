@@ -32,9 +32,7 @@ export default async function AgendaSemanaPage() {
   const lunes = new Date(ahora);
   lunes.setDate(lunes.getDate() + diffLunes);
   const lunesStr = lunes.toLocaleDateString("en-CA");
-  const lunesAnterior = new Date(lunes);
-  lunesAnterior.setDate(lunesAnterior.getDate() - 7);
-  const lunesAnteriorStr = lunesAnterior.toLocaleDateString("en-CA");
+
 
   const [
     // Esta semana
@@ -45,8 +43,6 @@ export default async function AgendaSemanaPage() {
     // Pagos urgentes
     cobrosEstaSemanа,
     pagosEstaSemana,
-    // Reportes de área — compromisos de la semana anterior
-    reportesSemanaAnterior,
     // Cotizaciones sin respuesta
     cotizacionesPendientes,
     // Tareas vencidas por área
@@ -114,15 +110,6 @@ export default async function AgendaSemanaPage() {
         proveedor: { select: { nombre: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
-    }).catch(() => []),
-
-    // Compromisos de la semana anterior
-    prisma.reporteAreaSemanal.findMany({
-      where: { semana: lunesAnteriorStr },
-      select: {
-        id: true, area: true, compromisos: true, bloqueo: true, revisado: true,
-        autor: { select: { name: true } },
-      },
     }).catch(() => []),
 
     prisma.cotizacion.findMany({
@@ -309,37 +296,6 @@ export default async function AgendaSemanaPage() {
 
       </div>
 
-      {/* Compromisos de la semana anterior (de los reportes de área) */}
-      {reportesSemanaAnterior.length > 0 && (
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <p className="text-[11px] font-bold text-[#3a3a3a] uppercase tracking-widest">
-              COMPROMISOS SEMANA ANTERIOR — {fmtSemana(lunesAnteriorStr)}
-            </p>
-            <div className="flex-1 h-px bg-[#1a1a1a]" />
-            <Link href="/reportes/areas" className="text-[#B3985B] text-xs hover:underline shrink-0">Ver reportes →</Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {reportesSemanaAnterior.map(r => (
-              <div key={r.id} className={`bg-[#111] border rounded-xl p-4 ${r.bloqueo ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-white text-sm font-semibold">{AREA_LABEL[r.area] ?? r.area}</p>
-                  {r.bloqueo && <span className="text-[10px] font-bold text-red-400 bg-red-900/20 px-1.5 py-0.5 rounded">BLOQUEO</span>}
-                  {r.revisado && <span className="text-[10px] text-green-500">✓</span>}
-                </div>
-                {r.compromisos ? (
-                  <p className="text-[#777] text-xs leading-relaxed line-clamp-3">{r.compromisos}</p>
-                ) : (
-                  <p className="text-[#333] text-xs italic">Sin compromisos registrados</p>
-                )}
-                {r.bloqueo && (
-                  <p className="text-red-400/70 text-xs mt-2 border-t border-red-900/30 pt-2 line-clamp-2">{r.bloqueo}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Cotizaciones sin respuesta */}
       {cotizacionesPendientes.length > 0 && (

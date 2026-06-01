@@ -43,7 +43,6 @@ export default async function DashboardAdminPage() {
     hervamPagoMes,
     hervamConfig,
     proyectosActivos,
-    reporteAreaSemana,
   ] = await Promise.all([
     prisma.movimientoFinanciero.groupBy({
       by: ["tipo"],
@@ -98,7 +97,6 @@ export default async function DashboardAdminPage() {
     }),
     prisma.hervamConfig.findFirst(),
     prisma.proyecto.count({ where: { estado: { in: ["PLANEACION", "CONFIRMADO", "EN_CURSO"] } } }),
-    prisma.reporteAreaSemanal.findFirst({ where: { area: "ADMINISTRACION", semana: (() => { const d = new Date(ahora); d.setDate(ahora.getDate() - (ahora.getDay() + 6) % 7); d.setHours(0,0,0,0); return d.toLocaleDateString("en-CA"); })() } }).catch(() => null),
   ]);
 
   const ingresos = movimientosMes.find((m) => m.tipo === "INGRESO")?._sum.monto ?? 0;

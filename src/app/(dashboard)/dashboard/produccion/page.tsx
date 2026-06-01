@@ -36,9 +36,6 @@ export default async function DashboardProduccionPage() {
   // suppress unused variable warning
   void fmt;
 
-  const lunDelta = (ahora.getDay() + 6) % 7;
-  const lunesDate = new Date(ahora); lunesDate.setDate(ahora.getDate() - lunDelta); lunesDate.setHours(0,0,0,0);
-  const lunesStr = lunesDate.toLocaleDateString("en-CA");
 
   const [
     proyectosPorEstado,
@@ -47,7 +44,6 @@ export default async function DashboardProduccionPage() {
     proyectosSinPersonal,
     proximoEvento,
     proyectosSinPlan,
-    reporteAreaSemana,
   ] = await Promise.all([
     prisma.proyecto.groupBy({ by: ["estado"], _count: { _all: true } }),
     prisma.proyecto.findMany({
@@ -85,7 +81,6 @@ export default async function DashboardProduccionPage() {
       select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true },
       orderBy: { fechaEvento: "asc" },
     }).catch(() => []),
-    prisma.reporteAreaSemanal.findFirst({ where: { area: "PRODUCCION", semana: lunesStr } }).catch(() => null),
   ]);
 
   // suppress unused
