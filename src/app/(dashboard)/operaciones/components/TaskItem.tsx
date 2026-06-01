@@ -80,7 +80,9 @@ interface Props {
   onExtract?:        () => void;
   onExtractChild?:   (tarea: TareaItem) => void;
   onMoveToNoSection?: (id: string) => void;
-  draggingId?:       string | null;
+  draggingId?:        string | null;
+  availableSections?: { id: string; nombre: string }[];
+  onMoveToSection?:   (taskId: string, seccionId: string) => void;
 }
 
 function ActionBtn({ title, onClick, children, active }: {
@@ -113,7 +115,7 @@ export default function TaskItem({
   isDragOver = false, isBeingDragged = false,
   multiSelected = false, onMultiSelect,
   onExtract, onExtractChild, onMoveToNoSection,
-  draggingId,
+  draggingId, availableSections, onMoveToSection,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -129,6 +131,7 @@ export default function TaskItem({
   const [showMore,      setShowMore]      = useState(false);
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
+  const [showSecciones, setShowSecciones] = useState(false);
   const [subtaskDraggingId, setSubtaskDraggingId] = useState<string | null>(null);
   const [extractDropOver,   setExtractDropOver]   = useState(false);
   const [aboveLine,         setAboveLine]         = useState(false); // reorder strip above row
@@ -660,6 +663,44 @@ export default function TaskItem({
                     </svg>
                     Quitar de sección
                   </button>
+                  <div className="border-t border-[#1f1f1f] my-1" />
+                </>
+              )}
+              {onMoveToSection && availableSections && availableSections.length > 0 && (
+                <>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowSecciones(v => !v)}
+                      className="w-full text-left flex items-center justify-between gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                          <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                        </svg>
+                        Mover a sección
+                      </span>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                    </button>
+                    {showSecciones && (
+                      <div className="absolute left-full top-0 ml-1 z-[60] bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[170px]">
+                        <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Mover a</p>
+                        {availableSections.map(s => (
+                          <button key={s.id}
+                            onClick={() => { onMoveToSection(tarea.id, s.id); setShowMore(false); setShowSecciones(false); }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-[#ccc] hover:bg-[#1f1f1f] hover:text-white transition-colors"
+                          >
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5">
+                              <polyline points="9 18 15 12 9 6"/>
+                            </svg>
+                            {s.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
