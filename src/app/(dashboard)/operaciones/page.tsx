@@ -2852,13 +2852,16 @@ function SectionBlock({
       className={`mt-5 rounded-2xl transition-all duration-150 ${isPtrTarget ? "ring-2 ring-[#B3985B] ring-offset-1 ring-offset-[#0a0a0a] bg-[#B3985B]/5" : ""}`}
       data-section-id={seccion.id}
     >
-      {/* ── Pointer-drag drop banner ── */}
-      {isPtrTarget && (
-        <div className="flex items-center justify-center gap-2.5 h-14 mb-2 rounded-xl bg-[#B3985B] text-black text-sm font-bold select-none shadow-lg shadow-[#B3985B]/20">
+      {/* ── Pointer-drag drop banner — animated so it slides in smoothly ── */}
+      <div
+        className={`overflow-hidden transition-all duration-200 ease-out ${isPtrTarget ? "max-h-20 mb-2 opacity-100" : "max-h-0 mb-0 opacity-0"}`}
+        style={{ willChange: "max-height" }}
+      >
+        <div className="flex items-center justify-center gap-2.5 h-14 rounded-xl bg-[#B3985B] text-black text-sm font-bold select-none shadow-lg shadow-[#B3985B]/20">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
           Soltar en &ldquo;{seccion.nombre}&rdquo;
         </div>
-      )}
+      </div>
 
       {/* Section header */}
       <div
@@ -2963,27 +2966,6 @@ function SectionBlock({
         )}
       </div>
 
-      {/* ── Drop zone (in-flow): appears when dragging from another section ── */}
-      {isCrossDrag && (
-        <div
-          className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-all duration-150 mb-1 select-none ${
-            sectionOver
-              ? "h-14 border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
-              : "h-10 border-[#252525] bg-[#111] text-[#333] hover:border-[#B3985B]/40 hover:text-[#B3985B]/60"
-          }`}
-          onDragEnter={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setSectionOver(true); }}
-          onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setSectionOver(true); }}
-          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSectionOver(false); }}
-          onDrop={e => { e.preventDefault(); setSectionOver(false); onDropSection?.(); }}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-          <span className="text-xs font-semibold">
-            {sectionOver ? `Mover a "${seccion.nombre}"` : `Soltar en "${seccion.nombre}"`}
-          </span>
-        </div>
-      )}
 
       {!seccion.colapsada && (
         <>
