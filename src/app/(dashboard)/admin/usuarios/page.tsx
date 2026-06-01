@@ -52,7 +52,6 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     items: [
       { key: "dashboard",      label: "Dashboard CEO",               desc: "Panel principal y métricas" },
       { key: "operaciones",    label: "Módulo de tareas",            desc: "Visible globalmente para todos" },
-      { key: "reportes",       label: "Reportes semanales",          desc: "Reportes y seguimiento semanal" },
       { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas" },
       { key: "calendario",     label: "Calendario de eventos",       desc: "Vista y reportes de eventos" },
     ],
@@ -119,7 +118,7 @@ const AREA_MODULE_PRESETS: Record<string, string[]> = {
   VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones", "tareas-ventas"],
   PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "tabulador", "calendario", "tareas-produccion"],
   RRHH: ["rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario", "tareas-rrhh"],
-  DIRECCION: ["semaforo", "reportes", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
+  DIRECCION: ["semaforo", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
 };
 
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };

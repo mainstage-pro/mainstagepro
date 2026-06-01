@@ -55,14 +55,6 @@ const NAV: NavSection[] = [
     section: "Dirección",
     items: [
       { key: "juntas", label: "Juntas", href: "/juntas" },
-      {
-        key: "reportes",
-        label: "Reportes semanales",
-        children: [
-          { key: "reportes-auto", label: "Resumen automático", href: "/reportes" },
-          { key: "reportes-areas", label: "Reportes por área", href: "/reportes/areas" },
-        ],
-      },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
@@ -224,7 +216,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/reportes") || pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios")) return "seccion-direccion";
+  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
