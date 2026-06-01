@@ -125,7 +125,9 @@ export default function OperacionesPage() {
   const [draggingId, setDraggingId]             = useState<string | null>(null);
   // ── Pointer-based drag (smooth ghost card, no HTML5 Drag API) ──────────────
   const ptrDragInfo   = useRef<{ id: string; title: string } | null>(null);
-  const moveToSecRef  = useRef<(taskId: string, secId: string) => void>(() => {});
+  const moveToSecRef      = useRef<(taskId: string, secId: string) => void>(() => {});
+  const moveManyToSecRef  = useRef<(taskIds: string[], secId: string) => void>(() => {});
+  const selectedIdsRef    = useRef<Set<string>>(new Set());
   const [ptrTargetSec,  setPtrTargetSec]  = useState<string | null>(null);
   const [ptrGhostPos,   setPtrGhostPos]   = useState<{ x: number; y: number } | null>(null);
 
@@ -145,6 +147,14 @@ export default function OperacionesPage() {
       document.body.style.userSelect  = '';
     }
   }, [ptrGhostPos]);
+
+  // FIX 4+6: resetDragState — single canonical cleanup for all drag state
+  const resetDragState = useCallback(() => {
+    ptrDragInfo.current = null;
+    setDraggingId(null);
+    setPtrTargetSec(null);
+    setPtrGhostPos(null);
+  }, []);
 
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -168,20 +178,38 @@ export default function OperacionesPage() {
         const found = (el as HTMLElement).closest?.('[data-section-id]');
         if (found) { secId = found.getAttribute('data-section-id'); break; }
       }
-      const taskId = ptrDragInfo.current.id;
+      const info = ptrDragInfo.current;
       ptrDragInfo.current = null;
       setDraggingId(null);
       setPtrTargetSec(null);
       setPtrGhostPos(null);
-      if (secId && taskId) moveToSecRef.current(taskId, secId);
+      // FIX 5: on drop, if multi-select active and dragged task is selected, move all selected
+      if (secId && info) {
+        // If the dragged task is part of a multi-selection, move all selected tasks
+        // We access selectedIds via a ref to avoid stale closure (see selectedIdsRef below)
+        const multiIds = selectedIdsRef.current;
+        if (multiIds.has(info.id) && multiIds.size > 1) {
+          moveManyToSecRef.current([...multiIds], secId);
+          clearMultiSelect();
+        } else {
+          moveToSecRef.current(info.id, secId);
+        }
+      }
     }
+    // FIX 4: global Escape + visibility-change cleanup
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') resetDragState(); }
+    function onVis() { if (document.hidden) resetDragState(); }
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup',   onUp);
+    document.addEventListener('keydown',   onKey);
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup',   onUp);
+      document.removeEventListener('keydown',   onKey);
+      document.removeEventListener('visibilitychange', onVis);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resetDragState]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const [undoState, setUndoState]               = useState<UndoState | null>(null);
@@ -679,6 +707,8 @@ export default function OperacionesPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Keep ref in sync so the global mousemove/mouseup can call it without stale closure
   useEffect(() => { moveToSecRef.current = moveToSection; }, [moveToSection]);
+  // FIX 5: Keep selectedIds ref in sync so the mouseup closure can read current value
+  useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
 
   const moveToNoSection = useCallback((taskId: string) => {
     setProyectoDetalle(prev => {
@@ -735,6 +765,8 @@ export default function OperacionesPage() {
     })));
     setDraggingId(null);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // FIX 5: Keep moveManyToSection ref in sync for multi-select drag
+  useEffect(() => { moveManyToSecRef.current = moveManyToSection; }, [moveManyToSection]);
 
   // Moves multiple tasks to unsectioned at once (used during multi-select drag)
   const moveManyToNoSection = useCallback((taskIds: string[]) => {
@@ -757,8 +789,14 @@ export default function OperacionesPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moveToProject = useCallback((taskId: string, proyectoId: string, proyectoNombre: string) => {
+    // FIX 2: Optimistic removal from both flat list AND project sections (prevents ghost)
     const rm = (arr: TareaItem[]) => arr.filter(t => t.id !== taskId);
     setTareas(rm);
+    setProyectoDetalle(prev => prev ? {
+      ...prev,
+      tareas: rm(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: rm(s.tareas) })),
+    } : null);
     setDraggingId(null);
     fetch(`/api/tareas/${taskId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -1088,26 +1126,43 @@ export default function OperacionesPage() {
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
 
       {/* ── Drag ghost card (follows cursor) ─────────────────────────────── */}
-      {ptrGhostPos && ptrDragInfo.current && (
-        <div
-          style={{
-            position: 'fixed',
-            left: 0, top: 0,
-            transform: `translate(${ptrGhostPos.x + 14}px, ${ptrGhostPos.y - 18}px) rotate(2deg)`,
-            zIndex: 9999,
-            pointerEvents: 'none',
-            willChange: 'transform',
-          }}
-        >
-          <div className="bg-[#181818] border border-[#B3985B]/60 rounded-xl px-3.5 py-2.5 shadow-2xl shadow-black/70 max-w-[260px] backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
-              <p className="text-white text-sm font-medium truncate leading-snug">{ptrDragInfo.current.title}</p>
-            </div>
-            <p className="text-[#B3985B]/70 text-[10px] mt-1 ml-3.5">Arrastrando…</p>
+      {/* FIX 5: Ghost card — single or multi-select stack */}
+      {ptrGhostPos && ptrDragInfo.current && (() => {
+        const isMulti = selectedIds.has(ptrDragInfo.current.id) && selectedIds.size > 1;
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              left: 0, top: 0,
+              transform: `translate(${ptrGhostPos.x + 14}px, ${ptrGhostPos.y - 18}px) rotate(2deg)`,
+              zIndex: 9999,
+              pointerEvents: 'none',
+              willChange: 'transform',
+            }}
+          >
+            {isMulti ? (
+              <div className="relative">
+                {/* Stack shadow cards */}
+                <div className="absolute -top-1.5 -right-1.5 w-full h-full bg-[#222] border border-[#B3985B]/20 rounded-xl opacity-60" />
+                <div className="absolute -top-0.5 -right-0.5 w-full h-full bg-[#1a1a1a] border border-[#B3985B]/30 rounded-xl opacity-80" />
+                {/* Main card */}
+                <div className="relative bg-[#181818] border border-[#B3985B]/60 rounded-xl px-3.5 py-2.5 shadow-2xl shadow-black/70 max-w-[260px] backdrop-blur-sm">
+                  <p className="text-[#B3985B] font-bold text-sm mb-1">{selectedIds.size} tareas</p>
+                  <p className="text-[#B3985B]/70 text-[10px]">Arrastrando selección…</p>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-[#181818] border border-[#B3985B]/60 rounded-xl px-3.5 py-2.5 shadow-2xl shadow-black/70 max-w-[260px] backdrop-blur-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+                  <p className="text-white text-sm font-medium truncate leading-snug">{ptrDragInfo.current.title}</p>
+                </div>
+                <p className="text-[#B3985B]/70 text-[10px] mt-1 ml-3.5">Arrastrando…</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — Todoist-style navigation
@@ -1901,6 +1956,7 @@ export default function OperacionesPage() {
                         }
                       }}
                       onMoveToNoSection={moveToNoSection}
+                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -2780,7 +2836,7 @@ function SectionBlock({
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
   allSections, onMoveToSection,
-  ptrTargetSec, onPtrDragStart,
+  ptrTargetSec, onPtrDragStart, onDateChange,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2819,6 +2875,7 @@ function SectionBlock({
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
   ptrTargetSec?:      string | null;
   onPtrDragStart?:    (taskId: string, title: string) => void;
+  onDateChange?:      (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
@@ -2972,7 +3029,7 @@ function SectionBlock({
           {(viewFilter ? viewFilter(seccion.tareas) : seccion.tareas).map(t => (
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
               onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
-              onDateChange={(id, field, val) => { fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: val || null }) }); }}
+              onDateChange={onDateChange}
               onPriorityChange={onPriorityChange}
               onAssign={onAssign}
               onProjectChange={onProjectChange}

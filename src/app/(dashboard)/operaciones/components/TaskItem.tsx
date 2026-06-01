@@ -124,6 +124,9 @@ export default function TaskItem({
   const [editingDate,   setEditingDate]   = useState<"fecha" | "fechaVencimiento" | null>(null);
   const [localFecha,    setLocalFecha]    = useState(tarea.fecha            ? tarea.fecha.substring(0, 10)            : "");
   const [localFechaVen, setLocalFechaVen] = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
+  // FIX 3: Keep local date state in sync when parent prop changes (date badge color fix)
+  useEffect(() => { setLocalFecha(tarea.fecha ? tarea.fecha.substring(0, 10) : ""); }, [tarea.fecha]);
+  useEffect(() => { setLocalFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : ""); }, [tarea.fechaVencimiento]);
   const [expanded,      setExpanded]      = useState(false);
   const [subtareasExp,  setSubtareasExp]  = useState<TareaItem[]>([]);
   const [loadingExp,    setLoadingExp]    = useState(false);
