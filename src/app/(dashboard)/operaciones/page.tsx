@@ -2751,39 +2751,13 @@ function SectionBlock({
     await onRename(seccion.id, nuevo);
   }
 
-  // Is the dragged task FROM this section? (don't show overlay over its own section)
+  // Is the dragged task FROM this section?
   const isDraggingFromHere = !!draggingId && seccion.tareas.some(t => t.id === draggingId);
-  // Is there an active cross-section drag happening?
+  // Is there an active cross-section drag?
   const isCrossDrag = !!draggingId && !isDraggingFromHere;
 
   return (
-    <div className="mt-5 relative">
-      {/* Full-section drop overlay — only shows when dragging from another section */}
-      {isCrossDrag && (
-        <div
-          className={`absolute inset-0 z-20 rounded-xl border-2 border-dashed transition-all duration-150 cursor-copy ${
-            sectionOver
-              ? "border-[#B3985B] bg-[#B3985B]/10 shadow-[inset_0_0_20px_rgba(179,152,91,0.08)]"
-              : "border-[#2a2a2a] bg-[#0a0a0a]/40"
-          }`}
-          onDragOver={e => { e.preventDefault(); e.stopPropagation(); setSectionOver(true); }}
-          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSectionOver(false); }}
-          onDrop={e => { e.preventDefault(); e.stopPropagation(); setSectionOver(false); onDropSection?.(); }}
-        >
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <span className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-              sectionOver
-                ? "bg-[#B3985B] text-black shadow-lg"
-                : "bg-[#1a1a1a] text-[#444] border border-[#2a2a2a]"
-            }`}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-              {sectionOver ? `Mover a "${seccion.nombre}"` : seccion.nombre}
-            </span>
-          </div>
-        </div>
-      )}
+    <div className="mt-5">
 
       {/* Section header */}
       <div
@@ -2887,6 +2861,28 @@ function SectionBlock({
           </div>
         )}
       </div>
+
+      {/* ── Drop zone (in-flow): appears when dragging from another section ── */}
+      {isCrossDrag && (
+        <div
+          className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-all duration-150 mb-1 select-none ${
+            sectionOver
+              ? "h-14 border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
+              : "h-10 border-[#252525] bg-[#111] text-[#333] hover:border-[#B3985B]/40 hover:text-[#B3985B]/60"
+          }`}
+          onDragEnter={e => { e.preventDefault(); setSectionOver(true); }}
+          onDragOver={e => { e.preventDefault(); setSectionOver(true); }}
+          onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSectionOver(false); }}
+          onDrop={e => { e.preventDefault(); setSectionOver(false); onDropSection?.(); }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+          <span className="text-xs font-semibold">
+            {sectionOver ? `Mover a "${seccion.nombre}"` : `Soltar en "${seccion.nombre}"`}
+          </span>
+        </div>
+      )}
 
       {!seccion.colapsada && (
         <>
