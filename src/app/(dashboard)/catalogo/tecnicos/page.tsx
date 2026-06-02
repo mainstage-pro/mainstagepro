@@ -407,7 +407,7 @@ export default function TecnicosPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {activos.map(t => (
-                <tr key={t.id} className="hover:bg-[#1a1a1a] transition-colors">
+                <tr key={t.id} className="group hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
@@ -444,9 +444,13 @@ export default function TecnicosPage() {
                       <button
                         onClick={e => { e.stopPropagation(); togglePrioridad(t.id, t.prioridad); }}
                         title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-                        className={`text-lg transition-all hover:scale-110 ${t.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'}`}
+                        className={`text-lg transition-all hover:scale-110 ${
+                          t.prioridad
+                            ? 'text-amber-400'
+                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                        }`}
                       >
-                        ⭐
+                        {t.prioridad ? '⭐' : '☆'}
                       </button>
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
@@ -662,7 +666,7 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors flex flex-col gap-3">
+    <div className="group bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors flex flex-col gap-3">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -685,10 +689,12 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
               onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
               title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
               className={`text-lg transition-all hover:scale-110 ${
-                t.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'
+                t.prioridad
+                  ? 'text-amber-400'
+                  : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
               }`}
             >
-              ⭐
+              {t.prioridad ? '⭐' : '☆'}
             </button>
           )}
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${nivelStyle}`}>{t.nivel}</span>

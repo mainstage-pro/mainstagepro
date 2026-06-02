@@ -591,7 +591,7 @@ export default function ProveedoresPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {activos.map(p => (
-                <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
+                <tr key={p.id} className="group hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
@@ -632,9 +632,13 @@ export default function ProveedoresPage() {
                       <button
                         onClick={e => { e.stopPropagation(); togglePrioridad(p.id, p.prioridad); }}
                         title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-                        className={`text-lg transition-all hover:scale-110 ${p.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'}`}
+                        className={`text-lg transition-all hover:scale-110 ${
+                          p.prioridad
+                            ? 'text-amber-400'
+                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                        }`}
                       >
-                        ⭐
+                        {p.prioridad ? '⭐' : '☆'}
                       </button>
                       <button onClick={() => startEdit(p)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => toggleActivo(p)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
@@ -685,7 +689,7 @@ function ProveedorCard({
   const portalUrl = p.portalToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/proveedor/${p.portalToken}` : "";
 
   return (
-    <div className={`bg-[#111] border rounded-xl p-4 transition-colors flex flex-col gap-3 ${equiposPanelOpen ? "border-[#B3985B]/40" : "border-[#1e1e1e] hover:border-[#2a2a2a]"}`}>
+    <div className={`group bg-[#111] border rounded-xl p-4 transition-colors flex flex-col gap-3 ${equiposPanelOpen ? "border-[#B3985B]/40" : "border-[#1e1e1e] hover:border-[#2a2a2a]"}`}>
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
@@ -710,10 +714,12 @@ function ProveedorCard({
             onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
             title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
             className={`text-lg transition-all hover:scale-110 shrink-0 ${
-              p.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'
+              p.prioridad
+                ? 'text-amber-400'
+                : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
             }`}
           >
-            ⭐
+            {p.prioridad ? '⭐' : '☆'}
           </button>
         )}
       </div>
