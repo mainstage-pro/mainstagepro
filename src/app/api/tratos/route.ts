@@ -140,6 +140,16 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Auto-init nurturingData for NURTURING leads
+    if (trato.tipoProspecto === 'NURTURING') {
+      await prisma.trato.update({
+        where: { id: trato.id },
+        data: {
+          nurturingData: JSON.stringify({ etapa: 'PRIMER_CONTACTO', temperatura: 'FRIO', log: [] }),
+        },
+      });
+    }
+
     return NextResponse.json({ trato });
   } catch (error) {
     console.error(error);

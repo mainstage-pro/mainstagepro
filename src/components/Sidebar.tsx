@@ -134,7 +134,7 @@ const NAV: NavSection[] = [
     section: "Ventas",
     items: [
       { key: "ventas-seguimientos", label: "Seguimientos",      href: "/ventas/seguimientos", badge: "seguimientos" },
-      { key: "crm-tratos",          label: "Tratos",             href: "/crm/tratos" },
+      { key: "crm-tratos",          label: "Tratos",             href: "/crm/tratos", badge: "leads" },
       { key: "crm-clientes",        label: "Clientes",           href: "/crm/clientes" },
       { key: "ventas-empresas",     label: "Empresas",           href: "/catalogo/empresas?tipo=cliente" },
       { key: "ventas-reporte",      label: "Reporte de ventas",  href: "/ventas/reporte" },
@@ -265,11 +265,11 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   // Fetch badge counts
   useEffect(() => {
     fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) setBadges({ seguimientos: d.urgentes ?? 0 });
+      if (d) setBadges({ seguimientos: d.urgentes ?? 0, leads: d.leads ?? 0 });
     }).catch(() => {});
     const iv = setInterval(() => {
       fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
-        if (d) setBadges({ seguimientos: d.urgentes ?? 0 });
+        if (d) setBadges({ seguimientos: d.urgentes ?? 0, leads: d.leads ?? 0 });
       }).catch(() => {});
     }, 60_000);
     return () => clearInterval(iv);

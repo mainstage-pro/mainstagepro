@@ -10,10 +10,17 @@ export async function GET() {
   hoy.setHours(0, 0, 0, 0);
   const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
 
-  const [vencidos, hoyCount] = await Promise.all([
+  const [vencidos, hoyCount, leadsVencidos] = await Promise.all([
     prisma.seguimiento.count({ where: { completado: false, fechaProgramada: { lt: hoy } } }),
     prisma.seguimiento.count({ where: { completado: false, fechaProgramada: { gte: hoy, lt: manana } } }),
+    prisma.trato.count({
+      where: {
+        tipoProspecto: 'NURTURING',
+        fechaProximaAccion: { lt: hoy },
+        etapa: { notIn: ['VENTA_CERRADA', 'VENTA_PERDIDA'] },
+      },
+    }),
   ]);
 
-  return NextResponse.json({ urgentes: vencidos + hoyCount, vencidos, hoy: hoyCount });
+  return NextResponse.json({ urgentes: vencidos + hoyCount, vencidos, hoy: hoyCount, leads: leadsVencidos });
 }

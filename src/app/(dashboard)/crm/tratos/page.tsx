@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +11,7 @@ import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { BadgeDias } from "@/components/ui/BadgeDias";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { diasTrato } from "@/lib/contadores";
 
 type Cotizacion = {
@@ -40,6 +42,7 @@ type Trato = {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null };
   responsable: { id: string; name: string } | null;
   cotizaciones: Cotizacion[];
+  nurturingData: string | null;
 };
 
 type Cliente = { id: string; nombre: string; empresa: string | null; telefono: string | null };
@@ -501,6 +504,156 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
+const ORIGEN_COLORS: Record<string, string> = {
+  META_ADS: 'bg-blue-900/40 text-blue-400 border-blue-700/30',
+  GOOGLE_ADS: 'bg-sky-900/40 text-sky-400 border-sky-700/30',
+  ORGANICO: 'bg-emerald-900/40 text-emerald-400 border-emerald-700/30',
+  REFERIDO: 'bg-yellow-900/40 text-yellow-400 border-yellow-700/30',
+  PROSPECCION: 'bg-violet-900/40 text-violet-400 border-violet-700/30',
+  RECOMPRA: 'bg-amber-900/40 text-amber-400 border-amber-700/30',
+  OTRO: 'bg-gray-800 text-gray-400 border-gray-700/30',
+};
+
+const TEMP_COLORS: Record<string, string> = {
+  FRIO: 'bg-blue-900/30 text-blue-400',
+  TIBIO: 'bg-orange-900/30 text-orange-400',
+  CALIENTE: 'bg-red-900/30 text-red-400',
+};
+
+interface LeadsViewProps {
+  leads: Trato[];
+  activeSeguimientoPopover: string | null;
+  seguimientoPendiente: { id: string; titulo: string; nota: string | null; numero: number | null } | null;
+  seguimientoForm: { notaResultado: string; proximaFecha: string; opcion: '' | '+1' | '+3' | '+7' | 'otra' | 'ninguna' };
+  setSeguimientoForm: React.Dispatch<React.SetStateAction<{ notaResultado: string; proximaFecha: string; opcion: '' | '+1' | '+3' | '+7' | 'otra' | 'ninguna' }>>;
+  completandoSeguimiento: boolean;
+  onAbrirPopover: (tratoId: string) => void;
+  onCompletar: (trato: Trato) => void;
+  setActiveSeguimientoPopover: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, seguimientoForm, setSeguimientoForm, completandoSeguimiento, onAbrirPopover, onCompletar, setActiveSeguimientoPopover }: LeadsViewProps) {
+  const hoyStr = new Date().toISOString().split('T')[0];
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-1 py-2">
+      {leads.length === 0 ? (
+        <div className="col-span-3 text-center py-16 text-gray-600 text-sm">No hay leads registrados.</div>
+      ) : (
+        leads.map(t => {
+          const nurturing = (() => { try { return JSON.parse(t.nurturingData ?? '{}'); } catch { return {}; } })();
+          const temperatura = nurturing.temperatura ?? null;
+          const proxVencida = t.fechaProximaAccion && t.fechaProximaAccion < hoyStr;
+          const proxHoy = t.fechaProximaAccion && t.fechaProximaAccion === hoyStr;
+          const diasRegistrado = Math.floor((Date.now() - new Date(t.createdAt).getTime()) / 86400000);
+          return (
+            <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-all">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div>
+                  <p className="text-white font-medium text-sm">{t.cliente.nombre}</p>
+                  {t.cliente.empresa && <p className="text-gray-500 text-xs">{t.cliente.empresa}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${ORIGEN_COLORS[t.origenLead] ?? ORIGEN_COLORS.OTRO}`}>
+                    {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
+                  </span>
+                  {temperatura && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TEMP_COLORS[temperatura] ?? ''}`}>
+                      {temperatura}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-3">
+                  {t.fechaProximaAccion ? (
+                    <span className={`text-[10px] flex items-center gap-1 ${
+                      proxVencida ? 'text-red-400' : proxHoy ? 'text-yellow-400' : 'text-emerald-400'
+                    }`}>
+                      <span>{proxVencida ? '⚠' : proxHoy ? '📅' : '✓'}</span>
+                      <span>{new Date(t.fechaProximaAccion + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-gray-600">Sin seguimiento</span>
+                  )}
+                  <span className="text-[10px] text-gray-600">{diasRegistrado}d</span>
+                </div>
+                <button
+                  onClick={() => onAbrirPopover(t.id)}
+                  className="text-xs px-3 py-1 rounded-lg border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] transition-all"
+                >
+                  Seguimiento ✓
+                </button>
+              </div>
+
+              {activeSeguimientoPopover === t.id && (
+                <div className="mt-3 pt-3 border-t border-[#1e1e1e]">
+                  {seguimientoPendiente ? (
+                    <>
+                      <p className="text-xs text-gray-400 mb-1 font-medium">{seguimientoPendiente.titulo}</p>
+                      {seguimientoPendiente.nota && <p className="text-[10px] text-gray-600 mb-2">{seguimientoPendiente.nota}</p>}
+                      <textarea
+                        value={seguimientoForm.notaResultado}
+                        onChange={e => setSeguimientoForm(p => ({ ...p, notaResultado: e.target.value }))}
+                        placeholder="¿Qué pasó? (opcional)"
+                        rows={2}
+                        className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] mb-2 resize-none"
+                      />
+                      <p className="text-[10px] text-gray-600 mb-1">Próximo seguimiento:</p>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {(['+1', '+3', '+7', 'otra', 'ninguna'] as const).map(op => (
+                          <button
+                            key={op}
+                            onClick={() => setSeguimientoForm(p => ({ ...p, opcion: p.opcion === op ? '' : op }))}
+                            className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                              seguimientoForm.opcion === op
+                                ? 'bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/40'
+                                : 'text-gray-500 border-[#2a2a2a] hover:border-[#B3985B]/30'
+                            }`}
+                          >
+                            {op === '+1' ? '+1 día' : op === '+3' ? '+3 días' : op === '+7' ? '+1 semana' : op === 'otra' ? 'Otra fecha' : 'Sin seguimiento'}
+                          </button>
+                        ))}
+                      </div>
+                      {seguimientoForm.opcion === 'otra' && (
+                        <input
+                          type="date"
+                          value={seguimientoForm.proximaFecha}
+                          onChange={e => setSeguimientoForm(p => ({ ...p, proximaFecha: e.target.value }))}
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] mb-2"
+                        />
+                      )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => onCompletar(t)}
+                          disabled={completandoSeguimiento}
+                          className="flex-1 px-3 py-1.5 rounded-lg bg-[#B3985B] text-black text-xs font-semibold disabled:opacity-40"
+                        >
+                          {completandoSeguimiento ? 'Guardando...' : 'Confirmar'}
+                        </button>
+                        <button
+                          onClick={() => setActiveSeguimientoPopover(null)}
+                          className="px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-gray-500 text-xs hover:text-white"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-3">
+                      <p className="text-xs text-gray-500">No hay seguimiento pendiente.</p>
+                      <p className="text-[10px] text-gray-600 mt-1">Usa el botón de Nueva oportunidad para programar uno.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 export default function TratosPage() {
   const router = useRouter();
   const [tratos, setTratos] = useState<Trato[]>([]);
@@ -522,6 +675,28 @@ export default function TratosPage() {
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
+
+  // Lead quick capture
+  const [showLeadSheet, setShowLeadSheet] = useState(false);
+  const [leadForm, setLeadForm] = useState({
+    nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '',
+    notasIniciales: '', fechaProximaAccion: '',
+  });
+  const [guardandoLead, setGuardandoLead] = useState(false);
+  const [leadCreado, setLeadCreado] = useState<{ id: string; nombre: string } | null>(null);
+  const [showSeguimientoInline, setShowSeguimientoInline] = useState(false);
+  const [seguimientoInlineForm, setSeguimientoInlineForm] = useState({ fecha: '', nota: '' });
+  const [guardandoSeguimiento, setGuardandoSeguimiento] = useState(false);
+
+  // Lead view & completion popover
+  const [activeSeguimientoPopover, setActiveSeguimientoPopover] = useState<string | null>(null);
+  const [seguimientoPendiente, setSeguimientoPendiente] = useState<{
+    id: string; titulo: string; nota: string | null; numero: number | null;
+  } | null>(null);
+  const [seguimientoForm, setSeguimientoForm] = useState({
+    notaResultado: '', proximaFecha: '', opcion: '' as '' | '+1' | '+3' | '+7' | 'otra' | 'ninguna',
+  });
+  const [completandoSeguimiento, setCompletandoSeguimiento] = useState(false);
 
   function toggleVista(v: "lista" | "kanban") {
     setVista(v);
@@ -552,6 +727,135 @@ export default function TratosPage() {
       if (res.ok) { setTratos(prev => prev.filter(t => t.id !== id)); toast.success("Trato eliminado"); }
       else { const d = await res.json(); toast.error(d.error ?? "Error al eliminar"); }
     } finally { setDeletingId(null); }
+  }
+
+  async function crearLead() {
+    if (!leadForm.nombre.trim() || !leadForm.origenLead) return;
+    setGuardandoLead(true);
+    try {
+      const body: Record<string, unknown> = {
+        clienteNuevo: { nombre: leadForm.nombre.trim(), telefono: leadForm.telefono || null },
+        tipoProspecto: 'NURTURING',
+        origenLead: leadForm.origenLead,
+        tipoEvento: leadForm.tipoEvento || 'OTRO',
+        nombreEvento: leadForm.notasIniciales.trim() || 'Lead sin evento definido',
+      };
+      if (leadForm.fechaProximaAccion) {
+        body.primerSeguimiento = { fecha: leadForm.fechaProximaAccion, canal: 'whatsapp' };
+        body.fechaProximaAccion = leadForm.fechaProximaAccion;
+      }
+      const res = await fetch('/api/tratos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { toast.error('Error al crear lead'); return; }
+      const { trato } = await res.json();
+      const refreshed = await fetch('/api/tratos').then(r => r.json());
+      setTratos(refreshed.tratos ?? []);
+      setLeadCreado({ id: trato.id, nombre: leadForm.nombre.trim() });
+      toast.success('Lead registrado ✓');
+      setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '' });
+    } finally {
+      setGuardandoLead(false);
+    }
+  }
+
+  async function agregarSeguimientoInline() {
+    if (!leadCreado || !seguimientoInlineForm.fecha) return;
+    setGuardandoSeguimiento(true);
+    try {
+      await fetch('/api/seguimientos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tratoId: leadCreado.id,
+          tipo: 'manual',
+          canal: 'whatsapp',
+          titulo: 'Seguimiento programado',
+          fechaProgramada: seguimientoInlineForm.fecha,
+          nota: seguimientoInlineForm.nota || null,
+        }),
+      });
+      toast.success('Seguimiento creado ✓');
+      setShowLeadSheet(false);
+      setLeadCreado(null);
+      setShowSeguimientoInline(false);
+    } finally {
+      setGuardandoSeguimiento(false);
+    }
+  }
+
+  async function abrirCompletarSeguimiento(tratoId: string) {
+    setActiveSeguimientoPopover(prev => prev === tratoId ? null : tratoId);
+    setSeguimientoPendiente(null);
+    setSeguimientoForm({ notaResultado: '', proximaFecha: '', opcion: '' });
+    const res = await fetch(`/api/seguimientos?tratoId=${tratoId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const pendiente = (data.seguimientos ?? []).find((s: { completado: boolean }) => !s.completado);
+    setSeguimientoPendiente(pendiente ?? null);
+  }
+
+  async function completarSeguimiento(trato: Trato) {
+    if (!seguimientoPendiente) return;
+    setCompletandoSeguimiento(true);
+    try {
+      await fetch(`/api/seguimientos/${seguimientoPendiente.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completado: true, notaResultado: seguimientoForm.notaResultado || null }),
+      });
+
+      let nuevaFecha: string | null = null;
+      const hoyDate = new Date();
+      if (seguimientoForm.opcion === '+1') {
+        const d = new Date(hoyDate); d.setDate(d.getDate() + 1);
+        nuevaFecha = d.toISOString().split('T')[0];
+      } else if (seguimientoForm.opcion === '+3') {
+        const d = new Date(hoyDate); d.setDate(d.getDate() + 3);
+        nuevaFecha = d.toISOString().split('T')[0];
+      } else if (seguimientoForm.opcion === '+7') {
+        const d = new Date(hoyDate); d.setDate(d.getDate() + 7);
+        nuevaFecha = d.toISOString().split('T')[0];
+      } else if (seguimientoForm.opcion === 'otra') {
+        nuevaFecha = seguimientoForm.proximaFecha || null;
+      }
+
+      if (nuevaFecha) {
+        const nextNum = (seguimientoPendiente.numero ?? 0) + 1;
+        await fetch('/api/seguimientos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tratoId: trato.id,
+            tipo: 'auto',
+            canal: 'whatsapp',
+            titulo: `Seguimiento #${nextNum}`,
+            numero: nextNum,
+            fechaProgramada: nuevaFecha,
+          }),
+        });
+      }
+
+      await fetch(`/api/tratos/${trato.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fechaProximaAccion: nuevaFecha }),
+      });
+
+      setTratos(prev => prev.map(t =>
+        t.id === trato.id
+          ? { ...t, fechaProximaAccion: nuevaFecha }
+          : t
+      ));
+
+      toast.success('Seguimiento completado ✓');
+      setActiveSeguimientoPopover(null);
+      setSeguimientoPendiente(null);
+    } finally {
+      setCompletandoSeguimiento(false);
+    }
   }
 
   function handleCreated(trato: Trato, cotizacionId: string) {
@@ -626,6 +930,23 @@ export default function TratosPage() {
 
   const gruposProximos = agrupar(tratosProximos);
 
+  const leads = tratos.filter(t =>
+    t.tipoProspecto === 'NURTURING' ||
+    (t.etapa === 'DESCUBRIMIENTO' && t.tipoProspecto === 'ACTIVO')
+  ).sort((a, b) => {
+    const hoyStr = new Date().toISOString().split('T')[0];
+    const aVencido = a.fechaProximaAccion && a.fechaProximaAccion < hoyStr;
+    const bVencido = b.fechaProximaAccion && b.fechaProximaAccion < hoyStr;
+    if (aVencido && !bVencido) return -1;
+    if (!aVencido && bVencido) return 1;
+    if (!a.fechaProximaAccion && b.fechaProximaAccion) return 1;
+    if (a.fechaProximaAccion && !b.fechaProximaAccion) return -1;
+    if (a.fechaProximaAccion && b.fechaProximaAccion) {
+      return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+    }
+    return 0;
+  });
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -657,6 +978,12 @@ export default function TratosPage() {
             className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nueva oportunidad
           </button>
+          <button
+            onClick={() => { setShowLeadSheet(true); setLeadCreado(null); setShowSeguimientoInline(false); }}
+            className="border border-[#2a2a2a] hover:border-violet-500/40 text-gray-400 hover:text-violet-400 text-sm px-3 py-2 rounded-lg transition-all"
+          >
+            + Lead rápido
+          </button>
           <Link href="/crm/tratos/nuevo"
             className="border border-[#2a2a2a] text-[#6b7280] hover:text-white text-sm px-3 py-2 rounded-lg transition-colors"
             title="Trato detallado">
@@ -686,6 +1013,16 @@ export default function TratosPage() {
           <div className="flex flex-wrap items-center gap-2">
             {/* Etapas como pills */}
             <div className="flex items-center gap-1.5 flex-wrap flex-1">
+              <button
+                onClick={() => setFiltroEtapa(filtroEtapa === 'LEADS' ? null : 'LEADS')}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all border ${
+                  filtroEtapa === 'LEADS'
+                    ? 'bg-violet-500/15 text-violet-400 border-violet-500/40'
+                    : 'bg-transparent text-gray-500 border-[#2a2a2a] hover:border-violet-500/30 hover:text-violet-400'
+                }`}
+              >
+                Leads
+              </button>
               {([{ key: null, label: "Todos" }, ...ETAPAS.map(e => ({ key: e, label: ETAPA_LABELS[e] }))] as { key: string | null; label: string }[]).map(({ key, label }) => {
                 const total = tratos.filter(t => !key || t.etapa === key);
                 const n = total.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy).length;
@@ -739,7 +1076,23 @@ export default function TratosPage() {
           </div>
 
           {/* ── Contenido ── */}
-          {loading ? (
+          {filtroEtapa === 'LEADS' ? (
+            loading ? (
+              <SkeletonPage rows={5} cols={5} />
+            ) : (
+              <LeadsView
+                leads={leads}
+                activeSeguimientoPopover={activeSeguimientoPopover}
+                seguimientoPendiente={seguimientoPendiente}
+                seguimientoForm={seguimientoForm}
+                setSeguimientoForm={setSeguimientoForm}
+                completandoSeguimiento={completandoSeguimiento}
+                onAbrirPopover={abrirCompletarSeguimiento}
+                onCompletar={completarSeguimiento}
+                setActiveSeguimientoPopover={setActiveSeguimientoPopover}
+              />
+            )
+          ) : loading ? (
             <SkeletonPage rows={5} cols={5} />
           ) : tratos.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
@@ -841,6 +1194,109 @@ export default function TratosPage() {
       {showNueva && (
         <NuevaOportunidadModal onClose={() => setShowNueva(false)} onCreated={handleCreated} />
       )}
+
+      {/* Sheet: Registro rápido de lead */}
+      <Sheet open={showLeadSheet} onOpenChange={(open: boolean) => { setShowLeadSheet(open); if (!open) { setLeadCreado(null); setShowSeguimientoInline(false); }}}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto bg-[#0d0d0d] border-l border-[#1e1e1e]">
+          <SheetHeader>
+            <SheetTitle className="text-white">Registrar lead</SheetTitle>
+            <p className="text-gray-500 text-xs">Se guardará en el CRM automáticamente</p>
+          </SheetHeader>
+
+          {!leadCreado ? (
+            <div className="mt-6 space-y-4 px-4 pb-6">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Nombre o empresa *</label>
+                <input value={leadForm.nombre} onChange={e => setLeadForm(p => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Ej. María García" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Teléfono / WhatsApp</label>
+                <input value={leadForm.telefono} onChange={e => setLeadForm(p => ({ ...p, telefono: e.target.value }))}
+                  placeholder="+52 55 0000 0000" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">¿De dónde llegó? *</label>
+                <select value={leadForm.origenLead} onChange={e => setLeadForm(p => ({ ...p, origenLead: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="ORGANICO">Orgánico</option>
+                  <option value="META_ADS">Meta Ads (Facebook/Instagram)</option>
+                  <option value="GOOGLE_ADS">Google Ads</option>
+                  <option value="REFERIDO">Referido</option>
+                  <option value="RECOMPRA">Recompra / cliente anterior</option>
+                  <option value="PROSPECCION">Prospección</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Tipo de evento</label>
+                <select value={leadForm.tipoEvento} onChange={e => setLeadForm(p => ({ ...p, tipoEvento: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  <option value="">— Sin definir —</option>
+                  <option value="SOCIAL">Social</option>
+                  <option value="MUSICAL">Musical</option>
+                  <option value="EMPRESARIAL">Empresarial</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Lo que busca / contexto</label>
+                <textarea value={leadForm.notasIniciales} onChange={e => setLeadForm(p => ({ ...p, notasIniciales: e.target.value }))}
+                  placeholder="Boda en junio, busca sonido e iluminación..."
+                  rows={2} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Próximo seguimiento</label>
+                <input type="date" value={leadForm.fechaProximaAccion}
+                  onChange={e => setLeadForm(p => ({ ...p, fechaProximaAccion: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <button onClick={crearLead} disabled={guardandoLead || !leadForm.nombre.trim()}
+                className="w-full px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 mt-2">
+                {guardandoLead ? 'Registrando...' : 'Registrar lead'}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-6 px-4 pb-6">
+              <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-4 mb-4">
+                <p className="text-emerald-400 font-medium text-sm">✓ Lead registrado</p>
+                <p className="text-gray-400 text-xs mt-0.5">{leadCreado.nombre} se guardó en el CRM</p>
+              </div>
+              {!showSeguimientoInline ? (
+                <div>
+                  <p className="text-gray-300 text-sm mb-3">¿Agregar seguimiento ahora?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setShowSeguimientoInline(true)}
+                      className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold">Sí, agregar</button>
+                    <button onClick={() => setShowLeadSheet(false)}
+                      className="flex-1 px-3 py-2 rounded-lg border border-[#2a2a2a] text-gray-400 text-sm hover:text-white">No, cerrar</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Fecha del seguimiento *</label>
+                    <input type="date" value={seguimientoInlineForm.fecha}
+                      onChange={e => setSeguimientoInlineForm(p => ({ ...p, fecha: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 mb-1 block">Nota</label>
+                    <textarea value={seguimientoInlineForm.nota}
+                      onChange={e => setSeguimientoInlineForm(p => ({ ...p, nota: e.target.value }))}
+                      placeholder="Llamar para confirmar disponibilidad..."
+                      rows={2} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                  </div>
+                  <button onClick={agregarSeguimientoInline} disabled={guardandoSeguimiento || !seguimientoInlineForm.fecha}
+                    className="w-full px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">
+                    {guardandoSeguimiento ? 'Guardando...' : 'Guardar seguimiento'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
