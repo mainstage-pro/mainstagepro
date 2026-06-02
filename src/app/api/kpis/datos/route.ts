@@ -20,6 +20,15 @@ export async function GET(req: NextRequest) {
   const desde = new Date(desdeStr + 'T00:00:00.000Z');
   const hasta = new Date(hastaStr + 'T23:59:59.999Z');
 
+  // ── valorManual fallback per slug ────────────────────────────────────────
+  const kpisConfig = await prisma.pTKPI.findMany({
+    where: { activo: true },
+    select: { slug: true, valorManual: true },
+  });
+  function getManualFallback(slug: string): number | null {
+    return kpisConfig.find((k) => k.slug === slug)?.valorManual ?? null;
+  }
+
   // ── Estado de Resultados (DEVENGADO — por fecha del evento) ──────────────
 
   // Cotizaciones APROBADAS cuyo evento cae en el período
@@ -141,7 +150,7 @@ export async function GET(req: NextRequest) {
       ventas: {
         ticketPromedio,
         totalVentas: eventosEjecutados,
-        tasaConversion: null,
+        tasaConversion: getManualFallback('tasa-de-conversion-a-venta'),
         serviciosVendidos: eventosEjecutados,
       },
       marketing: {
@@ -149,14 +158,14 @@ export async function GET(req: NextRequest) {
         leadsOrigenMeta,
         conversionLeadVenta:
           conversionLeadVenta !== null ? Math.round(conversionLeadVenta * 10) / 10 : null,
-        cpl: null,
-        cac: null,
+        cpl: getManualFallback('costo-por-lead-cpl'),
+        cac: getManualFallback('costo-de-adquisicion-cac'),
       },
       produccion: {
         totalEventos: eventosEjecutados,
-        eventosSinIncidencias: null,
-        desviacionCostoPromedio: null,
-        proyectosCerradosATiempo: null,
+        eventosSinIncidencias: getManualFallback('eventos-sin-incidencias'),
+        desviacionCostoPromedio: getManualFallback('desviacion-costo-promedio'),
+        proyectosCerradosATiempo: getManualFallback('proyectos-cerrados-a-tiempo'),
       },
     },
   });

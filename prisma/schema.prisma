@@ -2913,10 +2913,16 @@ model PTKPI {
   formula       String   @db.Text
   fuente        String
   orden         Int      @default(0)
-  esTransversal   Boolean  @default(false)
-  activo          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  esTransversal    Boolean   @default(false)
+  activo           Boolean   @default(true)
+  descripcion      String?
+  proposito        String?   @db.Text
+  tipoCalculo      String    @default("manual")   // "automatico" | "manual" | "mixto"
+  notaCalculo      String?   @db.Text
+  valorManual      Float?
+  fechaValorManual DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   registros     PTRegistroKPI[]
 
