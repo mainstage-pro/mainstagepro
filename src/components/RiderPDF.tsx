@@ -321,7 +321,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         {/* Page number */}
         <Text
           fixed
-          style={{ position: 'absolute', bottom: 16, right: 32, fontSize: 7, color: GRAY5 }}
+          style={{ position: 'absolute', bottom: 16, right: 32, fontSize: 7, color: INK8 }}
           render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
         />
       </Page>
