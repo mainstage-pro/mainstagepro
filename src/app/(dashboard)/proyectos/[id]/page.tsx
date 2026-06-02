@@ -93,6 +93,8 @@ interface Proyecto {
   portalToken: string | null;
   notasPortal: string | null;
   responsables: string | null;
+  llamadoBodega: string | null;
+  notasBriefTecnico: string | null;
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
 }
 
@@ -2791,6 +2793,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </span>
                     </span>
                   </button>
+                  <div className="border-t border-[#2a2a2a] mx-2" />
+                  {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
+                    <button
+                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }}
+                      disabled={!!downloading}
+                      className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left"
+                    >
+                      <span className="text-[#B3985B] text-sm">
+                        {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                        ) : "🔧"}
+                      </span>
+                      <span>
+                        <span className="block font-medium text-white">Brief técnico</span>
+                        <span className="block text-gray-500 text-[10px]">
+                          {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Logística para equipo técnico"}
+                        </span>
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -3236,6 +3258,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-2">
                     <Campo label="Indicaciones de acceso" value={proyecto.indicacionesAcceso} field="indicacionesAcceso" type="textarea" onSave={guardarCampo} />
                   </div>
+                  <div className="col-span-2">
+                    <Campo label="Llamado en bodega (fecha y hora)" value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 16).replace('T', ' ') : null} field="llamadoBodega" onSave={(field, value) => guardarCampo(field, value ? new Date(value).toISOString() : '')} />
+                  </div>
                 </>)}
               </div>
 
@@ -3273,6 +3298,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 onSave={guardarCampo}
               />
             </div>
+            {/* Notas para el técnico (Brief Técnico) */}
+            {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider font-semibold">Notas para el equipo técnico</p>
+                <Campo
+                  label="Notas para el técnico"
+                  noLabel
+                  value={proyecto.notasBriefTecnico}
+                  field="notasBriefTecnico"
+                  type="textarea"
+                  onSave={guardarCampo}
+                />
+              </div>
+            )}
           </div>
 
           {/* Viabilidad */}
