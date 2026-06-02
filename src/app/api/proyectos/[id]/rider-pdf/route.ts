@@ -58,7 +58,7 @@ export async function GET(
   } catch { /* ignore */ }
 
   // Load logo as base64
-  const logoPath = path.join(process.cwd(), 'public', 'logo-white.png')
+  const logoPath = path.join(process.cwd(), 'public', 'logo.png')
   const logoSrc = fs.existsSync(logoPath)
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
     : null

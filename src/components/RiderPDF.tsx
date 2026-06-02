@@ -57,59 +57,60 @@ export type RiderPDFData = {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const GOLD   = '#B3985B'
-const BLACK  = '#0a0a0a'
-const DARK   = '#111111'
-const GRAY1  = '#1a1a1a'
-const GRAY5  = '#555555'
-const GRAY7  = '#777777'
-const WHITE  = '#ffffff'
+const GOLD   = '#9A7A3F'  // gold oscurecido para legibilidad en blanco
+const WHITE  = '#ffffff'  // fondo de página
+const LIGHT1 = '#f8f8f8'  // fondo de tarjetas
+const LIGHT2 = '#f0f0f0'  // fondo accesorios / stats
+const BORDER = '#e0e0e0'  // bordes
+const INK1   = '#111111'  // texto principal
+const INK5   = '#555555'  // texto secundario
+const INK8   = '#888888'  // texto tenue
 
 const s = StyleSheet.create({
-  page: { backgroundColor: BLACK, padding: 32, fontFamily: 'Helvetica' },
+  page: { backgroundColor: WHITE, padding: 32, fontFamily: 'Helvetica' },
   // Header
-  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: GRAY1, paddingBottom: 16 },
+  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 1.5, borderBottomColor: INK1, paddingBottom: 16 },
   logo:       { width: 90, height: 24, objectFit: 'contain' },
   headerRight:{ alignItems: 'flex-end' },
   headerTitle:{ fontSize: 9, color: GOLD, letterSpacing: 3, textTransform: 'uppercase', fontFamily: 'Helvetica-Bold' },
-  headerSub:  { fontSize: 14, color: WHITE, fontFamily: 'Helvetica-Bold', marginTop: 2 },
-  headerDate: { fontSize: 8, color: GRAY7, marginTop: 3 },
+  headerSub:  { fontSize: 14, color: INK1, fontFamily: 'Helvetica-Bold', marginTop: 2 },
+  headerDate: { fontSize: 8, color: INK5, marginTop: 3 },
   // Event grid
   gridRow:    { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 6 },
-  gridCell:   { backgroundColor: DARK, borderWidth: 1, borderColor: GRAY1, borderRadius: 4, padding: 8, minWidth: 120, flex: 1 },
-  gridLabel:  { fontSize: 7, color: GRAY5, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3, fontFamily: 'Helvetica-Bold' },
-  gridValue:  { fontSize: 9, color: WHITE },
+  gridCell:   { backgroundColor: LIGHT1, borderWidth: 1, borderColor: BORDER, borderRadius: 4, padding: 8, minWidth: 120, flex: 1 },
+  gridLabel:  { fontSize: 7, color: INK5, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 3, fontFamily: 'Helvetica-Bold' },
+  gridValue:  { fontSize: 9, color: INK1 },
   // Section
   sectionHead:{ flexDirection: 'row', alignItems: 'center', marginTop: 16, marginBottom: 8 },
-  sectionLine:{ flex: 1, height: 1, backgroundColor: GRAY1 },
+  sectionLine:{ flex: 1, height: 1, backgroundColor: BORDER },
   sectionTxt: { fontSize: 8, color: GOLD, textTransform: 'uppercase', letterSpacing: 2, marginHorizontal: 10, fontFamily: 'Helvetica-Bold' },
   // Equipment card
-  equipCard:  { backgroundColor: DARK, borderWidth: 1, borderColor: GRAY1, borderRadius: 5, marginBottom: 8, overflow: 'hidden' },
-  equipHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: GRAY1 },
-  checkBox:   { width: 12, height: 12, borderWidth: 1, borderColor: GRAY5, borderRadius: 2, marginRight: 8 },
-  equipName:  { fontSize: 10, color: WHITE, flex: 1, fontFamily: 'Helvetica-Bold' },
-  equipMeta:  { fontSize: 8, color: GRAY7 },
-  badge:      { backgroundColor: '#1a1a1a', borderWidth: 1, borderColor: GOLD, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  equipCard:  { backgroundColor: WHITE, borderWidth: 1, borderColor: BORDER, borderRadius: 5, marginBottom: 8, overflow: 'hidden' },
+  equipHead:  { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: BORDER },
+  checkBox:   { width: 12, height: 12, borderWidth: 1.5, borderColor: INK5, borderRadius: 2, marginRight: 8 },
+  equipName:  { fontSize: 10, color: INK1, flex: 1, fontFamily: 'Helvetica-Bold' },
+  equipMeta:  { fontSize: 8, color: INK8 },
+  badge:      { backgroundColor: LIGHT1, borderWidth: 1, borderColor: GOLD, borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
   badgeTxt:   { fontSize: 8, color: GOLD, fontFamily: 'Helvetica-Bold' },
   // Accesorios grid
-  accGrid:    { flexDirection: 'row', flexWrap: 'wrap', padding: 8, gap: 6 },
-  accItem:    { flexDirection: 'row', alignItems: 'center', width: '48%', backgroundColor: '#0d0d0d', borderRadius: 3, padding: 5 },
-  accCheck:   { width: 10, height: 10, borderWidth: 1, borderColor: GRAY5, borderRadius: 2, marginRight: 5 },
-  accTxt:     { fontSize: 8, color: GRAY7, flex: 1 },
+  accGrid:    { flexDirection: 'row', flexWrap: 'wrap', padding: 8, gap: 6, backgroundColor: LIGHT1 },
+  accItem:    { flexDirection: 'row', alignItems: 'center', width: '48%', backgroundColor: LIGHT2, borderRadius: 3, padding: 5 },
+  accCheck:   { width: 10, height: 10, borderWidth: 1, borderColor: INK5, borderRadius: 2, marginRight: 5 },
+  accTxt:     { fontSize: 8, color: INK5, flex: 1 },
   accQty:     { fontSize: 7, color: GOLD, marginLeft: 4 },
   // Categoria header
-  catHead:    { backgroundColor: '#0d0d0d', paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: GRAY1 },
-  catTxt:     { fontSize: 7, color: GRAY5, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold' },
+  catHead:    { backgroundColor: INK1, paddingHorizontal: 10, paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: BORDER },
+  catTxt:     { fontSize: 7, color: WHITE, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold' },
   // Notas
-  notaRow:    { paddingHorizontal: 10, paddingVertical: 5 },
-  notaTxt:    { fontSize: 8, color: GRAY7, fontStyle: 'italic' },
+  notaRow:    { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: LIGHT1 },
+  notaTxt:    { fontSize: 8, color: INK5, fontStyle: 'italic' },
   // Footer
-  footer:     { marginTop: 32, borderTopWidth: 1, borderTopColor: GRAY1, paddingTop: 20 },
+  footer:     { marginTop: 32, borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 20 },
   sigRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   sigBlock:   { width: '45%' },
-  sigLine:    { borderBottomWidth: 1, borderBottomColor: GRAY5, marginBottom: 5 },
-  sigLabel:   { fontSize: 8, color: GRAY5 },
-  footerInfo: { fontSize: 7, color: GRAY5, textAlign: 'center', marginTop: 14 },
+  sigLine:    { borderBottomWidth: 1, borderBottomColor: INK5, marginBottom: 5 },
+  sigLabel:   { fontSize: 8, color: INK5 },
+  footerInfo: { fontSize: 7, color: INK8, textAlign: 'center', marginTop: 14 },
 })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -167,7 +168,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         <View style={s.header} fixed>
           {data.logoSrc
             ? <Image src={data.logoSrc} style={s.logo} />
-            : <Text style={{ fontSize: 14, color: GOLD, fontFamily: 'Helvetica-Bold' }}>MAINSTAGE</Text>
+            : <Text style={{ fontSize: 14, color: INK1, fontFamily: 'Helvetica-Bold' }}>MAINSTAGE</Text>
           }
           <View style={s.headerRight}>
             <Text style={s.headerTitle}>Rider de Carga</Text>
@@ -204,8 +205,8 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             { label: 'Piezas totales', value: String(totalEquipos) },
             { label: 'Accesorios', value: String(totalAccesorios) },
           ].map(s2 => (
-            <View key={s2.label} style={{ flex: 1, backgroundColor: '#0d0d0d', borderRadius: 4, padding: 8, borderWidth: 1, borderColor: GRAY1 }}>
-              <Text style={{ fontSize: 7, color: GRAY5, marginBottom: 2 }}>{s2.label}</Text>
+            <View key={s2.label} style={{ flex: 1, backgroundColor: LIGHT1, borderRadius: 4, padding: 8, borderWidth: 1, borderColor: BORDER }}>
+              <Text style={{ fontSize: 7, color: INK5, marginBottom: 2 }}>{s2.label}</Text>
               <Text style={{ fontSize: 14, color: GOLD, fontFamily: 'Helvetica-Bold' }}>{s2.value}</Text>
             </View>
           ))}
