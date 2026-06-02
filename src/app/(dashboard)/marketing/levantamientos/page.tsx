@@ -32,6 +32,7 @@ interface Levantamiento {
   objetivosContenido: string | null; temasSugeridos: string | null;
   redesSocialesCliente: string | null; notasAdicionales: string | null;
   scoreFotoVideo: number | null; recomendacionFotoVideo: string | null;
+  estadoLevantamiento: string;
   trato: {
     id: string; etapa: string; tipoEvento: string; tipoServicio: string | null;
     cliente: { nombre: string; empresa: string | null; telefono: string | null };
@@ -114,6 +115,21 @@ export default function LevantamientosPage() {
       toast.success("Score guardado");
     }
     setSavingScore(false);
+  }
+
+  async function cambiarEstado(lev: Levantamiento, nuevoEstado: string) {
+    const res = await fetch(`/api/levantamiento-contenido/${lev.tratoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estadoLevantamiento: nuevoEstado }),
+    });
+    if (res.ok) {
+      setLevantamientos(prev => prev.map(l => l.id === lev.id ? { ...l, estadoLevantamiento: nuevoEstado } : l));
+      if (selected?.id === lev.id) setSelected(prev => prev ? { ...prev, estadoLevantamiento: nuevoEstado } : prev);
+      toast.success(`Estado actualizado: ${nuevoEstado}`);
+    } else {
+      toast.error("Error al actualizar estado");
+    }
   }
 
   async function saveActivo() {
@@ -235,6 +251,21 @@ export default function LevantamientosPage() {
                               style={{ background: `${plan.color}20`, color: plan.color, border: `1px solid ${plan.color}40` }}>
                           {plan.label}
                         </span>
+                        {/* Estado badge */}
+                        {(() => {
+                          const estado = lev.estadoLevantamiento ?? 'PENDIENTE';
+                          const estadoStyles: Record<string, string> = {
+                            PENDIENTE:  'bg-yellow-900/40 text-yellow-300 border-yellow-700/40',
+                            CONFIRMADO: 'bg-blue-900/40 text-blue-300 border-blue-700/40',
+                            REALIZADO:  'bg-green-900/40 text-green-300 border-green-700/40',
+                            CANCELADO:  'bg-gray-800 text-gray-500 border-gray-700/40',
+                          };
+                          return (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${estadoStyles[estado] ?? estadoStyles.PENDIENTE}`}>
+                              {estado}
+                            </span>
+                          );
+                        })()}
                         {lev.trato.tipoEvento && (
                           <span className="text-[10px] text-white/30 bg-white/5 border border-white/8 px-2 py-0.5 rounded-full">
                             {lev.trato.tipoEvento}
@@ -273,6 +304,25 @@ export default function LevantamientosPage() {
                     {lev.activos.length > 0 && (
                       <span className="ml-auto text-emerald-400 text-xs">{lev.activos.length} activo{lev.activos.length !== 1 ? "s" : ""}</span>
                     )}
+                    {/* Action buttons */}
+                    <div className="ml-auto flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      {(lev.estadoLevantamiento ?? 'PENDIENTE') === 'PENDIENTE' && (
+                        <button
+                          onClick={() => cambiarEstado(lev, 'CONFIRMADO')}
+                          className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-blue-900/40 text-blue-300 border border-blue-700/40 hover:bg-blue-800/50 transition-colors"
+                        >
+                          Confirmar
+                        </button>
+                      )}
+                      {(['PENDIENTE', 'CONFIRMADO'].includes(lev.estadoLevantamiento ?? 'PENDIENTE')) && (
+                        <button
+                          onClick={() => cambiarEstado(lev, 'REALIZADO')}
+                          className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-green-900/40 text-green-300 border border-green-700/40 hover:bg-green-800/50 transition-colors"
+                        >
+                          Realizado
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

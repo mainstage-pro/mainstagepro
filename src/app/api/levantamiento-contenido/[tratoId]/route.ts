@@ -23,6 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tra
     nombreCliente, redesSocialesCliente, tieneProveedoresAdicionales, proveedoresDetalle,
     objetivosContenido, detalleObjetivo, planCobertura, planCoberturaOtro,
     temasSugeridos, colaboradoresCamara, colaboradoresNombres, notasAdicionales,
+    estadoLevantamiento,
   } = body;
 
   const data = {
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tra
     colaboradoresCamara: colaboradoresCamara ?? null,
     colaboradoresNombres: colaboradoresNombres ?? null,
     notasAdicionales: notasAdicionales ?? null,
+    ...(estadoLevantamiento !== undefined ? { estadoLevantamiento } : {}),
   };
 
   const existia = await prisma.levantamientoContenido.findUnique({ where: { tratoId }, select: { id: true } });
@@ -83,13 +85,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ tr
 
   const { tratoId } = await params;
   const body = await req.json();
-  const { scoreFotoVideo, recomendacionFotoVideo } = body;
+  const { scoreFotoVideo, recomendacionFotoVideo, estadoLevantamiento } = body;
 
   const levantamiento = await prisma.levantamientoContenido.update({
     where: { tratoId },
     data: {
-      scoreFotoVideo: scoreFotoVideo ?? null,
-      recomendacionFotoVideo: recomendacionFotoVideo ?? null,
+      ...(scoreFotoVideo !== undefined ? { scoreFotoVideo: scoreFotoVideo ?? null } : {}),
+      ...(recomendacionFotoVideo !== undefined ? { recomendacionFotoVideo: recomendacionFotoVideo ?? null } : {}),
+      ...(estadoLevantamiento !== undefined ? { estadoLevantamiento } : {}),
     },
   });
 

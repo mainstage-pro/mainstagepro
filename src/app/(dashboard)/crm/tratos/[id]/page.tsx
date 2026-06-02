@@ -145,22 +145,32 @@ const PASOS_DISCOVERY_RENTA = [
 ];
 
 // Servicios por tipo de evento
-interface ServicioItem { id: string; label: string; grupo: "base" | "extra" }
+interface ServicioItem { id: string; label: string; grupo: string }
 
 // Categorías base — siempre se muestran para todos los tipos de evento
 const CATEGORIAS_BASE: ServicioItem[] = [
-  { id: "AUDIO_PA",      label: "Audio PA / Subwoofers",    grupo: "base" },
-  { id: "CONSOLAS",      label: "Consola de audio",         grupo: "base" },
-  { id: "MICROFONOS",    label: "Micrófonos inalámbricos",  grupo: "base" },
-  { id: "IEM",           label: "IEMs / In-ear monitors",   grupo: "base" },
-  { id: "MONITORES",     label: "Monitores de escenario",   grupo: "base" },
-  { id: "ILUMINACION",   label: "Iluminación",              grupo: "base" },
-  { id: "PANTALLAS_LED", label: "Pantallas LED / Video",    grupo: "base" },
-  { id: "RIGGING",       label: "Rigging / Estructuras",    grupo: "base" },
-  { id: "ENTARIMADO",    label: "Entarimado",               grupo: "base" },
-  { id: "PROYECCION",    label: "Proyección",               grupo: "base" },
-  { id: "DJ_EQUIPO",     label: "Equipo DJ",                grupo: "base" },
-  { id: "BACKLINE",      label: "Backline (amps, batería)",  grupo: "base" },
+  // Audio
+  { id: "AUDIO_PA",     label: "Audio PA / Bocinas",                   grupo: "Audio" },
+  { id: "SUBWOOFERS",   label: "Subwoofers",                            grupo: "Audio" },
+  { id: "CONSOLAS",     label: "Consolas de audio",                     grupo: "Audio" },
+  { id: "MICROFONOS",   label: "Micrófonos inalámbricos",               grupo: "Audio" },
+  { id: "IEM",          label: "IEMs / In-ear monitors",                grupo: "Audio" },
+  { id: "MONITORES",    label: "Monitores de escenario",                grupo: "Audio" },
+  // Iluminación
+  { id: "ILUMINACION",  label: "Iluminación (cabezas, pars, barras)",   grupo: "Iluminación" },
+  { id: "CONSOLA_ILUM", label: "Consolas de iluminación",               grupo: "Iluminación" },
+  // Video
+  { id: "PANTALLAS_LED",label: "Pantallas LED",                         grupo: "Video / Pantallas" },
+  { id: "PROYECCION",   label: "Proyección",                            grupo: "Video / Pantallas" },
+  // Estructuras
+  { id: "RIGGING",      label: "Rigging / Estructuras",                 grupo: "Estructuras" },
+  { id: "ENTARIMADO",   label: "Entarimado / Escenario",                grupo: "Estructuras" },
+  // Energía
+  { id: "CORRIENTE",    label: "Corriente eléctrica / Plantas de luz",  grupo: "Energía" },
+  // DJ / Música
+  { id: "DJ_EQUIPO",    label: "Consolas / Equipo para DJ",             grupo: "DJ / Música" },
+  { id: "DJ_BOOTH",     label: "DJ Booths",                             grupo: "DJ / Música" },
+  { id: "BACKLINE",     label: "Backline (amps, batería)",               grupo: "DJ / Música" },
 ];
 
 // Extras específicos por tipo de evento
@@ -201,6 +211,22 @@ const SERVICIOS: Record<string, ServicioItem[]> = {
   MUSICAL:     [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.MUSICAL],
   OTRO:        [...CATEGORIAS_BASE, ...EXTRAS_EVENTO.OTRO],
 };
+
+// ── ideasReferencias helpers ─────────────────────────────────────────────────
+function parseLinks(raw: string | null | undefined): { label: string; url: string }[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch { /* legacy string */ }
+  return [];
+}
+
+function isLegacyString(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  try { const p = JSON.parse(raw); return !Array.isArray(p); }
+  catch { return true; }
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmt(n: number) {
@@ -841,6 +867,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [scoutingVisible, setScoutingVisible] = useState(false);
   const [scoutingAplica, setScoutingAplica] = useState<boolean | null>(null);
   const [briefAplica, setBriefAplica] = useState<boolean | null>(null);
+  const [linkDraft, setLinkDraft] = useState({ label: '', url: '' });
+  const [linkUrlError, setLinkUrlError] = useState('');
+  const [levantamientoCreado, setLevantamientoCreado] = useState(false);
   // Trade state
   const [tradeCalificado, setTradeCalificado] = useState(false);
   const [tradeNivel, setTradeNivel] = useState<number | null>(null);
@@ -977,6 +1006,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             .then(({ levantamiento }) => {
               if (levantamiento) {
                 setBriefGuardado(true);
+                // Mark as created if it exists and is not cancelled
+                if (levantamiento.estadoLevantamiento !== 'CANCELADO') {
+                  setLevantamientoCreado(true);
+                }
                 setBriefForm({
                   nombreEvento: levantamiento.nombreEvento ?? "",
                   tipoEvento: levantamiento.tipoEvento ?? "",
@@ -1092,6 +1125,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       fechaProximaAccion: nextDate,
       proximaAccion,
     });
+  }
+
+  function addLink() {
+    const url = linkDraft.url.trim();
+    const label = linkDraft.label.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      setLinkUrlError('URL inválida — debe empezar con http:// o https://');
+      return;
+    }
+    setLinkUrlError('');
+    const current = parseLinks(discForm.ideasReferencias);
+    const next = [...current, { label: label || url, url }];
+    setDiscForm(p => ({ ...p, ideasReferencias: JSON.stringify(next) }));
+    setLinkDraft({ label: '', url: '' });
+  }
+
+  function removeLink(idx: number) {
+    const current = parseLinks(discForm.ideasReferencias);
+    const next = current.filter((_, i) => i !== idx);
+    setDiscForm(p => ({ ...p, ideasReferencias: next.length > 0 ? JSON.stringify(next) : null as unknown as string }));
   }
 
   async function guardarDescubrimiento(completar = false) {
@@ -2285,18 +2338,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="space-y-4">
                 <div>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Categorías de equipo / inventario</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORIAS_BASE.map(srv => (
-                      <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                          discForm.serviciosInteres.includes(srv.id)
-                            ? "border-[#B3985B] text-black bg-[#B3985B]"
-                            : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
-                        }`}>
-                        {srv.label}
-                      </button>
-                    ))}
-                  </div>
+                  {['Audio', 'Iluminación', 'Video / Pantallas', 'Estructuras', 'Energía', 'DJ / Música'].map(grupo => {
+                    const items = CATEGORIAS_BASE.filter(c => c.grupo === grupo);
+                    return (
+                      <div key={grupo} className="mb-3 last:mb-0">
+                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">{grupo}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {items.map(srv => (
+                            <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                                discForm.serviciosInteres.includes(srv.id)
+                                  ? 'border-[#B3985B] text-black bg-[#B3985B]'
+                                  : 'border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white'
+                              }`}>
+                              {srv.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).length > 0 && (
                   <div>
@@ -2376,17 +2437,51 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             {/* PASO 3: Detalles operativos (solo producción técnica / no-renta) */}
             {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
-                  <input type="number" value={discForm.asistentesEstimados} onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                    placeholder="300"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Ideas / Referencias (links)</label>
-                  <input value={discForm.ideasReferencias} onChange={e => setDiscForm(p => ({ ...p, ideasReferencias: e.target.value }))}
-                    placeholder="Instagram, Pinterest, YouTube..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-gray-400 block mb-1.5">Ideas / Referencias (links)</label>
+
+                  {/* Legacy text — show as text, don't edit */}
+                  {isLegacyString(discForm.ideasReferencias) && (
+                    <p className="text-xs text-gray-500 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 mb-2 leading-relaxed">
+                      {discForm.ideasReferencias}
+                    </p>
+                  )}
+
+                  {/* Lista de links */}
+                  {parseLinks(discForm.ideasReferencias).map((link, i) => (
+                    <div key={i} className="flex items-center gap-2 mb-1.5">
+                      <a href={link.url} target="_blank" rel="noopener noreferrer"
+                         className="flex-1 text-xs text-[#B3985B] hover:underline truncate">
+                        {link.label} →
+                      </a>
+                      <button onClick={() => removeLink(i)}
+                              className="text-gray-600 hover:text-red-400 transition-colors text-xs shrink-0">
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Input para agregar */}
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      value={linkDraft.label}
+                      onChange={e => setLinkDraft(p => ({ ...p, label: e.target.value }))}
+                      placeholder="Ej: Referencia de iluminación"
+                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] placeholder-gray-700"
+                    />
+                    <input
+                      value={linkDraft.url}
+                      onChange={e => { setLinkDraft(p => ({ ...p, url: e.target.value })); setLinkUrlError(''); }}
+                      placeholder="https://..."
+                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] placeholder-gray-700"
+                      onKeyDown={e => e.key === 'Enter' && addLink()}
+                    />
+                    <button onClick={addLink}
+                            className="shrink-0 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white hover:border-[#555] text-xs transition-colors">
+                      + Agregar
+                    </button>
+                  </div>
+                  {linkUrlError && <p className="text-red-400 text-xs mt-1">{linkUrlError}</p>}
                 </div>
               </div>
 
@@ -2455,11 +2550,38 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             {/* PASO 4 (no-renta) / PASO 3 (renta): Brief de contenido */}
             {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
-                <button onClick={() => setBriefAplica(true)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
-                <button onClick={() => setBriefAplica(false)} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
+                <button onClick={async () => {
+                  setBriefAplica(true);
+                  try {
+                    await fetch(`/api/levantamiento-contenido/${id}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        nombreEvento: discForm.nombreEvento ?? undefined,
+                        fecha: discForm.fechaEventoEstimada ?? undefined,
+                        estadoLevantamiento: 'PENDIENTE',
+                      }),
+                    });
+                    setLevantamientoCreado(true);
+                  } catch { /* silent */ }
+                }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
+                <button onClick={async () => {
+                  setBriefAplica(false);
+                  setLevantamientoCreado(false);
+                  try {
+                    await fetch(`/api/levantamiento-contenido/${id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ estadoLevantamiento: 'CANCELADO' }),
+                    });
+                  } catch { /* silent */ }
+                }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
                 {briefGuardado && <span className="px-2 py-0.5 rounded-full text-xs bg-green-900/40 text-green-300">Guardado</span>}
+                {levantamientoCreado && (
+                  <p className="text-xs text-green-400">✓ Solicitud de levantamiento creada — Marketing será notificado</p>
+                )}
               </div>
               {briefAplica === false && <p className="text-gray-600 text-xs italic">No se requiere levantamiento de contenido para este proyecto.</p>}
               {(briefAplica === true || briefGuardado) && (<div className="space-y-4">

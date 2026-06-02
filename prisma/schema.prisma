@@ -2081,6 +2081,7 @@ model LevantamientoContenido {
   notasAdicionales            String?
   scoreFotoVideo              Int?
   recomendacionFotoVideo      String?
+  estadoLevantamiento         String    @default("PENDIENTE") // PENDIENTE | CONFIRMADO | REALIZADO | CANCELADO
 
   activos   ActivoEvento[]
 
