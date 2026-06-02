@@ -66,6 +66,12 @@ body {
   overscroll-behavior-x: none;
 }
 
+/* ─── Rider de carga: fondo blanco ──────────────────────────────────────── */
+body:has(#rider-print-page) {
+  background: white !important;
+  color: #111 !important;
+}
+
 /* ─── iOS: evitar zoom automático al enfocar inputs (<16px) ─────────────── */
 @media (max-width: 767px) {
   input,

@@ -82,7 +82,7 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
         }
       `}</style>
 
-      <div className="page" style={{ maxWidth: 820, margin: "0 auto", padding: "32px 40px", background: "white", color: "#111", minHeight: "100vh" }}>
+      <div id="rider-print-page" className="page" style={{ maxWidth: 820, margin: "0 auto", padding: "32px 40px", background: "white", color: "#111", minHeight: "100vh" }}>
 
         {/* Print button */}
         <div className="no-print" style={{ marginBottom: 16, display: "flex", gap: 8 }}>
