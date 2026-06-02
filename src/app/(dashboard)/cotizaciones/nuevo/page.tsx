@@ -51,6 +51,23 @@ interface LineaEquipo {
   id: string; equipoId: string; descripcion: string; marca: string;
   cantidad: number; dias: number; precioUnitario: number; subtotal: number;
   categoria: string; // nombre de la categoría para subsecciones
+  notas: string;     // nota libre por concepto
+}
+
+// ─── Helpers de codificación notas ────────────────────────────────────────────
+// Formato en DB: "cat:XXX" | "cat:XXX|nota:YYY" | null
+function extractUserNote(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const part = raw.split("|").find(p => p.startsWith("nota:"));
+  return part ? part.slice(5) : "";
+}
+function buildNotasValue(categoria: string, nota: string): string | null {
+  const c = categoria ? `cat:${categoria}` : "";
+  const n = nota.trim() ? `nota:${nota.trim()}` : "";
+  if (c && n) return `${c}|${n}`;
+  if (c) return c;
+  if (n) return n;
+  return null;
 }
 
 interface LineaExterno {
@@ -150,6 +167,33 @@ function Seccion({ titulo, children, hint }: { titulo: string; children: React.R
         {hint && <span className="text-gray-600 text-xs">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+// ─── Nota por concepto de equipo propio ───────────────────────────────────────
+function ConceptoNotaEditor({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="px-4 pb-2">
+      {!open && !value && (
+        <button
+          onClick={() => setOpen(true)}
+          className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors"
+        >
+          + nota de montaje
+        </button>
+      )}
+      {(open || value) && (
+        <input
+          autoFocus={open && !value}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onBlur={() => { if (!value) setOpen(false); }}
+          placeholder="Nota de montaje / particularidades..."
+          className="w-full bg-transparent text-xs text-[#6b7280] placeholder-[#333] border-b border-[#1e1e1e] focus:border-[#B3985B]/40 focus:outline-none focus:text-white transition-colors py-0.5"
+        />
+      )}
     </div>
   );
 }
@@ -421,7 +465,8 @@ function CotizadorForm() {
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
           marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
           precioUnitario: l.precioUnitario, subtotal: l.subtotal,
-          categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "",
+          categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
+          notas: extractUserNote(l.notas),
         })));
         setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
@@ -575,6 +620,7 @@ function CotizadorForm() {
         cantidad: item.cantidad, dias: diasEq,
         precioUnitario: precio, subtotal: precio * item.cantidad * diasEq,
         categoria: eq.categoria.nombre,
+        notas: "",
       });
     }
     if (nuevasLineas.length > 0) setLineasEquipo(prev => [...prev, ...nuevasLineas]);
@@ -612,6 +658,7 @@ function CotizadorForm() {
       cantidad: cant, dias, precioUnitario: precio,
       subtotal: precio * cant * dias,
       categoria: eq.categoria.nombre,
+      notas: "",
     }]);
     setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
   }
@@ -638,6 +685,7 @@ function CotizadorForm() {
       precioUnitario: precio,
       subtotal: precio * item.cant * dias,
       categoria: eq.categoria.nombre,
+      notas: "",
     }]);
   }
 
@@ -968,7 +1016,7 @@ function CotizadorForm() {
         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
         costoUnitario: 0, subtotal: l.subtotal,
         esExterno: false, esIncluido: false, equipoId: l.equipoId,
-        notas: l.categoria ? `cat:${l.categoria}` : null,
+        notas: buildNotasValue(l.categoria, l.notas),
       })),
       ...lineasExterno.map(l => ({
         tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
@@ -1145,7 +1193,8 @@ function CotizadorForm() {
                       const propios = lineas.filter(l => l.tipo === "EQUIPO_PROPIO");
                       if (propios.length > 0) setLineasEquipo(propios.map(l => ({
                         id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
-                        marca: l.marca ?? "", categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "",
+                        marca: l.marca ?? "", categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
+                        notas: extractUserNote(l.notas),
                         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
                         subtotal: l.precioUnitario * l.cantidad * l.dias,
                       })));
@@ -1560,20 +1609,15 @@ function CotizadorForm() {
                             )}
                             <button onClick={() => setLineasEquipo(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                           </div>
+                          <ConceptoNotaEditor
+                            value={l.notas}
+                            onChange={v => setLineasEquipo(p => p.map(x => x.id === l.id ? { ...x, notas: v } : x))}
+                          />
                         </div>
                         </>
                         );
                       })}
-                      {/* Nota por sección */}
-                      <div className="px-3 py-2 border-t border-[#111] bg-[#0a0a0a]">
-                        <textarea
-                          value={notasSecciones[cat] ?? ""}
-                          onChange={e => setNotasSecciones(prev => ({ ...prev, [cat]: e.target.value }))}
-                          rows={1}
-                          placeholder={`Nota de montaje / particularidades para ${cat}...`}
-                          className="w-full bg-transparent text-xs text-[#6b7280] placeholder-[#333] resize-none focus:outline-none focus:text-white transition-colors"
-                        />
-                      </div>
+
                     </div>
                   );
                 });

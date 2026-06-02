@@ -343,6 +343,59 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             where: { id: cotData.tratoId },
             data: { etapa: "VENTA_CERRADA" },
           });
+
+          // ── Levantamiento de contenido: crear orden si aplica ──
+          try {
+            const tratoConRevision = await prisma.trato.findUnique({
+              where: { id: cotData.tratoId },
+              select: {
+                requiereRevision: true,
+                nombreEvento: true,
+                levantamientoContenido: { select: { id: true, estadoLevantamiento: true } },
+              },
+            });
+            if (tratoConRevision?.requiereRevision && !tratoConRevision.levantamientoContenido) {
+              // Create the levantamiento order
+              await prisma.levantamientoContenido.create({
+                data: {
+                  tratoId: cotData.tratoId,
+                  nombreEvento: tratoConRevision.nombreEvento ?? null,
+                  estadoLevantamiento: "PENDIENTE",
+                },
+              });
+              // Notify all marketing users
+              const marketingUsers = await prisma.user.findMany({
+                where: { area: "MARKETING", active: true },
+                select: { id: true },
+              });
+              if (marketingUsers.length > 0) {
+                await prisma.notificacion.createMany({
+                  data: marketingUsers.map(u => ({
+                    usuarioId: u.id,
+                    tipo: "INFO",
+                    titulo: `Levantamiento requerido: ${tratoConRevision.nombreEvento ?? "Nuevo proyecto"}`,
+                    mensaje: "Se aprobó una cotización que requiere levantamiento de contenido.",
+                    url: "/marketing/levantamientos",
+                  })),
+                });
+              }
+              // Clear the flag
+              await prisma.trato.update({
+                where: { id: cotData.tratoId },
+                data: { requiereRevision: false },
+              });
+            } else if (tratoConRevision?.requiereRevision && tratoConRevision.levantamientoContenido) {
+              // Levantamiento already exists (edge case) — ensure it's PENDIENTE
+              if (tratoConRevision.levantamientoContenido.estadoLevantamiento === "CANCELADO") {
+                await prisma.levantamientoContenido.update({
+                  where: { id: tratoConRevision.levantamientoContenido.id },
+                  data: { estadoLevantamiento: "PENDIENTE" },
+                });
+              }
+            }
+          } catch (e) {
+            console.error("[levantamiento] Error creando orden:", e);
+          }
         }
       }
 

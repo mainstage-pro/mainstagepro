@@ -2576,14 +2576,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <button onClick={async () => {
                   setBriefAplica(true);
                   try {
-                    await fetch(`/api/levantamiento-contenido/${id}`, {
-                      method: 'POST',
+                    await fetch(`/api/tratos/${id}`, {
+                      method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        nombreEvento: discForm.nombreEvento ?? undefined,
-                        fecha: discForm.fechaEventoEstimada ?? undefined,
-                        estadoLevantamiento: 'PENDIENTE',
-                      }),
+                      body: JSON.stringify({ requiereRevision: true }),
                     });
                     setLevantamientoCreado(true);
                   } catch { /* silent */ }
@@ -2592,10 +2588,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   setBriefAplica(false);
                   setLevantamientoCreado(false);
                   try {
-                    await fetch(`/api/levantamiento-contenido/${id}`, {
+                    await fetch(`/api/tratos/${id}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ estadoLevantamiento: 'CANCELADO' }),
+                      body: JSON.stringify({ requiereRevision: false }),
                     });
                   } catch { /* silent */ }
                 }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
@@ -2605,45 +2601,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
               {briefAplica === false && <p className="text-gray-600 text-xs italic">No se requiere levantamiento de contenido para este proyecto.</p>}
-              {(briefAplica === true || briefGuardado) && (<div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div><label className="text-xs text-gray-400 block mb-1">Nombre del evento</label><input value={briefForm.nombreEvento} onChange={e => setBriefForm(p => ({ ...p, nombreEvento: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Tipo de evento</label>
-                    <Combobox
-                      value={briefForm.tipoEvento}
-                      onChange={v => setBriefForm(p => ({ ...p, tipoEvento: v }))}
-                      options={[{ value: "", label: "Seleccionar" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "SOCIAL", label: "Social" }, { value: "MUSICAL", label: "Musical" }, { value: "OTRO", label: "Otro" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Fecha</label><input type="date" value={briefForm.fecha} onChange={e => setBriefForm(p => ({ ...p, fecha: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Horario del evento</label><input value={briefForm.horarioEvento} onChange={e => setBriefForm(p => ({ ...p, horarioEvento: e.target.value }))} placeholder="ej. 18:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Horario sugerido de cobertura</label><input value={briefForm.horarioCobertura} onChange={e => setBriefForm(p => ({ ...p, horarioCobertura: e.target.value }))} placeholder="ej. 17:00" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                  <div><label className="text-xs text-gray-400 block mb-1">Lugar / Venue</label><input value={briefForm.lugar} onChange={e => setBriefForm(p => ({ ...p, lugar: e.target.value }))} placeholder="Nombre y dirección" className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Objetivos del contenido</label>
-                  {["Contenido para redes sociales","Material para portafolio","Mostrar antes/después","Documentar operación técnica","Todas las anteriores (Cobertura General)","Otro"].map(obj => (
-                    <label key={obj} className="flex items-center gap-2 py-1 cursor-pointer group">
-                      <input type="checkbox" checked={briefForm.objetivosContenido.includes(obj)} onChange={e => setBriefForm(p => ({ ...p, objetivosContenido: e.target.checked ? [...p.objetivosContenido, obj] : p.objetivosContenido.filter(x => x !== obj) }))} className="w-4 h-4 rounded border-gray-600 bg-[#1a1a1a] accent-[#B3985B]" />
-                      <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{obj}</span>
-                    </label>
-                  ))}
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Plan de cobertura</label>
-                  <div className="space-y-2">
-                    {[{id:"BASICO",label:"Básico",desc:"Fotografía + 1 Reel · $1,600"},{id:"ESTANDAR",label:"Estándar",desc:"Fotografía + 2 Reels · $2,000"},{id:"PLUS",label:"Plus",desc:"Estándar + Video con presentador · $2,500"},{id:"INTEGRAL",label:"Integral",desc:"Plus + Contenido de experiencia"},{id:"OTRO",label:"Otro",desc:""}].map(plan => (
-                      <button key={plan.id} onClick={() => setBriefForm(p => ({ ...p, planCobertura: plan.id }))} className={`w-full text-left px-4 py-3 rounded-lg border transition-colors ${briefForm.planCobertura === plan.id ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] bg-[#1a1a1a] hover:border-[#444]"}`}>
-                        <span className="text-sm font-medium text-white">{plan.label}</span>
-                        {plan.desc && <span className="text-xs text-gray-400 ml-2">— {plan.desc}</span>}
-                      </button>
-                    ))}
+              {briefAplica === true && (
+                <div className="bg-[#0d1a0f] border border-green-900/40 rounded-xl px-4 py-3 flex items-start gap-3">
+                  <span className="text-green-400 text-base mt-0.5">✓</span>
+                  <div>
+                    <p className="text-green-300 text-sm font-medium">Levantamiento marcado como requerido</p>
+                    <p className="text-green-700 text-xs mt-0.5">El equipo de Marketing recibirá la orden automáticamente cuando se apruebe la cotización.</p>
                   </div>
                 </div>
-                <div><label className="text-xs text-gray-400 block mb-1">Notas adicionales</label><textarea value={briefForm.notasAdicionales} onChange={e => setBriefForm(p => ({ ...p, notasAdicionales: e.target.value }))} rows={3} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" /></div>
-                <button onClick={saveBrief} disabled={savingBrief} className="w-full py-2.5 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-60">{savingBrief ? "Guardando..." : briefGuardado ? "Actualizar brief" : "Guardar brief"}</button>
-              </div>)}
+              )}
+
+
 
               {/* Toggles: Family & Friends + Mainstage Trade */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#1a1a1a]">

@@ -420,33 +420,62 @@ export default function PlanTrabajoPage() {
                   <p className="text-green-400/60 text-sm">✓ Todo al día con los filtros seleccionados</p>
                 </div>
               ) : (
-                <div className="space-y-1.5">
-                  {instanciasHoy.map(inst => (
-                    <div key={inst.id}
-                      onClick={() => setSelectedId(selectedId === inst.id ? null : inst.id)}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-all ${
-                        selectedId === inst.id ? "border-[#B3985B]/40 bg-[#B3985B]/5" :
-                        inst.estado === "VENCIDA" ? "border-red-900/40 bg-red-900/5" :
-                        inst.estado === "COMPLETADA" ? "border-[#1a1a1a] bg-[#0d0d0d] opacity-50" :
-                        "border-[#1e1e1e] bg-[#111] hover:border-[#2a2a2a]"
-                      }`}>
-                      {/* Dot estado */}
-                      <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${ESTADO_CONFIG[inst.estado]?.dot}`} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className={`text-sm font-medium truncate ${inst.estado === "COMPLETADA" ? "line-through text-gray-600" : "text-white"}`}>
-                            {inst.template.nombre}
+                <div className="space-y-4">
+                  {(() => {
+                    // Group by area
+                    const grupos: Record<string, typeof instanciasHoy> = {};
+                    for (const inst of instanciasHoy) {
+                      const key = inst.template.area.nombre;
+                      if (!grupos[key]) grupos[key] = [];
+                      grupos[key].push(inst);
+                    }
+                    // Sort groups: areas with VENCIDA items first
+                    const sortedKeys = Object.keys(grupos).sort((a, b) => {
+                      const aVencida = grupos[a].some(i => i.estado === "VENCIDA") ? 0 : 1;
+                      const bVencida = grupos[b].some(i => i.estado === "VENCIDA") ? 0 : 1;
+                      return aVencida - bVencida;
+                    });
+                    return sortedKeys.map(areaName => {
+                      const items = grupos[areaName];
+                      const tieneVencida = items.some(i => i.estado === "VENCIDA");
+                      return (
+                        <div key={areaName}>
+                          {/* Area header */}
+                          <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1.5 px-1 ${tieneVencida ? "text-red-500/70" : "text-gray-600"}`}>
+                            {areaName}
                           </p>
-                          {inst.estado === "VENCIDA" && <span className="text-red-400 text-[9px] font-bold shrink-0">⚠ VENCIDA</span>}
+                          <div className="space-y-1.5">
+                            {items.map(inst => (
+                              <div key={inst.id}
+                                onClick={() => setSelectedId(selectedId === inst.id ? null : inst.id)}
+                                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border cursor-pointer transition-all ${
+                                  selectedId === inst.id ? "border-[#B3985B]/40 bg-[#B3985B]/5" :
+                                  inst.estado === "VENCIDA" ? "border-red-900/40 bg-red-900/5" :
+                                  inst.estado === "COMPLETADA" ? "border-[#1a1a1a] bg-[#0d0d0d] opacity-50" :
+                                  "border-[#1e1e1e] bg-[#111] hover:border-[#2a2a2a]"
+                                }`}>
+                                {/* Dot estado */}
+                                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${ESTADO_CONFIG[inst.estado]?.dot}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={`text-sm font-medium truncate ${inst.estado === "COMPLETADA" ? "line-through text-gray-600" : "text-white"}`}>
+                                      {inst.template.nombre}
+                                    </p>
+                                    {inst.estado === "VENCIDA" && <span className="text-red-400 text-[9px] font-bold shrink-0">⚠ VENCIDA</span>}
+                                  </div>
+                                  <p className="text-gray-600 text-[10px]">
+                                    {isAdmin && inst.responsable ? `${inst.responsable.name.split(" ")[0]} · ` : ""}
+                                    {new Date(inst.fechaVencimiento).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+                                  </p>
+                                </div>
+                                {inst.esEntregable && <span className="text-[9px] bg-purple-900/30 text-purple-400 px-1.5 py-0.5 rounded shrink-0">ENTREGABLE</span>}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <p className="text-gray-600 text-[10px]">
-                          {inst.template.area.nombre} · {isAdmin && inst.responsable ? `${inst.responsable.name.split(" ")[0]} · ` : ""}
-                          {new Date(inst.fechaVencimiento).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                      {inst.esEntregable && <span className="text-[9px] bg-purple-900/30 text-purple-400 px-1.5 py-0.5 rounded shrink-0">ENTREGABLE</span>}
-                    </div>
-                  ))}
+                      );
+                    });
+                  })()}
                 </div>
               )
             ) : tab === "por-area" ? (
