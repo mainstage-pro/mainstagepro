@@ -196,15 +196,20 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
   onCreated: (trato: Trato, cotizacionId: string) => void;
   onLeadCreated?: () => void;
 }) {
-  const [modoModal, setModoModal] = useState<'oportunidad' | 'lead-rapido'>('oportunidad');
+  const [modoModal, setModoModal] = useState<'oportunidad' | 'lead-rapido' | 'prospeccion-fria'>('oportunidad');
   const [form, setForm] = useState<NuevaOportunidadForm>({ ...FORM_EMPTY });
   const [leadRapidoForm, setLeadRapidoForm] = useState({
     nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '',
     notasIniciales: '', fechaProximaAccion: '',
   });
+  const [prospeccionForm, setProspeccionForm] = useState({
+    nombre: '', telefono: '', motivo: '', canal: 'WHATSAPP',
+    fechaPrimerIntento: '', tipoEvento: '',
+  });
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [saving, setSaving] = useState(false);
   const [savingLead, setSavingLead] = useState(false);
+  const [savingProspeccion, setSavingProspeccion] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const toast = useToast();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -278,6 +283,36 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
     }
   }
 
+  async function submitProspeccionFria() {
+    if (!prospeccionForm.nombre.trim()) { toast.error('El nombre es requerido'); return; }
+    setSavingProspeccion(true);
+    try {
+      const body: Record<string, unknown> = {
+        clienteNuevo: { nombre: prospeccionForm.nombre.trim(), telefono: prospeccionForm.telefono || null },
+        tipoProspecto: 'NURTURING',
+        origenLead: 'PROSPECCION',
+        tipoEvento: prospeccionForm.tipoEvento || 'OTRO',
+        nombreEvento: prospeccionForm.motivo.trim() || 'Prospección en frío',
+        nurturingData: JSON.stringify({ canalContacto: prospeccionForm.canal, motivoContacto: prospeccionForm.motivo.trim() }),
+      };
+      if (prospeccionForm.fechaPrimerIntento) {
+        body.primerSeguimiento = { fecha: prospeccionForm.fechaPrimerIntento, canal: prospeccionForm.canal.toLowerCase() };
+        body.fechaProximaAccion = prospeccionForm.fechaPrimerIntento;
+      }
+      const res = await fetch('/api/tratos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { toast.error('Error al registrar prospecto'); return; }
+      toast.success('Prospecto registrado ✓');
+      onLeadCreated?.();
+      onClose();
+    } finally {
+      setSavingProspeccion(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)" }}
@@ -286,10 +321,14 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-white font-semibold text-base">
-              {modoModal === 'lead-rapido' ? 'Lead rápido' : 'Nueva oportunidad'}
+              {modoModal === 'lead-rapido' ? 'Lead rápido' : modoModal === 'prospeccion-fria' ? 'Prospección en frío' : 'Nueva oportunidad'}
             </h2>
             <p className="text-[#555] text-xs mt-0.5">
-              {modoModal === 'lead-rapido' ? 'Solo nombre y origen — sin cotización' : 'Crea el trato y la cotización borrador en un paso'}
+              {modoModal === 'lead-rapido'
+                ? 'Alguien nos contactó — captura rápida sin cotización'
+                : modoModal === 'prospeccion-fria'
+                ? 'Salida en frío — nosotros los contactamos'
+                : 'Crea el trato y la cotización borrador en un paso'}
             </p>
           </div>
           <button onClick={onClose} className="text-[#555] hover:text-white text-lg leading-none">✕</button>
@@ -298,16 +337,6 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
         {/* Mode selector tabs */}
         <div className="flex gap-1 bg-[#0d0d0d] rounded-xl p-1 border border-[#1e1e1e]">
           <button
-            onClick={() => setModoModal('oportunidad')}
-            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              modoModal === 'oportunidad'
-                ? 'bg-[#B3985B] text-black'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            Nueva oportunidad
-          </button>
-          <button
             onClick={() => setModoModal('lead-rapido')}
             className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
               modoModal === 'lead-rapido'
@@ -315,7 +344,27 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            + Lead rápido
+            ⚡ Lead rápido
+          </button>
+          <button
+            onClick={() => setModoModal('prospeccion-fria')}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              modoModal === 'prospeccion-fria'
+                ? 'bg-violet-600 text-white'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            🎯 Frío
+          </button>
+          <button
+            onClick={() => setModoModal('oportunidad')}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              modoModal === 'oportunidad'
+                ? 'bg-[#B3985B] text-black'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            + Oportunidad
           </button>
         </div>
 
@@ -378,7 +427,7 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
               </button>
             </div>
           </>
-        ) : (
+        ) : modoModal === 'lead-rapido' ? (
           <>
             <div className="space-y-4">
               <div>
@@ -403,7 +452,6 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
                     <option value="GOOGLE_ADS">Google Ads</option>
                     <option value="REFERIDO">Referido</option>
                     <option value="RECOMPRA">Recompra</option>
-                    <option value="PROSPECCION">Prospección</option>
                     <option value="OTRO">Otro</option>
                   </select>
                 </div>
@@ -436,6 +484,55 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
               <button onClick={submitLeadRapido} disabled={savingLead || !leadRapidoForm.nombre.trim()}
                 className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
                 {savingLead ? 'Registrando...' : 'Registrar lead'}
+              </button>
+            </div>
+          </>
+        ) : (
+          /* ── Prospección en frío ── */
+          <>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Nombre o empresa *</label>
+                <input value={prospeccionForm.nombre} onChange={e => setProspeccionForm(p => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Ej. Empresa XYZ"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500" />
+              </div>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Teléfono / contacto</label>
+                <input value={prospeccionForm.telefono} onChange={e => setProspeccionForm(p => ({ ...p, telefono: e.target.value }))}
+                  placeholder="+52 55 0000 0000"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500" />
+              </div>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">¿Por qué los contactamos?</label>
+                <textarea value={prospeccionForm.motivo} onChange={e => setProspeccionForm(p => ({ ...p, motivo: e.target.value }))}
+                  placeholder="Empresa con eventos recurrentes, potencial de sonido + iluminación..."
+                  rows={2} className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500 resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Canal de primer contacto</label>
+                  <select value={prospeccionForm.canal} onChange={e => setProspeccionForm(p => ({ ...p, canal: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500">
+                    <option value="WHATSAPP">WhatsApp</option>
+                    <option value="LLAMADA">Llamada</option>
+                    <option value="EMAIL">Email</option>
+                    <option value="LINKEDIN">LinkedIn</option>
+                    <option value="PRESENCIAL">Visita presencial</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Fecha primer intento</label>
+                  <input type="date" value={prospeccionForm.fechaPrimerIntento} onChange={e => setProspeccionForm(p => ({ ...p, fechaPrimerIntento: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+              <button onClick={submitProspeccionFria} disabled={savingProspeccion || !prospeccionForm.nombre.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-500 disabled:opacity-40 transition-colors">
+                {savingProspeccion ? 'Registrando...' : '🎯 Registrar prospecto'}
               </button>
             </div>
           </>
