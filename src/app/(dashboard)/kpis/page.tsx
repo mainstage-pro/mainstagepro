@@ -5,7 +5,7 @@ import { BarChart2 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type PeriodoKey = '7d' | '15d' | 'mes' | 'trimestre' | 'semestre' | 'anio' | 'custom';
+type PeriodoKey = '7d' | '15d' | 'mes-anterior' | 'mes' | 'trimestre' | 'semestre' | 'anio' | 'custom';
 
 interface Periodo {
   key: PeriodoKey;
@@ -122,13 +122,18 @@ function getPresetPeriodos(): Periodo[] {
   const primerAnio = new Date(yr, 0, 1);
   const ultimoAnio = new Date(yr, 11, 31);
 
+  // Mes anterior — día 1 al último día del mes pasado
+  const primerMesAnterior = new Date(yr, mo - 1, 1);
+  const ultimoMesAnterior = new Date(yr, mo, 0);
+
   return [
-    { key: '7d',        label: '7 días',    desde: fmtDate(lunes),      hasta: hoyStr },
-    { key: '15d',       label: '15 días',   desde: fmtDate(hace15),     hasta: hoyStr },
-    { key: 'mes',       label: 'Este mes',  desde: fmtDate(primerMes),  hasta: fmtDate(ultimoMes) },
-    { key: 'trimestre', label: 'Trimestre', desde: fmtDate(primerQ),    hasta: hoyStr },
-    { key: 'semestre',  label: 'Semestre',  desde: fmtDate(primerS),    hasta: hoyStr },
-    { key: 'anio',      label: 'Este año',  desde: fmtDate(primerAnio), hasta: fmtDate(ultimoAnio) },
+    { key: '7d',          label: '7 días',       desde: fmtDate(lunes),           hasta: hoyStr },
+    { key: '15d',         label: '15 días',      desde: fmtDate(hace15),          hasta: hoyStr },
+    { key: 'mes',         label: 'Este mes',     desde: fmtDate(primerMes),       hasta: fmtDate(ultimoMes) },
+    { key: 'mes-anterior',label: 'Mes anterior', desde: fmtDate(primerMesAnterior), hasta: fmtDate(ultimoMesAnterior) },
+    { key: 'trimestre',   label: 'Trimestre',    desde: fmtDate(primerQ),         hasta: hoyStr },
+    { key: 'semestre',    label: 'Semestre',     desde: fmtDate(primerS),         hasta: hoyStr },
+    { key: 'anio',        label: 'Este año',     desde: fmtDate(primerAnio),      hasta: fmtDate(ultimoAnio) },
   ];
 }
 
@@ -382,6 +387,7 @@ export default function KpisDashboardPage() {
 
       {/* Period selector */}
       <div className="sticky top-0 z-10 bg-[#0a0a0a] border-b border-[#111] px-6 py-3">
+        {/* Preset buttons */}
         <div className="flex gap-1 flex-wrap items-center">
           {presets.map(p => (
             <button
@@ -396,61 +402,39 @@ export default function KpisDashboardPage() {
               {p.label}
             </button>
           ))}
-
-          {/* Custom button */}
-          <button
-            onClick={() => {
-              if (periodoKey !== 'custom') {
-                // Pre-fill with current period's dates
-                const cur = presets.find(x => x.key === periodoKey);
-                if (cur) setCustomDraft({ desde: cur.desde, hasta: cur.hasta });
-              }
-              setPeriodoKey('custom');
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-              periodoKey === 'custom'
-                ? 'bg-[#B3985B] text-black border-[#B3985B]'
-                : 'bg-transparent text-gray-500 border-[#1e1e1e] hover:border-[#B3985B]/30 hover:text-gray-300'
-            }`}
-          >
-            Personalizado
-          </button>
-
           <span className="ml-auto text-[10px] text-gray-600 self-center">
             {periodoLabel}
           </span>
         </div>
 
-        {/* Custom date pickers */}
-        {periodoKey === 'custom' && (
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <label className="text-[10px] text-gray-500">Desde</label>
-              <input
-                type="date"
-                value={customDraft.desde}
-                onChange={e => setCustomDraft(p => ({ ...p, desde: e.target.value }))}
-                className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <div className="flex items-center gap-1.5">
-              <label className="text-[10px] text-gray-500">Hasta</label>
-              <input
-                type="date"
-                value={customDraft.hasta}
-                onChange={e => setCustomDraft(p => ({ ...p, hasta: e.target.value }))}
-                className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <button
-              onClick={applyCustom}
-              disabled={!customDraft.desde || !customDraft.hasta}
-              className="px-3 py-1 rounded-lg bg-[#B3985B] text-black text-xs font-semibold disabled:opacity-40 transition-opacity"
-            >
-              Aplicar
-            </button>
-          </div>
-        )}
+        {/* Custom date pickers — always visible */}
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <label className="text-[10px] text-gray-500">Rango personalizado:</label>
+          <input
+            type="date"
+            value={customDraft.desde}
+            onChange={e => setCustomDraft(p => ({ ...p, desde: e.target.value }))}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+          />
+          <span className="text-[10px] text-gray-600">→</span>
+          <input
+            type="date"
+            value={customDraft.hasta}
+            onChange={e => setCustomDraft(p => ({ ...p, hasta: e.target.value }))}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+          />
+          <button
+            onClick={applyCustom}
+            disabled={!customDraft.desde || !customDraft.hasta}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold disabled:opacity-40 transition-all border ${
+              periodoKey === 'custom'
+                ? 'bg-[#B3985B] text-black border-[#B3985B]'
+                : 'bg-transparent text-gray-500 border-[#1e1e1e] hover:border-[#B3985B]/30 hover:text-gray-300'
+            }`}
+          >
+            Aplicar
+          </button>
+        </div>
       </div>
 
       <div className="px-6 py-6 space-y-6 max-w-4xl">
