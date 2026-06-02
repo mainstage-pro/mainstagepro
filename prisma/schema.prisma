@@ -491,6 +491,9 @@ model Proyecto {
   planProduccionAprobado Boolean   @default(false) // true cuando el encargado aprueba el plan >= 72h antes
   planProduccionAprobadoEn DateTime? // timestamp de aprobación
   zona                   String    @default("LOCAL") // LOCAL | BAJIO | NACIONAL
+  // Brief Técnico
+  llamadoBodega          DateTime? // hora de presentación en bodega
+  notasBriefTecnico      String?   @db.Text
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
