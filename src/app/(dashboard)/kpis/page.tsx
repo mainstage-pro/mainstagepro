@@ -710,7 +710,7 @@ export default function KpisDashboardPage() {
           {/* ── TAB: ADMINISTRACIÓN ─────────────────────── */}
           {activeTab === 'administracion' && (
             <AreaTab
-              area={soData?.areas?.find(a => a.nombre.toLowerCase().includes('admin') || a.nombre.toLowerCase().includes('direcc'))}
+              area={soData?.areas?.find(a => a.nombre.toLowerCase().includes('administr'))}
               kpisData={kpisData} er={er} fc={fc}
               isAdmin={isAdmin}
               expandedKpiId={expandedKpiId} setExpandedKpiId={setExpandedKpiId}
@@ -1111,7 +1111,7 @@ function ResumenTab({
   if (!soData) return null;
 
   const tabMap: Record<string, 'administracion' | 'marketing' | 'ventas' | 'produccion'> = {
-    admin: 'administracion', direcc: 'administracion', market: 'marketing',
+    administr: 'administracion', market: 'marketing',
     venta: 'ventas', produc: 'produccion',
   };
 
