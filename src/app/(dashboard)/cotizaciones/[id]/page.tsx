@@ -114,6 +114,26 @@ function fmtDate(s: string | null) {
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+// Note helpers: EQUIPO_PROPIO stores notes as "cat:Name" or "cat:Name|nota:UserText"
+function extractUserNote(tipo: string, notas: string | null): string | null {
+  if (!notas) return null;
+  if (tipo === 'EQUIPO_PROPIO') {
+    if (notas.includes('|nota:')) return notas.split('|nota:')[1] || null;
+    return null; // pure cat: value, no user note yet
+  }
+  return notas;
+}
+
+function buildNotasValue(tipo: string, currentNotas: string | null, userNote: string): string | null {
+  const trimmed = userNote.trim();
+  if (tipo === 'EQUIPO_PROPIO') {
+    const catPart = currentNotas?.startsWith('cat:') ? currentNotas.split('|')[0] : '';
+    if (!trimmed) return catPart || null;
+    return catPart ? `${catPart}|nota:${trimmed}` : trimmed;
+  }
+  return trimmed || null;
+}
+
 export default function CotizacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -143,6 +163,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
+  const [noteEdit, setNoteEdit] = useState<{
+    lineaId: string;
+    tipo: string;
+    currentNotas: string | null;
+    value: string;
+    saving: boolean;
+    error: string | null;
+  } | null>(null);
 
   async function guardarComoPlantilla() {
     if (!cot) return;
@@ -188,6 +216,34 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setCreandoOpcion(false);
+    }
+  }
+
+  async function saveNota() {
+    if (!noteEdit) return;
+    setNoteEdit(prev => prev ? { ...prev, saving: true, error: null } : null);
+    try {
+      const newNotas = buildNotasValue(noteEdit.tipo, noteEdit.currentNotas, noteEdit.value);
+      const res = await fetch(`/api/cotizaciones/${id}/lineas/${noteEdit.lineaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notas: newNotas }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setNoteEdit(prev => prev ? { ...prev, saving: false, error: d.error ?? 'No se pudo guardar' } : null);
+        return;
+      }
+      // Update local state
+      setCot(prev => prev ? {
+        ...prev,
+        lineas: prev.lineas.map(l =>
+          l.id === noteEdit.lineaId ? { ...l, notas: newNotas } : l
+        ),
+      } : prev);
+      setNoteEdit(null);
+    } catch {
+      setNoteEdit(prev => prev ? { ...prev, saving: false, error: 'Error de conexión' } : null);
     }
   }
 
@@ -467,7 +523,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   // Agrupar equipos propios por categoría (usando notas que guardan categoria:NombreCat)
   const equiposPorCat: Record<string, Linea[]> = {};
   for (const l of lineasEquipo) {
-    const cat = l.notas?.startsWith("cat:") ? l.notas.slice(4) : "Equipos";
+    const cat = l.notas?.startsWith("cat:") ? l.notas.split('|')[0].slice(4) : "Equipos";
     if (!equiposPorCat[cat]) equiposPorCat[cat] = [];
     equiposPorCat[cat].push(l);
   }
@@ -505,6 +561,77 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     window.open(`https://wa.me/${CARLOS_LUNA_TEL}?text=${encodeURIComponent(msg)}`, "_blank");
     setShowRenderModal(false);
   };
+
+  // ── Inline note component ──────────────────────────────────────────────────
+  function NoteField({ linea }: { linea: Linea }) {
+    const userNote = extractUserNote(linea.tipo, linea.notas);
+    const isEditing = noteEdit?.lineaId === linea.id;
+
+    if (isEditing) {
+      return (
+        <div className="mt-1.5">
+          <textarea
+            autoFocus
+            value={noteEdit.value}
+            onChange={e => setNoteEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+            rows={2}
+            placeholder="Uso, instrucciones o contexto para este concepto..."
+            className="w-full bg-[#0a0a0a] border border-[#B3985B]/40 rounded-lg px-2.5 py-1.5 text-white text-xs resize-none focus:outline-none focus:border-[#B3985B] placeholder-gray-700"
+            style={{ minHeight: '2.5rem' }}
+          />
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={saveNota}
+              disabled={noteEdit.saving}
+              className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition-colors"
+            >
+              {noteEdit.saving ? (
+                <span className="w-2.5 h-2.5 border border-emerald-400/50 border-t-emerald-400 rounded-full animate-spin" />
+              ) : '✓'}
+              Guardar
+            </button>
+            <button
+              onClick={() => setNoteEdit(null)}
+              disabled={noteEdit.saving}
+              className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              ✗ Cancelar
+            </button>
+            {noteEdit.error && (
+              <span className="text-[10px] text-red-400">{noteEdit.error}</span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (userNote) {
+      return (
+        <div className="flex items-start gap-1.5 mt-1">
+          <p className="text-[11px] text-gray-500 leading-snug flex-1">{userNote}</p>
+          <button
+            onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: userNote, saving: false, error: null })}
+            className="shrink-0 text-gray-700 hover:text-gray-400 transition-colors p-0.5 mt-0.5"
+            title="Editar nota"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: '', saving: false, error: null })}
+        className="mt-0.5 text-[10px] text-gray-700 hover:text-gray-500 transition-colors block"
+      >
+        + Agregar nota
+      </button>
+    );
+  }
 
   return (
     <>
@@ -908,8 +1035,9 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                             <img src="/logo-icon.png" alt="" className="w-8 h-8 object-contain shrink-0 opacity-15" />
                           )}
                           <div>
-                          <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.marca || l.descripcion}</span>
-                          {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
+                            <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{l.marca || l.descripcion}</span>
+                            {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
+                            <NoteField linea={l} />
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400 text-xs">
@@ -989,12 +1117,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos Adicionales (Terceros)</h3>
               </div>
               {lineasExterno.map((l) => (
-                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
                   <div>
                     <span className="text-white">{l.marca || l.descripcion}</span>
                     {l.marca && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
+                    <NoteField linea={l} />
                   </div>
-                  <div className="flex items-center gap-4 text-gray-400 text-xs">
+                  <div className="flex items-center gap-4 text-gray-400 text-xs shrink-0">
                     <span>{l.cantidad} × {l.dias}d</span>
                     <span className="text-white font-medium w-24 text-right">{formatCurrency(l.subtotal)}</span>
                   </div>
@@ -1014,14 +1143,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Operación técnica</h3>
               </div>
               {lineasOp.map((l) => (
-                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
                   <div>
                     <span className="text-white">{l.descripcion}</span>
                     <span className="text-gray-500 text-xs ml-2">
                       {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
                     </span>
+                    <NoteField linea={l} />
                   </div>
-                  <span className="text-white font-medium">{formatCurrency(l.subtotal)}</span>
+                  <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>
               ))}
               <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
@@ -1038,11 +1168,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Logística y Viáticos</h3>
               </div>
               {lineasLog.map((l) => (
-                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
-                  <span className="text-gray-300">{TIPO_LINEA_LABELS[l.tipo] || l.tipo} — {l.descripcion}
-                    <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
-                  </span>
-                  <span className="text-white font-medium">{formatCurrency(l.subtotal)}</span>
+                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                  <div>
+                    <span className="text-gray-300">{TIPO_LINEA_LABELS[l.tipo] || l.tipo} — {l.descripcion}
+                      <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
+                    </span>
+                    <NoteField linea={l} />
+                  </div>
+                  <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>
               ))}
               <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
@@ -1058,11 +1191,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos y conceptos adicionales</h3>
               </div>
               {lineasOcasional.map((l) => (
-                <div key={l.id} className="flex justify-between items-center px-4 py-2 border-t border-[#1a1a1a] text-sm">
-                  <span className="text-gray-300">{l.descripcion}
-                    <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
-                  </span>
-                  <span className="text-white font-medium">{formatCurrency(l.subtotal)}</span>
+                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                  <div>
+                    <span className="text-gray-300">{l.descripcion}
+                      <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
+                    </span>
+                    <NoteField linea={l} />
+                  </div>
+                  <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>
               ))}
               <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
