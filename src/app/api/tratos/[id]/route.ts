@@ -154,6 +154,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
   // ────────────────────────────────────────────────────────────────────────────
 
+  // ── Cartera KARE: when trato is lost, suggest RECOVER for the cliente ───────
+  if (body.etapa === 'VENTA_PERDIDA') {
+    try {
+      const tratoData = await prisma.trato.findUnique({ where: { id }, select: { clienteId: true } });
+      if (tratoData?.clienteId) {
+        await prisma.cliente.updateMany({
+          where: { id: tratoData.clienteId, categoriaKARE: 'SIN_CATEGORIZAR' },
+          data: { categoriaKARE: 'RECOVER' },
+        });
+      }
+    } catch (e) {
+      console.error('[KARE] Error updating categoriaKARE:', e);
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   // ── Cascade a cotizaciones y proyectos ──────────────────────────────────────
   const cotUpdate: Record<string, unknown> = {};
   const proyUpdate: Record<string, unknown> = {};

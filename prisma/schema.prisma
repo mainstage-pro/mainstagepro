@@ -141,6 +141,7 @@ model Cliente {
   telefono      String?
   correo        String?
   notas         String?
+  categoriaKARE String?  @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
   vendedorId    String?
   vendedor      User?    @relation("ClientesVendedor", fields: [vendedorId], references: [id])
   createdAt     DateTime @default(now())
