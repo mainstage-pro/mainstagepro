@@ -106,7 +106,7 @@ export default async function DashboardPage() {
         trato: { select: { responsable: { select: { name: true } } } },
       },
       orderBy: { fechaEvento: "asc" },
-      take: 5,
+      take: 10,
     }),
     prisma.equipo.count({ where: { estado: "EN_MANTENIMIENTO" } }),
     prisma.proyecto.count({
@@ -258,6 +258,65 @@ export default async function DashboardPage() {
   const limite15 = new Date(ahora.getTime() - 15 * 86400000);
   const limite21 = new Date(ahora.getTime() - 21 * 86400000);
   const hace7dias = new Date(ahora.getTime() - 7 * 86400000);
+
+  // ── Tratos VENTA_CERRADA sin proyecto (próximos eventos) ────────────────────
+  const tratosVentaCerrada = await prisma.trato.findMany({
+    where: {
+      etapa: "VENTA_CERRADA",
+      proyecto: null,
+      cotizaciones: {
+        some: { estado: "APROBADA", fechaEvento: { gte: ahora, not: null } },
+      },
+    },
+    include: {
+      cliente: { select: { nombre: true } },
+      cotizaciones: {
+        where: { estado: "APROBADA", fechaEvento: { gte: ahora, not: null } },
+        orderBy: { fechaEvento: "asc" },
+        take: 1,
+      },
+    },
+  });
+
+  type EventoProximo = {
+    id: string;
+    nombre: string;
+    fechaEvento: Date;
+    estado: string;
+    url: string;
+    sinProyecto: boolean;
+    cliente: { nombre: string };
+    responsable?: string | null;
+  };
+
+  const eventosProyecto: EventoProximo[] = proyectosProximos.map(p => ({
+    id: p.id,
+    nombre: p.nombre,
+    fechaEvento: p.fechaEvento!,
+    estado: p.estado,
+    url: `/proyectos/${p.id}`,
+    sinProyecto: false,
+    cliente: p.cliente,
+    responsable: p.trato?.responsable?.name ?? null,
+  }));
+
+  const eventosTrato: EventoProximo[] = tratosVentaCerrada.flatMap(t =>
+    t.cotizaciones.filter(c => c.fechaEvento).map(c => ({
+      id: t.id,
+      nombre: t.nombreEvento || (c as { nombreEvento?: string | null }).nombreEvento || "Evento",
+      fechaEvento: c.fechaEvento!,
+      estado: "VENTA_CERRADA",
+      url: `/crm/tratos/${t.id}`,
+      sinProyecto: true,
+      cliente: t.cliente!,
+      responsable: null,
+    }))
+  );
+
+  const eventosProximos = [...eventosProyecto, ...eventosTrato]
+    .sort((a, b) => a.fechaEvento.getTime() - b.fechaEvento.getTime())
+    .slice(0, 5);
+
   const [tareasAbandonadas, tratosEnfriados, tratosCriticos, tratosSinMovimientoRaw, tratosRevisionRaw] = await Promise.all([
     prisma.tarea.count({
       where: { estado: { notIn: ["COMPLETADA", "CANCELADA"] }, parentId: null, createdAt: { lte: limite15 } },
@@ -656,21 +715,26 @@ export default async function DashboardPage() {
               <Link href="/proyectos" className="text-[#B3985B] text-xs hover:underline">Ver todos →</Link>
             </div>
             <div className="divide-y divide-[#1a1a1a]">
-              {proyectosProximos.length === 0 ? (
+              {eventosProximos.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-6">Sin eventos próximos</p>
-              ) : proyectosProximos.map(p => {
+              ) : eventosProximos.map(e => {
                 const hoyStrPrx = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
-                const evStrPrx = p.fechaEvento.toISOString().substring(0, 10);
+                const evStrPrx = e.fechaEvento.toISOString().substring(0, 10);
                 const dias = Math.round((new Date(evStrPrx).getTime() - new Date(hoyStrPrx).getTime()) / 86400000);
                 return (
-                  <Link key={p.id} href={`/proyectos/${p.id}`}
+                  <Link key={`${e.sinProyecto ? "t" : "p"}-${e.id}`} href={e.url}
                     className="flex items-center justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
                     <div className="min-w-0 flex-1">
-                      <p className="text-white text-sm font-medium truncate">{p.nombre}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-white text-sm font-medium truncate">{e.nombre}</p>
+                        {e.sinProyecto && (
+                          <span className="text-[10px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded shrink-0">Sin proyecto</span>
+                        )}
+                      </div>
                       <p className="text-gray-500 text-xs">
-                        {p.cliente.nombre}
-                        {p.trato?.responsable && (
-                          <span className="text-[#B3985B] ml-1">· {p.trato.responsable.name}</span>
+                        {e.cliente.nombre}
+                        {e.responsable && (
+                          <span className="text-[#B3985B] ml-1">· {e.responsable}</span>
                         )}
                       </p>
                     </div>

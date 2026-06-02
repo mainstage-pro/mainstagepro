@@ -15,6 +15,20 @@ interface AgendaData {
   cotizacionesSinRespuesta: AnyObj[];
 }
 
+interface ProyectoItem {
+  id: string;
+  nombre: string;
+  numeroProyecto: string | null;
+  estado: string;
+  tipoEvento: string;
+  fechaEvento: string;
+  cliente: { nombre: string };
+  personal: { confirmado: boolean }[];
+  checklist: { completado: boolean }[];
+  sinProyecto?: boolean;
+  url?: string;
+}
+
 function diasHasta(fecha: string) {
   const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   return Math.round((new Date(fecha.substring(0, 10)).getTime() - new Date(hoy).getTime()) / 86400000);
@@ -188,7 +202,7 @@ function Section({ label, count, color, children }: { label: string; count: numb
   );
 }
 
-function ProyectoCard({ p, urgente }: { p: AnyObj; urgente: boolean }) {
+function ProyectoCard({ p, urgente }: { p: ProyectoItem; urgente: boolean }) {
   const dias = diasHasta(p.fechaEvento);
   const personalConfirmado = p.personal?.filter((x: AnyObj) => x.confirmado).length ?? 0;
   const personalTotal = p.personal?.length ?? 0;
@@ -196,8 +210,10 @@ function ProyectoCard({ p, urgente }: { p: AnyObj; urgente: boolean }) {
   const checklistTotal = p.checklist?.length ?? 0;
   const pct = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : null;
 
+  const href = p.url || `/proyectos/${p.id}`;
+
   return (
-    <Link href={`/proyectos/${p.id}`}
+    <Link href={href}
       className={`flex items-center gap-4 bg-[#111] border rounded-xl px-4 py-3 hover:border-[#333] transition-colors ${
         urgente && dias <= 3 ? "border-red-900/40" : urgente && dias <= 7 ? "border-yellow-900/30" : "border-[#1e1e1e]"
       }`}>
@@ -208,6 +224,9 @@ function ProyectoCard({ p, urgente }: { p: AnyObj; urgente: boolean }) {
           <span className="text-[10px] text-gray-600">{TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}</span>
           <span className="text-[10px] text-[#444]">·</span>
           <span className="text-[10px] text-[#444]">{p.numeroProyecto}</span>
+          {p.sinProyecto && (
+            <span className="text-[10px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-medium">Sin proyecto</span>
+          )}
         </div>
         <p className="text-white text-sm font-medium truncate">{p.nombre}</p>
         <p className="text-gray-600 text-xs">{p.cliente?.nombre}</p>
@@ -219,16 +238,22 @@ function ProyectoCard({ p, urgente }: { p: AnyObj; urgente: boolean }) {
         <p className="text-gray-600 text-[10px]">{fmtFecha(p.fechaEvento)}</p>
       </div>
       <div className="shrink-0 space-y-1 text-right hidden sm:block">
-        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_PROYECTO_COLORS[p.estado] ?? "bg-gray-800 text-gray-400"}`}>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ESTADO_PROYECTO_COLORS[p.estado] ?? "bg-amber-900/30 text-amber-400"}`}>
           {ESTADO_PROYECTO_LABELS[p.estado] ?? p.estado}
         </span>
-        {pct !== null && (
-          <p className="text-gray-600 text-[10px]">{pct}% checklist</p>
-        )}
-        {personalTotal > 0 && (
-          <p className={`text-[10px] ${personalConfirmado < personalTotal ? "text-yellow-400" : "text-gray-600"}`}>
-            Staff {personalConfirmado}/{personalTotal}
-          </p>
+        {p.sinProyecto ? (
+          <p className="text-gray-600 text-[10px]">—</p>
+        ) : (
+          <>
+            {pct !== null && (
+              <p className="text-gray-600 text-[10px]">{pct}% checklist</p>
+            )}
+            {personalTotal > 0 && (
+              <p className={`text-[10px] ${personalConfirmado < personalTotal ? "text-yellow-400" : "text-gray-600"}`}>
+                Staff {personalConfirmado}/{personalTotal}
+              </p>
+            )}
+          </>
         )}
       </div>
     </Link>

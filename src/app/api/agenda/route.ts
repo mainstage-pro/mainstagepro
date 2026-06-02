@@ -20,7 +20,7 @@ export async function GET() {
         encargadoId: session.id,
       };
 
-  const [proyectosActivos, cxcPendientes, cotizacionesSinRespuesta] = await Promise.all([
+  const [proyectosRaw, tratosVentaCerradaAgenda, cxcPendientes, cotizacionesSinRespuesta] = await Promise.all([
     prisma.proyecto.findMany({
       where: proyectoWhere,
       include: {
@@ -29,6 +29,27 @@ export async function GET() {
         checklist: { select: { completado: true } },
       },
       orderBy: { fechaEvento: "asc" },
+    }),
+
+    prisma.trato.findMany({
+      where: {
+        etapa: "VENTA_CERRADA",
+        proyecto: null,
+        cotizaciones: {
+          some: {
+            estado: "APROBADA",
+            fechaEvento: { not: null },
+          },
+        },
+      },
+      include: {
+        cliente: { select: { nombre: true } },
+        cotizaciones: {
+          where: { estado: "APROBADA", fechaEvento: { not: null } },
+          orderBy: { fechaEvento: "asc" },
+          take: 1,
+        },
+      },
     }),
 
     prisma.cuentaCobrar.findMany({
@@ -67,8 +88,42 @@ export async function GET() {
     return Math.round((new Date(evStr).getTime() - new Date(hoyCST).getTime()) / 86400000);
   }
 
+  // Build unified proyectosActivos array
+  const proyectosActivos = [
+    ...proyectosRaw.map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      numeroProyecto: p.numeroProyecto,
+      estado: p.estado,
+      tipoEvento: p.tipoEvento,
+      fechaEvento: p.fechaEvento,
+      cliente: p.cliente,
+      personal: p.personal,
+      checklist: p.checklist,
+      sinProyecto: false as const,
+      url: `/proyectos/${p.id}`,
+    })),
+    ...tratosVentaCerradaAgenda.flatMap(trato => {
+      const cot = trato.cotizaciones[0];
+      if (!cot?.fechaEvento) return [];
+      return [{
+        id: trato.id,
+        nombre: trato.nombreEvento || (cot as { nombreEvento?: string | null }).nombreEvento || "Evento",
+        numeroProyecto: null as null,
+        estado: "VENTA_CERRADA",
+        tipoEvento: trato.tipoEvento,
+        fechaEvento: cot.fechaEvento,
+        cliente: trato.cliente!,
+        personal: [] as { confirmado: boolean }[],
+        checklist: [] as { completado: boolean }[],
+        sinProyecto: true as const,
+        url: `/crm/tratos/${trato.id}`,
+      }];
+    }),
+  ].sort((a, b) => a.fechaEvento.getTime() - b.fechaEvento.getTime());
+
   // Proyectos sin personal en los próximos 14 días
-  const sinPersonal = proyectosActivos.filter(p => {
+  const sinPersonal = proyectosRaw.filter(p => {
     if (!p.fechaEvento) return false;
     const d = diasHastaEvento(p.fechaEvento);
     return d >= 0 && d <= 14 && p.personal.length === 0;
@@ -114,7 +169,7 @@ export async function GET() {
   }
 
   // Proyectos con evento esta semana y staff sin confirmar
-  const sinConfirmar = proyectosActivos.filter(p => {
+  const sinConfirmar = proyectosRaw.filter(p => {
     if (!p.fechaEvento) return false;
     const d = diasHastaEvento(p.fechaEvento);
     return d >= 0 && d <= 7 && p.personal.some(x => !x.confirmado);
@@ -131,7 +186,7 @@ export async function GET() {
   }
 
   // Proyecto vence hoy
-  const hoy = proyectosActivos.filter(p => {
+  const hoy = proyectosRaw.filter(p => {
     if (!p.fechaEvento) return false;
     return diasHastaEvento(p.fechaEvento) === 0;
   });
@@ -158,6 +213,8 @@ export async function GET() {
       cliente: p.cliente,
       personal: p.personal,
       checklist: p.checklist,
+      sinProyecto: p.sinProyecto,
+      url: p.url,
     })),
     cxcPendientes: cxcPendientes.map(c => ({
       ...c,

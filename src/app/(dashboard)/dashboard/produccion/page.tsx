@@ -24,6 +24,7 @@ const ESTADO_COLORS: Record<string, string> = {
   CONFIRMADO: "bg-yellow-900/30 text-yellow-300",
   EN_CURSO: "bg-green-900/30 text-green-300",
   COMPLETADO: "bg-gray-800 text-gray-400",
+  VENTA_CERRADA: "bg-amber-900/30 text-amber-400",
 };
 
 export default async function DashboardProduccionPage() {
@@ -39,11 +40,12 @@ export default async function DashboardProduccionPage() {
 
   const [
     proyectosPorEstado,
-    proyectosProximos,
+    proyectosProximosRaw,
     equiposMantenimiento,
     proyectosSinPersonal,
     proximoEvento,
     proyectosSinPlan,
+    tratosVentaCerrada,
   ] = await Promise.all([
     prisma.proyecto.groupBy({ by: ["estado"], _count: { _all: true } }),
     prisma.proyecto.findMany({
@@ -81,6 +83,27 @@ export default async function DashboardProduccionPage() {
       select: { id: true, nombre: true, numeroProyecto: true, fechaEvento: true },
       orderBy: { fechaEvento: "asc" },
     }).catch(() => []),
+    // Tratos VENTA_CERRADA sin proyecto (próximos 30 días)
+    prisma.trato.findMany({
+      where: {
+        etapa: "VENTA_CERRADA",
+        proyecto: null,
+        cotizaciones: {
+          some: {
+            estado: "APROBADA",
+            fechaEvento: { gte: ahora, lte: en30dias, not: null },
+          },
+        },
+      },
+      include: {
+        cliente: { select: { nombre: true } },
+        cotizaciones: {
+          where: { estado: "APROBADA", fechaEvento: { gte: ahora, lte: en30dias, not: null } },
+          orderBy: { fechaEvento: "asc" },
+          take: 1,
+        },
+      },
+    }),
   ]);
 
   // suppress unused
@@ -88,6 +111,56 @@ export default async function DashboardProduccionPage() {
 
   const estadosMap = Object.fromEntries(proyectosPorEstado.map(p => [p.estado, p._count._all]));
   const activos = (estadosMap.PLANEACION ?? 0) + (estadosMap.CONFIRMADO ?? 0) + (estadosMap.EN_CURSO ?? 0);
+
+  // Build unified event list for the 30-day table
+  type EventoProduccion = {
+    id: string;
+    nombre: string;
+    estado: string;
+    fechaEvento: Date;
+    numeroProyecto: string | null;
+    planProduccionAprobado: boolean | null;
+    cliente: { nombre: string };
+    personal: { confirmado: boolean }[];
+    checklist: { completado: boolean }[];
+    sinProyecto: boolean;
+    url: string;
+  };
+
+  const eventosProyecto: EventoProduccion[] = proyectosProximosRaw.map(p => ({
+    id: p.id,
+    nombre: p.nombre,
+    estado: p.estado,
+    fechaEvento: p.fechaEvento!,
+    numeroProyecto: p.numeroProyecto,
+    planProduccionAprobado: p.planProduccionAprobado,
+    cliente: p.cliente,
+    personal: p.personal,
+    checklist: p.checklist,
+    sinProyecto: false,
+    url: `/proyectos/${p.id}`,
+  }));
+
+  const eventosTrato: EventoProduccion[] = tratosVentaCerrada.flatMap(t => {
+    const cot = t.cotizaciones[0];
+    if (!cot?.fechaEvento) return [];
+    return [{
+      id: t.id,
+      nombre: t.nombreEvento || (cot as { nombreEvento?: string | null }).nombreEvento || "Evento",
+      estado: "VENTA_CERRADA",
+      fechaEvento: cot.fechaEvento,
+      numeroProyecto: null,
+      planProduccionAprobado: null,
+      cliente: t.cliente!,
+      personal: [],
+      checklist: [],
+      sinProyecto: true,
+      url: `/crm/tratos/${t.id}`,
+    }];
+  });
+
+  const proyectosProximos: EventoProduccion[] = [...eventosProyecto, ...eventosTrato]
+    .sort((a, b) => a.fechaEvento.getTime() - b.fechaEvento.getTime());
 
   const hoyStrProd = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const diasHasta = proximoEvento?.fechaEvento
@@ -163,33 +236,50 @@ export default async function DashboardProduccionPage() {
                 const evStrProd = new Date(p.fechaEvento).toISOString().substring(0, 10);
                 const dias = Math.max(0, Math.round((new Date(evStrProd).getTime() - new Date(hoyStrProd).getTime()) / 86400000));
                 return (
-                  <Link key={p.id} href={`/proyectos/${p.id}`} className="contents">
-                    <tr className="hover:bg-[#1a1a1a] transition-colors">
+                  <Link key={`${p.sinProyecto ? "t" : "p"}-${p.id}`} href={p.url} className="contents">
+                    <tr className={`hover:bg-[#1a1a1a] transition-colors ${p.sinProyecto ? "border-l-2 border-amber-800/50" : ""}`}>
                       <td className="px-4 py-3">
-                        <p className="text-white text-sm font-medium">{p.nombre}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-white text-sm font-medium">{p.nombre}</p>
+                          {p.sinProyecto && (
+                            <span className="text-[9px] bg-amber-900/30 text-amber-400 px-1 py-0.5 rounded font-medium">Sin proyecto</span>
+                          )}
+                        </div>
                         <p className="text-gray-600 text-xs">en {dias}d</p>
                       </td>
                       <td className="px-4 py-3 text-gray-400 text-sm">{p.cliente.nombre}</td>
                       <td className="px-4 py-3 text-gray-300 text-sm">{fmtDate(p.fechaEvento)}</td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-semibold ${confirmados === totalPersonal && totalPersonal > 0 ? "text-green-400" : confirmados === 0 ? "text-red-400" : "text-yellow-400"}`}>
-                          {confirmados}/{totalPersonal}
-                        </span>
+                        {p.sinProyecto ? (
+                          <span className="text-gray-600">—</span>
+                        ) : (
+                          <span className={`text-xs font-semibold ${confirmados === totalPersonal && totalPersonal > 0 ? "text-green-400" : confirmados === 0 ? "text-red-400" : "text-yellow-400"}`}>
+                            {confirmados}/{totalPersonal}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs ${checkOk === checkTotal && checkTotal > 0 ? "text-green-400" : "text-gray-500"}`}>
-                          {checkOk}/{checkTotal}
-                        </span>
+                        {p.sinProyecto ? (
+                          <span className="text-gray-600">—</span>
+                        ) : (
+                          <span className={`text-xs ${checkOk === checkTotal && checkTotal > 0 ? "text-green-400" : "text-gray-500"}`}>
+                            {checkOk}/{checkTotal}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/proyectos/${p.id}/plan`}
-                          className={`text-[10px] font-bold ${p.planProduccionAprobado ? "text-green-400" : dias <= 3 ? "text-red-400 underline" : "text-[#555] hover:text-[#B3985B]"}`}>
-                          {p.planProduccionAprobado ? "Aprobado" : "Ver plan"}
-                        </Link>
+                        {p.sinProyecto ? (
+                          <span className="text-gray-600">—</span>
+                        ) : (
+                          <Link href={`/proyectos/${p.id}/plan`}
+                            className={`text-[10px] font-bold ${p.planProduccionAprobado ? "text-green-400" : dias <= 3 ? "text-red-400 underline" : "text-[#555] hover:text-[#B3985B]"}`}>
+                            {p.planProduccionAprobado ? "Aprobado" : "Ver plan"}
+                          </Link>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado] ?? "bg-gray-800 text-gray-400"}`}>
-                          {p.estado}
+                          {p.estado === "VENTA_CERRADA" ? "Venta cerrada" : p.estado}
                         </span>
                       </td>
                     </tr>
