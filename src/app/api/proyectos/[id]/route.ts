@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken } from "@/lib/tokens";
+import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -163,7 +164,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ proyecto });
+  const avance = calcularAvanceProyecto({
+    tipoServicio: proyecto.tipoServicio ?? null,
+    planProduccionAprobado: proyecto.planProduccionAprobado,
+    recoleccionStatus: proyecto.recoleccionStatus,
+    checklist: proyecto.checklist,
+    equiposCount: (proyecto.equipos as unknown[])?.length ?? 0,
+  });
+
+  return NextResponse.json({ proyecto: { ...proyecto, avance } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -212,6 +221,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data["planProduccionAprobado"] = Boolean(body["planProduccionAprobado"]);
     if (body["planProduccionAprobado"]) {
       data["planProduccionAprobadoEn"] = new Date();
+      // Auto-advance to CONFIRMADO if currently in PLANEACION
+      const current = await prisma.proyecto.findUnique({ where: { id }, select: { estado: true } });
+      if (current?.estado === "PLANEACION") {
+        (data as Record<string, unknown>).estado = "CONFIRMADO";
+      }
     }
   }
   // Campos de chofer

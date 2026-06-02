@@ -51,6 +51,7 @@ export const ESTADO_PROYECTO_LABELS: Record<string, string> = {
   PLANEACION: "Planeación",
   CONFIRMADO: "Confirmado",
   EN_CURSO: "En Curso",
+  PENDIENTE_CIERRE: "Pendiente cierre",
   COMPLETADO: "Completado",
   CANCELADO: "Cancelado",
 };
@@ -59,6 +60,7 @@ export const ESTADO_PROYECTO_COLORS: Record<string, string> = {
   PLANEACION: "bg-blue-100 text-blue-700",
   CONFIRMADO: "bg-green-100 text-green-700",
   EN_CURSO: "bg-yellow-100 text-yellow-700",
+  PENDIENTE_CIERRE: "bg-orange-100 text-orange-700",
   COMPLETADO: "bg-gray-100 text-gray-700",
   CANCELADO: "bg-red-100 text-red-700",
 };

@@ -17,16 +17,17 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
 };
 
 const ESTADO_TEXT: Record<string, string> = {
-  PLANEACION: "text-blue-500/60",
-  CONFIRMADO: "text-emerald-500/60",
-  EN_CURSO:   "text-yellow-500/60",
-  COMPLETADO: "text-gray-500/50",
-  CANCELADO:  "text-red-500/40",
+  PLANEACION:        "text-blue-500/60",
+  CONFIRMADO:        "text-emerald-500/60",
+  EN_CURSO:          "text-yellow-500/60",
+  PENDIENTE_CIERRE:  "text-orange-500/70",
+  COMPLETADO:        "text-gray-500/50",
+  CANCELADO:         "text-red-500/40",
 };
 
 // Prioridad de estado dentro de cada grupo — igual que etapa en tratos
 const ESTADO_ORDEN: Record<string, number> = {
-  EN_CURSO: 0, CONFIRMADO: 1, PLANEACION: 2, COMPLETADO: 3, CANCELADO: 4,
+  EN_CURSO: 0, CONFIRMADO: 1, PLANEACION: 2, PENDIENTE_CIERRE: 3, COMPLETADO: 4, CANCELADO: 5,
 };
 
 const MESES_ES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -83,6 +84,14 @@ function ProyectoRow({ p, deletingId, eliminar }: {
             {p.tipoServicio && ` · ${TIPO_SERVICIO_LABELS[p.tipoServicio] ?? p.tipoServicio}`}
             {p.lugarEvento && ` · ${p.lugarEvento}`}
           </p>
+          {typeof p.avance === 'number' && p.avance > 0 && (
+            <div className="mt-1 h-0.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full bg-[#B3985B] transition-all"
+                style={{ width: `${p.avance}%` }}
+              />
+            </div>
+          )}
         </div>
 
         <div className="shrink-0 text-right min-w-[72px] hidden sm:block">

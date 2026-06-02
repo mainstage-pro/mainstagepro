@@ -4,23 +4,50 @@
     {
       "source": "/sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     },
     {
       "source": "/clear.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "Content-Type", "value": "text/html; charset=utf-8" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate"
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/html; charset=utf-8"
+        }
       ]
     }
   ],
   "crons": [
-    { "path": "/api/cron/hervam-mensual", "schedule": "0 14 1 * *" },
-    { "path": "/api/cron/notificaciones-diarias", "schedule": "0 14 * * 1-5" },
-    { "path": "/api/cron/generar-tareas-plan", "schedule": "0 6 * * 1-6" },
-    { "path": "/api/cron/plan-trabajo-diario", "schedule": "0 7 * * 1-5" }
+    {
+      "path": "/api/cron/hervam-mensual",
+      "schedule": "0 14 1 * *"
+    },
+    {
+      "path": "/api/cron/notificaciones-diarias",
+      "schedule": "0 14 * * 1-5"
+    },
+    {
+      "path": "/api/cron/generar-tareas-plan",
+      "schedule": "0 6 * * 1-6"
+    },
+    {
+      "path": "/api/cron/plan-trabajo-diario",
+      "schedule": "0 7 * * 1-5"
+    },
+    {
+      "path": "/api/cron/sincronizar-estados-proyectos",
+      "schedule": "0 6 * * *"
+    }
   ]
 }
-

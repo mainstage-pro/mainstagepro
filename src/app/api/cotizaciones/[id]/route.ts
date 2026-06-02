@@ -105,7 +105,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const presentacionToken = generarTokenPresentacion(cotizacion.id);
-  return NextResponse.json({ cotizacion, opciones, presentacionToken });
+
+  const vencida =
+    ['ENVIADA', 'REENVIADA'].includes(cotizacion.estado) &&
+    cotizacion.fechaVencimiento !== null &&
+    cotizacion.fechaVencimiento < new Date();
+
+  return NextResponse.json({ cotizacion: { ...cotizacion, vencida }, opciones, presentacionToken });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -316,6 +322,51 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       // Generar seguimientos automáticos cuando la cotización se marca como ENVIADA
       if (body.estado === "ENVIADA" && cotizacion.tratoId) {
         await generarSeguimientosAuto(cotizacion.tratoId, id);
+      }
+
+      // CASCADE: When cotizacion is approved
+      if (body.estado === "APROBADA") {
+        const cotData = await prisma.cotizacion.findUnique({
+          where: { id },
+          select: { tratoId: true },
+        });
+        if (cotData?.tratoId) {
+          await prisma.cotizacion.updateMany({
+            where: {
+              tratoId: cotData.tratoId,
+              id: { not: id },
+              estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"] },
+            },
+            data: { estado: "RECHAZADA" },
+          });
+          await prisma.trato.update({
+            where: { id: cotData.tratoId },
+            data: { etapa: "VENTA_CERRADA" },
+          });
+        }
+      }
+
+      // CASCADE: When cotizacion is rejected
+      if (body.estado === "RECHAZADA") {
+        const cotData = await prisma.cotizacion.findUnique({
+          where: { id },
+          select: { tratoId: true },
+        });
+        if (cotData?.tratoId) {
+          const activasCount = await prisma.cotizacion.count({
+            where: {
+              tratoId: cotData.tratoId,
+              id: { not: id },
+              estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"] },
+            },
+          });
+          if (activasCount === 0) {
+            await prisma.trato.update({
+              where: { id: cotData.tratoId },
+              data: { etapa: "VENTA_PERDIDA" },
+            });
+          }
+        }
       }
     }
     return NextResponse.json({ cotizacion });

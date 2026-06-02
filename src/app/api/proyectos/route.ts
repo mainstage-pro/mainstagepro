@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -46,10 +47,22 @@ export async function GET(req: Request) {
         cotizacion: { select: { id: true } },
         equipos: { select: { id: true }, take: 1 },
         cuentasCobrar: { select: { id: true }, take: 1 },
+        checklist: { select: { completado: true, item: true } },
+        _count: { select: { equipos: true } },
       },
       orderBy: { fechaEvento: "desc" },
     });
-    return NextResponse.json({ proyectos });
+    const proyectosConAvance = proyectos.map(p => ({
+      ...p,
+      avance: calcularAvanceProyecto({
+        tipoServicio: p.tipoServicio ?? null,
+        planProduccionAprobado: p.planProduccionAprobado,
+        recoleccionStatus: p.recoleccionStatus,
+        checklist: p.checklist,
+        equiposCount: p._count?.equipos ?? 0,
+      }),
+    }));
+    return NextResponse.json({ proyectos: proyectosConAvance });
   } catch (e) {
     console.error("[/api/proyectos GET]", e);
     return NextResponse.json({ error: String(e), proyectos: [] }, { status: 500 });
