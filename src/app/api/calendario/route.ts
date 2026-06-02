@@ -19,13 +19,14 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
+  // ── 1. Proyectos existentes (igual que antes) ─────────────────────────────
   const proyectos = await prisma.proyecto.findMany({
     where: { fechaEvento: { gte: inicio, lte: fin }, estado: { not: "CANCELADO" } },
     include: { cliente: { select: { nombre: true } } },
     orderBy: { fechaEvento: "asc" },
   });
 
-  const eventos = proyectos.map(p => ({
+  const eventosProyecto = proyectos.map(p => ({
     id: p.id,
     dia: new Date(p.fechaEvento.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
     titulo: p.nombre,
@@ -37,6 +38,53 @@ export async function GET(req: NextRequest) {
     lugarEvento: p.lugarEvento,
     horaInicioEvento: p.horaInicioEvento,
   }));
+
+  // ── 2. Tratos VENTA_CERRADA sin proyecto creado aún ──────────────────────
+  // Solo tratos que: etapa=VENTA_CERRADA, proyecto=null (sin proyecto vinculado),
+  // y tienen al menos una cotización APROBADA con fechaEvento en el mes solicitado
+  const tratos = await prisma.trato.findMany({
+    where: {
+      etapa: "VENTA_CERRADA",
+      proyecto: null,
+      cotizaciones: {
+        some: {
+          estado: "APROBADA",
+          fechaEvento: { gte: inicio, lte: fin, not: null },
+        },
+      },
+    },
+    include: {
+      cliente: { select: { nombre: true } },
+      cotizaciones: {
+        where: {
+          estado: "APROBADA",
+          fechaEvento: { gte: inicio, lte: fin, not: null },
+        },
+        orderBy: { fechaEvento: "asc" },
+        take: 1,
+      },
+    },
+  });
+
+  const eventosTrato = tratos.flatMap(t => {
+    return t.cotizaciones
+      .filter(c => c.fechaEvento)
+      .map(c => ({
+        id: t.id,
+        dia: new Date(c.fechaEvento!.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
+        titulo: t.nombreEvento || (c as unknown as Record<string, unknown>).nombreEvento as string || "Evento",
+        subtitulo: t.cliente?.nombre || "",
+        estado: "VENTA_CERRADA" as const,
+        url: `/crm/tratos/${t.id}`,
+        tipoEvento: t.tipoEvento,
+        tipoServicio: null,
+        lugarEvento: t.lugarEstimado,
+        horaInicioEvento: null,
+      }));
+  });
+
+  // ── Merge y ordenar por día ───────────────────────────────────────────────
+  const eventos = [...eventosProyecto, ...eventosTrato].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });
 }

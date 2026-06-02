@@ -17,17 +17,19 @@ interface Evento {
 }
 
 const ESTADO_COLORS: Record<string, { bar: string; dot: string; text: string }> = {
-  PLANEACION: { bar: "border-l-blue-500",   dot: "bg-blue-500",   text: "text-blue-300"  },
-  CONFIRMADO: { bar: "border-l-green-500",  dot: "bg-green-500",  text: "text-green-300" },
-  EN_CURSO:   { bar: "border-l-yellow-400", dot: "bg-yellow-400", text: "text-yellow-300"},
-  COMPLETADO: { bar: "border-l-gray-600",   dot: "bg-gray-600",   text: "text-gray-400"  },
+  PLANEACION:    { bar: "border-l-blue-500",   dot: "bg-blue-500",   text: "text-blue-300"  },
+  CONFIRMADO:    { bar: "border-l-green-500",  dot: "bg-green-500",  text: "text-green-300" },
+  EN_CURSO:      { bar: "border-l-yellow-400", dot: "bg-yellow-400", text: "text-yellow-300"},
+  COMPLETADO:    { bar: "border-l-gray-600",   dot: "bg-gray-600",   text: "text-gray-400"  },
+  VENTA_CERRADA: { bar: "border-l-amber-400",  dot: "bg-amber-400",  text: "text-amber-300" },
 };
 
 const ESTADO_LABELS: Record<string, string> = {
-  PLANEACION: "Planeación",
-  CONFIRMADO: "Confirmado",
-  EN_CURSO:   "En curso",
-  COMPLETADO: "Completado",
+  PLANEACION:    "Planeación",
+  CONFIRMADO:    "Confirmado",
+  EN_CURSO:      "En curso",
+  COMPLETADO:    "Completado",
+  VENTA_CERRADA: "Venta cerrada",
 };
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -213,7 +215,12 @@ export default function CalendarioPage() {
                           <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
                           {e.lugarEvento && <p className="text-gray-600 text-[10px] truncate mt-0.5">{e.lugarEvento}</p>}
                           {e.horaInicioEvento && <p className="text-[#B3985B] text-[10px] mt-0.5">{e.horaInicioEvento}</p>}
-                          <span className={`text-[10px] ${colors.text}`}>{ESTADO_LABELS[e.estado] ?? e.estado}</span>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <span className={`text-[10px] ${colors.text}`}>{ESTADO_LABELS[e.estado] ?? e.estado}</span>
+                            {e.estado === "VENTA_CERRADA" && (
+                              <span className="text-[10px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-medium">Sin proyecto</span>
+                            )}
+                          </div>
                         </div>
                       </Link>
                     );
@@ -236,7 +243,7 @@ export default function CalendarioPage() {
                 const sorted = [...eventos].sort((a, b) => a.dia - b.dia);
                 const proximos = sorted.filter(e => !esPasado(e.dia));
                 const pasados  = sorted.filter(e =>  esPasado(e.dia));
-                const renderItem = (e: Evento, dimmed: boolean) => {
+                  const renderItem = (e: Evento, dimmed: boolean) => {
                   const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500", text: "text-gray-400" };
                   return (
                     <Link key={e.id} href={e.url}
@@ -253,6 +260,9 @@ export default function CalendarioPage() {
                           <p className="text-xs font-medium truncate text-white">{e.titulo}</p>
                         </div>
                         <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
+                        {e.estado === "VENTA_CERRADA" && (
+                          <p className="text-amber-400/70 text-[10px] mt-0.5">Sin proyecto · Pendiente</p>
+                        )}
                       </div>
                     </Link>
                   );
@@ -303,6 +313,9 @@ export default function CalendarioPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-white text-sm truncate">{e.titulo}</p>
                         <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
+                        {e.estado === "VENTA_CERRADA" && (
+                          <p className="text-amber-400/70 text-[10px]">Sin proyecto · Pendiente</p>
+                        )}
                       </div>
                     </Link>
                   );
