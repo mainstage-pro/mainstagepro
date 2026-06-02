@@ -1769,8 +1769,45 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       ══════════════════════════════════════════════════════════════════════ */}
 
 
-      {/* ── Nurturing — Prospecto en frío ── */}
-      {trato.tipoProspecto === "NURTURING" && (() => {
+      {/* ── Lead rápido (inbound) — vista simple ── */}
+      {trato.tipoProspecto === "NURTURING" && trato.origenLead !== "PROSPECCION" && (
+        <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 rounded-full bg-[#B3985B]/10 flex items-center justify-center text-lg">⚡</div>
+            <div>
+              <p className="text-white font-bold text-base">Lead registrado</p>
+              <p className="text-gray-500 text-xs">Inbound · {ORIGEN_LEAD_LABELS[trato.origenLead] ?? trato.origenLead}</p>
+            </div>
+          </div>
+          {trato.nombreEvento && trato.nombreEvento !== 'Lead sin evento definido' && (
+            <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-500 mb-1">Lo que busca</p>
+              <p className="text-sm text-white">{trato.nombreEvento}</p>
+            </div>
+          )}
+          {trato.fechaEventoEstimada && (
+            <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-500 mb-1">Fecha del evento</p>
+              <p className="text-sm text-white">{fmtFecha(trato.fechaEventoEstimada)}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <button onClick={() => cambiarEtapa('DESCUBRIMIENTO')} disabled={saving}
+              className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors text-left">
+              <p className="font-semibold">🔍 Iniciar descubrimiento</p>
+              <p className="text-xs text-[#B3985B]/60 mt-0.5">Ya mostró interés concreto</p>
+            </button>
+            <button onClick={() => cambiarEtapa('OPORTUNIDAD')} disabled={saving}
+              className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors text-left">
+              <p className="font-semibold">💬 Pasar a oportunidad</p>
+              <p className="text-xs text-blue-300/60 mt-0.5">Saben lo que necesitan</p>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Nurturing — Prospección en frío (outbound) ── */}
+      {trato.tipoProspecto === "NURTURING" && trato.origenLead === "PROSPECCION" && (() => {
         const etapaKey = nurturing.etapa as keyof typeof NURTURING_PLAYBOOK;
         const playbook = NURTURING_PLAYBOOK[etapaKey];
         const tipoEvKey = (trato.tipoEvento ?? "OTRO") as keyof NPlaybookEtapa["templates"];
