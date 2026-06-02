@@ -32,8 +32,9 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
 
   const [leadForm, setLeadForm] = useState({
     nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '',
-    notasIniciales: '', fechaProximaAccion: '',
+    notasIniciales: '', fechaProximaAccion: '', fechaEvento: '',
   });
+  const [fechaEventoSinDefinir, setFechaEventoSinDefinir] = useState(false);
   const [guardandoLead, setGuardandoLead] = useState(false);
   const [leadCreado, setLeadCreado] = useState<{ id: string; nombre: string } | null>(null);
   const [showSeguimientoInline, setShowSeguimientoInline] = useState(false);
@@ -79,7 +80,8 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
   function resetLocalState() {
     setLeadCreado(null);
     setShowSeguimientoInline(false);
-    setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '' });
+    setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '', fechaEvento: '' });
+    setFechaEventoSinDefinir(false);
     setSeguimientoInlineForm({ fecha: '', nota: '' });
     setBusqueda('');
     setSugerencias([]);
@@ -101,6 +103,7 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
         origenLead: leadForm.origenLead,
         tipoEvento: leadForm.tipoEvento || 'OTRO',
         nombreEvento: leadForm.notasIniciales.trim() || 'Lead sin evento definido',
+        fechaEventoEstimada: (!fechaEventoSinDefinir && leadForm.fechaEvento) ? leadForm.fechaEvento : null,
       };
 
       if (clienteMode === 'existente' && clienteSeleccionado) {
@@ -124,7 +127,8 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
       toast.success('Lead registrado ✓');
       onLeadCreated?.();
       setLeadCreado({ id: trato.id, nombre });
-      setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '' });
+      setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '', fechaEvento: '' });
+      setFechaEventoSinDefinir(false);
     } finally {
       setGuardandoLead(false);
     }
@@ -295,6 +299,29 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
                 <option value="EMPRESARIAL">Empresarial</option>
                 <option value="OTRO">Otro</option>
               </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Fecha del evento</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={fechaEventoSinDefinir ? '' : leadForm.fechaEvento}
+                  disabled={fechaEventoSinDefinir}
+                  onChange={e => setLeadForm(p => ({ ...p, fechaEvento: e.target.value }))}
+                  className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-30"
+                />
+                <button
+                  type="button"
+                  onClick={() => { setFechaEventoSinDefinir(p => !p); setLeadForm(p => ({ ...p, fechaEvento: '' })); }}
+                  className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                    fechaEventoSinDefinir
+                      ? 'bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]'
+                      : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  Aún no se define
+                </button>
+              </div>
             </div>
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Lo que busca / contexto</label>
