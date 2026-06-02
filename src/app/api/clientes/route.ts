@@ -55,16 +55,30 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q")?.trim() || null;
+  const limit = parseInt(searchParams.get("limit") || "200");
+
   const clientes = await prisma.cliente.findMany({
+    where: q
+      ? {
+          OR: [
+            { nombre: { contains: q, mode: "insensitive" } },
+            { empresa: { contains: q, mode: "insensitive" } },
+            { telefono: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : undefined,
     select: {
       id: true,
       nombre: true,
       empresa: true,
       empresaId: true,
+      telefono: true,
       compania: { select: { id: true, nombre: true } },
       tipoCliente: true,
       clasificacion: true,
@@ -72,6 +86,7 @@ export async function GET() {
       vendedor: { select: { id: true, name: true } },
     },
     orderBy: { nombre: "asc" },
+    take: limit,
   });
 
   return NextResponse.json({ clientes });
