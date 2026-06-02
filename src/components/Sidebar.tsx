@@ -1,9 +1,12 @@
 "use client";
 
+import React from "react";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { BarChart2 } from "lucide-react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
 
@@ -21,6 +24,8 @@ interface NavItem {
   adminOnly?: boolean;
   children?: NavChild[];
   badge?: string; // key used to look up badge counts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon?: React.ComponentType<any>; // optional lucide icon
 }
 
 interface NavSection {
@@ -38,6 +43,7 @@ const NAV: NavSection[] = [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
       { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
+      { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
       {
         key: "calendario",
         label: "Calendario de eventos",
@@ -410,6 +416,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                   }
                   const href = item.href === "/dashboard" ? dashboardHref : item.href!;
                   const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
+                  const Icon = item.icon;
                   return (
                     <Link
                       key={item.href}
@@ -420,7 +427,10 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                           : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+                      {Icon
+                        ? <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive(item.href!) ? "text-[#B3985B]" : "opacity-60"}`} />
+                        : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+                      }
                       <span className="flex-1">{itemLabel}</span>
                       {badgeCount > 0 && (
                         <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">

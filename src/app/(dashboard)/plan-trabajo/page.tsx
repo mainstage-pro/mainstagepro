@@ -130,6 +130,13 @@ export default function PlanTrabajoPage() {
   const [soData, setSoData] = useState<SOData | null>(null);
   const [soAreaOpen, setSoAreaOpen] = useState<string | null>(null);
   const [contextoOpenIds, setContextoOpenIds] = useState<Set<string>>(new Set());
+  const [kpiExpandedAreas, setKpiExpandedAreas] = useState<Set<string>>(new Set());
+  const [bannerData, setBannerData] = useState<{
+    ingresosDevengados: number;
+    margenNeto: number;
+    cumpleMetaIngresos: boolean;
+    cumpleMetaMargen: boolean;
+  } | null>(null);
   // Live countdown
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -157,6 +164,18 @@ export default function PlanTrabajoPage() {
     timerRef.current = setInterval(() => setTick(t => t + 1), 60000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
+
+  // Fetch banner KPIs para admins
+  useEffect(() => {
+    if (me?.role !== 'ADMIN') return;
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+    const hoyStr = hoy.toISOString().split('T')[0];
+    fetch(`/api/kpis/datos?desde=${primerDia}&hasta=${hoyStr}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.estadoResultados) setBannerData(d.estadoResultados); })
+      .catch(() => {});
+  }, [me]);
 
   const loadInstancias = useCallback(async () => {
     if (tab === "config" || tab === "sistema-op" || !me) return;
@@ -491,6 +510,44 @@ export default function PlanTrabajoPage() {
                   <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-2xl h-16 animate-pulse" />)}</div>
                 ) : (
                   <>
+                    {/* Indicadores Maestros — solo ADMIN */}
+                    {me?.role === 'ADMIN' && (
+                      <div className="mb-6 border border-[#B3985B]/30 rounded-xl bg-[#0d0d0d] p-4">
+                        <p className="text-[10px] uppercase tracking-[0.15em] text-[#B3985B] font-semibold mb-3">Indicadores Maestros</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Ventas del período */}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Ventas del período</p>
+                            <p className="text-lg font-bold text-white">
+                              {bannerData ? `$${bannerData.ingresosDevengados.toLocaleString('es-MX', { maximumFractionDigits: 0 })}` : '—'}
+                            </p>
+                            <p className="text-[10px] text-gray-600">Meta: $500,000 MXN</p>
+                            {bannerData && (
+                              <span className={`text-[10px] font-medium ${
+                                bannerData.cumpleMetaIngresos ? 'text-emerald-400' : 'text-red-400'
+                              }`}>
+                                {bannerData.cumpleMetaIngresos ? '🟢 Cumple meta' : '🔴 Bajo meta'}
+                              </span>
+                            )}
+                          </div>
+                          {/* Rentabilidad */}
+                          <div>
+                            <p className="text-xs text-gray-500 mb-0.5">Rentabilidad</p>
+                            <p className="text-lg font-bold text-white">
+                              {bannerData ? `${bannerData.margenNeto.toFixed(1)}%` : '—'}
+                            </p>
+                            <p className="text-[10px] text-gray-600">Meta: ≥ 30%</p>
+                            {bannerData && (
+                              <span className={`text-[10px] font-medium ${
+                                bannerData.cumpleMetaMargen ? 'text-emerald-400' : 'text-red-400'
+                              }`}>
+                                {bannerData.cumpleMetaMargen ? '🟢 Cumple meta' : '🔴 Bajo meta'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {soData.areas.map(area => (
                       <div key={area.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
                         {/* Acordeón header */}
@@ -534,33 +591,57 @@ export default function PlanTrabajoPage() {
                                 </div>
                               </div>
                             )}
-                            {/* C — KPIs */}
-                            {area.kpis.length > 0 && (
-                              <div>
-                                <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-3">KPIs del área</p>
-                                <div className="overflow-x-auto rounded-xl border border-[#1e1e1e]">
-                                  <table className="w-full text-xs">
-                                    <thead>
-                                      <tr className="bg-black">
-                                        {["Indicador","Meta","Cómo se calcula","Fuente en plataforma"].map(h => (
-                                          <th key={h} className="text-left px-3 py-2.5 text-[#B3985B] font-semibold whitespace-nowrap">{h}</th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {area.kpis.map((kpi, i) => (
-                                        <tr key={kpi.id} className={i % 2 === 0 ? "bg-[#0d0d0d]" : "bg-[#111]"}>
-                                          <td className="px-3 py-2.5 text-white font-medium">{kpi.nombre}</td>
-                                          <td className="px-3 py-2.5 text-[#B3985B] font-bold whitespace-nowrap">{kpi.meta}</td>
-                                          <td className="px-3 py-2.5 text-gray-400">{kpi.formula}</td>
-                                          <td className="px-3 py-2.5 text-gray-500">{kpi.fuente}</td>
+                            {/* C — KPIs con collapse top-3 */}
+                            {area.kpis.length > 0 && (() => {
+                              const sortedKpis = [...area.kpis].sort((a, b) => a.orden - b.orden);
+                              const isExpanded = kpiExpandedAreas.has(area.id);
+                              const visibleKpis = isExpanded ? sortedKpis : sortedKpis.slice(0, 3);
+                              const hiddenCount = sortedKpis.length - 3;
+                              return (
+                                <div>
+                                  <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-3">KPIs del área</p>
+                                  <div className="overflow-x-auto rounded-xl border border-[#1e1e1e]">
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="bg-black">
+                                          {["Indicador","Meta","Cómo se calcula","Fuente en plataforma"].map(h => (
+                                            <th key={h} className="text-left px-3 py-2.5 text-[#B3985B] font-semibold whitespace-nowrap">{h}</th>
+                                          ))}
                                         </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
+                                      </thead>
+                                      <tbody>
+                                        {visibleKpis.map((kpi, i) => (
+                                          <tr key={kpi.id} className={i % 2 === 0 ? "bg-[#0d0d0d]" : "bg-[#111]"}>
+                                            <td className="px-3 py-2.5 text-white font-medium">{kpi.nombre}</td>
+                                            <td className="px-3 py-2.5 text-[#B3985B] font-bold whitespace-nowrap">{kpi.meta}</td>
+                                            <td className="px-3 py-2.5 text-gray-400">{kpi.formula}</td>
+                                            <td className="px-3 py-2.5 text-gray-500">{kpi.fuente}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                    {hiddenCount > 0 && (
+                                      <button
+                                        onClick={() => setKpiExpandedAreas(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(area.id)) next.delete(area.id); else next.add(area.id);
+                                          return next;
+                                        })}
+                                        className="w-full flex items-center gap-1.5 justify-center py-2 text-[10px] text-gray-500 hover:text-gray-300 transition-colors bg-[#111] border-t border-[#1e1e1e]"
+                                      >
+                                        <svg
+                                          className={`w-3 h-3 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                                          fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                                        >
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        {isExpanded ? 'Ver menos' : `Ver todos los indicadores (+${hiddenCount} más)`}
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         )}
                       </div>

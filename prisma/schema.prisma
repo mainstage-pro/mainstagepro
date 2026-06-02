@@ -2912,9 +2912,10 @@ model PTKPI {
   formula       String   @db.Text
   fuente        String
   orden         Int      @default(0)
-  esTransversal Boolean  @default(false)
-  activo        Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  esTransversal   Boolean  @default(false)
+  activo          Boolean  @default(true)
+  visibilidadRol  String?  // null = todos | "ADMIN" = solo admin
+  createdAt       DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   registros     PTRegistroKPI[]
