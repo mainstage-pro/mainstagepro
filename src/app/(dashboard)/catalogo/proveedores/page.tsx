@@ -25,6 +25,7 @@ type Proveedor = {
   noTarjeta: string | null;
   datosFiscales: string | null;
   activo: boolean;
+  prioridad: boolean;
   portalToken: string | null;
 };
 
@@ -73,6 +74,7 @@ export default function ProveedoresPage() {
   const [view, setView] = useState<"card" | "list">("list");
   const [search, setSearch] = useState("");
   const [filterGiro, setFilterGiro] = useState<string>("TODOS");
+  const [filterPrioridad, setFilterPrioridad] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
   const currentEditId = useRef<string | null>(null);
@@ -251,6 +253,15 @@ export default function ProveedoresPage() {
     setSaving(false);
   }
 
+  async function togglePrioridad(id: string, current: boolean) {
+    await fetch(`/api/proveedores/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prioridad: !current }),
+    });
+    setProveedores(prev => prev.map(p => p.id === id ? { ...p, prioridad: !current } : p));
+  }
+
   async function toggleActivo(p: Proveedor) {
     const res = await fetch(`/api/proveedores/${p.id}`, {
       method: "PATCH",
@@ -274,10 +285,12 @@ export default function ProveedoresPage() {
         !(p.empresa ?? "").toLowerCase().includes(search.toLowerCase()) &&
         !(p.giro ?? "").toLowerCase().includes(search.toLowerCase())) return false;
     if (filterGiro !== "TODOS" && p.giro !== filterGiro) return false;
+    if (filterPrioridad && !p.prioridad) return false;
     return true;
   });
 
   filtered = [...filtered].sort((a, b) => {
+    if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
     if (sortBy === "giro") return (a.giro ?? "").localeCompare(b.giro ?? "");
     if (sortBy === "empresa") return (a.empresa ?? a.nombre).localeCompare(b.empresa ?? b.nombre);
     return a.nombre.localeCompare(b.nombre);
@@ -455,6 +468,16 @@ export default function ProveedoresPage() {
             options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "empresa", label: "Ordenar: Empresa" }, { value: "giro", label: "Ordenar: Giro" }]}
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
           />
+          <button
+            onClick={() => setFilterPrioridad(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              filterPrioridad
+                ? 'bg-amber-900/30 border-amber-600/50 text-amber-400'
+                : 'border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]'
+            }`}
+          >
+            ⭐ Prioritarios
+          </button>
           {proveedores.some(p => !p.activo) && (
             <button onClick={() => setShowInactivos(!showInactivos)}
               className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>
@@ -478,6 +501,7 @@ export default function ProveedoresPage() {
                 onRevocarToken={() => revocarPortalToken(p)}
                 onVerEquipos={() => verEquipos(p)}
                 equiposPanelOpen={equiposPanel?.proveedorId === p.id}
+                onTogglePrioridad={() => togglePrioridad(p.id, p.prioridad)}
               />
             ))}
           </div>
@@ -576,6 +600,9 @@ export default function ProveedoresPage() {
                         </span>
                       </div>
                       <p className="text-white text-sm font-medium">{p.nombre}</p>
+                      {p.prioridad && (
+                        <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{p.empresa ?? "—"}</td>
@@ -601,7 +628,14 @@ export default function ProveedoresPage() {
                     {p.correo ? <a href={`mailto:${p.correo}`} className="hover:text-[#B3985B] transition-colors truncate">{p.correo}</a> : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 items-center">
+                      <button
+                        onClick={e => { e.stopPropagation(); togglePrioridad(p.id, p.prioridad); }}
+                        title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
+                        className={`text-lg transition-all hover:scale-110 ${p.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'}`}
+                      >
+                        ⭐
+                      </button>
                       <button onClick={() => startEdit(p)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => toggleActivo(p)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
                     </div>
@@ -635,6 +669,7 @@ function ProveedorCard({
   onRevocarToken,
   onVerEquipos,
   equiposPanelOpen = false,
+  onTogglePrioridad,
 }: {
   proveedor: Proveedor;
   onEdit: (p: Proveedor) => void;
@@ -644,6 +679,7 @@ function ProveedorCard({
   onRevocarToken?: () => void;
   onVerEquipos?: () => void;
   equiposPanelOpen?: boolean;
+  onTogglePrioridad?: () => void;
 }) {
   const initials = p.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
   const portalUrl = p.portalToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/proveedor/${p.portalToken}` : "";
@@ -656,7 +692,12 @@ function ProveedorCard({
           <span className="text-[#B3985B] text-xs font-bold">{initials}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-medium leading-tight">{p.nombre}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-white text-sm font-medium leading-tight">{p.nombre}</p>
+            {p.prioridad && (
+              <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
+            )}
+          </div>
           {p.empresa && p.empresa !== p.nombre && (
             <p className="text-gray-400 text-xs">{p.empresa}</p>
           )}
@@ -664,6 +705,17 @@ function ProveedorCard({
             <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded mt-0.5 inline-block">{p.giro}</span>
           )}
         </div>
+        {onTogglePrioridad && (
+          <button
+            onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
+            title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
+            className={`text-lg transition-all hover:scale-110 shrink-0 ${
+              p.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'
+            }`}
+          >
+            ⭐
+          </button>
+        )}
       </div>
 
       {/* Info */}

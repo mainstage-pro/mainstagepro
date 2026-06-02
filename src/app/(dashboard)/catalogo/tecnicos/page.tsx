@@ -17,6 +17,7 @@ type Tecnico = {
   cuentaBancaria: string | null;
   datosFiscales: string | null;
   activo: boolean;
+  prioridad: boolean;
   comentarios: string | null;
   evaluacionPromedio: number | null;
   habilidades: string | null;
@@ -62,6 +63,7 @@ export default function TecnicosPage() {
   const [search, setSearch] = useState("");
   const [filterNivel, setFilterNivel] = useState<string>("TODOS");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
+  const [filterPrioridad, setFilterPrioridad] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
   const [ranking, setRanking] = useState<RankingItem[]>([]);
@@ -169,6 +171,15 @@ export default function TecnicosPage() {
     setSaving(false);
   }
 
+  async function togglePrioridad(id: string, current: boolean) {
+    await fetch(`/api/tecnicos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prioridad: !current }),
+    });
+    setTecnicos(prev => prev.map(t => t.id === id ? { ...t, prioridad: !current } : t));
+  }
+
   async function eliminarTecnico(t: Tecnico) {
     if (!confirm(`¿Eliminar a ${t.nombre}? Esta acción no se puede deshacer.`)) return;
     try {
@@ -195,10 +206,12 @@ export default function TecnicosPage() {
         !(t.zonaHabitual ?? "").toLowerCase().includes(search.toLowerCase())) return false;
     if (filterNivel !== "TODOS" && t.nivel !== filterNivel) return false;
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
+    if (filterPrioridad && !t.prioridad) return false;
     return true;
   });
 
   filtered = [...filtered].sort((a, b) => {
+    if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
     if (sortBy === "nivel") {
       const order = { AAA: 0, AA: 1, A: 2 };
       return (order[a.nivel as keyof typeof order] ?? 3) - (order[b.nivel as keyof typeof order] ?? 3);
@@ -350,6 +363,16 @@ export default function TecnicosPage() {
             {showInactivos ? "Ocultar inactivos" : "Ver inactivos"}
           </button>
         )}
+        <button
+          onClick={() => setFilterPrioridad(p => !p)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+            filterPrioridad
+              ? 'bg-amber-900/30 border-amber-600/50 text-amber-400'
+              : 'border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]'
+          }`}
+        >
+          ⭐ Prioritarios
+        </button>
       </div>
 
       {activos.length === 0 && !creating ? (
@@ -360,7 +383,7 @@ export default function TecnicosPage() {
       ) : view === "card" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onTogglePrioridad={() => togglePrioridad(t.id, t.prioridad)} />)}
           </div>
           {showInactivos && inactivos.length > 0 && (
             <div className="mt-6">
@@ -393,6 +416,9 @@ export default function TecnicosPage() {
                         </span>
                       </div>
                       <p className="text-white text-sm font-medium">{t.nombre}</p>
+                      {t.prioridad && (
+                        <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.rol?.nombre ?? "—"}</td>
@@ -414,7 +440,14 @@ export default function TecnicosPage() {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 items-center">
+                      <button
+                        onClick={e => { e.stopPropagation(); togglePrioridad(t.id, t.prioridad); }}
+                        title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
+                        className={`text-lg transition-all hover:scale-110 ${t.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'}`}
+                      >
+                        ⭐
+                      </button>
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                     </div>
@@ -471,6 +504,9 @@ export default function TecnicosPage() {
                             <span className="text-[#B3985B] text-[10px] font-bold">{r.nombre.split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</span>
                           </div>
                           <span className="text-white text-sm">{r.nombre}</span>
+                          {tecnicos.find(t => t.id === r.id)?.prioridad && (
+                            <span className="text-amber-400 text-[10px]">⭐</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-[#6b7280]">{r.rol?.nombre ?? "—"}</td>
@@ -616,10 +652,11 @@ export default function TecnicosPage() {
   );
 }
 
-function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
+function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
   tecnico: Tecnico;
   onEdit: (t: Tecnico) => void;
   onToggle: (t: Tecnico) => void;
+  onTogglePrioridad?: () => void;
 }) {
   const nivelStyle = NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40";
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
@@ -633,11 +670,29 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
             <span className="text-[#B3985B] text-xs font-bold">{initials}</span>
           </div>
           <div>
-            <p className="text-white text-sm font-medium leading-tight">{t.nombre}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-white text-sm font-medium leading-tight">{t.nombre}</p>
+              {t.prioridad && (
+                <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
+              )}
+            </div>
             <p className="text-gray-500 text-xs">{t.rol?.nombre ?? "Sin rol"}</p>
           </div>
         </div>
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${nivelStyle}`}>{t.nivel}</span>
+        <div className="flex items-center gap-2">
+          {onTogglePrioridad && (
+            <button
+              onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
+              title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
+              className={`text-lg transition-all hover:scale-110 ${
+                t.prioridad ? 'text-amber-400' : 'text-gray-700 hover:text-amber-400/60'
+              }`}
+            >
+              ⭐
+            </button>
+          )}
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${nivelStyle}`}>{t.nivel}</span>
+        </div>
       </div>
 
       {/* Info */}

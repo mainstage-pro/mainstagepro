@@ -740,6 +740,7 @@ model Tecnico {
   cuentaBancaria     String?
   datosFiscales      String?
   activo             Boolean    @default(true)
+  prioridad          Boolean    @default(false)
   comentarios        String?
   habilidades        String?    // JSON array of skill tags
   createdAt          DateTime   @default(now())
@@ -767,6 +768,7 @@ model Proveedor {
   noTarjeta      String?
   datosFiscales  String?
   activo         Boolean  @default(true)
+  prioridad      Boolean  @default(false)
   portalToken    String?  @unique @map("portal_token")
   createdAt      DateTime @default(now())
 
