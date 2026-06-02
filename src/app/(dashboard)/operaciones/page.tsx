@@ -56,7 +56,7 @@ interface ProyectoEventoConTareas {
 
 interface ProyViewOpts {
   showCompleted: boolean;
-  sortBy:        "none" | "prioridad" | "fecha" | "nombre";
+  sortBy:        "none" | "prioridad" | "fecha" | "nombre" | "creacion";
   groupBy:       "none" | "prioridad";
   filterPrio:    string[];
 }
@@ -64,7 +64,7 @@ const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", 
 
 interface VistaOpts {
   showCompleted: boolean;
-  sortBy:   "none" | "prioridad" | "fecha" | "nombre";
+  sortBy:   "none" | "prioridad" | "fecha" | "nombre" | "creacion";
   groupBy:  "none" | "proyecto" | "prioridad" | "fecha";
   filterPrio: string[];
 }
@@ -387,6 +387,12 @@ export default function OperacionesPage() {
     if (filterUserProy) r = r.filter(t => t.asignadoA?.id === filterUserProy);
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
     if (proyViewOpts.sortBy === "prioridad") r = [...r].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
+    // FIX: Ordenar por fecha de creación
+    if (proyViewOpts.sortBy === "creacion") r = [...r].sort((a, b) => {
+      const ca = (a as unknown as Record<string, string>).createdAt ?? "";
+      const cb = (b as unknown as Record<string, string>).createdAt ?? "";
+      return ca.localeCompare(cb);
+    });
     if (proyViewOpts.sortBy === "fecha") {
       r = [...r].sort((a, b) => {
         const da = a.fecha ?? a.fechaVencimiento ?? null;
@@ -938,6 +944,12 @@ export default function OperacionesPage() {
 
     function applySort(arr: TareaItem[]): TareaItem[] {
       if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
+      // FIX: Ordenar por fecha de creación
+      if (vistaOpts.sortBy === "creacion") return [...base].sort((a, b) => {
+        const ca = (a as unknown as Record<string, string>).createdAt ?? "";
+        const cb = (b as unknown as Record<string, string>).createdAt ?? "";
+        return ca.localeCompare(cb);
+      });
       if (vistaOpts.sortBy === "fecha") {
         return [...arr].sort((a, b) => {
           const da = a.fecha ?? a.fechaVencimiento ?? null;
@@ -1420,7 +1432,7 @@ export default function OperacionesPage() {
                   <div className="px-4 py-3 border-b border-[#161616]">
                     <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Ordenar por</p>
                     <div className="grid grid-cols-2 gap-1">
-                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha"],["nombre","Nombre"]] as const).map(([val, label]) => (
+                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha venc."],["creacion","Fecha creación"],["nombre","Nombre"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setVistaOpts(o => ({ ...o, sortBy: val }))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${vistaOpts.sortBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
                           {label}
@@ -1555,7 +1567,7 @@ export default function OperacionesPage() {
                   <div className="px-4 py-3 border-b border-[#161616]">
                     <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Ordenar por</p>
                     <div className="grid grid-cols-2 gap-1">
-                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha"],["nombre","Nombre"]] as const).map(([val, label]) => (
+                      {([["none","Sin orden"],["prioridad","Prioridad"],["fecha","Fecha venc."],["creacion","Fecha creación"],["nombre","Nombre"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setProyViewOpts(o => ({ ...o, sortBy: val }))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${proyViewOpts.sortBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
                           {label}
