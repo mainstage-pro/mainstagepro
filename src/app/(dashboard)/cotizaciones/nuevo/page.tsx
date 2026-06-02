@@ -11,6 +11,7 @@ import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Combobox } from "@/components/Combobox";
+import { useToast } from "@/components/Toast";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -169,6 +170,7 @@ function Input({ label, ...props }: { label: string } & React.InputHTMLAttribute
 // ─── Componente principal ─────────────────────────────────────────────────────
 function CotizadorForm() {
   const confirm = useConfirm();
+  const toast = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tratoId = searchParams.get("tratoId") ?? "";
@@ -244,6 +246,10 @@ function CotizadorForm() {
   const [showNuevoEqModal, setShowNuevoEqModal] = useState(false);
   const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
   const [guardandoEq, setGuardandoEq] = useState(false);
+  const [showNuevoEqPropioModal, setShowNuevoEqPropioModal] = useState(false);
+  const [nuevoEqPropioForm, setNuevoEqPropioForm] = useState({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" });
+  const [nuevoEqPropioDescEditado, setNuevoEqPropioDescEditado] = useState(false);
+  const [guardandoEqPropio, setGuardandoEqPropio] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
   const [jornadasPlan, setJornadasPlan] = useState<Jornada[]>([]);
   // Selector pendiente por jornada (antes de hacer clic en Agregar)
@@ -738,6 +744,46 @@ function CotizadorForm() {
       setShowNuevoEqModal(false);
     } finally {
       setGuardandoEq(false);
+    }
+  }
+
+  // ── Registrar nuevo equipo propio en DB ──
+  async function crearEquipoPropio() {
+    const f = nuevoEqPropioForm;
+    const categoriaId = f.categoriaId || categoriasList[0]?.id || "";
+    if (!f.marca.trim() || !f.descripcion.trim() || !f.precioRenta || !categoriaId) {
+      toast.error("Completa todos los campos requeridos.");
+      return;
+    }
+    setGuardandoEqPropio(true);
+    try {
+      const res = await fetch("/api/equipos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          descripcion: f.descripcion.trim(),
+          marca: f.marca.trim() || null,
+          modelo: f.modelo.trim() || null,
+          categoriaId,
+          tipo: "PROPIO",
+          precioRenta: parseFloat(f.precioRenta) || 0,
+          cantidadTotal: 1,
+        }),
+      });
+      if (!res.ok) {
+        toast.error("No se pudo registrar el equipo. Intenta de nuevo.");
+        return;
+      }
+      const { equipo: newEq } = await res.json();
+      setEquipos(prev => [...prev, newEq]);
+      toast.success("Equipo registrado en inventario ✓");
+      setNuevoEqPropioForm({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" });
+      setNuevoEqPropioDescEditado(false);
+      setShowNuevoEqPropioModal(false);
+    } catch {
+      toast.error("No se pudo registrar el equipo. Intenta de nuevo.");
+    } finally {
+      setGuardandoEqPropio(false);
     }
   }
 
@@ -1535,18 +1581,107 @@ function CotizadorForm() {
             )}
 
             <div className="mt-1 flex items-center justify-between">
-              <button
-                onClick={() => fetch("/api/equipos").then(r => r.json()).then(data => setEquipos(data.equipos ?? []))}
-                className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors"
-                title="Recargar lista de equipos del catálogo"
-              >
-                ↻ Recargar catálogo
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowNuevoEqPropioModal(p => !p)}
+                  className="text-xs text-[#B3985B] hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <span className="text-base leading-none">+</span>
+                  <span>Registrar equipo nuevo</span>
+                </button>
+                <button
+                  onClick={() => fetch("/api/equipos").then(r => r.json()).then(data => setEquipos(data.equipos ?? []))}
+                  className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors"
+                  title="Recargar lista de equipos del catálogo"
+                >
+                  ↻ Recargar catálogo
+                </button>
+              </div>
               <a href="/catalogo/equipos" target="_blank" className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
                 → Ir al catálogo de equipos
               </a>
             </div>
           </Seccion>
+
+          {/* Panel: registrar nuevo equipo propio rápido */}
+          {showNuevoEqPropioModal && (
+            <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
+              <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-1">Registrar equipo en inventario</p>
+              <p className="text-[#555] text-[10px] mb-3">Se guardará en el Inventario Maestro automáticamente</p>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <input
+                  value={nuevoEqPropioForm.marca}
+                  onChange={e => {
+                    const marca = e.target.value;
+                    setNuevoEqPropioForm(p => ({
+                      ...p,
+                      marca,
+                      descripcion: p.descripcion && nuevoEqPropioDescEditado ? p.descripcion : `${marca} ${p.modelo}`.trim(),
+                    }));
+                  }}
+                  placeholder="Marca *"
+                  className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                <input
+                  value={nuevoEqPropioForm.modelo}
+                  onChange={e => {
+                    const modelo = e.target.value;
+                    setNuevoEqPropioForm(p => ({
+                      ...p,
+                      modelo,
+                      descripcion: p.descripcion && nuevoEqPropioDescEditado ? p.descripcion : `${p.marca} ${modelo}`.trim(),
+                    }));
+                  }}
+                  placeholder="Modelo"
+                  className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                <div className="col-span-2">
+                  <input
+                    value={nuevoEqPropioForm.descripcion}
+                    onChange={e => {
+                      setNuevoEqPropioForm(p => ({ ...p, descripcion: e.target.value }));
+                      setNuevoEqPropioDescEditado(true);
+                    }}
+                    placeholder="Nombre / Descripción *"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  value={nuevoEqPropioForm.precioRenta}
+                  onChange={e => setNuevoEqPropioForm(p => ({ ...p, precioRenta: e.target.value }))}
+                  placeholder="Precio de renta (MXN) *"
+                  className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                <select
+                  value={nuevoEqPropioForm.categoriaId}
+                  onChange={e => setNuevoEqPropioForm(p => ({ ...p, categoriaId: e.target.value }))}
+                  className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                >
+                  <option value="">Categoría (opcional)</option>
+                  {categoriasList.map(c => (
+                    <option key={c.id} value={c.id}>{c.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={crearEquipoPropio}
+                  disabled={guardandoEqPropio || !nuevoEqPropioForm.marca.trim() || !nuevoEqPropioForm.descripcion.trim() || !nuevoEqPropioForm.precioRenta}
+                  className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40"
+                >
+                  {guardandoEqPropio ? "Registrando..." : "Registrar equipo"}
+                </button>
+                <button
+                  onClick={() => { setShowNuevoEqPropioModal(false); setNuevoEqPropioForm({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" }); setNuevoEqPropioDescEditado(false); }}
+                  className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ── Equipos de terceros ── */}
           <Seccion titulo="Equipos de terceros" hint="sin descuento por volumen · costo de proveedor afecta viabilidad">
