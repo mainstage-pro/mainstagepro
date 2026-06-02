@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasHoyWidget from "@/components/TareasHoyWidget";
 import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
+import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -301,12 +302,7 @@ export default async function DashboardPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">
         <DailyGreeting nombre={session?.name ?? ""} />
-        <Link
-          href="/crm/tratos/nuevo"
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors shrink-0 mt-1"
-        >
-          + Nuevo trato
-        </Link>
+        <NuevoTratoDropdown />
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
