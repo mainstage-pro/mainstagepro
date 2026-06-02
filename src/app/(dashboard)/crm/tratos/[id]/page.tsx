@@ -1776,7 +1776,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="w-8 h-8 rounded-full bg-[#B3985B]/10 flex items-center justify-center text-lg">⚡</div>
             <div>
               <p className="text-white font-bold text-base">Lead registrado</p>
-              <p className="text-gray-500 text-xs">Inbound · {ORIGEN_LEAD_LABELS[trato.origenLead] ?? trato.origenLead}</p>
+              <p className="text-gray-500 text-xs">Inbound · {ORIGEN_LABELS[trato.origenLead] ?? trato.origenLead}</p>
             </div>
           </div>
           {trato.nombreEvento && trato.nombreEvento !== 'Lead sin evento definido' && (
@@ -1788,7 +1788,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           {trato.fechaEventoEstimada && (
             <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
               <p className="text-xs text-gray-500 mb-1">Fecha del evento</p>
-              <p className="text-sm text-white">{fmtFecha(trato.fechaEventoEstimada)}</p>
+              <p className="text-sm text-white">{new Date(trato.fechaEventoEstimada).toLocaleDateString('es-MX', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 mt-4">
