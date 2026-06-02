@@ -201,6 +201,7 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
 
@@ -210,7 +211,17 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
   }, [val, multiline]);
 
+  useEffect(() => {
+    if (!dirty) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      if (dirty) { onSave(field, val); setDirty(false); }
+    }, 1500);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [val, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleBlur() {
+    if (timerRef.current) clearTimeout(timerRef.current);
     if (dirty) { onSave(field, val); setDirty(false); }
   }
 
@@ -3246,6 +3257,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
                   <Campo label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                  {/* Horarios del día del evento */}
+                  <Campo label="Hora llegada/montaje (venue)" value={proyecto.horaMontaje} field="horaMontaje" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora inicio del evento" value={proyecto.horaInicio} field="horaInicio" type="time" onSave={guardarCampo} />
+                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
+                  <div className="col-span-1" />
                   <div className="col-span-2">
                     <Campo label="Dirección del venue" value={proyecto.direccionVenue} field="direccionVenue" onSave={guardarCampo} />
                   </div>
@@ -3255,8 +3271,40 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-2">
                     <Campo label="Indicaciones de acceso" value={proyecto.indicacionesAcceso} field="indicacionesAcceso" type="textarea" onSave={guardarCampo} />
                   </div>
+                  <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
+                  <Campo label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" type="time" onSave={guardarCampo} />
+                  {/* ── Llamado en bodega (fecha + hora) ── */}
                   <div className="col-span-2">
-                    <Campo label="Llamado en bodega (fecha y hora)" value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 16).replace('T', ' ') : null} field="llamadoBodega" onSave={(field, value) => guardarCampo(field, value ? new Date(value).toISOString() : '')} />
+                    <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
+                    <div className="flex gap-2">
+                      {/* Date part */}
+                      <input
+                        type="date"
+                        defaultValue={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : ''}
+                        onBlur={e => {
+                          const fechaPart = e.target.value;
+                          const horaPart = proyecto.llamadoBodega
+                            ? proyecto.llamadoBodega.substring(11, 16)
+                            : '08:00';
+                          if (fechaPart) {
+                            guardarCampo('llamadoBodega', new Date(`${fechaPart}T${horaPart}:00`).toISOString());
+                          } else {
+                            guardarCampo('llamadoBodega', '');
+                          }
+                        }}
+                        className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
+                      {/* Time part */}
+                      <TimePicker
+                        value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : ''}
+                        onChange={v => {
+                          const fechaPart = proyecto.llamadoBodega
+                            ? proyecto.llamadoBodega.substring(0, 10)
+                            : new Date().toISOString().substring(0, 10);
+                          guardarCampo('llamadoBodega', new Date(`${fechaPart}T${v}:00`).toISOString());
+                        }}
+                      />
+                    </div>
                   </div>
                 </>)}
               </div>
