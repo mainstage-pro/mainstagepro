@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
       origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
+      updatedAt: true, etapaCambiadaEn: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
       cotizaciones: {
@@ -87,6 +88,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cliente requerido" }, { status: 400 });
     }
 
+    // Determine etapa: NURTURING leads start as LEAD, others use body.etapa or default DESCUBRIMIENTO
+    const trato_etapa = body.tipoProspecto === 'NURTURING'
+      ? 'LEAD'
+      : (body.etapa || 'DESCUBRIMIENTO');
+
     const trato = await prisma.trato.create({
       data: {
         clienteId,
@@ -98,7 +104,7 @@ export async function POST(request: NextRequest) {
         origenVenta: body.origenVenta || "CLIENTE_PROPIO",
         vendedorOrigenId: body.vendedorOrigenId || null,
         estatusContacto: "PENDIENTE",
-        etapa: "DESCUBRIMIENTO",
+        etapa: trato_etapa,
         clasificacion: body.clasificacion || "PROSPECTO",
         tipoServicio: body.tipoServicio || null,
         tipoProspecto: body.tipoProspecto || "ACTIVO",
@@ -124,20 +130,42 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Crear primer seguimiento obligatorio
+    // Auto-seguimiento: if primerSeguimiento.fecha provided, use it; otherwise for NURTURING create auto-seguimiento
     if (body.primerSeguimiento?.fecha) {
       const ps = body.primerSeguimiento;
       await prisma.seguimiento.create({
         data: {
           tratoId: trato.id,
-          tipo: "manual",
+          tipo: 'manual',
           numero: 0,
-          canal: ps.canal || "whatsapp",
-          titulo: "Primer contacto",
+          canal: ps.canal || 'whatsapp',
+          titulo: 'Primer contacto',
           nota: ps.nota || null,
           fechaProgramada: new Date(`${ps.fecha}T10:00:00`),
         },
       });
+    } else if (trato.tipoProspecto === 'NURTURING') {
+      // Auto-create "Primer contacto" seguimiento for tomorrow 10:00 AM
+      const manana = new Date();
+      manana.setDate(manana.getDate() + 1);
+      const mananaStr = manana.toISOString().split('T')[0];
+      await prisma.seguimiento.create({
+        data: {
+          tratoId: trato.id,
+          tipo: 'manual',
+          numero: 0,
+          canal: 'whatsapp',
+          titulo: 'Primer contacto — calificar lead',
+          fechaProgramada: new Date(`${mananaStr}T10:00:00`),
+        },
+      });
+      // Set fechaProximaAccion if not already provided
+      if (!body.fechaProximaAccion) {
+        await prisma.trato.update({
+          where: { id: trato.id },
+          data: { fechaProximaAccion: new Date(`${mananaStr}T10:00:00`) },
+        });
+      }
     }
 
     // Auto-init nurturingData for NURTURING leads

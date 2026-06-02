@@ -8,12 +8,13 @@ interface BadgeDiasProps {
   tipo: "tarea" | "trato";
   cerrado?: boolean;
   labelCerrado?: string;
+  urgenciaClassName?: string;
 }
 
-export function BadgeDias({ inicio, fin, tipo, cerrado, labelCerrado }: BadgeDiasProps) {
+export function BadgeDias({ inicio, fin, tipo, cerrado, labelCerrado, urgenciaClassName }: BadgeDiasProps) {
   const dias = calcularDias(new Date(inicio), fin ? new Date(fin) : null);
   const nivel = tipo === "tarea" ? nivelTarea(dias) : nivelTrato(dias);
-  const style = cerrado ? "bg-[#1e1e1e] text-[#555]" : NIVEL_STYLES[nivel];
+  const style = cerrado ? "bg-[#1e1e1e] text-[#555]" : (urgenciaClassName ?? NIVEL_STYLES[nivel]);
 
   const label = cerrado
     ? `${dias}d${labelCerrado ? ` (${labelCerrado})` : ""}`

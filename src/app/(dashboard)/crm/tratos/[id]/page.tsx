@@ -89,12 +89,13 @@ interface Trato {
 }
 
 // ─── Catálogos / Constantes ───────────────────────────────────────────────────
-const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["LEAD", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const ETAPA_LABELS: Record<string, string> = {
-  DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
+  LEAD: "Lead", DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
   VENTA_CERRADA: "Venta Cerrada", VENTA_PERDIDA: "Venta Perdida",
 };
 const ETAPA_COLORS: Record<string, string> = {
+  LEAD: "bg-violet-900/50 text-violet-300",
   DESCUBRIMIENTO: "bg-gray-700 text-gray-200",
   OPORTUNIDAD: "bg-yellow-900/50 text-yellow-300",
   VENTA_CERRADA: "bg-green-900/50 text-green-300",
@@ -1604,6 +1605,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             className="ml-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
           >
             cambiar
+          </button>
+        </div>
+      )}
+
+      {/* ── Banner LEAD pendiente ── */}
+      {trato.etapa === 'LEAD' && (
+        <div className="bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">⚡</span>
+            <div>
+              <p className="text-sm font-semibold text-[#B3985B]">Lead pendiente de calificar</p>
+              <p className="text-xs text-gray-500 mt-0.5">Completa el descubrimiento para convertir este lead en oportunidad activa</p>
+            </div>
+          </div>
+          <button
+            onClick={() => cambiarEtapa('DESCUBRIMIENTO')}
+            disabled={saving}
+            className="shrink-0 px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
+          >
+            Convertir a oportunidad →
           </button>
         </div>
       )}

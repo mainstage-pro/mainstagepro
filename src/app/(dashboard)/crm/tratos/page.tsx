@@ -38,6 +38,8 @@ type Trato = {
   origenLead: string;
   fechaProximaAccion: string | null;
   createdAt: string;
+  updatedAt?: string | null;
+  etapaCambiadaEn?: string | null;
   fechaCierre: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null };
   responsable: { id: string; name: string } | null;
@@ -48,6 +50,7 @@ type Trato = {
 type Cliente = { id: string; nombre: string; empresa: string | null; telefono: string | null };
 
 const ETAPA_COLORS: Record<string, string> = {
+  LEAD: "bg-violet-900/40 text-violet-300",
   DESCUBRIMIENTO: "bg-blue-900/40 text-blue-300",
   OPORTUNIDAD: "bg-yellow-900/40 text-yellow-300",
   VENTA_CERRADA: "bg-green-900/40 text-green-300",
@@ -55,6 +58,7 @@ const ETAPA_COLORS: Record<string, string> = {
 };
 
 const ETAPA_TEXT: Record<string, string> = {
+  LEAD: "text-violet-500/60",
   DESCUBRIMIENTO: "text-blue-500/60",
   OPORTUNIDAD:    "text-yellow-500/60",
   VENTA_CERRADA:  "text-emerald-500/60",
@@ -80,6 +84,14 @@ const COT_LABELS: Record<string, string> = {
 
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
+
+function urgenciaColor(fechaProximaAccion: string | Date | null): string {
+  if (!fechaProximaAccion) return 'text-red-400 bg-red-900/20';
+  const diff = (new Date(fechaProximaAccion).getTime() - Date.now()) / 86400000;
+  if (diff >= 0 && diff <= 7) return 'text-emerald-400 bg-emerald-900/20';  // próxima acción ≤7d
+  if (diff > 7) return 'text-yellow-400 bg-yellow-900/20';                   // programada pero lejos
+  return 'text-red-400 bg-red-900/20';                                        // vencida (diff < 0)
+}
 
 function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
@@ -565,6 +577,13 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                     <span className={`text-[10px] font-medium uppercase tracking-wide ${ETAPA_TEXT[t.etapa] ?? "text-gray-700"}`}>
                       {ETAPA_LABELS[t.etapa] ?? t.etapa}
                     </span>
+                    {(() => {
+                      const ref = new Date((t.etapaCambiadaEn ?? t.createdAt) as string);
+                      const dias = (Date.now() - ref.getTime()) / 86400000;
+                      return dias > 10 && !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa) ? (
+                        <span className="text-[9px] text-gray-600 border border-gray-800 rounded px-1 py-0.5 font-medium">ESTANCADO</span>
+                      ) : null;
+                    })()}
                   </div>
                   <p className="text-gray-600 text-[11px] mt-0.5 truncate">
                     {t.nombreEvento || TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
@@ -574,7 +593,7 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                 </div>
 
                 <div className="shrink-0 hidden sm:block">
-                  <BadgeDias inicio={t.createdAt} fin={t.fechaCierre} tipo="trato" cerrado={!activo} labelCerrado={t.etapa === "VENTA_PERDIDA" ? "perdido" : undefined} />
+                  <BadgeDias inicio={t.createdAt} fin={t.fechaCierre} tipo="trato" cerrado={!activo} labelCerrado={t.etapa === "VENTA_PERDIDA" ? "perdido" : undefined} urgenciaClassName={urgenciaColor(t.fechaProximaAccion)} />
                 </div>
 
                 <div className="shrink-0 text-right min-w-[76px] hidden sm:block">
@@ -943,6 +962,30 @@ export default function TratosPage() {
   const hoy = new Date().toISOString().split("T")[0];
 
   const tratosFiltrados = tratos.filter(t => {
+    if (filtroEtapa === 'LEADS') {
+      const matchFrio2 = t.tipoProspecto === 'NURTURING';
+      const q2 = busqueda.toLowerCase();
+      const matchB2 = !q2 || t.cliente.nombre.toLowerCase().includes(q2) || (t.cliente.empresa ?? '').toLowerCase().includes(q2) || (t.nombreEvento ?? '').toLowerCase().includes(q2) || (t.lugarEstimado ?? '').toLowerCase().includes(q2);
+      return matchFrio2 && matchB2;
+    }
+    if (filtroEtapa === 'CIERRE_SEMANA') {
+      const hoyD = new Date(); hoyD.setHours(0, 0, 0, 0);
+      const finSemana = new Date(hoyD);
+      finSemana.setDate(hoyD.getDate() + (6 - hoyD.getDay()));
+      finSemana.setHours(23, 59, 59, 999);
+      const qcs = busqueda.toLowerCase();
+      const matchBcs = !qcs || t.cliente.nombre.toLowerCase().includes(qcs) || (t.cliente.empresa ?? '').toLowerCase().includes(qcs) || (t.nombreEvento ?? '').toLowerCase().includes(qcs);
+      return matchBcs && !!t.fechaProximaAccion && new Date(t.fechaProximaAccion) >= hoyD && new Date(t.fechaProximaAccion) <= finSemana;
+    }
+    if (filtroEtapa === 'ACCION_REQUERIDA') {
+      const hoyAR = new Date();
+      const qar = busqueda.toLowerCase();
+      const matchBar = !qar || t.cliente.nombre.toLowerCase().includes(qar) || (t.cliente.empresa ?? '').toLowerCase().includes(qar) || (t.nombreEvento ?? '').toLowerCase().includes(qar);
+      return matchBar && (
+        (!!t.fechaProximaAccion && new Date(t.fechaProximaAccion) < hoyAR) ||
+        (!t.fechaProximaAccion && (Date.now() - new Date(t.updatedAt ?? t.createdAt).getTime()) / 86400000 > 3)
+      );
+    }
     const matchEtapa = !filtroEtapa || t.etapa === filtroEtapa;
     const matchFrio = !filtroFrio || t.tipoProspecto === "NURTURING";
     const q = busqueda.toLowerCase();
@@ -1077,6 +1120,56 @@ export default function TratosPage() {
       {vista === "lista" && (
         <div className="space-y-4">
 
+          {/* ── Pipeline overview cards ── */}
+          {(() => {
+            const hoyC = new Date(); hoyC.setHours(0, 0, 0, 0);
+            const finSemanaC = new Date(hoyC);
+            finSemanaC.setDate(hoyC.getDate() + (6 - hoyC.getDay()));
+            finSemanaC.setHours(23, 59, 59, 999);
+
+            const counts = {
+              leads: tratos.filter(t => t.etapa === 'LEAD').length,
+              descubrimiento: tratos.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
+              oportunidades: tratos.filter(t => t.etapa === 'OPORTUNIDAD').length,
+              cierreEstaSemana: tratos.filter(t => {
+                if (!t.fechaProximaAccion) return false;
+                const d = new Date(t.fechaProximaAccion);
+                return d >= hoyC && d <= finSemanaC;
+              }).length,
+            };
+
+            const cards = [
+              { emoji: '⚡', label: 'Leads sin contactar', count: counts.leads, filter: 'LEAD', color: 'violet' },
+              { emoji: '🔍', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO', color: 'blue' },
+              { emoji: '💬', label: 'Oportunidades activas', count: counts.oportunidades, filter: 'OPORTUNIDAD', color: 'yellow' },
+              { emoji: '🔥', label: 'Cierre esta semana', count: counts.cierreEstaSemana, filter: 'CIERRE_SEMANA', color: 'orange' },
+            ];
+
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                {cards.map(card => (
+                  <button
+                    key={card.filter}
+                    onClick={() => setFiltroEtapa(filtroEtapa === card.filter ? null : card.filter)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                      filtroEtapa === card.filter
+                        ? 'bg-[#1a1a1a] border-[#B3985B]/40 shadow-[0_0_12px_rgba(179,152,91,0.08)]'
+                        : 'bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]'
+                    }`}
+                  >
+                    <span className="text-base">{card.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-gray-500 truncate">{card.label}</p>
+                      <p className={`text-xl font-bold tabular-nums ${
+                        card.count > 0 ? 'text-white' : 'text-gray-700'
+                      }`}>{card.count}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            );
+          })()}
+
           {/* ── Barra de filtros horizontal ── */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Etapas como pills */}
@@ -1121,6 +1214,18 @@ export default function TratosPage() {
               <span className={`text-[10px] font-bold ${filtroFrio ? "" : "text-gray-600"}`}>
                 {tratos.filter(t => t.tipoProspecto === "NURTURING").length}
               </span>
+            </button>
+
+            {/* Filtro acción requerida */}
+            <button
+              onClick={() => setFiltroEtapa(filtroEtapa === 'ACCION_REQUERIDA' ? null : 'ACCION_REQUERIDA')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
+                filtroEtapa === 'ACCION_REQUERIDA'
+                  ? 'bg-red-500/15 text-red-400 border-red-500/40'
+                  : 'bg-transparent text-gray-500 border-[#222] hover:border-[#333] hover:text-gray-300'
+              }`}
+            >
+              ⚠ Acción requerida
             </button>
 
             {/* Agrupación */}
