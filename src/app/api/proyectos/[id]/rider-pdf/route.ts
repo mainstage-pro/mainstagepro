@@ -63,6 +63,27 @@ export async function GET(
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
     : null
 
+  // Load icon fallback (used when equipment has no image)
+  const iconPath = path.join(process.cwd(), 'public', 'logo-icon.png')
+  const logoIconSrc = fs.existsSync(iconPath)
+    ? `data:image/png;base64,${fs.readFileSync(iconPath).toString('base64')}`
+    : null
+
+  // Resolve relative /public paths to base64 for @react-pdf/renderer (runs server-side, no browser context)
+  function resolveImg(url: string | null | undefined): string | null {
+    if (!url) return logoIconSrc  // fallback to Mainstage icon
+    if (url.startsWith('data:')) return url  // already base64
+    if (url.startsWith('/')) {
+      const filePath = path.join(process.cwd(), 'public', url)
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filePath).slice(1).toLowerCase()
+        const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+        return `data:${mime};base64,${fs.readFileSync(filePath).toString('base64')}`
+      }
+    }
+    return logoIconSrc  // fallback if file not found
+  }
+
   // Serialize dates
   const data = {
     numeroProyecto: (proyecto as unknown as Record<string, unknown>).numeroProyecto as string ?? '',
@@ -92,7 +113,7 @@ export async function GET(
         descripcion: eq.equipo.descripcion,
         marca: eq.equipo.marca,
         modelo: (eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? null,
-        imagenUrl: (eq.equipo as unknown as Record<string, unknown>).imagenUrl as string | null ?? null,
+        imagenUrl: resolveImg((eq.equipo as unknown as Record<string, unknown>).imagenUrl as string | null),
         categoria: eq.equipo.categoria,
       },
       riderAccesorios: eq.riderAccesorios.map(a => ({

@@ -446,17 +446,14 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
   return (
     <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
       {/* Equipment image thumbnail */}
-      <div className="w-9 h-9 rounded-sm overflow-hidden bg-[#111] shrink-0 flex items-center justify-center">
-        {eq.equipo.imagenUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={eq.equipo.imagenUrl} alt={eq.equipo.descripcion} className="w-full h-full object-contain p-0.5" />
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-        )}
+      <div className="w-9 h-9 rounded-sm overflow-hidden bg-black shrink-0 flex items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={eq.equipo.imagenUrl || "/logo-icon.png"}
+          alt={eq.equipo.descripcion}
+          className="w-full h-full object-contain p-0.5"
+          onError={(e) => { (e.target as HTMLImageElement).src = "/logo-icon.png"; }}
+        />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>

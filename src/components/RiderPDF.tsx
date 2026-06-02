@@ -227,9 +227,9 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                 {/* Equipo header */}
                 <View style={s.equipHead}>
                   <View style={s.checkBox} />
-                  {eq.equipo.imagenUrl ? (
-                    <Image src={eq.equipo.imagenUrl} style={{ width: 32, height: 32, marginRight: 6, objectFit: 'contain' }} />
-                  ) : null}
+                  {eq.equipo.imagenUrl && (
+                    <Image src={eq.equipo.imagenUrl} style={{ width: 36, height: 36, marginRight: 6, objectFit: 'contain' }} />
+                  )}
                   <Text style={s.equipName}>
                     {[eq.equipo.marca, eq.equipo.modelo].filter(Boolean).join(' ') || eq.equipo.descripcion}
                   </Text>
