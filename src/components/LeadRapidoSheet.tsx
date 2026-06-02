@@ -37,9 +37,6 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
   const [fechaEventoSinDefinir, setFechaEventoSinDefinir] = useState(false);
   const [guardandoLead, setGuardandoLead] = useState(false);
   const [leadCreado, setLeadCreado] = useState<{ id: string; nombre: string } | null>(null);
-  const [showSeguimientoInline, setShowSeguimientoInline] = useState(false);
-  const [seguimientoInlineForm, setSeguimientoInlineForm] = useState({ fecha: '', nota: '' });
-  const [guardandoSeguimiento, setGuardandoSeguimiento] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -79,16 +76,15 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
 
   function resetLocalState() {
     setLeadCreado(null);
-    setShowSeguimientoInline(false);
     setLeadForm({ nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '', notasIniciales: '', fechaProximaAccion: '', fechaEvento: '' });
     setFechaEventoSinDefinir(false);
-    setSeguimientoInlineForm({ fecha: '', nota: '' });
     setBusqueda('');
     setSugerencias([]);
     setClienteSeleccionado(null);
     setShowSugerencias(false);
     setClienteMode('nuevo');
   }
+
 
   async function crearLead() {
     const nombre = clienteMode === 'existente'
@@ -134,29 +130,6 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
     }
   }
 
-  async function agregarSeguimientoInline() {
-    if (!leadCreado || !seguimientoInlineForm.fecha) return;
-    setGuardandoSeguimiento(true);
-    try {
-      await fetch('/api/seguimientos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tratoId: leadCreado.id,
-          tipo: 'manual',
-          canal: 'whatsapp',
-          titulo: 'Seguimiento programado',
-          fechaProgramada: seguimientoInlineForm.fecha,
-          nota: seguimientoInlineForm.nota || null,
-        }),
-      });
-      toast.success('Seguimiento creado ✓');
-      resetLocalState();
-      onOpenChange(false);
-    } finally {
-      setGuardandoSeguimiento(false);
-    }
-  }
 
   const canSubmit = clienteMode === 'existente'
     ? !!clienteSeleccionado
@@ -344,39 +317,12 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
           <div className="mt-6 px-4 pb-6">
             <div className="bg-emerald-900/20 border border-emerald-700/30 rounded-xl p-4 mb-4">
               <p className="text-emerald-400 font-medium text-sm">✓ Lead registrado</p>
-              <p className="text-gray-400 text-xs mt-0.5">{leadCreado.nombre} se guardó en el CRM</p>
+              <p className="text-gray-400 text-xs mt-0.5">{leadCreado.nombre} se guardó en el CRM con seguimiento para mañana</p>
             </div>
-            {!showSeguimientoInline ? (
-              <div>
-                <p className="text-gray-300 text-sm mb-3">¿Agregar seguimiento ahora?</p>
-                <div className="flex gap-2">
-                  <button onClick={() => setShowSeguimientoInline(true)}
-                    className="flex-1 px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold">Sí, agregar</button>
-                  <button onClick={() => { resetLocalState(); onOpenChange(false); }}
-                    className="flex-1 px-3 py-2 rounded-lg border border-[#2a2a2a] text-gray-400 text-sm hover:text-white">No, cerrar</button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Fecha del seguimiento *</label>
-                  <input type="date" value={seguimientoInlineForm.fecha}
-                    onChange={e => setSeguimientoInlineForm(p => ({ ...p, fecha: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1 block">Nota</label>
-                  <textarea value={seguimientoInlineForm.nota}
-                    onChange={e => setSeguimientoInlineForm(p => ({ ...p, nota: e.target.value }))}
-                    placeholder="Llamar para confirmar disponibilidad..."
-                    rows={2} className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                </div>
-                <button onClick={agregarSeguimientoInline} disabled={guardandoSeguimiento || !seguimientoInlineForm.fecha}
-                  className="w-full px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">
-                  {guardandoSeguimiento ? 'Guardando...' : 'Guardar seguimiento'}
-                </button>
-              </div>
-            )}
+            <button onClick={() => { resetLocalState(); onOpenChange(false); }}
+              className="w-full px-4 py-2 rounded-lg border border-[#2a2a2a] text-gray-300 text-sm hover:text-white hover:border-[#3a3a3a] transition-colors">
+              Cerrar
+            </button>
           </div>
         )}
       </SheetContent>
