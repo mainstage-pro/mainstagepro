@@ -179,13 +179,20 @@ const FORM_EMPTY: NuevaOportunidadForm = {
   nombreEvento: "", fechaEventoEstimada: "", presupuestoEstimado: "",
 };
 
-function NuevaOportunidadModal({ onClose, onCreated }: {
+function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
   onClose: () => void;
   onCreated: (trato: Trato, cotizacionId: string) => void;
+  onLeadCreated?: () => void;
 }) {
+  const [modoModal, setModoModal] = useState<'oportunidad' | 'lead-rapido'>('oportunidad');
   const [form, setForm] = useState<NuevaOportunidadForm>({ ...FORM_EMPTY });
+  const [leadRapidoForm, setLeadRapidoForm] = useState({
+    nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '',
+    notasIniciales: '', fechaProximaAccion: '',
+  });
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savingLead, setSavingLead] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const toast = useToast();
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -230,6 +237,35 @@ function NuevaOportunidadModal({ onClose, onCreated }: {
     }
   }
 
+  async function submitLeadRapido() {
+    if (!leadRapidoForm.nombre.trim()) { toast.error("El nombre es requerido"); return; }
+    setSavingLead(true);
+    try {
+      const body: Record<string, unknown> = {
+        clienteNuevo: { nombre: leadRapidoForm.nombre.trim(), telefono: leadRapidoForm.telefono || null },
+        tipoProspecto: 'NURTURING',
+        origenLead: leadRapidoForm.origenLead,
+        tipoEvento: leadRapidoForm.tipoEvento || 'OTRO',
+        nombreEvento: leadRapidoForm.notasIniciales.trim() || 'Lead sin evento definido',
+      };
+      if (leadRapidoForm.fechaProximaAccion) {
+        body.primerSeguimiento = { fecha: leadRapidoForm.fechaProximaAccion, canal: 'whatsapp' };
+        body.fechaProximaAccion = leadRapidoForm.fechaProximaAccion;
+      }
+      const res = await fetch('/api/tratos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) { toast.error('Error al registrar lead'); return; }
+      toast.success('Lead registrado ✓');
+      onLeadCreated?.();
+      onClose();
+    } finally {
+      setSavingLead(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.8)", backdropFilter: "blur(4px)" }}
@@ -237,67 +273,161 @@ function NuevaOportunidadModal({ onClose, onCreated }: {
       <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-white font-semibold text-base">Nueva oportunidad</h2>
-            <p className="text-[#555] text-xs mt-0.5">Crea el trato y la cotización borrador en un paso</p>
+            <h2 className="text-white font-semibold text-base">
+              {modoModal === 'lead-rapido' ? 'Lead rápido' : 'Nueva oportunidad'}
+            </h2>
+            <p className="text-[#555] text-xs mt-0.5">
+              {modoModal === 'lead-rapido' ? 'Solo nombre y origen — sin cotización' : 'Crea el trato y la cotización borrador en un paso'}
+            </p>
           </div>
           <button onClick={onClose} className="text-[#555] hover:text-white text-lg leading-none">✕</button>
         </div>
-        <div className="space-y-4">
-          <div className="relative" ref={dropdownRef}>
-            <label className="text-xs text-[#6b7280] block mb-1">Cliente *</label>
-            <input value={form.clienteQuery}
-              onChange={e => { setForm(p => ({ ...p, clienteQuery: e.target.value, clienteId: "" })); setShowDropdown(true); }}
-              onFocus={() => setShowDropdown(true)}
-              placeholder="Buscar cliente..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            {form.clienteId && <p className="text-[11px] text-[#B3985B] mt-1">✓ Cliente seleccionado</p>}
-            {showDropdown && filtrados.length > 0 && !form.clienteId && (
-              <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg max-h-44 overflow-y-auto shadow-xl">
-                {filtrados.map(c => (
-                  <button key={c.id}
-                    onClick={() => { setForm(p => ({ ...p, clienteId: c.id, clienteQuery: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") })); setShowDropdown(false); }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors">
-                    {c.nombre}{c.empresa ? <span className="text-gray-500"> · {c.empresa}</span> : null}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-[#6b7280] block mb-1">Tipo de evento</label>
-              <Combobox value={form.tipoEvento} onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
-                options={TIPOS_EVENTO.map(t => ({ value: t, label: TIPO_EVENTO_LABELS[t] }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] block mb-1">Nombre del evento</label>
-              <input value={form.nombreEvento} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
-                placeholder="Opcional"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-[#6b7280] block mb-1">Fecha estimada</label>
-              <input type="date" value={form.fechaEventoEstimada} onChange={e => setForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-            <div>
-              <label className="text-xs text-[#6b7280] block mb-1">Presupuesto estimado</label>
-              <input type="number" value={form.presupuestoEstimado} onChange={e => setForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
-                placeholder="0.00"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
-          <button onClick={submit} disabled={saving || !form.clienteId}
-            className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
-            {saving ? "Creando..." : "Crear oportunidad"}
+
+        {/* Mode selector tabs */}
+        <div className="flex gap-1 bg-[#0d0d0d] rounded-xl p-1 border border-[#1e1e1e]">
+          <button
+            onClick={() => setModoModal('oportunidad')}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              modoModal === 'oportunidad'
+                ? 'bg-[#B3985B] text-black'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            Nueva oportunidad
+          </button>
+          <button
+            onClick={() => setModoModal('lead-rapido')}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              modoModal === 'lead-rapido'
+                ? 'bg-[#B3985B] text-black'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            + Lead rápido
           </button>
         </div>
+
+        {modoModal === 'oportunidad' ? (
+          <>
+            <div className="space-y-4">
+              <div className="relative" ref={dropdownRef}>
+                <label className="text-xs text-[#6b7280] block mb-1">Cliente *</label>
+                <input value={form.clienteQuery}
+                  onChange={e => { setForm(p => ({ ...p, clienteQuery: e.target.value, clienteId: "" })); setShowDropdown(true); }}
+                  onFocus={() => setShowDropdown(true)}
+                  placeholder="Buscar cliente..."
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                {form.clienteId && <p className="text-[11px] text-[#B3985B] mt-1">✓ Cliente seleccionado</p>}
+                {showDropdown && filtrados.length > 0 && !form.clienteId && (
+                  <div className="absolute z-10 mt-1 w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg max-h-44 overflow-y-auto shadow-xl">
+                    {filtrados.map(c => (
+                      <button key={c.id}
+                        onClick={() => { setForm(p => ({ ...p, clienteId: c.id, clienteQuery: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") })); setShowDropdown(false); }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-[#222] hover:text-white transition-colors">
+                        {c.nombre}{c.empresa ? <span className="text-gray-500"> · {c.empresa}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Tipo de evento</label>
+                  <Combobox value={form.tipoEvento} onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
+                    options={TIPOS_EVENTO.map(t => ({ value: t, label: TIPO_EVENTO_LABELS[t] }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Nombre del evento</label>
+                  <input value={form.nombreEvento} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
+                    placeholder="Opcional"
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Fecha estimada</label>
+                  <input type="date" value={form.fechaEventoEstimada} onChange={e => setForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Presupuesto estimado</label>
+                  <input type="number" value={form.presupuestoEstimado} onChange={e => setForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
+                    placeholder="0.00"
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+              <button onClick={submit} disabled={saving || !form.clienteId}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {saving ? "Creando..." : "Crear oportunidad"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Nombre o empresa *</label>
+                <input value={leadRapidoForm.nombre} onChange={e => setLeadRapidoForm(p => ({ ...p, nombre: e.target.value }))}
+                  placeholder="Ej. María García"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Teléfono / WhatsApp</label>
+                <input value={leadRapidoForm.telefono} onChange={e => setLeadRapidoForm(p => ({ ...p, telefono: e.target.value }))}
+                  placeholder="+52 55 0000 0000"
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">¿De dónde llegó? *</label>
+                  <select value={leadRapidoForm.origenLead} onChange={e => setLeadRapidoForm(p => ({ ...p, origenLead: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="ORGANICO">Orgánico</option>
+                    <option value="META_ADS">Meta Ads</option>
+                    <option value="GOOGLE_ADS">Google Ads</option>
+                    <option value="REFERIDO">Referido</option>
+                    <option value="RECOMPRA">Recompra</option>
+                    <option value="PROSPECCION">Prospección</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-[#6b7280] block mb-1">Tipo de evento</label>
+                  <select value={leadRapidoForm.tipoEvento} onChange={e => setLeadRapidoForm(p => ({ ...p, tipoEvento: e.target.value }))}
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                    <option value="">— Sin definir —</option>
+                    <option value="SOCIAL">Social</option>
+                    <option value="MUSICAL">Musical</option>
+                    <option value="EMPRESARIAL">Empresarial</option>
+                    <option value="OTRO">Otro</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Lo que busca / contexto</label>
+                <textarea value={leadRapidoForm.notasIniciales} onChange={e => setLeadRapidoForm(p => ({ ...p, notasIniciales: e.target.value }))}
+                  placeholder="Boda en junio, busca sonido e iluminación..."
+                  rows={2} className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div>
+                <label className="text-xs text-[#6b7280] block mb-1">Próximo seguimiento</label>
+                <input type="date" value={leadRapidoForm.fechaProximaAccion} onChange={e => setLeadRapidoForm(p => ({ ...p, fechaProximaAccion: e.target.value }))}
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+              <button onClick={submitLeadRapido} disabled={savingLead || !leadRapidoForm.nombre.trim()}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                {savingLead ? 'Registrando...' : 'Registrar lead'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -530,9 +660,10 @@ interface LeadsViewProps {
   onAbrirPopover: (tratoId: string) => void;
   onCompletar: (trato: Trato) => void;
   setActiveSeguimientoPopover: React.Dispatch<React.SetStateAction<string | null>>;
+  onConvertirOportunidad: (trato: Trato) => void;
 }
 
-function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, seguimientoForm, setSeguimientoForm, completandoSeguimiento, onAbrirPopover, onCompletar, setActiveSeguimientoPopover }: LeadsViewProps) {
+function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, seguimientoForm, setSeguimientoForm, completandoSeguimiento, onAbrirPopover, onCompletar, setActiveSeguimientoPopover, onConvertirOportunidad }: LeadsViewProps) {
   const hoyStr = new Date().toISOString().split('T')[0];
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-1 py-2">
@@ -577,12 +708,21 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
                   )}
                   <span className="text-[10px] text-gray-600">{diasRegistrado}d</span>
                 </div>
-                <button
-                  onClick={() => onAbrirPopover(t.id)}
-                  className="text-xs px-3 py-1 rounded-lg border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] transition-all"
-                >
-                  Seguimiento ✓
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => onAbrirPopover(t.id)}
+                    className="text-xs px-3 py-1 rounded-lg border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] transition-all"
+                  >
+                    Seguimiento ✓
+                  </button>
+                  <button
+                    onClick={() => onConvertirOportunidad(t)}
+                    className="text-xs px-3 py-1 rounded-lg border border-[#B3985B]/20 hover:border-[#B3985B]/50 text-[#B3985B]/60 hover:text-[#B3985B] transition-all"
+                    title="Convertir a oportunidad activa"
+                  >
+                    → Oportunidad
+                  </button>
+                </div>
               </div>
 
               {activeSeguimientoPopover === t.id && (
@@ -1090,6 +1230,21 @@ export default function TratosPage() {
                 onAbrirPopover={abrirCompletarSeguimiento}
                 onCompletar={completarSeguimiento}
                 setActiveSeguimientoPopover={setActiveSeguimientoPopover}
+                onConvertirOportunidad={async (t) => {
+                  const ok = await confirm({ message: `¿Convertir "${t.cliente.nombre}" a oportunidad activa?`, confirmText: 'Convertir' });
+                  if (!ok) return;
+                  const res = await fetch(`/api/tratos/${t.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tipoProspecto: 'ACTIVO', etapa: 'OPORTUNIDAD' }),
+                  });
+                  if (res.ok) {
+                    toast.success('Convertido a oportunidad ✓');
+                    setTratos(prev => prev.filter(tr => tr.id !== t.id));
+                  } else {
+                    toast.error('Error al convertir');
+                  }
+                }}
               />
             )
           ) : loading ? (
@@ -1192,7 +1347,14 @@ export default function TratosPage() {
       )}
 
       {showNueva && (
-        <NuevaOportunidadModal onClose={() => setShowNueva(false)} onCreated={handleCreated} />
+        <NuevaOportunidadModal
+          onClose={() => setShowNueva(false)}
+          onCreated={handleCreated}
+          onLeadCreated={async () => {
+            const refreshed = await fetch('/api/tratos').then(r => r.json());
+            setTratos(refreshed.tratos ?? []);
+          }}
+        />
       )}
 
       {/* Sheet: Registro rápido de lead */}
