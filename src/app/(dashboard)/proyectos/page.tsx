@@ -131,6 +131,7 @@ export default function ProyectosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
+  const [filtroEstado, setFiltroEstado] = useState<string | null>(null);
 
   // timeline
   const [timelineMes, setTimelineMes] = useState(() => {
@@ -183,6 +184,8 @@ export default function ProyectosPage() {
 
   const proximosFiltrados = filtrar(proximos);
   const pasadosFiltrados  = filtrar(pasados);
+
+  const pendientesCierreCount = proyectos.filter(p => p.estado === 'PENDIENTE_CIERRE').length;
 
   // Agrupación con orden de estado dentro de cada grupo
   type Grupo = { key: string; label: string; items: Proyecto[] };
@@ -340,6 +343,24 @@ export default function ProyectosPage() {
             )}
           </div>
 
+          {/* Filtro rápido PENDIENTE_CIERRE */}
+          {pendientesCierreCount > 0 && (
+            <button
+              onClick={() => setFiltroEstado(filtroEstado === 'PENDIENTE_CIERRE' ? null : 'PENDIENTE_CIERRE')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
+                filtroEstado === 'PENDIENTE_CIERRE'
+                  ? 'bg-orange-500/15 text-orange-400 border-orange-500/40'
+                  : 'bg-transparent text-orange-400/60 border-orange-500/20 hover:border-orange-500/40 hover:text-orange-400'
+              }`}
+            >
+              <span>⚠</span>
+              <span>Pendiente cierre</span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                filtroEstado === 'PENDIENTE_CIERRE' ? 'bg-orange-500/30' : 'bg-orange-500/10'
+              }`}>{pendientesCierreCount}</span>
+            </button>
+          )}
+
           {/* Barra de controles — igual estructura que tratos */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Agrupación */}
@@ -356,6 +377,24 @@ export default function ProyectosPage() {
           {/* Contenido */}
           {loading ? (
             <SkeletonPage rows={6} cols={3} />
+          ) : filtroEstado ? (
+            <div className="space-y-2">
+              <div className="px-4 py-2 text-xs text-orange-400/70 font-medium flex items-center gap-2">
+                <span>Mostrando solo: {ESTADO_PROYECTO_LABELS[filtroEstado] ?? filtroEstado} ({proyectos.filter(p => p.estado === filtroEstado).length})</span>
+                <button onClick={() => setFiltroEstado(null)} className="text-gray-500 hover:text-white">✕ Quitar filtro</button>
+              </div>
+              {proyectos.filter(p => p.estado === filtroEstado).length === 0 ? (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-12">
+                  <p className="text-gray-600 text-sm">No hay proyectos con este estado</p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                  <div className="divide-y divide-[#111]">
+                    {proyectos.filter(p => p.estado === filtroEstado).map(p => <ProyectoRow key={p.id} p={p} deletingId={deletingId} eliminar={eliminar} />)}
+                  </div>
+                </div>
+              )}
+            </div>
           ) : proximosFiltrados.length === 0 && pasadosFiltrados.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-12">
               <p className="text-gray-600 text-sm">{busqueda ? "Sin resultados" : "No hay proyectos"}</p>

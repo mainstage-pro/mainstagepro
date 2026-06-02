@@ -97,11 +97,12 @@ interface Proyecto {
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
-const ESTADOS = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "COMPLETADO", "CANCELADO"];
+const ESTADOS = ["PLANEACION", "CONFIRMADO", "EN_CURSO", "PENDIENTE_CIERRE", "COMPLETADO", "CANCELADO"];
 const ESTADO_LABELS: Record<string, string> = {
   PLANEACION: "En preparación",
   CONFIRMADO: "Confirmado",
   EN_CURSO: "En evento",
+  PENDIENTE_CIERRE: "Pendiente de cierre",
   COMPLETADO: "Finalizado",
   CANCELADO: "Cancelado",
 };
@@ -109,6 +110,7 @@ const ESTADO_COLORS: Record<string, string> = {
   PLANEACION: "bg-blue-900/50 text-blue-300",
   CONFIRMADO: "bg-green-900/50 text-green-300",
   EN_CURSO: "bg-yellow-900/50 text-yellow-300",
+  PENDIENTE_CIERRE: "bg-orange-900/50 text-orange-300",
   COMPLETADO: "bg-gray-700 text-gray-300",
   CANCELADO: "bg-red-900/50 text-red-300",
 };
@@ -2876,8 +2878,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
 
-        const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","COMPLETADO"] as const;
-        const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
+        const ESTADO_OPTS = ["PLANEACION","CONFIRMADO","EN_CURSO","PENDIENTE_CIERRE","COMPLETADO"] as const;
+        const ESTADO_LABELS_SHORT: Record<string,string> = { PLANEACION:"Preparación", CONFIRMADO:"Confirmado", EN_CURSO:"En evento", PENDIENTE_CIERRE:"Pend. cierre", COMPLETADO:"Finalizado" };
 
         function AreaCard({ title, checks, color }: { title: string; checks: CheckItem[]; color: string }) {
           const done = checks.filter(c => c.ok).length;
@@ -2928,6 +2930,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {/* Botón destacado para cerrar cuando está pendiente */}
+                {proyecto.estado === "PENDIENTE_CIERRE" && (
+                  <button
+                    onClick={() => cambiarEstado("COMPLETADO")}
+                    disabled={saving}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-40 mb-2"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Cerrar proyecto
+                  </button>
+                )}
                 {proyecto.estado !== "CANCELADO" ? (
                   <select
                     value={proyecto.estado}

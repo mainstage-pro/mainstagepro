@@ -207,5 +207,43 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // 8. Proyectos en PENDIENTE_CIERRE (evento pasado sin cerrar)
+  try {
+    const pendientesCierre = await prisma.proyecto.findMany({
+      where: { estado: "PENDIENTE_CIERRE" },
+      select: {
+        id: true,
+        nombre: true,
+        numeroProyecto: true,
+        fechaEvento: true,
+        encargadoId: true,
+      },
+    });
+
+    for (const proy of pendientesCierre) {
+      if (!proy.encargadoId) continue;
+      const diasPasados = proy.fechaEvento
+        ? Math.floor((Date.now() - new Date(proy.fechaEvento).getTime()) / 86400000)
+        : 0;
+      const titulo = `Cierre pendiente: ${proy.nombre}`;
+      const yaNotificado = await prisma.notificacion.findFirst({
+        where: { usuarioId: proy.encargadoId, titulo, createdAt: { gte: todayStart } },
+      });
+      if (!yaNotificado) {
+        await prisma.notificacion.create({
+          data: {
+            usuarioId: proy.encargadoId,
+            tipo: "ALERTA",
+            titulo,
+            mensaje: `El proyecto ${proy.numeroProyecto} terminó hace ${diasPasados} día${diasPasados !== 1 ? "s" : ""}. Recuerda cerrarlo en la plataforma.`,
+            url: `/proyectos/${proy.id}`,
+          },
+        });
+      }
+    }
+  } catch (e) {
+    console.error("[cron] Error notificando pendientes cierre:", e);
+  }
+
   return NextResponse.json({ ok: true, notifEnviadas: created, notifTotal: notifBatch.length });
 }

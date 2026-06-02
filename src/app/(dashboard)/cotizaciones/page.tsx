@@ -110,6 +110,11 @@ export default function CotizacionesPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium w-fit ${ESTADO_COTIZACION_COLORS[cot.estado] ?? "bg-gray-800 text-gray-400"}`}>
                         {ESTADO_COTIZACION_LABELS[cot.estado] ?? cot.estado}
                       </span>
+                      {(cot as {vencida?: boolean}).vencida && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium w-fit bg-amber-900/40 text-amber-400 border border-amber-700/30">
+                          ⚠ Vencida
+                        </span>
+                      )}
                       {(() => {
                         if (!cot.mainstageTradeData) return null;
                         try {

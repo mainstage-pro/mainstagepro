@@ -11,6 +11,7 @@ export async function GET() {
     select: {
       id: true, numeroCotizacion: true, estado: true, opcionLetra: true, grupoId: true,
       granTotal: true, nombreEvento: true, tipoEvento: true, createdAt: true, mainstageTradeData: true,
+      fechaVencimiento: true,
       cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true } },
       trato: { select: { tipoEvento: true } },
     },
@@ -18,7 +19,15 @@ export async function GET() {
     take: 500,
   });
 
-  return NextResponse.json({ cotizaciones });
+  const now = new Date();
+  const cotizacionesConVencida = cotizaciones.map(c => ({
+    ...c,
+    vencida: ['ENVIADA', 'REENVIADA'].includes(c.estado) &&
+      c.fechaVencimiento !== null &&
+      new Date(c.fechaVencimiento) < now,
+  }));
+
+  return NextResponse.json({ cotizaciones: cotizacionesConVencida });
 }
 
 export async function POST(request: NextRequest) {
