@@ -238,6 +238,7 @@ export function logoBase64Dark(publicDir: string): string | null {
 export type EquipoFlat = {
   descripcion: string; marca: string | null; categoria: string;
   cantidad: number; tipo: string; confirmado: boolean; proveedor: string | null;
+  imagenUrl?: string | null;
   accesorios: { nombre: string; cantidad: number; categoria: string | null }[];
 };
 

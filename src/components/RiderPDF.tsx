@@ -21,6 +21,7 @@ type ProyectoEquipoData = {
     descripcion: string
     marca: string | null
     modelo: string | null
+    imagenUrl: string | null
     categoria: { nombre: string } | null
   }
   riderAccesorios: RiderAccesorioData[]
@@ -225,6 +226,9 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                 {/* Equipo header */}
                 <View style={s.equipHead}>
                   <View style={s.checkBox} />
+                  {eq.equipo.imagenUrl ? (
+                    <Image src={eq.equipo.imagenUrl} style={{ width: 32, height: 32, marginRight: 6, objectFit: 'contain' }} />
+                  ) : null}
                   <Text style={s.equipName}>
                     {[eq.equipo.marca, eq.equipo.modelo].filter(Boolean).join(' ') || eq.equipo.descripcion}
                   </Text>

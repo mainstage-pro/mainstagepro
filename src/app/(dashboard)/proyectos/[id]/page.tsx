@@ -43,7 +43,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -441,6 +441,19 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
   const costo = eq.costoExterno ? eq.costoExterno * eq.cantidad * eq.dias : null;
   return (
     <div className={`flex items-center gap-3 px-5 py-3 border-b border-[#1a1a1a] last:border-b-0 hover:bg-[#141414] transition-colors ${eq.confirmado ? "" : "opacity-80"}`}>
+      {/* Equipment image thumbnail */}
+      <div className="w-9 h-9 rounded-sm overflow-hidden bg-[#111] shrink-0 flex items-center justify-center">
+        {eq.equipo.imagenUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={eq.equipo.imagenUrl} alt={eq.equipo.descripcion} className="w-full h-full object-contain p-0.5" />
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        )}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
         <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>

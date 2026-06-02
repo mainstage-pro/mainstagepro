@@ -221,6 +221,9 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
                 {items.map((e, i) => (
                   <View key={i} style={s.checkRow}>
                     <View style={s.checkBox} />
+                    {e.imagenUrl ? (
+                      <Image src={e.imagenUrl} style={{ width: 24, height: 24, marginRight: 4, objectFit: "contain" }} />
+                    ) : null}
                     <Text style={s.checkText}>
                       {e.cantidad}x {e.descripcion}
                       {e.marca ? <Text style={s.checkSub}> — {e.marca}</Text> : null}

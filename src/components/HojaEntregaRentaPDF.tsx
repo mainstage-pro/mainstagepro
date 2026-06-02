@@ -403,6 +403,7 @@ const s = StyleSheet.create({
 interface EquipoItem {
   descripcion: string;
   marca: string | null;
+  imagenUrl?: string | null;
   categoria: { nombre: string } | null;
 }
 interface RiderAccesorioItem {
@@ -628,8 +629,11 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                           i % 2 === 0 ? s.tableRow : s.tableRowAlt,
                           hasAcc ? { borderBottomWidth: 0 } : {}
                         ]}>
-                          <View style={s.colModelo}>
-                            <Text style={[s.cellText, { fontFamily: "Helvetica-Bold" }]}>{nombre}</Text>
+                          <View style={[s.colModelo, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
+                            {eq.equipo?.imagenUrl ? (
+                              <Image src={eq.equipo.imagenUrl} style={{ width: 28, height: 28, marginRight: 4, objectFit: "contain" }} />
+                            ) : null}
+                            <Text style={[s.cellText, { fontFamily: "Helvetica-Bold", flex: 1 }]}>{nombre}</Text>
                           </View>
                           <View style={s.colQty}>
                             <Text style={[s.cellText, { textAlign: "center", fontFamily: "Helvetica-Bold" }]}>{eq.cantidad}</Text>

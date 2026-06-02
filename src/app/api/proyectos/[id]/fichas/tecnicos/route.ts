@@ -28,7 +28,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, imagenUrl: true, categoria: { select: { nombre: true } } } },
           proveedor: { select: { nombre: true } },
         },
         orderBy: { id: "asc" },
@@ -73,6 +73,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    imagenUrl: e.equipo?.imagenUrl ?? null,
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

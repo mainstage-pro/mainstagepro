@@ -36,6 +36,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             select: {
               descripcion: true,
               marca: true,
+              imagenUrl: true,
               categoria: { select: { nombre: true } },
             },
           },

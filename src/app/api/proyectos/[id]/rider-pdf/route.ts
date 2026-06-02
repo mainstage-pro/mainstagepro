@@ -29,6 +29,7 @@ export async function GET(
               descripcion: true,
               marca: true,
               modelo: true,
+              imagenUrl: true,
               categoria: { select: { nombre: true } },
             },
           },
@@ -91,6 +92,7 @@ export async function GET(
         descripcion: eq.equipo.descripcion,
         marca: eq.equipo.marca,
         modelo: (eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? null,
+        imagenUrl: (eq.equipo as unknown as Record<string, unknown>).imagenUrl as string | null ?? null,
         categoria: eq.equipo.categoria,
       },
       riderAccesorios: eq.riderAccesorios.map(a => ({
