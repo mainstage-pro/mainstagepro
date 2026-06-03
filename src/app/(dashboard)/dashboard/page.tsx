@@ -71,6 +71,8 @@ export default async function DashboardPage() {
     pubsProximas,
     // ── COTIZACIONES SIN RESPUESTA ───────────────
     cotizacionesSinRespuesta,
+    // ── LEADS RECIENTES ───────────────────────────
+    leadsRecientes,
   ] = await Promise.all([
 
     // ── VENTAS ──────────────────────────────────
@@ -203,6 +205,21 @@ export default async function DashboardPage() {
       },
       orderBy: { updatedAt: "asc" },
       take: 8,
+    }),
+
+    // ── LEADS RECIENTES ───────────────────────────
+    prisma.trato.findMany({
+      where: { etapa: 'LEAD' },
+      select: {
+        id: true,
+        createdAt: true,
+        tipoEvento: true,
+        nombreEvento: true,
+        origenLead: true,
+        cliente: { select: { nombre: true, telefono: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
     }),
 
   ]);
@@ -686,6 +703,52 @@ export default async function DashboardPage() {
         )}
 
         <GraficaFunnelVentas etapasMap={etapasMap} tratosSeguimientoVencido={tratosSeguimientoVencido} />
+
+        {/* Leads por contactar */}
+        {(leadsRecientes as unknown as Array<{id:string;createdAt:Date;tipoEvento:string;nombreEvento:string|null;origenLead:string;cliente:{nombre:string;telefono:string|null}}> ).length > 0 && (
+          <div className="bg-[#0a0a0a] border border-[#111] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#111] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">⚡</span>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Leads por contactar</p>
+                <span className="text-[10px] text-gray-700">({(leadsRecientes as unknown[]).length})</span>
+              </div>
+              <Link href="/crm/tratos" className="text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors">Ver todos →</Link>
+            </div>
+            <div className="divide-y divide-[#0f0f0f]">
+              {(leadsRecientes as unknown as Array<{id:string;createdAt:Date;tipoEvento:string;nombreEvento:string|null;origenLead:string;cliente:{nombre:string;telefono:string|null}}>
+              ).map((lead) => {
+                const tel = lead.cliente.telefono?.replace(/\D/g, '');
+                const wa = tel ? `https://wa.me/${tel}` : null;
+                const diasRegistrado = Math.floor((Date.now() - new Date(lead.createdAt).getTime()) / 86400000);
+                return (
+                  <div key={lead.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#0f0f0f] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-white font-medium truncate">{lead.cliente.nombre}</p>
+                      <p className="text-[10px] text-gray-600">
+                        {lead.tipoEvento !== 'OTRO' ? lead.tipoEvento : ''}
+                        {lead.nombreEvento ? ` · ${lead.nombreEvento.substring(0, 40)}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-gray-700 shrink-0">{diasRegistrado}d</span>
+                    {lead.cliente.telefono && (
+                      <span className="text-[10px] text-gray-700 font-mono shrink-0 hidden lg:inline">{lead.cliente.telefono}</span>
+                    )}
+                    {wa && (
+                      <a href={wa} target="_blank" rel="noopener noreferrer"
+                        className="shrink-0 text-green-800 hover:text-green-500 transition-colors">
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </Section>
 
       {/* ══════════════════════════════════════════════════════════════════════

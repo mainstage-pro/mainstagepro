@@ -85,6 +85,14 @@ const COT_LABELS: Record<string, string> = {
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
+const ALL_ETAPAS = [
+  { key: 'LEAD',           label: 'Leads',         emoji: '⚡' },
+  { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', emoji: '🔍' },
+  { key: 'OPORTUNIDAD',    label: 'Oportunidad',    emoji: '💬' },
+  { key: 'VENTA_CERRADA',  label: 'Cerrada',        emoji: '✅' },
+  { key: 'VENTA_PERDIDA',  label: 'Perdida',        emoji: '❌' },
+];
+
 function urgenciaColor(fechaProximaAccion: string | Date | null): string {
   if (!fechaProximaAccion) return 'text-red-400 bg-red-900/20';
   const diff = (new Date(fechaProximaAccion).getTime() - Date.now()) / 86400000;
@@ -748,6 +756,126 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
   );
 }
 
+// ── Compact Trato Row ────────────────────────────────────────────────────────────
+function CompactTratoRow({
+  trato: t,
+  onEliminar,
+  onCambiarEtapa,
+  deletingId,
+}: {
+  trato: Trato;
+  onEliminar: () => void;
+  onCambiarEtapa: (nuevaEtapa: string) => void;
+  deletingId: string | null;
+}) {
+  const router = useRouter();
+  const wa = waUrl(t);
+  const { activo } = diasTrato(t);
+
+  const fmtFecha2 = (fecha: string | null) => {
+    if (!fecha) return 'Sin fecha';
+    try {
+      return new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    } catch { return 'Sin fecha'; }
+  };
+
+  return (
+    <div className="group flex items-center gap-3 px-4 py-3 hover:bg-[#0a0a0a] border-b border-[#0f0f0f] last:border-0 transition-colors">
+      {/* Nombre + empresa */}
+      <div
+        className="flex-1 min-w-0 cursor-pointer"
+        onClick={() => router.push(`/crm/tratos/${t.id}`)}
+      >
+        <p className="text-white text-sm font-medium leading-snug truncate">{t.cliente.nombre}</p>
+        {t.cliente.empresa && (
+          <p className="text-gray-600 text-[11px] truncate">{t.cliente.empresa}</p>
+        )}
+        {t.nombreEvento && (
+          <p className="text-gray-700 text-[10px] truncate mt-0.5">{t.nombreEvento}</p>
+        )}
+      </div>
+
+      {/* Tipo evento badge */}
+      <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#222] text-gray-500 shrink-0 whitespace-nowrap">
+        {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
+      </span>
+
+      {/* Origen badge */}
+      <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
+        {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
+      </span>
+
+      {/* Teléfono */}
+      {t.cliente.telefono && (
+        <span className="hidden lg:inline text-[11px] text-gray-600 font-mono shrink-0">{t.cliente.telefono}</span>
+      )}
+
+      {/* Días badge */}
+      <div className="shrink-0 hidden sm:block">
+        <BadgeDias
+          inicio={t.createdAt}
+          fin={t.fechaCierre}
+          tipo="trato"
+          cerrado={!activo}
+          labelCerrado={t.etapa === 'VENTA_PERDIDA' ? 'perdido' : undefined}
+          urgenciaClassName={urgenciaColor(t.fechaProximaAccion)}
+        />
+      </div>
+
+      {/* Próxima acción */}
+      <span className="hidden md:inline text-[10px] text-gray-600 shrink-0 whitespace-nowrap">
+        {t.fechaProximaAccion ? fmtFecha2(t.fechaProximaAccion) : 'Sin seguimiento'}
+      </span>
+
+      {/* WhatsApp */}
+      {wa ? (
+        <a
+          href={wa}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="shrink-0 text-green-700 hover:text-green-500 transition-colors"
+          title="Abrir WhatsApp"
+        >
+          <WaIcon />
+        </a>
+      ) : (
+        <span className="w-4 shrink-0" />
+      )}
+
+      {/* Selector de etapa */}
+      <select
+        value={t.etapa}
+        onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
+        onClick={e => e.stopPropagation()}
+        className="shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
+        title="Cambiar etapa"
+      >
+        {ALL_ETAPAS.map(e => (
+          <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
+        ))}
+      </select>
+
+      {/* Eliminar */}
+      <button
+        onClick={e => { e.stopPropagation(); onEliminar(); }}
+        disabled={deletingId === t.id}
+        className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40"
+        title="Eliminar trato"
+      >
+        {deletingId === t.id ? (
+          <span className="text-[10px] text-gray-600">...</span>
+        ) : (
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const ORIGEN_COLORS: Record<string, string> = {
@@ -915,7 +1043,7 @@ export default function TratosPage() {
   const [tratos, setTratos] = useState<Trato[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [filtroEtapa, setFiltroEtapa] = useState<string | null>(null);
+  const [filtroEtapa, setFiltroEtapa] = useState<string | null>('LEAD');
   const [filtroFrio, setFiltroFrio] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [vista, setVista] = useState<"lista" | "kanban">(() => {
@@ -975,7 +1103,23 @@ export default function TratosPage() {
     } finally { setDeletingId(null); }
   }
 
-
+  async function cambiarEtapa(tratoId: string, nuevaEtapa: string) {
+    // Optimistic update
+    setTratos(prev => prev.map(t => t.id === tratoId ? { ...t, etapa: nuevaEtapa } : t));
+    try {
+      await fetch(`/api/tratos/${tratoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ etapa: nuevaEtapa }),
+      });
+      toast.success(`Movido a ${ETAPA_LABELS[nuevaEtapa] ?? nuevaEtapa}`);
+    } catch {
+      // Revert on error
+      toast.error('Error al cambiar etapa');
+      const refreshed = await fetch('/api/tratos').then(r => r.json());
+      setTratos(refreshed.tratos ?? []);
+    }
+  }
 
   async function abrirCompletarSeguimiento(tratoId: string) {
     setActiveSeguimientoPopover(prev => prev === tratoId ? null : tratoId);
@@ -1219,38 +1363,29 @@ export default function TratosPage() {
 
           {/* ── Pipeline overview cards ── */}
           {(() => {
-            const hoyC = new Date(); hoyC.setHours(0, 0, 0, 0);
-            const finSemanaC = new Date(hoyC);
-            finSemanaC.setDate(hoyC.getDate() + (6 - hoyC.getDay()));
-            finSemanaC.setHours(23, 59, 59, 999);
-
             const counts = {
               leads: tratos.filter(t => t.etapa === 'LEAD').length,
               descubrimiento: tratos.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
               oportunidades: tratos.filter(t => t.etapa === 'OPORTUNIDAD').length,
-              cierreEstaSemana: tratos.filter(t => {
-                if (!t.fechaProximaAccion) return false;
-                const d = new Date(t.fechaProximaAccion);
-                return d >= hoyC && d <= finSemanaC;
-              }).length,
+              cerradas: tratos.filter(t => t.etapa === 'VENTA_CERRADA').length,
+              perdidas: tratos.filter(t => t.etapa === 'VENTA_PERDIDA').length,
             };
-
             const cards = [
-              { emoji: '⚡', label: 'Leads sin contactar', count: counts.leads, filter: 'LEAD', color: 'violet' },
-              { emoji: '🔍', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO', color: 'blue' },
-              { emoji: '💬', label: 'Oportunidades activas', count: counts.oportunidades, filter: 'OPORTUNIDAD', color: 'yellow' },
-              { emoji: '🔥', label: 'Cierre esta semana', count: counts.cierreEstaSemana, filter: 'CIERRE_SEMANA', color: 'orange' },
+              { emoji: '⚡', label: 'Leads',         count: counts.leads,          filter: 'LEAD' },
+              { emoji: '🔍', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO' },
+              { emoji: '💬', label: 'Oportunidades',  count: counts.oportunidades,  filter: 'OPORTUNIDAD' },
+              { emoji: '✅', label: 'Cerradas',       count: counts.cerradas,       filter: 'VENTA_CERRADA' },
+              { emoji: '❌', label: 'Perdidas',       count: counts.perdidas,       filter: 'VENTA_PERDIDA' },
             ];
-
             return (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+              <div className="grid grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
                 {cards.map(card => (
                   <button
                     key={card.filter}
-                    onClick={() => setFiltroEtapa(filtroEtapa === card.filter ? null : card.filter)}
+                    onClick={() => setFiltroEtapa(card.filter)}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
                       filtroEtapa === card.filter
-                        ? 'bg-[#1a1a1a] border-[#B3985B]/40 shadow-[0_0_12px_rgba(179,152,91,0.08)]'
+                        ? 'bg-[#1a1a1a] border-[#B3985B]/40'
                         : 'bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]'
                     }`}
                   >
@@ -1267,212 +1402,85 @@ export default function TratosPage() {
             );
           })()}
 
-          {/* ── Barra de filtros horizontal ── */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Etapas como pills */}
-            <div className="flex items-center gap-1.5 flex-wrap flex-1">
-              <button
-                onClick={() => setFiltroEtapa(filtroEtapa === 'LEADS' ? null : 'LEADS')}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                  filtroEtapa === 'LEADS'
-                    ? 'bg-violet-500/15 text-violet-400 border-violet-500/40'
-                    : 'bg-transparent text-gray-500 border-[#2a2a2a] hover:border-violet-500/30 hover:text-violet-400'
-                }`}
-              >
-                Leads
-              </button>
-              {([{ key: null, label: "Todos" }, ...ETAPAS.map(e => ({ key: e, label: ETAPA_LABELS[e] }))] as { key: string | null; label: string }[]).map(({ key, label }) => {
-                const total = tratos.filter(t => !key || t.etapa === key);
-                const n = total.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy).length;
-                const archN = total.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy).length;
-                const activo = filtroEtapa === key;
-                const accentCls = key === null ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
-                  : key === "DESCUBRIMIENTO" ? "border-blue-700/60 text-blue-300 bg-blue-950/30"
-                  : key === "OPORTUNIDAD"    ? "border-yellow-600/60 text-yellow-300 bg-yellow-950/30"
-                  : key === "VENTA_CERRADA"  ? "border-green-700/60 text-green-300 bg-green-950/30"
-                  :                            "border-red-700/60 text-red-300 bg-red-950/30";
-                return (
-                  <button key={String(key)} onClick={() => { setFiltroEtapa(key); setFiltroFrio(false); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${activo ? accentCls : "border-[#222] text-gray-500 hover:text-white hover:border-[#333]"}`}>
-                    {label}
-                    <span className={`text-[10px] font-bold ${activo ? "" : "text-gray-600"}`}>{n}</span>
-                    {archN > 0 && <span className="text-[9px] text-amber-500">+{archN}</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Filtro en frío */}
-            <button
-              onClick={() => { setFiltroFrio(prev => !prev); setFiltroEtapa(null); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors shrink-0 ${filtroFrio ? "border-blue-700/60 text-blue-300 bg-blue-950/30" : "border-[#222] text-gray-500 hover:text-white hover:border-[#333]"}`}
-            >
-              ❄️ En frío
-              <span className={`text-[10px] font-bold ${filtroFrio ? "" : "text-gray-600"}`}>
-                {tratos.filter(t => t.tipoProspecto === "NURTURING").length}
-              </span>
-            </button>
-
-            {/* Filtro acción requerida */}
-            <button
-              onClick={() => setFiltroEtapa(filtroEtapa === 'ACCION_REQUERIDA' ? null : 'ACCION_REQUERIDA')}
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all border ${
-                filtroEtapa === 'ACCION_REQUERIDA'
-                  ? 'bg-red-500/15 text-red-400 border-red-500/40'
-                  : 'bg-transparent text-gray-500 border-[#222] hover:border-[#333] hover:text-gray-300'
-              }`}
-            >
-              ⚠ Acción requerida
-            </button>
-
-            {/* Agrupación */}
-            <div className="flex items-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5 shrink-0">
-              {(["todos","mes","semana"] as const).map(ag => (
-                <button key={ag} onClick={() => setAgrupacion(ag)}
-                  className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors ${agrupacion === ag ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
-                  {ag === "todos" ? "Todo" : ag === "mes" ? "Por mes" : "Por semana"}
+          {/* ── Tab navigation ── */}
+          <div className="flex border-b border-[#111] mb-4 overflow-x-auto">
+            {ALL_ETAPAS.map(({ key, label, emoji }) => {
+              const count = tratos.filter(t => t.etapa === key).length;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFiltroEtapa(key)}
+                  className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                    filtroEtapa === key ? 'text-white' : 'text-gray-600 hover:text-gray-400'
+                  }`}
+                >
+                  <span>{emoji}</span>
+                  <span>{label}</span>
+                  <span className={`text-xs tabular-nums ${
+                    filtroEtapa === key ? 'text-gray-400' : 'text-gray-700'
+                  }`}>({count})</span>
+                  {filtroEtapa === key && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />
+                  )}
                 </button>
-              ))}
-            </div>
-
-            {/* Orden */}
-            <select value={orden} onChange={e => setOrden(e.target.value as typeof orden)}
-              className="bg-[#111] border border-[#1e1e1e] text-[#555] text-[10px] rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50 shrink-0">
-              <option value="evento_asc">Fecha ↑</option>
-              <option value="evento_desc">Fecha ↓</option>
-              <option value="creacion_desc">Más recientes</option>
-              <option value="creacion_asc">Más antiguos</option>
-            </select>
+              );
+            })}
           </div>
 
-          {/* ── Contenido ── */}
-          {filtroEtapa === 'LEADS' ? (
-            loading ? (
-              <SkeletonPage rows={5} cols={5} />
-            ) : (
-              <LeadsView
-                leads={leads}
-                activeSeguimientoPopover={activeSeguimientoPopover}
-                seguimientoPendiente={seguimientoPendiente}
-                seguimientoForm={seguimientoForm}
-                setSeguimientoForm={setSeguimientoForm}
-                completandoSeguimiento={completandoSeguimiento}
-                onAbrirPopover={abrirCompletarSeguimiento}
-                onCompletar={completarSeguimiento}
-                setActiveSeguimientoPopover={setActiveSeguimientoPopover}
-                onConvertirOportunidad={async (t) => {
-                  const ok = await confirm({ message: `¿Convertir "${t.cliente.nombre}" a oportunidad activa?`, confirmText: 'Convertir' });
-                  if (!ok) return;
-                  const res = await fetch(`/api/tratos/${t.id}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tipoProspecto: 'ACTIVO', etapa: 'OPORTUNIDAD' }),
-                  });
-                  if (res.ok) {
-                    toast.success('Convertido a oportunidad ✓');
-                    setTratos(prev => prev.filter(tr => tr.id !== t.id));
-                  } else {
-                    toast.error('Error al convertir');
-                  }
-                }}
-              />
-            )
-          ) : loading ? (
-            <SkeletonPage rows={5} cols={5} />
-          ) : tratos.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
-              <p className="text-[#6b7280] text-sm">No hay tratos registrados</p>
-              <button onClick={() => setShowNueva(true)} className="inline-block mt-4 text-[#B3985B] text-sm hover:underline">
-                Crear primera oportunidad →
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {/* Próximos agrupados */}
-              {tratosProximos.length === 0 && tratosArchivados.length === 0 ? (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center text-[#555] text-sm">
-                  Sin tratos en esta etapa
-                </div>
-              ) : agrupacion === "todos" ? (
-                <>
-                  {tratosProximos.length > 0 && (
-                    <TratoTable tratos={tratosProximos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />
-                  )}
-                </>
-              ) : (
-                <div className="space-y-5">
-                  {gruposProximos.map(grupo => {
-                    const isOpen = gruposOpen[grupo.key] ?? true;
-                    return (
-                      <div key={grupo.key}>
-                        <button onClick={() => setGruposOpen(o => ({ ...o, [grupo.key]: !isOpen }))} className="flex items-center gap-3 mb-2 w-full text-left">
-                          <svg className={`w-3 h-3 text-gray-600 transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                          <h2 className="text-xs font-semibold text-gray-300">{grupo.label}</h2>
-                          <span className="text-[10px] text-gray-600">{grupo.tratos.length}</span>
-                          <div className="flex-1 h-px bg-[#1a1a1a]" />
-                        </button>
-                        {isOpen && <TratoTable tratos={grupo.tratos} showHace={false} expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Pasados — sin drama */}
-              {tratosArchivados.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-4 py-3">
-                    <div className="flex-1 h-px bg-[#161616]" />
-                    <span className="text-[10px] text-gray-700 uppercase tracking-widest">Pasados · {tratosArchivados.length}</span>
-                    <div className="flex-1 h-px bg-[#161616]" />
-                  </div>
-                  <TratoTable tratos={tratosArchivados} showHace dimmed expandedIds={expandedIds} toggleExpand={toggleExpand} deletingId={deletingId} eliminar={eliminar} />
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Vista Kanban ── */}
-      {vista === "kanban" && (
-        <div>
+          {/* ── Compact list for active tab ── */}
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {ETAPAS.map(e => <div key={e} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 h-64 animate-pulse" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {ETAPAS.map(etapa => {
-                const col = tratosFiltrados.filter(t => t.etapa === etapa);
-                const total = col.reduce((s: number, t: Trato) => s + (t.presupuestoEstimado ?? 0), 0);
-                return (
-                  <div key={etapa} className="flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${ETAPA_COLORS[etapa]}`}>
-                          {ETAPA_LABELS[etapa]}
-                        </span>
-                        <span className="text-[#444] text-xs">{col.length}</span>
-                      </div>
-                      {total > 0 && <span className="text-[10px] text-[#B3985B]">{formatCurrency(total)}</span>}
-                    </div>
-                    <div className="space-y-2 min-h-[120px]">
-                      {col.length === 0 ? (
-                        <div className="border border-dashed border-[#1e1e1e] rounded-xl py-8 text-center">
-                          <p className="text-[#333] text-xs">Sin tratos</p>
-                        </div>
-                      ) : col.map((trato: Trato) => (
-                        <KanbanCard key={trato.id} trato={trato}
-                          onDelete={() => eliminar(trato.id, trato.cliente.nombre)}
-                          deleting={deletingId === trato.id} />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+            <SkeletonPage />
+          ) : (() => {
+            const q = busqueda.toLowerCase();
+            const tabTratos = tratos
+              .filter(t => {
+                const matchEtapa = t.etapa === (filtroEtapa ?? 'LEAD');
+                const matchSearch = !q ||
+                  t.cliente.nombre.toLowerCase().includes(q) ||
+                  (t.cliente.empresa ?? '').toLowerCase().includes(q) ||
+                  (t.nombreEvento ?? '').toLowerCase().includes(q) ||
+                  (t.cliente.telefono ?? '').includes(q);
+                return matchEtapa && matchSearch;
+              })
+              .sort((a, b) => {
+                const etapa = filtroEtapa ?? 'LEAD';
+                if (etapa === 'LEAD' || etapa === 'DESCUBRIMIENTO' || etapa === 'OPORTUNIDAD') {
+                  if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                  if (!a.fechaProximaAccion) return 1;
+                  if (!b.fechaProximaAccion) return -1;
+                  return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+                }
+                if (!a.fechaCierre && !b.fechaCierre) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                if (!a.fechaCierre) return 1;
+                if (!b.fechaCierre) return -1;
+                return new Date(b.fechaCierre).getTime() - new Date(a.fechaCierre).getTime();
+              });
+
+            if (tabTratos.length === 0) {
+              return (
+                <div className="text-center py-20 text-gray-700">
+                  <p className="text-3xl mb-3">📭</p>
+                  <p className="text-sm">
+                    {busqueda ? `Sin resultados para "${busqueda}"` : `No hay tratos en ${ALL_ETAPAS.find(e => e.key === filtroEtapa)?.label ?? filtroEtapa}`}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                {tabTratos.map(t => (
+                  <CompactTratoRow
+                    key={t.id}
+                    trato={t}
+                    onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                    onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                    deletingId={deletingId}
+                  />
+                ))}
+              </div>
+            );
+          })()}
         </div>
       )}
 
