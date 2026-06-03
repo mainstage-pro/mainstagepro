@@ -77,11 +77,36 @@ export async function POST(req: NextRequest) {
 
   // ── Validar tipoEvento ──────────────────────────────────────────────────────
   const VALID_EVENTOS = ['MUSICAL', 'SOCIAL', 'EMPRESARIAL', 'OTRO'];
-  const tipoEvento = VALID_EVENTOS.includes(body.tipoEvento) ? body.tipoEvento : null;
+  // ── mapear tipoEvento — acepta enum exacto O texto libre del formulario ────
+  function mapTipoEvento(raw: string | null | undefined): string {
+    if (!raw) return 'OTRO';
+    const r = raw.toLowerCase();
+    // Valores exactos del enum
+    if (['musical','social','empresarial','otro'].includes(r)) return r.toUpperCase();
+    // Texto libre del formulario de Meta Ads
+    if (r.includes('boda') || r.includes('quince') || r.includes('social') ||
+        r.includes('graduaci') || r.includes('cumple') || r.includes('familiar')) return 'SOCIAL';
+    if (r.includes('musical') || r.includes('concierto') || r.includes('festival') ||
+        r.includes('banda') || r.includes('artista'))                              return 'MUSICAL';
+    if (r.includes('empresa') || r.includes('corporat') || r.includes('conferencia') ||
+        r.includes('congreso') || r.includes('lanzamiento') || r.includes('convenci')) return 'EMPRESARIAL';
+    return 'OTRO';
+  }
+  const tipoEvento = mapTipoEvento(body.tipoEvento);
 
-  // ── Validar origenLead ──────────────────────────────────────────────────────
-  const VALID_ORIGENES = ['META_ADS', 'GOOGLE_ADS', 'ORGANICO', 'RECOMPRA', 'REFERIDO', 'PROSPECCION', 'OTRO'];
-  const origenFinal = VALID_ORIGENES.includes(body.origenLead) ? body.origenLead : 'META_ADS';
+  // ── mapear origenLead — acepta enum exacto O texto libre ─────────────────────
+  function mapOrigenLead(raw: string | null | undefined): string {
+    if (!raw) return 'META_ADS';
+    const r = raw.toLowerCase();
+    const VALID = ['META_ADS','GOOGLE_ADS','ORGANICO','RECOMPRA','REFERIDO','PROSPECCION','OTRO'];
+    if (VALID.includes(r.toUpperCase())) return r.toUpperCase();
+    if (r.includes('meta') || r.includes('facebook') || r.includes('instagram') || r.includes('fb')) return 'META_ADS';
+    if (r.includes('google'))   return 'GOOGLE_ADS';
+    if (r.includes('referido') || r.includes('recomend')) return 'REFERIDO';
+    if (r.includes('organico') || r.includes('orgánico') || r.includes('directo')) return 'ORGANICO';
+    return 'META_ADS'; // default para leads de Meta
+  }
+  const origenFinal = mapOrigenLead(body.origenLead);
 
   // ── Buscar cliente existente por teléfono ────────────────────────────────────
   let clienteId: string | null = null;
