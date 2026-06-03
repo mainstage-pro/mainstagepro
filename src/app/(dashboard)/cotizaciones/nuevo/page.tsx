@@ -155,7 +155,7 @@ const SEMAFORO_STYLE: Record<string, { border: string; text: string; bg: string;
   IDEAL:    { border: "border-green-500",  text: "text-green-400",  bg: "bg-green-900/20",  label: "IDEAL" },
   REGULAR:  { border: "border-yellow-500", text: "text-yellow-400", bg: "bg-yellow-900/20", label: "REGULAR" },
   MINIMO:   { border: "border-orange-500", text: "text-orange-400", bg: "bg-orange-900/20", label: "MÍNIMO" },
-  RIESGO:   { border: "border-red-500",    text: "text-red-400",    bg: "bg-red-900/20",    label: "RIESGO" },
+  RIESGO:   { border: "border-[#333]",    text: "text-gray-400",    bg: "bg-[#0f0f0f]",    label: "Riesgo" },
 };
 
 // ─── Subcomponente de sección ─────────────────────────────────────────────────

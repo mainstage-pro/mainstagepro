@@ -802,6 +802,37 @@ function CompactTratoRow({
         {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
       </span>
 
+      {/* Cotización badge */}
+      {(() => {
+        const cots = t.cotizaciones ?? [];
+        const best = cots.find(c => c.estado === 'APROBADA')
+          ?? cots.find(c => c.estado === 'ENVIADA' || c.estado === 'REENVIADA')
+          ?? cots.find(c => c.estado === 'EN_REVISION' || c.estado === 'AJUSTE_SOLICITADO')
+          ?? cots[0] ?? null;
+        if (!best) {
+          return (
+            <Link
+              href={`/cotizaciones/nuevo?tratoId=${t.id}&clienteId=${t.cliente.id}`}
+              onClick={e => e.stopPropagation()}
+              className="hidden sm:inline text-[10px] text-gray-700 hover:text-[#B3985B] transition-colors shrink-0 whitespace-nowrap border border-dashed border-[#1e1e1e] px-1.5 py-0.5 rounded"
+              title="Crear cotización"
+            >
+              + Cotización
+            </Link>
+          );
+        }
+        return (
+          <Link
+            href={`/cotizaciones/${best.id}`}
+            onClick={e => e.stopPropagation()}
+            className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap hover:opacity-80 transition-opacity ${COT_COLORS[best.estado] ?? 'bg-[#222] text-[#888]'}`}
+            title={`Ver cotización ${best.numeroCotizacion}`}
+          >
+            {COT_LABELS[best.estado] ?? best.estado}
+          </Link>
+        );
+      })()}
+
       {/* Origen badge */}
       <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
         {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
@@ -1525,6 +1556,61 @@ export default function TratosPage() {
               );
             }
 
+            // ── VENTA_CERRADA: split upcoming vs past ──────────────────────
+            if ((filtroEtapa ?? 'LEAD') === 'VENTA_CERRADA') {
+              const hoyStr = new Date().toISOString().slice(0, 10);
+              const proximos = tabTratos.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada.slice(0, 10) >= hoyStr);
+              const pasados = tabTratos
+                .filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada.slice(0, 10) < hoyStr)
+                .sort((a, b) => new Date(b.fechaEventoEstimada!).getTime() - new Date(a.fechaEventoEstimada!).getTime());
+
+              return (
+                <div className="space-y-4">
+                  {proximos.length > 0 && (
+                    <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                      {proximos.map(t => (
+                        <CompactTratoRow
+                          key={t.id}
+                          trato={t}
+                          onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                          onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                          onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                          deletingId={deletingId}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {pasados.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-px flex-1 bg-[#111]" />
+                        <p className="text-[10px] uppercase tracking-wider text-gray-700">Eventos pasados</p>
+                        <div className="h-px flex-1 bg-[#111]" />
+                      </div>
+                      <div className="rounded-xl border border-[#111] overflow-hidden opacity-50">
+                        {pasados.map(t => (
+                          <CompactTratoRow
+                            key={t.id}
+                            trato={t}
+                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                            deletingId={deletingId}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {proximos.length === 0 && pasados.length === 0 && (
+                    <div className="text-center py-20 text-gray-700">
+                      <p className="text-3xl mb-3">📭</p>
+                      <p className="text-sm">No hay ventas cerradas</p>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
                 {tabTratos.map(t => (
@@ -1539,6 +1625,7 @@ export default function TratosPage() {
                 ))}
               </div>
             );
+
           })()}
         </div>
       )}

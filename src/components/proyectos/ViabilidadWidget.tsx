@@ -4,7 +4,7 @@ const SEMAFORO_CFG = {
   IDEAL:   { color: 'text-green-400',  bg: 'bg-green-900/20',  border: 'border-green-800/30',  dot: 'bg-green-500',  label: 'IDEAL'   },
   REGULAR: { color: 'text-yellow-400', bg: 'bg-yellow-900/20', border: 'border-yellow-800/30', dot: 'bg-yellow-400', label: 'REGULAR' },
   MINIMO:  { color: 'text-orange-400', bg: 'bg-orange-900/20', border: 'border-orange-800/30', dot: 'bg-orange-400', label: 'MÍNIMO'  },
-  RIESGO:  { color: 'text-red-400',    bg: 'bg-red-900/20',    border: 'border-red-800/30',    dot: 'bg-red-500',   label: 'RIESGO'  },
+  RIESGO:  { color: 'text-gray-400',   bg: 'bg-[#0f0f0f]',    border: 'border-[#1e1e1e]',    dot: 'bg-gray-600',  label: 'Riesgo'  },
 }
 
 function fmt(n: number) {

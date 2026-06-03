@@ -502,7 +502,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const utilidadViva = cot.total - costoVivo;
   const pctVivo = cot.total > 0 ? utilidadViva / cot.total : 0;
   const semaforo = pctVivo >= 0.55 ? "IDEAL" : pctVivo >= 0.40 ? "REGULAR" : pctVivo >= 0.25 ? "MINIMO" : "RIESGO";
-  const semaforoColor = { IDEAL: "text-green-400", REGULAR: "text-yellow-400", MINIMO: "text-orange-400", RIESGO: "text-red-400" }[semaforo];
+  const semaforoColor = { IDEAL: "text-green-400", REGULAR: "text-yellow-400", MINIMO: "text-orange-400", RIESGO: "text-gray-400" }[semaforo];
 
   const lineasEquipo = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO");
   const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
