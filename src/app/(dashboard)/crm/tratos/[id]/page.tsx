@@ -575,7 +575,7 @@ function SeguimientosPanel({ tratoId }: { tratoId: string }) {
   const [loading, setLoading] = useState(true);
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
   const [notaRes, setNotaRes] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [formTitulo, setFormTitulo] = useState("");
   const [formNota, setFormNota] = useState("");
   const [formCanal, setFormCanal] = useState("whatsapp");
@@ -849,6 +849,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [briefGuardado, setBriefGuardado] = useState(false);
   const [savingBrief, setSavingBrief] = useState(false);
   const [briefExpanded, setBriefExpanded] = useState(false);
+  const [discoveryExpanded, setDiscoveryExpanded] = useState(!trato?.descubrimientoCompleto);
 
   // Scouting state
   const [scoutingForm, setScoutingForm] = useState({
@@ -1448,82 +1449,107 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const _telefono = trato.cliente.telefono?.replace(/\D/g, "");
   const waUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${trato.cliente.nombre.split(" ")[0]}, para prepararte una propuesta personalizada necesito que completes este breve formulario: ${formUrl}`)}` : null;
 
-  return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5 pb-12">
-      <div className="mb-2"><BackButton /></div>
+  const waLink = (() => {
+    const tel = trato.cliente.telefono?.replace(/^p:/i, '').replace(/[^\d+]/g, '');
+    if (!tel) return null;
+    const nombre = trato.cliente.nombre.split(' ')[0];
+    const evento = trato.nombreEvento || trato.tipoEvento || 'tu evento';
+    const msg = `Hola ${nombre}, te contacto de Mainstage Pro para dar seguimiento a ${evento}. ¿Tienes un momento?`;
+    return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+  })();
 
-      {/* ── Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: TIPO_EVENTO_COLORS[trato.tipoEvento] || "#555" }} />
-            <span className="text-gray-400 text-xs">{trato.tipoEvento}</span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ETAPA_COLORS[trato.etapa]}`}>
-              {ETAPA_LABELS[trato.etapa]}
-            </span>
-            {trato.etapaCambiadaEn && (() => {
-              const dias = Math.floor((Date.now() - new Date(trato.etapaCambiadaEn).getTime()) / 86400000);
-              if (dias === 0) return null;
-              const color = dias > 14 ? "text-red-400" : dias > 7 ? "text-yellow-400" : "text-gray-500";
-              return <span className={`text-[10px] ${color}`}>hace {dias}d en etapa</span>;
-            })()}
-            {trato.canalAtencion && canalInfo && (
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${canalInfo.badge}`}>
-                {canalInfo.icon} {canalInfo.label}
+  const telefonoLimpio = trato.cliente.telefono?.replace(/^p:/i, '').trim() ?? null;
+
+  const tiempoSinContacto = (() => {
+    const ref = trato.fechaProximaAccion
+      ? new Date(trato.fechaProximaAccion)
+      : new Date(trato.createdAt);
+    const diff = Date.now() - ref.getTime();
+    const horas = Math.floor(diff / 3600000);
+    const dias = Math.floor(diff / 86400000);
+    if (horas < 1) return 'Hace menos de 1h';
+    if (horas < 24) return `Hace ${horas}h`;
+    if (dias === 1) return 'Hace 1 día';
+    return `Hace ${dias} días`;
+  })();
+
+  const notaInicial = (() => {
+    try { const n = JSON.parse(trato.nurturingData ?? '{}'); return n.notaInicial || null; } catch { return null; }
+  })();
+
+  const campanaOrigen = (() => {
+    try { const n = JSON.parse(trato.nurturingData ?? '{}'); return n.campana || null; } catch { return null; }
+  })();
+
+  return (
+    <div className="p-3 md:p-6 max-w-6xl mx-auto pb-12">
+      <div className="mb-2"><BackButton /></div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 mt-4">
+      {/* ── LEFT COLUMN ── */}
+      <div className="space-y-4 min-w-0">
+
+      {/* ── Compact Header ── */}
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${ETAPA_COLORS[trato.etapa] ?? 'bg-gray-800 text-gray-400'}`}>
+                {ETAPA_LABELS[trato.etapa] ?? trato.etapa}
               </span>
-            )}
-            {trato.descubrimientoCompleto && (
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-[#B3985B]/20 text-[#B3985B]">
-                ✓ Descubrimiento
+              <span className="text-[10px] text-gray-600">
+                {trato.tipoEvento}
               </span>
-            )}
+              {trato.etapa === 'LEAD' && (
+                <span className="text-[10px] text-amber-500/70">{tiempoSinContacto}</span>
+              )}
+              {trato.descubrimientoCompleto && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B]">✓ Descubrimiento</span>
+              )}
+            </div>
+            <h1 className="text-xl font-bold text-white truncate">{trato.cliente.nombre}</h1>
+            {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
+            {trato.nombreEvento && <p className="text-gray-400 text-sm italic mt-0.5">"{trato.nombreEvento}"</p>}
+            {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
+            {campanaOrigen && <p className="text-gray-700 text-[10px] mt-1">📣 {campanaOrigen}</p>}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-white truncate">{trato.cliente.nombre}</h1>
-          {trato.cliente.empresa && <p className="text-gray-400 text-sm">{trato.cliente.empresa}</p>}
-          {trato.nombreEvento && <p className="text-gray-300 text-sm italic truncate">"{trato.nombreEvento}"</p>}
+          {waLink && (
+            <a href={waLink} target="_blank" rel="noopener noreferrer"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-900/20 border border-green-800/30 text-green-500 hover:bg-green-900/30 transition-colors text-xs font-medium">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
+              </svg>
+              WhatsApp
+            </a>
+          )}
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
-          <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-xs hover:bg-[#c9a96a] transition-colors whitespace-nowrap">
+        <div className="flex items-center gap-3 pt-3 border-t border-[#1a1a1a] flex-wrap">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Etapa:</span>
+          <select
+            value={trato.etapa}
+            disabled={saving}
+            onChange={e => cambiarEtapa(e.target.value)}
+            className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer disabled:opacity-40"
+          >
+            {ETAPAS.map(e => (
+              <option key={e} value={e}>{ETAPA_LABELS[e] ?? e}</option>
+            ))}
+          </select>
+          {trato.etapa === 'LEAD' && (
+            <button
+              onClick={() => cambiarEtapa('DESCUBRIMIENTO')}
+              disabled={saving}
+              className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
+            >
+              Convertir a oportunidad →
+            </button>
+          )}
+          <Link
+            href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+            className="ml-auto px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors"
+          >
             + Cotización
           </Link>
-          {(trato.etapa === "VENTA_CERRADA" || trato.cotizaciones.length > 0) && (
-            <Link
-              href={`/contratos/${trato.id}`}
-              target="_blank"
-              className="px-3 py-2 rounded-lg border border-[#B3985B] text-[#B3985B] hover:bg-[#B3985B]/10 text-xs transition-colors font-medium whitespace-nowrap"
-            >
-              Contrato
-            </Link>
-          )}
-          <button onClick={async () => { setForm(trato); setEditando(true); if (clientesOpciones.length === 0) { const r = await fetch("/api/clientes"); const d = await r.json(); setClientesOpciones((d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({ value: c.id, label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre }))); } }}
-            className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-xs transition-colors whitespace-nowrap">
-            Editar
-          </button>
-          {(() => {
-            const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
-            const tieneCotizaciones = trato.cotizaciones.length > 0;
-            const resumen = tieneProyecto
-              ? `Se eliminarán: el trato, ${trato.cotizaciones.length} cotización(es) y el proyecto asociado con todas sus cuentas y datos. Esta acción no se puede deshacer.`
-              : tieneCotizaciones
-              ? `Se eliminarán: el trato y ${trato.cotizaciones.length} cotización(es) asociada(s). Esta acción no se puede deshacer.`
-              : "Se eliminará este trato. Esta acción no se puede deshacer.";
-            return (
-              <button onClick={async () => {
-                if (!await confirm({ message: resumen, danger: true, confirmText: "Eliminar todo" })) return;
-                const res = await fetch(`/api/tratos/${trato.id}`, { method: "DELETE" });
-                if (!res.ok) {
-                  const d = await res.json().catch(() => ({}));
-                  toast.error(d.error ?? "Error al eliminar el trato");
-                  return;
-                }
-                toast.success("Trato eliminado");
-                router.push("/crm/tratos");
-              }} className="px-3 py-2 rounded-lg border border-red-800/60 text-red-400 hover:bg-red-900/20 text-xs transition-colors whitespace-nowrap">
-                Eliminar
-              </button>
-            );
-          })()}
         </div>
       </div>
 
@@ -1609,69 +1635,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Banner LEAD pendiente ── */}
-      {trato.etapa === 'LEAD' && (
-        <div className="bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⚡</span>
-            <div>
-              <p className="text-sm font-semibold text-[#B3985B]">Lead pendiente de calificar</p>
-              <p className="text-xs text-gray-500 mt-0.5">Completa el descubrimiento para convertir este lead en oportunidad activa</p>
-            </div>
-          </div>
-          <button
-            onClick={() => cambiarEtapa('DESCUBRIMIENTO')}
-            disabled={saving}
-            className="shrink-0 px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
-          >
-            Convertir a oportunidad →
-          </button>
-        </div>
+      {trato.etapa === "VENTA_PERDIDA" && trato.motivoPerdida && (
+        <p className="text-xs text-red-400/80 bg-red-900/10 border border-red-900/30 rounded-xl px-4 py-2">
+          Motivo pérdida: {trato.motivoPerdida}
+        </p>
       )}
-
-      {/* ── Etapa pipeline ── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Etapa del pipeline</p>
-        <div className="flex flex-wrap gap-2">
-          {ETAPAS.map((e) => (
-            <button key={e} disabled={saving || e === trato.etapa} onClick={() => cambiarEtapa(e)}
-              className={`flex-1 min-w-[100px] py-2 rounded-lg text-xs font-medium transition-colors ${
-                e === trato.etapa ? ETAPA_COLORS[e] : "bg-[#1a1a1a] text-gray-500 hover:text-white border border-[#2a2a2a]"
-              }`}>
-              {ETAPA_LABELS[e]}
-            </button>
-          ))}
-        </div>
-        {trato.etapa === "VENTA_PERDIDA" && trato.motivoPerdida && (
-          <p className="mt-3 text-xs text-red-400/80 border-t border-[#1a1a1a] pt-2">
-            Motivo: {trato.motivoPerdida}
-          </p>
-        )}
-      </div>
-
-      {/* ── Siguiente acción recomendada ── */}
-      {trato.tipoProspecto !== "NURTURING" && (() => {
-        // Acción recomendada
-        const acciones: Record<string, { icon: string; titulo: string; desc: string; color: string }> = {
-          PIDIENDO_INFO:   { icon: "ℹ️",  titulo: "Enviar información + formulario",     desc: "El cliente está investigando. Envía el formulario para conocer su proyecto.", color: "border-blue-700/40 bg-blue-900/10" },
-          EXPLORANDO:      { icon: "📋", titulo: "Enviar formulario de descubrimiento",  desc: "Que el cliente comparta los detalles de su evento para poder cotizar.", color: "border-[#B3985B]/40 bg-[#B3985B]/5" },
-          COMPARANDO:      { icon: "📞", titulo: "Agendar llamada o reunión",            desc: "Está comparando. Una reunión puede hacer la diferencia.", color: "border-yellow-700/40 bg-yellow-900/10" },
-          LISTO_CONTRATAR: { icon: "⚡", titulo: "Generar cotización ya",                desc: "El cliente está listo. Cotiza cuanto antes.", color: "border-green-700/40 bg-green-900/10" },
-        };
-        const accion = trato.formEstado === "COMPLETADO"
-          ? { icon: "✅", titulo: "Generar cotización", desc: "El prospecto completó el formulario. Tienes toda la info.", color: "border-green-700/40 bg-green-900/10" }
-          : acciones[trato.etapaContratacion ?? "EXPLORANDO"] ?? acciones["EXPLORANDO"];
-
-        return (
-          <div className={`border rounded-xl p-4 flex items-start gap-3 ${accion.color}`}>
-            <span className="text-xl mt-0.5">{accion.icon}</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-semibold">{accion.titulo}</p>
-              <p className="text-gray-400 text-xs mt-0.5">{accion.desc}</p>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ══════════════════════════════════════════════════════════════════════
           BRIEF DEL CLIENTE
@@ -2137,7 +2105,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* ── WIZARD DE DESCUBRIMIENTO ── */}
       {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (
-        <div className="bg-[#0d0d0d] border-2 border-[#B3985B]/30 rounded-xl overflow-hidden">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setDiscoveryExpanded(prev => !prev)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-[#0d0d0d] transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-gray-400">🔍 Descubrimiento</span>
+              {trato.descubrimientoCompleto && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B] font-medium">Completo ✓</span>
+              )}
+            </div>
+            <span className="text-gray-600 text-xs">{discoveryExpanded ? '▾ Contraer' : '▸ Expandir'}</span>
+          </button>
+          {discoveryExpanded && (
+            <div className="border-t border-[#1a1a1a]">
+        <div className="bg-[#0d0d0d] border-0 rounded-none overflow-hidden">
           {/* Wizard header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
             <div className="flex items-center gap-3">
@@ -2734,6 +2717,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </>
         </div>
+        </div>
+        )}
+        </div>
       )}
 
 
@@ -3054,162 +3040,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Grid: Detalles + Sidebar ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Datos del evento (editable) */}
-        {trato.tipoProspecto !== "NURTURING" && (
-        <div className="col-span-2 bg-[#111] border border-[#222] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Detalles del trato</h2>
-          </div>
-          {(
-            <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Lugar estimado</p>
-                <p className="text-white">{trato.lugarEstimado || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Fecha estimada</p>
-                <p className="text-white">{fmtDate(trato.fechaEventoEstimada)}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Presupuesto estimado</p>
-                <p className="text-white">{trato.presupuestoEstimado ? fmt(trato.presupuestoEstimado) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Tipo de servicio</p>
-                <p className="text-white">{trato.tipoServicio?.replace("_", " ") || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Origen del lead</p>
-                <p className="text-white">{ORIGEN_LABELS[trato.origenLead] || trato.origenLead}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Origen de venta</p>
-                <div className="flex items-center gap-2">
-                  <Combobox
-                    value={trato.origenVenta}
-                    onChange={async (v) => {
-                      const res = await fetch(`/api/tratos/${trato.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ origenVenta: v }),
-                      });
-                      if (!res.ok) {
-                        const d = await res.json().catch(() => ({}));
-                        toast.error(d.error ?? "Error al guardar");
-                        return;
-                      }
-                      setTrato(prev => prev ? { ...prev, origenVenta: v } : prev);
-                    }}
-                    options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10%)" }, { value: "PUBLICIDAD", label: "Publicidad (5%)" }, { value: "ASIGNADO", label: "Asignado empresa (5%+5%)" }]}
-                    className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Comisión para</p>
-                <div className="flex items-center gap-2">
-                  <Combobox
-                    value={trato.vendedorId ?? trato.responsableId ?? ""}
-                    onChange={async (v) => {
-                      const res = await fetch(`/api/tratos/${trato.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ vendedorId: v || null }),
-                      });
-                      if (!res.ok) {
-                        const d = await res.json().catch(() => ({}));
-                        toast.error(d.error ?? "Error al guardar");
-                        return;
-                      }
-                      const vendedor = usuarios.find(u => u.id === v) ?? null;
-                      setTrato(prev => prev ? { ...prev, vendedorId: v || null, vendedor } : prev);
-                    }}
-                    options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
-                    className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs mb-1">Clasificación</p>
-                <p className="text-white">{trato.clasificacion}</p>
-              </div>
-              {trato.proximaAccion && (
-                <div className="col-span-2">
-                  <p className="text-gray-500 text-xs mb-1">Próxima acción</p>
-                  <p className="text-white">{trato.proximaAccion}</p>
-                  {trato.fechaProximaAccion && (
-                    <p className="text-[#B3985B] text-xs mt-0.5">{fmtDate(trato.fechaProximaAccion)}</p>
-                  )}
-                </div>
-              )}
-              {trato.notas && (
-                <div className="col-span-2">
-                  <p className="text-gray-500 text-xs mb-1">Notas</p>
-                  <p className="text-gray-300 leading-relaxed">{trato.notas}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* Sidebar cliente */}
-        <div className={`space-y-4 ${trato.tipoProspecto === "NURTURING" ? "md:col-span-3 md:grid md:grid-cols-2" : ""}`}>
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Cliente</h2>
-              {!cambiarCliente && (
-                <button
-                  onClick={abrirCambiarCliente}
-                  className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
-                >
-                  Cambiar
-                </button>
-              )}
-            </div>
-            {cambiarCliente ? (
-              <div className="space-y-2">
-                <Combobox
-                  value={trato.cliente.id}
-                  onChange={confirmarCambioCliente}
-                  options={clientesOpciones}
-                  placeholder="Buscar cliente..."
-                  disabled={savingCliente}
-                />
-                <button
-                  onClick={() => setCambiarCliente(false)}
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            ) : (
-              <>
-                <Link href={`/crm/clientes/${trato.cliente.id}`} className="block hover:opacity-80 transition-opacity">
-                  <p className="text-white font-medium text-sm">{trato.cliente.nombre}</p>
-                  {trato.cliente.empresa && <p className="text-gray-400 text-xs">{trato.cliente.empresa}</p>}
-                </Link>
-                {trato.cliente.telefono && <p className="text-gray-300 text-xs mt-2">{trato.cliente.telefono}</p>}
-                {trato.cliente.correo && <p className="text-gray-300 text-xs">{trato.cliente.correo}</p>}
-                <div className="flex gap-2 mt-3">
-                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.tipoCliente}</span>
-                  <span className="px-2 py-0.5 rounded text-xs bg-[#222] text-gray-300">{trato.cliente.clasificacion}</span>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">Creado el</p>
-            <p className="text-white text-sm">{fmtDate(trato.createdAt)}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Seguimientos */}
-      <SeguimientosPanel tratoId={trato.id} />
-
       {/* Cotizaciones */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -3225,7 +3055,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </Link>
             )}
             <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-              className="text-xs text-[#B3985B] hover:underline">+ Nueva</Link>
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold rounded-lg hover:bg-[#B3985B]/20 transition-colors">+ Nueva cotización</Link>
           </div>
         </div>
         {trato.cotizaciones.length === 0 ? (
@@ -3250,7 +3080,286 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </div>
+
+      {/* Seguimientos */}
+      <SeguimientosPanel tratoId={trato.id} />
+
+      </div> {/* end left column */}
+
+      {/* ── RIGHT COLUMN ── */}
+      <div className="space-y-4 lg:sticky lg:top-6 self-start">
+        {/* Client card */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider">Cliente</p>
+          </div>
+          <Link href={`/crm/clientes/${trato.cliente.id}`} className="text-white font-semibold text-sm hover:text-[#B3985B] transition-colors block">
+            {trato.cliente.nombre}
+          </Link>
+          {trato.cliente.empresa && <p className="text-gray-500 text-xs mt-0.5">{trato.cliente.empresa}</p>}
+          {telefonoLimpio && (
+            <div className="flex items-center gap-2 mt-3">
+              <p className="text-gray-400 text-xs font-mono flex-1">{telefonoLimpio}</p>
+              {waLink && (
+                <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:text-green-500 transition-colors shrink-0">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
+                  </svg>
+                </a>
+              )}
+            </div>
+          )}
+          {trato.cliente.correo && <p className="text-gray-600 text-xs mt-1">{trato.cliente.correo}</p>}
+        </div>
+
+        {/* Event info */}
+        {(trato.fechaEventoEstimada || trato.lugarEstimado || trato.presupuestoEstimado) && (
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Evento</p>
+            {trato.fechaEventoEstimada && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-700 text-xs shrink-0">📅</span>
+                <p className="text-gray-300 text-xs">
+                  {new Date(trato.fechaEventoEstimada + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+            )}
+            {trato.lugarEstimado && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-700 text-xs shrink-0">📍</span>
+                <p className="text-gray-300 text-xs">{trato.lugarEstimado}</p>
+              </div>
+            )}
+            {trato.presupuestoEstimado && (
+              <div className="flex items-start gap-2">
+                <span className="text-gray-700 text-xs shrink-0">💰</span>
+                <p className="text-[#B3985B] text-xs font-medium">
+                  {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Origin info */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Origen</p>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700 text-xs">📣</span>
+            <p className="text-gray-400 text-xs">{trato.origenLead}</p>
+          </div>
+          {campanaOrigen && (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-700 text-xs">🎯</span>
+              <p className="text-gray-500 text-xs truncate">{campanaOrigen}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2 pt-2 border-t border-[#1a1a1a] mt-1">
+            <span className="text-gray-700 text-xs">🗓</span>
+            <p className="text-gray-600 text-xs">
+              {new Date(trato.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => setEditando(true)}
+            className="w-full py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-sm rounded-xl hover:border-[#3a3a3a] hover:text-white transition-colors"
+          >
+            ✏️ Editar trato
+          </button>
+          <button
+            onClick={async () => {
+              const tieneProyecto = trato.cotizaciones.some(c => c.proyecto);
+              const tieneCotizaciones = trato.cotizaciones.length > 0;
+              const resumen = tieneProyecto
+                ? `Se eliminarán: el trato, ${trato.cotizaciones.length} cotización(es) y el proyecto asociado con todas sus cuentas y datos. Esta acción no se puede deshacer.`
+                : tieneCotizaciones
+                ? `Se eliminarán: el trato y ${trato.cotizaciones.length} cotización(es) asociada(s). Esta acción no se puede deshacer.`
+                : "Se eliminará este trato. Esta acción no se puede deshacer.";
+              const ok = await confirm({ message: resumen, danger: true, confirmText: 'Eliminar todo' });
+              if (!ok) return;
+              const res = await fetch(`/api/tratos/${trato.id}`, { method: 'DELETE' });
+              if (!res.ok) {
+                const d = await res.json().catch(() => ({}));
+                toast.error(d.error ?? 'Error al eliminar el trato');
+                return;
+              }
+              toast.success('Trato eliminado');
+              router.push('/crm/tratos');
+            }}
+            className="w-full py-2 bg-transparent border border-red-900/30 text-red-600 text-sm rounded-xl hover:bg-red-900/10 hover:text-red-400 transition-colors"
+          >
+            🗑 Eliminar
+          </button>
+        </div>
+      </div>
+
+      </div> {/* end 2-column grid */}
+
+      {/* ── Modal: Razón de pérdida ── */}
+      {modalPerdida && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setModalPerdida(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Marcar como perdido</h3>
+              <button onClick={() => setModalPerdida(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Razón principal</label>
+                <Combobox
+                  value={razonPerdida}
+                  onChange={v => setRazonPerdida(v)}
+                  options={[{ value: "", label: "— Seleccionar —" }, { value: "Precio", label: "Precio fuera de presupuesto" }, { value: "Fechas", label: "Fechas no coinciden" }, { value: "Eligió a otro proveedor", label: "Eligió a otro proveedor" }, { value: "No respondió", label: "No respondió / se enfrió" }, { value: "Evento cancelado", label: "Evento cancelado" }, { value: "Fuera de cobertura", label: "Fuera de cobertura geográfica" }, { value: "Otro", label: "Otro" }]}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notas adicionales (opcional)</label>
+                <textarea value={notasPerdida} onChange={e => setNotasPerdida(e.target.value)}
+                  rows={2} placeholder="Contexto o detalles que ayuden a entender la pérdida..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setModalPerdida(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">Cancelar</button>
+                <button onClick={confirmarPerdida} disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-red-900/60 border border-red-700/40 text-red-300 hover:bg-red-900 text-sm font-medium transition-colors disabled:opacity-50">
+                  {saving ? "Guardando..." : "Confirmar pérdida"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Editar trato ── */}
+      {editando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar trato</h3>
+              <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
+                <Combobox
+                  value={trato.cliente.id}
+                  onChange={async (nuevoId) => {
+                    if (!nuevoId || nuevoId === trato.cliente.id) return;
+                    setSavingCliente(true);
+                    const res = await fetch(`/api/tratos/${id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ clienteId: nuevoId }),
+                    });
+                    if (res.ok) {
+                      const r2 = await fetch(`/api/tratos/${id}`);
+                      const d2 = await r2.json();
+                      if (d2.trato) setTrato(d2.trato);
+                      toast.success("Cliente actualizado");
+                    } else {
+                      const d = await res.json().catch(() => ({}));
+                      toast.error(d.error ?? "Error al cambiar cliente");
+                    }
+                    setSavingCliente(false);
+                  }}
+                  options={clientesOpciones}
+                  placeholder={clientesOpciones.length === 0 ? "Cargando clientes..." : "Buscar cliente..."}
+                  disabled={savingCliente}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Nombre del evento / proyecto</label>
+                <input value={form.nombreEvento || ""} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
+                  placeholder="Ej: Boda García-López, Concierto Verano..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
+                  <Combobox
+                    value={form.tipoEvento || ""}
+                    onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
+                    options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
+                  <Combobox
+                    value={form.tipoServicio || ""}
+                    onChange={v => setForm(p => ({ ...p, tipoServicio: v }))}
+                    options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Lugar estimado</label>
+                  <VenuePicker value={form.lugarEstimado || ""} onChange={(v) => setForm(p => ({ ...p, lugarEstimado: v }))} />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Fecha estimada</label>
+                  <input type="date" value={form.fechaEventoEstimada ? (form.fechaEventoEstimada as string).split("T")[0] : ""}
+                    onChange={e => setForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Presupuesto estimado ($)</label>
+                  <input type="number" value={form.presupuestoEstimado || ""} onChange={e => setForm(p => ({ ...p, presupuestoEstimado: parseFloat(e.target.value) }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
+                  <Combobox
+                    value={form.clasificacion || "PROSPECTO"}
+                    onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
+                    options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "BASIC", label: "Basic" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Notas</label>
+                <textarea value={form.notas || ""} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
+                  rows={3} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Próxima acción</label>
+                  <input value={form.proximaAccion || ""} onChange={e => setForm(p => ({ ...p, proximaAccion: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Fecha próxima acción</label>
+                  <input type="date" value={form.fechaProximaAccion ? (form.fechaProximaAccion as string).split("T")[0] : ""}
+                    onChange={e => setForm(p => ({ ...p, fechaProximaAccion: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setEditando(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                  Cancelar
+                </button>
+                <button onClick={guardar} disabled={saving}
+                  className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
+                  {saving ? "Guardando..." : "Guardar cambios"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {CelebrationToastEl}
     </div>
   );
 }
+
