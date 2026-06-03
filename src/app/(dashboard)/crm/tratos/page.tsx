@@ -106,6 +106,39 @@ const TIPO_EVENTO_TEXT: Record<string, string> = {
 
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
 
+function groupTratosByMes(tratos: Trato[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const map: Record<string, { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean }> = {};
+
+  for (const t of tratos) {
+    const ref = t.fechaEventoEstimada ?? t.createdAt;
+    const d = new Date(ref.substring(0, 10) + 'T12:00:00Z');
+    const year = d.getUTCFullYear();
+    const month = d.getUTCMonth();
+    const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const isPast = d < today;
+    const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    if (!map[yearMonth]) map[yearMonth] = { label, yearMonth, tratos: [], isPast };
+    map[yearMonth].tratos.push(t);
+  }
+
+  // Sort each group internally by reference date desc
+  for (const g of Object.values(map)) {
+    g.tratos.sort((a, b) => {
+      const da = new Date((a.fechaEventoEstimada ?? a.createdAt).substring(0, 10) + 'T12:00:00Z');
+      const db = new Date((b.fechaEventoEstimada ?? b.createdAt).substring(0, 10) + 'T12:00:00Z');
+      return db.getTime() - da.getTime();
+    });
+  }
+
+  const all = Object.values(map).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+  const future = all.filter(g => !g.isPast);
+  const past = all.filter(g => g.isPast);
+  return { future, past };
+}
+
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
@@ -1665,29 +1698,9 @@ export default function TratosPage() {
               );
             }
 
-            // ── Month grouping when ordering by fecha evento ────────────────────────
-            if (ordenTrato === 'fechaEvento') {
-              const groups: { label: string; tratos: Trato[]; yearMonth: string }[] = [];
-              const sinFecha: Trato[] = [];
-
-              for (const t of tabTratos) {
-                if (!t.fechaEventoEstimada) {
-                  sinFecha.push(t);
-                  continue;
-                }
-                const ym = t.fechaEventoEstimada.slice(0, 7);
-                const [y, m] = ym.split('-').map(Number);
-                const label = new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-                const existing = groups.find(g => g.yearMonth === ym);
-                if (existing) existing.tratos.push(t);
-                else groups.push({ label, tratos: [t], yearMonth: ym });
-              }
-
-              // En VENTA_CERRADA, separar meses pasados de futuros
-              const isVentaCerrada = filtroEtapa === 'VENTA_CERRADA' || filtroEtapa === 'TODOS';
-              const hoyYM = new Date().toISOString().slice(0, 7);
-              const futureGroups = isVentaCerrada ? groups.filter(g => g.yearMonth >= hoyYM) : groups;
-              const pastGroups  = isVentaCerrada ? groups.filter(g => g.yearMonth < hoyYM)  : [];
+            // ── Unified month grouping for ALL tabs ─────────────────────
+            {
+              const { future, past } = groupTratosByMes(tabTratos);
 
               const renderRow = (t: Trato) => (
                 <CompactTratoRow
@@ -1702,12 +1715,13 @@ export default function TratosPage() {
                 />
               );
 
-              const renderGroup = (g: typeof futureGroups[0]) => (
+              const renderGroup = (g: ReturnType<typeof groupTratosByMes>['future'][0]) => (
                 <div key={g.yearMonth}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold capitalize">{g.label}</p>
-                    <div className="h-px flex-1 bg-[#111]" />
-                    <span className="text-[10px] text-gray-700">{g.tratos.length}</span>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-600">
+                      {g.label} ({g.tratos.length})
+                    </span>
+                    <div className="flex-1 border-t border-[#1a1a1a]" />
                   </div>
                   <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
                     {g.tratos.map(renderRow)}
@@ -1717,127 +1731,23 @@ export default function TratosPage() {
 
               return (
                 <div className="space-y-5">
-                  {/* Futuros (o todos si no es VENTA_CERRADA) */}
-                  {futureGroups.map(renderGroup)}
-
-                  {/* Sin fecha — al fondo fuera de VENTA_CERRADA, o como futuros dentro */}
-                  {sinFecha.length > 0 && !isVentaCerrada && (
+                  {future.map(renderGroup)}
+                  {past.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-3 mb-2">
-                        <p className="text-[11px] uppercase tracking-wider text-gray-500">Sin fecha de evento</p>
-                        <div className="h-px flex-1 bg-[#111]" />
+                      <div className="flex items-center gap-2 mb-3 px-1">
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+                          Eventos pasados
+                        </span>
+                        <div className="flex-1 border-t border-[#1a1a1a]" />
                       </div>
-                      <div className="rounded-xl border border-[#1a1a1a] overflow-hidden opacity-60">
-                        {sinFecha.map(renderRow)}
+                      <div className="space-y-4 opacity-60">
+                        {past.map(renderGroup)}
                       </div>
-                    </div>
-                  )}
-                  {sinFecha.length > 0 && isVentaCerrada && (
-                    <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                      {sinFecha.map(renderRow)}
-                    </div>
-                  )}
-
-                  {/* Eventos pasados (solo VENTA_CERRADA) */}
-                  {pastGroups.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-px flex-1 bg-[#111]" />
-                        <p className="text-[10px] uppercase tracking-wider text-gray-700">Eventos pasados</p>
-                        <div className="h-px flex-1 bg-[#111]" />
-                      </div>
-                      <div className="space-y-5 opacity-50">
-                        {pastGroups.map(renderGroup)}
-                      </div>
-                    </div>
-                  )}
-
-                  {groups.length === 0 && sinFecha.length === 0 && (
-                    <div className="text-center py-20 text-gray-700">
-                      <p className="text-3xl mb-3">📭</p>
-                      <p className="text-sm">Sin tratos en esta etapa</p>
                     </div>
                   )}
                 </div>
               );
             }
-
-
-            // ── VENTA_CERRADA: split upcoming vs past ──────────────────────
-            if (filtroEtapa === 'VENTA_CERRADA' || filtroEtapa === 'TODOS') {
-              const hoyStr = new Date().toISOString().slice(0, 10);
-              const proximos = tabTratos.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada.slice(0, 10) >= hoyStr);
-              const pasados = tabTratos
-                .filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada.slice(0, 10) < hoyStr)
-                .sort((a, b) => new Date(b.fechaEventoEstimada!).getTime() - new Date(a.fechaEventoEstimada!).getTime());
-
-              return (
-                <div className="space-y-4">
-                  {proximos.length > 0 && (
-                    <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                      {proximos.map(t => (
-                        <CompactTratoRow
-                          key={t.id}
-                          trato={t}
-                          onEliminar={() => eliminar(t.id, t.cliente.nombre)}
-                          onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                          onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
-                          deletingId={deletingId}
-                          isExpanded={expandedRowId === t.id}
-                          onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {pasados.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="h-px flex-1 bg-[#111]" />
-                        <p className="text-[10px] uppercase tracking-wider text-gray-700">Eventos pasados</p>
-                        <div className="h-px flex-1 bg-[#111]" />
-                      </div>
-                      <div className="rounded-xl border border-[#111] overflow-hidden opacity-50">
-                        {pasados.map(t => (
-                          <CompactTratoRow
-                            key={t.id}
-                            trato={t}
-                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
-                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
-                            deletingId={deletingId}
-                            isExpanded={expandedRowId === t.id}
-                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {proximos.length === 0 && pasados.length === 0 && (
-                    <div className="text-center py-20 text-gray-700">
-                      <p className="text-3xl mb-3">📭</p>
-                      <p className="text-sm">No hay ventas cerradas</p>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                {tabTratos.map(t => (
-                  <CompactTratoRow
-                    key={t.id}
-                    trato={t}
-                    onEliminar={() => eliminar(t.id, t.cliente.nombre)}
-                    onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                    onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
-                    deletingId={deletingId}
-                    isExpanded={expandedRowId === t.id}
-                    onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
-                  />
-                ))}
-              </div>
-            );
 
           })()}
         </div>
