@@ -12,6 +12,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
+import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -570,18 +571,28 @@ type SeguimientoItem = {
 
 const CANAL_ICON_MAP: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
 
-function SeguimientosPanel({ tratoId }: { tratoId: string }) {
+function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
+  tratoId: string;
+  etapa: string;
+  tipoEvento: string;
+  clienteNombre: string;
+}) {
   const [segs, setSegs] = useState<SeguimientoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
   const [notaRes, setNotaRes] = useState("");
   const [showForm, setShowForm] = useState(true);
-  const [formTitulo, setFormTitulo] = useState("");
+  const [formTipoKey, setFormTipoKey] = useState("");
   const [formNota, setFormNota] = useState("");
   const [formCanal, setFormCanal] = useState("whatsapp");
   const [formFecha, setFormFecha] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().substring(0, 10); });
   const [formHora, setFormHora] = useState("10:00");
   const [saving, setSaving] = useState(false);
+
+  // Guide text computed from selected tipo key and client/event context
+  const tiposDisponibles = SEGUIMIENTO_TIPOS[etapa] ?? [];
+  const tipoSeleccionado = tiposDisponibles.find(t => t.key === formTipoKey) ?? null;
+  const guiaTexto = tipoSeleccionado ? tipoSeleccionado.getGuia(clienteNombre, tipoEvento) : '';
 
   const loadSegs = useCallback(async () => {
     const r = await fetch(`/api/seguimientos?tratoId=${tratoId}`);
@@ -606,17 +617,17 @@ function SeguimientosPanel({ tratoId }: { tratoId: string }) {
   }
 
   async function crearSeguimiento() {
-    if (!formTitulo) return;
+    if (!formTipoKey) return;
     setSaving(true);
     const fechaProgramada = new Date(`${formFecha}T${formHora}:00`);
     await fetch("/api/seguimientos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tratoId, tipo: "manual", canal: formCanal, titulo: formTitulo, nota: formNota || null, fechaProgramada: fechaProgramada.toISOString() }),
+      body: JSON.stringify({ tratoId, tipo: "manual", canal: formCanal, titulo: formTipoKey, nota: formNota || null, fechaProgramada: fechaProgramada.toISOString() }),
     });
     setSaving(false);
     setShowForm(false);
-    setFormTitulo(""); setFormNota("");
+    setFormTipoKey(""); setFormNota("");
     loadSegs();
   }
 
@@ -673,7 +684,7 @@ function SeguimientosPanel({ tratoId }: { tratoId: string }) {
                 {/* Contenido */}
                 <div className={`flex-1 pb-3 ${seg.completado ? "opacity-60" : ""}`}>
                   <div className="flex items-start gap-2 flex-wrap mb-1">
-                    <p className="text-white text-sm font-medium flex-1">{seg.titulo}</p>
+                    <p className="text-white text-sm font-medium flex-1">{SEGUIMIENTO_TIPO_LABELS[seg.titulo] ?? seg.titulo}</p>
                     <span className="text-sm">{CANAL_ICON_MAP[seg.canal] ?? "📋"}</span>
                   </div>
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -726,35 +737,104 @@ function SeguimientosPanel({ tratoId }: { tratoId: string }) {
       {/* Formulario inline */}
       {showForm ? (
         <div className="border border-[#2a2a2a] rounded-xl p-4 bg-[#0d0d0d] space-y-3">
-          <input
-            autoFocus
-            value={formTitulo}
-            onChange={e => setFormTitulo(e.target.value)}
-            placeholder="Título del seguimiento…"
-            className="w-full bg-transparent border-b border-[#2a2a2a] py-1 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-          />
-          <div className="flex gap-2">
-            {["whatsapp", "llamada", "reunion"].map(c => (
-              <button key={c} onClick={() => setFormCanal(c)}
-                className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${formCanal === c ? "bg-[#B3985B] border-[#B3985B] text-black" : "border-[#2a2a2a] text-[#555] hover:text-white"}`}>
-                {CANAL_ICON_MAP[c]} {c === "whatsapp" ? "WA" : c === "llamada" ? "Llamada" : "Reunión"}
+          {/* Tipo de seguimiento */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Tipo de seguimiento</label>
+            <select
+              value={formTipoKey}
+              onChange={e => setFormTipoKey(e.target.value)}
+              className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50 transition-colors"
+            >
+              <option value="">Selecciona un tipo...</option>
+              {tiposDisponibles.map(t => (
+                <option key={t.key} value={t.key}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Texto guía — visible solo cuando hay tipo seleccionado */}
+          {guiaTexto && (
+            <div className="relative bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Texto guía</p>
+              <p className="text-xs text-gray-400 whitespace-pre-wrap leading-relaxed">{guiaTexto}</p>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(guiaTexto)}
+                className="mt-2 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors"
+              >
+                Copiar texto
               </button>
-            ))}
+            </div>
+          )}
+
+          {/* Canal */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Canal</label>
+            <div className="flex gap-2">
+              {(["whatsapp", "llamada", "reunion"] as const).map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setFormCanal(c)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors border ${
+                    formCanal === c
+                      ? 'bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]'
+                      : 'border-[#222] text-gray-600 hover:border-[#333] hover:text-gray-400'
+                  }`}
+                >
+                  {c === 'whatsapp' ? 'WhatsApp' : c === 'llamada' ? 'Llamada' : 'Reunión'}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Fecha y hora */}
           <div className="flex gap-2">
-            <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)}
-              className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-            <input type="time" value={formHora} onChange={e => setFormHora(e.target.value)}
-              className="w-24 bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            <div className="flex-1">
+              <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Fecha</label>
+              <input
+                type="date"
+                value={formFecha}
+                onChange={e => setFormFecha(e.target.value)}
+                className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+              />
+            </div>
+            <div className="w-28">
+              <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Hora</label>
+              <input
+                type="time"
+                value={formHora}
+                onChange={e => setFormHora(e.target.value)}
+                className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+              />
+            </div>
           </div>
-          <textarea value={formNota} onChange={e => setFormNota(e.target.value)} rows={2} placeholder="Nota (opcional)"
-            className="w-full bg-transparent border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] resize-none" />
-          <div className="flex gap-2">
-            <button onClick={crearSeguimiento} disabled={saving || !formTitulo}
-              className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-2 rounded-lg transition-colors">
-              {saving ? "Guardando…" : "Agregar seguimiento"}
+
+          {/* Nota opcional */}
+          <div>
+            <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Nota (opcional)</label>
+            <textarea
+              value={formNota}
+              onChange={e => setFormNota(e.target.value)}
+              rows={2}
+              placeholder="Contexto, acuerdos o resultado..."
+              className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50 resize-none placeholder-[#444]"
+            />
+          </div>
+
+          {/* Acciones */}
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={crearSeguimiento}
+              disabled={saving || !formTipoKey}
+              className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Guardando...' : 'Agregar seguimiento'}
             </button>
-            <button onClick={() => setShowForm(false)} className="text-xs text-[#555] hover:text-white transition-colors px-3">
+            <button
+              onClick={() => { setShowForm(false); setFormTipoKey(''); setFormNota(''); }}
+              className="px-4 py-2 rounded-lg border border-[#222] text-gray-500 text-sm hover:border-[#333] hover:text-gray-400 transition-colors"
+            >
               Cancelar
             </button>
           </div>
@@ -1452,9 +1532,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const waLink = (() => {
     const tel = trato.cliente.telefono?.replace(/^p:/i, '').replace(/[^\d+]/g, '');
     if (!tel) return null;
-    const nombre = trato.cliente.nombre.split(' ')[0];
-    const evento = trato.nombreEvento || trato.tipoEvento || 'tu evento';
-    const msg = `Hola ${nombre}, te contacto de Mainstage Pro para dar seguimiento a ${evento}. ¿Tienes un momento?`;
+    const msg = getWaMensajePrimerContacto(trato.cliente.nombre, trato.tipoEvento);
     return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
   })();
 
@@ -3082,7 +3160,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Seguimientos */}
-      <SeguimientosPanel tratoId={trato.id} />
+      <SeguimientosPanel
+        tratoId={trato.id}
+        etapa={trato.etapa}
+        tipoEvento={trato.tipoEvento}
+        clienteNombre={trato.cliente.nombre}
+      />
 
       </div> {/* end left column */}
 
