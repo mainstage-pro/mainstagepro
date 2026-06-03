@@ -761,11 +761,13 @@ function CompactTratoRow({
   trato: t,
   onEliminar,
   onCambiarEtapa,
+  onQuickNote,
   deletingId,
 }: {
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
+  onQuickNote: () => void;
   deletingId: string | null;
 }) {
   const router = useRouter();
@@ -855,6 +857,15 @@ function CompactTratoRow({
           <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
         ))}
       </select>
+
+      {/* Contactado rápido */}
+      <button
+        onClick={e => { e.stopPropagation(); onQuickNote(); }}
+        className="shrink-0 text-gray-700 hover:text-emerald-500 transition-colors text-[11px] hidden md:inline"
+        title="Registrar contacto"
+      >
+        ✓
+      </button>
 
       {/* Eliminar */}
       <button
@@ -1044,6 +1055,7 @@ export default function TratosPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filtroEtapa, setFiltroEtapa] = useState<string | null>('LEAD');
+  const [filtroTipoEvento, setFiltroTipoEvento] = useState<string | null>(null);
   const [filtroFrio, setFiltroFrio] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const [vista, setVista] = useState<"lista" | "kanban">(() => {
@@ -1060,7 +1072,10 @@ export default function TratosPage() {
   const toast = useToast();
   const confirm = useConfirm();
 
-
+  // Quick Contactado state
+  const [quickNoteId, setQuickNoteId] = useState<string | null>(null);
+  const [quickNoteText, setQuickNoteText] = useState('');
+  const [savingQuickNote, setSavingQuickNote] = useState(false);
 
   // Lead view & completion popover
   const [activeSeguimientoPopover, setActiveSeguimientoPopover] = useState<string | null>(null);
@@ -1083,6 +1098,30 @@ export default function TratosPage() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+  }
+
+  async function guardarNota(tratoId: string) {
+    setSavingQuickNote(true);
+    try {
+      await fetch(`/api/seguimientos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tratoId,
+          tipo: 'manual',
+          canal: 'whatsapp',
+          titulo: 'Contactado',
+          nota: quickNoteText.trim() || null,
+          completado: true,
+          fechaProgramada: new Date().toISOString(),
+        }),
+      });
+      toast.success('Contacto registrado ✓');
+      setQuickNoteId(null);
+      setQuickNoteText('');
+    } finally {
+      setSavingQuickNote(false);
+    }
   }
 
   useEffect(() => {
@@ -1409,7 +1448,7 @@ export default function TratosPage() {
               return (
                 <button
                   key={key}
-                  onClick={() => setFiltroEtapa(key)}
+                  onClick={() => { setFiltroEtapa(key); setFiltroTipoEvento(null); }}
                   className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                     filtroEtapa === key ? 'text-white' : 'text-gray-600 hover:text-gray-400'
                   }`}
@@ -1427,6 +1466,24 @@ export default function TratosPage() {
             })}
           </div>
 
+          {/* ── Filtro tipo de evento ── */}
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <span className="text-[10px] text-gray-600 uppercase tracking-wider">Tipo:</span>
+            {([null, 'MUSICAL', 'SOCIAL', 'EMPRESARIAL', 'OTRO'] as const).map(tipo => (
+              <button
+                key={tipo ?? 'todos'}
+                onClick={() => setFiltroTipoEvento(tipo)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${
+                  filtroTipoEvento === tipo
+                    ? 'bg-[#1a1a1a] border-[#B3985B]/40 text-[#B3985B]'
+                    : 'bg-transparent border-[#1a1a1a] text-gray-600 hover:text-gray-300 hover:border-[#2a2a2a]'
+                }`}
+              >
+                {tipo === null ? 'Todos' : tipo === 'MUSICAL' ? '🎵 Musical' : tipo === 'SOCIAL' ? '🎉 Social' : tipo === 'EMPRESARIAL' ? '🏢 Empresarial' : '• Otro'}
+              </button>
+            ))}
+          </div>
+
           {/* ── Compact list for active tab ── */}
           {loading ? (
             <SkeletonPage />
@@ -1440,7 +1497,8 @@ export default function TratosPage() {
                   (t.cliente.empresa ?? '').toLowerCase().includes(q) ||
                   (t.nombreEvento ?? '').toLowerCase().includes(q) ||
                   (t.cliente.telefono ?? '').includes(q);
-                return matchEtapa && matchSearch;
+                const matchTipo = !filtroTipoEvento || t.tipoEvento === filtroTipoEvento;
+                return matchEtapa && matchSearch && matchTipo;
               })
               .sort((a, b) => {
                 const etapa = filtroEtapa ?? 'LEAD';
@@ -1475,6 +1533,7 @@ export default function TratosPage() {
                     trato={t}
                     onEliminar={() => eliminar(t.id, t.cliente.nombre)}
                     onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                    onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                     deletingId={deletingId}
                   />
                 ))}
@@ -1493,6 +1552,42 @@ export default function TratosPage() {
             setTratos(refreshed.tratos ?? []);
           }}
         />
+      )}
+
+      {/* ── Quick Contactado overlay + popover ── */}
+      {quickNoteId && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => { setQuickNoteId(null); setQuickNoteText(''); }}
+        />
+      )}
+      {quickNoteId && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl p-4 w-80">
+          <p className="text-xs text-gray-400 mb-2 font-medium">Registrar contacto</p>
+          <textarea
+            value={quickNoteText}
+            onChange={e => setQuickNoteText(e.target.value)}
+            placeholder="Nota rápida (opcional)..."
+            rows={2}
+            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-3"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => guardarNota(quickNoteId)}
+              disabled={savingQuickNote}
+              className="flex-1 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-xl hover:bg-[#c9a96a] disabled:opacity-40 transition-colors"
+            >
+              {savingQuickNote ? 'Guardando...' : '✓ Registrar contacto'}
+            </button>
+            <button
+              onClick={() => { setQuickNoteId(null); setQuickNoteText(''); }}
+              className="px-3 py-2 bg-[#1a1a1a] text-gray-400 text-sm rounded-xl hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
       )}
 
     </div>
