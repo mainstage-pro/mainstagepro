@@ -103,18 +103,14 @@ interface Proyecto {
 // ─── Constantes ──────────────────────────────────────────────────────────────
 const ESTADOS = ["PLANEACION", "EN_CURSO", "COMPLETADO", "CANCELADO"];
 const ESTADO_LABELS: Record<string, string> = {
-  PLANEACION: "En preparación",
-  CONFIRMADO: "Confirmado",
+  PLANEACION: "Planeación",
   EN_CURSO: "En evento",
-  PENDIENTE_CIERRE: "Pendiente de cierre",
   COMPLETADO: "Finalizado",
   CANCELADO: "Cancelado",
 };
 const ESTADO_COLORS: Record<string, string> = {
   PLANEACION: "bg-blue-900/50 text-blue-300",
-  CONFIRMADO: "bg-green-900/50 text-green-300",
   EN_CURSO: "bg-yellow-900/50 text-yellow-300",
-  PENDIENTE_CIERRE: "bg-orange-900/50 text-orange-300",
   COMPLETADO: "bg-gray-700 text-gray-300",
   CANCELADO: "bg-red-900/50 text-red-300",
 };
@@ -202,8 +198,10 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean }) {
   const [val, setVal] = useState(value ?? "");
   const [dirty, setDirty] = useState(false);
+  const [saved, setSaved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { setVal(value ?? ""); setDirty(false); }, [value]);
 
@@ -213,18 +211,24 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
     textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
   }, [val, multiline]);
 
+  function markSaved() {
+    setSaved(true);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2000);
+  }
+
   useEffect(() => {
     if (!dirty) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      if (dirty) { onSave(field, val); setDirty(false); }
+      if (dirty) { onSave(field, val); setDirty(false); markSaved(); }
     }, 1500);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [val, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleBlur() {
     if (timerRef.current) clearTimeout(timerRef.current);
-    if (dirty) { onSave(field, val); setDirty(false); }
+    if (dirty) { onSave(field, val); setDirty(false); markSaved(); }
   }
 
   const inputCls = "w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-colors";
@@ -232,10 +236,17 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
   if (type === "time") {
     return (
       <div>
-        {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
-        <TimePicker
+        {!noLabel && (
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-gray-500 text-xs">{label}</label>
+            {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
+          </div>
+        )}
+        <input
+          type="time"
           value={val}
-          onChange={v => { setVal(v); onSave(field, v); }}
+          onChange={e => { setVal(e.target.value); onSave(field, e.target.value); markSaved(); }}
+          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-colors"
         />
       </div>
     );
@@ -243,7 +254,12 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
 
   return (
     <div>
-      {!noLabel && <label className="text-gray-500 text-xs mb-1 block">{label}</label>}
+      {!noLabel && (
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-gray-500 text-xs">{label}</label>
+          {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
+        </div>
+      )}
       {multiline ? (
         <textarea ref={textareaRef} value={val} rows={2} className={inputCls + " resize-none overflow-hidden"}
           onChange={e => { setVal(e.target.value); setDirty(true); }}
@@ -2920,8 +2936,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
 
-        const ESTADO_OPTS = ["PLANEACION","EN_CURSO","COMPLETADO"] as const;
-        const ESTADO_LABELS_SHORT: Record<string, string> = { PLANEACION:"Preparación", EN_CURSO:"En evento", COMPLETADO:"Finalizado" };
+        const ESTADO_OPTS = ["PLANEACION","EN_CURSO","COMPLETADO","CANCELADO"] as const;
+        const ESTADO_LABELS_SHORT: Record<string, string> = { PLANEACION:"Planeación", EN_CURSO:"En evento", COMPLETADO:"Finalizado", CANCELADO:"Cancelado" };
 
         const AreaCard = ({ title, checks, color }: { title: string; checks: CheckItem[]; color: string }) => {
           const done = checks.filter(c => c.ok).length;
