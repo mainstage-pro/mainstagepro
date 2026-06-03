@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "";
 const PAGE_TOKEN   = process.env.META_PAGE_ACCESS_TOKEN   ?? "";
 
-// ── Field name matchers (Meta uses the question label as the key) ─────────────
+// ── Field name matchers (Meta usa el label de la pregunta como key) ────────────
 function getField(fields: { name: string; values: string[] }[], ...keys: string[]) {
   for (const key of keys) {
     const f = fields.find((f) => f.name.toLowerCase().includes(key.toLowerCase()));
@@ -16,13 +16,13 @@ function getField(fields: { name: string; values: string[] }[], ...keys: string[
 function mapTipoEvento(respuesta: string | null): string {
   if (!respuesta) return "OTRO";
   const r = respuesta.toLowerCase();
-  if (r.includes("boda") || r.includes("quinceañera") || r.includes("quince") || r.includes("graduaci"))  return "SOCIAL";
-  if (r.includes("empresarial") || r.includes("conferencia")) return "EMPRESARIAL";
-  if (r.includes("concierto") || r.includes("festival"))      return "MUSICAL";
+  if (r.includes("boda") || r.includes("quinceañera") || r.includes("quince") || r.includes("graduaci")) return "SOCIAL";
+  if (r.includes("empresarial") || r.includes("conferencia") || r.includes("corporativo"))              return "EMPRESARIAL";
+  if (r.includes("concierto") || r.includes("festival") || r.includes("musical"))                       return "MUSICAL";
   return "OTRO";
 }
 
-// ── GET — verificación de webhook ─────────────────────────────────────────────
+// ── GET — verificación de webhook con Meta ──────────────────────────────────────
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode      = searchParams.get("hub.mode");
@@ -35,46 +35,59 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
-// ── POST — recibir lead ────────────────────────────────────────────────────────
+// ── POST — recibir notificación de nuevo lead ───────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Meta envía un array de entries; procesamos todos
+    // Meta envía un array de entries — procesamos todos
     const entries = body?.entry ?? [];
     for (const entry of entries) {
       for (const change of entry?.changes ?? []) {
         if (change?.field !== "leadgen") continue;
 
         const leadgenId = change?.value?.leadgen_id;
+        const campana   = change?.value?.ad_name ?? change?.value?.campaign_name ?? null;
         if (!leadgenId) continue;
 
-        // Obtener datos del lead desde la Graph API
+        // ── 1. Obtener datos del lead desde la Graph API ──────────────────────
+        if (!PAGE_TOKEN) {
+          console.error("[meta-leads] META_PAGE_ACCESS_TOKEN no configurado");
+          continue;
+        }
+
         const gRes = await fetch(
-          `https://graph.facebook.com/v19.0/${leadgenId}?access_token=${PAGE_TOKEN}`
+          `https://graph.facebook.com/v19.0/${leadgenId}?fields=id,created_time,field_data,ad_id,campaign_id&access_token=${PAGE_TOKEN}`
         );
-        if (!gRes.ok) continue;
+        if (!gRes.ok) {
+          console.error("[meta-leads] Error Graph API:", await gRes.text());
+          continue;
+        }
 
         const lead = await gRes.json() as {
           id: string;
           created_time?: string;
+          ad_id?: string;
           field_data?: { name: string; values: string[] }[];
         };
 
         const fields     = lead.field_data ?? [];
-        const nombre     = getField(fields, "full_name", "nombre") ?? "Lead Meta Ads";
-        const telefono   = getField(fields, "phone_number", "telefono", "phone") ?? null;
-        const tipoRaw    = getField(fields, "tipo de evento", "evento", "producción");
-        const fechaText  = getField(fields, "fecha", "date");
-        const lugar      = getField(fields, "ciudad", "venue", "lugar");
+        const nombre     = getField(fields, "full_name", "nombre", "name") ?? "Lead Meta Ads";
+        const telefono   = getField(fields, "phone_number", "telefono", "phone", "celular") ?? null;
+        const email      = getField(fields, "email", "correo") ?? null;
+        const ciudad     = getField(fields, "ciudad", "city", "location") ?? null;
+        const tipoRaw    = getField(fields, "tipo de evento", "evento", "produccion", "producción", "servicio");
         const tipoEvento = mapTipoEvento(tipoRaw);
+        const notaRaw    = tipoRaw ?? getField(fields, "descripcion", "descripción", "nota", "mensaje") ?? null;
 
-        // Buscar cliente existente por teléfono para evitar duplicados
+        // ── 2. Buscar o crear cliente ─────────────────────────────────────────
         let clienteId: string;
         const telefonoLimpio = telefono?.replace(/\D/g, "") ?? null;
 
         const existente = telefonoLimpio
-          ? await prisma.cliente.findFirst({ where: { telefono: { contains: telefonoLimpio.slice(-10) } } })
+          ? await prisma.cliente.findFirst({
+              where: { telefono: { contains: telefonoLimpio.slice(-10) } },
+            })
           : null;
 
         if (existente) {
@@ -84,56 +97,93 @@ export async function POST(req: NextRequest) {
             data: {
               nombre,
               telefono: telefono ?? null,
-              tipoCliente: "B2C",
+              correo:   email    ?? null,
+              tipoCliente:   "B2C",
               clasificacion: "NUEVO",
             },
           });
           clienteId = c.id;
         }
 
-        // Armar notas con toda la info del formulario
+        // ── 3. Crear trato en etapa LEAD ──────────────────────────────────────
+        const ahora      = new Date();
+        const fechaLabel = ahora.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
+
+        const nurturingInit = JSON.stringify({
+          etapa:       "PRIMER_CONTACTO",
+          temperatura: "FRIO",
+          log: [],
+          ...(campana ? { campana } : {}),
+          ...(ciudad  ? { city: ciudad } : {}),
+        });
+
         const notasPartes: string[] = ["📋 Lead generado desde Meta Ads Instant Form"];
-        if (tipoRaw)    notasPartes.push(`Tipo de evento: ${tipoRaw}`);
-        if (fechaText)  notasPartes.push(`Fecha estimada: ${fechaText}`);
-        if (lugar)      notasPartes.push(`Lugar / Ciudad: ${lugar}`);
+        if (tipoRaw) notasPartes.push(`Tipo de evento: ${tipoRaw}`);
+        if (ciudad)  notasPartes.push(`Ciudad: ${ciudad}`);
+        if (campana) notasPartes.push(`Campaña: ${campana}`);
 
         const trato = await prisma.trato.create({
           data: {
             clienteId,
             tipoEvento,
             tipoLead:       "INBOUND",
+            tipoProspecto:  "NURTURING",
             origenLead:     "META_ADS",
             origenVenta:    "PUBLICIDAD",
             estatusContacto:"PENDIENTE",
-            etapa:          "DESCUBRIMIENTO",
+            etapa:          "LEAD",
             clasificacion:  "PROSPECTO",
-            tipoProspecto:  "ACTIVO",
             canalAtencion:  "FORMULARIO",
             rutaEntrada:    "DESCUBRIR",
-            lugarEstimado:  lugar ?? null,
+            lugarEstimado:  ciudad ?? null,
             notas:          notasPartes.join("\n"),
+            nombreEvento:   notaRaw || `Lead Meta Ads${campana ? ` · ${campana}` : ""} — ${fechaLabel}`,
+            nurturingData:  nurturingInit,
             formRespuestas: JSON.stringify({
               leadgenId,
+              adId: lead.ad_id ?? null,
               fields: fields.map((f) => ({ pregunta: f.name, respuesta: f.values[0] ?? "" })),
             }),
           },
         });
 
-        // Notificar a todos los admins
-        const admins = await prisma.user.findMany({
-          where: { role: "ADMIN", active: true },
-          select: { id: true },
+        // ── 4. Seguimiento automático en 24h ──────────────────────────────────
+        const en24h = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
+
+        await prisma.seguimiento.create({
+          data: {
+            tratoId:        trato.id,
+            tipo:           "auto",
+            canal:          "whatsapp",
+            titulo:         `Primer contacto${campana ? ` — ${campana}` : ""}`,
+            numero:         0,
+            fechaProgramada:en24h,
+          },
         });
 
-        await prisma.notificacion.createMany({
-          data: admins.map((u) => ({
-            usuarioId: u.id,
-            tipo:      "TAREA",
-            titulo:    `Nuevo lead — ${nombre}`,
-            mensaje:   `Meta Ads · ${tipoRaw ?? tipoEvento}${lugar ? ` · ${lugar}` : ""}`,
-            url:       `/crm/tratos/${trato.id}`,
-          })),
+        await prisma.trato.update({
+          where: { id: trato.id },
+          data:  { fechaProximaAccion: en24h },
         });
+
+        // ── 5. Notificar a admins ─────────────────────────────────────────────
+        try {
+          const admins = await prisma.user.findMany({
+            where:  { role: "ADMIN", active: true },
+            select: { id: true },
+          });
+          if (admins.length > 0) {
+            await prisma.notificacion.createMany({
+              data: admins.map((u) => ({
+                usuarioId: u.id,
+                tipo:      "TAREA",
+                titulo:    `⚡ Nuevo lead — ${nombre}`,
+                mensaje:   `Meta Ads · ${tipoEvento}${ciudad ? ` · ${ciudad}` : ""}${campana ? ` · ${campana}` : ""}`,
+                url:       `/crm/tratos/${trato.id}`,
+              })),
+            });
+          }
+        } catch { /* notificaciones opcionales */ }
       }
     }
 
@@ -141,6 +191,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[meta-leads webhook]", err);
-    return NextResponse.json({ ok: true }); // devolver 200 igual para que Meta no reintente
+    return NextResponse.json({ ok: true }); // siempre 200 para que Meta no reintente
   }
 }
