@@ -82,6 +82,30 @@ const COT_LABELS: Record<string, string> = {
   EN_REVISION: "En revisión", AJUSTE_SOLICITADO: "Ajuste", REENVIADA: "Reenviada",
 };
 
+// Subtle accent colors for tipo evento
+const TIPO_EVENTO_BORDER: Record<string, string> = {
+  MUSICAL:     'border-l-indigo-500/30',
+  SOCIAL:      'border-l-rose-500/30',
+  EMPRESARIAL: 'border-l-cyan-500/30',
+  OTRO:        'border-l-transparent',
+};
+
+const TIPO_EVENTO_DOT: Record<string, string> = {
+  MUSICAL:     'bg-indigo-400/60',
+  SOCIAL:      'bg-rose-400/60',
+  EMPRESARIAL: 'bg-cyan-400/60',
+  OTRO:        'bg-gray-600/50',
+};
+
+const TIPO_EVENTO_TEXT: Record<string, string> = {
+  MUSICAL:     'text-indigo-400/70',
+  SOCIAL:      'text-rose-400/70',
+  EMPRESARIAL: 'text-cyan-400/70',
+  OTRO:        'text-gray-500',
+};
+
+type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
+
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
@@ -136,8 +160,8 @@ function CotizacionesSublista({ trato }: { trato: Trato }) {
         <div className="flex items-center justify-between">
           <p className="text-[#555] text-xs italic">Sin cotizaciones — agrega una para avanzar</p>
           <Link
-            href={`/crm/tratos/${trato.id}`}
-            className="text-[#B3985B] text-xs hover:underline"
+            href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+            className="text-[#B3985B] text-xs font-medium hover:underline"
           >
             + Nueva cotización →
           </Link>
@@ -763,12 +787,16 @@ function CompactTratoRow({
   onCambiarEtapa,
   onQuickNote,
   deletingId,
+  isExpanded,
+  onToggle,
 }: {
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
   onQuickNote: () => void;
   deletingId: string | null;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
   const router = useRouter();
   const wa = waUrl(t);
@@ -782,139 +810,130 @@ function CompactTratoRow({
   };
 
   return (
-    <div className="group flex items-center gap-3 px-4 py-3 hover:bg-[#0a0a0a] border-b border-[#0f0f0f] last:border-0 transition-colors">
-      {/* Nombre + empresa */}
-      <div
-        className="flex-1 min-w-0 cursor-pointer"
-        onClick={() => router.push(`/crm/tratos/${t.id}`)}
-      >
-        <p className="text-white text-sm font-medium leading-snug truncate">{t.cliente.nombre}</p>
-        {t.cliente.empresa && (
-          <p className="text-gray-600 text-[11px] truncate">{t.cliente.empresa}</p>
-        )}
-        {t.nombreEvento && (
-          <p className="text-gray-700 text-[10px] truncate mt-0.5">{t.nombreEvento}</p>
-        )}
-      </div>
-
-      {/* Tipo evento badge */}
-      <span className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#222] text-gray-500 shrink-0 whitespace-nowrap">
-        {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
-      </span>
-
-      {/* Cotización badge */}
-      {(() => {
-        const cots = t.cotizaciones ?? [];
-        const best = cots.find(c => c.estado === 'APROBADA')
-          ?? cots.find(c => c.estado === 'ENVIADA' || c.estado === 'REENVIADA')
-          ?? cots.find(c => c.estado === 'EN_REVISION' || c.estado === 'AJUSTE_SOLICITADO')
-          ?? cots[0] ?? null;
-        if (!best) {
-          return (
-            <Link
-              href={`/cotizaciones/nuevo?tratoId=${t.id}&clienteId=${t.cliente.id}`}
-              onClick={e => e.stopPropagation()}
-              className="hidden sm:inline text-[10px] text-gray-700 hover:text-[#B3985B] transition-colors shrink-0 whitespace-nowrap border border-dashed border-[#1e1e1e] px-1.5 py-0.5 rounded"
-              title="Crear cotización"
-            >
-              + Cotización
-            </Link>
-          );
-        }
-        return (
-          <Link
-            href={`/cotizaciones/${best.id}`}
-            onClick={e => e.stopPropagation()}
-            className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 whitespace-nowrap hover:opacity-80 transition-opacity ${COT_COLORS[best.estado] ?? 'bg-[#222] text-[#888]'}`}
-            title={`Ver cotización ${best.numeroCotizacion}`}
-          >
-            {COT_LABELS[best.estado] ?? best.estado}
-          </Link>
-        );
-      })()}
-
-      {/* Origen badge */}
-      <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
-        {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
-      </span>
-
-      {/* Teléfono */}
-      {t.cliente.telefono && (
-        <span className="hidden lg:inline text-[11px] text-gray-600 font-mono shrink-0">{t.cliente.telefono}</span>
-      )}
-
-      {/* Días badge */}
-      <div className="shrink-0 hidden sm:block">
-        <BadgeDias
-          inicio={t.createdAt}
-          fin={t.fechaCierre}
-          tipo="trato"
-          cerrado={!activo}
-          labelCerrado={t.etapa === 'VENTA_PERDIDA' ? 'perdido' : undefined}
-          urgenciaClassName={urgenciaColor(t.fechaProximaAccion)}
-        />
-      </div>
-
-      {/* Próxima acción */}
-      <span className="hidden md:inline text-[10px] text-gray-600 shrink-0 whitespace-nowrap">
-        {t.fechaProximaAccion ? fmtFecha2(t.fechaProximaAccion) : 'Sin seguimiento'}
-      </span>
-
-      {/* WhatsApp */}
-      {wa ? (
-        <a
-          href={wa}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="shrink-0 text-green-700 hover:text-green-500 transition-colors"
-          title="Abrir WhatsApp"
+    <>
+      {/* Main row */}
+      <div className={`group flex items-center gap-2 px-3 py-2.5 hover:bg-[#0a0a0a] border-b border-[#0f0f0f] last:border-0 transition-colors border-l-2 ${TIPO_EVENTO_BORDER[t.tipoEvento] ?? 'border-l-transparent'}`}>
+        {/* Expand toggle */}
+        <button
+          onClick={e => { e.stopPropagation(); onToggle(); }}
+          className="shrink-0 text-gray-700 hover:text-gray-400 transition-colors p-0.5"
+          title="Ver cotizaciones"
         >
-          <WaIcon />
-        </a>
-      ) : (
-        <span className="w-4 shrink-0" />
-      )}
-
-      {/* Selector de etapa */}
-      <select
-        value={t.etapa}
-        onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
-        onClick={e => e.stopPropagation()}
-        className="shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
-        title="Cambiar etapa"
-      >
-        {ALL_ETAPAS.map(e => (
-          <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
-        ))}
-      </select>
-
-      {/* Contactado rápido */}
-      <button
-        onClick={e => { e.stopPropagation(); onQuickNote(); }}
-        className="shrink-0 text-gray-700 hover:text-emerald-500 transition-colors text-[11px] hidden md:inline"
-        title="Registrar contacto"
-      >
-        ✓
-      </button>
-
-      {/* Eliminar */}
-      <button
-        onClick={e => { e.stopPropagation(); onEliminar(); }}
-        disabled={deletingId === t.id}
-        className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40"
-        title="Eliminar trato"
-      >
-        {deletingId === t.id ? (
-          <span className="text-[10px] text-gray-600">...</span>
-        ) : (
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+          <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
+        </button>
+
+        {/* Nombre + empresa */}
+        <div
+          className="flex-1 min-w-0 cursor-pointer"
+          onClick={() => router.push(`/crm/tratos/${t.id}`)}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[t.tipoEvento] ?? 'bg-gray-600/50'}`} />
+            <p className="text-white text-sm font-medium leading-snug truncate">{t.cliente.nombre}</p>
+          </div>
+          {t.cliente.empresa && (
+            <p className="text-gray-600 text-[11px] truncate pl-3">{t.cliente.empresa}</p>
+          )}
+          {t.nombreEvento && (
+            <p className="text-gray-700 text-[10px] truncate mt-0.5 pl-3">{t.nombreEvento}</p>
+          )}
+        </div>
+
+        {/* Tipo evento chip — now colored */}
+        <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[t.tipoEvento] ?? 'text-gray-500'}`}>
+          {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
+        </span>
+
+        {/* Origen badge */}
+        <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
+          {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
+        </span>
+
+        {/* Teléfono */}
+        {t.cliente.telefono && (
+          <span className="hidden lg:inline text-[11px] text-gray-600 font-mono shrink-0">{t.cliente.telefono}</span>
         )}
-      </button>
-    </div>
+
+        {/* Días badge */}
+        <div className="shrink-0 hidden sm:block">
+          <BadgeDias
+            inicio={t.createdAt}
+            fin={t.fechaCierre}
+            tipo="trato"
+            cerrado={!activo}
+            labelCerrado={t.etapa === 'VENTA_PERDIDA' ? 'perdido' : undefined}
+            urgenciaClassName={urgenciaColor(t.fechaProximaAccion)}
+          />
+        </div>
+
+        {/* Próxima acción */}
+        <span className="hidden md:inline text-[10px] text-gray-600 shrink-0 whitespace-nowrap">
+          {t.fechaProximaAccion ? fmtFecha2(t.fechaProximaAccion) : 'Sin seguimiento'}
+        </span>
+
+        {/* WhatsApp */}
+        {wa ? (
+          <a
+            href={wa}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="shrink-0 text-green-700 hover:text-green-500 transition-colors"
+            title="Abrir WhatsApp"
+          >
+            <WaIcon />
+          </a>
+        ) : (
+          <span className="w-4 shrink-0" />
+        )}
+
+        {/* Selector de etapa */}
+        <select
+          value={t.etapa}
+          onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
+          onClick={e => e.stopPropagation()}
+          className="shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
+          title="Cambiar etapa"
+        >
+          {ALL_ETAPAS.map(e => (
+            <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
+          ))}
+        </select>
+
+        {/* Contactado rápido */}
+        <button
+          onClick={e => { e.stopPropagation(); onQuickNote(); }}
+          className="shrink-0 text-gray-700 hover:text-emerald-500 transition-colors text-[11px] hidden md:inline"
+          title="Registrar contacto"
+        >
+          ✓
+        </button>
+
+        {/* Eliminar */}
+        <button
+          onClick={e => { e.stopPropagation(); onEliminar(); }}
+          disabled={deletingId === t.id}
+          className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40"
+          title="Eliminar trato"
+        >
+          {deletingId === t.id ? (
+            <span className="text-[10px] text-gray-600">...</span>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Accordion panel */}
+      {isExpanded && (
+        <CotizacionesSublista trato={t} />
+      )}
+    </>
   );
 }
 
@@ -1099,6 +1118,8 @@ export default function TratosPage() {
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
+  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('urgencia');
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
@@ -1498,7 +1519,7 @@ export default function TratosPage() {
           </div>
 
           {/* ── Filtro tipo de evento ── */}
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-[10px] text-gray-600 uppercase tracking-wider">Tipo:</span>
             {([null, 'MUSICAL', 'SOCIAL', 'EMPRESARIAL', 'OTRO'] as const).map(tipo => (
               <button
@@ -1511,6 +1532,29 @@ export default function TratosPage() {
                 }`}
               >
                 {tipo === null ? 'Todos' : tipo === 'MUSICAL' ? '🎵 Musical' : tipo === 'SOCIAL' ? '🎉 Social' : tipo === 'EMPRESARIAL' ? '🏢 Empresarial' : '• Otro'}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Ordering pills ── */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] text-gray-700 uppercase tracking-wider shrink-0">Orden:</span>
+            {([
+              { key: 'urgencia', label: 'Urgencia' },
+              { key: 'fechaEvento', label: 'Fecha evento' },
+              { key: 'fechaAgregado', label: 'Más reciente' },
+              { key: 'sinActividad', label: 'Sin actividad' },
+            ] as { key: OrdenTrato; label: string }[]).map(o => (
+              <button
+                key={o.key}
+                onClick={() => setOrdenTrato(o.key)}
+                className={`text-[10px] px-2 py-1 rounded-lg transition-colors ${
+                  ordenTrato === o.key
+                    ? 'bg-[#1a1a1a] border border-[#B3985B]/30 text-[#B3985B]'
+                    : 'text-gray-600 hover:text-gray-400 border border-transparent'
+                }`}
+              >
+                {o.label}
               </button>
             ))}
           </div>
@@ -1532,17 +1576,34 @@ export default function TratosPage() {
                 return matchEtapa && matchSearch && matchTipo;
               })
               .sort((a, b) => {
-                const etapa = filtroEtapa ?? 'LEAD';
-                if (etapa === 'LEAD' || etapa === 'DESCUBRIMIENTO' || etapa === 'OPORTUNIDAD') {
-                  if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                  if (!a.fechaProximaAccion) return 1;
-                  if (!b.fechaProximaAccion) return -1;
-                  return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+                switch (ordenTrato) {
+                  case 'fechaAgregado':
+                    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                  case 'sinActividad': {
+                    const dA = a.fechaProximaAccion ? (Date.now() - new Date(a.fechaProximaAccion).getTime()) / 86400000 : 9999;
+                    const dB = b.fechaProximaAccion ? (Date.now() - new Date(b.fechaProximaAccion).getTime()) / 86400000 : 9999;
+                    return dB - dA;
+                  }
+                  case 'fechaEvento':
+                    if (!a.fechaEventoEstimada && !b.fechaEventoEstimada) return 0;
+                    if (!a.fechaEventoEstimada) return 1;
+                    if (!b.fechaEventoEstimada) return -1;
+                    return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
+                  case 'urgencia':
+                  default: {
+                    const etapa = filtroEtapa ?? 'LEAD';
+                    if (etapa === 'LEAD' || etapa === 'DESCUBRIMIENTO' || etapa === 'OPORTUNIDAD') {
+                      if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                      if (!a.fechaProximaAccion) return 1;
+                      if (!b.fechaProximaAccion) return -1;
+                      return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+                    }
+                    if (!a.fechaCierre && !b.fechaCierre) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                    if (!a.fechaCierre) return 1;
+                    if (!b.fechaCierre) return -1;
+                    return new Date(b.fechaCierre).getTime() - new Date(a.fechaCierre).getTime();
+                  }
                 }
-                if (!a.fechaCierre && !b.fechaCierre) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                if (!a.fechaCierre) return 1;
-                if (!b.fechaCierre) return -1;
-                return new Date(b.fechaCierre).getTime() - new Date(a.fechaCierre).getTime();
               });
 
             if (tabTratos.length === 0) {
@@ -1552,6 +1613,80 @@ export default function TratosPage() {
                   <p className="text-sm">
                     {busqueda ? `Sin resultados para "${busqueda}"` : `No hay tratos en ${ALL_ETAPAS.find(e => e.key === filtroEtapa)?.label ?? filtroEtapa}`}
                   </p>
+                </div>
+              );
+            }
+
+            // ── Month grouping when ordering by fecha evento ────────────────────────
+            if (ordenTrato === 'fechaEvento') {
+              const groups: { label: string; tratos: Trato[] }[] = [];
+              const sinFecha: Trato[] = [];
+
+              for (const t of tabTratos) {
+                if (!t.fechaEventoEstimada) {
+                  sinFecha.push(t);
+                  continue;
+                }
+                const [y, m] = t.fechaEventoEstimada.slice(0, 7).split('-').map(Number);
+                const label = new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                const existing = groups.find(g => g.label === label);
+                if (existing) existing.tratos.push(t);
+                else groups.push({ label, tratos: [t] });
+              }
+
+              return (
+                <div className="space-y-5">
+                  {groups.map(g => (
+                    <div key={g.label}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold capitalize">{g.label}</p>
+                        <div className="h-px flex-1 bg-[#111]" />
+                        <span className="text-[10px] text-gray-700">{g.tratos.length}</span>
+                      </div>
+                      <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                        {g.tratos.map(t => (
+                          <CompactTratoRow
+                            key={t.id}
+                            trato={t}
+                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                            deletingId={deletingId}
+                            isExpanded={expandedRowId === t.id}
+                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {sinFecha.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <p className="text-[11px] uppercase tracking-wider text-gray-500">Sin fecha de evento</p>
+                        <div className="h-px flex-1 bg-[#111]" />
+                      </div>
+                      <div className="rounded-xl border border-[#1a1a1a] overflow-hidden opacity-60">
+                        {sinFecha.map(t => (
+                          <CompactTratoRow
+                            key={t.id}
+                            trato={t}
+                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                            deletingId={deletingId}
+                            isExpanded={expandedRowId === t.id}
+                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {groups.length === 0 && sinFecha.length === 0 && (
+                    <div className="text-center py-20 text-gray-700">
+                      <p className="text-3xl mb-3">📭</p>
+                      <p className="text-sm">Sin tratos en esta etapa</p>
+                    </div>
+                  )}
                 </div>
               );
             }
@@ -1576,6 +1711,8 @@ export default function TratosPage() {
                           onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
                           onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                           deletingId={deletingId}
+                          isExpanded={expandedRowId === t.id}
+                          onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
                         />
                       ))}
                     </div>
@@ -1596,6 +1733,8 @@ export default function TratosPage() {
                             onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
                             onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                             deletingId={deletingId}
+                            isExpanded={expandedRowId === t.id}
+                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
                           />
                         ))}
                       </div>
@@ -1621,6 +1760,8 @@ export default function TratosPage() {
                     onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
                     onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                     deletingId={deletingId}
+                    isExpanded={expandedRowId === t.id}
+                    onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
                   />
                 ))}
               </div>
