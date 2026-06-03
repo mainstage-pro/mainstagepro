@@ -43,7 +43,7 @@ export const SEGUIMIENTO_TIPOS: Record<string, SeguimientoTipoItem[]> = {
   DESCUBRIMIENTO: [
     {
       key: 'llamada_descubrimiento',
-      label: 'Llamada de descubrimiento',
+      label: 'Contacto de descubrimiento',
       getGuia: () =>
         'Preguntas clave para la llamada:\n\n- ¿Cuál es la fecha exacta del evento?\n- ¿Cuál es el lugar o salón?\n- ¿Cuántos invitados esperan y cuál es la capacidad del venue?\n- ¿Cuál es la duración aproximada, incluyendo montaje y desmontaje?\n- ¿Qué servicios técnicos necesitan: audio, iluminación, video, escenario?',
     },

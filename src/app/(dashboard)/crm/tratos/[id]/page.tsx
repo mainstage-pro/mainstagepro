@@ -246,6 +246,54 @@ function getProfundidad(canal: string | null) {
   return getCanal(canal ?? "")?.profundidad ?? null;
 }
 
+// ─── Fecha evento helper ─────────────────────────────────────────────────────
+function fmtFechaEvento(iso: string | null | undefined): string {
+  if (!iso) return 'Por definir';
+  try {
+    const d = new Date(iso.includes('T') ? iso : iso + 'T12:00:00');
+    if (isNaN(d.getTime())) return 'Por definir';
+    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch { return 'Por definir'; }
+}
+
+// ─── Lo que busca editable field ─────────────────────────────────────────────
+function LoQueBuscaField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value);
+  useEffect(() => { setVal(value); }, [value]);
+  return (
+    <div>
+      <p className="text-xs text-gray-500 mb-1">Lo que busca</p>
+      {editing ? (
+        <div className="space-y-2">
+          <textarea
+            autoFocus
+            value={val}
+            onChange={e => setVal(e.target.value)}
+            rows={3}
+            className="w-full bg-[#0d0d0d] border border-[#B3985B]/30 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/60 resize-none"
+          />
+          <div className="flex gap-2">
+            <button onClick={() => { onSave(val); setEditing(false); }}
+              className="text-xs px-3 py-1 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] rounded-lg hover:bg-[#B3985B]/20 transition-colors">
+              Guardar
+            </button>
+            <button onClick={() => { setVal(value); setEditing(false); }}
+              className="text-xs px-3 py-1 text-gray-600 hover:text-gray-400 transition-colors">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-2 group cursor-pointer" onClick={() => setEditing(true)}>
+          <p className="text-sm text-white flex-1">{val || <span className="text-gray-600 italic">Sin especificar</span>}</p>
+          <span className="text-[10px] text-gray-700 group-hover:text-gray-500 transition-colors shrink-0 mt-0.5">editar</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Constantes Renta ─────────────────────────────────────────────────────────
 const CATEGORIAS_RENTA = [
   { id: "AUDIO_PA",      label: "Audio PA" },
@@ -577,6 +625,7 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   tipoEvento: string;
   clienteNombre: string;
 }) {
+  const confirm = useConfirm();
   const [segs, setSegs] = useState<SeguimientoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
@@ -586,13 +635,19 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   const [formNota, setFormNota] = useState("");
   const [formCanal, setFormCanal] = useState("whatsapp");
   const [formFecha, setFormFecha] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().substring(0, 10); });
-  const [formHora, setFormHora] = useState("10:00");
+
   const [saving, setSaving] = useState(false);
+  const [expandedSeg, setExpandedSeg] = useState<string | null>(null);
+  const [editandoSegId, setEditandoSegId] = useState<string | null>(null);
+  const [guiasCustom, setGuiasCustom] = useState<Record<string, string>>({});
+  const [editandoGuia, setEditandoGuia] = useState(false);
+  const [guiaEditVal, setGuiaEditVal] = useState('');
 
   // Guide text computed from selected tipo key and client/event context
   const tiposDisponibles = SEGUIMIENTO_TIPOS[etapa] ?? [];
   const tipoSeleccionado = tiposDisponibles.find(t => t.key === formTipoKey) ?? null;
-  const guiaTexto = tipoSeleccionado ? tipoSeleccionado.getGuia(clienteNombre, tipoEvento) : '';
+  const guiaTextoBase = tipoSeleccionado ? tipoSeleccionado.getGuia(clienteNombre, tipoEvento) : '';
+  const guiaTexto = guiasCustom[formTipoKey] ?? guiaTextoBase;
 
   const loadSegs = useCallback(async () => {
     const r = await fetch(`/api/seguimientos?tratoId=${tratoId}`);
@@ -604,6 +659,13 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   }, [tratoId]);
 
   useEffect(() => { loadSegs(); }, [loadSegs]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('msp_seguimiento_guias_v1');
+      if (stored) setGuiasCustom(JSON.parse(stored));
+    } catch {}
+  }, []);
 
   async function marcarHecho(id: string) {
     await fetch(`/api/seguimientos/${id}`, {
@@ -619,19 +681,34 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   async function crearSeguimiento() {
     if (!formTipoKey) return;
     setSaving(true);
-    const fechaProgramada = new Date(`${formFecha}T${formHora}:00`);
-    await fetch("/api/seguimientos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tratoId, tipo: "manual", canal: formCanal, titulo: formTipoKey, nota: formNota || null, fechaProgramada: fechaProgramada.toISOString() }),
-    });
+    const fechaProgramada = new Date(`${formFecha}T10:00:00`);
+    if (editandoSegId !== null) {
+      const res = await fetch(`/api/seguimientos/${editandoSegId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ titulo: formTipoKey, canal: formCanal, fechaProgramada: fechaProgramada.toISOString(), nota: formNota || null }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setSegs(prev => prev.map(s => s.id === editandoSegId ? { ...s, ...updated.seguimiento } : s));
+      }
+      setEditandoSegId(null);
+    } else {
+      await fetch("/api/seguimientos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tratoId, tipo: "manual", canal: formCanal, titulo: formTipoKey, nota: formNota || null, fechaProgramada: fechaProgramada.toISOString() }),
+      });
+      loadSegs();
+    }
     setSaving(false);
     setShowForm(false);
     setFormTipoKey(""); setFormNota("");
-    loadSegs();
   }
 
   async function eliminarSeg(id: string) {
+    const ok = await confirm({ message: '¿Eliminar este seguimiento?', danger: true, confirmText: 'Eliminar' });
+    if (!ok) return;
     await fetch(`/api/seguimientos/${id}`, { method: "DELETE" });
     loadSegs();
   }
@@ -648,7 +725,7 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   }
 
   function fmtFechaSeg(iso: string) {
-    return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
   }
 
   return (
@@ -668,102 +745,75 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
         <p className="text-[#444] text-sm mb-4">Sin seguimientos registrados</p>
       ) : (
         <div className="relative mb-4">
-          {/* Línea vertical */}
           <div className="absolute left-[9px] top-0 bottom-0 w-px bg-[#1e1e1e]" />
-
           <div className="space-y-3">
-            {segs.map((seg) => (
-              <div key={seg.id} className="flex gap-3">
-                {/* Círculo indicador */}
-                <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center z-10 ${
-                  seg.completado ? "bg-green-500 border-green-500" : "bg-[#111] border-[#333]"
-                }`}>
-                  {seg.completado && <span className="text-black text-[9px] font-bold">✓</span>}
-                </div>
-
-                {/* Contenido */}
-                <div className={`flex-1 pb-3 ${seg.completado ? "opacity-60" : ""}`}>
-                  <div className="flex items-start gap-2 flex-wrap mb-1">
-                    <p className="text-white text-sm font-medium flex-1">{SEGUIMIENTO_TIPO_LABELS[seg.titulo] ?? seg.titulo}</p>
-                    <span className="text-sm">{CANAL_ICON_MAP[seg.canal] ?? "📋"}</span>
+            {segs.map((seg) => {
+              const isExpanded = expandedSeg === seg.id;
+              const canalLabel: Record<string, string> = { whatsapp: 'WhatsApp', llamada: 'Llamada', reunion: 'Reunión' };
+              return (
+                <div key={seg.id} className="flex gap-3">
+                  <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center z-10 ${seg.completado ? 'bg-green-500 border-green-500' : 'bg-[#111] border-[#333]'}`}>
+                    {seg.completado && <span className="text-black text-[9px] font-bold">✓</span>}
                   </div>
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    {estadoBadge(seg)}
-                    {seg.tipo === "auto" && seg.numero && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/30 text-purple-400 border border-purple-800/40">Auto · Seg {seg.numero}</span>
+                  <div className={`flex-1 pb-3 ${seg.completado ? 'opacity-60' : ''}`}>
+                    <button className="w-full text-left" onClick={() => setExpandedSeg(isExpanded ? null : seg.id)}>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white text-sm font-medium flex-1">{seg.titulo}</p>
+                        <span className="text-[10px] text-gray-600 shrink-0">{canalLabel[seg.canal] ?? seg.canal}</span>
+                        <span className="text-[#444] text-[11px] shrink-0">{fmtFechaSeg(seg.fechaProgramada)}</span>
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-2 space-y-2">
+                        {seg.nota && <p className="text-[#666] text-xs">{seg.nota}</p>}
+                        <div className="flex items-center gap-3 pt-1">
+                          {!seg.completado && (
+                            <>
+                              <button onClick={() => { setEditandoSegId(seg.id); setFormTipoKey(seg.titulo); setFormCanal(seg.canal); setFormFecha(seg.fechaProgramada.slice(0, 10)); setFormNota(seg.nota ?? ''); setShowForm(true); }} className="text-[11px] text-[#555] hover:text-[#B3985B]">Editar</button>
+                            </>
+                          )}
+                          <button onClick={() => eliminarSeg(seg.id)} className="text-[11px] text-[#333] hover:text-red-400">Eliminar</button>
+                        </div>
+                      </div>
                     )}
-                    <span className="text-[#444] text-[11px]">{fmtFechaSeg(seg.fechaProgramada)}</span>
                   </div>
-                  {seg.nota && !seg.nota.startsWith("Seguimiento automático") && (
-                    <p className="text-[#555] text-xs italic mb-1">{seg.nota}</p>
-                  )}
-                  {seg.completado && seg.notaResultado && (
-                    <p className="text-green-400/70 text-xs italic mb-1">✓ {seg.notaResultado}</p>
-                  )}
-
-                  {/* Acciones inline */}
-                  {!seg.completado && (
-                    marcandoId === seg.id ? (
-                      <div className="flex gap-2 mt-1">
-                        <input
-                          autoFocus
-                          value={notaRes}
-                          onChange={e => setNotaRes(e.target.value)}
-                          placeholder="¿Qué pasó? (opcional)"
-                          onKeyDown={e => { if (e.key === "Enter") marcarHecho(seg.id); if (e.key === "Escape") setMarcandoId(null); }}
-                          className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                        />
-                        <button onClick={() => marcarHecho(seg.id)} className="text-xs text-green-400 hover:text-green-300 font-semibold transition-colors">✓</button>
-                        <button onClick={() => setMarcandoId(null)} className="text-xs text-[#555] hover:text-white transition-colors">✕</button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3 mt-1">
-                        <button onClick={() => { setMarcandoId(seg.id); setNotaRes(""); }} className="text-[11px] text-[#555] hover:text-white transition-colors">
-                          ✓ Marcar hecho
-                        </button>
-                        <button onClick={() => eliminarSeg(seg.id)} className="text-[11px] text-[#333] hover:text-red-400 transition-colors">
-                          Eliminar
-                        </button>
-                      </div>
-                    )
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Formulario inline */}
-      {showForm ? (
-        <div className="border border-[#2a2a2a] rounded-xl p-4 bg-[#0d0d0d] space-y-3">
-          {/* Tipo de seguimiento */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Tipo de seguimiento</label>
-            <select
-              value={formTipoKey}
-              onChange={e => setFormTipoKey(e.target.value)}
-              className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50 transition-colors"
-            >
-              <option value="">Selecciona un tipo...</option>
-              {tiposDisponibles.map(t => (
-                <option key={t.key} value={t.key}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Texto guía — visible solo cuando hay tipo seleccionado */}
+      {showForm && (
+        <div id="seguimiento-form" className="border border-[#2a2a2a] rounded-xl p-4 bg-[#0d0d0d] space-y-3">
+          <select value={formTipoKey} onChange={e => setFormTipoKey(e.target.value)} className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2">
+            <option value="">Selecciona un tipo...</option>
+            {tiposDisponibles.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+          </select>
           {guiaTexto && (
             <div className="relative bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Texto guía</p>
-              <p className="text-xs text-gray-400 whitespace-pre-wrap leading-relaxed">{guiaTexto}</p>
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(guiaTexto)}
-                className="mt-2 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors"
-              >
-                Copiar texto
-              </button>
+              {editandoGuia ? (
+                <div className="space-y-1">
+                  <textarea value={guiaEditVal} onChange={e => setGuiaEditVal(e.target.value)} rows={4} className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-xs text-gray-300" />
+                  <div className="flex gap-2">
+                    <button onClick={() => { const updated = { ...guiasCustom, [formTipoKey]: guiaEditVal }; setGuiasCustom(updated); try { localStorage.setItem('msp_seguimiento_guias_v1', JSON.stringify(updated)); } catch {} setEditandoGuia(false); }} className="text-[10px] text-gray-400">Guardar</button>
+                    <button onClick={() => setEditandoGuia(false)} className="text-[10px] text-gray-700 hover:text-gray-500">Cancelar</button>
+                    {guiasCustom[formTipoKey] && (
+                      <button onClick={() => { const updated = { ...guiasCustom }; delete updated[formTipoKey]; setGuiasCustom(updated); try { localStorage.setItem('msp_seguimiento_guias_v1', JSON.stringify(updated)); } catch {} setEditandoGuia(false); }} className="text-[10px] text-gray-700 hover:text-red-400 ml-auto">Restablecer</button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2 group">
+                  <p className="text-xs text-gray-500 flex-1 whitespace-pre-wrap leading-relaxed">{guiaTexto}</p>
+                  <button onClick={() => { setGuiaEditVal(guiasCustom[formTipoKey] ?? guiaTextoBase ?? ''); setEditandoGuia(true); }} className="text-[10px] text-gray-700 group-hover:text-gray-500">editar</button>
+                </div>
+              )}
+              {!editandoGuia && (
+                <button type="button" onClick={() => navigator.clipboard.writeText(guiaTexto)} className="mt-2 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors">
+                  Copiar texto
+                </button>
+              )}
             </div>
           )}
 
@@ -772,74 +822,34 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
             <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Canal</label>
             <div className="flex gap-2">
               {(["whatsapp", "llamada", "reunion"] as const).map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setFormCanal(c)}
-                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors border ${
-                    formCanal === c
-                      ? 'bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]'
-                      : 'border-[#222] text-gray-600 hover:border-[#333] hover:text-gray-400'
-                  }`}
-                >
+                <button key={c} type="button" onClick={() => setFormCanal(c)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-colors border ${formCanal === c ? 'bg-[#B3985B]/15 border-[#B3985B]/40 text-[#B3985B]' : 'border-[#222] text-gray-600 hover:border-[#333] hover:text-gray-400'}`}>
                   {c === 'whatsapp' ? 'WhatsApp' : c === 'llamada' ? 'Llamada' : 'Reunión'}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Fecha y hora */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Fecha</label>
-              <input
-                type="date"
-                value={formFecha}
-                onChange={e => setFormFecha(e.target.value)}
-                className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-              />
-            </div>
-            <div className="w-28">
-              <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Hora</label>
-              <input
-                type="time"
-                value={formHora}
-                onChange={e => setFormHora(e.target.value)}
-                className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
-              />
-            </div>
-          </div>
+          <input type="date" value={formFecha} onChange={e => setFormFecha(e.target.value)}
+            className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
 
-          {/* Nota opcional */}
-          <div>
-            <label className="block text-[10px] uppercase tracking-wider text-gray-600 mb-1.5">Nota (opcional)</label>
-            <textarea
-              value={formNota}
-              onChange={e => setFormNota(e.target.value)}
-              rows={2}
-              placeholder="Contexto, acuerdos o resultado..."
-              className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50 resize-none placeholder-[#444]"
-            />
-          </div>
+          <textarea value={formNota} onChange={e => setFormNota(e.target.value)} rows={2}
+            placeholder="Contexto, acuerdos o resultado..."
+            className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50 resize-none placeholder-[#444]" />
 
-          {/* Acciones */}
           <div className="flex gap-2 pt-1">
-            <button
-              onClick={crearSeguimiento}
-              disabled={saving || !formTipoKey}
-              className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {saving ? 'Guardando...' : 'Agregar seguimiento'}
+            <button onClick={crearSeguimiento} disabled={saving || !formTipoKey}
+              className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              {saving ? 'Guardando...' : editandoSegId ? 'Guardar cambios' : 'Agregar seguimiento'}
             </button>
-            <button
-              onClick={() => { setShowForm(false); setFormTipoKey(''); setFormNota(''); }}
-              className="px-4 py-2 rounded-lg border border-[#222] text-gray-500 text-sm hover:border-[#333] hover:text-gray-400 transition-colors"
-            >
+            <button onClick={() => { setShowForm(false); setFormTipoKey(''); setFormNota(''); setEditandoSegId(null); }}
+              className="px-4 py-2 rounded-lg border border-[#222] text-gray-500 text-sm hover:border-[#333] hover:text-gray-400 transition-colors">
               Cancelar
             </button>
           </div>
         </div>
-      ) : (
+      )}
+      {!showForm && (
         <button onClick={() => setShowForm(true)}
           className="text-xs text-[#555] hover:text-[#B3985B] transition-colors border border-dashed border-[#222] rounded-lg w-full py-2 hover:border-[#B3985B]/40">
           + Agregar nota o seguimiento manual
@@ -1698,7 +1708,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           {trato.tipoProspecto === "NURTURING" ? (
             <span className="text-xs text-emerald-400">🌱 Prospecto en frío</span>
           ) : (
-            <span className="text-xs text-[#B3985B]">🎯 Tiene necesidad concreta</span>
+            <span className="text-xs text-[#B3985B]">Tiene necesidad concreta</span>
           )}
           <button
             onClick={async () => {
@@ -1825,30 +1835,18 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-gray-500 text-xs">Inbound · {ORIGEN_LABELS[trato.origenLead] ?? trato.origenLead}</p>
             </div>
           </div>
-          {trato.nombreEvento && trato.nombreEvento !== 'Lead sin evento definido' && (
-            <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-500 mb-1">Lo que busca</p>
-              <p className="text-sm text-white">{trato.nombreEvento}</p>
-            </div>
-          )}
+          <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+            <LoQueBuscaField
+              value={trato.nombreEvento ?? ''}
+              onSave={(val) => patch({ nombreEvento: val }).then(d => { if (d) setTrato(prev => prev ? { ...prev, nombreEvento: d.trato.nombreEvento } : prev); })}
+            />
+          </div>
           {trato.fechaEventoEstimada && (
             <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
               <p className="text-xs text-gray-500 mb-1">Fecha del evento</p>
-              <p className="text-sm text-white">{new Date(trato.fechaEventoEstimada).toLocaleDateString('es-MX', { timeZone: 'UTC', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <p className="text-sm text-white">{fmtFechaEvento(trato.fechaEventoEstimada)}</p>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <button onClick={() => cambiarEtapa('DESCUBRIMIENTO')} disabled={saving}
-              className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 text-[#B3985B] text-sm font-medium px-4 py-3 rounded-xl transition-colors text-left">
-              <p className="font-semibold">🔍 Iniciar descubrimiento</p>
-              <p className="text-xs text-[#B3985B]/60 mt-0.5">Ya mostró interés concreto</p>
-            </button>
-            <button onClick={() => cambiarEtapa('OPORTUNIDAD')} disabled={saving}
-              className="border border-blue-700/40 bg-blue-900/10 hover:bg-blue-900/20 text-blue-300 text-sm font-medium px-4 py-3 rounded-xl transition-colors text-left">
-              <p className="font-semibold">💬 Pasar a oportunidad</p>
-              <p className="text-xs text-blue-300/60 mt-0.5">Saben lo que necesitan</p>
-            </button>
-          </div>
         </div>
       )}
 
@@ -2189,7 +2187,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-[#0d0d0d] transition-colors"
           >
             <div className="flex items-center gap-2">
-              <span className="text-gray-400">🔍 Descubrimiento</span>
+              <span className="text-gray-400">Brief técnico</span>
               {trato.descubrimientoCompleto && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B] font-medium">Completo ✓</span>
               )}
@@ -2207,7 +2205,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-white font-semibold">Descubrimiento</p>
+                  <p className="text-white font-semibold">Brief técnico</p>
                   {canalInfo && (
                     <span className={`text-xs px-2 py-0.5 rounded-full ${canalInfo.badge}`}>
                       {canalInfo.icon} {canalInfo.label}
@@ -3118,6 +3116,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      {/* Seguimientos */}
+      <SeguimientosPanel
+        tratoId={trato.id}
+        etapa={trato.etapa}
+        tipoEvento={trato.tipoEvento}
+        clienteNombre={trato.cliente.nombre}
+      />
+
       {/* Cotizaciones */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
@@ -3159,14 +3165,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         )}
       </div>
 
-      {/* Seguimientos */}
-      <SeguimientosPanel
-        tratoId={trato.id}
-        etapa={trato.etapa}
-        tipoEvento={trato.tipoEvento}
-        clienteNombre={trato.cliente.nombre}
-      />
-
       </div> {/* end left column */}
 
       {/* ── RIGHT COLUMN ── */}
@@ -3204,7 +3202,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-start gap-2">
                 <span className="text-gray-700 text-xs shrink-0">📅</span>
                 <p className="text-gray-300 text-xs">
-                  {new Date(trato.fechaEventoEstimada + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  {fmtFechaEvento(trato.fechaEventoEstimada)}
                 </p>
               </div>
             )}
