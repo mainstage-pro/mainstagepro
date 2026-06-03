@@ -1619,7 +1619,7 @@ export default function TratosPage() {
 
             // ── Month grouping when ordering by fecha evento ────────────────────────
             if (ordenTrato === 'fechaEvento') {
-              const groups: { label: string; tratos: Trato[] }[] = [];
+              const groups: { label: string; tratos: Trato[]; yearMonth: string }[] = [];
               const sinFecha: Trato[] = [];
 
               for (const t of tabTratos) {
@@ -1627,60 +1627,83 @@ export default function TratosPage() {
                   sinFecha.push(t);
                   continue;
                 }
-                const [y, m] = t.fechaEventoEstimada.slice(0, 7).split('-').map(Number);
+                const ym = t.fechaEventoEstimada.slice(0, 7);
+                const [y, m] = ym.split('-').map(Number);
                 const label = new Date(y, m - 1, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
-                const existing = groups.find(g => g.label === label);
+                const existing = groups.find(g => g.yearMonth === ym);
                 if (existing) existing.tratos.push(t);
-                else groups.push({ label, tratos: [t] });
+                else groups.push({ label, tratos: [t], yearMonth: ym });
               }
+
+              // En VENTA_CERRADA, separar meses pasados de futuros
+              const isVentaCerrada = (filtroEtapa ?? 'LEAD') === 'VENTA_CERRADA';
+              const hoyYM = new Date().toISOString().slice(0, 7);
+              const futureGroups = isVentaCerrada ? groups.filter(g => g.yearMonth >= hoyYM) : groups;
+              const pastGroups  = isVentaCerrada ? groups.filter(g => g.yearMonth < hoyYM)  : [];
+
+              const renderRow = (t: Trato) => (
+                <CompactTratoRow
+                  key={t.id}
+                  trato={t}
+                  onEliminar={() => eliminar(t.id, t.cliente.nombre)}
+                  onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                  onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                  deletingId={deletingId}
+                  isExpanded={expandedRowId === t.id}
+                  onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
+                />
+              );
+
+              const renderGroup = (g: typeof futureGroups[0]) => (
+                <div key={g.yearMonth}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold capitalize">{g.label}</p>
+                    <div className="h-px flex-1 bg-[#111]" />
+                    <span className="text-[10px] text-gray-700">{g.tratos.length}</span>
+                  </div>
+                  <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                    {g.tratos.map(renderRow)}
+                  </div>
+                </div>
+              );
 
               return (
                 <div className="space-y-5">
-                  {groups.map(g => (
-                    <div key={g.label}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <p className="text-[11px] uppercase tracking-wider text-gray-600 font-semibold capitalize">{g.label}</p>
-                        <div className="h-px flex-1 bg-[#111]" />
-                        <span className="text-[10px] text-gray-700">{g.tratos.length}</span>
-                      </div>
-                      <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                        {g.tratos.map(t => (
-                          <CompactTratoRow
-                            key={t.id}
-                            trato={t}
-                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
-                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
-                            deletingId={deletingId}
-                            isExpanded={expandedRowId === t.id}
-                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {sinFecha.length > 0 && (
+                  {/* Futuros (o todos si no es VENTA_CERRADA) */}
+                  {futureGroups.map(renderGroup)}
+
+                  {/* Sin fecha — al fondo fuera de VENTA_CERRADA, o como futuros dentro */}
+                  {sinFecha.length > 0 && !isVentaCerrada && (
                     <div>
                       <div className="flex items-center gap-3 mb-2">
                         <p className="text-[11px] uppercase tracking-wider text-gray-500">Sin fecha de evento</p>
                         <div className="h-px flex-1 bg-[#111]" />
                       </div>
                       <div className="rounded-xl border border-[#1a1a1a] overflow-hidden opacity-60">
-                        {sinFecha.map(t => (
-                          <CompactTratoRow
-                            key={t.id}
-                            trato={t}
-                            onEliminar={() => eliminar(t.id, t.cliente.nombre)}
-                            onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                            onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
-                            deletingId={deletingId}
-                            isExpanded={expandedRowId === t.id}
-                            onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
-                          />
-                        ))}
+                        {sinFecha.map(renderRow)}
                       </div>
                     </div>
                   )}
+                  {sinFecha.length > 0 && isVentaCerrada && (
+                    <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                      {sinFecha.map(renderRow)}
+                    </div>
+                  )}
+
+                  {/* Eventos pasados (solo VENTA_CERRADA) */}
+                  {pastGroups.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-px flex-1 bg-[#111]" />
+                        <p className="text-[10px] uppercase tracking-wider text-gray-700">Eventos pasados</p>
+                        <div className="h-px flex-1 bg-[#111]" />
+                      </div>
+                      <div className="space-y-5 opacity-50">
+                        {pastGroups.map(renderGroup)}
+                      </div>
+                    </div>
+                  )}
+
                   {groups.length === 0 && sinFecha.length === 0 && (
                     <div className="text-center py-20 text-gray-700">
                       <p className="text-3xl mb-3">📭</p>
@@ -1690,6 +1713,7 @@ export default function TratosPage() {
                 </div>
               );
             }
+
 
             // ── VENTA_CERRADA: split upcoming vs past ──────────────────────
             if ((filtroEtapa ?? 'LEAD') === 'VENTA_CERRADA') {
