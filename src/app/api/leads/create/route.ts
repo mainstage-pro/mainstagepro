@@ -35,9 +35,27 @@ export async function POST(req: NextRequest) {
     console.warn('[leads/create] WEBHOOK_SECRET not configured — allowing request');
   }
 
-  const body = await req.json().catch(() => ({}));
+  const body = await (async () => {
+    const ct = req.headers.get('content-type') ?? '';
+    try {
+      if (ct.includes('application/json')) {
+        return await req.json();
+      }
+      if (ct.includes('application/x-www-form-urlencoded') || ct.includes('multipart/form-data')) {
+        const fd = await req.formData();
+        const obj: Record<string, string> = {};
+        fd.forEach((v, k) => { obj[k] = String(v); });
+        return obj;
+      }
+      // Intentar JSON de todas formas (Make a veces no manda Content-Type)
+      const text = await req.text();
+      if (text.trim().startsWith('{')) return JSON.parse(text);
+      // Intentar form-encoded
+      return Object.fromEntries(new URLSearchParams(text));
+    } catch { return {}; }
+  })();
 
-  // ── Normalizar campos (acepta nombres de Meta Ads o los originales) ─────────
+  // Normalizar campos (acepta nombres de Meta Ads o los nombres originales)
   const nombre: string   = (body.full_name   || body.nombre        || '').trim();
   const telefono: string = (body.phone       || body.telefono      || '').trim();
   const email: string    = (body.email       || body.correo        || '').trim();
@@ -46,8 +64,16 @@ export async function POST(req: NextRequest) {
   const campana: string  = (body.campana     || '').trim();
 
   if (!nombre) {
-    return NextResponse.json({ error: 'full_name (o nombre) es requerido' }, { status: 400 });
+    return NextResponse.json({
+      error: 'full_name (o nombre) es requerido',
+      debug: {
+        content_type: req.headers.get('content-type'),
+        fields_received: Object.keys(body),
+        body_sample: JSON.stringify(body).substring(0, 200),
+      },
+    }, { status: 400 });
   }
+
 
   // ── Validar tipoEvento ──────────────────────────────────────────────────────
   const VALID_EVENTOS = ['MUSICAL', 'SOCIAL', 'EMPRESARIAL', 'OTRO'];
