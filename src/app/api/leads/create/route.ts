@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
   }
 
   const nombre: string      = (b.full_name  || b.nombre         || '').trim();
-  const telefono: string    = (b.phone      || b.telefono       || b.phone_number || '').trim();
+  const telefonoRaw: string = (b.phone || b.telefono || b.phone_number || '').trim();
+  // Limpiar prefijo 'p:' que Meta Ads agrega, y normalizar número
+  const telefono: string = telefonoRaw
+    .replace(/^p:/i, '')            // quitar prefijo p: de Meta
+    .replace(/[^\d+\s\-()]/g, '')   // solo dígitos, +, espacios, guiones
+    .trim();
   const email: string       = (b.email      || b.correo         || '').trim();
   const notaInicial: string = (b.notainicial || b.nota_inicial  || b.notasiniciales || '').trim();
   const city: string        = (b.city       || b.ciudad         || '').trim();
