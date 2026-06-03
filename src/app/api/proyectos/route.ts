@@ -44,24 +44,28 @@ export async function GET(req: Request) {
         encargado: { select: { name: true } },
         personal: { select: { confirmado: true } },
         trato: { select: { responsable: { select: { name: true } } } },
-        cotizacion: { select: { id: true } },
+        cotizacion: { select: { id: true, granTotal: true } },
         equipos: { select: { id: true }, take: 1 },
-        cuentasCobrar: { select: { id: true }, take: 1 },
+        cuentasCobrar: { select: { id: true, tipoPago: true, estado: true } },
         checklist: { select: { completado: true, item: true } },
         _count: { select: { equipos: true } },
       },
       orderBy: { fechaEvento: "desc" },
     });
-    const proyectosConAvance = proyectos.map(p => ({
-      ...p,
-      avance: calcularAvanceProyecto({
+    const proyectosConAvance = proyectos.map(p => {
+      const avance = calcularAvanceProyecto({
         tipoServicio: p.tipoServicio ?? null,
         planProduccionAprobado: p.planProduccionAprobado,
         recoleccionStatus: p.recoleccionStatus,
         checklist: p.checklist,
         equiposCount: p._count?.equipos ?? 0,
-      }),
-    }));
+      });
+      const liquidacionCobrada = (p.cuentasCobrar ?? []).some(
+        (c: { tipoPago: string; estado: string }) =>
+          c.tipoPago === 'LIQUIDACION' && c.estado === 'COBRADA'
+      );
+      return { ...p, avance, liquidacionCobrada };
+    });
     return NextResponse.json({ proyectos: proyectosConAvance });
   } catch (e) {
     console.error("[/api/proyectos GET]", e);

@@ -48,21 +48,17 @@ export const ESTADO_COTIZACION_COLORS: Record<string, string> = {
 
 // Estados de proyecto
 export const ESTADO_PROYECTO_LABELS: Record<string, string> = {
-  PLANEACION: "Planeación",
-  CONFIRMADO: "Confirmado",
-  EN_CURSO: "En Curso",
-  PENDIENTE_CIERRE: "Pendiente cierre",
-  COMPLETADO: "Completado",
-  CANCELADO: "Cancelado",
+  PLANEACION: 'Planeación',
+  EN_CURSO:   'En Curso',
+  COMPLETADO: 'Completado',
+  CANCELADO:  'Cancelado',
 };
 
 export const ESTADO_PROYECTO_COLORS: Record<string, string> = {
-  PLANEACION: "bg-blue-100 text-blue-700",
-  CONFIRMADO: "bg-green-100 text-green-700",
-  EN_CURSO: "bg-yellow-100 text-yellow-700",
-  PENDIENTE_CIERRE: "bg-orange-100 text-orange-700",
-  COMPLETADO: "bg-gray-100 text-gray-700",
-  CANCELADO: "bg-red-100 text-red-700",
+  PLANEACION: 'bg-blue-500/10 text-blue-400/80',
+  EN_CURSO:   'bg-yellow-500/10 text-yellow-400/80',
+  COMPLETADO: 'bg-gray-500/10 text-gray-400/60',
+  CANCELADO:  'bg-red-500/10 text-red-400/60',
 };
 
 // Origen del lead

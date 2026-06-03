@@ -14,54 +14,45 @@ export interface ProyectoStatusInput {
   fechaMontaje: Date | string | null;
   planProduccionAprobado: boolean;
   estado: string;
+  avance?: number;
+  liquidacionCobrada?: boolean;
 }
 
 export interface ProyectoStatusResult {
   estadoCalculado: string;
-  clasificacion: ClasificacionProyecto;
+  changed: boolean;
 }
 
 export function calcularEstadoProyecto(p: ProyectoStatusInput): ProyectoStatusResult {
-  // If already terminal, respect it
-  if (p.estado === 'COMPLETADO') return { estadoCalculado: 'COMPLETADO', clasificacion: 'COMPLETADO' };
-  if (p.estado === 'CANCELADO') return { estadoCalculado: 'CANCELADO', clasificacion: 'CANCELADO' };
+  // Terminal states
+  if (p.estado === 'COMPLETADO') return { estadoCalculado: 'COMPLETADO', changed: false };
+  if (p.estado === 'CANCELADO') return { estadoCalculado: 'CANCELADO', changed: false };
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const fechaEvento = p.fechaEvento ? new Date(p.fechaEvento) : null;
   const fechaMontaje = p.fechaMontaje ? new Date(p.fechaMontaje) : null;
+
   if (fechaEvento) fechaEvento.setHours(0, 0, 0, 0);
   if (fechaMontaje) fechaMontaje.setHours(0, 0, 0, 0);
 
-  // If event date has passed → PENDIENTE_CIERRE
-  if (fechaEvento && fechaEvento < hoy) {
-    return { estadoCalculado: 'PENDIENTE_CIERRE', clasificacion: 'PENDIENTE_CIERRE' };
+  const esHoy = (d: Date | null) => !!d && d.getTime() === hoy.getTime();
+
+  // EN_CURSO → COMPLETADO: liquidación cobrada + avance 100%
+  if (p.estado === 'EN_CURSO' && p.liquidacionCobrada === true && (p.avance ?? 0) >= 100) {
+    return { estadoCalculado: 'COMPLETADO', changed: true };
   }
 
-  // If today is the event day or montaje day → EN_CURSO
-  const esHoy = (d: Date | null) =>
-    d !== null && d.getFullYear() === hoy.getFullYear() &&
-    d.getMonth() === hoy.getMonth() &&
-    d.getDate() === hoy.getDate();
-
+  // PLANEACION → EN_CURSO: event day or montaje day
   if (esHoy(fechaEvento) || esHoy(fechaMontaje)) {
-    return { estadoCalculado: 'EN_CURSO', clasificacion: 'HOY' };
-  }
-
-  // If plan approved → CONFIRMADO
-  if (p.planProduccionAprobado && p.estado === 'PLANEACION') {
-    return { estadoCalculado: 'CONFIRMADO', clasificacion: 'PROXIMO' };
-  }
-
-  // Classify upcoming events
-  if (fechaEvento) {
-    const diffMs = fechaEvento.getTime() - hoy.getTime();
-    const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (diffDias <= 30) {
-      return { estadoCalculado: p.estado, clasificacion: 'PROXIMO' };
+    if (p.estado === 'PLANEACION') {
+      return { estadoCalculado: 'EN_CURSO', changed: true };
     }
   }
 
-  return { estadoCalculado: p.estado, clasificacion: 'PROXIMO' };
+  // Past events still in PLANEACION → move to EN_CURSO (missed the transition)
+  if (fechaEvento && fechaEvento < hoy && p.estado === 'PLANEACION') {
+    return { estadoCalculado: 'EN_CURSO', changed: true };
+  }
+
+  return { estadoCalculado: p.estado, changed: false };
 }
