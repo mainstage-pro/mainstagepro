@@ -191,7 +191,7 @@ export async function POST(req: NextRequest) {
         etapa:        'LEAD',
         tipoProspecto:'NURTURING',
         origenLead:   origenFinal,
-        tipoEvento:   tipoEvento || null,
+        tipoEvento:   tipoEvento,
         nombreEvento: notaInicial || `Lead ${origenFinal}${campana ? ` · ${campana}` : ''} — ${fechaLabel}`,
         nurturingData:JSON.stringify(nurturingInit),
       },
