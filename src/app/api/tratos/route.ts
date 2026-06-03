@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
         select: {
           id: true, numeroCotizacion: true, estado: true, granTotal: true,
           fechaEvento: true, createdAt: true, opcionLetra: true, grupoId: true,
-          proyecto: { select: { id: true } },
+          proyecto: { select: { id: true, numeroProyecto: true, nombre: true, estado: true } },
         },
         orderBy: { createdAt: "desc" },
       },

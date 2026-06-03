@@ -219,7 +219,7 @@ export default function ProyectosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Proyectos</h1>
+          <h1 className="text-xl font-semibold text-white">Proyectos de evento</h1>
           <p className="text-[#6b7280] text-sm">
             {loading ? "Cargando..." : `${proximos.length} próximos · ${pasados.length} pasados`}
           </p>

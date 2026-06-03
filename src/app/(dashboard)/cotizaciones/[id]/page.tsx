@@ -351,7 +351,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     const res = await fetch(`/api/cotizaciones/${id}/aprobar`, { method: "POST" });
     const data = await res.json();
     if (data.proyectoId) {
-      toast.success("Proyecto creado exitosamente");
+      toast.success("Proyecto de evento creado exitosamente");
       router.push(`/proyectos/${data.proyectoId}`);
     } else {
       toast.error(data.error ?? "Error al crear proyecto");
@@ -917,7 +917,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <div className="flex items-center gap-3">
             <span className="text-green-400 text-lg">✓</span>
             <div>
-              <p className="text-green-300 text-sm font-semibold">Proyecto creado: {cot.proyecto.numeroProyecto}</p>
+              <p className="text-green-300 text-sm font-semibold">Proyecto de evento: {cot.proyecto.numeroProyecto}</p>
               <p className="text-green-600 text-xs">Haz clic para abrir el proyecto</p>
             </div>
           </div>

@@ -23,7 +23,7 @@ type Cotizacion = {
   createdAt: string;
   opcionLetra: string | null;
   grupoId: string | null;
-  proyecto: { id: string } | null;
+  proyecto: { id: string; numeroProyecto: string; nombre: string; estado: string } | null;
 };
 
 type Trato = {
@@ -151,58 +151,104 @@ function WaIcon() {
   );
 }
 
-// ── Sublista de cotizaciones ──────────────────────────────────────────────────
+// ── Sublista de cotizaciones + proyecto de evento ─────────────────────────────────
 function CotizacionesSublista({ trato }: { trato: Trato }) {
   const cots = trato.cotizaciones;
+  // Deduplicate proyectos (multiple cotizaciones may link same project)
+  const proyectosMap = new Map<string, NonNullable<Cotizacion['proyecto']>>();
+  for (const c of cots) {
+    if (c.proyecto) proyectosMap.set(c.proyecto.id, c.proyecto);
+  }
+  const proyectos = Array.from(proyectosMap.values());
+
+  const ESTADO_PROY_TEXT: Record<string, string> = {
+    PLANEACION: 'text-blue-400/70', CONFIRMADO: 'text-emerald-400/70',
+    EN_CURSO: 'text-yellow-400/70', PENDIENTE_CIERRE: 'text-orange-400/70',
+    COMPLETADO: 'text-gray-500', CANCELADO: 'text-red-400/60',
+  };
+  const ESTADO_PROY_LABELS: Record<string, string> = {
+    PLANEACION: 'Planeación', CONFIRMADO: 'Confirmado', EN_CURSO: 'En curso',
+    PENDIENTE_CIERRE: 'Pend. cierre', COMPLETADO: 'Completado', CANCELADO: 'Cancelado',
+  };
+
   return (
-    <div className="bg-[#0d0d0d] border-t border-[#1a1a1a] px-4 py-3">
-      {cots.length === 0 ? (
-        <div className="flex items-center justify-between">
-          <p className="text-[#555] text-xs italic">Sin cotizaciones — agrega una para avanzar</p>
-          <Link
-            href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-            className="text-[#B3985B] text-xs font-medium hover:underline"
-          >
-            + Nueva cotización →
-          </Link>
-        </div>
-      ) : (
-        <div className="space-y-1.5">
-          {cots.map(c => (
-            <div key={c.id} className="flex items-center gap-3 group">
-              <span className="text-[#555] text-[10px] w-3 text-center">·</span>
-              <Link
-                href={`/cotizaciones/${c.id}`}
-                className="text-xs text-[#9ca3af] hover:text-white transition-colors font-mono shrink-0"
-              >
-                {c.numeroCotizacion}{c.opcionLetra ? ` (${c.opcionLetra})` : ""}
-              </Link>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}>
-                {COT_LABELS[c.estado] ?? c.estado}
-              </span>
-              <span className="text-xs text-[#B3985B] shrink-0">{formatCurrency(c.granTotal)}</span>
-              {c.fechaEvento && (
-                <span className="text-[10px] text-[#555] shrink-0">{fmtFecha(c.fechaEvento)}</span>
-              )}
-              <div className="flex items-center gap-2 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <Link href={`/cotizaciones/${c.id}`} className="text-[#B3985B] text-[11px] hover:underline">
-                  Ver cotización →
-                </Link>
-                {c.proyecto && (
-                  <Link href={`/proyectos/${c.proyecto.id}`} className="text-green-400 text-[11px] hover:underline">
-                    Ver proyecto →
-                  </Link>
-                )}
-              </div>
-            </div>
-          ))}
-          <div className="pt-1 border-t border-[#1a1a1a] mt-1">
-            <Link href={`/crm/tratos/${trato.id}`} className="text-[#555] text-[11px] hover:text-[#B3985B] transition-colors">
-              + Nueva cotización desde el trato →
+    <div className="bg-[#0d0d0d] border-t border-[#1a1a1a] px-4 py-3 space-y-3">
+
+      {/* ── Cotizaciones ────────────────────────────────────────────────── */}
+      <div>
+        <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Cotizaciones</p>
+        {cots.length === 0 ? (
+          <div className="flex items-center justify-between">
+            <p className="text-[#555] text-xs italic">Sin cotizaciones — agrega una para avanzar</p>
+            <Link
+              href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+              className="text-[#B3985B] text-xs font-medium hover:underline"
+            >
+              + Nueva cotización →
             </Link>
           </div>
+        ) : (
+          <div className="space-y-1.5">
+            {cots.map(c => (
+              <div key={c.id} className="flex items-center gap-3 group">
+                <span className="text-[#555] text-[10px] w-3 text-center">·</span>
+                <Link
+                  href={`/cotizaciones/${c.id}`}
+                  className="text-xs text-[#9ca3af] hover:text-white transition-colors font-mono shrink-0"
+                >
+                  {c.numeroCotizacion}{c.opcionLetra ? ` (${c.opcionLetra})` : ""}
+                </Link>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${COT_COLORS[c.estado] ?? "bg-[#222] text-[#888]"}`}>
+                  {COT_LABELS[c.estado] ?? c.estado}
+                </span>
+                <span className="text-xs text-[#B3985B] shrink-0">{formatCurrency(c.granTotal)}</span>
+                {c.fechaEvento && (
+                  <span className="text-[10px] text-[#555] shrink-0">{fmtFecha(c.fechaEvento)}</span>
+                )}
+                <div className="flex items-center gap-2 ml-auto opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <Link href={`/cotizaciones/${c.id}`} className="text-[#B3985B] text-[11px] hover:underline">
+                    Ver cotización →
+                  </Link>
+                </div>
+              </div>
+            ))}
+            <div className="pt-1 border-t border-[#1a1a1a] mt-1">
+              <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`} className="text-[#555] text-[11px] hover:text-[#B3985B] transition-colors">
+                + Nueva cotización →
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Proyecto de evento ───────────────────────────────────────────── */}
+      {proyectos.length > 0 ? (
+        <div className="border-t border-[#1a1a1a] pt-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Proyecto de evento</p>
+          <div className="space-y-1.5">
+            {proyectos.map(p => (
+              <Link
+                key={p.id}
+                href={`/proyectos/${p.id}`}
+                className="flex items-center gap-3 group hover:bg-[#111] rounded-lg px-2 py-1.5 -mx-2 transition-colors"
+              >
+                <span className="text-[10px] text-gray-600 font-mono shrink-0">{p.numeroProyecto}</span>
+                <span className="text-xs text-gray-400 group-hover:text-white transition-colors flex-1 truncate">{p.nombre}</span>
+                <span className={`text-[10px] font-medium shrink-0 ${ESTADO_PROY_TEXT[p.estado] ?? 'text-gray-600'}`}>
+                  {ESTADO_PROY_LABELS[p.estado] ?? p.estado}
+                </span>
+                <span className="text-[10px] text-gray-700 group-hover:text-[#B3985B] transition-colors shrink-0">Ver →</span>
+              </Link>
+            ))}
+          </div>
         </div>
-      )}
+      ) : cots.length > 0 ? (
+        <div className="border-t border-[#1a1a1a] pt-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-1">Proyecto de evento</p>
+          <p className="text-[#444] text-xs italic">Se creará al aprobar una cotización</p>
+        </div>
+      ) : null}
+
     </div>
   );
 }

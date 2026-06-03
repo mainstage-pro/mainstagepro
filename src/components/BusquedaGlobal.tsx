@@ -17,7 +17,7 @@ const TIPO_LABELS: Record<TipoResultado, string> = {
   cliente:    "Cliente",
   trato:      "Trato",
   cotizacion: "Cotización",
-  proyecto:   "Proyecto",
+  proyecto:   "Proyecto de evento",
   tecnico:    "Técnico",
   proveedor:  "Proveedor",
 };
