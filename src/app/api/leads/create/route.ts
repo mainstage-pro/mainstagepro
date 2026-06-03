@@ -55,13 +55,23 @@ export async function POST(req: NextRequest) {
     } catch { return {}; }
   })();
 
-  // Normalizar campos (acepta nombres de Meta Ads o los nombres originales)
-  const nombre: string   = (body.full_name   || body.nombre        || '').trim();
-  const telefono: string = (body.phone       || body.telefono      || '').trim();
-  const email: string    = (body.email       || body.correo        || '').trim();
-  const notaInicial: string = (body.notaInicial || body.notasIniciales || '').trim();
-  const city: string     = (body.city        || '').trim();
-  const campana: string  = (body.campana     || '').trim();
+  // Normalizar keys del body: lowercase + espacios→guión bajo
+  // Así 'full name', 'Full Name', 'full_name' todos funcionan
+  const b: Record<string, string> = {};
+  for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
+    const key = k.toLowerCase().replace(/\s+/g, '_');
+    b[key] = String(v ?? '');
+  }
+
+  const nombre: string      = (b.full_name  || b.nombre         || '').trim();
+  const telefono: string    = (b.phone      || b.telefono       || b.phone_number || '').trim();
+  const email: string       = (b.email      || b.correo         || '').trim();
+  const notaInicial: string = (b.notainicial || b.nota_inicial  || b.notasiniciales || '').trim();
+  const city: string        = (b.city       || b.ciudad         || '').trim();
+  const campana: string     = (b.campana    || b.campaign_name  || b.campaign || '').trim();
+  // Para tipoEvento y origenLead usamos b directamente (ya normalizado a lowercase)
+  const rawTipoEvento  = b.tipoevento  || b.tipo_evento  || b.tipoeventoevento || '';
+  const rawOrigenLead  = b.origenlead  || b.origen_lead  || b.origen || '';
 
   if (!nombre) {
     return NextResponse.json({
@@ -92,7 +102,7 @@ export async function POST(req: NextRequest) {
         r.includes('congreso') || r.includes('lanzamiento') || r.includes('convenci')) return 'EMPRESARIAL';
     return 'OTRO';
   }
-  const tipoEvento = mapTipoEvento(body.tipoEvento);
+  const tipoEvento = mapTipoEvento(rawTipoEvento);
 
   // ── mapear origenLead — acepta enum exacto O texto libre ─────────────────────
   function mapOrigenLead(raw: string | null | undefined): string {
@@ -106,7 +116,7 @@ export async function POST(req: NextRequest) {
     if (r.includes('organico') || r.includes('orgánico') || r.includes('directo')) return 'ORGANICO';
     return 'META_ADS'; // default para leads de Meta
   }
-  const origenFinal = mapOrigenLead(body.origenLead);
+  const origenFinal = mapOrigenLead(rawOrigenLead);
 
   // ── Buscar cliente existente por teléfono ────────────────────────────────────
   let clienteId: string | null = null;
