@@ -5640,7 +5640,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           .reduce((s, c) => s + c.monto, 0);
         const gastosProyPagados = proyecto.movimientos.reduce((s, m) => s + m.monto, 0);
         const gastosProyTotal = gastosProyPendientes + gastosProyPagados;
-        const costosTotales = costosPersonal + gastosProyTotal;
+        const costosTotales = gastosProyTotal; // gastos reales (movimientos) + CxP pendientes no-técnico
+        // costosPersonal se muestra como referencia informativa pero NO se suma al total
+        // (los pagos a personal ya están registrados como movimientos dentro de gastosProyTotal)
         const utilidadBruta = ingresoContratado - costosTotales;
         const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
 
@@ -5680,10 +5682,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {/* Costos */}
               <div className="space-y-2">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Costos</p>
-                {costosPersonal > 0 && (
+                 {costosPersonal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Personal</span>
-                    <span className="text-red-300">{fmt(costosPersonal)}</span>
+                    <span className="text-gray-600 italic">Personal (ref.)</span>
+                    <span className="text-gray-600 italic">{fmt(costosPersonal)}</span>
                   </div>
                 )}
                 {gastosProyPendientes > 0 && (
@@ -5698,15 +5700,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <span className="text-red-300">{fmt(gastosProyPagados)}</span>
                   </div>
                 )}
-                {gastosProyTotal > 0 && (
-                  <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-1">
-                    <span className="text-gray-500">Total real</span>
-                    <span className="text-red-400 font-medium">{fmt(gastosProyTotal)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between text-sm border-t border-[#1a1a1a] pt-2">
-                  <span className="text-gray-500">Total costos</span>
-                  <span className="text-red-400 font-medium">{fmt(costosTotales)}</span>
+                  <span className="text-gray-500 font-medium">Total costos</span>
+                  <span className="text-red-400 font-semibold">{fmt(costosTotales)}</span>
                 </div>
               </div>
               {/* Resultado */}
