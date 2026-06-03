@@ -110,7 +110,8 @@ const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
-  { key: 'LEAD',           label: 'Leads',         emoji: '⚡' },
+  { key: 'TODOS',          label: 'Todos',          emoji: '📋' },
+  { key: 'LEAD',           label: 'Leads',          emoji: '⚡' },
   { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', emoji: '🔍' },
   { key: 'OPORTUNIDAD',    label: 'Oportunidad',    emoji: '💬' },
   { key: 'VENTA_CERRADA',  label: 'Cerrada',        emoji: '✅' },
@@ -1150,7 +1151,7 @@ export default function TratosPage() {
   const [tratos, setTratos] = useState<Trato[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [filtroEtapa, setFiltroEtapa] = useState<string | null>('LEAD');
+  const [filtroEtapa, setFiltroEtapa] = useState<string | null>('TODOS');
   const [filtroTipoEvento, setFiltroTipoEvento] = useState<string | null>(null);
   const [filtroFrio, setFiltroFrio] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -1164,7 +1165,7 @@ export default function TratosPage() {
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
-  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('urgencia');
+  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaEvento');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
@@ -1542,7 +1543,7 @@ export default function TratosPage() {
           {/* ── Tab navigation ── */}
           <div className="flex border-b border-[#111] mb-4 overflow-x-auto">
             {ALL_ETAPAS.map(({ key, label, emoji }) => {
-              const count = tratos.filter(t => t.etapa === key).length;
+              const count = key === 'TODOS' ? tratos.length : tratos.filter(t => t.etapa === key).length;
               return (
                 <button
                   key={key}
@@ -1612,7 +1613,7 @@ export default function TratosPage() {
             const q = busqueda.toLowerCase();
             const tabTratos = tratos
               .filter(t => {
-                const matchEtapa = t.etapa === (filtroEtapa ?? 'LEAD');
+                const matchEtapa = filtroEtapa === 'TODOS' || t.etapa === filtroEtapa;
                 const matchSearch = !q ||
                   t.cliente.nombre.toLowerCase().includes(q) ||
                   (t.cliente.empresa ?? '').toLowerCase().includes(q) ||
@@ -1682,7 +1683,7 @@ export default function TratosPage() {
               }
 
               // En VENTA_CERRADA, separar meses pasados de futuros
-              const isVentaCerrada = (filtroEtapa ?? 'LEAD') === 'VENTA_CERRADA';
+              const isVentaCerrada = filtroEtapa === 'VENTA_CERRADA';
               const hoyYM = new Date().toISOString().slice(0, 7);
               const futureGroups = isVentaCerrada ? groups.filter(g => g.yearMonth >= hoyYM) : groups;
               const pastGroups  = isVentaCerrada ? groups.filter(g => g.yearMonth < hoyYM)  : [];
@@ -1762,7 +1763,7 @@ export default function TratosPage() {
 
 
             // ── VENTA_CERRADA: split upcoming vs past ──────────────────────
-            if ((filtroEtapa ?? 'LEAD') === 'VENTA_CERRADA') {
+            if (filtroEtapa === 'VENTA_CERRADA') {
               const hoyStr = new Date().toISOString().slice(0, 10);
               const proximos = tabTratos.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada.slice(0, 10) >= hoyStr);
               const pasados = tabTratos
