@@ -936,15 +936,15 @@ function CompactTratoRow({
           <span className="w-4 shrink-0" />
         )}
 
-        {/* Selector de etapa */}
+        {/* Selector de etapa — hidden on mobile, accessible from inside the trato */}
         <select
           value={t.etapa}
           onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
           onClick={e => e.stopPropagation()}
-          className="shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
+          className="hidden sm:block shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
           title="Cambiar etapa"
         >
-          {ALL_ETAPAS.map(e => (
+          {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
             <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
           ))}
         </select>
@@ -1548,13 +1548,14 @@ export default function TratosPage() {
                 <button
                   key={key}
                   onClick={() => { setFiltroEtapa(key); setFiltroTipoEvento(null); }}
-                  className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                  className={`relative flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
                     filtroEtapa === key ? 'text-white' : 'text-gray-600 hover:text-gray-400'
                   }`}
                 >
-                  <span>{emoji}</span>
-                  <span>{label}</span>
-                  <span className={`text-xs tabular-nums ${
+                  <span className="hidden xs:inline sm:inline">{emoji}</span>
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden text-[10px] font-semibold">{label.slice(0, 3)}</span>
+                  <span className={`text-[10px] tabular-nums ${
                     filtroEtapa === key ? 'text-gray-400' : 'text-gray-700'
                   }`}>({count})</span>
                   {filtroEtapa === key && (
@@ -1683,7 +1684,7 @@ export default function TratosPage() {
               }
 
               // En VENTA_CERRADA, separar meses pasados de futuros
-              const isVentaCerrada = filtroEtapa === 'VENTA_CERRADA';
+              const isVentaCerrada = filtroEtapa === 'VENTA_CERRADA' || filtroEtapa === 'TODOS';
               const hoyYM = new Date().toISOString().slice(0, 7);
               const futureGroups = isVentaCerrada ? groups.filter(g => g.yearMonth >= hoyYM) : groups;
               const pastGroups  = isVentaCerrada ? groups.filter(g => g.yearMonth < hoyYM)  : [];
@@ -1763,7 +1764,7 @@ export default function TratosPage() {
 
 
             // ── VENTA_CERRADA: split upcoming vs past ──────────────────────
-            if (filtroEtapa === 'VENTA_CERRADA') {
+            if (filtroEtapa === 'VENTA_CERRADA' || filtroEtapa === 'TODOS') {
               const hoyStr = new Date().toISOString().slice(0, 10);
               const proximos = tabTratos.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada.slice(0, 10) >= hoyStr);
               const pasados = tabTratos
