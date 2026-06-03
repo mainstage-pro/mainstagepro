@@ -273,6 +273,7 @@ function CotizadorForm() {
   const [notasSecciones, setNotasSecciones] = useState<Record<string, string>>({});
 
   // Selectores rápidos
+  const [selCat, setSelCat] = useState(""); // selected category id for cascade
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
@@ -660,7 +661,7 @@ function CotizadorForm() {
       categoria: eq.categoria.nombre,
       notas: "",
     }]);
-    setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
+    setSelEq(""); setSelCat(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
   }
 
   // ── Sugerencias de equipo ──
@@ -1483,34 +1484,96 @@ function CotizadorForm() {
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
             {/* Selector */}
             <div className="flex gap-2 mb-4 items-end">
-              <div className="flex-1">
-                <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
-                <SearchableSelect
-                  value={selEq}
-                  onChange={setSelEq}
-                  placeholder={`— Buscar equipo${loadingDisp ? " (cargando disp.)" : ""}… —`}
-                  options={equiposPorCategoria.flatMap(([cat, eqs]) => eqs.map(eq => {
-                    const d = dispMap[eq.id];
-                    const dispLabel = evento.fechaEvento && d !== undefined
-                      ? (d.disponible === 0 ? " ⛔" : d.disponible < d.total ? ` ⚠${d.disponible}/${d.total}` : ` ✓${d.disponible}`)
-                      : "";
-                    return {
-                      value: eq.id,
-                      label: `${eq.descripcion}${eq.marca ? ` · ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""}${eq.precioRenta > 0 ? ` — ${formatCurrency(eq.precioRenta)}` : " — INCLUYE"}${dispLabel}`,
-                      group: cat,
-                    };
-                  }))}
-                />
+              {/* Step 1: Category selector */}
+              <div className="w-44 shrink-0">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Categoría</p>
+                <div className="relative">
+                  <select
+                    value={selCat}
+                    onChange={e => { setSelCat(e.target.value); setSelEq(""); }}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#B3985B]/60 pr-7 text-white"
+                  >
+                    <option value="" className="text-gray-500">— Categoría —</option>
+                    {equiposPorCategoria.map(([cat]) => {
+                      const catObj = equipos.find(e => e.categoria.nombre === cat)?.categoria;
+                      return (
+                        <option key={cat} value={catObj?.id ?? cat}>
+                          {cat}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
-              <div>
+
+              {/* Step 2: Equipment selector (filtered by category) */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1 mb-1">
+                  <p className="text-[10px] text-[#555] px-1">Equipo</p>
+                  {(selCat || selEq) && (
+                    <button
+                      type="button"
+                      onClick={() => { setSelCat(""); setSelEq(""); }}
+                      className="text-[10px] text-gray-700 hover:text-gray-400 transition-colors ml-auto px-1"
+                      title="Limpiar selección"
+                    >
+                      × limpiar
+                    </button>
+                  )}
+                </div>
+                {selCat ? (
+                  <SearchableSelect
+                    value={selEq}
+                    onChange={setSelEq}
+                    placeholder={loadingDisp ? "Cargando disponibilidad..." : "— Buscar equipo —"}
+                    options={(() => {
+                      const eqsEnCat = equiposPorCategoria
+                        .flatMap(([, eqs]) => eqs)
+                        .filter(eq => eq.categoria.id === selCat);
+                      return eqsEnCat.map(eq => {
+                        const d = dispMap[eq.id];
+                        const dispLabel = evento.fechaEvento && d !== undefined
+                          ? (d.disponible === 0 ? " \u26d4" : d.disponible < d.total ? ` \u26a0${d.disponible}/${d.total}` : ` \u2713${d.disponible}`)
+                          : "";
+                        const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+                        return {
+                          value: eq.id,
+                          label: `${eq.descripcion}${eq.marca ? ` \u00b7 ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""} — ${precio > 0 ? formatCurrency(precio) : "INCLUYE"}${dispLabel}`,
+                        };
+                      });
+                    })()}
+                  />
+                ) : (
+                  <div className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-gray-600 cursor-not-allowed">
+                    Selecciona una categoría primero
+                  </div>
+                )}
+              </div>
+
+              {/* Cantidad */}
+              <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
                 <NumSelect value={selEqCant} onChange={setSelEqCant} max={20} className="w-20 py-2" />
               </div>
-              <div>
+
+              {/* Días */}
+              <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
                 <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
               </div>
-              <button onClick={agregarEquipo} disabled={!selEq} className="px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40">+ Agregar</button>
+
+              {/* Agregar */}
+              <button
+                type="button"
+                onClick={agregarEquipo}
+                disabled={!selEq}
+                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
+              >
+                + Agregar
+              </button>
             </div>
 
             {lineasEquipo.length === 0 ? (
