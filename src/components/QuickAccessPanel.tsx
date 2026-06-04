@@ -536,18 +536,19 @@ export default function QuickAccessPanel() {
                   </button>
                 </div>
               ) : (() => {
-                // Group by area, sorted by AREA_ORDER
-                const byArea = tareas.reduce((acc, t) => {
-                  const key = t.area || 'GENERAL'
-                  if (!acc[key]) acc[key] = []
-                  acc[key].push(t)
+                // Group by project — same as real operaciones Hoy module
+                const byProyecto = tareas.reduce((acc, t) => {
+                  const key = t.proyectoTarea?.nombre ?? 'Bandeja de entrada'
+                  if (!acc[key]) acc[key] = { color: t.proyectoTarea?.color ?? null, tasks: [] }
+                  acc[key].tasks.push(t)
                   return acc
-                }, {} as Record<string, Tarea[]>)
+                }, {} as Record<string, { color: string | null; tasks: Tarea[] }>)
 
-                const areaKeys = Object.keys(byArea).sort(
-                  (a, b) => (AREA_ORDER.indexOf(a) === -1 ? 99 : AREA_ORDER.indexOf(a))
-                          - (AREA_ORDER.indexOf(b) === -1 ? 99 : AREA_ORDER.indexOf(b))
-                )
+                const proyKeys = Object.keys(byProyecto).sort((a, b) => {
+                  if (a === 'Bandeja de entrada') return 1
+                  if (b === 'Bandeja de entrada') return -1
+                  return a.localeCompare(b, 'es')
+                })
 
                 return (
                   <div className="space-y-5">
@@ -556,10 +557,10 @@ export default function QuickAccessPanel() {
                       <button onClick={loadTareas} className="text-[9px] text-gray-700 hover:text-gray-500 transition-colors">↺ Actualizar</button>
                     </div>
 
-                    {areaKeys.map(areaKey => {
-                      const areaColor = getAreaColor(AREA_LABEL[areaKey] ?? areaKey)
-                      const tasks = [...byArea[areaKey]].sort((a, b) => {
-                        // Sort by fecha asc, nulls last
+                    {proyKeys.map(proyNombre => {
+                      const dotColor = byProyecto[proyNombre].color ?? '#6b7280'
+                      const tasks = [...byProyecto[proyNombre].tasks].sort((a, b) => {
+                        // Sort by fecha asc (overdue first), nulls last
                         if (!a.fecha && !b.fecha) return 0
                         if (!a.fecha) return 1
                         if (!b.fecha) return -1
@@ -567,18 +568,18 @@ export default function QuickAccessPanel() {
                       })
 
                       return (
-                        <div key={areaKey}>
-                          {/* Area header — prominent section title */}
+                        <div key={proyNombre}>
+                          {/* Project header — same style as real operaciones Hoy module */}
                           <div
                             className="flex items-center gap-2 px-2 py-1.5 rounded-lg mb-1"
-                            style={{ backgroundColor: areaColor + '12' }}
+                            style={{ backgroundColor: dotColor + '18' }}
                           >
-                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dotColor }} />
                             <span
-                              className="text-[11px] font-semibold uppercase tracking-widest flex-1"
-                              style={{ color: areaColor }}
+                              className="text-[11px] font-semibold flex-1 truncate"
+                              style={{ color: dotColor === '#6b7280' ? '#9ca3af' : dotColor }}
                             >
-                              {AREA_LABEL[areaKey] ?? areaKey}
+                              {proyNombre}
                             </span>
                             <span className="text-[9px] text-gray-600 font-medium">{tasks.length}</span>
                           </div>
