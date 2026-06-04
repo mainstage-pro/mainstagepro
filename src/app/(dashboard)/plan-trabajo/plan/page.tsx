@@ -677,6 +677,8 @@ function TemplateRow({
   onDiasChange,
   onFrecuenciaChange,
   onGroupChange,
+  onDragStart,
+  onDragEnd,
 }: {
   t: Template
   usuarios: Usuario[]
@@ -686,6 +688,8 @@ function TemplateRow({
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
+  onDragStart?: () => void
+  onDragEnd?: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
@@ -694,10 +698,13 @@ function TemplateRow({
   return (
     <>
       <tr
-        className={`border-b border-[#111] cursor-pointer transition-colors group ${
+        className={`border-b border-[#111] transition-colors group ${
           expanded ? 'bg-[#0d0d0d]' : 'hover:bg-[#0a0a0a]'
-        }`}
+        }${onDragStart ? ' cursor-grab active:cursor-grabbing' : ' cursor-pointer'}`}
         onClick={() => setExpanded(v => !v)}
+        draggable={!!onDragStart}
+        onDragStart={onDragStart ? e => { e.currentTarget.style.opacity = '0.4'; e.dataTransfer.effectAllowed = 'move'; onDragStart() } : undefined}
+        onDragEnd={onDragEnd ? e => { e.currentTarget.style.opacity = '1'; onDragEnd() } : undefined}
       >
         {/* Impacto bar */}
         <td className="w-1 p-0">
@@ -1106,6 +1113,14 @@ export default function PlanPage() {
   const [usuarios, setUsuarios]         = useState<Usuario[]>([])
   const [modal, setModal]               = useState<ModalState | null>(null)
 
+  // Add subarea
+  const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
+  const [newSubareaName, setNewSubareaName]                 = useState('')
+
+  // Drag and drop
+  const [dragState, setDragState]           = useState<{ templateId: string; fromSubAreaId: string } | null>(null)
+  const [dragOverSubAreaId, setDragOverSubAreaId] = useState<string | null>(null)
+
   // Load areas + templates + usuarios
   useEffect(() => {
     async function load() {
@@ -1243,6 +1258,81 @@ export default function PlanPage() {
         })),
       })))
     }
+  }
+
+  async function handleAddSubarea(areaId: string) {
+    const nombre = newSubareaName.trim()
+    if (!nombre) return
+    const res = await fetch('/api/plan-trabajo/subareas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ areaId, nombre }),
+    })
+    if (!res.ok) return
+    const data = await res.json()
+    const newSA: { id: string; nombre: string } = data.subArea
+    setAreas(prev => prev.map(a => {
+      if (a.id !== areaId) return a
+      return {
+        ...a,
+        subareas: [...a.subareas, { id: newSA.id, nombre: newSA.nombre }],
+        subareaGroups: [...a.subareaGroups, { subArea: newSA, templates: [] }],
+      }
+    }))
+    setNewSubareaName('')
+    setAddingSubareaForAreaId(null)
+  }
+
+  async function handleMoveTemplate(templateId: string, toSubAreaId: string) {
+    if (!dragState || dragState.fromSubAreaId === toSubAreaId) {
+      setDragState(null)
+      setDragOverSubAreaId(null)
+      return
+    }
+    // Find the template to move
+    let movedTemplate: Template | undefined
+    for (const a of areas) {
+      for (const sg of a.subareaGroups) {
+        const found = sg.templates.find(t => t.id === templateId)
+        if (found) { movedTemplate = found; break }
+      }
+      if (movedTemplate) break
+    }
+    if (!movedTemplate) { setDragState(null); setDragOverSubAreaId(null); return }
+
+    // Find target subarea name
+    let targetSubArea: { id: string; nombre: string } | undefined
+    for (const a of areas) {
+      targetSubArea = a.subareas.find(sa => sa.id === toSubAreaId)
+      if (targetSubArea) break
+    }
+    if (!targetSubArea) { setDragState(null); setDragOverSubAreaId(null); return }
+
+    const updatedTemplate = { ...movedTemplate, subArea: targetSubArea }
+
+    // Optimistic state update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => {
+        if (sg.subArea.id === dragState.fromSubAreaId) {
+          return { ...sg, templates: sg.templates.filter(t => t.id !== templateId) }
+        }
+        if (sg.subArea.id === toSubAreaId) {
+          return { ...sg, templates: [...sg.templates, updatedTemplate] }
+        }
+        return sg
+      }),
+    })))
+
+    setDragState(null)
+    setDragOverSubAreaId(null)
+
+    // Persist
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subAreaId: toSubAreaId }),
+    })
   }
 
   function handleOpenModal(opts: { tarea?: Template; areaId: string; subAreaId: string; subAreaNombre: string }) {
@@ -1459,9 +1549,18 @@ export default function PlanPage() {
                 </thead>
                 {area.subareaGroups.map(group => {
                   const filtered = group.templates.filter(filterT)
-                  if (filtered.length === 0) return null
                   return (
-                    <tbody key={group.subArea.id}>
+                    <tbody
+                      key={group.subArea.id}
+                      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverSubAreaId(group.subArea.id) }}
+                      onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSubAreaId(null) }}
+                      onDrop={e => { e.preventDefault(); if (dragState) handleMoveTemplate(dragState.templateId, group.subArea.id) }}
+                      className={`transition-colors duration-150 ${
+                        dragOverSubAreaId === group.subArea.id && dragState?.fromSubAreaId !== group.subArea.id
+                          ? 'bg-[#C9A84C]/5 outline outline-1 outline-[#C9A84C]/20 outline-offset-[-1px]'
+                          : ''
+                      }`}
+                    >
                       {/* Subarea header row */}
                       <tr className="bg-[#070707] border-b border-[#111]">
                         <td colSpan={6} className="px-4 py-2.5">
@@ -1497,12 +1596,56 @@ export default function PlanPage() {
                           onDiasChange={handleDiasChange}
                           onFrecuenciaChange={handleFrecuenciaChange}
                           onGroupChange={handleGroupAssignment}
+                          onDragStart={() => setDragState({ templateId: t.id, fromSubAreaId: group.subArea.id })}
+                          onDragEnd={() => { setDragState(null); setDragOverSubAreaId(null) }}
                         />
                       ))}
                     </tbody>
                   )
                 })}
               </table>
+
+              {/* Add new subarea */}
+              <div className="px-4 pb-3 pt-1">
+                {addingSubareaForAreaId === area.id ? (
+                  <div className="flex items-center gap-2 py-2">
+                    <input
+                      autoFocus
+                      value={newSubareaName}
+                      onChange={e => setNewSubareaName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleAddSubarea(area.id)
+                        if (e.key === 'Escape') { setAddingSubareaForAreaId(null); setNewSubareaName('') }
+                      }}
+                      placeholder="Nombre de la subárea..."
+                      className="bg-transparent border-b border-[#C9A84C]/40 text-sm text-white focus:outline-none flex-1 py-1 placeholder:text-gray-700"
+                    />
+                    <button
+                      onClick={() => handleAddSubarea(area.id)}
+                      className="text-xs text-[#C9A84C] hover:text-[#C9A84C]/80 font-medium px-2 py-1 transition-colors"
+                    >
+                      Agregar
+                    </button>
+                    <button
+                      onClick={() => { setAddingSubareaForAreaId(null); setNewSubareaName('') }}
+                      className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setAddingSubareaForAreaId(area.id); setNewSubareaName('') }}
+                    className="flex items-center gap-1.5 text-xs text-gray-700 hover:text-gray-400 transition-colors py-1"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    Nueva subárea
+                  </button>
+                )}
+              </div>
+
               {/* Ver por persona en esta área */}
               <AreaPersonasView
                 areaId={area.id}

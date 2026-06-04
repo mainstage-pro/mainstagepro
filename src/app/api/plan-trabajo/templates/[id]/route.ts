@@ -19,7 +19,7 @@ export async function PUT(
     impacto, contexto, cuando, puestoDefault, kpiNombre,
     estandarMinimo, porqueSeHace, relacionCon, siNoSeHace,
     afectaA, dependeDe, bloqueaA,
-    tipoAsignacion, areaAsignada,
+    tipoAsignacion, areaAsignada, subAreaId,
   } = body
 
   const data: Record<string, unknown> = {}
@@ -47,6 +47,7 @@ export async function PUT(
   if (bloqueaA       !== undefined) data.bloqueaA       = bloqueaA
   if (tipoAsignacion !== undefined) data.tipoAsignacion = tipoAsignacion
   if (areaAsignada   !== undefined) data.areaAsignada   = areaAsignada
+  if (subAreaId      !== undefined) data.subAreaId      = subAreaId
 
   const template = await prisma.pTTareaTemplate.update({
     where: { id },
