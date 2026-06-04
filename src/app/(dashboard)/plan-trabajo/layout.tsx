@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { UndoToastContainer } from '@/components/ui/undo-toast'
 
 export default function PlanTrabajoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   const tabs = [
-    { href: '/plan-trabajo/hoy',  label: '📅 Mi día' },
-    { href: '/plan-trabajo/plan', label: '📋 Plan' },
-    { href: '/plan-trabajo/kpis', label: '🎯 KPIs' },
+    { href: '/plan-trabajo/hoy',        label: '📅 Mi día'      },
+    { href: '/plan-trabajo/plan',       label: '📋 Plan'        },
+    { href: '/plan-trabajo/rendimiento', label: '📊 Rendimiento' },
   ]
 
   return (
@@ -17,7 +18,9 @@ export default function PlanTrabajoLayout({ children }: { children: React.ReactN
       <div className="px-6 pt-8 pb-0 border-b border-[#1a1a1a]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">Sistema Operativo v2.0</p>
+            <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">
+              Sistema Operativo v2.0
+            </p>
             <h1 className="text-2xl font-bold tracking-tight">Plan de Trabajo</h1>
           </div>
         </div>
@@ -41,6 +44,7 @@ export default function PlanTrabajoLayout({ children }: { children: React.ReactN
         </div>
       </div>
       <div>{children}</div>
+      <UndoToastContainer />
     </div>
   )
 }

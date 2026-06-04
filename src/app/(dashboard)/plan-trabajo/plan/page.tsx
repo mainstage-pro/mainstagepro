@@ -33,6 +33,8 @@ type Template = {
   bloqueaA: { tarea: string; puesto: string } | null
   afectaA: string[]
   puestoDefault: string | null
+  tipoAsignacion: string
+  areaAsignada: string | null
   responsable: { id: string; name: string } | null
   area: { id: string; nombre: string; color: string; icono: string }
   subArea: { id: string; nombre: string }
@@ -118,13 +120,7 @@ function ResponsableBtn({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-  if (tarea.puestoDefault === 'Todo el equipo') {
-    return (
-      <span className="text-[10px] bg-[#1a1a1a] text-gray-500 px-2 py-0.5 rounded-full border border-[#2a2a2a] whitespace-nowrap">
-        👥 Todo el equipo
-      </span>
-    )
-  }
+
 
   return (
     <div ref={ref} className="relative">
@@ -197,6 +193,8 @@ function TareaModal({
     porqueSeHace:   t?.porqueSeHace   ?? '',
     relacionCon:    t?.relacionCon    ?? '',
     siNoSeHace:     t?.siNoSeHace     ?? '',
+    tipoAsignacion: t?.tipoAsignacion ?? 'individual',
+    areaAsignada:   t?.areaAsignada   ?? '',
   })
   const [showDetalle, setShowDetalle] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -223,6 +221,8 @@ function TareaModal({
         porqueSeHace:   form.porqueSeHace   || null,
         relacionCon:    form.relacionCon    || null,
         siNoSeHace:     form.siNoSeHace     || null,
+        tipoAsignacion: form.tipoAsignacion,
+        areaAsignada: form.tipoAsignacion === 'area' ? (form.areaAsignada || null) : null,
         ...(isEdit ? {} : { areaId: modal.areaId, subAreaId: modal.subAreaId }),
       }
 
@@ -353,18 +353,58 @@ function TareaModal({
         </div>
 
         {/* Responsable */}
-        <div>
-          <label className={labelCls}>Responsable</label>
-          <select
-            value={form.responsableId}
-            onChange={e => setForm(p => ({ ...p, responsableId: e.target.value }))}
-            className={inputCls}
-          >
-            <option value="">Sin asignar</option>
-            {usuarios.map(u => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
+        {form.tipoAsignacion === 'todos' ? (
+          <div>
+            <label className={labelCls}>Responsable</label>
+            <p className="text-xs text-gray-600">Esta tarea aparece para todos los usuarios del equipo</p>
+          </div>
+        ) : (
+          <div>
+            <label className={labelCls}>Responsable{form.tipoAsignacion === 'area' ? ' (opcional)' : ''}</label>
+            <select
+              value={form.responsableId}
+              onChange={e => setForm(p => ({ ...p, responsableId: e.target.value }))}
+              className={inputCls}
+            >
+              <option value="">Sin asignar</option>
+              {usuarios.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Tipo de asignación */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelCls}>Tipo de asignación</label>
+            <select
+              value={form.tipoAsignacion}
+              onChange={e => setForm(p => ({ ...p, tipoAsignacion: e.target.value }))}
+              className={inputCls}
+            >
+              <option value="individual">Individual (1 responsable)</option>
+              <option value="area">Área completa</option>
+              <option value="todos">Todo el equipo</option>
+            </select>
+          </div>
+          {form.tipoAsignacion === 'area' && (
+            <div>
+              <label className={labelCls}>Área</label>
+              <select
+                value={form.areaAsignada}
+                onChange={e => setForm(p => ({ ...p, areaAsignada: e.target.value }))}
+                className={inputCls}
+              >
+                <option value="">Seleccionar...</option>
+                <option value="VENTAS">Ventas</option>
+                <option value="PRODUCCION">Producción</option>
+                <option value="MARKETING">Marketing</option>
+                <option value="ADMINISTRACION">Administración</option>
+                <option value="DIRECCION">Dirección</option>
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Detalle expandible */}
@@ -468,11 +508,21 @@ function TemplateRow({
 
         {/* Responsable — clickable */}
         <td className="py-3 px-3 hidden sm:table-cell" onClick={e => e.stopPropagation()}>
-          <ResponsableBtn
-            tarea={t}
-            usuarios={usuarios}
-            onCambiar={rid => onResponsableChange(t.id, rid)}
-          />
+          {t.tipoAsignacion === 'todos' ? (
+            <span className="text-[10px] bg-[#1a1a1a] text-gray-500 px-2 py-0.5 rounded-full border border-[#2a2a2a] whitespace-nowrap">
+              👥 Todo el equipo
+            </span>
+          ) : t.tipoAsignacion === 'area' ? (
+            <span className="text-[10px] bg-[#1a1a1a] text-gray-500 px-2 py-0.5 rounded-full border border-[#2a2a2a] whitespace-nowrap">
+              🏢 Área: {t.areaAsignada ?? '–'}
+            </span>
+          ) : (
+            <ResponsableBtn
+              tarea={t}
+              usuarios={usuarios}
+              onCambiar={rid => onResponsableChange(t.id, rid)}
+            />
+          )}
         </td>
 
         {/* Días */}
@@ -732,6 +782,7 @@ export default function PlanPage() {
           const tData: { templates: Template[] } = await tRes.json()
           const templates = tData.templates ?? []
 
+          const IMPACTO_ORDER: Record<string, number> = { critico: 0, alto: 1, estandar: 2 }
           const subMap = new Map<string, SubareaGroup>()
           for (const t of templates) {
             if (!t.subArea) continue
@@ -739,6 +790,9 @@ export default function PlanPage() {
               subMap.set(t.subArea.id, { subArea: t.subArea, templates: [] })
             }
             subMap.get(t.subArea.id)!.templates.push(t)
+            subMap.get(t.subArea.id)!.templates.sort(
+              (a, b) => (IMPACTO_ORDER[a.impacto] ?? 2) - (IMPACTO_ORDER[b.impacto] ?? 2)
+            )
           }
 
           return { ...area, subareaGroups: Array.from(subMap.values()) }
@@ -948,11 +1002,12 @@ export default function PlanPage() {
                 const filtered = group.templates.filter(filterT)
                 return (
                   <div key={group.subArea.id}>
-                    <div className="px-5 py-2 border-b border-[#111] bg-[#060606] sticky top-[148px] z-10">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#070707] border-b border-[#111] sticky top-[148px] z-10">
+                      <div className="w-0.5 h-4 rounded-full bg-[#2a2a2a]" />
+                      <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold">
                         {group.subArea.nombre}
-                        <span className="ml-2 font-normal text-gray-800">{filtered.length}</span>
-                      </p>
+                      </span>
+                      <span className="text-[10px] text-gray-700">{filtered.length}</span>
                     </div>
                     {filtered.length > 0 && (
                       <table className="w-full">

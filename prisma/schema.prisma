@@ -2812,6 +2812,9 @@ model PTTareaTemplate {
   afectaA        String[]
   dependeDe      Json?                                // { tarea: string, puesto: string } | null
   bloqueaA       Json?                                // { tarea: string, puesto: string } | null
+  tipoAsignacion String   @default("individual")      // individual | area | todos
+  areaAsignada   String?                              // nombre del área si tipoAsignacion = "area"
+
 
   instancias  PTTareaInstancia[]
   subtareas   PTSubTarea[]
