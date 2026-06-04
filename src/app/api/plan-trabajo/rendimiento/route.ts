@@ -121,5 +121,6 @@ export async function GET() {
     areas: Array.from(areaMap.values()).sort((a, b) => b.total - a.total),
     impacto: impactoMap,
     usuarios,
+    currentUserId: session.id,
   })
 }

@@ -43,6 +43,7 @@ type Rendimiento = {
   areas:   AreaData[]
   impacto: ImpactoData
   usuarios: UsuarioData[]
+  currentUserId: string
 }
 
 const IMPACTO_META: Record<string, { label: string; badgeCls: string; barCls: string }> = {
@@ -314,38 +315,58 @@ export default function RendimientoPage() {
         </div>
       </div>
 
-      {/* ── Per-user grid ── */}
+      {/* ── Per-user list ── */}
       {data.usuarios.length > 0 && (
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 mb-6">
           <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">Por persona · semana actual</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {data.usuarios.map(u => (
-              <div key={u.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3">
-                <div className="flex items-center gap-2 mb-3">
+          <div className="space-y-1">
+            {[...data.usuarios]
+              .sort((a, b) => {
+                if (a.id === data.currentUserId) return -1
+                if (b.id === data.currentUserId) return 1
+                return b.pct - a.pct
+              })
+              .map(u => {
+                const isCurrent = u.id === data.currentUserId
+                return (
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white/90 shrink-0"
-                    style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+                    key={u.id}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                      isCurrent ? 'bg-[#C9A84C]/5 border border-[#C9A84C]/10' : 'hover:bg-[#0d0d0d]'
+                    }`}
                   >
-                    {u.name[0]}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white/90 shrink-0"
+                      style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+                    >
+                      {u.name[0]}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium ${
+                        isCurrent ? 'text-[#C9A84C]' : 'text-white'
+                      }`}>
+                        {u.name.split(' ')[0]}
+                        {isCurrent && <span className="text-[9px] text-[#C9A84C]/60 ml-1">(tú)</span>}
+                      </p>
+                      {u.area && <p className="text-[10px] text-gray-600">{u.area}</p>}
+                    </div>
+                    <div className="hidden sm:block w-32 shrink-0">
+                      <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${u.pct}%`, backgroundColor: getAreaColor(u.area ?? '') }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-base font-bold tabular-nums ${
+                        u.pct === 100 ? 'text-green-400' : u.pct >= 70 ? 'text-white' : 'text-gray-400'
+                      }`}>{u.pct}%</p>
+                      <p className="text-[9px] text-gray-600 tabular-nums">{u.completadas}/{u.total}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-white truncate">{u.name.split(' ')[0]}</p>
-                    {u.area && <p className="text-[9px] text-gray-600 truncate">{u.area}</p>}
-                  </div>
-                </div>
-                <p className="text-2xl font-bold text-white tabular-nums mb-1">{u.pct}%</p>
-                <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${u.pct}%`,
-                      backgroundColor: getAreaColor(u.area ?? ''),
-                    }}
-                  />
-                </div>
-                <p className="text-[9px] text-gray-600 mt-1">{u.completadas}/{u.total} tareas</p>
-              </div>
-            ))}
+                )
+              })}
           </div>
         </div>
       )}

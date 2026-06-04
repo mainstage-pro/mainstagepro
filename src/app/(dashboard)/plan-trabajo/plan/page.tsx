@@ -1203,58 +1203,90 @@ export default function PlanPage() {
   return (
     <div className="flex" style={{ minHeight: 'calc(100vh - 130px)' }}>
       {/* ── Sidebar ── */}
-      <div className="w-44 shrink-0 border-r border-[#1a1a1a] bg-[#080808] py-3 flex flex-col">
+      <div className="w-48 shrink-0 border-r border-[#141414] bg-[#060606] py-4 flex flex-col gap-0.5 overflow-y-auto">
         {loading ? (
           <p className="px-4 text-gray-700 text-xs mt-2">Cargando...</p>
         ) : (
           <>
-            {/* Areas */}
-            <div className="flex-1">
-              {areas.map(a => (
-                <button
-                  key={a.id}
-                  onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
-                  className={`w-full text-left px-3 py-2.5 text-xs transition-all flex items-center gap-2 rounded-lg mx-1 ${
-                    activeAreaId === a.id && !vistaPersonaId
-                      ? 'bg-[#111] text-white'
-                      : 'text-gray-500 hover:text-gray-300 hover:bg-[#0a0a0a]'
-                  }`}
-                >
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: getAreaColor(a.nombre) }}
-                  />
-                  <span className="truncate font-medium">{a.nombre}</span>
-                  <span className="ml-auto text-[10px] text-gray-700 tabular-nums">
-                    {a.subareaGroups.reduce((sum, sg) => sum + sg.templates.length, 0)}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Por persona */}
-            {usuarios.length > 0 && (
-              <div className="border-t border-[#1a1a1a] pt-3 mt-2">
-                <p className="text-[9px] text-gray-700 uppercase tracking-wider px-4 mb-2">Por persona</p>
-                {usuarios.map(u => (
+            {/* Áreas section */}
+            <div className="px-3 mb-1">
+              <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Área</p>
+              {areas.map(a => {
+                const isActive = activeAreaId === a.id && !vistaPersonaId
+                const color = getAreaColor(a.nombre)
+                const total = a.subareaGroups.reduce((sum, sg) => sum + sg.templates.length, 0)
+                return (
                   <button
-                    key={u.id}
-                    onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
-                    className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition-all border-l-2 ${
-                      vistaPersonaId === u.id
-                        ? 'border-[#C9A84C] text-white bg-[#0d0d0d]'
-                        : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-[#0a0a0a]'
+                    key={a.id}
+                    onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
+                    className={`w-full text-left px-2.5 py-2 rounded-lg transition-all flex items-center gap-2.5 mb-0.5 ${
+                      isActive
+                        ? 'bg-[#111] shadow-sm'
+                        : 'hover:bg-[#0a0a0a]'
                     }`}
                   >
                     <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0"
-                      style={{ backgroundColor: getAreaColor(u.area ?? '') }}
-                    >
-                      {u.name[0]}
-                    </div>
-                    <span className="truncate">{u.name.split(' ')[0]}</span>
+                      className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
+                        isActive ? 'opacity-100 scale-110' : 'opacity-50'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                    <span className={`text-xs font-medium truncate transition-colors ${
+                      isActive ? 'text-white' : 'text-gray-500'
+                    }`}>
+                      {a.nombre}
+                    </span>
+                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 transition-colors ${
+                      isActive ? 'text-gray-500' : 'text-gray-700'
+                    }`}>
+                      {total}
+                    </span>
                   </button>
-                ))}
+                )
+              })}
+            </div>
+
+            {/* Divider */}
+            <div className="mx-3 my-2 h-px bg-[#111]" />
+
+            {/* Por Persona section */}
+            {usuarios.length > 0 && (
+              <div className="px-3">
+                <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Persona</p>
+                {usuarios.map(u => {
+                  const isActive = vistaPersonaId === u.id
+                  const color = getAreaColor(u.area ?? '')
+                  return (
+                    <button
+                      key={u.id}
+                      onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
+                      className={`w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 mb-0.5 ${
+                        isActive
+                          ? 'bg-[#111] shadow-sm'
+                          : 'hover:bg-[#0a0a0a]'
+                      }`}
+                    >
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0 transition-all ${
+                          isActive ? 'opacity-100 ring-1 ring-white/10' : 'opacity-50'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      >
+                        {u.name[0]}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-medium truncate transition-colors ${
+                          isActive ? 'text-white' : 'text-gray-500'
+                        }`}>
+                          {u.name.split(' ')[0]}
+                        </p>
+                        {u.area && (
+                          <p className="text-[8px] text-gray-700 truncate">{u.area}</p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </>
@@ -1324,66 +1356,63 @@ export default function PlanPage() {
                 </div>
               </div>
 
-              {/* Column headers */}
-              <div className="flex items-center px-3 py-2 text-[9px] uppercase tracking-[0.12em] text-gray-700 border-b border-[#0d0d0d] bg-[#060606]">
-                <div className="w-1 shrink-0 mr-3" />
-                <div className="flex-1 pl-0">Tarea</div>
-                <div className="hidden sm:block w-32 shrink-0">Responsable</div>
-                <div className="hidden md:block w-20 shrink-0 text-center">Días</div>
-                <div className="hidden lg:block w-24 shrink-0">Recurrencia</div>
-                <div className="w-16 shrink-0" />
-              </div>
-
-              {/* Subareas + tables */}
-              {area.subareaGroups.map(group => {
-                const filtered = group.templates.filter(filterT)
-                return (
-                  <div key={group.subArea.id}>
-                    <div className="flex items-center gap-3 px-4 py-2.5 bg-[#070707] border-b border-[#111] sticky top-[148px] z-10">
-                      <div className="w-0.5 h-4 rounded-full bg-[#2a2a2a]" />
-                      <span className="text-[10px] text-gray-600 uppercase tracking-[0.15em] font-semibold">
-                        {group.subArea.nombre}
-                      </span>
-                      <span className="text-[10px] text-gray-700">{filtered.length}</span>
-                    </div>
-                    {filtered.length > 0 && (
-                      <table className="w-full">
-                        <tbody>
-                          {filtered.map(t => (
-                            <TemplateRow
-                              key={t.id}
-                              t={t}
-                              usuarios={usuarios}
-                              onEdit={tarea => handleOpenModal({
-                                tarea,
-                                areaId: area.id,
-                                subAreaId: group.subArea.id,
-                                subAreaNombre: group.subArea.nombre,
-                              })}
-                              onDelete={handleDelete}
-                              onResponsableChange={handleResponsableChange}
-                              onDiasChange={handleDiasChange}
-                              onFrecuenciaChange={handleFrecuenciaChange}
-                            />
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                    {/* + Agregar tarea */}
-                    <button
-                      onClick={() => handleOpenModal({
-                        areaId: area.id,
-                        subAreaId: group.subArea.id,
-                        subAreaNombre: group.subArea.nombre,
-                      })}
-                      className="w-full text-left px-5 py-2.5 text-xs text-gray-700 hover:text-[#C9A84C] hover:bg-[#0a0a0a] flex items-center gap-1.5 border-b border-[#0d0d0d] transition-colors"
-                    >
-                      <span className="text-base leading-none">+</span>
-                      Agregar tarea a {group.subArea.nombre}
-                    </button>
-                  </div>
-                )
-              })}
+              {/* Single table with thead + per-subarea tbody */}
+              <table className="w-full">
+                <thead className="bg-[#060606] border-b border-[#0d0d0d]">
+                  <tr>
+                    <th className="w-1 p-0" />
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Tarea</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
+                    <th className="w-16" />
+                  </tr>
+                </thead>
+                {area.subareaGroups.map(group => {
+                  const filtered = group.templates.filter(filterT)
+                  if (filtered.length === 0) return null
+                  return (
+                    <tbody key={group.subArea.id}>
+                      {/* Subarea header row */}
+                      <tr className="bg-[#070707] border-b border-[#111]">
+                        <td colSpan={6} className="px-4 py-2.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-0.5 h-4 rounded-full bg-[#C9A84C]/40" />
+                            <span className="text-[11px] text-[#C9A84C] uppercase tracking-[0.12em] font-semibold">
+                              {group.subArea.nombre}
+                            </span>
+                            <span className="text-[10px] text-gray-700">{filtered.length}</span>
+                            <button
+                              onClick={() => handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre })}
+                              className="ml-auto text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
+                            >
+                              + Agregar tarea
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {/* Task rows */}
+                      {filtered.map(t => (
+                        <TemplateRow
+                          key={t.id}
+                          t={t}
+                          usuarios={usuarios}
+                          onEdit={tarea => handleOpenModal({
+                            tarea,
+                            areaId: area.id,
+                            subAreaId: group.subArea.id,
+                            subAreaNombre: group.subArea.nombre,
+                          })}
+                          onDelete={handleDelete}
+                          onResponsableChange={handleResponsableChange}
+                          onDiasChange={handleDiasChange}
+                          onFrecuenciaChange={handleFrecuenciaChange}
+                        />
+                      ))}
+                    </tbody>
+                  )
+                })}
+              </table>
               {/* Ver por persona en esta área */}
               <AreaPersonasView
                 areaId={area.id}
