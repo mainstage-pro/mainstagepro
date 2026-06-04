@@ -19,6 +19,7 @@ type Tecnico = {
   datosFiscales: string | null;
   activo: boolean;
   prioridad: boolean;
+  nivelPrioridad: string;
   comentarios: string | null;
   evaluacionPromedio: number | null;
   habilidades: string | null;
@@ -44,6 +45,18 @@ const NIVEL_COLORS: Record<string, string> = {
   A:   "text-gray-400 bg-gray-800/20 border-gray-700/40",
 };
 
+const PRIORIDAD_COLORS: Record<string, string> = {
+  ALTA:  '#EF4444',
+  MEDIA: '#F59E0B',
+  BAJA:  '#6B7280',
+}
+const PRIORIDAD_LABELS: Record<string, string> = {
+  ALTA:  'Alta',
+  MEDIA: 'Media',
+  BAJA:  'Baja',
+}
+const PRIORIDAD_ORDER: Record<string, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 }
+
 function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs' }) {
   const color = DISCIPLINA_COLORS[disc] ?? '#6b7280';
   const label = DISCIPLINA_LABELS[disc] ?? disc;
@@ -64,6 +77,7 @@ const EMPTY = {
   nombre: "", celular: "", rolId: "", nivel: "A",
   zonaHabitual: "", cuentaBancaria: "", datosFiscales: "", comentarios: "", habilidades: "",
   disciplina: [] as string[],
+  nivelPrioridad: 'MEDIA',
 };
 
 type SortKey = "nombre" | "rol";
@@ -82,7 +96,7 @@ export default function TecnicosPage() {
   const [search, setSearch] = useState("");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
   const [filterDisciplina, setFilterDisciplina] = useState<string>("TODOS");
-  const [filterPrioridad, setFilterPrioridad] = useState(false);
+
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
   const [inlineEdit, setInlineEdit] = useState<{ id: string; field: 'rol' | 'categoria' } | null>(null);
@@ -192,6 +206,7 @@ export default function TecnicosPage() {
       comentarios: t.comentarios ?? "",
       habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades!) as string[]).join(", "); } catch { return t.habilidades!; } })() : "",
       disciplina: t.disciplina ?? [],
+      nivelPrioridad: t.nivelPrioridad ?? 'MEDIA',
     });
     setCreating(false);
   }
@@ -241,6 +256,18 @@ export default function TecnicosPage() {
     setTecnicos(prev => prev.map(t => t.id === id ? { ...t, prioridad: !current } : t));
   }
 
+  async function cycleNivelPrioridad(id: string, current: string) {
+    const levels = ['ALTA', 'MEDIA', 'BAJA'] as const;
+    const idx = levels.indexOf(current as typeof levels[number]);
+    const next = levels[(idx + 1) % levels.length];
+    setTecnicos(prev => prev.map(t => t.id === id ? { ...t, nivelPrioridad: next } : t));
+    await fetch(`/api/tecnicos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nivelPrioridad: next }),
+    });
+  }
+
   async function eliminarTecnico(t: Tecnico) {
     if (!confirm(`¿Eliminar a ${t.nombre}? Esta acción no se puede deshacer.`)) return;
     try {
@@ -266,13 +293,18 @@ export default function TecnicosPage() {
         !(t.rol?.nombre ?? "").toLowerCase().includes(search.toLowerCase()) &&
         !(t.zonaHabitual ?? "").toLowerCase().includes(search.toLowerCase())) return false;
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
-    if (filterPrioridad && !t.prioridad) return false;
-    if (filterDisciplina !== "TODOS" && !(t.disciplina ?? []).includes(filterDisciplina)) return false;
+    if (filterDisciplina === 'SIN_CATEGORIA') {
+      if ((t.disciplina ?? []).length > 0) return false;
+    } else if (filterDisciplina !== 'TODOS') {
+      if (!(t.disciplina ?? []).includes(filterDisciplina)) return false;
+    }
     return true;
   });
 
   filtered = [...filtered].sort((a, b) => {
-    if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
+    const prioA = PRIORIDAD_ORDER[a.nivelPrioridad ?? 'MEDIA'] ?? 1;
+    const prioB = PRIORIDAD_ORDER[b.nivelPrioridad ?? 'MEDIA'] ?? 1;
+    if (prioA !== prioB) return prioA - prioB;
     if (sortBy === "rol") return (a.rol?.nombre ?? "").localeCompare(b.rol?.nombre ?? "");
     return a.nombre.localeCompare(b.nombre);
   });
@@ -356,6 +388,31 @@ export default function TecnicosPage() {
                 })}
               </div>
             </div>
+            {/* Prioridad */}
+            <div className="col-span-2">
+              <label className="block text-xs text-gray-500 mb-2">Nivel de prioridad</label>
+              <div className="flex gap-2">
+                {(['ALTA', 'MEDIA', 'BAJA'] as const).map(nivel => {
+                  const active = (form.nivelPrioridad ?? 'MEDIA') === nivel;
+                  const color = PRIORIDAD_COLORS[nivel];
+                  return (
+                    <button
+                      key={nivel}
+                      type="button"
+                      onClick={() => set('nivelPrioridad', nivel)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                      style={active
+                        ? { backgroundColor: color + '20', borderColor: color, color }
+                        : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
+                      }
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? color : '#3a3a3a' }} />
+                      {PRIORIDAD_LABELS[nivel]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Rol Técnico</label>
               <Combobox
@@ -412,12 +469,18 @@ export default function TecnicosPage() {
 
       {/* ── DISCIPLINA TABS ── */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
-        {([{ key: 'TODOS', label: 'Todos' }, ...DISCIPLINAS.map(d => ({ key: d, label: DISCIPLINA_LABELS[d] }))] as { key: string; label: string }[]).map(tab => {
+        {([
+          { key: 'TODOS', label: 'Todos' },
+          ...DISCIPLINAS.map(d => ({ key: d, label: DISCIPLINA_LABELS[d] })),
+          { key: 'SIN_CATEGORIA', label: 'Sin categoría' },
+        ] as { key: string; label: string }[]).map(tab => {
           const isActive = filterDisciplina === tab.key;
-          const tabColor = tab.key === 'TODOS' ? '#C9A84C' : (DISCIPLINA_COLORS[tab.key] ?? '#6b7280');
+          const tabColor = tab.key === 'TODOS' ? '#C9A84C' : tab.key === 'SIN_CATEGORIA' ? '#6B7280' : (DISCIPLINA_COLORS[tab.key] ?? '#6b7280');
           const count = tab.key === 'TODOS'
             ? tecnicos.filter(t => t.activo || showInactivos).length
-            : tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).includes(tab.key)).length;
+            : tab.key === 'SIN_CATEGORIA'
+              ? tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).length === 0).length
+              : tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).includes(tab.key)).length;
           return (
             <button
               key={tab.key}
@@ -466,16 +529,6 @@ export default function TecnicosPage() {
             {showInactivos ? "Ocultar inactivos" : "Ver inactivos"}
           </button>
         )}
-        <button
-          onClick={() => setFilterPrioridad(p => !p)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-            filterPrioridad
-              ? 'bg-amber-900/30 border-amber-600/50 text-amber-400'
-              : 'border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]'
-          }`}
-        >
-          ⭐ Prioritarios
-        </button>
       </div>
 
       {inlineEdit && (
@@ -500,7 +553,7 @@ export default function TecnicosPage() {
       ) : view === "card" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onTogglePrioridad={() => togglePrioridad(t.id, t.prioridad)} />)}
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onCycleNivelPrioridad={(id, cur) => cycleNivelPrioridad(id, cur)} />)}
           </div>
           {showInactivos && inactivos.length > 0 && (
             <div className="mt-6">
@@ -646,15 +699,20 @@ export default function TecnicosPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1">
                       <button
-                        onClick={e => { e.stopPropagation(); togglePrioridad(t.id, t.prioridad); }}
-                        title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-                        className={`text-lg transition-all hover:scale-110 ${
-                          t.prioridad
-                            ? 'text-amber-400'
-                            : 'text-gray-600 hover:text-amber-400'
-                        }`}
+                        onClick={e => { e.stopPropagation(); cycleNivelPrioridad(t.id, t.nivelPrioridad ?? 'MEDIA'); }}
+                        title={`Prioridad: ${PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
+                        className="flex items-center gap-1 group/prio transition-all shrink-0"
                       >
-                        {t.prioridad ? '⭐' : '☆'}
+                        <span
+                          className="w-2 h-2 rounded-full transition-transform group-hover/prio:scale-125"
+                          style={{ backgroundColor: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
+                        />
+                        <span
+                          className="text-[10px] font-medium hidden group-hover/prio:inline"
+                          style={{ color: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
+                        >
+                          {PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']}
+                        </span>
                       </button>
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
@@ -720,9 +778,17 @@ export default function TecnicosPage() {
                             <span className="text-[#B3985B] text-[10px] font-bold">{r.nombre.split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}</span>
                           </div>
                           <span className="text-white text-sm">{r.nombre}</span>
-                          {tecnicos.find(t => t.id === r.id)?.prioridad && (
-                            <span className="text-amber-400 text-[10px]">⭐</span>
-                          )}
+                          {(() => {
+                            const tech = tecnicos.find(t => t.id === r.id);
+                            const np = tech?.nivelPrioridad ?? 'MEDIA';
+                            return (
+                              <span
+                                className="w-2 h-2 rounded-full inline-block"
+                                style={{ backgroundColor: PRIORIDAD_COLORS[np] }}
+                                title={`Prioridad: ${PRIORIDAD_LABELS[np]}`}
+                              />
+                            );
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs text-[#6b7280]">{r.rol?.nombre ?? "—"}</td>
@@ -868,11 +934,11 @@ export default function TecnicosPage() {
   );
 }
 
-function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
+function TecnicoCard({ tecnico: t, onEdit, onToggle, onCycleNivelPrioridad }: {
   tecnico: Tecnico;
   onEdit: (t: Tecnico) => void;
   onToggle: (t: Tecnico) => void;
-  onTogglePrioridad?: () => void;
+  onCycleNivelPrioridad?: (id: string, current: string) => void;
 }) {
   const nivelStyle = NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40";
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
@@ -892,24 +958,26 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-white text-sm font-medium leading-tight">{t.nombre}</p>
-              {t.prioridad && (
-                <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
-              )}
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {onTogglePrioridad && (
+          {onCycleNivelPrioridad && (
             <button
-              onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
-              title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-              className={`text-lg transition-all hover:scale-110 ${
-                t.prioridad
-                  ? 'text-amber-400'
-                  : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
-              }`}
+              onClick={e => { e.stopPropagation(); onCycleNivelPrioridad(t.id, t.nivelPrioridad ?? 'MEDIA'); }}
+              title={`Prioridad: ${PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
+              className="flex items-center gap-1 group/prio transition-all shrink-0"
             >
-              {t.prioridad ? '⭐' : '☆'}
+              <span
+                className="w-2 h-2 rounded-full transition-transform group-hover/prio:scale-125"
+                style={{ backgroundColor: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
+              />
+              <span
+                className="text-[10px] font-medium hidden group-hover/prio:inline"
+                style={{ color: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
+              >
+                {PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']}
+              </span>
             </button>
           )}
         </div>
