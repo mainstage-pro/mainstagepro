@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Sidebar from "@/components/Sidebar";
 import GlobalNewTaskPanel from "@/components/GlobalNewTaskPanel";
+import QuickAccessPanel from "@/components/QuickAccessPanel";
 import PwaRefreshButton from "@/components/PwaRefreshButton";
 import { Providers } from "@/components/Providers";
 
@@ -62,6 +63,7 @@ export default async function DashboardLayout({
           {children}
         </main>
         <GlobalNewTaskPanel />
+        <QuickAccessPanel />
         <PwaRefreshButton />
       </div>
     </Providers>
