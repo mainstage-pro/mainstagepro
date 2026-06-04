@@ -85,11 +85,11 @@ export default function QuickAccessPanel() {
     }
   }, [])
 
-  // Load Tareas — vista=bandeja filters by session user server-side
+  // Load Tareas — vista=hoy shows today's tasks from the Tareas module (same as "Hoy" section)
   const loadTareas = useCallback(async () => {
     setLoadingTareas(true)
     try {
-      const res  = await fetch('/api/tareas?vista=bandeja&estado=PENDIENTE')
+      const res  = await fetch('/api/tareas?vista=hoy')
       const data = await res.json()
       setTareas(data.tareas ?? [])
     } catch { /* silent */ } finally {
@@ -394,7 +394,7 @@ export default function QuickAccessPanel() {
                 </div>
               ) : tareas.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-700 text-sm">Sin tareas pendientes</p>
+                  <p className="text-gray-700 text-sm">Sin tareas para hoy</p>
                   <button
                     onClick={loadTareas}
                     className="mt-2 text-xs text-gray-600 hover:text-gray-400 underline"
@@ -406,7 +406,7 @@ export default function QuickAccessPanel() {
                 <div className="space-y-1">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-[10px] text-gray-600 uppercase tracking-wider">
-                      {tareas.length} pendiente{tareas.length !== 1 ? 's' : ''}
+                      {tareas.length} tarea{tareas.length !== 1 ? 's' : ''} hoy
                     </span>
                   </div>
                   {tareas.map(t => (
@@ -444,10 +444,10 @@ export default function QuickAccessPanel() {
               {/* Footer link */}
               <div className="mt-6 pt-4 border-t border-[#0f0f0f]">
                 <a
-                  href="/tareas"
+                  href="/tareas?vista=hoy"
                   className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#C9A84C] transition-colors"
                 >
-                  Ver todas las tareas
+                  Ver módulo de tareas
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                   </svg>
