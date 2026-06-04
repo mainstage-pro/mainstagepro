@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { DISCIPLINA_COLORS, DISCIPLINA_LABELS, DISCIPLINAS } from "@/lib/disciplinaColors";
 
 type Rol = { id: string; nombre: string };
 type Tecnico = {
@@ -21,6 +22,7 @@ type Tecnico = {
   comentarios: string | null;
   evaluacionPromedio: number | null;
   habilidades: string | null;
+  disciplina: string[];
 };
 
 type RankingItem = {
@@ -42,9 +44,26 @@ const NIVEL_COLORS: Record<string, string> = {
   A:   "text-gray-400 bg-gray-800/20 border-gray-700/40",
 };
 
+function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs' }) {
+  const color = DISCIPLINA_COLORS[disc] ?? '#6b7280';
+  const label = DISCIPLINA_LABELS[disc] ?? disc;
+  const cls = size === 'xs'
+    ? 'text-[9px] px-1.5 py-0.5'
+    : 'text-[11px] px-2 py-0.5';
+  return (
+    <span
+      className={`${cls} rounded-full font-medium text-white whitespace-nowrap`}
+      style={{ backgroundColor: color }}
+    >
+      {label}
+    </span>
+  );
+}
+
 const EMPTY = {
   nombre: "", celular: "", rolId: "", nivel: "A",
   zonaHabitual: "", cuentaBancaria: "", datosFiscales: "", comentarios: "", habilidades: "",
+  disciplina: [] as string[],
 };
 
 type SortKey = "nombre" | "nivel" | "rol";
@@ -63,6 +82,7 @@ export default function TecnicosPage() {
   const [search, setSearch] = useState("");
   const [filterNivel, setFilterNivel] = useState<string>("TODOS");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
+  const [filterDisciplina, setFilterDisciplina] = useState<string>("TODOS");
   const [filterPrioridad, setFilterPrioridad] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
@@ -112,7 +132,18 @@ export default function TecnicosPage() {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       const habilidadesArr = form.habilidades ? form.habilidades.split(",").map(h => h.trim()).filter(Boolean) : [];
-      const payload = { nombre: form.nombre, celular: form.celular || null, rolId: form.rolId || null, nivel: form.nivel, zonaHabitual: form.zonaHabitual || null, cuentaBancaria: form.cuentaBancaria || null, datosFiscales: form.datosFiscales || null, comentarios: form.comentarios || null, habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null };
+      const payload = {
+        nombre: form.nombre,
+        celular: form.celular || null,
+        rolId: form.rolId || null,
+        nivel: form.nivel,
+        zonaHabitual: form.zonaHabitual || null,
+        cuentaBancaria: form.cuentaBancaria || null,
+        datosFiscales: form.datosFiscales || null,
+        comentarios: form.comentarios || null,
+        habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
+        disciplina: form.disciplina ?? [],
+      };
       await fetch(`/api/tecnicos/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       setTecnicos(prev => prev.map(t => t.id === editing.id ? { ...t, ...payload } : t));
       setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
@@ -131,7 +162,8 @@ export default function TecnicosPage() {
       cuentaBancaria: t.cuentaBancaria ?? "",
       datosFiscales: t.datosFiscales ?? "",
       comentarios: t.comentarios ?? "",
-      habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades) as string[]).join(", "); } catch { return t.habilidades; } })() : "",
+      habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades!) as string[]).join(", "); } catch { return t.habilidades!; } })() : "",
+      disciplina: t.disciplina ?? [],
     });
     setCreating(false);
   }
@@ -145,7 +177,7 @@ export default function TecnicosPage() {
 
   function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
 
-  function set(key: keyof typeof EMPTY, value: string) {
+  function set(key: keyof typeof EMPTY, value: string | string[]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
@@ -162,6 +194,7 @@ export default function TecnicosPage() {
       datosFiscales: form.datosFiscales || null,
       comentarios: form.comentarios || null,
       habilidades: habilidadesArr.length ? JSON.stringify(habilidadesArr) : null,
+      disciplina: form.disciplina ?? [],
     };
     const url = editing ? `/api/tecnicos/${editing.id}` : "/api/tecnicos";
     const method = editing ? "PATCH" : "POST";
@@ -207,6 +240,7 @@ export default function TecnicosPage() {
     if (filterNivel !== "TODOS" && t.nivel !== filterNivel) return false;
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
     if (filterPrioridad && !t.prioridad) return false;
+    if (filterDisciplina !== "TODOS" && !(t.disciplina ?? []).includes(filterDisciplina)) return false;
     return true;
   });
 
@@ -290,6 +324,33 @@ export default function TecnicosPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
               />
             </div>
+            {/* Disciplina técnica */}
+            <div className="col-span-2">
+              <label className="block text-xs text-gray-500 mb-2">Disciplina técnica</label>
+              <div className="flex flex-wrap gap-2">
+                {DISCIPLINAS.map(disc => {
+                  const active = (form.disciplina ?? []).includes(disc);
+                  const color = DISCIPLINA_COLORS[disc];
+                  return (
+                    <button
+                      key={disc}
+                      type="button"
+                      onClick={() => {
+                        const cur = form.disciplina ?? [];
+                        set('disciplina', active ? cur.filter(d => d !== disc) : [...cur, disc]);
+                      }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                      style={active
+                        ? { backgroundColor: color, borderColor: color, color: '#fff' }
+                        : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
+                      }
+                    >
+                      {DISCIPLINA_LABELS[disc]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Zona habitual</label>
               <input value={form.zonaHabitual} onChange={e => set("zonaHabitual", e.target.value)}
@@ -335,6 +396,30 @@ export default function TecnicosPage() {
         </div>
       </Modal>
 
+      {/* ── DISCIPLINA TABS ── */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
+        {([{ key: 'TODOS', label: 'Todos' }, ...DISCIPLINAS.map(d => ({ key: d, label: DISCIPLINA_LABELS[d] }))] as { key: string; label: string }[]).map(tab => {
+          const isActive = filterDisciplina === tab.key;
+          const tabColor = tab.key === 'TODOS' ? '#C9A84C' : (DISCIPLINA_COLORS[tab.key] ?? '#6b7280');
+          const count = tab.key === 'TODOS'
+            ? tecnicos.filter(t => t.activo || showInactivos).length
+            : tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).includes(tab.key)).length;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setFilterDisciplina(tab.key)}
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                isActive ? 'text-white' : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}
+              style={isActive ? { borderBottomColor: tabColor, color: tabColor } : {}}
+            >
+              {tab.label}
+              <span className={`ml-1 text-[10px] ${ isActive ? 'opacity-80' : 'opacity-50' }`}>({count})</span>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <input value={search} onChange={e => setSearch(e.target.value)}
           className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
@@ -351,6 +436,16 @@ export default function TecnicosPage() {
           options={[{ value: "TODOS", label: "Todos los roles" }, ...rolesUnicos.map(r => ({ value: r, label: r }))]}
           className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
         />
+        <select
+          value={filterDisciplina}
+          onChange={e => setFilterDisciplina(e.target.value)}
+          className="bg-[#111] border border-[#2a2a2a] text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#3a3a3a]"
+        >
+          <option value="TODOS">Todas las disciplinas</option>
+          {DISCIPLINAS.map(d => (
+            <option key={d} value={d}>{DISCIPLINA_LABELS[d]}</option>
+          ))}
+        </select>
         <Combobox
           value={sortBy}
           onChange={v => setSortBy(v as SortKey)}
@@ -375,10 +470,17 @@ export default function TecnicosPage() {
         </button>
       </div>
 
-      {activos.length === 0 && !creating ? (
-        <div className="text-center py-12 text-gray-600">
-          <p className="text-sm">{search || filterNivel !== "TODOS" || filterRol !== "TODOS" ? "Sin resultados para ese filtro." : "No hay técnicos registrados."}</p>
-          {!search && <button onClick={startCreate} className="mt-2 text-[#B3985B] text-sm hover:underline">Agregar el primero</button>}
+      {filtered.length === 0 && !creating ? (
+        <div className="text-center py-16">
+          <p className="text-3xl mb-3">{filterDisciplina !== 'TODOS' ? '🎛️' : '👥'}</p>
+          <p className="text-gray-500 text-sm font-medium">
+            {filterDisciplina !== 'TODOS'
+              ? `No hay técnicos registrados en ${DISCIPLINA_LABELS[filterDisciplina]} aún.`
+              : 'No se encontraron técnicos.'}
+          </p>
+          {filterDisciplina !== 'TODOS' && (
+            <p className="text-gray-700 text-xs mt-1">Edita un técnico para asignarle esta disciplina.</p>
+          )}
         </div>
       ) : view === "card" ? (
         <>
@@ -394,34 +496,54 @@ export default function TecnicosPage() {
             </div>
           )}
         </>
-      ) : (
+      ) : view === "list" ? (
         /* ── LISTA ── */
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Técnico", "Rol", "Nivel", "Zona", "Contacto", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
-                ))}
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Técnico</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Rol</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Disciplina</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Nivel</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Zona</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Contacto</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {activos.map(t => (
-                <tr key={t.id} className="group hover:bg-[#1a1a1a] transition-colors">
+                <tr key={t.id} className="group even:bg-[#080808] hover:bg-[#111] transition-colors duration-150">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
-                        <span className="text-[#B3985B] text-[10px] font-bold">
-                          {t.nombre.split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}
-                        </span>
+                      <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs font-bold text-[#C9A84C] shrink-0">
+                        {t.nombre.charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-white text-sm font-medium">{t.nombre}</p>
-                      {t.prioridad && (
-                        <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
-                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{t.nombre}</p>
+                        {t.prioridad && <span className="text-[9px] text-[#C9A84C] font-semibold uppercase tracking-wider">Prioritario</span>}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.rol?.nombre ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    {(t.disciplina ?? []).length === 0 ? (
+                      <span className="text-gray-700">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {(t.disciplina ?? []).map(disc => (
+                          <button
+                            key={disc}
+                            onClick={() => { startEdit(t); }}
+                            className="cursor-pointer hover:opacity-80 transition-opacity"
+                            title="Editar disciplinas"
+                          >
+                            <DisciplinaPill disc={disc} size="xs" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40"}`}>{t.nivel}</span>
                   </td>
@@ -440,14 +562,14 @@ export default function TecnicosPage() {
                     ) : "—"}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2 items-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1">
                       <button
                         onClick={e => { e.stopPropagation(); togglePrioridad(t.id, t.prioridad); }}
                         title={t.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
                         className={`text-lg transition-all hover:scale-110 ${
                           t.prioridad
                             ? 'text-amber-400'
-                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
+                            : 'text-gray-600 hover:text-amber-400'
                         }`}
                       >
                         {t.prioridad ? '⭐' : '☆'}
@@ -465,6 +587,17 @@ export default function TecnicosPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.rol?.nombre ?? "—"}</td>
                   <td className="px-4 py-3">
+                    {(t.disciplina ?? []).length === 0 ? (
+                      <span className="text-gray-700">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {(t.disciplina ?? []).map(disc => (
+                          <DisciplinaPill key={disc} disc={disc} size="xs" />
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-gray-600 bg-gray-800/20 border-gray-700/40">{t.nivel}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
@@ -477,7 +610,7 @@ export default function TecnicosPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {/* ── RANKING ── */}
       {view === "ranking" && (
@@ -664,9 +797,13 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
 }) {
   const nivelStyle = NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40";
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+  const borderColor = t.disciplina?.[0] ? (DISCIPLINA_COLORS[t.disciplina[0]] + '60') : '#2a2a2a';
 
   return (
-    <div className="group bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors flex flex-col gap-3">
+    <div
+      className="group bg-[#0d0d0d] border rounded-xl p-4 flex flex-col gap-3 transition-all duration-200 hover:shadow-lg cursor-pointer"
+      style={{ borderColor }}
+    >
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -700,6 +837,15 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${nivelStyle}`}>{t.nivel}</span>
         </div>
       </div>
+
+      {/* Disciplina pills */}
+      {(t.disciplina ?? []).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {t.disciplina.map(disc => (
+            <DisciplinaPill key={disc} disc={disc} size="xs" />
+          ))}
+        </div>
+      )}
 
       {/* Info */}
       <div className="space-y-1.5 text-xs">
