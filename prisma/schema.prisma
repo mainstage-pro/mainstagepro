@@ -741,6 +741,7 @@ model Tecnico {
   datosFiscales      String?
   activo             Boolean    @default(true)
   prioridad          Boolean    @default(false)
+  nivelPrioridad     String     @default("MEDIA")  // ALTA | MEDIA | BAJA
   comentarios        String?
   habilidades        String?    // JSON array of skill tags
   disciplina         String[]   @default([])
@@ -770,6 +771,7 @@ model Proveedor {
   datosFiscales  String?
   activo         Boolean  @default(true)
   prioridad      Boolean  @default(false)
+  nivelPrioridad String   @default("MEDIA")  // ALTA | MEDIA | BAJA
   portalToken    String?  @unique @map("portal_token")
   createdAt      DateTime @default(now())
 
