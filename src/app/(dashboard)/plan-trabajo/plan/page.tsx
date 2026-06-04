@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { getAreaColor } from '@/lib/areaColors'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -489,7 +490,13 @@ function TemplateRow({
       >
         {/* Impacto bar */}
         <td className="w-1 p-0">
-          <div className={`w-1 min-h-[48px] h-full rounded-l-sm ${IMPACTO_DOT[t.impacto] ?? 'bg-[#333]'}`} />
+          <div
+            className="w-1 min-h-[48px] h-full rounded-l-sm"
+            style={{
+              backgroundColor: getAreaColor(t.area.nombre),
+              opacity: t.impacto === 'critico' ? 1 : t.impacto === 'alto' ? 0.55 : 0.25,
+            }}
+          />
         </td>
 
         {/* Nombre + chips */}
@@ -678,7 +685,10 @@ function VistaPorPersona({
     <div className="flex-1 overflow-auto">
       <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a] sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 flex items-center justify-center text-sm font-bold text-[#C9A84C]">
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white/80"
+            style={{ backgroundColor: getAreaColor(usuario.area ?? ''), opacity: 0.85 }}
+          >
             {usuario.name[0]}
           </div>
           <div>
@@ -790,9 +800,13 @@ export default function PlanPage() {
               subMap.set(t.subArea.id, { subArea: t.subArea, templates: [] })
             }
             subMap.get(t.subArea.id)!.templates.push(t)
-            subMap.get(t.subArea.id)!.templates.sort(
-              (a, b) => (IMPACTO_ORDER[a.impacto] ?? 2) - (IMPACTO_ORDER[b.impacto] ?? 2)
-            )
+            subMap.get(t.subArea.id)!.templates.sort((a, b) => {
+              const impDiff = (IMPACTO_ORDER[a.impacto] ?? 2) - (IMPACTO_ORDER[b.impacto] ?? 2)
+              if (impDiff !== 0) return impDiff
+              const aDay = a.diasSemana.length > 0 ? Math.min(...a.diasSemana) : 99
+              const bDay = b.diasSemana.length > 0 ? Math.min(...b.diasSemana) : 99
+              return aDay - bDay
+            })
           }
 
           return { ...area, subareaGroups: Array.from(subMap.values()) }
@@ -901,14 +915,20 @@ export default function PlanPage() {
                 <button
                   key={a.id}
                   onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
-                  className={`w-full text-left px-4 py-3 text-xs transition-all border-l-2 ${
+                  className={`w-full text-left px-3 py-2.5 text-xs transition-all flex items-center gap-2 rounded-lg mx-1 ${
                     activeAreaId === a.id && !vistaPersonaId
-                      ? 'border-[#C9A84C] text-white bg-[#0d0d0d]'
-                      : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#0a0a0a]'
+                      ? 'bg-[#111] text-white'
+                      : 'text-gray-500 hover:text-gray-300 hover:bg-[#0a0a0a]'
                   }`}
                 >
-                  <span className="mr-1.5">{a.icono}</span>
-                  {a.nombre}
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: getAreaColor(a.nombre) }}
+                  />
+                  <span className="truncate font-medium">{a.nombre}</span>
+                  <span className="ml-auto text-[10px] text-gray-700 tabular-nums">
+                    {a.subareaGroups.reduce((sum, sg) => sum + sg.templates.length, 0)}
+                  </span>
                 </button>
               ))}
             </div>
@@ -927,7 +947,10 @@ export default function PlanPage() {
                         : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-[#0a0a0a]'
                     }`}
                   >
-                    <div className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#222] flex items-center justify-center text-[9px] font-bold text-gray-400 shrink-0">
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0"
+                      style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+                    >
                       {u.name[0]}
                     </div>
                     <span className="truncate">{u.name.split(' ')[0]}</span>
@@ -955,7 +978,10 @@ export default function PlanPage() {
               {/* Area header + filters */}
               <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a] sticky top-0 z-20">
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="text-2xl">{area.icono}</span>
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: getAreaColor(area.nombre) }}
+                  />
                   <div>
                     <h2 className="text-lg font-bold text-white">{area.nombre}</h2>
                     {area.objetivo && (
@@ -995,6 +1021,16 @@ export default function PlanPage() {
                     <option value="independiente">Independiente</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Column headers */}
+              <div className="flex items-center px-3 py-2 text-[9px] uppercase tracking-[0.12em] text-gray-700 border-b border-[#0d0d0d] bg-[#060606]">
+                <div className="w-1 shrink-0 mr-3" />
+                <div className="flex-1 pl-0">Tarea</div>
+                <div className="hidden sm:block w-32 shrink-0">Responsable</div>
+                <div className="hidden md:block w-20 shrink-0 text-center">Días</div>
+                <div className="hidden lg:block w-24 shrink-0">Recurrencia</div>
+                <div className="w-16 shrink-0" />
               </div>
 
               {/* Subareas + tables */}

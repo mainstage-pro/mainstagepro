@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  // Get last 5 Mondays
+  // Get last 8 Mondays
   function getLunes(offsetWeeks: number): Date {
     const now = new Date()
     const dow = now.getDay()
@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   const semanas = await Promise.all(
-    Array.from({ length: 5 }, (_, i) => i).reverse().map(async (offset) => {
+    Array.from({ length: 8 }, (_, i) => i).reverse().map(async (offset) => {
       const lunes = getLunes(offset)
       const viernes = new Date(lunes)
       viernes.setDate(lunes.getDate() + 4)
@@ -65,6 +65,9 @@ export async function GET() {
     },
     select: {
       estado: true,
+      responsable: {
+        select: { id: true, name: true, area: true },
+      },
       template: {
         select: {
           impacto: true,
@@ -96,9 +99,27 @@ export async function GET() {
     }
   }
 
+  // Per-user stats for current week
+  const usuariosMap = new Map<string, { id: string; name: string; area: string | null; total: number; completadas: number }>()
+  for (const inst of instanciasActual) {
+    if (!inst.responsable) continue
+    const u = inst.responsable
+    if (!usuariosMap.has(u.id)) {
+      usuariosMap.set(u.id, { id: u.id, name: u.name, area: u.area, total: 0, completadas: 0 })
+    }
+    const entry = usuariosMap.get(u.id)!
+    entry.total++
+    if (inst.estado === 'COMPLETADA') entry.completadas++
+  }
+
+  const usuarios = Array.from(usuariosMap.values())
+    .map(u => ({ ...u, pct: u.total > 0 ? Math.round((u.completadas / u.total) * 100) : 0 }))
+    .sort((a, b) => b.pct - a.pct)
+
   return NextResponse.json({
     semanas,
     areas: Array.from(areaMap.values()).sort((a, b) => b.total - a.total),
     impacto: impactoMap,
+    usuarios,
   })
 }

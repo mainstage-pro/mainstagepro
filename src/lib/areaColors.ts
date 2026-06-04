@@ -5,12 +5,20 @@
  */
 
 export const AREA_COLORS: Record<string, string> = {
+  // Display names
   'Dirección':             '#6366F1',
   'Administración':        '#10B981',
   'Marketing':             '#F59E0B',
   'Ventas':                '#C9A84C',
   'Producción':            '#3B82F6',
   'Operaciones Generales': '#8B5CF6',
+  // DB uppercase keys (schema: DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | GENERAL)
+  'DIRECCION':     '#6366F1',
+  'ADMINISTRACION':'#10B981',
+  'MARKETING':     '#F59E0B',
+  'VENTAS':        '#C9A84C',
+  'PRODUCCION':    '#3B82F6',
+  'GENERAL':       '#8B5CF6',
 }
 
 /** Primer nombre del usuario → color de área */

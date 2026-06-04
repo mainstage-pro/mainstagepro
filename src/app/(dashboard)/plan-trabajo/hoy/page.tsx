@@ -29,6 +29,7 @@ type Instancia = {
     moduloTexto: string | null
     moduloDestino: string | null
     puestoDefault: string | null
+    horaLimite?: string | null
     area: { id: string; nombre: string; color: string; icono: string }
     subArea: { id: string; nombre: string }
   }
@@ -100,6 +101,73 @@ const CONTEXTO: Record<string, { label: string; cls: string }> = {
 }
 
 const IMPACTO_ORDER: Record<string, number> = { critico: 0, alto: 1, estandar: 2 }
+
+// ── CircularProgress ───────────────────────────────────────────────────────────
+
+function CircularProgress({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
+  const r = 54
+  const circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ
+
+  return (
+    <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 flex flex-col items-center">
+      <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">Tu día</p>
+      <div className="relative">
+        <svg width="128" height="128" viewBox="0 0 128 128">
+          <circle cx="64" cy="64" r={r} fill="none" stroke="#1a1a1a" strokeWidth="8" />
+          <circle
+            cx="64" cy="64" r={r}
+            fill="none"
+            stroke="#C9A84C"
+            strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${circ}`}
+            strokeDashoffset={circ / 4}
+            style={{ transition: 'stroke-dasharray 0.5s ease' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-bold text-white tabular-nums">{pct}%</span>
+          <span className="text-[10px] text-gray-600">{completadas}/{total}</span>
+        </div>
+      </div>
+      {total > 0 && pct === 100 && (
+        <p className="text-xs text-green-400 mt-3">🎉 ¡Todo completado!</p>
+      )}
+    </div>
+  )
+}
+
+// ── DayPanel ───────────────────────────────────────────────────────────────────
+
+function DayPanel({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
+  return (
+    <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+      <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-3">Avance</p>
+      {total === 0 ? (
+        <p className="text-xs text-gray-600">Sin tareas generadas</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Completadas</span>
+            <span className="text-white font-medium">{completadas} / {total}</span>
+          </div>
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-500">Pendientes</span>
+            <span className="text-white font-medium">{total - completadas}</span>
+          </div>
+          {pct >= 80 && (
+            <div className="mt-2 pt-2 border-t border-[#1a1a1a]">
+              <p className="text-xs text-[#C9A84C]">
+                {pct === 100 ? '🏆 Día perfecto' : '⚡ Casi listo'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── MiDiaItem ──────────────────────────────────────────────────────────────────
 
@@ -263,6 +331,9 @@ export default function MiDiaPage() {
   const [loading, setLoading]       = useState(true)
   const [generando, setGenerando]   = useState(false)
 
+  // ── Tomorrow preview state ──────────────────────────────────────────────────
+  const [manana, setManana] = useState<{ nombre: string; impacto: string }[]>([])
+
   const fechaStr = toDateStr(fechaActual)
 
   const cargar = useCallback(async () => {
@@ -295,6 +366,20 @@ export default function MiDiaPage() {
     }
     loadConteos()
   }, [lunesSemana.toDateString()])
+
+  // ── Load tomorrow preview ───────────────────────────────────────────────────
+  useEffect(() => {
+    const tomorrow = new Date(fechaActual)
+    tomorrow.setDate(fechaActual.getDate() + 1)
+    const tomorrowStr = toDateStr(tomorrow)
+    fetch(`/api/plan-trabajo/instancias?fecha=${tomorrowStr}&vista=dia`)
+      .then(r => r.json())
+      .then(d => {
+        const list = (d.instancias ?? []) as Array<{ estado: string; template: { nombre: string; impacto: string } }>
+        setManana(list.slice(0, 3).map(i => ({ nombre: i.template.nombre, impacto: i.template.impacto })))
+      })
+      .catch(() => {})
+  }, [toDateStr(fechaActual)])
 
   function cambiarSemana(dir: number) {
     setSemanaOffset(prev => prev + dir)
@@ -358,9 +443,15 @@ export default function MiDiaPage() {
     })
   }
 
-  const sorted = [...instancias].sort(
-    (a, b) => (IMPACTO_ORDER[a.template.impacto] ?? 2) - (IMPACTO_ORDER[b.template.impacto] ?? 2)
-  )
+  const sorted = [...instancias].sort((a, b) => {
+    // Primary: impacto
+    const impDiff = (IMPACTO_ORDER[a.template.impacto] ?? 2) - (IMPACTO_ORDER[b.template.impacto] ?? 2)
+    if (impDiff !== 0) return impDiff
+    // Secondary: horaLimite (null/empty → end)
+    const aHora = a.template.horaLimite ?? '99:99'
+    const bHora = b.template.horaLimite ?? '99:99'
+    return aHora.localeCompare(bHora)
+  })
   const pendientes  = sorted.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA')
   const completadas = sorted.filter(i => i.estado === 'COMPLETADA')
   const total = instancias.length
@@ -376,8 +467,8 @@ export default function MiDiaPage() {
   const subareaKeys = Object.keys(pendientesBySubarea).sort()
 
   return (
-    <div className="p-6 max-w-3xl">
-      {/* Greeting */}
+    <div className="p-4 md:p-6 max-w-5xl">
+      {/* Greeting — full width */}
       <div className="mb-6">
         <p className="text-gray-500 text-sm">{fmtFechaLarga(fechaActual)}</p>
         <p className="text-xl font-semibold text-white mt-0.5">{getGreeting()}.</p>
@@ -394,7 +485,7 @@ export default function MiDiaPage() {
         )}
       </div>
 
-      {/* ── Week Navigator ── */}
+      {/* ── Week Navigator — full width ── */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <button
@@ -450,70 +541,103 @@ export default function MiDiaPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="text-center py-16 text-gray-600 text-sm">Cargando tareas del día...</div>
-      ) : instancias.length === 0 ? (
-        <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
-          <p className="text-4xl mb-3">📋</p>
-          <p className="text-white font-semibold mb-1">No hay tareas generadas para este día</p>
-          <p className="text-gray-500 text-sm mb-6">
-            Genera las instancias del día a partir del plan de actividades.
-          </p>
-          <button
-            onClick={handleGenerar}
-            disabled={generando}
-            className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
-          >
-            {generando ? 'Generando...' : 'Generar tareas →'}
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Pendientes — grouped by subArea */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Mis tareas del día
+      {/* ── Two columns ── */}
+      <div className="flex gap-6 items-start">
+        {/* Left — tasks (65%) */}
+        <div className="flex-1 min-w-0">
+          {loading ? (
+            <div className="text-center py-16 text-gray-600 text-sm">Cargando tareas del día...</div>
+          ) : instancias.length === 0 ? (
+            <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
+              <p className="text-4xl mb-3">📋</p>
+              <p className="text-white font-semibold mb-1">No hay tareas generadas para este día</p>
+              <p className="text-gray-500 text-sm mb-6">
+                Genera las instancias del día a partir del plan de actividades.
               </p>
-              <span className="text-[10px] bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded-full">
-                {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
-              </span>
+              <button
+                onClick={handleGenerar}
+                disabled={generando}
+                className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
+              >
+                {generando ? 'Generando...' : 'Generar tareas →'}
+              </button>
             </div>
-            {pendientes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 text-sm">
-                🎉 ¡Todo completado por hoy!
-              </div>
-            ) : (
+          ) : (
+            <div className="space-y-6">
+              {/* Pendientes — grouped by subArea */}
               <div>
-                {subareaKeys.map(saKey => (
-                  <div key={saKey}>
-                    <p className="text-[9px] uppercase tracking-[0.15em] text-gray-700 font-semibold mb-2 mt-4 first:mt-0">{saKey}</p>
-                    <div className="space-y-2">
-                      {pendientesBySubarea[saKey].map(inst => (
-                        <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
-                      ))}
-                    </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Mis tareas del día
+                  </p>
+                  <span className="text-[10px] bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded-full">
+                    {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                {pendientes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    🎉 ¡Todo completado por hoy!
                   </div>
-                ))}
+                ) : (
+                  <div>
+                    {subareaKeys.map(saKey => (
+                      <div key={saKey}>
+                        <p className="text-[9px] uppercase tracking-[0.15em] text-gray-700 font-semibold mb-2 mt-4 first:mt-0">{saKey}</p>
+                        <div className="space-y-2">
+                          {pendientesBySubarea[saKey].map(inst => (
+                            <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Completadas — flat list */}
-          {completadas.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
-                ✓ Completadas ({completadas.length})
-              </p>
+              {/* Completadas — flat list */}
+              {completadas.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
+                    ✓ Completadas ({completadas.length})
+                  </p>
+                  <div className="space-y-2">
+                    {completadas.map(inst => (
+                      <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Right panel — fixed width, desktop only */}
+        <div className="hidden lg:flex flex-col gap-4 w-64 shrink-0">
+          {/* Circular progress */}
+          <CircularProgress pct={pct} completadas={completadas.length} total={total} />
+
+          {/* Day stats panel */}
+          <DayPanel pct={pct} completadas={completadas.length} total={total} />
+
+          {/* Tomorrow preview */}
+          {manana.length > 0 && (
+            <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-3">Mañana</p>
               <div className="space-y-2">
-                {completadas.map(inst => (
-                  <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                {manana.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div className={`w-1 h-4 rounded-full shrink-0 ${
+                      t.impacto === 'critico' ? 'bg-red-500/40' :
+                      t.impacto === 'alto' ? 'bg-orange-400/40' : 'bg-[#2a2a2a]'
+                    }`} />
+                    <p className="text-xs text-gray-500 leading-snug truncate">{t.nombre}</p>
+                  </div>
                 ))}
               </div>
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
