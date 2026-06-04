@@ -66,7 +66,7 @@ const EMPTY = {
   disciplina: [] as string[],
 };
 
-type SortKey = "nombre" | "nivel" | "rol";
+type SortKey = "nombre" | "rol";
 
 export default function TecnicosPage() {
   const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
@@ -80,12 +80,12 @@ export default function TecnicosPage() {
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [view, setView] = useState<"card" | "list" | "ranking" | "disponibilidad">("list");
   const [search, setSearch] = useState("");
-  const [filterNivel, setFilterNivel] = useState<string>("TODOS");
   const [filterRol, setFilterRol] = useState<string>("TODOS");
   const [filterDisciplina, setFilterDisciplina] = useState<string>("TODOS");
   const [filterPrioridad, setFilterPrioridad] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState<{ id: string; field: 'rol' | 'categoria' } | null>(null);
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loadingRanking, setLoadingRanking] = useState(false);
   const [detalleId, setDetalleId] = useState<string | null>(null);
@@ -103,6 +103,34 @@ export default function TecnicosPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  // Escape key closes inline edit
+  useEffect(() => {
+    if (!inlineEdit) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setInlineEdit(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [inlineEdit]);
+
+  async function saveInlineField(
+    id: string,
+    field: 'rolId' | 'disciplina',
+    value: string | string[] | null
+  ) {
+    await fetch(`/api/tecnicos/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [field]: value }),
+    });
+    setTecnicos(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      if (field === 'rolId') {
+        const newRol = value ? roles.find(r => r.id === value) ?? null : null;
+        return { ...t, rolId: value as string | null, rol: newRol ? { id: newRol.id, nombre: newRol.nombre } : null };
+      }
+      return { ...t, disciplina: value as string[] };
+    }));
+  }
 
   async function loadRanking() {
     setLoadingRanking(true);
@@ -237,7 +265,6 @@ export default function TecnicosPage() {
     if (search && !t.nombre.toLowerCase().includes(search.toLowerCase()) &&
         !(t.rol?.nombre ?? "").toLowerCase().includes(search.toLowerCase()) &&
         !(t.zonaHabitual ?? "").toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterNivel !== "TODOS" && t.nivel !== filterNivel) return false;
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
     if (filterPrioridad && !t.prioridad) return false;
     if (filterDisciplina !== "TODOS" && !(t.disciplina ?? []).includes(filterDisciplina)) return false;
@@ -246,10 +273,6 @@ export default function TecnicosPage() {
 
   filtered = [...filtered].sort((a, b) => {
     if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
-    if (sortBy === "nivel") {
-      const order = { AAA: 0, AA: 1, A: 2 };
-      return (order[a.nivel as keyof typeof order] ?? 3) - (order[b.nivel as keyof typeof order] ?? 3);
-    }
     if (sortBy === "rol") return (a.rol?.nombre ?? "").localeCompare(b.rol?.nombre ?? "");
     return a.nombre.localeCompare(b.nombre);
   });
@@ -306,27 +329,9 @@ export default function TecnicosPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 placeholder="442 000 0000" />
             </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Rol / Especialidad</label>
-              <Combobox
-                value={form.rolId}
-                onChange={v => set("rolId", v)}
-                options={[{ value: "", label: "Sin rol definido" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Nivel</label>
-              <Combobox
-                value={form.nivel}
-                onChange={v => set("nivel", v)}
-                options={[{ value: "AAA", label: "AAA — Top" }, { value: "AA", label: "AA — Intermedio alto" }, { value: "A", label: "A — Intermedio" }]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
-            </div>
-            {/* Disciplina técnica */}
+            {/* Categoría técnica */}
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-2">Disciplina técnica</label>
+              <label className="block text-xs text-gray-500 mb-2">Categoría técnica</label>
               <div className="flex flex-wrap gap-2">
                 {DISCIPLINAS.map(disc => {
                   const active = (form.disciplina ?? []).includes(disc);
@@ -350,6 +355,15 @@ export default function TecnicosPage() {
                   );
                 })}
               </div>
+            </div>
+            <div className="col-span-2">
+              <label className="text-xs text-gray-500 mb-1 block">Rol Técnico</label>
+              <Combobox
+                value={form.rolId}
+                onChange={v => set("rolId", v)}
+                options={[{ value: "", label: "Sin rol definido" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+              />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Zona habitual</label>
@@ -425,12 +439,6 @@ export default function TecnicosPage() {
           className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
           placeholder="Buscar técnico..." />
         <Combobox
-          value={filterNivel}
-          onChange={v => setFilterNivel(v)}
-          options={[{ value: "TODOS", label: "Todos los niveles" }, { value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-          className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-        />
-        <Combobox
           value={filterRol}
           onChange={v => setFilterRol(v)}
           options={[{ value: "TODOS", label: "Todos los roles" }, ...rolesUnicos.map(r => ({ value: r, label: r }))]}
@@ -441,7 +449,7 @@ export default function TecnicosPage() {
           onChange={e => setFilterDisciplina(e.target.value)}
           className="bg-[#111] border border-[#2a2a2a] text-gray-300 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:border-[#3a3a3a]"
         >
-          <option value="TODOS">Todas las disciplinas</option>
+          <option value="TODOS">Todas las categorías</option>
           {DISCIPLINAS.map(d => (
             <option key={d} value={d}>{DISCIPLINA_LABELS[d]}</option>
           ))}
@@ -449,7 +457,7 @@ export default function TecnicosPage() {
         <Combobox
           value={sortBy}
           onChange={v => setSortBy(v as SortKey)}
-          options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "nivel", label: "Ordenar: Nivel" }, { value: "rol", label: "Ordenar: Rol" }]}
+          options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "rol", label: "Ordenar: Rol" }]}
           className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
         />
         {tecnicos.some(t => !t.activo) && (
@@ -470,6 +478,13 @@ export default function TecnicosPage() {
         </button>
       </div>
 
+      {inlineEdit && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setInlineEdit(null)}
+        />
+      )}
+
       {filtered.length === 0 && !creating ? (
         <div className="text-center py-16">
           <p className="text-3xl mb-3">{filterDisciplina !== 'TODOS' ? '🎛️' : '👥'}</p>
@@ -479,7 +494,7 @@ export default function TecnicosPage() {
               : 'No se encontraron técnicos.'}
           </p>
           {filterDisciplina !== 'TODOS' && (
-            <p className="text-gray-700 text-xs mt-1">Edita un técnico para asignarle esta disciplina.</p>
+            <p className="text-gray-700 text-xs mt-1">Edita un técnico para asignarle esta categoría.</p>
           )}
         </div>
       ) : view === "card" ? (
@@ -504,8 +519,7 @@ export default function TecnicosPage() {
               <tr className="border-b border-[#1e1e1e]">
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Técnico</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Rol</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Disciplina</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Nivel</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Categoría</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Zona</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Contacto</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
@@ -525,27 +539,95 @@ export default function TecnicosPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">{t.rol?.nombre ?? "—"}</td>
                   <td className="px-4 py-3">
-                    {(t.disciplina ?? []).length === 0 ? (
-                      <span className="text-gray-700">—</span>
-                    ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {(t.disciplina ?? []).map(disc => (
+                    <div className="relative">
+                      <button
+                        onClick={() => setInlineEdit(inlineEdit?.id === t.id && inlineEdit.field === 'rol' ? null : { id: t.id, field: 'rol' })}
+                        className="text-sm text-gray-300 hover:text-white hover:bg-[#1a1a1a] px-2 py-1 rounded-lg transition-colors text-left w-full"
+                      >
+                        {t.rol?.nombre ?? <span className="text-gray-600 italic">Sin rol</span>}
+                      </button>
+
+                      {/* Rol inline popover */}
+                      {inlineEdit?.id === t.id && inlineEdit.field === 'rol' && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-2 min-w-[200px] max-h-64 overflow-y-auto"
+                          onClick={e => e.stopPropagation()}
+                        >
                           <button
-                            key={disc}
-                            onClick={() => { startEdit(t); }}
-                            className="cursor-pointer hover:opacity-80 transition-opacity"
-                            title="Editar disciplinas"
+                            onClick={() => { saveInlineField(t.id, 'rolId', null); setInlineEdit(null); }}
+                            className="w-full text-left px-3 py-1.5 text-xs text-gray-500 italic hover:bg-[#1a1a1a] rounded-lg transition-colors"
                           >
-                            <DisciplinaPill disc={disc} size="xs" />
+                            Sin rol
                           </button>
-                        ))}
-                      </div>
-                    )}
+                          {roles.map(r => (
+                            <button
+                              key={r.id}
+                              onClick={() => { saveInlineField(t.id, 'rolId', r.id); setInlineEdit(null); }}
+                              className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                                t.rolId === r.id ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-gray-300 hover:bg-[#1a1a1a]'
+                              }`}
+                            >
+                              {r.nombre}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40"}`}>{t.nivel}</span>
+                    <div className="relative">
+                      <button
+                        onClick={() => setInlineEdit(inlineEdit?.id === t.id && inlineEdit.field === 'categoria' ? null : { id: t.id, field: 'categoria' })}
+                        className="flex flex-wrap gap-1 hover:opacity-80 transition-opacity min-h-[24px] items-center"
+                        title="Editar categoría"
+                      >
+                        {(t.disciplina ?? []).length === 0 ? (
+                          <span className="text-gray-600 text-xs italic">Sin categoría</span>
+                        ) : (
+                          (t.disciplina ?? []).map(disc => <DisciplinaPill key={disc} disc={disc} size="xs" />)
+                        )}
+                      </button>
+
+                      {/* Categoría inline popover */}
+                      {inlineEdit?.id === t.id && inlineEdit.field === 'categoria' && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 min-w-[220px]"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-2">Categoría técnica</p>
+                          <div className="flex flex-wrap gap-2">
+                            {DISCIPLINAS.map(disc => {
+                              const active = (t.disciplina ?? []).includes(disc);
+                              const color = DISCIPLINA_COLORS[disc];
+                              return (
+                                <button
+                                  key={disc}
+                                  type="button"
+                                  onClick={() => {
+                                    const cur = t.disciplina ?? [];
+                                    const next = active ? cur.filter(d => d !== disc) : [...cur, disc];
+                                    saveInlineField(t.id, 'disciplina', next);
+                                  }}
+                                  className="px-2.5 py-1 rounded-full text-xs font-medium border transition-all"
+                                  style={active
+                                    ? { backgroundColor: color, borderColor: color, color: '#fff' }
+                                    : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }}
+                                >
+                                  {DISCIPLINA_LABELS[disc]}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button
+                            onClick={() => setInlineEdit(null)}
+                            className="mt-3 w-full text-[10px] text-gray-600 hover:text-gray-400 transition-colors text-center"
+                          >
+                            Listo
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
@@ -596,9 +678,6 @@ export default function TecnicosPage() {
                         ))}
                       </div>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-gray-600 bg-gray-800/20 border-gray-700/40">{t.nivel}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
@@ -817,7 +896,6 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
                 <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
               )}
             </div>
-            <p className="text-gray-500 text-xs">{t.rol?.nombre ?? "Sin rol"}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -834,11 +912,10 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onTogglePrioridad }: {
               {t.prioridad ? '⭐' : '☆'}
             </button>
           )}
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${nivelStyle}`}>{t.nivel}</span>
         </div>
       </div>
 
-      {/* Disciplina pills */}
+      {/* Categoría pills */}
       {(t.disciplina ?? []).length > 0 && (
         <div className="flex flex-wrap gap-1">
           {t.disciplina.map(disc => (
