@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { showUndoToast } from '@/components/ui/undo-toast'
+import DatePicker from '@/components/ui/DatePicker'
+import { getAreaColor } from '@/lib/areaColors'
 
 type Tab = 'midia' | 'tareas'
 
@@ -23,14 +25,44 @@ type Tarea = {
   titulo: string
   estado: string
   prioridad: string
+  fecha: string | null
   fechaVencimiento: string | null
+  area: string
   proyectoTarea: { id: string; nombre: string; color: string | null } | null
   asignadoA: { id: string; name: string } | null
+  _count: { subtareas: number; comentarios: number }
 }
 
 // ── Helpers ──
 function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const AREA_LABEL: Record<string, string> = {
+  VENTAS:         'Ventas',
+  PRODUCCION:     'Producción',
+  MARKETING:      'Marketing',
+  ADMINISTRACION: 'Administración',
+  RRHH:           'RRHH',
+  DIRECCION:      'Dirección',
+  GENERAL:        'General',
+}
+
+const AREA_ORDER = ['DIRECCION','VENTAS','PRODUCCION','MARKETING','ADMINISTRACION','RRHH','GENERAL']
+
+function formatFecha(iso: string | null): { label: string; color: string } | null {
+  if (!iso) return null
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  const d = new Date(iso + 'T00:00:00')
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000)
+  if (diff < 0)  return { label: 'Vencida', color: '#ef4444' }
+  if (diff === 0) return { label: 'Hoy',    color: '#22c55e' }
+  if (diff === 1) return { label: 'Mañana', color: '#C9A84C' }
+  return {
+    label: d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }),
+    color: '#6b7280',
+  }
 }
 
 const PRIO_COLOR: Record<string, string> = {
@@ -58,6 +90,7 @@ export default function QuickAccessPanel() {
   // Tareas
   const [tareas, setTareas]               = useState<Tarea[]>([])
   const [loadingTareas, setLoadingTareas] = useState(false)
+  const [editingDateId, setEditingDateId] = useState<string | null>(null)
 
   // Keyboard shortcut: Cmd/Ctrl + Shift + P
   useEffect(() => {
@@ -103,6 +136,36 @@ export default function QuickAccessPanel() {
     if (tab === 'midia')  loadMiDia()
     if (tab === 'tareas') loadTareas()
   }, [open, tab, loadMiDia, loadTareas])
+
+  // Complete a Tarea with undo toast
+  async function handleCompleteTask(id: string) {
+    // Optimistically remove from list
+    setTareas(prev => prev.filter(t => t.id !== id))
+    showUndoToast({
+      message: 'Tarea completada',
+      duration: 4000,
+      onUndo: () => {
+        loadTareas() // reload the list
+      },
+      onConfirm: async () => {
+        await fetch(`/api/tareas/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: 'COMPLETADA' }),
+        })
+      },
+    })
+  }
+
+  async function handleDateChange(id: string, fecha: string) {
+    setTareas(prev => prev.map(t => t.id === id ? { ...t, fecha: fecha || null } : t))
+    setEditingDateId(null)
+    await fetch(`/api/tareas/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fecha: fecha || null }),
+    })
+  }
 
   // Toggle task completion in Mi Día
   async function handleToggleMiDia(id: string, currentEstado: string) {
@@ -388,63 +451,169 @@ export default function QuickAccessPanel() {
             <div className="p-4">
               {loadingTareas ? (
                 <div className="space-y-2">
-                  {[1, 2, 3, 4, 5].map(i => (
+                  {[1,2,3,4,5].map(i => (
                     <div key={i} className="h-10 bg-[#111] rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : tareas.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-700 text-sm">Sin tareas para hoy</p>
+                  <p className="text-2xl mb-2">☀️</p>
+                  <p className="text-gray-600 text-sm font-medium">Nada para hoy</p>
+                  <p className="text-gray-700 text-xs mt-1">Todas las tareas completadas</p>
                   <button
                     onClick={loadTareas}
-                    className="mt-2 text-xs text-gray-600 hover:text-gray-400 underline"
+                    className="mt-3 text-xs text-gray-600 hover:text-gray-400 underline"
                   >
                     Recargar
                   </button>
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] text-gray-600 uppercase tracking-wider">
-                      {tareas.length} tarea{tareas.length !== 1 ? 's' : ''} hoy
-                    </span>
-                  </div>
-                  {tareas.map(t => (
-                    <a
-                      key={t.id}
-                      href={`/tareas/${t.id}`}
-                      className="flex items-start gap-2.5 px-2 py-2.5 rounded-lg hover:bg-[#0f0f0f] transition-colors group block"
-                    >
-                      {/* Priority dot */}
-                      <div
-                        className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
-                        style={{ backgroundColor: PRIO_COLOR[t.prioridad] ?? '#444' }}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs text-gray-300 group-hover:text-white leading-snug truncate">{t.titulo}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {t.proyectoTarea && (
-                            <span className="text-[9px] text-gray-600 truncate max-w-[120px]">{t.proyectoTarea.nombre}</span>
-                          )}
-                          {t.fechaVencimiento && (
-                            <span className="text-[9px] text-gray-700">
-                              {new Date(t.fechaVencimiento + 'T00:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+              ) : (() => {
+                // Group by area, sorted by AREA_ORDER
+                const byArea = tareas.reduce((acc, t) => {
+                  const key = t.area || 'GENERAL'
+                  if (!acc[key]) acc[key] = []
+                  acc[key].push(t)
+                  return acc
+                }, {} as Record<string, Tarea[]>)
+
+                const areaKeys = Object.keys(byArea).sort(
+                  (a, b) => (AREA_ORDER.indexOf(a) === -1 ? 99 : AREA_ORDER.indexOf(a))
+                          - (AREA_ORDER.indexOf(b) === -1 ? 99 : AREA_ORDER.indexOf(b))
+                )
+
+                return (
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">{tareas.length} tarea{tareas.length !== 1 ? 's' : ''} hoy</span>
+                      <button onClick={loadTareas} className="text-[9px] text-gray-700 hover:text-gray-500 transition-colors">↺ Actualizar</button>
+                    </div>
+
+                    {areaKeys.map(areaKey => {
+                      const areaColor = getAreaColor(AREA_LABEL[areaKey] ?? areaKey)
+                      const tasks = [...byArea[areaKey]].sort((a, b) => {
+                        // Sort by fecha asc, nulls last
+                        if (!a.fecha && !b.fecha) return 0
+                        if (!a.fecha) return 1
+                        if (!b.fecha) return -1
+                        return a.fecha.localeCompare(b.fecha)
+                      })
+
+                      return (
+                        <div key={areaKey}>
+                          {/* Area header */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
+                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                              {AREA_LABEL[areaKey] ?? areaKey}
                             </span>
-                          )}
+                            <div className="h-px flex-1 bg-[#0f0f0f]" />
+                            <span className="text-[9px] text-gray-700">{tasks.length}</span>
+                          </div>
+
+                          {/* Task rows */}
+                          <div className="space-y-0.5">
+                            {tasks.map(t => {
+                              const fechaInfo = formatFecha(t.fecha)
+                              const isEditingDate = editingDateId === t.id
+
+                              return (
+                                <div
+                                  key={t.id}
+                                  className="flex items-start gap-2 px-2 py-2 rounded-lg hover:bg-[#0a0a0a] transition-colors group"
+                                >
+                                  {/* Complete circle */}
+                                  <button
+                                    onClick={() => handleCompleteTask(t.id)}
+                                    className="mt-0.5 w-4 h-4 rounded-full border shrink-0 flex items-center justify-center transition-all hover:border-white/40"
+                                    style={{ borderColor: (PRIO_COLOR[t.prioridad] ?? '#444') + '80' }}
+                                    title="Completar"
+                                  >
+                                    <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[8px] text-gray-600">✓</span>
+                                  </button>
+
+                                  {/* Content */}
+                                  <div className="min-w-0 flex-1">
+                                    {/* Title + open link */}
+                                    <a
+                                      href={`/operaciones?open=${t.id}`}
+                                      className="text-xs text-gray-300 hover:text-white leading-snug block truncate transition-colors"
+                                      title={t.titulo}
+                                    >
+                                      {t.titulo}
+                                    </a>
+
+                                    {/* Meta row */}
+                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                      {/* Project badge */}
+                                      {t.proyectoTarea && (
+                                        <span className="text-[9px] text-gray-700 truncate max-w-[100px]">
+                                          {t.proyectoTarea.nombre}
+                                        </span>
+                                      )}
+
+                                      {/* Subtareas count */}
+                                      {t._count.subtareas > 0 && (
+                                        <span className="text-[9px] text-gray-700">
+                                          {t._count.subtareas} sub
+                                        </span>
+                                      )}
+
+                                      {/* Date badge — click to edit */}
+                                      <div className="relative">
+                                        <button
+                                          onClick={() => setEditingDateId(isEditingDate ? null : t.id)}
+                                          className={`text-[9px] px-1.5 py-0.5 rounded-full transition-colors border ${
+                                            fechaInfo
+                                              ? 'border-transparent hover:border-[#1e1e1e]'
+                                              : 'border-[#1a1a1a] text-gray-700 hover:text-gray-500'
+                                          }`}
+                                          style={fechaInfo ? { color: fechaInfo.color } : {}}
+                                        >
+                                          {fechaInfo ? fechaInfo.label : '+ fecha'}
+                                        </button>
+
+                                        {/* Inline date picker */}
+                                        {isEditingDate && (
+                                          <div className="absolute left-0 top-full mt-1 z-50">
+                                            <DatePicker
+                                              value={t.fecha ?? ''}
+                                              onChange={val => handleDateChange(t.id, val)}
+                                              size="sm"
+                                              autoOpen
+                                              hideTrigger
+                                              showClear
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Open arrow */}
+                                  <a
+                                    href={`/operaciones?open=${t.id}`}
+                                    className="opacity-0 group-hover:opacity-100 shrink-0 mt-0.5 transition-opacity"
+                                    title="Abrir tarea"
+                                  >
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2">
+                                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                                    </svg>
+                                  </a>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
-                      </div>
-                      <svg className="w-3 h-3 text-gray-700 group-hover:text-gray-500 shrink-0 mt-0.5 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                      </svg>
-                    </a>
-                  ))}
-                </div>
-              )}
+                      )
+                    })}
+                  </div>
+                )
+              })()}
 
               {/* Footer link */}
               <div className="mt-6 pt-4 border-t border-[#0f0f0f]">
                 <a
-                  href="/tareas?vista=hoy"
+                  href="/operaciones?vista=hoy"
                   className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#C9A84C] transition-colors"
                 >
                   Ver módulo de tareas
