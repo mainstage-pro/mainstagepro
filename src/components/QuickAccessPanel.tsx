@@ -13,11 +13,22 @@ type Instancia = {
   estado: string
   completadaAt: string | null
   template: {
+    id: string
     nombre: string
     impacto: string
     area: { nombre: string; color: string }
     subArea: { nombre: string }
   }
+}
+
+type TemplateDetail = {
+  id: string
+  nombre: string
+  descripcion: string | null
+  estandarMinimo: string | null
+  porqueSeHace: string | null
+  siNoSeHace: string | null
+  relacionCon: string | null
 }
 
 type Tarea = {
@@ -86,6 +97,11 @@ export default function QuickAccessPanel() {
   // Mi Día
   const [instancias, setInstancias]       = useState<Instancia[]>([])
   const [loadingMiDia, setLoadingMiDia]   = useState(false)
+
+  // Mi Día expand detail
+  const [expandedMiDiaId, setExpandedMiDiaId]   = useState<string | null>(null)
+  const [templateDetails, setTemplateDetails]   = useState<Record<string, TemplateDetail>>({})
+  const [loadingTemplate, setLoadingTemplate]   = useState<string | null>(null)
 
   // Tareas
   const [tareas, setTareas]               = useState<Tarea[]>([])
@@ -205,6 +221,29 @@ export default function QuickAccessPanel() {
     })
   }
 
+  // Open/collapse Mi Día task detail
+  async function handleOpenMiDiaTask(inst: Instancia) {
+    const templateId = inst.template.id
+    if (expandedMiDiaId === inst.id) {
+      setExpandedMiDiaId(null)
+      return
+    }
+    setExpandedMiDiaId(inst.id)
+    if (!templateDetails[templateId]) {
+      setLoadingTemplate(inst.id)
+      try {
+        const res  = await fetch(`/api/plan-trabajo/templates/${templateId}`)
+        const data = await res.json()
+        const t    = data.template ?? data
+        setTemplateDetails(prev => ({ ...prev, [templateId]: t }))
+      } catch {
+        // silent
+      } finally {
+        setLoadingTemplate(null)
+      }
+    }
+  }
+
   const pendientes  = instancias.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA')
   const completadas = instancias.filter(i => i.estado === 'COMPLETADA')
   const pct = instancias.length > 0 ? Math.round((completadas.length / instancias.length) * 100) : 0
@@ -219,48 +258,25 @@ export default function QuickAccessPanel() {
 
   return (
     <>
-      {/* Toggle triggers — vertical pill buttons on right edge, always visible */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[88] flex-col gap-1 hidden lg:flex">
-        {/* Mi Día trigger */}
+      {/* CHANGE 1 — Single toggle trigger button on right edge */}
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-[88] hidden lg:flex">
         <button
-          onClick={() => {
-            if (open && tab === 'midia') setOpen(false)
-            else { setTab('midia'); setOpen(true) }
-          }}
-          className={`group flex items-center gap-1.5 px-2.5 py-3 rounded-l-xl border-l border-t border-b transition-all duration-200 ${
-            open && tab === 'midia'
+          onClick={() => setOpen(o => !o)}
+          className={`flex flex-col items-center gap-1.5 px-2 py-4 rounded-l-xl border-l border-t border-b transition-all duration-200 backdrop-blur-sm ${
+            open
               ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
               : 'bg-[#0d0d0d]/90 border-[#1e1e1e] text-gray-600 hover:text-white hover:border-[#2a2a2a] hover:bg-[#111]'
-          } backdrop-blur-sm`}
-          title="Mi Día (⌘⇧P)"
+          }`}
+          title="Vista rapida (Cmd+Shift+P)"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
           </svg>
-          {instancias.length > 0 && (
-            <span className="text-[9px] font-bold tabular-nums">{pct}%</span>
-          )}
-        </button>
-
-        {/* Tareas trigger */}
-        <button
-          onClick={() => {
-            if (open && tab === 'tareas') setOpen(false)
-            else { setTab('tareas'); setOpen(true) }
-          }}
-          className={`group flex items-center gap-1.5 px-2.5 py-3 rounded-l-xl border-l border-t border-b transition-all duration-200 ${
-            open && tab === 'tareas'
-              ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
-              : 'bg-[#0d0d0d]/90 border-[#1e1e1e] text-gray-600 hover:text-white hover:border-[#2a2a2a] hover:bg-[#111]'
-          } backdrop-blur-sm`}
-          title="Tareas"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-          </svg>
-          {tareas.length > 0 && (
-            <span className="text-[9px] font-bold tabular-nums">{tareas.length}</span>
+          {(instancias.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA').length + tareas.length) > 0 && (
+            <span className="text-[9px] font-bold tabular-nums leading-none">
+              {instancias.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA').length + tareas.length}
+            </span>
           )}
         </button>
       </div>
@@ -357,46 +373,98 @@ export default function QuickAccessPanel() {
                         <div className="h-px flex-1 bg-[#111]" />
                       </div>
                       <div className="space-y-1 pl-1">
+                        {/* CHANGE 2D — separate circle-check from task click */}
                         {tasks.map(inst => (
-                          <div
-                            key={inst.id}
-                            className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-[#0f0f0f] transition-colors group cursor-pointer"
-                            onClick={() => handleToggleMiDia(inst.id, inst.estado)}
-                          >
-                            {/* Checkbox circle */}
-                            <div
-                              className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
-                                inst.estado === 'COMPLETADA'
-                                  ? 'bg-[#C9A84C] border-[#C9A84C]'
-                                  : 'border-[#333] group-hover:border-[#555]'
-                              }`}
-                              style={inst.estado !== 'COMPLETADA' ? {
-                                borderColor: (IMPACTO_COLOR[inst.template.impacto] ?? '#333') + '60',
-                              } : {}}
-                            >
-                              {inst.estado === 'COMPLETADA' && (
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round">
-                                  <path d="M20 6L9 17l-5-5"/>
-                                </svg>
-                              )}
-                            </div>
-                            {/* Task name + subarea */}
-                            <div className="min-w-0 flex-1">
-                              <p className={`text-xs leading-snug ${
-                                inst.estado === 'COMPLETADA'
-                                  ? 'line-through text-gray-600'
-                                  : 'text-gray-300'
-                              }`}>
-                                {inst.template.nombre}
-                              </p>
-                              <p className="text-[9px] text-gray-700 mt-0.5">{inst.template.subArea.nombre}</p>
-                            </div>
-                            {/* Impact dot */}
-                            {inst.template.impacto !== 'estandar' && (
+                          <div key={inst.id}>
+                            <div className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-[#0f0f0f] transition-colors group">
+                              {/* Checkbox circle - ONLY this triggers complete */}
+                              <button
+                                onClick={e => { e.stopPropagation(); handleToggleMiDia(inst.id, inst.estado) }}
+                                className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
+                                  inst.estado === 'COMPLETADA'
+                                    ? 'bg-[#C9A84C] border-[#C9A84C]'
+                                    : 'border-[#333] group-hover:border-[#555]'
+                                }`}
+                                style={inst.estado !== 'COMPLETADA' ? {
+                                  borderColor: (IMPACTO_COLOR[inst.template.impacto] ?? '#333') + '60',
+                                } : {}}
+                                title="Completar"
+                              >
+                                {inst.estado === 'COMPLETADA' && (
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round">
+                                    <path d="M20 6L9 17l-5-5"/>
+                                  </svg>
+                                )}
+                              </button>
+
+                              {/* Task name - click to expand detail */}
                               <div
-                                className="w-1 h-1 rounded-full shrink-0 mt-1.5"
-                                style={{ backgroundColor: IMPACTO_COLOR[inst.template.impacto] ?? '#444' }}
-                              />
+                                className="min-w-0 flex-1 cursor-pointer"
+                                onClick={() => handleOpenMiDiaTask(inst)}
+                              >
+                                <p className={`text-xs leading-snug transition-colors ${
+                                  inst.estado === 'COMPLETADA'
+                                    ? 'line-through text-gray-600'
+                                    : 'text-gray-300 hover:text-white'
+                                }`}>
+                                  {inst.template.nombre}
+                                </p>
+                                <p className="text-[9px] text-gray-700 mt-0.5">{inst.template.subArea.nombre}</p>
+                              </div>
+
+                              {/* Impact dot */}
+                              {inst.template.impacto !== 'estandar' && (
+                                <div
+                                  className="w-1 h-1 rounded-full shrink-0 mt-1.5"
+                                  style={{ backgroundColor: IMPACTO_COLOR[inst.template.impacto] ?? '#444' }}
+                                />
+                              )}
+
+                              {/* Expand chevron */}
+                              <button
+                                onClick={() => handleOpenMiDiaTask(inst)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
+                              >
+                                <svg
+                                  width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2"
+                                  style={{ transform: expandedMiDiaId === inst.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                                >
+                                  <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                              </button>
+                            </div>
+
+                            {/* Expanded detail panel */}
+                            {expandedMiDiaId === inst.id && (
+                              <div className="ml-7 mr-2 mb-2 px-3 py-3 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg">
+                                {loadingTemplate === inst.id ? (
+                                  <div className="space-y-1.5">
+                                    <div className="h-2 bg-[#1a1a1a] rounded animate-pulse w-3/4" />
+                                    <div className="h-2 bg-[#1a1a1a] rounded animate-pulse w-1/2" />
+                                  </div>
+                                ) : (() => {
+                                  const detail = templateDetails[inst.template.id]
+                                  if (!detail) return <p className="text-[10px] text-gray-700">Sin detalles disponibles</p>
+                                  const fields = [
+                                    { label: 'Descripcion', value: detail.descripcion },
+                                    { label: 'Estandar minimo', value: detail.estandarMinimo },
+                                    { label: 'Por que se hace', value: detail.porqueSeHace },
+                                    { label: 'Si no se hace', value: detail.siNoSeHace },
+                                    { label: 'Se relaciona con', value: detail.relacionCon },
+                                  ].filter(f => f.value)
+                                  if (fields.length === 0) return <p className="text-[10px] text-gray-700">Sin descripcion adicional</p>
+                                  return (
+                                    <div className="space-y-2">
+                                      {fields.map(f => (
+                                        <div key={f.label}>
+                                          <p className="text-[8px] uppercase tracking-wider text-gray-700 mb-0.5">{f.label}</p>
+                                          <p className="text-[10px] text-gray-400 leading-relaxed">{f.value}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )
+                                })()}
+                              </div>
                             )}
                           </div>
                         ))}
@@ -412,16 +480,15 @@ export default function QuickAccessPanel() {
                       </p>
                       <div className="space-y-1">
                         {completadas.map(inst => (
-                          <div
-                            key={inst.id}
-                            className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-[#0f0f0f] transition-colors"
-                            onClick={() => handleToggleMiDia(inst.id, inst.estado)}
-                          >
-                            <div className="w-4 h-4 rounded-full bg-[#C9A84C] shrink-0 flex items-center justify-center">
+                          <div key={inst.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[#0f0f0f] transition-colors">
+                            <button
+                              onClick={() => handleToggleMiDia(inst.id, inst.estado)}
+                              className="w-4 h-4 rounded-full bg-[#C9A84C] shrink-0 flex items-center justify-center"
+                            >
                               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round">
                                 <path d="M20 6L9 17l-5-5"/>
                               </svg>
-                            </div>
+                            </button>
                             <p className="text-[11px] text-gray-700 line-through truncate">{inst.template.nombre}</p>
                           </div>
                         ))}
@@ -447,6 +514,7 @@ export default function QuickAccessPanel() {
           )}
 
           {/* ── TAREAS TAB ── */}
+          {/* CHANGE 3 — outer div for each task row has NO onClick (already correct) */}
           {tab === 'tareas' && (
             <div className="p-4">
               {loadingTareas ? (
@@ -510,7 +578,7 @@ export default function QuickAccessPanel() {
                             <span className="text-[9px] text-gray-700">{tasks.length}</span>
                           </div>
 
-                          {/* Task rows */}
+                          {/* Task rows — outer div has NO onClick */}
                           <div className="space-y-0.5">
                             {tasks.map(t => {
                               const fechaInfo = formatFecha(t.fecha)
