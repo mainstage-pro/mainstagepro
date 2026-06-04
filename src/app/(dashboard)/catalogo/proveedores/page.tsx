@@ -8,6 +8,18 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 
+const PRIORIDAD_COLORS: Record<string, string> = {
+  ALTA:  '#EF4444',
+  MEDIA: '#F59E0B',
+  BAJA:  '#6B7280',
+}
+const PRIORIDAD_LABELS: Record<string, string> = {
+  ALTA:  'Alta',
+  MEDIA: 'Media',
+  BAJA:  'Baja',
+}
+const PRIORIDAD_ORDER: Record<string, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 }
+
 type Proveedor = {
   id: string;
   nombre: string;
@@ -26,6 +38,7 @@ type Proveedor = {
   datosFiscales: string | null;
   activo: boolean;
   prioridad: boolean;
+  nivelPrioridad: string;
   portalToken: string | null;
 };
 
@@ -58,6 +71,7 @@ const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", c
 const EMPTY = {
   nombre: "", empresa: "", empresaId: "", giro: "", telefono: "", correo: "",
   notas: "", rfc: "", cuentaBancaria: "", clabe: "", banco: "", noTarjeta: "", datosFiscales: "",
+  nivelPrioridad: "MEDIA",
 };
 
 type SortKey = "nombre" | "giro" | "empresa";
@@ -74,7 +88,7 @@ export default function ProveedoresPage() {
   const [view, setView] = useState<"card" | "list">("list");
   const [search, setSearch] = useState("");
   const [filterGiro, setFilterGiro] = useState<string>("TODOS");
-  const [filterPrioridad, setFilterPrioridad] = useState(false);
+
   const [sortBy, setSortBy] = useState<SortKey>("nombre");
   const [showInactivos, setShowInactivos] = useState(false);
   const currentEditId = useRef<string | null>(null);
@@ -210,6 +224,7 @@ export default function ProveedoresPage() {
       cuentaBancaria: p.cuentaBancaria ?? "", clabe: p.clabe ?? "",
       banco: p.banco ?? "", noTarjeta: p.noTarjeta ?? "",
       datosFiscales: p.datosFiscales ?? "",
+      nivelPrioridad: p.nivelPrioridad ?? 'MEDIA',
     });
     setEmpresaEdit(p.compania ?? null);
     setGiroQuery(p.giro ?? "");
@@ -262,6 +277,18 @@ export default function ProveedoresPage() {
     setProveedores(prev => prev.map(p => p.id === id ? { ...p, prioridad: !current } : p));
   }
 
+  async function cycleNivelPrioridad(id: string, current: string) {
+    const levels = ['ALTA', 'MEDIA', 'BAJA'] as const
+    const idx = levels.indexOf(current as typeof levels[number])
+    const next = levels[(idx + 1) % levels.length]
+    setProveedores(prev => prev.map(p => p.id === id ? { ...p, nivelPrioridad: next } : p))
+    await fetch(`/api/proveedores/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nivelPrioridad: next }),
+    })
+  }
+
   async function toggleActivo(p: Proveedor) {
     const res = await fetch(`/api/proveedores/${p.id}`, {
       method: "PATCH",
@@ -277,20 +304,25 @@ export default function ProveedoresPage() {
   }
 
   const showForm = editing !== null || creating;
-  const girosUnicos = [...new Set(proveedores.map(p => p.giro).filter(Boolean) as string[])].sort();
+  const girosUnicos = [...new Set(proveedores.map(p => p.giro).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, 'es'));
 
   let filtered = proveedores.filter(p => {
     if (!showInactivos && !p.activo) return false;
     if (search && !p.nombre.toLowerCase().includes(search.toLowerCase()) &&
         !(p.empresa ?? "").toLowerCase().includes(search.toLowerCase()) &&
         !(p.giro ?? "").toLowerCase().includes(search.toLowerCase())) return false;
-    if (filterGiro !== "TODOS" && p.giro !== filterGiro) return false;
-    if (filterPrioridad && !p.prioridad) return false;
+    if (filterGiro === 'SIN_CATEGORIA') {
+      if (p.giro && p.giro.trim() !== '') return false
+    } else if (filterGiro !== "TODOS") {
+      if (p.giro !== filterGiro) return false
+    }
     return true;
   });
 
   filtered = [...filtered].sort((a, b) => {
-    if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
+    const prioA = PRIORIDAD_ORDER[a.nivelPrioridad ?? 'MEDIA'] ?? 1
+    const prioB = PRIORIDAD_ORDER[b.nivelPrioridad ?? 'MEDIA'] ?? 1
+    if (prioA !== prioB) return prioA - prioB
     if (sortBy === "giro") return (a.giro ?? "").localeCompare(b.giro ?? "");
     if (sortBy === "empresa") return (a.empresa ?? a.nombre).localeCompare(b.empresa ?? b.nombre);
     return a.nombre.localeCompare(b.nombre);
@@ -438,6 +470,31 @@ export default function ProveedoresPage() {
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
               placeholder="Condiciones de pago, disponibilidad, referencias..." />
           </div>
+          {/* Nivel de prioridad */}
+          <div className="col-span-2">
+            <label className="block text-xs text-gray-500 mb-2">Nivel de prioridad</label>
+            <div className="flex gap-2">
+              {(['ALTA', 'MEDIA', 'BAJA'] as const).map(nivel => {
+                const active = (form.nivelPrioridad ?? 'MEDIA') === nivel
+                const color = PRIORIDAD_COLORS[nivel]
+                return (
+                  <button
+                    key={nivel}
+                    type="button"
+                    onClick={() => set('nivelPrioridad', nivel)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                    style={active
+                      ? { backgroundColor: color + '20', borderColor: color, color }
+                      : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
+                    }
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? color : '#3a3a3a' }} />
+                    {PRIORIDAD_LABELS[nivel]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3 mt-4">
           {editing && autoSaved && <span className="text-xs text-green-500">✓ Guardado</span>}
@@ -449,6 +506,35 @@ export default function ProveedoresPage() {
           )}
         </div>
       </Modal>
+
+      {/* Category tabs */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
+        {([
+          { key: 'TODOS', label: 'Todos', color: '#C9A84C' },
+          ...girosUnicos.map((g: string) => ({ key: g, label: g, color: '#6B7280' })),
+          { key: 'SIN_CATEGORIA', label: 'Sin categoría', color: '#4B5563' },
+        ] as { key: string; label: string; color: string }[]).map(tab => {
+          const isActive = filterGiro === tab.key
+          const count = tab.key === 'TODOS'
+            ? proveedores.filter(p => p.activo || showInactivos).length
+            : tab.key === 'SIN_CATEGORIA'
+              ? proveedores.filter(p => (p.activo || showInactivos) && (!p.giro || !p.giro.trim())).length
+              : proveedores.filter(p => (p.activo || showInactivos) && p.giro === tab.key).length
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setFilterGiro(tab.key)}
+              className={`shrink-0 px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 transition-all whitespace-nowrap ${
+                isActive ? '' : 'text-gray-500 border-transparent hover:text-gray-300'
+              }`}
+              style={isActive ? { borderBottomColor: tab.color, color: tab.color } : {}}
+            >
+              {tab.label}
+              <span className={`ml-1 text-[10px] ${isActive ? 'opacity-80' : 'opacity-50'}`}>({count})</span>
+            </button>
+          )
+        })}
+      </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
           <input value={search} onChange={e => setSearch(e.target.value)}
@@ -468,16 +554,6 @@ export default function ProveedoresPage() {
             options={[{ value: "nombre", label: "Ordenar: Nombre" }, { value: "empresa", label: "Ordenar: Empresa" }, { value: "giro", label: "Ordenar: Giro" }]}
             className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
           />
-          <button
-            onClick={() => setFilterPrioridad(p => !p)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-              filterPrioridad
-                ? 'bg-amber-900/30 border-amber-600/50 text-amber-400'
-                : 'border-[#2a2a2a] text-gray-500 hover:text-gray-300 hover:border-[#333]'
-            }`}
-          >
-            ⭐ Prioritarios
-          </button>
           {proveedores.some(p => !p.activo) && (
             <button onClick={() => setShowInactivos(!showInactivos)}
               className={`text-xs px-3 py-2 rounded-lg border transition-colors ${showInactivos ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"}`}>
@@ -600,9 +676,6 @@ export default function ProveedoresPage() {
                         </span>
                       </div>
                       <p className="text-white text-sm font-medium">{p.nombre}</p>
-                      {p.prioridad && (
-                        <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
-                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{p.empresa ?? "—"}</td>
@@ -630,15 +703,20 @@ export default function ProveedoresPage() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2 items-center">
                       <button
-                        onClick={e => { e.stopPropagation(); togglePrioridad(p.id, p.prioridad); }}
-                        title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-                        className={`text-lg transition-all hover:scale-110 ${
-                          p.prioridad
-                            ? 'text-amber-400'
-                            : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
-                        }`}
+                        onClick={() => cycleNivelPrioridad(p.id, p.nivelPrioridad ?? 'MEDIA')}
+                        title={`Prioridad: ${PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
+                        className="flex items-center gap-1 group transition-all shrink-0"
                       >
-                        {p.prioridad ? '⭐' : '☆'}
+                        <span
+                          className="w-2 h-2 rounded-full transition-transform group-hover:scale-125"
+                          style={{ backgroundColor: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
+                        />
+                        <span
+                          className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                          style={{ color: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
+                        >
+                          {PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']}
+                        </span>
                       </button>
                       <button onClick={() => startEdit(p)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => toggleActivo(p)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
@@ -698,9 +776,6 @@ function ProveedorCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-white text-sm font-medium leading-tight">{p.nombre}</p>
-            {p.prioridad && (
-              <span className="text-amber-400 text-[10px] px-1.5 py-0.5 bg-amber-900/20 border border-amber-700/30 rounded-full font-medium">Prioritario</span>
-            )}
           </div>
           {p.empresa && p.empresa !== p.nombre && (
             <p className="text-gray-400 text-xs">{p.empresa}</p>
@@ -712,14 +787,19 @@ function ProveedorCard({
         {onTogglePrioridad && (
           <button
             onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
-            title={p.prioridad ? 'Quitar prioritario' : 'Marcar como prioritario'}
-            className={`text-lg transition-all hover:scale-110 shrink-0 ${
-              p.prioridad
-                ? 'text-amber-400'
-                : 'text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400'
-            }`}
+            title={`Prioridad: ${PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
+            className="flex items-center gap-1 group transition-all shrink-0"
           >
-            {p.prioridad ? '⭐' : '☆'}
+            <span
+              className="w-2 h-2 rounded-full transition-transform group-hover:scale-125"
+              style={{ backgroundColor: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
+            />
+            <span
+              className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ color: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
+            >
+              {PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']}
+            </span>
           </button>
         )}
       </div>
