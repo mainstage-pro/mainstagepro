@@ -30,6 +30,7 @@ type Trato = {
   id: string;
   etapa: string;
   tipoEvento: string;
+  tipoServicio: string | null;
   tipoProspecto: string;
   nombreEvento: string | null;
   fechaEventoEstimada: string | null;
@@ -102,6 +103,12 @@ const TIPO_EVENTO_TEXT: Record<string, string> = {
   SOCIAL:      'text-rose-400/70',
   EMPRESARIAL: 'text-cyan-400/70',
   OTRO:        'text-gray-500',
+};
+
+const TIPO_SERVICIO_LABELS: Record<string, string> = {
+  PRODUCCION_TECNICA: 'Producción',
+  RENTA:              'Renta',
+  DIRECCION_TECNICA:  'Dirección',
 };
 
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
@@ -921,13 +928,20 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* Tipo evento chip — now colored */}
+        {/* Tipo evento chip */}
         <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[t.tipoEvento] ?? 'text-gray-500'}`}>
           {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
         </span>
 
+        {/* Tipo servicio chip */}
+        {t.tipoServicio && (
+          <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
+            {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
+          </span>
+        )}
+
         {/* Origen badge */}
-        <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
+        <span className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
           {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
         </span>
 

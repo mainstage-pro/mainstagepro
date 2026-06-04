@@ -47,6 +47,12 @@ const TIPO_EVENTO_TEXT: Record<string, string> = {
   OTRO:        'text-gray-500',
 };
 
+const TIPO_SERVICIO_LABELS: Record<string, string> = {
+  PRODUCCION_TECNICA: 'Producción',
+  RENTA:              'Renta',
+  DIRECCION_TECNICA:  'Dirección',
+};
+
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
 }
@@ -84,6 +90,13 @@ function ProyectoRow({ p, onEliminar, deletingId }: {
       <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[p.tipoEvento] ?? 'text-gray-500'}`}>
         {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
       </span>
+
+      {/* Tipo servicio */}
+      {p.tipoServicio && (
+        <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
+          {TIPO_SERVICIO_LABELS[p.tipoServicio] ?? p.tipoServicio}
+        </span>
+      )}
 
       {/* Venue */}
       {p.lugarEvento && (
