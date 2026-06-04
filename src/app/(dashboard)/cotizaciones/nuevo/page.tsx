@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Suspense } from "react";
+import React, { useEffect, useState, useMemo, Suspense, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
@@ -273,7 +273,7 @@ function CotizadorForm() {
   const [notasSecciones, setNotasSecciones] = useState<Record<string, string>>({});
 
   // Selectores rápidos
-  const [selCat, setSelCat] = useState(""); // selected category id for cascade
+
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
@@ -661,7 +661,7 @@ function CotizadorForm() {
       categoria: eq.categoria.nombre,
       notas: "",
     }]);
-    setSelEq(""); setSelCat(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
+    setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
   }
 
   // ── Sugerencias de equipo ──
@@ -1484,75 +1484,19 @@ function CotizadorForm() {
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
             {/* Selector */}
             <div className="flex gap-2 mb-4 items-end">
-              {/* Step 1: Category selector */}
-              <div className="w-44 shrink-0">
-                <p className="text-[10px] text-[#555] mb-1 px-1">Categoría</p>
-                <div className="relative">
-                  <select
-                    value={selCat}
-                    onChange={e => { setSelCat(e.target.value); setSelEq(""); }}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-sm appearance-none focus:outline-none focus:border-[#B3985B]/60 pr-7 text-white"
-                  >
-                    <option value="" className="text-gray-500">— Categoría —</option>
-                    {equiposPorCategoria.map(([cat]) => {
-                      const catObj = equipos.find(e => e.categoria.nombre === cat)?.categoria;
-                      return (
-                        <option key={cat} value={catObj?.id ?? cat}>
-                          {cat}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-
-              {/* Step 2: Equipment selector (filtered by category) */}
+              {/* Cascade selector */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-1">
-                  <p className="text-[10px] text-[#555] px-1">Equipo</p>
-                  {(selCat || selEq) && (
-                    <button
-                      type="button"
-                      onClick={() => { setSelCat(""); setSelEq(""); }}
-                      className="text-[10px] text-gray-700 hover:text-gray-400 transition-colors ml-auto px-1"
-                      title="Limpiar selección"
-                    >
-                      × limpiar
-                    </button>
-                  )}
-                </div>
-                {selCat ? (
-                  <SearchableSelect
-                    value={selEq}
-                    onChange={setSelEq}
-                    placeholder={loadingDisp ? "Cargando disponibilidad..." : "— Buscar equipo —"}
-                    options={(() => {
-                      const eqsEnCat = equiposPorCategoria
-                        .flatMap(([, eqs]) => eqs)
-                        .filter(eq => eq.categoria.id === selCat);
-                      return eqsEnCat.map(eq => {
-                        const d = dispMap[eq.id];
-                        const dispLabel = evento.fechaEvento && d !== undefined
-                          ? (d.disponible === 0 ? " \u26d4" : d.disponible < d.total ? ` \u26a0${d.disponible}/${d.total}` : ` \u2713${d.disponible}`)
-                          : "";
-                        const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-                        return {
-                          value: eq.id,
-                          label: `${eq.descripcion}${eq.marca ? ` \u00b7 ${eq.marca}` : ""}${eq.modelo ? ` ${eq.modelo}` : ""} — ${precio > 0 ? formatCurrency(precio) : "INCLUYE"}${dispLabel}`,
-                        };
-                      });
-                    })()}
-                  />
-                ) : (
-                  <div className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-gray-600 cursor-not-allowed">
-                    Selecciona una categoría primero
-                  </div>
-                )}
+                <p className="text-[10px] text-[#555] mb-1 px-1">Equipo</p>
+                <CascadeEquipoSelect
+                  value={selEq}
+                  onChange={setSelEq}
+                  equiposPorCategoria={equiposPorCategoria}
+                  dispMap={dispMap}
+                  loadingDisp={loadingDisp}
+                  preciosCliente={preciosCliente}
+                  fechaEvento={evento.fechaEvento}
+                />
               </div>
-
               {/* Cantidad */}
               <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
@@ -2577,6 +2521,194 @@ function CotizadorForm() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Cascade Equipment Selector ────────────────────────────────────────────────
+function CascadeEquipoSelect({
+  value, onChange, equiposPorCategoria, dispMap, loadingDisp, preciosCliente, fechaEvento,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  equiposPorCategoria: [string, Equipo[]][];
+  dispMap: Record<string, { disponible: number; total: number }>;
+  loadingDisp: boolean;
+  preciosCliente: Record<string, number>;
+  fechaEvento: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  // Auto-select first category on open
+  useEffect(() => {
+    if (open && !activeCat && equiposPorCategoria.length > 0) {
+      setActiveCat(equiposPorCategoria[0][0]);
+    }
+  }, [open, activeCat, equiposPorCategoria]);
+
+  // Focus search when category changes
+  useEffect(() => {
+    if (activeCat && searchRef.current) {
+      setSearch('');
+      searchRef.current.focus();
+    }
+  }, [activeCat]);
+
+  const allEquipos = equiposPorCategoria.flatMap(([, eqs]) => eqs);
+  const selected = allEquipos.find(e => e.id === value);
+
+  const catEquipos = activeCat
+    ? (equiposPorCategoria.find(([cat]) => cat === activeCat)?.[1] ?? []).filter(eq =>
+        !search ||
+        eq.descripcion.toLowerCase().includes(search.toLowerCase()) ||
+        (eq.marca ?? '').toLowerCase().includes(search.toLowerCase())
+      )
+    : [];
+
+  function handleOpen() {
+    setOpen(v => !v);
+  }
+
+  function handleSelect(id: string) {
+    onChange(id);
+    setOpen(false);
+    setSearch('');
+  }
+
+  function handleClear(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange('');
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={handleOpen}
+        className={`w-full flex items-center justify-between bg-[#1a1a1a] border ${
+          open ? 'border-[#B3985B]/60' : 'border-[#2a2a2a]'
+        } rounded-lg px-3 py-2 text-sm text-left focus:outline-none hover:border-[#B3985B]/60 transition-colors`}
+      >
+        <span className={selected ? 'text-white truncate flex-1' : 'text-gray-500 flex-1'}>
+          {selected
+            ? `${selected.descripcion}${selected.marca ? ` \u00b7 ${selected.marca}` : ''}`
+            : loadingDisp ? 'Cargando disponibilidad...' : '\u2014 Seleccionar equipo \u2014'}
+        </span>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {value && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={e => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
+              className="text-gray-600 hover:text-gray-300 text-sm leading-none px-0.5 cursor-pointer transition-colors"
+            >\u00d7</span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div
+          className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden flex"
+          style={{ minWidth: Math.max(460, containerRef.current?.offsetWidth ?? 460) }}
+        >
+          {/* Left: categories */}
+          <div className="w-44 shrink-0 border-r border-[#1a1a1a] py-1 overflow-y-auto" style={{ maxHeight: 260 }}>
+            {equiposPorCategoria.map(([cat, eqs]) => (
+              <button
+                key={cat}
+                type="button"
+                onMouseEnter={() => setActiveCat(cat)}
+                onClick={() => setActiveCat(cat)}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
+                  activeCat === cat
+                    ? 'bg-[#1a1a1a] text-white'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-[#111]'
+                }`}
+              >
+                <span className="truncate">{cat}</span>
+                <span className="text-gray-700 text-[10px] shrink-0 ml-1">({eqs.length})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Right: equipment */}
+          <div className="flex-1 flex flex-col min-w-0" style={{ maxHeight: 260 }}>
+            {activeCat ? (
+              <>
+                {/* Search */}
+                <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                  <input
+                    ref={searchRef}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Buscar equipo..."
+                    className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                  />
+                </div>
+                {/* Equipment list */}
+                <div className="overflow-y-auto flex-1">
+                  {catEquipos.length === 0 ? (
+                    <p className="text-gray-600 text-xs px-3 py-4 text-center">Sin resultados</p>
+                  ) : (
+                    catEquipos.map(eq => {
+                      const d = dispMap[eq.id];
+                      const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+                      const dispLabel = fechaEvento && d !== undefined
+                        ? d.disponible === 0 ? ' \u26d4'
+                          : d.disponible < d.total ? ` \u26a0${d.disponible}/${d.total}`
+                          : ` \u2713${d.disponible}`
+                        : '';
+                      const isSelected = value === eq.id;
+                      return (
+                        <button
+                          key={eq.id}
+                          type="button"
+                          onClick={() => handleSelect(eq.id)}
+                          className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                            isSelected
+                              ? 'bg-[#B3985B]/10 text-[#B3985B]'
+                              : 'text-gray-400 hover:bg-[#111] hover:text-white'
+                          }`}
+                        >
+                          <span className="flex-1 truncate">{eq.descripcion}{eq.marca ? ` \u00b7 ${eq.marca}` : ''}</span>
+                          <span className="shrink-0 text-gray-600 font-mono text-[10px] whitespace-nowrap">
+                            {precio > 0 ? formatCurrency(precio) : 'INCLUYE'}{dispLabel}
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-600 text-xs px-4 py-6 text-center">Pasa el cursor sobre una categor\u00eda</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
