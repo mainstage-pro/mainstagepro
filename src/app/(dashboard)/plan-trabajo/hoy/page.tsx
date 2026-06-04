@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { showUndoToast } from '@/components/ui/undo-toast'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -86,10 +87,10 @@ function fmtRangoSemana(dias: Date[]): string {
   return `${ini.getDate()} ${MESES_ES[ini.getMonth()]} – ${fin.getDate()} ${MESES_ES[fin.getMonth()]} ${fin.getFullYear()}`
 }
 
-const IMPACTO: Record<string, { color: string; dot: string; label: string }> = {
-  critico:  { color: 'text-red-400',    dot: 'border-red-500 hover:bg-red-500/20',    label: 'CRÍTICO'  },
-  alto:     { color: 'text-orange-400', dot: 'border-orange-400 hover:bg-orange-400/20', label: 'ALTO'  },
-  estandar: { color: 'text-gray-500',   dot: 'border-[#444] hover:bg-[#2a2a2a]',      label: 'ESTÁNDAR' },
+const IMPACTO: Record<string, { leftBorder: string; dot: string; label: string; labelCls: string }> = {
+  critico:  { leftBorder: 'border-l-2 border-l-red-500/40',    dot: 'border-red-500/60 hover:bg-red-500/10',      label: 'Crítico',   labelCls: 'text-red-400/70' },
+  alto:     { leftBorder: 'border-l-2 border-l-orange-400/30', dot: 'border-orange-400/50 hover:bg-orange-400/10', label: 'Alto',      labelCls: 'text-orange-400/70' },
+  estandar: { leftBorder: 'border-l-transparent',              dot: 'border-[#444] hover:bg-[#2a2a2a]',           label: 'Estándar',  labelCls: 'text-gray-600' },
 }
 
 const CONTEXTO: Record<string, { label: string; cls: string }> = {
@@ -107,7 +108,7 @@ function MiDiaItem({
   onToggle,
 }: {
   instancia: Instancia
-  onToggle: (id: string, estado: string) => Promise<void>
+  onToggle: (id: string, currentEstado: string) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(false)
   const [toggling, setToggling] = useState(false)
@@ -119,14 +120,14 @@ function MiDiaItem({
   async function handleToggle(e: React.MouseEvent) {
     e.stopPropagation()
     setToggling(true)
-    await onToggle(instancia.id, completada ? 'PENDIENTE' : 'COMPLETADA')
+    await onToggle(instancia.id, instancia.estado)
     setToggling(false)
   }
 
   return (
     <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${
-      completada ? 'border-[#1a1a1a] opacity-60' : 'border-[#222] hover:border-[#333]'
-    }`}>
+      completada ? 'border-[#1a1a1a] opacity-55' : 'border-[#1e1e1e] hover:border-[#2a2a2a]'
+    } ${!completada ? imp.leftBorder : ''}`}>
       {/* Main row */}
       <div
         className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
@@ -149,9 +150,11 @@ function MiDiaItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${imp.color}`}>
-              {imp.label}
-            </span>
+            {t.impacto !== 'estandar' && (
+              <span className={`text-[9px] font-medium ${imp.labelCls}`}>
+                {imp.label}
+              </span>
+            )}
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>
               {ctx.label}
             </span>
@@ -312,21 +315,47 @@ export default function MiDiaPage() {
     setGenerando(false)
   }
 
-  async function handleToggle(id: string, estado: string) {
-    const res = await fetch('/api/plan-trabajo/instancias', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ instanciaId: id, estado }),
-    })
-    if (res.ok) {
-      setInstancias(prev =>
-        prev.map(i =>
-          i.id === id
-            ? { ...i, estado, completadaAt: estado === 'COMPLETADA' ? new Date().toISOString() : null }
-            : i
+  async function handleToggle(id: string, currentEstado: string) {
+    const goingComplete = currentEstado !== 'COMPLETADA'
+
+    if (!goingComplete) {
+      // Directly undo (re-open task)
+      const res = await fetch('/api/plan-trabajo/instancias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instanciaId: id, estado: 'PENDIENTE' }),
+      })
+      if (res.ok) {
+        setInstancias(prev =>
+          prev.map(i => i.id === id ? { ...i, estado: 'PENDIENTE', completadaAt: null } : i)
         )
-      )
+      }
+      return
     }
+
+    // Optimistic: show as completed
+    setInstancias(prev =>
+      prev.map(i => i.id === id ? { ...i, estado: 'COMPLETADA', completadaAt: new Date().toISOString() } : i)
+    )
+
+    showUndoToast({
+      message: 'Tarea completada',
+      duration: 5000,
+      onUndo: () => {
+        // Revert optimistic update
+        setInstancias(prev =>
+          prev.map(i => i.id === id ? { ...i, estado: 'PENDIENTE', completadaAt: null } : i)
+        )
+      },
+      onConfirm: async () => {
+        // Persist to server
+        await fetch('/api/plan-trabajo/instancias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ instanciaId: id, estado: 'COMPLETADA' }),
+        })
+      },
+    })
   }
 
   const sorted = [...instancias].sort(
@@ -336,6 +365,15 @@ export default function MiDiaPage() {
   const completadas = sorted.filter(i => i.estado === 'COMPLETADA')
   const total = instancias.length
   const pct   = total > 0 ? Math.round((completadas.length / total) * 100) : 0
+
+  // Group pendientes by subArea (impact sort already applied from `sorted`)
+  const pendientesBySubarea = pendientes.reduce((acc, inst) => {
+    const key = inst.template.subArea.nombre
+    if (!acc[key]) acc[key] = []
+    acc[key].push(inst)
+    return acc
+  }, {} as Record<string, Instancia[]>)
+  const subareaKeys = Object.keys(pendientesBySubarea).sort()
 
   return (
     <div className="p-6 max-w-3xl">
@@ -431,7 +469,7 @@ export default function MiDiaPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {/* Pendientes */}
+          {/* Pendientes — grouped by subArea */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -441,20 +479,27 @@ export default function MiDiaPage() {
                 {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
               </span>
             </div>
-            <div className="space-y-2">
-              {pendientes.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  🎉 ¡Todo completado por hoy!
-                </div>
-              ) : (
-                pendientes.map(inst => (
-                  <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
-                ))
-              )}
-            </div>
+            {pendientes.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 text-sm">
+                🎉 ¡Todo completado por hoy!
+              </div>
+            ) : (
+              <div>
+                {subareaKeys.map(saKey => (
+                  <div key={saKey}>
+                    <p className="text-[9px] uppercase tracking-[0.15em] text-gray-700 font-semibold mb-2 mt-4 first:mt-0">{saKey}</p>
+                    <div className="space-y-2">
+                      {pendientesBySubarea[saKey].map(inst => (
+                        <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Completadas */}
+          {/* Completadas — flat list */}
           {completadas.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
