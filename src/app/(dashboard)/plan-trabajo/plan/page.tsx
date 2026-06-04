@@ -420,18 +420,19 @@ function TareaModal({
           {showDetalle && (
             <div className="mt-3 space-y-3">
               {[
-                { key: 'estandarMinimo', label: 'Estándar mínimo',  placeholder: 'Qué cuenta como hecho correctamente...' },
-                { key: 'porqueSeHace',   label: 'Por qué se hace',  placeholder: 'Razón de existir de esta tarea...' },
-                { key: 'relacionCon',    label: 'Se relaciona con', placeholder: 'Otras tareas o módulos...' },
-                { key: 'siNoSeHace',     label: 'Si no se hace',    placeholder: 'Consecuencias si no se ejecuta...' },
-              ].map(({ key, label, placeholder }) => (
+                { key: 'descripcion',    label: 'Descripción',       placeholder: 'Qué implica esta tarea, cómo ejecutarla...',   rows: 3 },
+                { key: 'estandarMinimo', label: 'Estándar mínimo',  placeholder: 'Qué cuenta como hecho correctamente...',        rows: 2 },
+                { key: 'porqueSeHace',   label: 'Por qué se hace',  placeholder: 'Razón de existir de esta tarea...',              rows: 2 },
+                { key: 'relacionCon',    label: 'Se relaciona con', placeholder: 'Otras tareas o módulos...',                      rows: 2 },
+                { key: 'siNoSeHace',     label: 'Si no se hace',    placeholder: 'Consecuencias si no se ejecuta...',              rows: 2 },
+              ].map(({ key, label, placeholder, rows }) => (
                 <div key={key}>
                   <label className="text-[9px] text-gray-700 uppercase tracking-wider block mb-1">{label}</label>
                   <textarea
                     value={form[key as keyof typeof form] as string}
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
-                    rows={2}
+                    rows={rows}
                     className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#C9A84C] resize-none transition-colors"
                   />
                 </div>
@@ -461,6 +462,142 @@ function TareaModal({
   )
 }
 
+// ── DiasBtn ───────────────────────────────────────────────────────────────────
+
+function DiasBtn({
+  tarea,
+  onCambiar,
+}: {
+  tarea: Template
+  onCambiar: (diasSemana: number[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  function toggleDia(d: number) {
+    const newDias = tarea.diasSemana.includes(d)
+      ? tarea.diasSemana.filter(x => x !== d)
+      : [...tarea.diasSemana, d].sort()
+    onCambiar(newDias)
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
+        className="flex gap-0.5 cursor-pointer group/dias"
+        title="Cambiar días"
+      >
+        {[1,2,3,4,5].map(d => (
+          <span
+            key={d}
+            className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold transition-colors ${
+              tarea.diasSemana.includes(d)
+                ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                : 'bg-[#1a1a1a] text-gray-700'
+            }`}
+          >
+            {DIAS_LABEL[d]}
+          </span>
+        ))}
+        <span className="opacity-0 group-hover/dias:opacity-100 text-gray-700 text-[9px] ml-0.5 transition-opacity">✎</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl p-3 w-auto">
+          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-2">Días de la semana</p>
+          <div className="flex gap-1.5">
+            {[1,2,3,4,5].map(d => (
+              <button
+                key={d}
+                onClick={e => { e.stopPropagation(); toggleDia(d) }}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
+                  tarea.diasSemana.includes(d)
+                    ? 'bg-[#C9A84C] text-black'
+                    : 'bg-[#1a1a1a] text-gray-500 hover:text-gray-300'
+                }`}
+              >
+                {DIAS_LABEL[d]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── FrecuenciaBtn ──────────────────────────────────────────────────────────────
+
+function FrecuenciaBtn({
+  tarea,
+  onCambiar,
+}: {
+  tarea: Template
+  onCambiar: (frecuencia: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const opciones = [
+    { value: 'DIARIO', label: 'Diario' },
+    { value: 'SEMANAL', label: 'Semanal' },
+    { value: 'QUINCENAL', label: 'Quincenal' },
+    { value: 'MENSUAL', label: 'Mensual' },
+    { value: 'TRIMESTRAL', label: 'Trimestral' },
+    { value: 'POR_EVENTO', label: 'Por evento' },
+    { value: 'LUNES_JUEVES', label: 'L/J' },
+  ]
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
+        className="flex items-center gap-1 text-xs text-gray-600 hover:text-white transition-colors group/frec"
+        title="Cambiar recurrencia"
+      >
+        {FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia}
+        <span className="opacity-0 group-hover/frec:opacity-100 text-[9px] transition-opacity">✎</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden w-36 py-1">
+          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 py-1.5">Recurrencia</p>
+          {opciones.map(op => (
+            <button
+              key={op.value}
+              onClick={e => { e.stopPropagation(); onCambiar(op.value); setOpen(false) }}
+              className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                tarea.frecuencia === op.value
+                  ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                  : 'text-gray-400 hover:bg-[#111] hover:text-white'
+              }`}
+            >
+              {op.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── TemplateRow ────────────────────────────────────────────────────────────────
 
 function TemplateRow({
@@ -469,12 +606,16 @@ function TemplateRow({
   onEdit,
   onDelete,
   onResponsableChange,
+  onDiasChange,
+  onFrecuenciaChange,
 }: {
   t: Template
   usuarios: Usuario[]
   onEdit: (t: Template) => void
   onDelete: (id: string) => void
   onResponsableChange: (templateId: string, responsableId: string | null) => void
+  onDiasChange: (templateId: string, diasSemana: number[]) => void
+  onFrecuenciaChange: (templateId: string, frecuencia: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
@@ -533,26 +674,19 @@ function TemplateRow({
         </td>
 
         {/* Días */}
-        <td className="py-3 px-3 hidden md:table-cell">
-          <div className="flex gap-0.5">
-            {[1,2,3,4,5].map(d => (
-              <span
-                key={d}
-                className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold ${
-                  t.diasSemana.includes(d)
-                    ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
-                    : 'bg-[#1a1a1a] text-gray-700'
-                }`}
-              >
-                {DIAS_LABEL[d]}
-              </span>
-            ))}
-          </div>
+        <td className="py-3 px-3 hidden md:table-cell" onClick={e => e.stopPropagation()}>
+          <DiasBtn
+            tarea={t}
+            onCambiar={dias => onDiasChange(t.id, dias)}
+          />
         </td>
 
         {/* Frecuencia */}
-        <td className="py-3 px-3 text-xs text-gray-600 hidden lg:table-cell">
-          {FRECUENCIA_LABEL[t.frecuencia] ?? t.frecuencia}
+        <td className="py-3 px-3 hidden lg:table-cell" onClick={e => e.stopPropagation()}>
+          <FrecuenciaBtn
+            tarea={t}
+            onCambiar={frec => onFrecuenciaChange(t.id, frec)}
+          />
         </td>
 
         {/* Actions + Expand */}
@@ -647,17 +781,142 @@ function TemplateRow({
 
 // ── Vista Por Persona ──────────────────────────────────────────────────────────
 
+// ── AreaPersonasView ──────────────────────────────────────────────────────────
+
+function AreaPersonasView({
+  areaId,
+  usuarios,
+  onEdit,
+  onDelete,
+  onResponsableChange,
+  onDiasChange,
+  onFrecuenciaChange,
+}: {
+  areaId: string
+  usuarios: Usuario[]
+  onEdit: (t: Template) => void
+  onDelete: (id: string) => void
+  onResponsableChange: (templateId: string, responsableId: string | null) => void
+  onDiasChange: (templateId: string, diasSemana: number[]) => void
+  onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+}) {
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [open, setOpen] = useState(false)
+
+  async function load() {
+    if (loaded) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/plan-trabajo/templates?areaId=${areaId}`)
+      const data = await res.json()
+      setTemplates(data.templates ?? [])
+      setLoaded(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function toggle() {
+    if (!open && !loaded) load()
+    setOpen(v => !v)
+  }
+
+  const byPersona = templates.reduce((acc, t) => {
+    const key = t.responsable?.name ?? 'Sin asignar'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(t)
+    return acc
+  }, {} as Record<string, Template[]>)
+
+  return (
+    <div className="border-t border-[#111] mt-2">
+      <button
+        onClick={toggle}
+        className="w-full flex items-center gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.15em] text-gray-600 hover:text-gray-400 transition-colors"
+      >
+        <span>{open ? '▲' : '▼'}</span>
+        <span>Ver por persona en esta área</span>
+        {loaded && !open && (
+          <span className="text-gray-700">
+            ({Object.keys(byPersona).length} personas)
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="px-4 pb-6">
+          {loading ? (
+            <p className="text-xs text-gray-600 py-4">Cargando...</p>
+          ) : Object.keys(byPersona).length === 0 ? (
+            <p className="text-xs text-gray-600 py-4">Sin tareas asignadas en esta área</p>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(byPersona).map(([nombre, tareas]) => {
+                const usuario = usuarios.find(u => u.name === nombre)
+                return (
+                  <div key={nombre}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {usuario ? (
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white/80 shrink-0"
+                          style={{ backgroundColor: getAreaColor(usuario.area ?? '') }}
+                        >
+                          {nombre[0]}
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[10px] text-gray-600">
+                          ?
+                        </div>
+                      )}
+                      <span className="text-xs font-medium text-gray-400">{nombre}</span>
+                      <span className="text-[10px] text-gray-700">{tareas.length} tarea{tareas.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <table className="w-full">
+                      <tbody>
+                        {tareas.map(t => (
+                          <TemplateRow
+                            key={t.id}
+                            t={t}
+                            usuarios={usuarios}
+                            onEdit={onEdit}
+                            onDelete={onDelete}
+                            onResponsableChange={onResponsableChange}
+                            onDiasChange={onDiasChange}
+                            onFrecuenciaChange={onFrecuenciaChange}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Vista Por Persona ──────────────────────────────────────────────────────────
+
 function VistaPorPersona({
   usuario,
   onEdit,
   onDelete,
   onResponsableChange,
+  onDiasChange,
+  onFrecuenciaChange,
   usuarios,
 }: {
   usuario: Usuario
   onEdit: (t: Template) => void
   onDelete: (id: string) => void
   onResponsableChange: (templateId: string, responsableId: string | null) => void
+  onDiasChange: (templateId: string, diasSemana: number[]) => void
+  onFrecuenciaChange: (templateId: string, frecuencia: string) => void
   usuarios: Usuario[]
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
@@ -718,6 +977,8 @@ function VistaPorPersona({
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onResponsableChange={onResponsableChange}
+                      onDiasChange={onDiasChange}
+                      onFrecuenciaChange={onFrecuenciaChange}
                     />
                   ))}
                 </tbody>
@@ -746,6 +1007,8 @@ function VistaPorPersona({
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onResponsableChange={onResponsableChange}
+                      onDiasChange={onDiasChange}
+                      onFrecuenciaChange={onFrecuenciaChange}
                     />
                   ))}
                 </tbody>
@@ -841,6 +1104,42 @@ export default function PlanPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ responsableId }),
+    })
+  }
+
+  async function handleDiasChange(templateId: string, diasSemana: number[]) {
+    // Optimistic update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => ({
+        ...sg,
+        templates: sg.templates.map(t =>
+          t.id === templateId ? { ...t, diasSemana } : t
+        ),
+      })),
+    })))
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diasSemana }),
+    })
+  }
+
+  async function handleFrecuenciaChange(templateId: string, frecuencia: string) {
+    // Optimistic update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => ({
+        ...sg,
+        templates: sg.templates.map(t =>
+          t.id === templateId ? { ...t, frecuencia } : t
+        ),
+      })),
+    })))
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frecuencia }),
     })
   }
 
@@ -970,6 +1269,8 @@ export default function PlanPage() {
           onEdit={t => handleOpenModal({ tarea: t, areaId: t.area.id, subAreaId: t.subArea.id, subAreaNombre: t.subArea.nombre })}
           onDelete={handleDelete}
           onResponsableChange={handleResponsableChange}
+          onDiasChange={handleDiasChange}
+          onFrecuenciaChange={handleFrecuenciaChange}
         />
       ) : (
         <div className="flex-1 overflow-auto">
@@ -1061,6 +1362,8 @@ export default function PlanPage() {
                               })}
                               onDelete={handleDelete}
                               onResponsableChange={handleResponsableChange}
+                              onDiasChange={handleDiasChange}
+                              onFrecuenciaChange={handleFrecuenciaChange}
                             />
                           ))}
                         </tbody>
@@ -1081,6 +1384,16 @@ export default function PlanPage() {
                   </div>
                 )
               })}
+              {/* Ver por persona en esta área */}
+              <AreaPersonasView
+                areaId={area.id}
+                usuarios={usuarios}
+                onEdit={t => handleOpenModal({ tarea: t, areaId: area.id, subAreaId: t.subArea.id, subAreaNombre: t.subArea.nombre })}
+                onDelete={handleDelete}
+                onResponsableChange={handleResponsableChange}
+                onDiasChange={handleDiasChange}
+                onFrecuenciaChange={handleFrecuenciaChange}
+              />
             </>
           )}
 
