@@ -104,10 +104,12 @@ function ResponsableBtn({
   tarea,
   usuarios,
   onCambiar,
+  onGroupChange,
 }: {
   tarea: Template
   usuarios: Usuario[]
   onCambiar: (responsableId: string | null) => void
+  onGroupChange?: (tipoAsignacion: string, areaAsignada?: string) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -121,43 +123,109 @@ function ResponsableBtn({
     return () => document.removeEventListener('mousedown', handler)
   }, [open])
 
-
-
   return (
     <div ref={ref} className="relative">
       <button
         onClick={e => { e.stopPropagation(); setOpen(v => !v) }}
-        className="text-xs text-gray-500 hover:text-white hover:underline transition-colors text-left"
+        className="text-xs text-gray-500 hover:text-white transition-colors text-left"
       >
-        {tarea.responsable?.name ?? <span className="text-gray-700 italic">Sin asignar</span>}
+        {tarea.tipoAsignacion === 'todos' ? (
+          <span className="text-[10px] bg-[#1a1a1a] text-gray-400 px-2 py-0.5 rounded-full border border-[#2a2a2a]">👥 Todo el equipo</span>
+        ) : tarea.tipoAsignacion === 'area' ? (
+          <span className="text-[10px] bg-[#1a1a1a] text-gray-400 px-2 py-0.5 rounded-full border border-[#2a2a2a]">
+            <span style={{ color: getAreaColor(tarea.areaAsignada ?? '') }}>●</span> {tarea.areaAsignada}
+          </span>
+        ) : tarea.responsable ? (
+          <span className="text-xs text-gray-400">{tarea.responsable.name.split(' ')[0]}</span>
+        ) : (
+          <span className="text-xs text-gray-600 italic">Sin asignar</span>
+        )}
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden w-44 py-1">
-          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 py-1.5">Cambiar responsable</p>
+        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden w-52 py-1">
+
+          {/* Group options */}
+          {onGroupChange && (
+            <>
+              <p className="text-[8px] text-gray-700 uppercase tracking-wider px-3 py-1.5">Asignación grupal</p>
+
+              {/* Todo el equipo */}
+              <button
+                onClick={e => {
+                  e.stopPropagation()
+                  onGroupChange('todos')
+                  setOpen(false)
+                }}
+                className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                  tarea.tipoAsignacion === 'todos'
+                    ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                    : 'text-gray-400 hover:bg-[#111] hover:text-white'
+                }`}
+              >
+                <span className="text-base leading-none">👥</span>
+                <span>Todo el equipo</span>
+              </button>
+
+              {/* Per area options */}
+              {['Dirección', 'Administración', 'Marketing', 'Ventas', 'Producción'].map(area => (
+                <button
+                  key={area}
+                  onClick={e => {
+                    e.stopPropagation()
+                    onGroupChange('area', area)
+                    setOpen(false)
+                  }}
+                  className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                    tarea.tipoAsignacion === 'area' && tarea.areaAsignada === area
+                      ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                      : 'text-gray-400 hover:bg-[#111] hover:text-white'
+                  }`}
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: getAreaColor(area) }}
+                  />
+                  <span>Toda {area}</span>
+                </button>
+              ))}
+
+              {/* Divider */}
+              <div className="mx-2 my-1 h-px bg-[#1a1a1a]" />
+              <p className="text-[8px] text-gray-700 uppercase tracking-wider px-3 py-1">Individual</p>
+            </>
+          )}
+
+          {/* Sin asignar */}
+          <button
+            onClick={e => { e.stopPropagation(); onCambiar(null); setOpen(false) }}
+            className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:bg-[#111] hover:text-gray-400 transition-colors"
+          >
+            Sin asignar
+          </button>
+
+          {/* Individual users */}
           {usuarios.map(u => (
             <button
               key={u.id}
               onClick={e => { e.stopPropagation(); onCambiar(u.id); setOpen(false) }}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
-                tarea.responsable?.id === u.id
+              className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
+                tarea.responsable?.id === u.id && tarea.tipoAsignacion === 'individual'
                   ? 'text-[#C9A84C] bg-[#C9A84C]/5'
                   : 'text-gray-400 hover:bg-[#111] hover:text-white'
               }`}
             >
-              <div className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[9px] font-bold text-gray-400 shrink-0">
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white/80 shrink-0"
+                style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+              >
                 {u.name[0]}
               </div>
-              <span className="truncate">{u.name.split(' ')[0]}</span>
+              <div className="min-w-0">
+                <p className="truncate">{u.name}</p>
+                {u.area && <p className="text-[8px] text-gray-600 truncate">{u.area}</p>}
+              </div>
             </button>
           ))}
-          <div className="border-t border-[#1a1a1a] mt-1 pt-1">
-            <button
-              onClick={e => { e.stopPropagation(); onCambiar(null); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:text-gray-400 transition-colors"
-            >
-              Sin asignar
-            </button>
-          </div>
         </div>
       )}
     </div>
@@ -608,6 +676,7 @@ function TemplateRow({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onGroupChange,
 }: {
   t: Template
   usuarios: Usuario[]
@@ -616,6 +685,7 @@ function TemplateRow({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
@@ -656,21 +726,12 @@ function TemplateRow({
 
         {/* Responsable — clickable */}
         <td className="py-3 px-3 hidden sm:table-cell" onClick={e => e.stopPropagation()}>
-          {t.tipoAsignacion === 'todos' ? (
-            <span className="text-[10px] bg-[#1a1a1a] text-gray-500 px-2 py-0.5 rounded-full border border-[#2a2a2a] whitespace-nowrap">
-              👥 Todo el equipo
-            </span>
-          ) : t.tipoAsignacion === 'area' ? (
-            <span className="text-[10px] bg-[#1a1a1a] text-gray-500 px-2 py-0.5 rounded-full border border-[#2a2a2a] whitespace-nowrap">
-              🏢 Área: {t.areaAsignada ?? '–'}
-            </span>
-          ) : (
-            <ResponsableBtn
-              tarea={t}
-              usuarios={usuarios}
-              onCambiar={rid => onResponsableChange(t.id, rid)}
-            />
-          )}
+          <ResponsableBtn
+            tarea={t}
+            usuarios={usuarios}
+            onCambiar={rid => onResponsableChange(t.id, rid)}
+            onGroupChange={(tipo, area) => onGroupChange(t.id, tipo, area)}
+          />
         </td>
 
         {/* Días */}
@@ -791,6 +852,7 @@ function AreaPersonasView({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onGroupChange,
 }: {
   areaId: string
   usuarios: Usuario[]
@@ -799,6 +861,7 @@ function AreaPersonasView({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(false)
@@ -885,6 +948,7 @@ function AreaPersonasView({
                             onResponsableChange={onResponsableChange}
                             onDiasChange={onDiasChange}
                             onFrecuenciaChange={onFrecuenciaChange}
+                            onGroupChange={onGroupChange}
                           />
                         ))}
                       </tbody>
@@ -909,6 +973,7 @@ function VistaPorPersona({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onGroupChange,
   usuarios,
 }: {
   usuario: Usuario
@@ -917,6 +982,7 @@ function VistaPorPersona({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   usuarios: Usuario[]
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
@@ -979,6 +1045,7 @@ function VistaPorPersona({
                       onResponsableChange={onResponsableChange}
                       onDiasChange={onDiasChange}
                       onFrecuenciaChange={onFrecuenciaChange}
+                      onGroupChange={onGroupChange}
                     />
                   ))}
                 </tbody>
@@ -1009,6 +1076,7 @@ function VistaPorPersona({
                       onResponsableChange={onResponsableChange}
                       onDiasChange={onDiasChange}
                       onFrecuenciaChange={onFrecuenciaChange}
+                      onGroupChange={onGroupChange}
                     />
                   ))}
                 </tbody>
@@ -1104,6 +1172,26 @@ export default function PlanPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ responsableId }),
+    })
+  }
+
+  async function handleGroupAssignment(templateId: string, tipoAsignacion: string, areaAsignada?: string) {
+    // Optimistic update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => ({
+        ...sg,
+        templates: sg.templates.map(t =>
+          t.id === templateId
+            ? { ...t, tipoAsignacion, areaAsignada: areaAsignada ?? null, responsable: null, responsableId: null }
+            : t
+        ),
+      })),
+    })))
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tipoAsignacion, areaAsignada: areaAsignada ?? null, responsableId: null }),
     })
   }
 
@@ -1303,6 +1391,7 @@ export default function PlanPage() {
           onResponsableChange={handleResponsableChange}
           onDiasChange={handleDiasChange}
           onFrecuenciaChange={handleFrecuenciaChange}
+          onGroupChange={handleGroupAssignment}
         />
       ) : (
         <div className="flex-1 overflow-auto">
@@ -1407,6 +1496,7 @@ export default function PlanPage() {
                           onResponsableChange={handleResponsableChange}
                           onDiasChange={handleDiasChange}
                           onFrecuenciaChange={handleFrecuenciaChange}
+                          onGroupChange={handleGroupAssignment}
                         />
                       ))}
                     </tbody>
@@ -1422,6 +1512,7 @@ export default function PlanPage() {
                 onResponsableChange={handleResponsableChange}
                 onDiasChange={handleDiasChange}
                 onFrecuenciaChange={handleFrecuenciaChange}
+                onGroupChange={handleGroupAssignment}
               />
             </>
           )}
