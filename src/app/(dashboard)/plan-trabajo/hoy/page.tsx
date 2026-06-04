@@ -102,6 +102,49 @@ const CONTEXTO: Record<string, { label: string; cls: string }> = {
 
 const IMPACTO_ORDER: Record<string, number> = { critico: 0, alto: 1, estandar: 2 }
 
+// ── Daily motivational phrases ─────────────────────────────────────────────────
+
+const FRASES_MOTIVADORAS = [
+  'El plan de trabajo no es una lista de tareas — es el mapa que convierte tu esfuerzo en resultados concretos.',
+  'Cada tarea completada a tiempo es una promesa cumplida con tu equipo y con tus clientes.',
+  'La estructura no limita la creatividad, la potencia. Cuando el orden está claro, la energía fluye.',
+  'Lo que haces hoy es la base de lo que lograrás mañana. No subestimes el poder de la consistencia.',
+  'Tu colaboración importa más de lo que crees. Cada área depende de que la tuya funcione bien.',
+  'El equipo que planea junto, ejecuta junto. Tu aporte en el plan hace posible el de todos.',
+  'Las empresas que crecen tienen algo en común: personas que hacen lo que dijeron que iban a hacer.',
+  'Seguir el plan de trabajo no es rigidez, es respeto — por tu tiempo, el de tu equipo y el del cliente.',
+  'El caos se combate con claridad. Tu plan de hoy es tu escudo contra lo urgente e improductivo.',
+  'Las pequeñas tareas de hoy construyen los grandes logros del mes. No las subestimes.',
+  'Tu disciplina en el plan de trabajo es directamente proporcional al éxito del equipo en producción.',
+  'Lo que no se planea, se improvisa. Lo que se improvisa, cuesta más tiempo y dinero.',
+  'Un equipo con plan claro es más ágil, más efectivo y más rentable. Tú eres parte de eso.',
+  'La mejor manera de predecir el futuro de tu área es construirlo con acciones diarias bien ejecutadas.',
+  'No existe tarea pequeña cuando el propósito es grande. Ejecuta con intención.',
+  'El orden que mantienes en tu plan de trabajo se refleja directamente en la calidad del servicio al cliente.',
+  'Cada día de ejecución limpia acumula confianza — la de tu equipo, la de la empresa y la tuya.',
+  'La estructura del plan existe para liberarte, no para atarte. Úsala a tu favor.',
+  'Tu área bien operada permite que las demás fluyan. Eso es liderazgo operativo real.',
+  'Las empresas que perduran tienen equipos que cumplen lo que planean. Sigue siendo parte de eso.',
+  'Hoy es otro día para demostrar que la excelencia operativa no es un accidente, es una decisión.',
+  'El plan de trabajo es el lenguaje común del equipo. Hablarlo bien es contribuir a algo mayor.',
+  'No busques el día perfecto para empezar. El plan de trabajo convierte cada día en uno productivo.',
+  'Tu cumplimiento hoy impacta el flujo de mañana. El equipo cuenta contigo.',
+  'La diferencia entre un equipo bueno y uno extraordinario está en la consistencia. Tú decides.',
+  'Trabajar con plan no solo te hace más productivo, te hace más valioso para el equipo.',
+  'Cada subproceso que ejecutas a tiempo es una pieza que completa el rompecabezas del éxito del evento.',
+  'El plan de trabajo es el compromiso silencioso que cada integrante hace con la empresa cada día.',
+  'La claridad operativa que construyes hoy es la tranquilidad del equipo mañana.',
+  'Mainstage Pro crece cuando cada persona hace su parte con precisión. Gracias por ser esa persona.',
+]
+
+function getFraseDelDia(): string {
+  const hoy = new Date()
+  const inicio = new Date(hoy.getFullYear(), 0, 0)
+  const diff = hoy.getTime() - inicio.getTime()
+  const diaDelAño = Math.floor(diff / 86400000)
+  return FRASES_MOTIVADORAS[diaDelAño % FRASES_MOTIVADORAS.length]
+}
+
 // ── CircularProgress ───────────────────────────────────────────────────────────
 
 function CircularProgress({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
@@ -334,18 +377,45 @@ export default function MiDiaPage() {
   // ── Tomorrow preview state ──────────────────────────────────────────────────
   const [manana, setManana] = useState<{ nombre: string; impacto: string }[]>([])
 
+  // ── User / collaboration state ──────────────────────────────────────────────
+  const [userName, setUserName] = useState<string>('')
+  const [usuariosEquipo, setUsuariosEquipo] = useState<{ id: string; name: string; role: string }[]>([])
+  const [viendoUsuarioId, setViendoUsuarioId] = useState<string | null>(null)
+
   const fechaStr = toDateStr(fechaActual)
+
+  // ── Fetch current user name ─────────────────────────────────────────────────
+  useEffect(() => {
+    fetch('/api/me')
+      .then(r => r.json())
+      .then(d => setUserName(d.name?.split(' ')[0] ?? ''))
+      .catch(() => {})
+  }, [])
+
+  // ── Fetch team users for collaboration view ─────────────────────────────────
+  useEffect(() => {
+    fetch('/api/usuarios')
+      .then(r => r.json())
+      .then(d => {
+        const lista = (d.usuarios ?? []) as { id: string; name: string; role: string }[]
+        setUsuariosEquipo(lista)
+      })
+      .catch(() => {})
+  }, [])
 
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/plan-trabajo/instancias?fecha=${fechaStr}&vista=dia`)
+      const url = viendoUsuarioId
+        ? `/api/plan-trabajo/instancias?fecha=${fechaStr}&vista=dia&userId=${viendoUsuarioId}`
+        : `/api/plan-trabajo/instancias?fecha=${fechaStr}&vista=dia`
+      const res = await fetch(url)
       const data = await res.json()
       setInstancias(data.instancias ?? [])
     } finally {
       setLoading(false)
     }
-  }, [fechaStr])
+  }, [fechaStr, viendoUsuarioId])
 
   useEffect(() => { cargar() }, [cargar])
 
@@ -468,77 +538,152 @@ export default function MiDiaPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
-      {/* Greeting — full width */}
-      <div className="mb-6">
-        <p className="text-gray-500 text-sm">{fmtFechaLarga(fechaActual)}</p>
-        <p className="text-xl font-semibold text-white mt-0.5">{getGreeting()}.</p>
+      {/* ── Personalized Greeting ── */}
+      <div className="mb-5">
+        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">{fmtFechaLarga(fechaActual)}</p>
+        <p className="text-xl font-bold text-white mt-1">
+          {getGreeting()}{userName ? `, ${userName}` : ''} 👋
+        </p>
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-xl italic">
+          &ldquo;{getFraseDelDia()}&rdquo;
+        </p>
         {total > 0 && (
           <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div className="flex-1 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#C9A84C] rounded-full transition-all duration-500"
+                className="h-full bg-[#C9A84C] rounded-full transition-all duration-700"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs text-gray-500 shrink-0">{pct}% completado</span>
+            <span className="text-xs text-gray-500 shrink-0">{pct}%</span>
           </div>
         )}
       </div>
 
-      {/* ── Week Navigator — full width ── */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
+      {/* ── Collaboration user selector ── */}
+      {usuariosEquipo.length > 1 && (
+        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setViendoUsuarioId(null)}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+              viendoUsuarioId === null
+                ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
+                : 'border-[#1e1e1e] text-gray-500 hover:text-gray-300 hover:border-[#333]'
+            }`}
+          >
+            Mi día
+          </button>
+          {usuariosEquipo.map(u => (
+            <button
+              key={u.id}
+              onClick={() => setViendoUsuarioId(u.id)}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                viendoUsuarioId === u.id
+                  ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
+                  : 'border-[#1e1e1e] text-gray-500 hover:text-gray-300 hover:border-[#333]'
+              }`}
+            >
+              <div className="w-4 h-4 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[8px] font-bold">
+                {u.name[0]}
+              </div>
+              {u.name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Viewing-as banner ── */}
+      {viendoUsuarioId && (() => {
+        const u = usuariosEquipo.find(x => x.id === viendoUsuarioId)
+        return u ? (
+          <div className="mb-3 px-3 py-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl flex items-center gap-2">
+            <span className="text-[10px] text-gray-600">Viendo el día de</span>
+            <span className="text-[10px] font-medium text-white">{u.name}</span>
+          </div>
+        ) : null
+      })()}
+
+      {/* ── Compact Week Strip ── */}
+      <div className="mb-5">
+        {/* Navigation row */}
+        <div className="flex items-center gap-2 mb-3">
           <button
             onClick={() => cambiarSemana(-1)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white hover:border-[#444] transition-colors text-sm"
+            className="w-6 h-6 flex items-center justify-center rounded-md bg-[#111] border border-[#1e1e1e] text-gray-500 hover:text-white hover:border-[#333] transition-colors text-sm"
           >
             ‹
           </button>
-          <span className="text-xs text-gray-600">{fmtRangoSemana(diasSemana)}</span>
+          <div className="flex gap-1 flex-1">
+            {diasSemana.map(dia => {
+              const diaStr = toDateStr(dia)
+              const conteo = conteosSemana[diaStr]
+              const isSelected = esMismaFecha(dia, fechaActual)
+              const isToday = esHoy(dia)
+              return (
+                <button
+                  key={diaStr}
+                  onClick={() => setFechaActual(new Date(dia))}
+                  className={`flex-1 flex flex-col items-center py-1.5 px-1 rounded-lg transition-all ${
+                    isSelected
+                      ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30'
+                      : 'border border-transparent hover:border-[#1e1e1e] hover:bg-[#0d0d0d]'
+                  }`}
+                >
+                  <span className={`text-[9px] font-bold uppercase ${
+                    isToday ? 'text-[#C9A84C]' : 'text-gray-600'
+                  }`}>
+                    {DIAS_INICIAL[dia.getDay()]}
+                  </span>
+                  <span className={`text-sm font-bold leading-none mt-0.5 ${
+                    isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-500'
+                  }`}>
+                    {dia.getDate()}
+                  </span>
+                  {conteo !== undefined && conteo > 0 && (
+                    <span className={`text-[8px] mt-0.5 tabular-nums ${
+                      isSelected ? 'text-[#C9A84C]/60' : 'text-gray-700'
+                    }`}>
+                      {loadingConteos ? '·' : conteo}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
           <button
             onClick={() => cambiarSemana(+1)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white hover:border-[#444] transition-colors text-sm"
+            className="w-6 h-6 flex items-center justify-center rounded-md bg-[#111] border border-[#1e1e1e] text-gray-500 hover:text-white hover:border-[#333] transition-colors text-sm"
           >
             ›
           </button>
         </div>
 
-        <div className="grid grid-cols-5 gap-2">
-          {diasSemana.map(dia => {
-            const diaStr = toDateStr(dia)
-            const conteo = conteosSemana[diaStr]
-            const isSelected = esMismaFecha(dia, fechaActual)
-            const isToday = esHoy(dia)
-
-            return (
-              <button
-                key={diaStr}
-                onClick={() => setFechaActual(new Date(dia))}
-                className={`flex flex-col items-center py-2.5 rounded-xl border transition-all ${
-                  isSelected
-                    ? 'bg-[#C9A84C]/10 border-[#C9A84C]/40 shadow-sm'
-                    : 'bg-[#0a0a0a] border-[#1a1a1a] hover:border-[#333]'
-                }`}
-              >
-                <span className={`text-[9px] font-bold uppercase tracking-wider mb-1 ${
-                  isToday ? 'text-[#C9A84C]' : 'text-gray-600'
-                }`}>
-                  {DIAS_INICIAL[dia.getDay()]}
+        {/* Focus del día strip — only when there are tasks */}
+        {total > 0 && (() => {
+          const criticas = pendientes.filter(i => i.template.impacto === 'critico').length
+          const altas    = pendientes.filter(i => i.template.impacto === 'alto').length
+          return (
+            <div className="flex items-center gap-3 px-3 py-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl">
+              <span className="text-[9px] uppercase tracking-wider text-gray-700 shrink-0">Foco</span>
+              <div className="h-3 w-px bg-[#1e1e1e]" />
+              {criticas > 0 && (
+                <span className="text-[10px] text-red-400/70">
+                  {criticas} crítica{criticas !== 1 ? 's' : ''}
                 </span>
-                <span className={`text-base font-bold leading-none ${
-                  isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-400'
-                }`}>
-                  {dia.getDate()}
+              )}
+              {altas > 0 && (
+                <span className="text-[10px] text-orange-400/60">
+                  {altas} alta{altas !== 1 ? 's' : ''}
                 </span>
-                <span className={`text-[9px] mt-1 font-mono ${
-                  isSelected ? 'text-[#C9A84C]/70' : 'text-gray-700'
-                }`}>
-                  {loadingConteos ? '·' : (conteo !== undefined ? conteo : '–')}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+              )}
+              {criticas === 0 && altas === 0 && (
+                <span className="text-[10px] text-gray-600">Sin tareas urgentes</span>
+              )}
+              <div className="flex-1" />
+              <span className="text-[10px] text-gray-600">{pct}% completado</span>
+            </div>
+          )
+        })()}
       </div>
 
       {/* ── Two columns ── */}
@@ -582,7 +727,12 @@ export default function MiDiaPage() {
                   <div>
                     {subareaKeys.map(saKey => (
                       <div key={saKey}>
-                        <p className="text-[9px] uppercase tracking-[0.15em] text-gray-700 font-semibold mb-2 mt-4 first:mt-0">{saKey}</p>
+                        {/* Prominent subarea section header */}
+                        <div className="flex items-center gap-3 mt-6 mb-2 first:mt-0">
+                          <span className="text-[11px] font-semibold text-[#C9A84C] uppercase tracking-[0.12em]">{saKey}</span>
+                          <div className="h-px flex-1 bg-[#C9A84C]/15" />
+                          <span className="text-[9px] text-gray-700">{pendientesBySubarea[saKey].length}</span>
+                        </div>
                         <div className="space-y-2">
                           {pendientesBySubarea[saKey].map(inst => (
                             <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
