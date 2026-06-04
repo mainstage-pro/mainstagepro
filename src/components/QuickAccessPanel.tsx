@@ -568,14 +568,19 @@ export default function QuickAccessPanel() {
 
                       return (
                         <div key={areaKey}>
-                          {/* Area header */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
-                            <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                          {/* Area header — prominent section title */}
+                          <div
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg mb-1"
+                            style={{ backgroundColor: areaColor + '12' }}
+                          >
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
+                            <span
+                              className="text-[11px] font-semibold uppercase tracking-widest flex-1"
+                              style={{ color: areaColor }}
+                            >
                               {AREA_LABEL[areaKey] ?? areaKey}
                             </span>
-                            <div className="h-px flex-1 bg-[#0f0f0f]" />
-                            <span className="text-[9px] text-gray-700">{tasks.length}</span>
+                            <span className="text-[9px] text-gray-600 font-medium">{tasks.length}</span>
                           </div>
 
                           {/* Task rows — outer div has NO onClick */}
