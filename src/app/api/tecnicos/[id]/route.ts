@@ -38,6 +38,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) data[key] = body[key] ?? null;
   }
 
+  if ('disciplina' in body) {
+    data.disciplina = Array.isArray(body.disciplina) ? body.disciplina : [];
+  }
+
   const tecnico = await prisma.tecnico.update({
     where: { id },
     data,

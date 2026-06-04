@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await request.json();
-  const { nombre, celular, rolId, nivel, zonaHabitual, cuentaBancaria, datosFiscales, comentarios, habilidades } = body;
+  const { nombre, celular, rolId, nivel, zonaHabitual, cuentaBancaria, datosFiscales, comentarios, habilidades, disciplina } = body;
 
   if (!nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       datosFiscales: datosFiscales || null,
       comentarios: comentarios || null,
       habilidades: habilidades || null,
+      disciplina: Array.isArray(disciplina) ? disciplina : [],
     },
     include: { rol: { select: { id: true, nombre: true } } },
   });

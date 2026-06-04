@@ -743,6 +743,7 @@ model Tecnico {
   prioridad          Boolean    @default(false)
   comentarios        String?
   habilidades        String?    // JSON array of skill tags
+  disciplina         String[]   @default([])
   createdAt          DateTime   @default(now())
 
   proyectoPersonal ProyectoPersonal[]
