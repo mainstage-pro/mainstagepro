@@ -331,39 +331,63 @@ export default function RendimientoPage() {
                 return (
                   <div
                     key={u.id}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                    className={`px-3 py-3 rounded-xl transition-colors ${
                       isCurrent ? 'bg-[#C9A84C]/5 border border-[#C9A84C]/10' : 'hover:bg-[#0d0d0d]'
                     }`}
                   >
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white/90 shrink-0"
-                      style={{ backgroundColor: getAreaColor(u.area ?? '') }}
-                    >
-                      {u.name[0]}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium ${
-                        isCurrent ? 'text-[#C9A84C]' : 'text-white'
-                      }`}>
-                        {u.name.split(' ')[0]}
-                        {isCurrent && <span className="text-[9px] text-[#C9A84C]/60 ml-1">(tú)</span>}
-                      </p>
-                      {u.area && <p className="text-[10px] text-gray-600">{u.area}</p>}
-                    </div>
-                    <div className="hidden sm:block w-32 shrink-0">
-                      <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all"
-                          style={{ width: `${u.pct}%`, backgroundColor: getAreaColor(u.area ?? '') }}
-                        />
+                    {/* Top row: avatar + name + area + pct + label */}
+                    <div className="flex items-center gap-3 mb-2">
+                      {/* Avatar */}
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white/90 shrink-0"
+                        style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+                      >
+                        {u.name[0]}
+                      </div>
+
+                      {/* Name + area */}
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-medium leading-none ${
+                          isCurrent ? 'text-[#C9A84C]' : 'text-white'
+                        }`}>
+                          {u.name.split(' ')[0]}
+                          {isCurrent && <span className="text-[9px] text-[#C9A84C]/60 ml-1">(tú)</span>}
+                        </p>
+                        {u.area && <p className="text-[10px] text-gray-600 mt-0.5">{u.area}</p>}
+                      </div>
+
+                      {/* Pct + performance label */}
+                      <div className="text-right shrink-0">
+                        <p className={`text-base font-bold tabular-nums ${
+                          u.pct === 100 ? 'text-green-400' : u.pct >= 70 ? 'text-white' : 'text-gray-400'
+                        }`}>
+                          {u.pct}%
+                        </p>
+                        <p className="text-[9px] tabular-nums" style={{ color: getAreaColor(u.area ?? ''), opacity: 0.7 }}>
+                          {u.pct === 100 ? '🏆 Perfecto' :
+                           u.pct >= 80 ? '⚡ Excelente' :
+                           u.pct >= 60 ? '👍 Buen avance' :
+                           u.pct >= 30 ? '📈 En progreso' :
+                           u.total === 0 ? '—' : '⏳ Por comenzar'}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className={`text-base font-bold tabular-nums ${
-                        u.pct === 100 ? 'text-green-400' : u.pct >= 70 ? 'text-white' : 'text-gray-400'
-                      }`}>{u.pct}%</p>
-                      <p className="text-[9px] text-gray-600 tabular-nums">{u.completadas}/{u.total}</p>
+
+                    {/* Full-width progress bar */}
+                    <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${u.pct}%`,
+                          backgroundColor: getAreaColor(u.area ?? ''),
+                        }}
+                      />
                     </div>
+
+                    {/* Bottom: completadas/total */}
+                    <p className="text-[9px] text-gray-700 mt-1 tabular-nums">
+                      {u.completadas} de {u.total} tareas completadas
+                    </p>
                   </div>
                 )
               })}
