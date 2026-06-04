@@ -42,19 +42,17 @@ export async function GET(req: NextRequest) {
 
   const isAdmin = session.role === "ADMIN" || session.role === "DIRECTOR";
 
-  // Si es admin y viene un filtro de usuario, muestra ese usuario; si no, muestra todo
-  const responsableWhere =
-    isAdmin && !userFiltro ? undefined :
-    isAdmin && userFiltro ? userFiltro :
-    session.id;
+  // Always filter by the logged-in user unless admin passes explicit userId
+  const responsableId = isAdmin && userFiltro ? userFiltro : session.id;
 
   const instancias = await prisma.pTTareaInstancia.findMany({
     where: {
-      ...(responsableWhere ? { responsableId: responsableWhere } : {}),
       fechaVencimiento: { gte: fechaInicio, lte: fechaFin },
-      ...(areaFiltro
-        ? { template: { areaId: areaFiltro } }
-        : {}),
+      ...(areaFiltro ? { template: { areaId: areaFiltro } } : {}),
+      OR: [
+        { responsableId },
+        { template: { puestoDefault: 'Todo el equipo' } },
+      ],
     },
     include: {
       template: {
@@ -89,9 +87,12 @@ export async function GET(req: NextRequest) {
       // Re-fetch after generation
       const instanciasNuevas = await prisma.pTTareaInstancia.findMany({
         where: {
-          ...(responsableWhere ? { responsableId: responsableWhere } : {}),
           fechaVencimiento: { gte: fechaInicio, lte: fechaFin },
           ...(areaFiltro ? { template: { areaId: areaFiltro } } : {}),
+          OR: [
+            { responsableId },
+            { template: { puestoDefault: 'Todo el equipo' } },
+          ],
         },
         include: {
           template: { include: { area: true, subArea: true } },

@@ -27,6 +27,7 @@ type Instancia = {
     kpiNombre: string | null
     moduloTexto: string | null
     moduloDestino: string | null
+    puestoDefault: string | null
     area: { id: string; nombre: string; color: string; icono: string }
     subArea: { id: string; nombre: string }
   }
@@ -34,8 +35,32 @@ type Instancia = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function getTodayStr(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+function toDateStr(d: Date): string {
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+}
+
+function getLunesDeSemana(d: Date): Date {
+  const dow = d.getDay()
+  const lunes = new Date(d)
+  lunes.setDate(d.getDate() - ((dow + 6) % 7))
+  lunes.setHours(0, 0, 0, 0)
+  return lunes
+}
+
+function getDiasSemana(lunes: Date): Date[] {
+  return Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(lunes)
+    d.setDate(lunes.getDate() + i)
+    return d
+  })
+}
+
+function esMismaFecha(a: Date, b: Date): boolean {
+  return toDateStr(a) === toDateStr(b)
+}
+
+function esHoy(d: Date): boolean {
+  return esMismaFecha(d, new Date())
 }
 
 function getGreeting(): string {
@@ -45,11 +70,20 @@ function getGreeting(): string {
   return 'Buenas noches'
 }
 
-const DIAS_ES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DIAS_INICIAL = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+const MESES_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
-function fmtFecha(d: Date): string {
-  return `${DIAS_ES[d.getDay()]}, ${d.getDate()} de ${MESES_ES[d.getMonth()]} de ${d.getFullYear()}`
+function fmtFechaLarga(d: Date): string {
+  return `${DIAS_CORTO[d.getDay()]}, ${d.getDate()} de ${MESES_FULL[d.getMonth()]} de ${d.getFullYear()}`
+}
+
+function fmtRangoSemana(dias: Date[]): string {
+  if (dias.length < 5) return ''
+  const ini = dias[0]
+  const fin = dias[4]
+  return `${ini.getDate()} ${MESES_ES[ini.getMonth()]} – ${fin.getDate()} ${MESES_ES[fin.getMonth()]} ${fin.getFullYear()}`
 }
 
 const IMPACTO: Record<string, { color: string; dot: string; label: string }> = {
@@ -126,6 +160,11 @@ function MiDiaItem({
                 📄 Entregable
               </span>
             )}
+            {t.puestoDefault === 'Todo el equipo' && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
+                👥 Todo el equipo
+              </span>
+            )}
           </div>
 
           <p className={`text-sm font-medium leading-snug ${completada ? 'line-through text-gray-600' : 'text-white'}`}>
@@ -198,31 +237,76 @@ function MiDiaItem({
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function MiDiaPage() {
-  const today = new Date()
-  const fecha = getTodayStr()
+  // ── Week navigation state ───────────────────────────────────────────────────
+  const [fechaActual, setFechaActual] = useState<Date>(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  })
+  const [semanaOffset, setSemanaOffset] = useState(0)
+  const [conteosSemana, setConteosSemana] = useState<Record<string, number>>({})
+  const [loadingConteos, setLoadingConteos] = useState(false)
+
+  const lunes = getLunesDeSemana(fechaActual)
+  const lunesSemana = (() => {
+    const l = new Date(lunes)
+    l.setDate(lunes.getDate() + semanaOffset * 7)
+    return l
+  })()
+  const diasSemana = getDiasSemana(lunesSemana)
+
+  // ── Task state ──────────────────────────────────────────────────────────────
   const [instancias, setInstancias] = useState<Instancia[]>([])
   const [loading, setLoading]       = useState(true)
   const [generando, setGenerando]   = useState(false)
 
+  const fechaStr = toDateStr(fechaActual)
+
   const cargar = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/plan-trabajo/instancias?fecha=${fecha}&vista=dia`)
+      const res = await fetch(`/api/plan-trabajo/instancias?fecha=${fechaStr}&vista=dia`)
       const data = await res.json()
       setInstancias(data.instancias ?? [])
     } finally {
       setLoading(false)
     }
-  }, [fecha])
+  }, [fechaStr])
 
   useEffect(() => { cargar() }, [cargar])
+
+  // ── Load week counts ────────────────────────────────────────────────────────
+  useEffect(() => {
+    async function loadConteos() {
+      setLoadingConteos(true)
+      try {
+        const lunesStr = toDateStr(lunesSemana)
+        const res = await fetch(`/api/plan-trabajo/instancias/semana?lunes=${lunesStr}`)
+        const data = await res.json()
+        setConteosSemana(data.conteos ?? {})
+      } catch {
+        // silently fail
+      } finally {
+        setLoadingConteos(false)
+      }
+    }
+    loadConteos()
+  }, [lunesSemana.toDateString()])
+
+  function cambiarSemana(dir: number) {
+    setSemanaOffset(prev => prev + dir)
+    // Move fechaActual to Monday of the new week
+    const newLunes = new Date(lunesSemana)
+    newLunes.setDate(lunesSemana.getDate() + dir * 7)
+    setFechaActual(newLunes)
+  }
 
   async function handleGenerar() {
     setGenerando(true)
     await fetch('/api/plan-trabajo/generar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fecha }),
+      body: JSON.stringify({ fecha: fechaStr }),
     })
     await cargar()
     setGenerando(false)
@@ -257,7 +341,7 @@ export default function MiDiaPage() {
     <div className="p-6 max-w-3xl">
       {/* Greeting */}
       <div className="mb-6">
-        <p className="text-gray-500 text-sm">{fmtFecha(today)}</p>
+        <p className="text-gray-500 text-sm">{fmtFechaLarga(fechaActual)}</p>
         <p className="text-xl font-semibold text-white mt-0.5">{getGreeting()}.</p>
         {total > 0 && (
           <div className="mt-3 flex items-center gap-3">
@@ -272,12 +356,68 @@ export default function MiDiaPage() {
         )}
       </div>
 
+      {/* ── Week Navigator ── */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => cambiarSemana(-1)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white hover:border-[#444] transition-colors text-sm"
+          >
+            ‹
+          </button>
+          <span className="text-xs text-gray-600">{fmtRangoSemana(diasSemana)}</span>
+          <button
+            onClick={() => cambiarSemana(+1)}
+            className="w-7 h-7 flex items-center justify-center rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white hover:border-[#444] transition-colors text-sm"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="grid grid-cols-5 gap-2">
+          {diasSemana.map(dia => {
+            const diaStr = toDateStr(dia)
+            const conteo = conteosSemana[diaStr]
+            const isSelected = esMismaFecha(dia, fechaActual)
+            const isToday = esHoy(dia)
+
+            return (
+              <button
+                key={diaStr}
+                onClick={() => setFechaActual(new Date(dia))}
+                className={`flex flex-col items-center py-2.5 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'bg-[#C9A84C]/10 border-[#C9A84C]/40 shadow-sm'
+                    : 'bg-[#0a0a0a] border-[#1a1a1a] hover:border-[#333]'
+                }`}
+              >
+                <span className={`text-[9px] font-bold uppercase tracking-wider mb-1 ${
+                  isToday ? 'text-[#C9A84C]' : 'text-gray-600'
+                }`}>
+                  {DIAS_INICIAL[dia.getDay()]}
+                </span>
+                <span className={`text-base font-bold leading-none ${
+                  isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-400'
+                }`}>
+                  {dia.getDate()}
+                </span>
+                <span className={`text-[9px] mt-1 font-mono ${
+                  isSelected ? 'text-[#C9A84C]/70' : 'text-gray-700'
+                }`}>
+                  {loadingConteos ? '·' : (conteo !== undefined ? conteo : '–')}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {loading ? (
         <div className="text-center py-16 text-gray-600 text-sm">Cargando tareas del día...</div>
       ) : instancias.length === 0 ? (
         <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
           <p className="text-4xl mb-3">📋</p>
-          <p className="text-white font-semibold mb-1">No hay tareas generadas para hoy</p>
+          <p className="text-white font-semibold mb-1">No hay tareas generadas para este día</p>
           <p className="text-gray-500 text-sm mb-6">
             Genera las instancias del día a partir del plan de actividades.
           </p>
@@ -286,7 +426,7 @@ export default function MiDiaPage() {
             disabled={generando}
             className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
           >
-            {generando ? 'Generando...' : 'Generar tareas de hoy →'}
+            {generando ? 'Generando...' : 'Generar tareas →'}
           </button>
         </div>
       ) : (
@@ -295,7 +435,7 @@ export default function MiDiaPage() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Mis tareas de hoy
+                Mis tareas del día
               </p>
               <span className="text-[10px] bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded-full">
                 {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}
