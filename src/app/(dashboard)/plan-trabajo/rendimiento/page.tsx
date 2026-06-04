@@ -1,8 +1,12 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  LineChart, Line,
+} from 'recharts'
 import type { BarShapeProps } from 'recharts/types/cartesian/Bar'
+import { getAreaColor } from '@/lib/areaColors'
 
 type SemanaData = {
   semana: string
@@ -25,10 +29,20 @@ type ImpactoData = {
   estandar: { total: number; completadas: number }
 }
 
+type UsuarioData = {
+  id: string
+  name: string
+  area: string | null
+  total: number
+  completadas: number
+  pct: number
+}
+
 type Rendimiento = {
   semanas: SemanaData[]
   areas:   AreaData[]
   impacto: ImpactoData
+  usuarios: UsuarioData[]
 }
 
 const IMPACTO_META: Record<string, { label: string; badgeCls: string; barCls: string }> = {
@@ -106,6 +120,7 @@ export default function RendimientoPage() {
           ))}
         </div>
         <div className="h-48 bg-[#111] border border-[#1a1a1a] rounded-2xl animate-pulse mb-6" />
+        <div className="h-48 bg-[#111] border border-[#1a1a1a] rounded-2xl animate-pulse mb-6" />
         <div className="h-48 bg-[#111] border border-[#1a1a1a] rounded-2xl animate-pulse" />
       </div>
     )
@@ -158,7 +173,7 @@ export default function RendimientoPage() {
         <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">
           Cumplimiento semanal (%)
         </p>
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={180}>
           <BarChart data={chartData} barSize={28}>
             <XAxis
               dataKey="label"
@@ -198,6 +213,42 @@ export default function RendimientoPage() {
         </ResponsiveContainer>
       </div>
 
+      {/* ── Evolution line chart ── */}
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 mb-6">
+        <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">Evolución 8 semanas (%)</p>
+        <ResponsiveContainer width="100%" height={120}>
+          <LineChart data={data.semanas}>
+            <XAxis
+              dataKey="label"
+              tick={{ fill: '#444', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              domain={[0, 100]}
+              tick={{ fill: '#333', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              width={30}
+              tickFormatter={(v: number) => `${v}%`}
+            />
+            <Tooltip
+              cursor={{ stroke: '#ffffff15' }}
+              contentStyle={{ background: '#111', border: '1px solid #222', borderRadius: 8, color: '#ddd', fontSize: 12 }}
+              formatter={(v) => [`${String(v)}%`, 'Cumplimiento'] as [string, string]}
+            />
+            <Line
+              type="monotone"
+              dataKey="pct"
+              stroke="#C9A84C"
+              strokeWidth={2}
+              dot={{ fill: '#C9A84C', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#C9A84C' }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
       {/* ── By area ── */}
       <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 mb-6">
         <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">
@@ -232,7 +283,7 @@ export default function RendimientoPage() {
       </div>
 
       {/* ── By impact ── */}
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 mb-6">
         <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">
           Por impacto · semana actual
         </p>
@@ -262,6 +313,42 @@ export default function RendimientoPage() {
           })}
         </div>
       </div>
+
+      {/* ── Per-user grid ── */}
+      {data.usuarios.length > 0 && (
+        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-4">Por persona · semana actual</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {data.usuarios.map(u => (
+              <div key={u.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white/90 shrink-0"
+                    style={{ backgroundColor: getAreaColor(u.area ?? '') }}
+                  >
+                    {u.name[0]}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-white truncate">{u.name.split(' ')[0]}</p>
+                    {u.area && <p className="text-[9px] text-gray-600 truncate">{u.area}</p>}
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-white tabular-nums mb-1">{u.pct}%</p>
+                <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${u.pct}%`,
+                      backgroundColor: getAreaColor(u.area ?? ''),
+                    }}
+                  />
+                </div>
+                <p className="text-[9px] text-gray-600 mt-1">{u.completadas}/{u.total} tareas</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
