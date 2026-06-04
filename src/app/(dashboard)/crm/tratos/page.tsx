@@ -140,9 +140,8 @@ function groupTratosByMes(tratos: Trato[]) {
     });
   }
 
-  const all = Object.values(map).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
-  const future = all.filter(g => !g.isPast);
-  const past = all.filter(g => g.isPast);
+  const future = Object.values(map).filter(g => !g.isPast).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  const past   = Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
   return { future, past };
 }
 
