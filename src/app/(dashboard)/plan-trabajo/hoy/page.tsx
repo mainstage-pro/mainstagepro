@@ -527,14 +527,20 @@ export default function MiDiaPage() {
   const total = instancias.length
   const pct   = total > 0 ? Math.round((completadas.length / total) * 100) : 0
 
-  // Group pendientes by subArea (impact sort already applied from `sorted`)
-  const pendientesBySubarea = pendientes.reduce((acc, inst) => {
-    const key = inst.template.subArea.nombre
-    if (!acc[key]) acc[key] = []
-    acc[key].push(inst)
+  // Group by area first, then by subarea within each area
+  const pendientesByArea = pendientes.reduce((acc, inst) => {
+    const areaNombre = inst.template.area.nombre
+    if (!acc[areaNombre]) acc[areaNombre] = { color: inst.template.area.color, subareas: {} }
+    const subNombre = inst.template.subArea.nombre
+    if (!acc[areaNombre].subareas[subNombre]) acc[areaNombre].subareas[subNombre] = []
+    acc[areaNombre].subareas[subNombre].push(inst)
     return acc
-  }, {} as Record<string, Instancia[]>)
-  const subareaKeys = Object.keys(pendientesBySubarea).sort()
+  }, {} as Record<string, { color: string; subareas: Record<string, Instancia[]> }>)
+
+  const AREA_ORDER = ['Dirección', 'Administración', 'Marketing', 'Ventas', 'Producción']
+  const areaKeys = Object.keys(pendientesByArea).sort(
+    (a, b) => (AREA_ORDER.indexOf(a) === -1 ? 99 : AREA_ORDER.indexOf(a)) - (AREA_ORDER.indexOf(b) === -1 ? 99 : AREA_ORDER.indexOf(b))
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-5xl">
@@ -725,21 +731,33 @@ export default function MiDiaPage() {
                   </div>
                 ) : (
                   <div>
-                    {subareaKeys.map(saKey => (
-                      <div key={saKey}>
-                        {/* Prominent subarea section header */}
-                        <div className="flex items-center gap-3 mt-6 mb-2 first:mt-0">
-                          <span className="text-[11px] font-semibold text-[#C9A84C] uppercase tracking-[0.12em]">{saKey}</span>
-                          <div className="h-px flex-1 bg-[#C9A84C]/15" />
-                          <span className="text-[9px] text-gray-700">{pendientesBySubarea[saKey].length}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {pendientesBySubarea[saKey].map(inst => (
-                            <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                    {areaKeys.map((areaNombre, areaIdx) => {
+                      const { color, subareas } = pendientesByArea[areaNombre]
+                      const subKeys = Object.keys(subareas)
+                      const areaColor = color || '#6B7280'
+                      return (
+                        <div key={areaNombre} className={areaIdx > 0 ? 'mt-8' : ''}>
+                          {/* Area header */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
+                            <span className="text-xs font-semibold text-white">{areaNombre}</span>
+                            <div className="h-px flex-1 bg-[#1a1a1a]" />
+                            <span className="text-[9px] text-gray-700">{Object.values(subareas).flat().length}</span>
+                          </div>
+                          {/* Subareas */}
+                          {subKeys.map((subNombre, subIdx) => (
+                            <div key={subNombre} className={subIdx > 0 ? 'mt-5' : ''}>
+                              <p className="text-[9px] uppercase tracking-[0.1em] text-gray-600 mb-2 pl-4">{subNombre}</p>
+                              <div className="space-y-2">
+                                {subareas[subNombre].map(inst => (
+                                  <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
