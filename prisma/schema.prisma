@@ -2791,7 +2791,7 @@ model PTTareaTemplate {
   frecuencia     String   // DIARIO | SEMANAL | QUINCENAL | MENSUAL | TRIMESTRAL | POR_EVENTO
   diasSemana     Int[]    // [1,2,3,4,5] — 0=dom,1=lun,...6=sab
   diaDelMes      Int?     // Para MENSUAL: día fijo (1-31)
-  semanaDeMes    Int?     // Para MENSUAL: 1=primera, 2=segunda, -1=última
+  semanaDeMes    Int[]    @default([])  // Para MENSUAL/QUINCENAL: 1=1a, 2=2a, 3=3a, 4=4a, 5=última (array, multi-select)
   horaLimite     String?  // "10:30" — hora límite de entrega
   moduloDestino  String?  // URL del módulo: "/ventas/pipeline"
   moduloTexto    String?  // "Ir al Pipeline"

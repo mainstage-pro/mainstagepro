@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     areaId, subAreaId, nombre, descripcion, tipo, frecuencia,
     diasSemana, horaLimite, responsableId, impacto, contexto,
     cuando, puestoDefault, estandarMinimo, porqueSeHace,
-    relacionCon, siNoSeHace,
+    relacionCon, siNoSeHace, semanaDeMes,
   } = body
 
   if (!areaId || !subAreaId || !nombre) {
@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
       tipo:           tipo           || 'CHECK',
       frecuencia:     frecuencia     || 'DIARIO',
       diasSemana:     diasSemana     || [],
+      semanaDeMes:    Array.isArray(semanaDeMes) ? semanaDeMes : [],
       horaLimite:     horaLimite     || null,
       responsableId:  responsableId  || null,
       impacto:        impacto        || 'estandar',

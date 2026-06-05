@@ -61,7 +61,7 @@ function debeGenerarse(template: {
   frecuencia: string;
   diasSemana: number[];
   diaDelMes: number | null;
-  semanaDeMes: number | null;
+  semanaDeMes: number[];
 }, fecha: Date): boolean {
   const dow = getMexicoDayOfWeek(fecha);
   const dom = getMexicoDayOfMonth(fecha);
@@ -86,11 +86,12 @@ function debeGenerarse(template: {
       if (template.diaDelMes !== null && template.diaDelMes !== undefined) {
         return dom === template.diaDelMes;
       }
-      if (template.semanaDeMes === -1) {
+      if (template.semanaDeMes.includes(5)) {
+        // 5 = última semana del mes
         return isLastWeekOfMonth(fecha) && template.diasSemana.includes(dow);
       }
-      if (template.semanaDeMes !== null && template.semanaDeMes !== undefined) {
-        return weekOfMonth === template.semanaDeMes && template.diasSemana.includes(dow);
+      if (template.semanaDeMes.length > 0) {
+        return template.semanaDeMes.includes(weekOfMonth) && template.diasSemana.includes(dow);
       }
       return false;
 

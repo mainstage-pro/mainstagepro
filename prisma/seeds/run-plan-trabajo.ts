@@ -17,7 +17,7 @@ interface TareaDef {
   tipo: string;
   frecuencia: string;
   diasSemana?: number[];
-  semanaDeMes?: number;
+  semanaDeMes?: number[];
   diaDelMes?: number;
   horaLimite?: string;
   responsable?: { email: string; nombre: string };
@@ -114,7 +114,7 @@ export async function seedPlanTrabajo() {
           tipo: tarea.tipo, // CHECK | ENTREGABLE
           frecuencia: tarea.frecuencia,
           diasSemana: tarea.diasSemana ?? [],
-          semanaDeMes: tarea.semanaDeMes ?? null,
+          semanaDeMes: tarea.semanaDeMes ?? [],
           diaDelMes: tarea.diaDelMes ?? null,
           horaLimite: tarea.horaLimite ?? null,
           moduloDestino: tarea.moduloDestino ?? null,
