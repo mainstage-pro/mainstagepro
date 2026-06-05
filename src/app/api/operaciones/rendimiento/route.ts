@@ -74,10 +74,47 @@ export async function GET() {
     select: { id: true, name: true },
   })
 
+  // Fetch pending tasks per user (for collapsible drill-down)
+  const tareasPendientesPorUsuario = await prisma.tarea.findMany({
+    where: {
+      ...measurableWhere,
+      asignadoAId: { in: userIds },
+      estado: { in: ['PENDIENTE', 'EN_PROGRESO'] },
+    },
+    select: {
+      id: true,
+      titulo: true,
+      prioridad: true,
+      fecha: true,
+      estado: true,
+      asignadoAId: true,
+      proyectoTarea: { select: { nombre: true } },
+    },
+    orderBy: [
+      { prioridad: 'asc' },
+      { fecha: 'asc' },
+    ],
+  })
+
+  const pendientesPorUser = new Map<string, typeof tareasPendientesPorUsuario>()
+  for (const t of tareasPendientesPorUsuario) {
+    if (!t.asignadoAId) continue
+    if (!pendientesPorUser.has(t.asignadoAId)) pendientesPorUser.set(t.asignadoAId, [])
+    pendientesPorUser.get(t.asignadoAId)!.push(t)
+  }
+
   const compMap = new Map(tareasUsuarioComp.map(t => [t.asignadoAId, t._count.id]))
   const usuarios = users.map(u => {
     const total = tareasUsuario.find(t => t.asignadoAId === u.id)?._count.id ?? 0
     const completadas = compMap.get(u.id) ?? 0
+    const tareasPendientes = (pendientesPorUser.get(u.id) ?? []).map(t => ({
+      id: t.id,
+      titulo: t.titulo,
+      prioridad: t.prioridad,
+      fecha: t.fecha ? t.fecha.toISOString().slice(0, 10) : null,
+      estado: t.estado,
+      proyecto: t.proyectoTarea?.nombre ?? null,
+    }))
     return {
       id: u.id,
       name: u.name,
@@ -85,6 +122,7 @@ export async function GET() {
       completadas,
       pendientes: total - completadas,
       pct: total > 0 ? Math.round((completadas / total) * 100) : 0,
+      tareasPendientes,
     }
   }).sort((a, b) => b.pct - a.pct)
 
