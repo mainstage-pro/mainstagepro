@@ -1,12 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line,
 } from 'recharts'
 import type { BarShapeProps } from 'recharts/types/cartesian/Bar'
 import { getAreaColor } from '@/lib/areaColors'
+
+function getLunesAnterior() {
+  const now = new Date()
+  const dow = now.getDay()
+  const lunes = new Date(now)
+  lunes.setDate(now.getDate() - ((dow + 6) % 7) - 7)
+  return lunes.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+}
 
 type SemanaData = {
   semana: string
@@ -384,10 +393,18 @@ export default function RendimientoPage() {
                       />
                     </div>
 
-                    {/* Bottom: completadas/total */}
-                    <p className="text-[9px] text-gray-700 mt-1 tabular-nums">
-                      {u.completadas} de {u.total} compromisos completados
-                    </p>
+                    {/* Bottom: completadas/total + historial link */}
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="text-[9px] text-gray-700 tabular-nums">
+                        {u.completadas} de {u.total} compromisos completados
+                      </p>
+                      <Link
+                        href={`/plan-trabajo/historial?usuario=${u.id}&semana=${getLunesAnterior()}`}
+                        className="text-[9px] text-[#333] hover:text-[#C9A84C] transition-colors"
+                      >
+                        Ver historial →
+                      </Link>
+                    </div>
                   </div>
                 )
               })}

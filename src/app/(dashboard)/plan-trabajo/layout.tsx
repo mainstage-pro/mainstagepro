@@ -11,6 +11,7 @@ export default function PlanTrabajoLayout({ children }: { children: React.ReactN
     { href: '/plan-trabajo/hoy',          label: '📅 Mi día'      },
     { href: '/plan-trabajo/plan',         label: '📋 Plan'        },
     { href: '/plan-trabajo/rendimiento',  label: '📊 Rendimiento' },
+    { href: '/plan-trabajo/historial',    label: '📋 Historial'   },
   ]
 
   return (
