@@ -3,6 +3,37 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 
+// ── Reporte constants ────────────────────────────────────────────────────────
+const MESES_RPT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const TIPO_EVENTO_LABELS: Record<string, string> = {
+  MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro", SIN_DEFINIR: "Sin definir",
+};
+const TIPO_SERVICIO_LABELS: Record<string, string> = {
+  RENTA: "Renta", PRODUCCION_TECNICA: "Producción técnica", DIRECCION_TECNICA: "Dirección técnica",
+  MULTISERVICIO: "Multiservicio", SIN_DEFINIR: "Sin definir",
+};
+const TIPO_EVENTO_COLORS: Record<string, string> = {
+  MUSICAL: "bg-purple-600/60", SOCIAL: "bg-blue-600/60", EMPRESARIAL: "bg-amber-600/60",
+  OTRO: "bg-gray-600/60", SIN_DEFINIR: "bg-gray-700/60",
+};
+const TIPO_SERVICIO_COLORS: Record<string, string> = {
+  RENTA: "bg-green-600/60", PRODUCCION_TECNICA: "bg-cyan-600/60", DIRECCION_TECNICA: "bg-orange-600/60",
+  MULTISERVICIO: "bg-pink-600/60", SIN_DEFINIR: "bg-gray-700/60",
+};
+const PODIUM_COLORS = ["text-[#B3985B]", "text-gray-300", "text-orange-700"];
+const PODIUM_BG    = ["border-[#B3985B]/40 bg-[#B3985B]/5", "border-gray-600/40 bg-gray-800/20", "border-orange-800/40 bg-orange-900/10"];
+const PODIUM_LABEL = ["1°", "2°", "3°"];
+function pctRpt(v: number, t: number) { return t === 0 ? 0 : Math.round((v / t) * 100); }
+function mesLabel(key: string) { const [,m] = key.split("-"); return MESES_RPT[parseInt(m)-1] ?? key; }
+
+interface ReporteData {
+  total: number; completados: number; confirmados: number; enCurso: number; planeacion: number;
+  porTipoEvento: { tipo: string; count: number }[];
+  porTipoServicio: { tipo: string; count: number }[];
+  topClientes: { id: string; nombre: string; count: number }[];
+  porMes: { mes: string; count: number }[];
+}
+
 interface Evento {
   id: string;
   dia: number;
@@ -48,6 +79,22 @@ export default function CalendarioPage() {
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
   const [diaSeleccionado, setDiaSeleccionado] = useState<number | null>(null);
+  // Reporte section state
+  const [reporteOpen, setReporteOpen] = useState(false);
+  const [reporteYear, setReporteYear] = useState(ahora.getFullYear());
+  const [reporteData, setReporteData] = useState<ReporteData | null>(null);
+  const [reporteLoading, setReporteLoading] = useState(false);
+
+  useEffect(() => {
+    if (!reporteOpen) return;
+    setReporteLoading(true);
+    fetch(`/api/proyectos/reporte?year=${reporteYear}`)
+      .then(r => r.json())
+      .then(d => { setReporteData(d); setReporteLoading(false); })
+      .catch(() => setReporteLoading(false));
+  }, [reporteOpen, reporteYear]);
+
+  const maxMes = reporteData ? Math.max(...reporteData.porMes.map(m => m.count), 1) : 1;
 
   const mesStr = `${year}-${String(month + 1).padStart(2, "0")}`;
 
@@ -337,6 +384,149 @@ export default function CalendarioPage() {
                 );
               })()}
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Reporte de eventos (colapsable) ── */}
+      <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <button
+          onClick={() => setReporteOpen(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#111] transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#B3985B]">Reporte anual de eventos</span>
+            <span className="text-[10px] text-gray-600">{reporteYear}</span>
+          </div>
+          <span className={`text-gray-600 text-sm transition-transform ${reporteOpen ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+
+        {reporteOpen && (
+          <div className="border-t border-[#1a1a1a] p-5 space-y-6">
+            {/* Year selector */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <p className="text-gray-500 text-xs">Distribución por tipo, servicio y clientes</p>
+              <div className="flex items-center gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+                {[ahora.getFullYear() - 1, ahora.getFullYear(), ahora.getFullYear() + 1].map(y => (
+                  <button key={y} onClick={() => setReporteYear(y)}
+                    className={`text-sm px-3 py-1 rounded transition-colors ${reporteYear === y ? 'bg-[#B3985B] text-black font-semibold' : 'text-gray-500 hover:text-white'}`}>
+                    {y}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {reporteLoading ? (
+              <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+            ) : !reporteData || reporteData.total === 0 ? (
+              <div className="py-12 text-center text-gray-600 text-sm">Sin eventos en {reporteYear}</div>
+            ) : (
+              <>
+                {/* KPI cards */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {[
+                    { label: "Total",        value: reporteData.total,        color: "text-white" },
+                    { label: "Completados",  value: reporteData.completados,  color: "text-green-400" },
+                    { label: "Confirmados",  value: reporteData.confirmados,  color: "text-blue-400" },
+                    { label: "En curso",     value: reporteData.enCurso,      color: "text-yellow-400" },
+                    { label: "Planeación",   value: reporteData.planeacion,   color: "text-gray-400" },
+                  ].map(k => (
+                    <div key={k.label} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+                      <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
+                      <p className={`text-3xl font-bold ${k.color}`}>{k.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Por mes */}
+                {reporteData.porMes.length > 1 && (
+                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-5">
+                    <h3 className="text-white font-semibold text-sm mb-4">Eventos por mes</h3>
+                    <div className="space-y-2.5">
+                      {reporteData.porMes.map(m => (
+                        <div key={m.mes} className="flex items-center gap-3">
+                          <span className="text-gray-600 text-[10px] w-7 text-right shrink-0">{mesLabel(m.mes)}</span>
+                          <div className="flex-1 flex items-center gap-2">
+                            <div
+                              className="h-5 bg-[#B3985B]/40 rounded flex items-center px-2 transition-all"
+                              style={{ width: `${pctRpt(m.count, maxMes)}%`, minWidth: '4px' }}
+                            >
+                              {pctRpt(m.count, maxMes) > 15 && (
+                                <span className="text-[10px] text-[#f0d090] font-semibold">{m.count}</span>
+                              )}
+                            </div>
+                            {pctRpt(m.count, maxMes) <= 15 && (
+                              <span className="text-[10px] text-[#B3985B]">{m.count}</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tipo evento + tipo servicio */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-5">
+                    <h3 className="text-white font-semibold text-sm mb-4">Por tipo de evento</h3>
+                    <div className="space-y-3">
+                      {reporteData.porTipoEvento.map(item => (
+                        <div key={item.tipo}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className="text-gray-300 text-sm">{TIPO_EVENTO_LABELS[item.tipo] ?? item.tipo}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-600 text-xs">{pctRpt(item.count, reporteData.total)}%</span>
+                              <span className="text-white font-semibold text-sm">{item.count}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${TIPO_EVENTO_COLORS[item.tipo] ?? 'bg-gray-600/60'}`}
+                              style={{ width: `${pctRpt(item.count, reporteData.total)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-5">
+                    <h3 className="text-white font-semibold text-sm mb-4">Por tipo de servicio</h3>
+                    <div className="space-y-3">
+                      {reporteData.porTipoServicio.map(item => (
+                        <div key={item.tipo}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className="text-gray-300 text-sm">{TIPO_SERVICIO_LABELS[item.tipo] ?? item.tipo}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-600 text-xs">{pctRpt(item.count, reporteData.total)}%</span>
+                              <span className="text-white font-semibold text-sm">{item.count}</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${TIPO_SERVICIO_COLORS[item.tipo] ?? 'bg-gray-600/60'}`}
+                              style={{ width: `${pctRpt(item.count, reporteData.total)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top clientes */}
+                {reporteData.topClientes.length > 0 && (
+                  <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-5">
+                    <h3 className="text-white font-semibold text-sm mb-4">Top clientes del año</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {reporteData.topClientes.map((c, i) => (
+                        <div key={c.id} className={`border rounded-xl p-5 text-center ${PODIUM_BG[i]}`}>
+                          <p className={`text-3xl font-bold mb-1 ${PODIUM_COLORS[i]}`}>{PODIUM_LABEL[i]}</p>
+                          <p className="text-white font-semibold text-sm">{c.nombre}</p>
+                          <p className={`text-2xl font-bold mt-3 ${PODIUM_COLORS[i]}`}>{c.count}</p>
+                          <p className="text-gray-600 text-xs">evento{c.count !== 1 ? 's' : ''}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

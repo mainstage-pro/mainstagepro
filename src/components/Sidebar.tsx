@@ -45,14 +45,7 @@ const NAV: NavSection[] = [
       { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
       { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
       { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
-      {
-        key: "calendario",
-        label: "Calendario de eventos",
-        children: [
-          { key: "calendario-vista", label: "Vista mensual", href: "/calendario" },
-          { key: "calendario-reporte", label: "Reporte", href: "/calendario/reporte" },
-        ],
-      },
+      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
     ],
   },
 
@@ -83,9 +76,7 @@ const NAV: NavSection[] = [
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
-          { key: "finanzas-gastos-op", label: "Gastos operativos", href: "/finanzas/gastos-operativos" },
-          { key: "finanzas-reporte", label: "Reporte y rentabilidad", href: "/finanzas/reporte" },
-          { key: "finanzas-flujo", label: "Flujo proyectado", href: "/finanzas/flujo" },
+          { key: "finanzas-reporte", label: "Estado de Resultados", href: "/finanzas/reporte" },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
         ],
       },
@@ -144,7 +135,6 @@ const NAV: NavSection[] = [
       { key: "ventas-cartera",      label: "Cartera KARE",      href: "/ventas/cartera" },
       { key: "crm-tratos",          label: "Tratos",             href: "/crm/tratos", badge: "leads" },
       { key: "crm-clientes",        label: "Clientes",           href: "/crm/clientes" },
-      { key: "ventas-empresas",     label: "Empresas",           href: "/catalogo/empresas?tipo=cliente" },
       { key: "ventas-reporte",      label: "Reporte de ventas",  href: "/ventas/reporte" },
     ],
   },
@@ -155,7 +145,6 @@ const NAV: NavSection[] = [
     section: "Producción",
     items: [
       { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
-      { key: "ordenes-compra", label: "Órdenes de compra", href: "/operaciones/ordenes-compra" },
       {
         key: "inventario",
         label: "Inventario",
