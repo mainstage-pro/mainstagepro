@@ -466,7 +466,8 @@ export default function MiDiaPage() {
       setLoadingConteos(true)
       try {
         const lunesStr = toDateStr(lunesSemana)
-        const res = await fetch(`/api/plan-trabajo/instancias/semana?lunes=${lunesStr}`)
+        const userParam = viendoUsuarioId ? `&userId=${viendoUsuarioId}` : ''
+        const res = await fetch(`/api/plan-trabajo/instancias/semana?lunes=${lunesStr}${userParam}`)
         const data = await res.json()
         setConteosSemana(data.conteos ?? {})
       } catch {
@@ -476,7 +477,7 @@ export default function MiDiaPage() {
       }
     }
     loadConteos()
-  }, [lunesSemana.toDateString()])
+  }, [lunesSemana.toDateString(), viendoUsuarioId])
 
   // ── Load tomorrow preview ───────────────────────────────────────────────────
   useEffect(() => {
