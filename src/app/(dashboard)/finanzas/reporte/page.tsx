@@ -1,563 +1,571 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer,
-} from "recharts";
-import { SkeletonKPIs, SkeletonTable } from "@/components/Skeleton";
+import { useState, useEffect, useCallback } from "react";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const fmt  = (n: number) => `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-const fmtK = (n: number) => `$${n >= 1_000_000 ? (n / 1_000_000).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(0) + "k" : n}`;
-function mesLabel(k: string) { const [, m] = k.split("-"); return MESES[parseInt(m) - 1]; }
-function pct(v: number, t: number) { return t === 0 ? 0 : Math.round((v / t) * 100); }
-const margenColor = (m: number) => m >= 30 ? "#4ade80" : m >= 15 ? "#facc15" : m >= 0 ? "#fb923c" : "#f87171";
+interface CatItem { nombre: string; total: number; count: number }
 
-// ── Types (Reporte) ───────────────────────────────────────────────────────────
-
-interface AgingItem { id: string; concepto: string; monto: number; montoCobrado: number; cliente: { nombre: string }; proyecto: { nombre: string; numeroProyecto: string } | null; fechaCompromiso: string }
-interface AgingBucket { items: AgingItem[]; total: number }
-interface AgingData { buckets: { corriente: AgingBucket; d0_30: AgingBucket; d31_60: AgingBucket; d60mas: AgingBucket }; total: number }
-interface MargenProyecto { id: string; nombre: string; numero: string; fecha: string | null; estado: string; ingresos: number; cobrado: number; egresos: number; margen: number; margenPct: number | null }
-
-interface ReporteKPIs {
-  ingresosMes: number; egresosMes: number; utilidadMes: number; margenMes: number;
-  totalIngresos: number; totalEgresos: number; utilidadPeriodo: number;
-  cxcTotal: number; cxcVencido: number; cxpTotal: number; cxpVencido: number;
+interface AgingBucket { total: number; items: { id: string; nombre: string; monto: number; fecha: string }[] }
+interface AgingData {
+  corriente: AgingBucket; dias30: AgingBucket; dias60: AgingBucket; dias90: AgingBucket;
+  totalPendiente: number;
 }
-interface ReporteMesStat { mes: string; ingresos: number; egresos: number; }
-interface CategoriaStat { nombre: string; tipo: string; total: number; count: number; }
 
-// ── Types (Rentabilidad) ──────────────────────────────────────────────────────
+interface EstadoResultados {
+  periodo: string;
+  ingresos: number;
+  ingresosPorCategoria: CatItem[];
+  costosDirectos: {
+    total: number; movimientos: number; tecnicosFreelance: number;
+    detalleTecnicos: { nombre: string; monto: number }[];
+    detalleMovimientos: CatItem[];
+  };
+  nomina: { total: number; detalle: { nombre: string; puesto: string; monto: number; tipoPeriodo: string }[] };
+  gastosOperativos: { total: number; porCategoria: CatItem[] };
+  impuestos: number;
+  utilidadBruta: number;
+  utilidadNeta: number;
+  agingCxC: AgingData;
+  agingCxP: AgingData;
+  margenProyectos: { id: string; titulo: string; fecha: string | null; cobrado: number; costo: number; utilidad: number; margen: number }[];
+}
 
-interface TipoStat { tipoEvento: string; count: number; ingresos: number; costos: number; utilidad: number; margenPromedio: number }
-interface ClienteStat { clienteId: string; clienteNombre: string; count: number; ingresos: number; costos: number; utilidad: number; margenPromedio: number }
-interface RentMesStat { mes: string; count: number; ingresos: number; costos: number; utilidad: number }
-interface RentKPIs { totalIngresos: number; totalCostos: number; totalUtilidad: number; margenGlobal: number; totalProyectos: number }
-interface Proyecto { id: string; nombre: string; numero: string; tipoEvento: string; clienteNombre: string; cobrado: number; costoTotal: number; utilidad: number; margen: number; fechaEvento: string | null; estado: string }
-interface RentData { kpis: RentKPIs; porTipoEvento: TipoStat[]; porCliente: ClienteStat[]; porMes: RentMesStat[]; proyectos: Proyecto[] }
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-// ── Tooltip compartido ────────────────────────────────────────────────────────
+const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; fill: string }[]; label?: string }) {
-  if (!active || !payload?.length) return null;
+function fmt(n: number) {
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+}
+function pct(n: number, total: number) {
+  if (total === 0) return "—";
+  return `${((n / total) * 100).toFixed(1)}%`;
+}
+function margenColor(m: number) {
+  if (m >= 30) return "text-green-400";
+  if (m >= 15) return "text-yellow-400";
+  if (m >= 0)  return "text-orange-400";
+  return "text-red-400";
+}
+function utilColor(n: number) {
+  return n >= 0 ? "text-green-400" : "text-red-400";
+}
+function parseMes(mes: string): { year: number; month: number } {
+  const [y, m] = mes.split("-").map(Number);
+  return { year: y, month: m };
+}
+function prevMes(mes: string) {
+  const { year, month } = parseMes(mes);
+  const d = new Date(year, month - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function nextMes(mes: string) {
+  const { year, month } = parseMes(mes);
+  const d = new Date(year, month, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function mesLabel(mes: string) {
+  const { year, month } = parseMes(mes);
+  return `${MESES[month - 1]} ${year}`;
+}
+function defaultMes() {
+  const d = new Date();
+  const p = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+  return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
+function Section({ title, open, onToggle, badge, children }: {
+  title: string; open: boolean; onToggle: () => void;
+  badge?: string; children: React.ReactNode;
+}) {
   return (
-    <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-lg">
-      <p className="text-gray-400 mb-1.5 font-semibold">{label}</p>
-      {payload.map(p => (
-        <div key={p.name} className="flex items-center gap-2 mb-0.5">
-          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
-          <span className="text-gray-400">{p.name}:</span>
-          <span className="text-white font-semibold">{fmt(p.value)}</span>
+    <div className="border border-[#1e1e1e] rounded-xl overflow-hidden print:border-gray-300">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#111] transition-colors print:hidden"
+      >
+        <span className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-400">{title}</span>
+        <div className="flex items-center gap-3">
+          {badge && <span className="text-sm font-bold text-white">{badge}</span>}
+          <span className={`text-gray-600 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+        </div>
+      </button>
+      {open && <div className="border-t border-[#1a1a1a] print:border-gray-200">{children}</div>}
+      {/* Print: always show */}
+      <div className="hidden print:block print:border-t print:border-gray-200">{children}</div>
+    </div>
+  );
+}
+
+function CatBar({ items, total, color = "#B3985B" }: { items: CatItem[]; total: number; color?: string }) {
+  if (items.length === 0) return <p className="text-gray-600 text-xs py-4 text-center">Sin datos</p>;
+  const max = Math.max(...items.map(i => i.total), 1);
+  return (
+    <div className="space-y-3">
+      {items.map(item => (
+        <div key={item.nombre}>
+          <div className="flex justify-between mb-1">
+            <span className="text-xs text-gray-400">{item.nombre}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-600">{pct(item.total, total)}</span>
+              <span className="text-xs font-semibold text-white">{fmt(item.total)}</span>
+            </div>
+          </div>
+          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${(item.total / max) * 100}%`, backgroundColor: color }} />
+          </div>
         </div>
       ))}
     </div>
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
-export default function FinanzasReportePage() {
-  const [pageTab, setPageTab] = useState<"reporte" | "rentabilidad">("reporte");
-
-  // Reporte state
-  const [data, setData] = useState<{ kpis: ReporteKPIs; porMes: ReporteMesStat[]; porCategoria: CategoriaStat[] } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [rango, setRango] = useState(6);
-  const [aging, setAging] = useState<AgingData | null>(null);
-  const [margen, setMargen] = useState<MargenProyecto[] | null>(null);
-
-  // Rentabilidad state
-  const [rentData, setRentData] = useState<RentData | null>(null);
-  const [rentLoading, setRentLoading] = useState(false);
-  const [rangoRent, setRangoRent] = useState(12);
-  const [vista, setVista] = useState<"tipo" | "cliente" | "mes" | "proyectos">("tipo");
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/finanzas/reporte?meses=${rango}`).then(r => r.json()).then(d => { setData(d); setLoading(false); });
-  }, [rango]);
-
-  useEffect(() => {
-    fetch("/api/finanzas/aging").then(r => r.json()).then(d => setAging(d));
-    fetch("/api/finanzas/margen").then(r => r.json()).then(d => setMargen(d.proyectos ?? []));
-  }, []);
-
-  useEffect(() => {
-    if (pageTab !== "rentabilidad") return;
-    setRentLoading(true);
-    fetch(`/api/finanzas/rentabilidad?meses=${rangoRent}`)
-      .then(r => r.json())
-      .then(d => { setRentData(d); setRentLoading(false); });
-  }, [pageTab, rangoRent]);
-
-  const ingresos = data?.porCategoria.filter(c => c.tipo === "INGRESO") ?? [];
-  const egresos  = data?.porCategoria.filter(c => c.tipo === "GASTO") ?? [];
-  const maxCat   = Math.max(...(data?.porCategoria.map(c => c.total) ?? [1]), 1);
-
-  const chartData = (data?.porMes ?? []).map(m => ({
-    name: mesLabel(m.mes),
-    Ingresos: m.ingresos,
-    Gastos: m.egresos,
-  }));
+function AgingTable({ data, label }: { data: AgingData; label: string }) {
+  const buckets = [
+    { key: "corriente", label: "Al corriente", color: "text-green-400", bg: "bg-green-400/5 border-green-400/20" },
+    { key: "dias30",    label: "1–30 días",    color: "text-yellow-400", bg: "bg-yellow-400/5 border-yellow-400/20" },
+    { key: "dias60",    label: "31–60 días",   color: "text-orange-400", bg: "bg-orange-400/5 border-orange-400/20" },
+    { key: "dias90",    label: "60+ días",     color: "text-red-400",   bg: "bg-red-400/5 border-red-400/20" },
+  ] as const;
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Finanzas</h1>
-          <p className="text-[#6b7280] text-sm">Reportes · KPIs · Rentabilidad</p>
-        </div>
-        {pageTab === "reporte" && (
-          <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
-            {[3, 6, 12].map(n => (
-              <button key={n} onClick={() => setRango(n)}
-                className={`text-xs px-3 py-1 rounded transition-colors ${rango === n ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
-                {n}m
-              </button>
-            ))}
-          </div>
-        )}
-        {pageTab === "rentabilidad" && (
-          <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
-            {[6, 12, 24].map(n => (
-              <button key={n} onClick={() => setRangoRent(n)}
-                className={`text-xs px-3 py-1 rounded transition-colors ${rangoRent === n ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
-                {n}m
-              </button>
-            ))}
-          </div>
-        )}
+    <div className="p-5 space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {buckets.map(b => {
+          const bucket = data[b.key];
+          return (
+            <div key={b.key} className={`border rounded-xl p-4 ${b.bg}`}>
+              <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">{b.label}</p>
+              <p className={`text-xl font-bold ${b.color}`}>{fmt(bucket.total)}</p>
+              <p className="text-[10px] text-gray-600 mt-1">{bucket.items.length} {label}</p>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-[#1a1a1a] pb-0">
-        {([["reporte", "Reporte Financiero"], ["rentabilidad", "Rentabilidad"]] as const).map(([key, label]) => (
-          <button key={key} onClick={() => setPageTab(key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === key ? "border-[#B3985B] text-white" : "border-transparent text-[#6b7280] hover:text-white"}`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── TAB: REPORTE ─────────────────────────────────────────────────────── */}
-      {pageTab === "reporte" && (
-        <div className="space-y-6">
-          {loading ? (<div className="space-y-4"><SkeletonKPIs count={4} /><SkeletonTable rows={6} cols={4} /></div>) : !data ? null : (<>
-
-          {/* KPIs principales */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[
-              { label: "Ingresos del mes",  value: fmt(data.kpis.ingresosMes),  color: "text-green-400", sub: "vs periodo" },
-              { label: "Egresos del mes",   value: fmt(data.kpis.egresosMes),   color: "text-red-400",   sub: "" },
-              { label: "Utilidad del mes",  value: fmt(data.kpis.utilidadMes),  color: data.kpis.utilidadMes >= 0 ? "text-green-400" : "text-red-400", sub: `${data.kpis.margenMes.toFixed(1)}% margen` },
-              { label: `Utilidad ${rango}m`, value: fmt(data.kpis.utilidadPeriodo), color: data.kpis.utilidadPeriodo >= 0 ? "text-[#B3985B]" : "text-red-400", sub: "" },
-            ].map(k => (
-              <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
-                <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
-                {k.sub && <p className="text-gray-600 text-[10px] mt-0.5">{k.sub}</p>}
-              </div>
-            ))}
-          </div>
-
-          {/* CxC · CxP · Liquidez */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-3">Cuentas por cobrar</p>
-              <p className="text-2xl font-bold text-blue-400">{fmt(data.kpis.cxcTotal)}</p>
-              {data.kpis.cxcVencido > 0 && <p className="text-red-400 text-xs mt-1">⚠ {fmt(data.kpis.cxcVencido)} vencido</p>}
-              <div className="mt-3 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500/60 rounded-full" style={{ width: `${pct(data.kpis.cxcTotal - data.kpis.cxcVencido, data.kpis.cxcTotal)}%` }} />
-              </div>
-              <p className="text-gray-700 text-[10px] mt-1">{pct(data.kpis.cxcTotal - data.kpis.cxcVencido, data.kpis.cxcTotal)}% al corriente</p>
-            </div>
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-3">Cuentas por pagar</p>
-              <p className="text-2xl font-bold text-orange-400">{fmt(data.kpis.cxpTotal)}</p>
-              {data.kpis.cxpVencido > 0 && <p className="text-red-400 text-xs mt-1">⚠ {fmt(data.kpis.cxpVencido)} vencido</p>}
-              <div className="mt-3 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                <div className="h-full bg-orange-500/60 rounded-full" style={{ width: `${pct(data.kpis.cxpVencido, data.kpis.cxpTotal || 1)}%` }} />
-              </div>
-              <p className="text-gray-700 text-[10px] mt-1">{pct(data.kpis.cxpVencido, data.kpis.cxpTotal || 1)}% vencido</p>
-            </div>
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-3">Posición neta</p>
-              <p className={`text-2xl font-bold ${(data.kpis.cxcTotal - data.kpis.cxpTotal) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {fmt(data.kpis.cxcTotal - data.kpis.cxpTotal)}
-              </p>
-              <p className="text-gray-600 text-xs mt-1">CxC − CxP</p>
-              <p className="text-gray-700 text-[10px] mt-2">
-                Rentabilidad operativa: <span className={data.kpis.margenMes >= 20 ? "text-green-400" : data.kpis.margenMes >= 0 ? "text-yellow-400" : "text-red-400"}>
-                  {data.kpis.margenMes.toFixed(1)}%
-                </span>
-              </p>
-            </div>
-          </div>
-
-          {/* Gráfica por mes */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-            <h2 className="text-white font-semibold text-sm mb-4">Ingresos vs Egresos por mes</h2>
-            {chartData.length === 0 ? (
-              <p className="text-gray-700 text-xs text-center py-8">Sin movimientos en el período</p>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }} barGap={3}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <YAxis tickFormatter={fmtK} tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null;
-                        const ing = payload.find(p => p.dataKey === "Ingresos")?.value as number ?? 0;
-                        const gas = payload.find(p => p.dataKey === "Gastos")?.value as number ?? 0;
-                        return (
-                          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-lg">
-                            <p className="text-gray-400 mb-1.5 font-semibold">{label}</p>
-                            <div className="flex items-center gap-2 mb-0.5"><div className="w-2 h-2 rounded-full bg-green-400" /><span className="text-gray-400">Ingresos:</span><span className="text-white font-semibold">{fmt(ing)}</span></div>
-                            <div className="flex items-center gap-2 mb-0.5"><div className="w-2 h-2 rounded-full bg-red-400" /><span className="text-gray-400">Gastos:</span><span className="text-white font-semibold">{fmt(gas)}</span></div>
-                            <div className="mt-1.5 pt-1.5 border-t border-[#333] flex items-center gap-2"><span className="text-gray-500">Flujo:</span><span className={`font-semibold ${(ing - gas) >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(ing - gas)}</span></div>
-                          </div>
-                        );
-                      }}
-                      cursor={{ fill: "#ffffff06" }}
-                    />
-                    <Bar dataKey="Ingresos" fill="#4ade80" opacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={32} />
-                    <Bar dataKey="Gastos" fill="#f87171" opacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-                <div className="flex gap-4 mt-3 pt-3 border-t border-[#1a1a1a]">
-                  {[{ color: "#4ade80", label: "Ingresos" }, { color: "#f87171", label: "Gastos" }].map(l => (
-                    <div key={l.label} className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
-                      <span className="text-gray-500 text-[10px]">{l.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Por categoría */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[{ title: "Ingresos por categoría", cats: ingresos, color: "bg-green-500/50", text: "text-green-400" },
-              { title: "Egresos por categoría",  cats: egresos,  color: "bg-red-500/40",   text: "text-red-400" }].map(g => (
-              <div key={g.title} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-                <h2 className="text-white font-semibold text-sm mb-4">{g.title}</h2>
-                {g.cats.length === 0 ? (
-                  <p className="text-gray-700 text-xs text-center py-6">Sin datos</p>
-                ) : (
-                  <div className="space-y-3">
-                    {g.cats.map(c => (
-                      <div key={c.nombre}>
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-gray-300 text-xs truncate flex-1">{c.nombre}</span>
-                          <span className={`text-xs font-semibold ml-2 shrink-0 ${g.text}`}>{fmt(c.total)}</span>
-                        </div>
-                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full ${g.color}`} style={{ width: `${pct(c.total, maxCat)}%` }} />
-                        </div>
-                        <p className="text-gray-700 text-[9px] mt-0.5">{c.count} movimiento{c.count !== 1 ? "s" : ""}</p>
-                      </div>
-                    ))}
+      {/* Detail list */}
+      {data.totalPendiente > 0 && (
+        <div className="space-y-1">
+          {[...data.dias90.items, ...data.dias60.items, ...data.dias30.items, ...data.corriente.items]
+            .slice(0, 15)
+            .map((item, i) => {
+              const dias = Math.floor((new Date().getTime() - new Date(item.fecha).getTime()) / 86_400_000);
+              const color = dias > 60 ? "text-red-400" : dias > 30 ? "text-orange-400" : dias > 0 ? "text-yellow-400" : "text-green-400";
+              return (
+                <div key={item.id + i} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-[#111] transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-white truncate">{item.nombre}</p>
+                    <p className={`text-[10px] ${color}`}>
+                      {dias <= 0 ? "Vigente" : `${dias}d vencido`}
+                    </p>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          </>)}
-
-          {/* Aging CxC */}
-          {aging && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm mb-4">Aging — Cuentas por cobrar</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-                {[
-                  { key: "corriente", label: "Al corriente", color: "text-green-400",  bg: "border-green-800/40" },
-                  { key: "d0_30",     label: "1–30 días",    color: "text-yellow-400", bg: "border-yellow-800/40" },
-                  { key: "d31_60",    label: "31–60 días",   color: "text-orange-400", bg: "border-orange-800/40" },
-                  { key: "d60mas",    label: "60+ días",     color: "text-red-400",    bg: "border-red-800/40" },
-                ].map(b => {
-                  const bucket = aging.buckets[b.key as keyof typeof aging.buckets];
-                  return (
-                    <div key={b.key} className={`bg-[#0d0d0d] border ${b.bg} rounded-xl p-4`}>
-                      <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{b.label}</p>
-                      <p className={`text-xl font-bold ${b.color}`}>{fmt(bucket.total)}</p>
-                      <p className="text-gray-600 text-[10px] mt-0.5">{bucket.items.length} factura{bucket.items.length !== 1 ? "s" : ""}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              {[...aging.buckets.d0_30.items, ...aging.buckets.d31_60.items, ...aging.buckets.d60mas.items].length > 0 && (
-                <div className="space-y-1 mt-2">
-                  <p className="text-gray-600 text-[10px] uppercase tracking-wider font-semibold mb-2">Vencidas</p>
-                  {[...aging.buckets.d60mas.items, ...aging.buckets.d31_60.items, ...aging.buckets.d0_30.items].slice(0, 10).map(item => {
-                    const saldo = item.monto - (item.montoCobrado ?? 0);
-                    const dias = Math.floor((new Date().getTime() - new Date(item.fechaCompromiso).getTime()) / 86400000);
-                    return (
-                      <div key={item.id} className="flex items-center justify-between bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-white text-xs truncate">{item.cliente.nombre}</p>
-                          {item.proyecto && <p className="text-gray-600 text-[10px]">{item.proyecto.numeroProyecto} · {item.proyecto.nombre}</p>}
-                        </div>
-                        <div className="text-right ml-3 shrink-0">
-                          <p className="text-white text-xs font-semibold">{fmt(saldo)}</p>
-                          <p className="text-red-400 text-[10px]">{dias}d vencida</p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <span className="text-sm font-semibold text-white shrink-0 ml-3">{fmt(item.monto)}</span>
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Margen por proyecto */}
-          {margen && margen.length > 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <h2 className="text-white font-semibold text-sm mb-4">Margen por proyecto (últimos 30)</h2>
-              <div className="space-y-2">
-                {margen.map(p => {
-                  const maxVal = Math.max(...margen.map(x => x.ingresos), 1);
-                  return (
-                    <div key={p.id}>
-                      <div className="flex items-center justify-between mb-0.5">
-                        <div className="min-w-0 flex-1">
-                          <a href={`/proyectos/${p.id}`} className="text-white text-xs hover:text-[#B3985B] transition-colors truncate block">{p.nombre}</a>
-                          <p className="text-gray-600 text-[10px]">{p.numero}</p>
-                        </div>
-                        <div className="text-right ml-3 shrink-0">
-                          <p className={`text-xs font-semibold ${p.margen >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(p.margen)}</p>
-                          {p.margenPct !== null && <p className="text-gray-600 text-[10px]">{p.margenPct}% margen</p>}
-                        </div>
-                      </div>
-                      <div className="flex gap-0.5 h-2">
-                        <div className="h-full bg-green-600/50 rounded-l-full" style={{ width: `${pct(p.ingresos, maxVal)}%` }} title={`Ingresos: ${fmt(p.ingresos)}`} />
-                        <div className="h-full bg-red-700/40 rounded-r-full" style={{ width: `${pct(p.egresos, maxVal)}%` }} title={`Egresos: ${fmt(p.egresos)}`} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
-                {[{ c: "bg-green-600/50", l: "Ingresos" }, { c: "bg-red-700/40", l: "Egresos" }].map(l => (
-                  <div key={l.l} className="flex items-center gap-1.5"><div className={`w-3 h-2 rounded-sm ${l.c}`} /><span className="text-gray-500 text-[10px]">{l.l}</span></div>
-                ))}
-              </div>
-            </div>
-          )}
+              );
+            })}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* ── TAB: RENTABILIDAD ────────────────────────────────────────────────── */}
-      {pageTab === "rentabilidad" && (
-        <div className="space-y-6">
-          {rentLoading ? (
-            <div className="space-y-3">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+// ── Main Page ──────────────────────────────────────────────────────────────────
+
+export default function EstadoResultadosPage() {
+  const [mes, setMes] = useState(defaultMes);
+  const [data, setData] = useState<EstadoResultados | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Collapsibles
+  const [openIngCat,    setOpenIngCat]    = useState(false);
+  const [openCostosDet, setOpenCostosDet] = useState(false);
+  const [openNominaDet, setOpenNominaDet] = useState(false);
+  const [openGastOp,    setOpenGastOp]    = useState(false);
+  const [openAgingCxC,  setOpenAgingCxC]  = useState(false);
+  const [openAgingCxP,  setOpenAgingCxP]  = useState(false);
+  const [openMargen,    setOpenMargen]    = useState(false);
+
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/finanzas/estado-resultados?mes=${mes}`);
+      if (r.ok) setData(await r.json());
+    } finally {
+      setLoading(false);
+    }
+  }, [mes]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  function handlePDF() {
+    window.print();
+  }
+
+  const hoy = new Date();
+  const mesActual = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+  const canNext = mes < mesActual;
+
+  return (
+    <>
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          body { background: white !important; color: black !important; }
+          .print\\:hidden { display: none !important; }
+          .sidebar, aside, header, nav { display: none !important; }
+          main { padding: 0 !important; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { margin: 1.5cm; size: A4; }
+        }
+        @media screen {
+          .print\\:block { display: none !important; }
+        }
+      `}</style>
+
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6 pb-16">
+
+        {/* ── Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-bold mb-1">Finanzas</p>
+            <h1 className="text-2xl font-bold text-white leading-tight">Estado de Resultados</h1>
+            <p className="text-gray-500 text-sm mt-1">{mesLabel(mes)}</p>
+          </div>
+
+          <div className="flex items-center gap-3 print:hidden">
+            {/* Month nav */}
+            <div className="flex items-center gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1">
+              <button
+                onClick={() => setMes(prevMes(mes))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-white hover:bg-[#1a1a1a] transition-colors text-sm"
+              >
+                ←
+              </button>
+              <span className="text-white text-sm font-medium px-3 min-w-[140px] text-center">{mesLabel(mes)}</span>
+              <button
+                onClick={() => canNext && setMes(nextMes(mes))}
+                disabled={!canNext}
+                className="w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed text-gray-500 hover:text-white hover:bg-[#1a1a1a]"
+              >
+                →
+              </button>
             </div>
-          ) : !rentData ? null : (
-            <>
-              {/* KPIs */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {[
-                  { label: "Proyectos",        value: String(rentData.kpis.totalProyectos),   color: "text-white",   sub: `últimos ${rangoRent}m` },
-                  { label: "Ingresos cobrados", value: fmt(rentData.kpis.totalIngresos),       color: "text-green-400", sub: "" },
-                  { label: "Costos totales",    value: fmt(rentData.kpis.totalCostos),         color: "text-red-400",   sub: "" },
-                  { label: "Utilidad neta",     value: fmt(rentData.kpis.totalUtilidad),       color: rentData.kpis.totalUtilidad >= 0 ? "text-[#B3985B]" : "text-red-400", sub: "" },
-                  { label: "Margen global",     value: `${rentData.kpis.margenGlobal.toFixed(1)}%`, color: rentData.kpis.margenGlobal >= 20 ? "text-green-400" : rentData.kpis.margenGlobal >= 0 ? "text-yellow-400" : "text-red-400", sub: "sobre cobrado" },
-                ].map(k => (
-                  <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                    <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
-                    <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
-                    {k.sub && <p className="text-gray-600 text-[10px] mt-0.5">{k.sub}</p>}
+
+            {/* PDF button */}
+            <button
+              onClick={handlePDF}
+              className="flex items-center gap-2 px-4 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm rounded-xl transition-all active:scale-95"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Descargar PDF
+            </button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="space-y-3">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="h-16 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : !data ? (
+          <div className="text-center py-20 text-gray-600">Error cargando datos</div>
+        ) : (
+          <>
+            {/* ── P&L Waterfall ── */}
+            <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+
+              {/* Print header */}
+              <div className="hidden print:block p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-black">Estado de Resultados — {mesLabel(mes)}</h2>
+              </div>
+
+              {/* Ingresos row */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#111] group hover:bg-[#0d0d0d] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-10 rounded-full bg-green-500/70 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">Ingresos totales</p>
+                    <p className="text-white text-sm font-medium mt-0.5">Cobros y movimientos de entrada</p>
                   </div>
-                ))}
+                </div>
+                <p className="text-2xl font-bold text-green-400 tabular-nums">{fmt(data.ingresos)}</p>
               </div>
 
-              {/* Vista selector */}
-              <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit">
-                {([["tipo", "Por tipo de evento"], ["cliente", "Por cliente"], ["mes", "Estacionalidad"], ["proyectos", "Proyectos"]] as const).map(([v, l]) => (
-                  <button key={v} onClick={() => setVista(v)}
-                    className={`text-xs px-3 py-1.5 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
-                    {l}
-                  </button>
-                ))}
+              {/* Costos directos row */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#111] hover:bg-[#0d0d0d] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-10 rounded-full bg-red-500/50 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">− Costos directos de proyectos</p>
+                    <div className="flex items-center gap-4 mt-0.5">
+                      <span className="text-[11px] text-gray-600">
+                        Materiales/servicios <span className="text-gray-500">{fmt(data.costosDirectos.movimientos)}</span>
+                      </span>
+                      <span className="text-[11px] text-gray-600">
+                        Técnicos freelance <span className="text-gray-500">{fmt(data.costosDirectos.tecnicosFreelance)}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-red-400 tabular-nums">({fmt(data.costosDirectos.total)})</p>
               </div>
 
-              {/* Por tipo de evento */}
-              {vista === "tipo" && (
-                <div className="space-y-4">
-                  {rentData.porTipoEvento.length === 0 ? (
-                    <p className="text-gray-600 text-sm text-center py-8">Sin datos en este período</p>
-                  ) : (
-                    <>
-                      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-                        <h2 className="text-white font-semibold text-sm mb-4">Ingresos por tipo de evento</h2>
-                        <ResponsiveContainer width="100%" height={220}>
-                          <BarChart data={rentData.porTipoEvento.map(t => ({ name: t.tipoEvento, Ingresos: t.ingresos, Costos: t.costos }))}
-                            margin={{ top: 5, right: 5, left: -10, bottom: 0 }} barGap={3}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
-                            <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis tickFormatter={fmtK} tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: "#ffffff06" }} />
-                            <Bar dataKey="Ingresos" fill="#4ade80" opacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={40} />
-                            <Bar dataKey="Costos" fill="#f87171" opacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={40} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {rentData.porTipoEvento.map(t => (
-                          <div key={t.tipoEvento} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="text-white font-medium text-sm">{t.tipoEvento}</p>
-                              <span className="text-gray-500 text-xs">{t.count} evento{t.count !== 1 ? "s" : ""}</span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2 text-xs">
-                              <div><p className="text-gray-500">Ingresos</p><p className="text-green-400 font-semibold">{fmt(t.ingresos)}</p></div>
-                              <div><p className="text-gray-500">Utilidad</p><p className={`font-semibold ${t.utilidad >= 0 ? "text-[#B3985B]" : "text-red-400"}`}>{fmt(t.utilidad)}</p></div>
-                              <div><p className="text-gray-500">Margen</p><p className="font-semibold" style={{ color: margenColor(t.margenPromedio) }}>{t.margenPromedio.toFixed(1)}%</p></div>
-                            </div>
-                            <div className="mt-2 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all" style={{ width: `${Math.max(0, Math.min(100, t.margenPromedio))}%`, backgroundColor: margenColor(t.margenPromedio) }} />
-                            </div>
+              {/* Utilidad Bruta row — highlighted */}
+              <div className={`flex items-center justify-between px-6 py-5 border-b border-[#1a1a1a] ${data.utilidadBruta >= 0 ? "bg-green-950/20" : "bg-red-950/20"}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-1 h-10 rounded-full shrink-0 ${data.utilidadBruta >= 0 ? "bg-green-400" : "bg-red-400"}`} />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400">= Utilidad Bruta</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Ingresos − Costos directos · Margen {pct(data.utilidadBruta, data.ingresos)}</p>
+                  </div>
+                </div>
+                <p className={`text-2xl font-bold tabular-nums ${utilColor(data.utilidadBruta)}`}>{fmt(data.utilidadBruta)}</p>
+              </div>
+
+              {/* Nómina row */}
+              {(data.nomina.total > 0 || true) && (
+                <div className="flex items-center justify-between px-6 py-5 border-b border-[#111] hover:bg-[#0d0d0d] transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1 h-10 rounded-full bg-orange-500/50 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider">− Nómina</p>
+                      <p className="text-[11px] text-gray-600 mt-0.5">
+                        {data.nomina.detalle.length > 0
+                          ? `${data.nomina.detalle.length} pago${data.nomina.detalle.length !== 1 ? "s" : ""} de personal interno`
+                          : "Sin pagos de nómina registrados este mes"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xl font-bold text-orange-400 tabular-nums">
+                    {data.nomina.total > 0 ? `(${fmt(data.nomina.total)})` : "—"}
+                  </p>
+                </div>
+              )}
+
+              {/* Gastos operativos row */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#111] hover:bg-[#0d0d0d] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-10 rounded-full bg-yellow-500/50 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">− Gastos operativos</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">
+                      {data.gastosOperativos.porCategoria.length} categoría{data.gastosOperativos.porCategoria.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-yellow-400 tabular-nums">
+                  {data.gastosOperativos.total > 0 ? `(${fmt(data.gastosOperativos.total)})` : "—"}
+                </p>
+              </div>
+
+              {/* Impuestos row */}
+              <div className="flex items-center justify-between px-6 py-5 border-b border-[#111] hover:bg-[#0d0d0d] transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-10 rounded-full bg-purple-500/50 shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-wider">− Impuestos</p>
+                    <p className="text-[11px] text-gray-600 mt-0.5">Categoría &quot;Impuestos&quot; en movimientos</p>
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-purple-400 tabular-nums">
+                  {data.impuestos > 0 ? `(${fmt(data.impuestos)})` : "—"}
+                </p>
+              </div>
+
+              {/* Utilidad Neta — final */}
+              <div className={`flex items-center justify-between px-6 py-6 ${data.utilidadNeta >= 0 ? "bg-green-950/30" : "bg-red-950/30"}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-12 rounded-full shrink-0 ${data.utilidadNeta >= 0 ? "bg-green-400" : "bg-red-400"}`} />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-white">= UTILIDAD NETA</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      Margen neto: <span className={`font-semibold ${utilColor(data.utilidadNeta)}`}>{pct(data.utilidadNeta, data.ingresos)}</span>
+                      {data.ingresos === 0 && " · Sin ingresos registrados este mes"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className={`text-3xl font-bold tabular-nums ${utilColor(data.utilidadNeta)}`}>{fmt(data.utilidadNeta)}</p>
+                  {data.ingresos > 0 && (
+                    <p className="text-[10px] text-gray-600 mt-1">de {fmt(data.ingresos)} en ingresos</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Mini KPI summary ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "CxC Pendiente",  value: fmt(data.agingCxC.totalPendiente), sub: "por cobrar", color: "border-blue-500/30" },
+                { label: "CxP Pendiente",  value: fmt(data.agingCxP.totalPendiente), sub: "por pagar",  color: "border-red-500/30" },
+                { label: "Posición neta",  value: fmt(data.agingCxC.totalPendiente - data.agingCxP.totalPendiente), sub: "CxC − CxP", color: "border-[#B3985B]/30" },
+                { label: "Margen bruto",   value: pct(data.utilidadBruta, data.ingresos), sub: "del período", color: "border-green-500/30" },
+              ].map(k => (
+                <div key={k.label} className={`bg-[#0a0a0a] border ${k.color} rounded-xl p-4`}>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{k.label}</p>
+                  <p className="text-xl font-bold text-white">{k.value}</p>
+                  <p className="text-[10px] text-gray-600 mt-1">{k.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Collapsible detail sections ── */}
+            <div className="space-y-3">
+
+              {/* Ingresos por categoría */}
+              <Section title="Ingresos por categoría" open={openIngCat} onToggle={() => setOpenIngCat(v => !v)} badge={fmt(data.ingresos)}>
+                <div className="p-5">
+                  <CatBar items={data.ingresosPorCategoria} total={data.ingresos} color="#4ade80" />
+                </div>
+              </Section>
+
+              {/* Costos directos detalle */}
+              <Section title="Costos directos — detalle" open={openCostosDet} onToggle={() => setOpenCostosDet(v => !v)} badge={fmt(data.costosDirectos.total)}>
+                <div className="p-5 space-y-5">
+                  {/* Técnicos freelance */}
+                  {data.costosDirectos.detalleTecnicos.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-3">Técnicos freelance</p>
+                      <div className="space-y-1">
+                        {data.costosDirectos.detalleTecnicos.map((t, i) => (
+                          <div key={i} className="flex justify-between items-center py-1.5 px-3 rounded-lg hover:bg-[#111] transition-colors">
+                            <span className="text-sm text-gray-300">{t.nombre}</span>
+                            <span className="text-sm font-semibold text-white">{fmt(t.monto)}</span>
                           </div>
                         ))}
                       </div>
-                    </>
+                    </div>
+                  )}
+                  {/* Otros costos por categoría */}
+                  {data.costosDirectos.detalleMovimientos.length > 0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-3">Otros costos de proyecto</p>
+                      <CatBar items={data.costosDirectos.detalleMovimientos} total={data.costosDirectos.movimientos} color="#f87171" />
+                    </div>
+                  )}
+                  {data.costosDirectos.total === 0 && (
+                    <p className="text-gray-600 text-sm text-center py-4">Sin costos directos en este período</p>
                   )}
                 </div>
-              )}
+              </Section>
 
-              {/* Por cliente */}
-              {vista === "cliente" && (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                  <div className="px-5 py-3 border-b border-[#1a1a1a]">
-                    <h2 className="text-white font-semibold text-sm">Top 10 clientes por ingresos</h2>
-                  </div>
-                  {rentData.porCliente.length === 0 ? (
-                    <p className="text-gray-600 text-sm text-center py-8">Sin datos</p>
+              {/* Nómina detalle */}
+              <Section title="Nómina — detalle" open={openNominaDet} onToggle={() => setOpenNominaDet(v => !v)} badge={data.nomina.total > 0 ? fmt(data.nomina.total) : "—"}>
+                <div className="p-5">
+                  {data.nomina.detalle.length === 0 ? (
+                    <div className="text-center py-6 space-y-1">
+                      <p className="text-gray-500 text-sm">Sin pagos de nómina registrados en {mesLabel(mes)}</p>
+                      <p className="text-gray-700 text-xs">Los pagos a personal interno se registran en RRHH → Nómina</p>
+                    </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[600px] text-sm">
-                        <thead>
-                          <tr className="border-b border-[#1a1a1a]">
-                            {["Cliente", "Eventos", "Ingresos", "Costos", "Utilidad", "Margen"].map(h => (
-                              <th key={h} className="text-left text-xs text-gray-500 px-5 py-2 font-normal">{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rentData.porCliente.map((c, i) => (
-                            <tr key={c.clienteId} className={`border-b border-[#1a1a1a] hover:bg-[#161616] ${i % 2 === 0 ? "" : "bg-[#0e0e0e]"}`}>
-                              <td className="px-5 py-3">
-                                <Link href={`/crm/clientes/${c.clienteId}`} className="text-white hover:text-[#B3985B] transition-colors font-medium">
-                                  {c.clienteNombre}
-                                </Link>
-                              </td>
-                              <td className="px-5 py-3 text-gray-400 text-xs">{c.count}</td>
-                              <td className="px-5 py-3 text-green-400 font-semibold text-xs">{fmt(c.ingresos)}</td>
-                              <td className="px-5 py-3 text-red-400 text-xs">{fmt(c.costos)}</td>
-                              <td className="px-5 py-3 font-semibold text-xs" style={{ color: c.utilidad >= 0 ? "#B3985B" : "#f87171" }}>{fmt(c.utilidad)}</td>
-                              <td className="px-5 py-3">
-                                <span className="text-xs font-semibold" style={{ color: margenColor(c.margenPromedio) }}>{c.margenPromedio.toFixed(1)}%</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="space-y-1">
+                      {data.nomina.detalle.map((p, i) => (
+                        <div key={i} className="flex justify-between items-center py-2 px-3 rounded-lg hover:bg-[#111] transition-colors">
+                          <div>
+                            <p className="text-sm text-white">{p.nombre}</p>
+                            {p.puesto && <p className="text-[10px] text-gray-600">{p.puesto} · {p.tipoPeriodo}</p>}
+                          </div>
+                          <span className="text-sm font-semibold text-white">{fmt(p.monto)}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
-              )}
+              </Section>
 
-              {/* Estacionalidad */}
-              {vista === "mes" && (
-                <div className="space-y-4">
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-                    <h2 className="text-white font-semibold text-sm mb-4">Eventos por mes</h2>
-                    {rentData.porMes.length === 0 ? (
-                      <p className="text-gray-600 text-xs text-center py-8">Sin datos</p>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={rentData.porMes.map(m => ({ name: mesLabel(m.mes), Ingresos: m.ingresos, Costos: m.costos, count: m.count }))}
-                          margin={{ top: 5, right: 5, left: -10, bottom: 0 }} barGap={3}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e1e1e" vertical={false} />
-                          <XAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <YAxis tickFormatter={fmtK} tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
-                          <Tooltip content={<CustomTooltip />} cursor={{ fill: "#ffffff06" }} />
-                          <Bar dataKey="Ingresos" fill="#4ade80" opacity={0.85} radius={[3, 3, 0, 0]} maxBarSize={36} />
-                          <Bar dataKey="Costos" fill="#f87171" opacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={36} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {rentData.porMes.map(m => (
-                      <div key={m.mes} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
-                        <p className="text-gray-500 text-[10px] uppercase">{mesLabel(m.mes)}</p>
-                        <p className="text-white font-semibold text-sm mt-1">{m.count} evento{m.count !== 1 ? "s" : ""}</p>
-                        <p className="text-green-400 text-xs">{fmt(m.ingresos)}</p>
-                        <p className={`text-xs font-medium ${m.utilidad >= 0 ? "text-[#B3985B]" : "text-red-400"}`}>{fmt(m.utilidad)} util.</p>
-                      </div>
-                    ))}
-                  </div>
+              {/* Gastos operativos por categoría */}
+              <Section title="Gastos operativos por categoría" open={openGastOp} onToggle={() => setOpenGastOp(v => !v)} badge={data.gastosOperativos.total > 0 ? fmt(data.gastosOperativos.total) : "—"}>
+                <div className="p-5">
+                  {data.gastosOperativos.porCategoria.length === 0 ? (
+                    <p className="text-gray-600 text-sm text-center py-4">Sin gastos operativos en {mesLabel(mes)}</p>
+                  ) : (
+                    <CatBar items={data.gastosOperativos.porCategoria} total={data.gastosOperativos.total} color="#facc15" />
+                  )}
                 </div>
-              )}
+              </Section>
 
-              {/* Proyectos */}
-              {vista === "proyectos" && (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                  <div className="px-5 py-3 border-b border-[#1a1a1a]">
-                    <h2 className="text-white font-semibold text-sm">Proyectos completados (últimos 30)</h2>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px] text-sm">
-                      <thead>
-                        <tr className="border-b border-[#1a1a1a]">
-                          {["Proyecto", "Tipo", "Cliente", "Cobrado", "Costo", "Utilidad", "Margen"].map(h => (
-                            <th key={h} className="text-left text-xs text-gray-500 px-4 py-2 font-normal">{h}</th>
-                          ))}
+              {/* Aging CxC */}
+              <Section
+                title="Aging — Cuentas por cobrar"
+                open={openAgingCxC}
+                onToggle={() => setOpenAgingCxC(v => !v)}
+                badge={fmt(data.agingCxC.totalPendiente)}
+              >
+                <AgingTable data={data.agingCxC} label="facturas" />
+              </Section>
+
+              {/* Aging CxP */}
+              <Section
+                title="Aging — Cuentas por pagar"
+                open={openAgingCxP}
+                onToggle={() => setOpenAgingCxP(v => !v)}
+                badge={fmt(data.agingCxP.totalPendiente)}
+              >
+                <AgingTable data={data.agingCxP} label="compromisos" />
+              </Section>
+
+              {/* Margen por proyecto */}
+              <Section
+                title="Margen por proyecto (cierres)"
+                open={openMargen}
+                onToggle={() => setOpenMargen(v => !v)}
+                badge={`${data.margenProyectos.length} proyectos`}
+              >
+                <div className="overflow-x-auto">
+                  {data.margenProyectos.length === 0 ? (
+                    <p className="text-gray-600 text-sm text-center py-8">Sin cierres financieros registrados</p>
+                  ) : (
+                    <table className="w-full">
+                      <thead className="bg-[#0a0a0a] border-b border-[#1a1a1a]">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-600">Proyecto</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-600">Cobrado</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-600">Costo</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-600">Utilidad</th>
+                          <th className="text-right px-4 py-2.5 text-[10px] uppercase tracking-wider text-gray-600">Margen</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {rentData.proyectos.map((p, i) => (
-                          <tr key={p.id} className={`border-b border-[#1a1a1a] hover:bg-[#161616] ${i % 2 === 0 ? "" : "bg-[#0e0e0e]"}`}>
+                      <tbody className="divide-y divide-[#111]">
+                        {data.margenProyectos.map(p => (
+                          <tr key={p.id} className="hover:bg-[#0d0d0d] transition-colors">
                             <td className="px-4 py-3">
-                              <Link href={`/proyectos/${p.id}`} className="text-white hover:text-[#B3985B] transition-colors font-medium text-xs">{p.nombre}</Link>
-                              <p className="text-gray-600 text-[10px]">{p.numero}</p>
+                              <p className="text-sm text-white truncate max-w-[200px]">{p.titulo}</p>
+                              {p.fecha && (
+                                <p className="text-[10px] text-gray-600">
+                                  {new Date(p.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}
+                                </p>
+                              )}
                             </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">{p.tipoEvento}</td>
-                            <td className="px-4 py-3 text-gray-400 text-xs truncate max-w-[120px]">{p.clienteNombre}</td>
-                            <td className="px-4 py-3 text-green-400 text-xs font-semibold">{fmt(p.cobrado)}</td>
-                            <td className="px-4 py-3 text-red-400 text-xs">{fmt(p.costoTotal)}</td>
-                            <td className="px-4 py-3 text-xs font-semibold" style={{ color: p.utilidad >= 0 ? "#B3985B" : "#f87171" }}>{fmt(p.utilidad)}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-1.5">
-                                <div className="w-12 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                                  <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, p.margen))}%`, backgroundColor: margenColor(p.margen) }} />
-                                </div>
-                                <span className="text-[10px]" style={{ color: margenColor(p.margen) }}>{p.margen.toFixed(0)}%</span>
-                              </div>
+                            <td className="px-4 py-3 text-right text-sm text-white tabular-nums">{fmt(p.cobrado)}</td>
+                            <td className="px-4 py-3 text-right text-sm text-gray-400 tabular-nums">{fmt(p.costo)}</td>
+                            <td className={`px-4 py-3 text-right text-sm font-semibold tabular-nums ${utilColor(p.utilidad)}`}>
+                              {fmt(p.utilidad)}
+                            </td>
+                            <td className={`px-4 py-3 text-right text-sm font-bold tabular-nums ${margenColor(p.margen)}`}>
+                              {p.margen !== null ? `${p.margen.toFixed(1)}%` : "—"}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  )}
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
+              </Section>
+            </div>
+
+            {/* ── Footer note ── */}
+            <p className="text-[10px] text-gray-700 text-center pb-4 print:hidden">
+              Los datos reflejan movimientos registrados en Finanzas para {mesLabel(mes)}.
+              Nómina incluye pagos de personal interno (RRHH → Nómina) pagados en el período.
+            </p>
+          </>
+        )}
+      </div>
+    </>
   );
 }
