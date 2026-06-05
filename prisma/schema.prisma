@@ -740,8 +740,7 @@ model Tecnico {
   cuentaBancaria     String?
   datosFiscales      String?
   activo             Boolean    @default(true)
-  prioridad          Boolean    @default(false)
-  nivelPrioridad     String     @default("MEDIA")  // ALTA | MEDIA | BAJA
+  prioridad          Int        @default(0)        // 0=sin prioridad, 1-3=estrellas
   comentarios        String?
   habilidades        String?    // JSON array of skill tags
   disciplina         String[]   @default([])
@@ -770,8 +769,7 @@ model Proveedor {
   noTarjeta      String?
   datosFiscales  String?
   activo         Boolean  @default(true)
-  prioridad      Boolean  @default(false)
-  nivelPrioridad String   @default("MEDIA")  // ALTA | MEDIA | BAJA
+  prioridad      Int      @default(0)       // 0=sin prioridad, 1-3=estrellas
   portalToken    String?  @unique @map("portal_token")
   createdAt      DateTime @default(now())
 
