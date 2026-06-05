@@ -18,8 +18,7 @@ type Tecnico = {
   cuentaBancaria: string | null;
   datosFiscales: string | null;
   activo: boolean;
-  prioridad: boolean;
-  nivelPrioridad: string;
+  prioridad: number;
   comentarios: string | null;
   evaluacionPromedio: number | null;
   habilidades: string | null;
@@ -45,18 +44,6 @@ const NIVEL_COLORS: Record<string, string> = {
   A:   "text-gray-400 bg-gray-800/20 border-gray-700/40",
 };
 
-const PRIORIDAD_COLORS: Record<string, string> = {
-  ALTA:  '#EF4444',
-  MEDIA: '#F59E0B',
-  BAJA:  '#6B7280',
-}
-const PRIORIDAD_LABELS: Record<string, string> = {
-  ALTA:  'Alta',
-  MEDIA: 'Media',
-  BAJA:  'Baja',
-}
-const PRIORIDAD_ORDER: Record<string, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 }
-
 function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs' }) {
   const color = DISCIPLINA_COLORS[disc] ?? '#6b7280';
   const label = DISCIPLINA_LABELS[disc] ?? disc;
@@ -73,11 +60,41 @@ function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs
   );
 }
 
+const STAR_COLOR = '#C9A84C';
+
+function StarRating({ value, onChange, size = 16 }: {
+  value: number;
+  onChange?: (v: number) => void;
+  size?: number;
+}) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange?.(value === n ? 0 : n)}
+          className="leading-none transition-transform hover:scale-110 focus:outline-none"
+          style={{
+            fontSize: size,
+            color: n <= value ? STAR_COLOR : '#2a2a2a',
+            cursor: onChange ? 'pointer' : 'default',
+            lineHeight: 1,
+          }}
+          title={onChange ? `${n} estrella${n > 1 ? 's' : ''}` : undefined}
+        >
+          {n <= value ? '\u2605' : '\u2606'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const EMPTY = {
   nombre: "", celular: "", rolId: "", nivel: "A",
   zonaHabitual: "", cuentaBancaria: "", datosFiscales: "", comentarios: "", habilidades: "",
   disciplina: [] as string[],
-  nivelPrioridad: 'MEDIA',
+  prioridad: 0,
 };
 
 type SortKey = "nombre" | "rol";
@@ -105,6 +122,7 @@ export default function TecnicosPage() {
   const [detalleId, setDetalleId] = useState<string | null>(null);
   const [detalle, setDetalle] = useState<DetalleTecnico | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [prioPopover, setPrioPopover] = useState<string | null>(null);
 
   async function load() {
     const [tRes, rRes] = await Promise.all([
@@ -206,7 +224,7 @@ export default function TecnicosPage() {
       comentarios: t.comentarios ?? "",
       habilidades: t.habilidades ? (() => { try { return (JSON.parse(t.habilidades!) as string[]).join(", "); } catch { return t.habilidades!; } })() : "",
       disciplina: t.disciplina ?? [],
-      nivelPrioridad: t.nivelPrioridad ?? 'MEDIA',
+      prioridad: t.prioridad ?? 0,
     });
     setCreating(false);
   }
@@ -220,7 +238,7 @@ export default function TecnicosPage() {
 
   function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
 
-  function set(key: keyof typeof EMPTY, value: string | string[]) {
+  function set(key: keyof typeof EMPTY, value: string | string[] | number) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
@@ -247,25 +265,21 @@ export default function TecnicosPage() {
     setSaving(false);
   }
 
-  async function togglePrioridad(id: string, current: boolean) {
-    await fetch(`/api/tecnicos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prioridad: !current }),
-    });
-    setTecnicos(prev => prev.map(t => t.id === id ? { ...t, prioridad: !current } : t));
-  }
-
-  async function cycleNivelPrioridad(id: string, current: string) {
-    const levels = ['ALTA', 'MEDIA', 'BAJA'] as const;
-    const idx = levels.indexOf(current as typeof levels[number]);
-    const next = levels[(idx + 1) % levels.length];
-    setTecnicos(prev => prev.map(t => t.id === id ? { ...t, nivelPrioridad: next } : t));
-    await fetch(`/api/tecnicos/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nivelPrioridad: next }),
-    });
+  async function handleSetPrioridad(id: string, value: number) {
+    // Optimistic update
+    setTecnicos(prev => prev.map(t => t.id === id ? { ...t, prioridad: value } : t));
+    setPrioPopover(null);
+    try {
+      const res = await fetch(`/api/tecnicos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prioridad: value }),
+      });
+      if (!res.ok) throw new Error('PATCH failed');
+    } catch {
+      // Revert on error — reload from server
+      load();
+    }
   }
 
   async function eliminarTecnico(t: Tecnico) {
@@ -302,9 +316,7 @@ export default function TecnicosPage() {
   });
 
   filtered = [...filtered].sort((a, b) => {
-    const prioA = PRIORIDAD_ORDER[a.nivelPrioridad ?? 'MEDIA'] ?? 1;
-    const prioB = PRIORIDAD_ORDER[b.nivelPrioridad ?? 'MEDIA'] ?? 1;
-    if (prioA !== prioB) return prioA - prioB;
+    if (b.prioridad !== a.prioridad) return b.prioridad - a.prioridad; // higher stars first
     if (sortBy === "rol") return (a.rol?.nombre ?? "").localeCompare(b.rol?.nombre ?? "");
     return a.nombre.localeCompare(b.nombre);
   });
@@ -390,27 +402,16 @@ export default function TecnicosPage() {
             </div>
             {/* Prioridad */}
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-2">Nivel de prioridad</label>
-              <div className="flex gap-2">
-                {(['ALTA', 'MEDIA', 'BAJA'] as const).map(nivel => {
-                  const active = (form.nivelPrioridad ?? 'MEDIA') === nivel;
-                  const color = PRIORIDAD_COLORS[nivel];
-                  return (
-                    <button
-                      key={nivel}
-                      type="button"
-                      onClick={() => set('nivelPrioridad', nivel)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-                      style={active
-                        ? { backgroundColor: color + '20', borderColor: color, color }
-                        : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
-                      }
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? color : '#3a3a3a' }} />
-                      {PRIORIDAD_LABELS[nivel]}
-                    </button>
-                  );
-                })}
+              <label className="block text-xs text-gray-500 mb-2">Prioridad</label>
+              <div className="flex items-center gap-3">
+                <StarRating
+                  value={form.prioridad ?? 0}
+                  onChange={v => set('prioridad', v)}
+                  size={20}
+                />
+                <span className="text-xs text-gray-600">
+                  {(form.prioridad ?? 0) === 0 ? 'Sin prioridad' : `${form.prioridad} estrella${(form.prioridad ?? 0) > 1 ? 's' : ''}`}
+                </span>
               </div>
             </div>
             <div className="col-span-2">
@@ -538,6 +539,10 @@ export default function TecnicosPage() {
         />
       )}
 
+      {prioPopover && (
+        <div className="fixed inset-0 z-40" onClick={() => setPrioPopover(null)} />
+      )}
+
       {filtered.length === 0 && !creating ? (
         <div className="text-center py-16">
           <p className="text-3xl mb-3">{filterDisciplina !== 'TODOS' ? '🎛️' : '👥'}</p>
@@ -553,7 +558,7 @@ export default function TecnicosPage() {
       ) : view === "card" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} onCycleNivelPrioridad={(id, cur) => cycleNivelPrioridad(id, cur)} />)}
+            {activos.map(t => <TecnicoCard key={t.id} tecnico={t} onEdit={startEdit} onToggle={eliminarTecnico} />)}
           </div>
           {showInactivos && inactivos.length > 0 && (
             <div className="mt-6">
@@ -573,6 +578,7 @@ export default function TecnicosPage() {
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Técnico</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Rol</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Categoría</th>
+                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Prioridad</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Zona</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Contacto</th>
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
@@ -588,7 +594,6 @@ export default function TecnicosPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-white truncate">{t.nombre}</p>
-                        {t.prioridad && <span className="text-[9px] text-[#C9A84C] font-semibold uppercase tracking-wider">Prioritario</span>}
                       </div>
                     </div>
                   </td>
@@ -682,6 +687,42 @@ export default function TecnicosPage() {
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3">
+                    <div className="relative">
+                      <button
+                        onClick={() => setPrioPopover(prioPopover === t.id ? null : t.id)}
+                        className="flex items-center gap-1.5 cursor-pointer group"
+                      >
+                        <StarRating value={t.prioridad} size={13} />
+                        {t.prioridad === 0 && <span className="text-[9px] text-gray-700">Sin prioridad</span>}
+                      </button>
+
+                      {prioPopover === t.id && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          style={{ width: 180 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Prioridad</p>
+                          {([0, 1, 2, 3] as const).map(n => (
+                            <button
+                              key={n}
+                              onClick={() => handleSetPrioridad(t.id, n)}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                                t.prioridad === n ? 'bg-[#1e1e1e] text-white' : 'text-gray-400 hover:bg-[#1a1a1a]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <StarRating value={n} size={11} />
+                                <span>{n === 0 ? 'Sin prioridad' : n === 1 ? '1 estrella' : n === 2 ? '2 estrellas' : '3 estrellas'}</span>
+                              </div>
+                              {t.prioridad === n && <span style={{ color: STAR_COLOR }} className="text-xs">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {t.celular ? (
@@ -698,22 +739,6 @@ export default function TecnicosPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1">
-                      <button
-                        onClick={e => { e.stopPropagation(); cycleNivelPrioridad(t.id, t.nivelPrioridad ?? 'MEDIA'); }}
-                        title={`Prioridad: ${PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
-                        className="flex items-center gap-1 group/prio transition-all shrink-0"
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full transition-transform group-hover/prio:scale-125"
-                          style={{ backgroundColor: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
-                        />
-                        <span
-                          className="text-[10px] font-medium hidden group-hover/prio:inline"
-                          style={{ color: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
-                        >
-                          {PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']}
-                        </span>
-                      </button>
                       <button onClick={() => startEdit(t)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => eliminarTecnico(t)} className="text-red-500/70 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                     </div>
@@ -736,6 +761,9 @@ export default function TecnicosPage() {
                         ))}
                       </div>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {t.prioridad > 0 && <StarRating value={t.prioridad} size={11} />}
                   </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.zonaHabitual ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{t.celular ?? "—"}</td>
@@ -780,14 +808,8 @@ export default function TecnicosPage() {
                           <span className="text-white text-sm">{r.nombre}</span>
                           {(() => {
                             const tech = tecnicos.find(t => t.id === r.id);
-                            const np = tech?.nivelPrioridad ?? 'MEDIA';
-                            return (
-                              <span
-                                className="w-2 h-2 rounded-full inline-block"
-                                style={{ backgroundColor: PRIORIDAD_COLORS[np] }}
-                                title={`Prioridad: ${PRIORIDAD_LABELS[np]}`}
-                              />
-                            );
+                            if (!tech || tech.prioridad === 0) return null;
+                            return <StarRating value={tech.prioridad} size={10} />;
                           })()}
                         </div>
                       </td>
@@ -934,11 +956,10 @@ export default function TecnicosPage() {
   );
 }
 
-function TecnicoCard({ tecnico: t, onEdit, onToggle, onCycleNivelPrioridad }: {
+function TecnicoCard({ tecnico: t, onEdit, onToggle }: {
   tecnico: Tecnico;
   onEdit: (t: Tecnico) => void;
   onToggle: (t: Tecnico) => void;
-  onCycleNivelPrioridad?: (id: string, current: string) => void;
 }) {
   const nivelStyle = NIVEL_COLORS[t.nivel] ?? "text-gray-400 bg-gray-800/20 border-gray-700/40";
   const initials = t.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
@@ -962,23 +983,10 @@ function TecnicoCard({ tecnico: t, onEdit, onToggle, onCycleNivelPrioridad }: {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {onCycleNivelPrioridad && (
-            <button
-              onClick={e => { e.stopPropagation(); onCycleNivelPrioridad(t.id, t.nivelPrioridad ?? 'MEDIA'); }}
-              title={`Prioridad: ${PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
-              className="flex items-center gap-1 group/prio transition-all shrink-0"
-            >
-              <span
-                className="w-2 h-2 rounded-full transition-transform group-hover/prio:scale-125"
-                style={{ backgroundColor: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
-              />
-              <span
-                className="text-[10px] font-medium hidden group-hover/prio:inline"
-                style={{ color: PRIORIDAD_COLORS[t.nivelPrioridad ?? 'MEDIA'] }}
-              >
-                {PRIORIDAD_LABELS[t.nivelPrioridad ?? 'MEDIA']}
-              </span>
-            </button>
+          {t.prioridad > 0 && (
+            <div className="flex items-center gap-1">
+              <StarRating value={t.prioridad} size={11} />
+            </div>
           )}
         </div>
       </div>
