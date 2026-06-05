@@ -20,6 +20,7 @@ type Template = {
   contexto: string
   frecuencia: string
   diasSemana: number[]
+  semanaDeMes: number[]
   horaLimite: string | null
   cuando: string | null
   descripcion: string | null
@@ -80,6 +81,23 @@ const FRECUENCIA_LABEL: Record<string, string> = {
   DIARIO: 'Diario', SEMANAL: 'Semanal', QUINCENAL: 'Quincenal',
   MENSUAL: 'Mensual', TRIMESTRAL: 'Trimestral', POR_EVENTO: 'Por evento',
   LUNES_JUEVES: 'L/J',
+}
+
+const SEMANA_LABELS: Record<number, string> = {
+  1: '1°', 2: '2°', 3: '3°', 4: '4°', 5: 'Último',
+}
+
+const DIA_FULL: Record<number, string> = {
+  1: 'lunes', 2: 'martes', 3: 'miércoles', 4: 'jueves', 5: 'viernes', 6: 'sábado', 0: 'domingo',
+}
+
+function formatMensualLabel(semanaDeMes: number[], diasSemana: number[]): string {
+  if (semanaDeMes.length === 0) return 'Mensual'
+  const semanas = [...semanaDeMes].sort((a, b) => a - b).map(s => SEMANA_LABELS[s] ?? `${s}°`)
+  const dias = diasSemana.map(d => ({
+    1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V', 6: 'S', 0: 'D',
+  }[d] ?? '?'))
+  return `Mensual · ${semanas.join(',')} ${dias.join('')}`
 }
 
 const IMPACTO_DOT: Record<string, string> = {
@@ -254,6 +272,7 @@ function TareaModal({
     tipo:           t?.tipo           ?? 'CHECK',
     frecuencia:     t?.frecuencia     ?? 'DIARIO',
     diasSemana:     t?.diasSemana     ?? [],
+    semanaDeMes:    t?.semanaDeMes    ?? [],
     horaLimite:     t?.horaLimite     ?? '',
     responsableId:  t?.responsable?.id ?? '',
     impacto:        t?.impacto        ?? 'estandar',
@@ -267,6 +286,7 @@ function TareaModal({
   })
   const [showDetalle, setShowDetalle] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [errorSemana, setErrorSemana] = useState(false)
 
   function toggleDia(d: number) {
     setForm(prev => ({
@@ -279,6 +299,11 @@ function TareaModal({
 
   async function handleSave() {
     if (!form.nombre.trim()) return
+    if (['MENSUAL', 'QUINCENAL'].includes(form.frecuencia) && form.semanaDeMes.length === 0) {
+      setErrorSemana(true)
+      return
+    }
+    setErrorSemana(false)
     setSaving(true)
     try {
       const body = {
@@ -375,7 +400,16 @@ function TareaModal({
             <label className={labelCls}>Frecuencia</label>
             <select
               value={form.frecuencia}
-              onChange={e => setForm(p => ({ ...p, frecuencia: e.target.value }))}
+              onChange={e => {
+                const newFrecuencia = e.target.value
+                setForm(p => ({
+                  ...p,
+                  frecuencia: newFrecuencia,
+                  // Clear semanaDeMes when switching away from MENSUAL/QUINCENAL
+                  semanaDeMes: ['MENSUAL', 'QUINCENAL'].includes(newFrecuencia) ? p.semanaDeMes : [],
+                }))
+                setErrorSemana(false)
+              }}
               className={inputCls}
             >
               <option value="DIARIO">Diario</option>
@@ -386,6 +420,45 @@ function TareaModal({
               <option value="POR_EVENTO">Por evento</option>
             </select>
           </div>
+
+          {/* Semana del mes — only for MENSUAL and QUINCENAL */}
+          {['MENSUAL', 'QUINCENAL'].includes(form.frecuencia) && (
+            <div>
+              <label className={labelCls}>¿Qué semana del mes?</label>
+              <p className="text-[11px] text-gray-600 mb-2">
+                {form.frecuencia === 'MENSUAL'
+                  ? 'Selecciona en qué semana(s) del mes aplica esta tarea'
+                  : '¿En qué semana(s) del mes?'}
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {([{ v: 1, l: '1ª' }, { v: 2, l: '2ª' }, { v: 3, l: '3ª' }, { v: 4, l: '4ª' }, { v: 5, l: 'Última' }]).map(({ v, l }) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      setErrorSemana(false)
+                      setForm(p => ({
+                        ...p,
+                        semanaDeMes: p.semanaDeMes.includes(v)
+                          ? p.semanaDeMes.filter(s => s !== v)
+                          : [...p.semanaDeMes, v].sort((a, b) => a - b),
+                      }))
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                      form.semanaDeMes.includes(v)
+                        ? 'bg-[#C9A84C] text-black border-[#C9A84C]'
+                        : 'bg-transparent text-gray-500 border-[#2a2a2a] hover:border-[#3a3a3a] hover:text-gray-300'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+              {errorSemana && (
+                <p className="text-xs text-red-400 mt-1.5">Selecciona al menos una semana del mes</p>
+              )}
+            </div>
+          )}
           <div>
             <label className={labelCls}>Hora límite</label>
             <input
@@ -641,7 +714,14 @@ function FrecuenciaBtn({
         className="flex items-center gap-1 text-xs text-gray-600 hover:text-white transition-colors group/frec"
         title="Cambiar recurrencia"
       >
-        {FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia}
+        {tarea.frecuencia === 'MENSUAL'
+          ? (
+            tarea.semanaDeMes.length === 0
+              ? <span className="flex items-center gap-1">Mensual <span className="text-yellow-600 text-[9px]" title="Semana no especificada">⚠</span></span>
+              : formatMensualLabel(tarea.semanaDeMes, tarea.diasSemana)
+          )
+          : (FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia)
+        }
         <span className="opacity-0 group-hover/frec:opacity-100 text-[9px] transition-opacity">✎</span>
       </button>
       {open && (
@@ -838,6 +918,24 @@ function TemplateRow({
                 <a href={t.moduloDestino} onClick={e => e.stopPropagation()} className="text-[10px] text-[#C9A84C] hover:underline">
                   {t.moduloTexto} →
                 </a>
+              )}
+              {(['MENSUAL', 'QUINCENAL'].includes(t.frecuencia)) && t.semanaDeMes.length > 0 && (
+                <p className="text-[10px] text-gray-500 mt-1">
+                  {(() => {
+                    const semanasParts = [...t.semanaDeMes].sort((a, b) => a - b).map(s =>
+                      s === 5 ? 'último' : `${s}°`
+                    )
+                    const diasParts = t.diasSemana.map(d => DIA_FULL[d] ?? 'día')
+                    const semanasStr = semanasParts.length === 1
+                      ? semanasParts[0]
+                      : semanasParts.slice(0, -1).join(', ') + ' y ' + semanasParts[semanasParts.length - 1]
+                    const diasStr = diasParts.length === 1
+                      ? diasParts[0]
+                      : diasParts.join(' y ')
+                    const prefix = t.frecuencia === 'QUINCENAL' ? 'Quincenal — cada' : 'Cada'
+                    return `${prefix} ${semanasStr} ${diasStr} del mes`
+                  })()}
+                </p>
               )}
             </div>
           </td>

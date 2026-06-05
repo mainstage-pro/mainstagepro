@@ -86,14 +86,15 @@ function debeGenerarse(template: {
       if (template.diaDelMes !== null && template.diaDelMes !== undefined) {
         return dom === template.diaDelMes;
       }
-      if (template.semanaDeMes.includes(5)) {
-        // 5 = última semana del mes
-        return isLastWeekOfMonth(fecha) && template.diasSemana.includes(dow);
+      if (template.semanaDeMes && template.semanaDeMes.length > 0) {
+        const matchesSemana = template.semanaDeMes.some(s => {
+          if (s === 5) return isLastWeekOfMonth(fecha) && template.diasSemana.includes(dow)
+          return weekOfMonth === s && template.diasSemana.includes(dow)
+        })
+        return matchesSemana
       }
-      if (template.semanaDeMes.length > 0) {
-        return template.semanaDeMes.includes(weekOfMonth) && template.diasSemana.includes(dow);
-      }
-      return false;
+      // Retrocompat: empty semanaDeMes → show on all matching weekdays
+      return template.diasSemana.includes(dow);
 
     case "TRIMESTRAL": {
       const month = getMexicoMonth(fecha);
