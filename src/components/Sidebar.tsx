@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { BarChart2 } from "lucide-react";
+import { BarChart2, Target } from "lucide-react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
 
@@ -44,6 +44,7 @@ const NAV: NavSection[] = [
       { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
       { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
       { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
+      { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true, icon: Target },
       {
         key: "calendario",
         label: "Calendario de eventos",

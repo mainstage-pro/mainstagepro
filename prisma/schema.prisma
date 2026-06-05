@@ -3091,3 +3091,35 @@ model ReporteSemanal {
   @@unique([semana])
   @@map("reportes_semanales")
 }
+
+// ─── OBJETIVOS / OKRs ────────────────────────────────────────────────────────
+
+model ObjetivoTrimestral {
+  id          String      @id @default(cuid())
+  area        String      // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
+  trimestre   String      // Q1 | Q2 | Q3 | Q4
+  anio        Int
+  objetivo    String
+  keyResults  KeyResult[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("objetivos_trimestrales")
+}
+
+model KeyResult {
+  id           String             @id @default(cuid())
+  descripcion  String
+  tipo         String             // porcentaje | numero | booleano
+  meta         Float?
+  metaTexto    String?
+  progreso     Float              @default(0)
+  completado   Boolean            @default(false)
+  conexionAuto String?            // leads_q3 | outbound_q3
+  objetivoId   String
+  objetivo     ObjetivoTrimestral @relation(fields: [objetivoId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@map("key_results")
+}
