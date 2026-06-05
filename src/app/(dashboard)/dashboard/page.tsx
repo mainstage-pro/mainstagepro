@@ -451,6 +451,7 @@ export default async function DashboardPage() {
                   )}
                   <div className="px-4 py-2">
                     <p className="text-[9px] uppercase tracking-widest text-gray-700 font-semibold mb-1.5">Por cerrar</p>
+                    <div className="max-h-[126px] overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: '#2a2a2a transparent' }}>
                     {eventosRecientes.map(e => {
                       const diasDesde = Math.floor(
                         (ahora.getTime() - new Date(e.fechaEvento!).getTime()) / 86400000
@@ -472,6 +473,8 @@ export default async function DashboardPage() {
                         </a>
                       );
                     })}
+                    </div>
+
                   </div>
                 </>
               )}
