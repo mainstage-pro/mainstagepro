@@ -53,6 +53,19 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
   DIRECCION_TECNICA:  'Dirección',
 };
 
+const ESTADO_BADGE_COLORS: Record<string, string> = {
+  PLANEACION: 'text-blue-400/70 border-blue-500/20',
+  EN_CURSO:   'text-yellow-400/70 border-yellow-500/20',
+  COMPLETADO: 'text-gray-400/60 border-gray-500/20',
+  CANCELADO:  'text-red-400/60 border-red-500/20',
+};
+const ESTADO_BADGE_LABELS: Record<string, string> = {
+  PLANEACION: 'Planeación',
+  EN_CURSO:   'En Curso',
+  COMPLETADO: 'Completado',
+  CANCELADO:  'Cancelado',
+};
+
 function formatCurrency(n: number) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
 }
@@ -90,6 +103,20 @@ function ProyectoRow({ p, onEliminar, deletingId }: {
       <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[p.tipoEvento] ?? 'text-gray-500'}`}>
         {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
       </span>
+
+      {/* Estado badge */}
+      {(() => {
+        const estadoNorm = p.estado === 'CONFIRMADO' ? 'PLANEACION'
+          : p.estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
+          : p.estado;
+        return (
+          <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap ${
+            ESTADO_BADGE_COLORS[estadoNorm] ?? 'text-gray-500 border-gray-500/20'
+          }`}>
+            {ESTADO_BADGE_LABELS[estadoNorm] ?? estadoNorm}
+          </span>
+        );
+      })()}
 
       {/* Tipo servicio */}
       {p.tipoServicio && (

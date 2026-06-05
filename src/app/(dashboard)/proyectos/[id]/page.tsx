@@ -104,8 +104,8 @@ interface Proyecto {
 const ESTADOS = ["PLANEACION", "EN_CURSO", "COMPLETADO", "CANCELADO"];
 const ESTADO_LABELS: Record<string, string> = {
   PLANEACION: "Planeación",
-  EN_CURSO: "En evento",
-  COMPLETADO: "Finalizado",
+  EN_CURSO: "En Curso",
+  COMPLETADO: "Completado",
   CANCELADO: "Cancelado",
 };
 const ESTADO_COLORS: Record<string, string> = {
@@ -2937,7 +2937,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
 
         const ESTADO_OPTS = ["PLANEACION","EN_CURSO","COMPLETADO","CANCELADO"] as const;
-        const ESTADO_LABELS_SHORT: Record<string, string> = { PLANEACION:"Planeación", EN_CURSO:"En evento", COMPLETADO:"Finalizado", CANCELADO:"Cancelado" };
+        const ESTADO_LABELS_SHORT: Record<string, string> = { PLANEACION:"Planeación", EN_CURSO:"En Curso", COMPLETADO:"Completado", CANCELADO:"Cancelado" };
 
         const AreaCard = ({ title, checks, color }: { title: string; checks: CheckItem[]; color: string }) => {
           const done = checks.filter(c => c.ok).length;

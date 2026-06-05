@@ -142,7 +142,14 @@ function groupTratosByMes(tratos: Trato[]) {
 
   const future = Object.values(map).filter(g => !g.isPast).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
   const past   = Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
-  return { future, past };
+  // Unified descending: future months desc (soonest last? No — future desc = farthest first)
+  // We want: most-future first → present → most-recent past → oldest past
+  // So: future sorted desc + past sorted desc
+  const all = [
+    ...Object.values(map).filter(g => !g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth)),
+    ...Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth)),
+  ];
+  return { future, past, all };
 }
 
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
@@ -934,7 +941,7 @@ function CompactTratoRow({
 
         {/* Tipo servicio chip */}
         {t.tipoServicio && (
-          <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
+          <span className="inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
             {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
           </span>
         )}
@@ -1711,9 +1718,9 @@ export default function TratosPage() {
               );
             }
 
-            // ── Unified month grouping for ALL tabs ─────────────────────
+            // ── Unified month grouping — all months descending ──────────
             {
-              const { future, past } = groupTratosByMes(tabTratos);
+              const { all } = groupTratosByMes(tabTratos);
 
               const renderRow = (t: Trato) => (
                 <CompactTratoRow
@@ -1728,12 +1735,16 @@ export default function TratosPage() {
                 />
               );
 
-              const renderGroup = (g: ReturnType<typeof groupTratosByMes>['future'][0]) => (
-                <div key={g.yearMonth}>
+              type MesGroup = ReturnType<typeof groupTratosByMes>['all'][0];
+              const renderGroup = (g: MesGroup) => (
+                <div key={g.yearMonth} className={g.isPast ? 'opacity-60' : ''}>
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-600">
                       {g.label} ({g.tratos.length})
                     </span>
+                    {g.isPast && (
+                      <span className="text-[9px] text-gray-700 uppercase tracking-wider">pasado</span>
+                    )}
                     <div className="flex-1 border-t border-[#1a1a1a]" />
                   </div>
                   <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
@@ -1744,20 +1755,7 @@ export default function TratosPage() {
 
               return (
                 <div className="space-y-5">
-                  {future.map(renderGroup)}
-                  {past.length > 0 && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-3 px-1">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
-                          Eventos pasados
-                        </span>
-                        <div className="flex-1 border-t border-[#1a1a1a]" />
-                      </div>
-                      <div className="space-y-4 opacity-60">
-                        {past.map(renderGroup)}
-                      </div>
-                    </div>
-                  )}
+                  {all.map(renderGroup)}
                 </div>
               );
             }

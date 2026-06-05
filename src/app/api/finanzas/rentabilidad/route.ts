@@ -21,9 +21,9 @@ export async function GET(req: NextRequest) {
       cliente: { select: { id: true, nombre: true, empresa: true } },
       cotizacion: { select: { granTotal: true, costosTotalesEstimados: true, utilidadEstimada: true } },
       cuentasCobrar: { select: { monto: true, montoCobrado: true, estado: true } },
+      // CxP already covers ALL costs: gastos operativos auto-create "OTRO" CxPs,
+      // personal fees create "TECNICO" CxPs — no need to also include gastosOperativos/personal
       cuentasPagar: { select: { monto: true } },
-      gastosOperativos: { select: { monto: true } },
-      personal: { select: { tarifaAcordada: true } },
     },
     orderBy: { fechaEvento: "desc" },
   });
@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
   const datosProyectos = proyectos.map(p => {
     const granTotal = Number(p.cotizacion?.granTotal ?? 0);
     const cobrado = p.cuentasCobrar.reduce((s, c) => s + Number(c.montoCobrado ?? 0), 0);
-    const cxp = p.cuentasPagar.reduce((s, c) => s + Number(c.monto), 0);
-    const gastos = p.gastosOperativos.reduce((s, g) => s + Number(g.monto), 0);
-    const nomina = p.personal.reduce((s, pp) => s + Number(pp.tarifaAcordada ?? 0), 0);
-    const costoTotal = cxp + gastos + nomina;
+    // FIX: Use only cuentasPagar — it already aggregates all costs:
+    // - GastoOperativo creates a linked "OTRO" CuentaPagar automatically
+    // - Confirmed personal fees create a "TECNICO" CuentaPagar automatically
+    // Adding gastosOperativos + nomina separately = double/triple counting
+    const costoTotal = p.cuentasPagar.reduce((s, c) => s + Number(c.monto), 0);
     const utilidad = cobrado - costoTotal;
     const margen = cobrado > 0 ? (utilidad / cobrado) * 100 : 0;
 
