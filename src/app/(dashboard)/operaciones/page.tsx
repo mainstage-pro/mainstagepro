@@ -12,6 +12,7 @@ import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
 import { VistaIdeas }        from "./components/VistaIdeas";
 import { VistaIniciativas }  from "./components/VistaIniciativas";
+import { VistaRendimiento } from "./components/VistaRendimiento";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -39,7 +40,7 @@ interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
 type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo"
-  | "captura" | "ideas" | "iniciativas"
+  | "captura" | "ideas" | "iniciativas" | "rendimiento"
   | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
@@ -1027,6 +1028,7 @@ export default function OperacionesPage() {
     vista === "captura"          ? "Captura rápida" :
     vista === "ideas"            ? "Ideas" :
     vista === "iniciativas"      ? "Iniciativas" :
+    vista === "rendimiento"      ? "Rendimiento" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Proyecto";
 
@@ -1240,6 +1242,12 @@ export default function OperacionesPage() {
               label="Equipo" isActive={vistaKey === "equipo"} onClick={() => setVista("equipo")}
             />
           )}
+          <SideItem
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>}
+            label="Rendimiento"
+            isActive={vistaKey === "rendimiento"}
+            onClick={() => setVista("rendimiento")}
+          />
         </nav>
 
         {/* ── Proyectos section ──────────────────────────────────────────── */}
@@ -1679,6 +1687,9 @@ export default function OperacionesPage() {
 
           ) : vista === "iniciativas" ? (
             <VistaIniciativas />
+
+          ) : vista === "rendimiento" ? (
+            <VistaRendimiento />
 
           ) : vista === "proyectos-evento" ? (
             <ProyectosEventoView
