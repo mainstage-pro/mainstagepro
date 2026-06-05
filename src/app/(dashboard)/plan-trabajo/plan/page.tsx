@@ -681,9 +681,11 @@ function DiasBtn({
 function FrecuenciaBtn({
   tarea,
   onCambiar,
+  onSemanaDeMesChange,
 }: {
   tarea: Template
   onCambiar: (frecuencia: string) => void
+  onSemanaDeMesChange?: (semanaDeMes: number[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -707,6 +709,8 @@ function FrecuenciaBtn({
     { value: 'LUNES_JUEVES', label: 'L/J' },
   ]
 
+  const showSemanaPicker = ['MENSUAL', 'QUINCENAL'].includes(tarea.frecuencia)
+
   return (
     <div ref={ref} className="relative">
       <button
@@ -717,20 +721,26 @@ function FrecuenciaBtn({
         {tarea.frecuencia === 'MENSUAL'
           ? (
             tarea.semanaDeMes.length === 0
-              ? <span className="flex items-center gap-1">Mensual <span className="text-yellow-600 text-[9px]" title="Semana no especificada">⚠</span></span>
+              ? <span className="flex items-center gap-1">Mensual <span className="text-yellow-500 text-[9px]" title="Falta indicar qué semana del mes">⚠</span></span>
               : formatMensualLabel(tarea.semanaDeMes, tarea.diasSemana)
           )
-          : (FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia)
+          : tarea.frecuencia === 'QUINCENAL'
+            ? (
+              tarea.semanaDeMes.length === 0
+                ? <span className="flex items-center gap-1">Quincenal <span className="text-yellow-500 text-[9px]" title="Falta indicar qué semanas">⚠</span></span>
+                : formatMensualLabel(tarea.semanaDeMes, tarea.diasSemana)
+            )
+            : (FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia)
         }
         <span className="opacity-0 group-hover/frec:opacity-100 text-[9px] transition-opacity">✎</span>
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden w-36 py-1">
+        <div className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden py-1" style={{ minWidth: 160 }}>
           <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 py-1.5">Recurrencia</p>
           {opciones.map(op => (
             <button
               key={op.value}
-              onClick={e => { e.stopPropagation(); onCambiar(op.value); setOpen(false) }}
+              onClick={e => { e.stopPropagation(); onCambiar(op.value); }}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                 tarea.frecuencia === op.value
                   ? 'text-[#C9A84C] bg-[#C9A84C]/5'
@@ -740,6 +750,40 @@ function FrecuenciaBtn({
               {op.label}
             </button>
           ))}
+
+          {/* Semana del mes — inline picker */}
+          {showSemanaPicker && onSemanaDeMesChange && (
+            <>
+              <div className="mx-3 my-1.5 h-px bg-[#1e1e1e]" />
+              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-1.5">
+                {tarea.semanaDeMes.length === 0
+                  ? <span className="text-yellow-500">⚠ ¿Qué semana del mes?</span>
+                  : '¿Qué semana?'}
+              </p>
+              <div className="flex gap-1 px-3 pb-2 flex-wrap">
+                {([{ v: 1, l: '1ª' }, { v: 2, l: '2ª' }, { v: 3, l: '3ª' }, { v: 4, l: '4ª' }, { v: 5, l: 'Últ' }]).map(({ v, l }) => {
+                  const active = tarea.semanaDeMes.includes(v)
+                  return (
+                    <button
+                      key={v}
+                      onClick={e => {
+                        e.stopPropagation()
+                        const next = active
+                          ? tarea.semanaDeMes.filter(s => s !== v)
+                          : [...tarea.semanaDeMes, v].sort((a, b) => a - b)
+                        onSemanaDeMesChange(next)
+                      }}
+                      className={`w-8 h-7 rounded-lg text-[10px] font-bold transition-colors ${
+                        active ? 'bg-[#C9A84C] text-black' : 'bg-[#1a1a1a] text-gray-500 hover:text-gray-300'
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -756,6 +800,7 @@ function TemplateRow({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onSemanaDeMesChange,
   onGroupChange,
   onDragStart,
   onDragEnd,
@@ -767,6 +812,7 @@ function TemplateRow({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   onDragStart?: () => void
   onDragEnd?: () => void
@@ -834,6 +880,7 @@ function TemplateRow({
           <FrecuenciaBtn
             tarea={t}
             onCambiar={frec => onFrecuenciaChange(t.id, frec)}
+            onSemanaDeMesChange={sem => onSemanaDeMesChange(t.id, sem)}
           />
         </td>
 
@@ -957,6 +1004,7 @@ function AreaPersonasView({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onSemanaDeMesChange,
   onGroupChange,
 }: {
   areaId: string
@@ -966,6 +1014,7 @@ function AreaPersonasView({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
@@ -1053,6 +1102,7 @@ function AreaPersonasView({
                             onResponsableChange={onResponsableChange}
                             onDiasChange={onDiasChange}
                             onFrecuenciaChange={onFrecuenciaChange}
+                            onSemanaDeMesChange={onSemanaDeMesChange}
                             onGroupChange={onGroupChange}
                           />
                         ))}
@@ -1078,6 +1128,7 @@ function VistaPorPersona({
   onResponsableChange,
   onDiasChange,
   onFrecuenciaChange,
+  onSemanaDeMesChange,
   onGroupChange,
   usuarios,
 }: {
@@ -1087,6 +1138,7 @@ function VistaPorPersona({
   onResponsableChange: (templateId: string, responsableId: string | null) => void
   onDiasChange: (templateId: string, diasSemana: number[]) => void
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
+  onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   usuarios: Usuario[]
 }) {
@@ -1150,6 +1202,7 @@ function VistaPorPersona({
                       onResponsableChange={onResponsableChange}
                       onDiasChange={onDiasChange}
                       onFrecuenciaChange={onFrecuenciaChange}
+                      onSemanaDeMesChange={onSemanaDeMesChange}
                       onGroupChange={onGroupChange}
                     />
                   ))}
@@ -1181,6 +1234,7 @@ function VistaPorPersona({
                       onResponsableChange={onResponsableChange}
                       onDiasChange={onDiasChange}
                       onFrecuenciaChange={onFrecuenciaChange}
+                      onSemanaDeMesChange={onSemanaDeMesChange}
                       onGroupChange={onGroupChange}
                     />
                   ))}
@@ -1344,6 +1398,24 @@ export default function PlanPage() {
     })
   }
 
+  async function handleSemanaDeMesChange(templateId: string, semanaDeMes: number[]) {
+    // Optimistic update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => ({
+        ...sg,
+        templates: sg.templates.map(t =>
+          t.id === templateId ? { ...t, semanaDeMes } : t
+        ),
+      })),
+    })))
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ semanaDeMes }),
+    })
+  }
+
   async function handleDelete(templateId: string) {
     if (!confirm('¿Eliminar esta tarea del plan?')) return
     const res = await fetch(`/api/plan-trabajo/templates/${templateId}`, { method: 'DELETE' })
@@ -1479,7 +1551,7 @@ export default function PlanPage() {
   return (
     <div className="flex" style={{ minHeight: 'calc(100vh - 130px)' }}>
       {/* ── Sidebar ── */}
-      <div className="w-48 shrink-0 border-r border-[#141414] bg-[#060606] py-4 flex flex-col gap-0.5 overflow-y-auto">
+      <div className="w-48 shrink-0 border-r border-[#141414] bg-[#060606] py-4 flex flex-col gap-0.5 overflow-y-auto sticky top-0" style={{ height: '100vh' }}>
         {loading ? (
           <p className="px-4 text-gray-700 text-xs mt-2">Cargando...</p>
         ) : (
@@ -1579,6 +1651,7 @@ export default function PlanPage() {
           onResponsableChange={handleResponsableChange}
           onDiasChange={handleDiasChange}
           onFrecuenciaChange={handleFrecuenciaChange}
+          onSemanaDeMesChange={handleSemanaDeMesChange}
           onGroupChange={handleGroupAssignment}
         />
       ) : (
@@ -1693,6 +1766,7 @@ export default function PlanPage() {
                           onResponsableChange={handleResponsableChange}
                           onDiasChange={handleDiasChange}
                           onFrecuenciaChange={handleFrecuenciaChange}
+                          onSemanaDeMesChange={handleSemanaDeMesChange}
                           onGroupChange={handleGroupAssignment}
                           onDragStart={() => setDragState({ templateId: t.id, fromSubAreaId: group.subArea.id })}
                           onDragEnd={() => { setDragState(null); setDragOverSubAreaId(null) }}
@@ -1753,6 +1827,7 @@ export default function PlanPage() {
                 onResponsableChange={handleResponsableChange}
                 onDiasChange={handleDiasChange}
                 onFrecuenciaChange={handleFrecuenciaChange}
+                onSemanaDeMesChange={handleSemanaDeMesChange}
                 onGroupChange={handleGroupAssignment}
               />
             </>
