@@ -15,7 +15,7 @@ export async function PUT(
   // Pick allowed fields
   const {
     nombre, descripcion, tipo, frecuencia, diasSemana, horaLimite,
-    moduloDestino, moduloTexto, activa, responsableId,
+    moduloDestino, moduloTexto, moduloDisponible, esAccionCampo, activa, responsableId,
     impacto, contexto, cuando, puestoDefault, kpiNombre,
     estandarMinimo, porqueSeHace, relacionCon, siNoSeHace,
     afectaA, dependeDe, bloqueaA,
@@ -29,9 +29,11 @@ export async function PUT(
   if (frecuencia  !== undefined) data.frecuencia  = frecuencia
   if (diasSemana  !== undefined) data.diasSemana  = diasSemana
   if (horaLimite  !== undefined) data.horaLimite  = horaLimite
-  if (moduloDestino !== undefined) data.moduloDestino = moduloDestino
-  if (moduloTexto   !== undefined) data.moduloTexto   = moduloTexto
-  if (activa      !== undefined) data.activa      = activa
+  if (moduloDestino    !== undefined) data.moduloDestino    = moduloDestino
+  if (moduloTexto      !== undefined) data.moduloTexto      = moduloTexto
+  if (moduloDisponible !== undefined) data.moduloDisponible = moduloDisponible
+  if (esAccionCampo    !== undefined) data.esAccionCampo    = esAccionCampo
+  if (activa           !== undefined) data.activa           = activa
   if (responsableId !== undefined) data.responsableId = responsableId || null
   if (impacto     !== undefined) data.impacto     = impacto
   if (contexto    !== undefined) data.contexto    = contexto

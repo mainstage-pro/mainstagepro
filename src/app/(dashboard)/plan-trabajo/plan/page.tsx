@@ -1,7 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { getAreaColor } from '@/lib/areaColors'
+import { GRUPOS_MODULOS } from '@/lib/modulosEjecucion'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,8 @@ type Template = {
   kpiNombre: string | null
   moduloTexto: string | null
   moduloDestino: string | null
+  moduloDisponible: boolean
+  esAccionCampo: boolean
   dependeDe: { tarea: string; puesto: string } | null
   bloqueaA: { tarea: string; puesto: string } | null
   afectaA: string[]
@@ -267,22 +271,26 @@ function TareaModal({
   const t = modal.tarea
 
   const [form, setForm] = useState({
-    nombre:         t?.nombre         ?? '',
-    descripcion:    t?.descripcion    ?? '',
-    tipo:           t?.tipo           ?? 'CHECK',
-    frecuencia:     t?.frecuencia     ?? 'DIARIO',
-    diasSemana:     t?.diasSemana     ?? [],
-    semanaDeMes:    t?.semanaDeMes    ?? [],
-    horaLimite:     t?.horaLimite     ?? '',
-    responsableId:  t?.responsable?.id ?? '',
-    impacto:        t?.impacto        ?? 'estandar',
-    contexto:       t?.contexto       ?? 'independiente',
-    estandarMinimo: t?.estandarMinimo ?? '',
-    porqueSeHace:   t?.porqueSeHace   ?? '',
-    relacionCon:    t?.relacionCon    ?? '',
-    siNoSeHace:     t?.siNoSeHace     ?? '',
-    tipoAsignacion: t?.tipoAsignacion ?? 'individual',
-    areaAsignada:   t?.areaAsignada   ?? '',
+    nombre:          t?.nombre         ?? '',
+    descripcion:     t?.descripcion    ?? '',
+    tipo:            t?.tipo           ?? 'CHECK',
+    frecuencia:      t?.frecuencia     ?? 'DIARIO',
+    diasSemana:      t?.diasSemana     ?? [],
+    semanaDeMes:     t?.semanaDeMes    ?? [],
+    horaLimite:      t?.horaLimite     ?? '',
+    responsableId:   t?.responsable?.id ?? '',
+    impacto:         t?.impacto        ?? 'estandar',
+    contexto:        t?.contexto       ?? 'independiente',
+    estandarMinimo:  t?.estandarMinimo ?? '',
+    porqueSeHace:    t?.porqueSeHace   ?? '',
+    relacionCon:     t?.relacionCon    ?? '',
+    siNoSeHace:      t?.siNoSeHace     ?? '',
+    tipoAsignacion:  t?.tipoAsignacion ?? 'individual',
+    areaAsignada:    t?.areaAsignada   ?? '',
+    moduloDestino:   t?.moduloDestino  ?? '',
+    moduloTexto:     t?.moduloTexto    ?? '',
+    moduloDisponible: t?.moduloDisponible ?? true,
+    esAccionCampo:   t?.esAccionCampo  ?? false,
   })
   const [showDetalle, setShowDetalle] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -308,15 +316,19 @@ function TareaModal({
     try {
       const body = {
         ...form,
-        responsableId:  form.responsableId  || null,
-        horaLimite:     form.horaLimite     || null,
-        descripcion:    form.descripcion    || null,
-        estandarMinimo: form.estandarMinimo || null,
-        porqueSeHace:   form.porqueSeHace   || null,
-        relacionCon:    form.relacionCon    || null,
-        siNoSeHace:     form.siNoSeHace     || null,
-        tipoAsignacion: form.tipoAsignacion,
+        responsableId:   form.responsableId  || null,
+        horaLimite:      form.horaLimite     || null,
+        descripcion:     form.descripcion    || null,
+        estandarMinimo:  form.estandarMinimo || null,
+        porqueSeHace:    form.porqueSeHace   || null,
+        relacionCon:     form.relacionCon    || null,
+        siNoSeHace:      form.siNoSeHace     || null,
+        tipoAsignacion:  form.tipoAsignacion,
         areaAsignada: form.tipoAsignacion === 'area' ? (form.areaAsignada || null) : null,
+        esAccionCampo:   form.esAccionCampo,
+        moduloDisponible: form.moduloDisponible,
+        moduloDestino: form.esAccionCampo ? null : (form.moduloDestino || null),
+        moduloTexto:   form.esAccionCampo ? null : (form.moduloTexto   || null),
         ...(isEdit ? {} : { areaId: modal.areaId, subAreaId: modal.subAreaId }),
       }
 
@@ -582,6 +594,46 @@ function TareaModal({
           )}
         </div>
 
+        {/* Módulo de ejecución */}
+        <div className="border-t border-[#111] pt-4">
+          <p className="text-[9px] text-[#444] uppercase tracking-[0.15em] font-semibold mb-3">Módulo de ejecución</p>
+
+          {/* Toggle: accion campo */}
+          <label className="flex items-center gap-2 mb-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.esAccionCampo}
+              onChange={e => setForm(p => ({ ...p, esAccionCampo: e.target.checked }))}
+              className="w-3.5 h-3.5 rounded accent-[#C9A84C]"
+            />
+            <span className="text-xs text-[#777]">Es acción en campo (no requiere módulo en plataforma)</span>
+          </label>
+
+          {/* Dropdown */}
+          {!form.esAccionCampo && (
+            <select
+              value={form.moduloDestino ?? ''}
+              onChange={e => {
+                const ruta = e.target.value || ''
+                const nombre = ruta
+                  ? GRUPOS_MODULOS.flatMap(g => g.modulos).find(m => m.ruta === ruta)?.nombre ?? ''
+                  : ''
+                setForm(p => ({ ...p, moduloDestino: ruta, moduloTexto: nombre }))
+              }}
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#C9A84C]/30"
+            >
+              <option value="">Sin módulo asignado</option>
+              {GRUPOS_MODULOS.map(grupo => (
+                <optgroup key={grupo.grupo} label={grupo.grupo}>
+                  {grupo.modulos.map(m => (
+                    <option key={m.ruta} value={m.ruta}>{m.nombre}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          )}
+        </div>
+
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
@@ -820,6 +872,7 @@ function TemplateRow({
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
   const imp = IMPACTO_LABEL[t.impacto] ?? IMPACTO_LABEL.estandar
+  const router = useRouter()
 
   return (
     <>
@@ -961,10 +1014,40 @@ function TemplateRow({
                 </span>
               )}
               {t.cuando && <span className="text-[10px] text-gray-600">⏰ {t.cuando}</span>}
-              {t.moduloDestino && t.moduloTexto && (
-                <a href={t.moduloDestino} onClick={e => e.stopPropagation()} className="text-[10px] text-[#C9A84C] hover:underline">
-                  {t.moduloTexto} →
-                </a>
+              {(t.moduloDestino || t.esAccionCampo) && (
+                <div className="flex items-center gap-2 pt-2 mt-2 border-t border-[#111] w-full">
+                  <span className="text-[9px] text-[#444] uppercase tracking-[0.15em] font-semibold shrink-0">
+                    {t.esAccionCampo ? 'Ejecución' : 'Ejecutar en'}
+                  </span>
+                  {t.esAccionCampo ? (
+                    <span className="flex items-center gap-1.5 text-[10px] text-[#444]">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                      </svg>
+                      En campo
+                    </span>
+                  ) : t.moduloDestino && t.moduloTexto ? (
+                    t.moduloDisponible ? (
+                      <button
+                        onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
+                        className="flex items-center gap-1.5 px-2 py-1 bg-[#111] border border-[#1e1e1e] rounded-lg text-[10px] text-[#999] hover:text-white hover:border-[#2a2a2a] transition-all cursor-pointer"
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                          <polyline points="15 3 21 3 21 9"/>
+                          <line x1="10" y1="14" x2="21" y2="3"/>
+                        </svg>
+                        {t.moduloTexto}
+                      </button>
+                    ) : (
+                      <span className="flex items-center gap-1.5 px-2 py-1 bg-[#0d0d0d] rounded-lg text-[10px] text-[#333] cursor-default" title="Próximamente disponible">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500/60 shrink-0" />
+                        {t.moduloTexto}
+                      </span>
+                    )
+                  ) : null}
+                </div>
               )}
               {(['MENSUAL', 'QUINCENAL'].includes(t.frecuencia)) && t.semanaDeMes.length > 0 && (
                 <p className="text-[10px] text-gray-500 mt-1">

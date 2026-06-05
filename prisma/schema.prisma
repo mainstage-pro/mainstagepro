@@ -2798,9 +2798,11 @@ model PTTareaTemplate {
   diaDelMes      Int?     // Para MENSUAL: día fijo (1-31)
   semanaDeMes    Int[]    @default([])  // Para MENSUAL/QUINCENAL: 1=1a, 2=2a, 3=3a, 4=4a, 5=última (array, multi-select)
   horaLimite     String?  // "10:30" — hora límite de entrega
-  moduloDestino  String?  // URL del módulo: "/ventas/pipeline"
-  moduloTexto    String?  // "Ir al Pipeline"
-  activa         Boolean  @default(true)
+  moduloDestino    String?  // URL del módulo: "/ventas/pipeline"
+  moduloTexto      String?  // "Ir al Pipeline"
+  moduloDisponible Boolean  @default(true)
+  esAccionCampo    Boolean  @default(false)
+  activa           Boolean  @default(true)
   orden          Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

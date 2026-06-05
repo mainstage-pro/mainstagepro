@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { showUndoToast } from '@/components/ui/undo-toast'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -30,6 +31,8 @@ type Instancia = {
     kpiNombre: string | null
     moduloTexto: string | null
     moduloDestino: string | null
+    moduloDisponible: boolean
+    esAccionCampo: boolean
     puestoDefault: string | null
     horaLimite?: string | null
     area: { id: string; nombre: string; color: string; icono: string }
@@ -235,6 +238,7 @@ function MiDiaItem({
   const { template: t } = instancia
   const imp = IMPACTO[t.impacto] ?? IMPACTO.estandar
   const ctx = CONTEXTO[t.contexto] ?? CONTEXTO.independiente
+  const router = useRouter()
 
   async function handleToggle(e: React.MouseEvent) {
     e.stopPropagation()
@@ -274,11 +278,27 @@ function MiDiaItem({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Task name */}
-            <p className={`text-sm font-medium leading-snug mb-1.5 ${
+            <p className={`text-sm font-medium leading-snug mb-1 ${
               completada ? 'line-through text-gray-600' : 'text-white'
             }`}>
               {t.nombre}
             </p>
+
+            {/* Módulo de ejecución — inline bajo el nombre */}
+            {t.esAccionCampo ? (
+              <p className="text-[10px] text-[#444] mt-0.5 mb-1">· En campo</p>
+            ) : t.moduloDestino && t.moduloTexto ? (
+              t.moduloDisponible ? (
+                <button
+                  onClick={(e) => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
+                  className="text-[10px] text-[#C9A84C] hover:text-[#d4b060] mt-0.5 mb-1 transition-colors block"
+                >
+                  → {t.moduloTexto}
+                </button>
+              ) : (
+                <p className="text-[10px] text-[#333] mt-0.5 mb-1">→ {t.moduloTexto}</p>
+              )
+            ) : null}
 
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
@@ -382,14 +402,13 @@ function MiDiaItem({
             )}
           </div>
 
-          {t.moduloDestino && t.moduloTexto && (
-            <a
-              href={t.moduloDestino}
-              onClick={e => e.stopPropagation()}
+          {t.moduloDestino && t.moduloTexto && !t.esAccionCampo && (
+            <button
+              onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
               className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
             >
               {t.moduloTexto} →
-            </a>
+            </button>
           )}
         </div>
       )}
